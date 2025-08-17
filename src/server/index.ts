@@ -131,7 +131,7 @@ export {
 } from './yaml-loader'
 
 // Re-export examples for documentation
-export * from './example-schema'
+export * from '../../examples/example-schema'
 
 /**
  * Main semantic layer instance

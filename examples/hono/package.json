@@ -1,0 +1,36 @@
+{
+  "name": "drizzle-cube-hono-example",
+  "version": "1.0.0",
+  "description": "Complete Hono app example with drizzle-cube integration",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "drizzle-orm": "^0.30.0",
+    "postgres": "^3.4.0",
+    "drizzle-cube": "file:../../"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0",
+    "drizzle-kit": "^0.20.0"
+  },
+  "keywords": [
+    "analytics",
+    "drizzle",
+    "hono",
+    "cube",
+    "semantic-layer"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
