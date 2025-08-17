@@ -130,8 +130,8 @@ export {
   convertCubeReferences 
 } from './yaml-loader'
 
-// Re-export examples for documentation
-export * from '../../examples/example-schema'
+// Re-export examples for documentation (optional - uncomment if examples exist)
+// export * from '../../examples/example-schema'
 
 /**
  * Main semantic layer instance
