@@ -4,8 +4,6 @@
  */
 
 import type { 
-  SemanticCube, 
-  CompiledCube, 
   SemanticQuery, 
   QueryResult, 
   SecurityContext,
@@ -15,10 +13,11 @@ import type {
   DimensionMetadata
 } from './types'
 import { createDatabaseExecutor } from './types'
-import { SemanticQueryExecutor } from './executor'
+import { QueryExecutor } from './executor'
+import type { CubeWithJoins } from './types-drizzle'
 
 export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<string, any>> {
-  private cubes: Map<string, CompiledCube<TSchema>> = new Map()
+  private cubes: Map<string, CubeWithJoins<TSchema>> = new Map()
   private dbExecutor?: DatabaseExecutor<TSchema>
 
   constructor(options?: {
@@ -61,30 +60,74 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   }
 
   /**
-   * Register a semantic cube with type safety
+   * Register a simplified cube with dynamic query building
    */
-  registerCube(cube: SemanticCube<TSchema>): void {
-    // Validate cube definition
-    this.validateCube(cube)
-
-    // Compile the cube
-    const compiledCube = this.compileCube(cube)
-    
-    this.cubes.set(cube.name, compiledCube)
+  registerCube(cube: CubeWithJoins<TSchema>): void {
+    this.cubes.set(cube.name, cube)
   }
 
   /**
-   * Get a compiled cube by name
+   * Get a cube by name
    */
-  getCube(name: string): CompiledCube<TSchema> | undefined {
+  getCube(name: string): CubeWithJoins<TSchema> | undefined {
     return this.cubes.get(name)
   }
 
   /**
    * Get all registered cubes
    */
-  getAllCubes(): CompiledCube<TSchema>[] {
+  getAllCubes(): CubeWithJoins<TSchema>[] {
     return Array.from(this.cubes.values())
+  }
+
+  /**
+   * Get all cubes as a Map for multi-cube queries
+   */
+  getAllCubesMap(): Map<string, CubeWithJoins<TSchema>> {
+    return this.cubes
+  }
+
+  /**
+   * Unified query execution method that handles both single and multi-cube queries
+   */
+  async execute(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const executor = new QueryExecutor<TSchema>(this.dbExecutor)
+    return executor.execute(this.cubes, query, securityContext)
+  }
+
+  /**
+   * Execute a multi-cube query
+   */
+  async executeMultiCubeQuery(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    return this.execute(query, securityContext)
+  }
+
+  /**
+   * Execute a single cube query
+   */
+  async executeQuery(
+    cubeName: string,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    // Validate cube exists
+    const cube = this.cubes.get(cubeName)
+    if (!cube) {
+      throw new Error(`Cube '${cubeName}' not found`)
+    }
+    
+    // Use unified execution which will auto-detect single cube
+    return this.execute(query, securityContext)
   }
 
   /**
@@ -95,90 +138,15 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   }
 
   /**
-   * Validate cube definition before compilation
+   * Generate cube metadata for API responses from cubes
    */
-  private validateCube(cube: SemanticCube<TSchema>): void {
-    if (!cube.name) {
-      throw new Error('Cube must have a name')
-    }
-    
-    if (!cube.sql) {
-      throw new Error(`Cube ${cube.name} must have SQL definition`)
-    }
-    
-    if (!cube.measures || Object.keys(cube.measures).length === 0) {
-      throw new Error(`Cube ${cube.name} must have at least one measure`)
-    }
-
-    // Validate measures
-    Object.entries(cube.measures).forEach(([key, measure]) => {
-      if (!measure.name) {
-        measure.name = key
-      }
-      if (!measure.type) {
-        throw new Error(`Measure ${cube.name}.${key} must have a type`)
-      }
-      if (!measure.sql) {
-        throw new Error(`Measure ${cube.name}.${key} must have SQL definition`)
-      }
-    })
-
-    // Validate dimensions
-    Object.entries(cube.dimensions).forEach(([key, dimension]) => {
-      if (!dimension.name) {
-        dimension.name = key
-      }
-      if (!dimension.type) {
-        throw new Error(`Dimension ${cube.name}.${key} must have a type`)
-      }
-      if (!dimension.sql) {
-        throw new Error(`Dimension ${cube.name}.${key} must have SQL definition`)
-      }
-    })
-
-    // Validate joins if present
-    if (cube.joins) {
-      Object.entries(cube.joins).forEach(([key, join]) => {
-        if (!join.sql) {
-          throw new Error(`Join ${cube.name}.${key} must have SQL definition`)
-        }
-        if (!join.relationship) {
-          throw new Error(`Join ${cube.name}.${key} must have relationship type`)
-        }
-      })
-    }
-  }
-
-  /**
-   * Compile cube into executable form
-   */
-  private compileCube(cube: SemanticCube<TSchema>): CompiledCube<TSchema> {
-    const queryFn = async (query: SemanticQuery, securityContext: SecurityContext): Promise<QueryResult> => {
-      if (!this.dbExecutor) {
-        throw new Error('Database executor not configured. Call setDatabaseExecutor() or setDrizzle() first.')
-      }
-
-      // Create type-safe executor
-      const executor = new SemanticQueryExecutor<TSchema>(this.dbExecutor)
-      return executor.executeQuery(cube, query, securityContext)
-    }
-
-    return {
-      ...cube,
-      queryFn
-    }
-  }
-
-  /**
-   * Generate cube metadata for API responses
-   */
-  private generateCubeMetadata(cube: CompiledCube<TSchema>): CubeMetadata {
+  private generateCubeMetadata(cube: CubeWithJoins<TSchema>): CubeMetadata {
     const measures: MeasureMetadata[] = Object.entries(cube.measures).map(([key, measure]) => ({
       name: `${cube.name}.${key}`,
       title: measure.title || key,
       shortTitle: measure.title || key,
       type: measure.type,
-      format: measure.format,
+      format: undefined, // Measure doesn't have format field
       description: measure.description
     }))
 
@@ -187,7 +155,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       title: dimension.title || key,
       shortTitle: dimension.title || key,
       type: dimension.type,
-      format: dimension.format,
+      format: undefined, // Dimension doesn't have format field
       description: dimension.description
     }))
 
@@ -218,7 +186,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       throw new Error('Database executor not configured')
     }
 
-    const executor = new SemanticQueryExecutor<TSchema>(this.dbExecutor)
+    const executor = new QueryExecutor<TSchema>(this.dbExecutor)
     return executor.generateSQL(cube, query, securityContext)
   }
 

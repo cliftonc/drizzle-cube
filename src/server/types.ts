@@ -5,7 +5,8 @@
 
 // Import Drizzle ORM types
 import type { SQL } from 'drizzle-orm'
-import { sql } from 'drizzle-orm'
+
+// Re-export Drizzle-first types
 
 /**
  * Security context passed to cube SQL functions
@@ -24,8 +25,8 @@ export interface DatabaseExecutor<TSchema extends Record<string, any> = Record<s
   db: DrizzleDatabase<TSchema>
   /** Optional schema for type inference */
   schema?: TSchema
-  /** Execute a Drizzle SQL query */
-  execute<T = any[]>(query: SQL): Promise<T>
+  /** Execute a Drizzle SQL query or query object */
+  execute<T = any[]>(query: SQL | any): Promise<T>
   /** Get the database engine type */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite'
 }
@@ -416,7 +417,7 @@ export abstract class BaseDatabaseExecutor<TSchema extends Record<string, any> =
     public schema?: TSchema
   ) {}
 
-  abstract execute<T = any[]>(query: SQL): Promise<T>
+  abstract execute<T = any[]>(query: SQL | any): Promise<T>
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite'
 }
 
@@ -425,7 +426,42 @@ export abstract class BaseDatabaseExecutor<TSchema extends Record<string, any> =
  * Works with postgres.js and Neon drivers
  */
 export class PostgresExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL): Promise<T> {
+  async execute<T = any[]>(query: SQL | any): Promise<T> {
+    // Handle Drizzle query objects directly
+    if (query && typeof query === 'object') {
+      // Check for various execution methods that Drizzle queries might have
+      if (typeof query.execute === 'function') {
+        const result = await query.execute()
+        if (Array.isArray(result)) {
+          return result.map(row => this.convertNumericFields(row)) as T
+        }
+        return result as T
+      }
+      
+      // Try to execute through the database instance if it's a query builder
+      if (this.db && typeof this.db.execute === 'function') {
+        try {
+          const result = await this.db.execute(query)
+          if (Array.isArray(result)) {
+            return result.map(row => this.convertNumericFields(row)) as T
+          }
+          return result as T
+        } catch (error) {
+          // If that fails, try to get SQL and execute it
+          if (typeof query.getSQL === 'function') {
+            const sqlResult = query.getSQL()
+            const result = await this.db.execute(sqlResult)
+            if (Array.isArray(result)) {
+              return result.map(row => this.convertNumericFields(row)) as T
+            }
+            return result as T
+          }
+          throw error
+        }
+      }
+    }
+    
+    // Handle raw SQL objects
     if (!this.db.execute) {
       throw new Error('PostgreSQL database instance must have an execute method')
     }
@@ -467,7 +503,14 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
  * Works with better-sqlite3 driver
  */
 export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL): Promise<T> {
+  async execute<T = any[]>(query: SQL | any): Promise<T> {
+    // Handle Drizzle query objects directly
+    if (query && typeof query === 'object' && typeof query.execute === 'function') {
+      // This is a Drizzle query object, execute it directly
+      const result = await query.execute()
+      return result as T
+    }
+    
     // SQLite is synchronous, but we wrap in Promise for consistency
     try {
       // For SQLite with better-sqlite3, we need to execute through the Drizzle instance
@@ -497,7 +540,14 @@ export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string,
  * Works with mysql2 driver
  */
 export class MySQLExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL): Promise<T> {
+  async execute<T = any[]>(query: SQL | any): Promise<T> {
+    // Handle Drizzle query objects directly
+    if (query && typeof query === 'object' && typeof query.execute === 'function') {
+      // This is a Drizzle query object, execute it directly
+      const result = await query.execute()
+      return result as T
+    }
+    
     if (!this.db.execute) {
       throw new Error('MySQL database instance must have an execute method')
     }

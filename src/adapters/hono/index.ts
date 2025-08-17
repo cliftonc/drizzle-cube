@@ -97,25 +97,8 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
         }, 400)
       }
 
-      // Determine which cube to use (assume first measure/dimension determines cube)
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
-        return c.json({
-          error: 'No measures or dimensions specified'
-        }, 400)
-      }
-
-      const cubeName = firstMember.split('.')[0]
-      const cube = semanticLayer.getCube(cubeName)
-      
-      if (!cube) {
-        return c.json({
-          error: `Cube '${cubeName}' not found`
-        }, 404)
-      }
-
-      // Execute query
-      const result = await cube.queryFn(query, securityContext)
+      // Execute multi-cube query (handles both single and multi-cube automatically)
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
       
       // Return in Cube.js format
       return c.json({
@@ -150,24 +133,15 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       // Extract security context
       const securityContext = await getSecurityContext(c)
       
-      // Execute same logic as POST endpoint
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
-      if (!firstMember) {
+      // Validate query has at least measures or dimensions
+      if (!query.measures?.length && !query.dimensions?.length) {
         return c.json({
-          error: 'No measures or dimensions specified'
+          error: 'Query must specify at least one measure or dimension'
         }, 400)
       }
 
-      const cubeName = firstMember.split('.')[0]
-      const cube = semanticLayer.getCube(cubeName)
-      
-      if (!cube) {
-        return c.json({
-          error: `Cube '${cubeName}' not found`
-        }, 404)
-      }
-
-      const result = await cube.queryFn(query, securityContext)
+      // Execute multi-cube query (handles both single and multi-cube automatically)
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
       
       return c.json({
         data: result.data,
@@ -215,6 +189,14 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       
       const securityContext = await getSecurityContext(c)
       
+      // Validate query has at least measures or dimensions
+      if (!query.measures?.length && !query.dimensions?.length) {
+        return c.json({
+          error: 'Query must specify at least one measure or dimension'
+        }, 400)
+      }
+
+      // For SQL generation, we need at least one cube referenced
       const firstMember = query.measures?.[0] || query.dimensions?.[0]
       if (!firstMember) {
         return c.json({
@@ -223,21 +205,9 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       }
 
       const cubeName = firstMember.split('.')[0]
-      const cube = semanticLayer.getCube(cubeName)
       
-      if (!cube) {
-        return c.json({
-          error: `Cube '${cubeName}' not found`
-        }, 404)
-      }
-
-      // Generate SQL without executing
-      const executor = new (await import('../../server')).SemanticQueryExecutor({
-        db: {} as any, // Dummy db for SQL generation
-        execute: async <T = any[]>(_query: any): Promise<T> => [] as T // Dummy executor for SQL generation
-      })
-      
-      const sqlResult = await executor.generateSQL(cube as any, query, securityContext)
+      // Generate SQL using the semantic layer compiler
+      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
       
       return c.json({
         sql: sqlResult.sql,
@@ -268,6 +238,14 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       const query: SemanticQuery = JSON.parse(queryParam)
       const securityContext = await getSecurityContext(c)
       
+      // Validate query has at least measures or dimensions
+      if (!query.measures?.length && !query.dimensions?.length) {
+        return c.json({
+          error: 'Query must specify at least one measure or dimension'
+        }, 400)
+      }
+
+      // For SQL generation, we need at least one cube referenced
       const firstMember = query.measures?.[0] || query.dimensions?.[0]
       if (!firstMember) {
         return c.json({
@@ -276,20 +254,9 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       }
 
       const cubeName = firstMember.split('.')[0]
-      const cube = semanticLayer.getCube(cubeName)
       
-      if (!cube) {
-        return c.json({
-          error: `Cube '${cubeName}' not found`
-        }, 404)
-      }
-
-      const executor = new (await import('../../server')).SemanticQueryExecutor({
-        db: {} as any, // Dummy db for SQL generation
-        execute: async <T = any[]>(_query: any): Promise<T> => [] as T // Dummy executor for SQL generation
-      })
-      
-      const sqlResult = await executor.generateSQL(cube as any, query, securityContext)
+      // Generate SQL using the semantic layer compiler
+      const sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
       
       return c.json({
         sql: sqlResult.sql,

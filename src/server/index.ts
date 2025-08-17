@@ -5,11 +5,14 @@
 
 // Export main classes with Drizzle integration
 export { SemanticLayerCompiler, semanticLayer, createSemanticLayer } from './compiler'
-export { SemanticQueryExecutor } from './executor'
+export { QueryExecutor } from './executor'
+
+// Export multi-cube query building
+export { MultiCubeBuilder } from './multi-cube-builder'
 
 // Export utility functions from types
 export { 
-  defineCube, 
+  defineCube as defineLegacyCube, 
   createDatabaseExecutor,
   createPostgresExecutor,
   createSQLiteExecutor,
@@ -17,8 +20,15 @@ export {
   BaseDatabaseExecutor,
   PostgresExecutor,
   SQLiteExecutor,
-  MySQLExecutor
+  MySQLExecutor,
 } from './types'
+
+// Export drizzle approach utilities
+export { 
+  defineCube,
+  resolveSqlExpression,
+  createMultiCubeContext
+} from './types-drizzle'
 
 // Import types for use in utility functions
 import type { TimeGranularity, DrizzleDatabase } from './types'
@@ -26,11 +36,14 @@ import { SemanticLayerCompiler, semanticLayer } from './compiler'
 
 // Export all types with Drizzle integration
 export type {
-  // Core interfaces with Drizzle support
+  // Legacy types (for backwards compatibility)
   SemanticCube,
   SemanticDimension,
   SemanticMeasure,
   SemanticJoin,
+  
+  
+  // Common types
   SemanticQuery,
   SecurityContext,
   DatabaseExecutor,
@@ -38,7 +51,7 @@ export type {
   DrizzleColumn,
   
   // Query types
-  QueryContext,
+  QueryContext as LegacyQueryContext,
   QueryResult,
   SqlResult,
   
@@ -68,7 +81,7 @@ export type {
   FilterOperator,
   
   // Compiled types
-  CompiledCube,
+  CompiledCube as LegacyCompiledCube,
   
   // Pre-aggregation types
   SemanticPreAggregation,
@@ -77,6 +90,20 @@ export type {
   CubeDefinition,
   CubeDefiner
 } from './types'
+
+// Export drizzle types
+export type {
+  Cube,
+  CubeWithJoins,
+  Dimension,
+  Measure,
+  QueryContext,
+  MultiCubeQueryContext,
+  CompiledCube,
+  BaseQueryDefinition,
+  MultiCubeQueryPlan,
+  CubeJoin
+} from './types-drizzle'
 
 // Re-export Drizzle SQL type for convenience
 export type { SQL } from 'drizzle-orm'
@@ -104,7 +131,7 @@ export {
 } from './yaml-loader'
 
 // Re-export examples for documentation
-export * from './example-cubes'
+export * from './example-schema'
 
 /**
  * Main semantic layer instance
@@ -133,7 +160,7 @@ export const SemanticLayerUtils = {
   /**
    * Create a simple query builder
    */
-  query: (_cubeName: string) => {
+  query: () => {
     const createQuery = (
       measures: string[], 
       dimensions: string[] = [],

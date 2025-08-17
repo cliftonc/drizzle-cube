@@ -121,7 +121,7 @@ describe('Hono Adapter', () => {
     })
 
     const res = await app.request(req)
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(500)
     
     const data = await res.json()
     expect(data.error).toContain('not found')

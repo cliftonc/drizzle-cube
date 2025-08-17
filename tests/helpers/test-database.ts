@@ -6,8 +6,10 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
-import { sql, eq } from 'drizzle-orm'
-import { SemanticLayerCompiler, defineCube, createPostgresExecutor } from '../../src/server'
+import { sql, eq, and } from 'drizzle-orm'
+import { SemanticLayerCompiler, createPostgresExecutor } from '../../src/server'
+import { defineCube } from '../../src/server/types-drizzle'
+import type { Cube, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
 import type { DatabaseExecutor } from '../../src/server'
 
 // Import schema from dedicated schema file
@@ -17,6 +19,10 @@ import type { TestSchema } from './schema'
 // Re-export for backward compatibility
 export { testSchema, employees, departments }
 export type { TestSchema }
+
+// Import cube utilities
+import { defineCube } from '../../src/server/types-drizzle'
+import type { CubeWithJoins, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
 
 // Test data
 export const sampleEmployees = [
@@ -42,7 +48,7 @@ export const sampleEmployees = [
     name: 'Bob Wilson',
     email: 'bob@example.com',
     active: false,
-    departmentId: 1,
+    departmentId: 3, // Changed to 3 to match Sales department in org 2
     organisationId: 2,
     salary: 68000,
     createdAt: new Date('2023-03-10')
@@ -62,8 +68,13 @@ export function createTestDatabase(): {
   db: ReturnType<typeof drizzle>
   close: () => void
 } {
-  const connectionString = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/drizzle_cube_test'
-  const client = postgres(connectionString)
+  const connectionString = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5433/drizzle_cube_test'
+  
+  // Configure postgres client to suppress NOTICE messages during tests
+  const client = postgres(connectionString, {
+    onnotice: () => {}, // Suppress NOTICE messages
+  })
+  
   const db = drizzle(client, { schema: testSchema })
 
   return {
@@ -74,24 +85,33 @@ export function createTestDatabase(): {
 
 /**
  * Setup database using Drizzle migrations and insert sample data
+ * This should only be called once during global setup
  */
 export async function setupTestDatabase(db: ReturnType<typeof drizzle>) {
   // Safety check: ensure we're using test database
-  const dbUrl = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/drizzle_cube_test'
+  const dbUrl = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5433/drizzle_cube_test'
   if (!dbUrl.includes('test')) {
     throw new Error('Safety check failed: TEST_DATABASE_URL must contain "test" to prevent accidental production usage')
   }
 
-  // Drop existing tables to ensure clean state
-  await db.execute(sql`TRUNCATE TABLE employees`)
-  await db.execute(sql`TRUNCATE TABLE departments`)  
+  // Clean existing data to ensure clean state
+  await db.execute(sql`DELETE FROM employees`)
+  await db.execute(sql`DELETE FROM departments`)
+  
+  // Reset identity sequences
+  await db.execute(sql`ALTER SEQUENCE employees_id_seq RESTART WITH 1`)
+  await db.execute(sql`ALTER SEQUENCE departments_id_seq RESTART WITH 1`)
 
-  // Run Drizzle migrations to create fresh tables
-  await migrate(db, { 
-    migrationsFolder: './tests/helpers/migrations' 
-  })
+  // Run Drizzle migrations to create fresh tables (in case they don't exist)
+  try {
+    await migrate(db, { 
+      migrationsFolder: './tests/helpers/migrations' 
+    })
+  } catch (error) {
+    // Ignore errors if tables already exist
+  }
 
-  // Insert sample data
+  // Insert sample data - this should remain static throughout all tests
   await db.insert(departments).values(sampleDepartments)
   await db.insert(employees).values(sampleEmployees)
 }
@@ -148,59 +168,54 @@ export async function createTestSemanticLayer(): Promise<{
 /**
  * Test cube definitions using the test schema
  */
-export const testEmployeesCube = defineCube(testSchema, {
-  name: 'Employees',
+export const testBasicEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
   title: 'Employee Analytics',
   
-  sql: `
-    SELECT 
-      e.id,
-      e.name,
-      e.email,
-      e.active,
-      e.department_id,
-      e.organisation_id,
-      e.salary,
-      e.created_at,
-      d.name as department_name
-    FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.id
-    WHERE e.organisation_id = \${SECURITY_CONTEXT.organisationId}
-  `,
+  sql: (ctx) => ({
+    from: employees,
+    joins: [
+      {
+        table: departments,
+        on: eq(employees.departmentId, departments.id),
+        type: 'left'
+      }
+    ],
+    where: eq(employees.organisationId, ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
     id: { 
       name: 'id',
-      sql: 'id', 
+      sql: employees.id, 
       type: 'number', 
       primaryKey: true 
     },
     name: { 
       name: 'name',
-      sql: 'name', 
+      sql: employees.name, 
       type: 'string',
       title: 'Employee Name'
     },
     email: { 
       name: 'email',
-      sql: 'email', 
+      sql: employees.email, 
       type: 'string' 
     },
     departmentName: { 
       name: 'departmentName',
-      sql: 'department_name', 
+      sql: departments.name, 
       type: 'string',
       title: 'Department'
     },
     isActive: { 
       name: 'isActive',
-      sql: 'active', 
+      sql: employees.active, 
       type: 'boolean',
       title: 'Active Status'
     },
     createdAt: { 
       name: 'createdAt',
-      sql: 'created_at', 
+      sql: employees.createdAt, 
       type: 'time',
       title: 'Hire Date'
     }
@@ -209,27 +224,27 @@ export const testEmployeesCube = defineCube(testSchema, {
   measures: {
     count: {
       name: 'count',
-      sql: 'id',
+      sql: employees.id,
       type: 'count',
       title: 'Total Employees'
     },
     activeCount: {
       name: 'activeCount',
-      sql: 'id',
+      sql: employees.id,
       type: 'count',
       title: 'Active Employees',
-      filters: [{ sql: 'active = true' }]
+      filters: [() => eq(employees.active, true)]
     },
     totalSalary: {
       name: 'totalSalary',
-      sql: 'salary',
+      sql: employees.salary,
       type: 'sum',
       title: 'Total Salary',
       format: 'currency'
     },
     avgSalary: {
       name: 'avgSalary',
-      sql: 'salary',
+      sql: employees.salary,
       type: 'avg',
       title: 'Average Salary',
       format: 'currency'
@@ -237,25 +252,24 @@ export const testEmployeesCube = defineCube(testSchema, {
   }
 })
 
-export const testDepartmentsCube = defineCube(testSchema, {
-  name: 'Departments',
+export const testDepartmentsCube: Cube<TestSchema> = defineCube('Departments', {
   title: 'Department Analytics',
   
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(testSchema.departments)
-      .where(eq(testSchema.departments.organisationId, securityContext.organisationId)),
+  sql: (ctx) => ({
+    from: departments,
+    where: eq(departments.organisationId, ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
     id: { 
       name: 'id',
-      sql: testSchema.departments.id, 
+      sql: departments.id, 
       type: 'number', 
       primaryKey: true 
     },
     name: { 
       name: 'name',
-      sql: testSchema.departments.name, 
+      sql: departments.name, 
       type: 'string',
       title: 'Department Name'
     }
@@ -264,13 +278,13 @@ export const testDepartmentsCube = defineCube(testSchema, {
   measures: {
     count: {
       name: 'count',
-      sql: testSchema.departments.id,
+      sql: departments.id,
       type: 'count',
       title: 'Department Count'
     },
     totalBudget: {
       name: 'totalBudget',
-      sql: testSchema.departments.budget,
+      sql: departments.budget,
       type: 'sum',
       title: 'Total Budget',
       format: 'currency'
@@ -292,4 +306,93 @@ export const testSecurityContext = {
 export const altSecurityContext = {
   organisationId: 2,
   userId: 2
+}
+
+/**
+ * Simplified cube definition for testing new approach
+ */
+export const testEmployeesCube: CubeWithJoins<TestSchema> = {
+  ...defineCube('Employees', {
+    title: 'Employee Analytics',
+    description: 'Employee data with department joins',
+    
+    sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
+      from: employees,
+      joins: [
+        {
+          table: departments,
+          on: and(
+            eq(employees.departmentId, departments.id),
+            eq(departments.organisationId, ctx.securityContext.organisationId)
+          ),
+          type: 'left'
+        }
+      ],
+      where: eq(employees.organisationId, ctx.securityContext.organisationId)
+    }),
+    
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Employee ID',
+        type: 'number',
+        sql: employees.id,
+        primaryKey: true
+      },
+      name: {
+        name: 'name',
+        title: 'Employee Name',
+        type: 'string',
+        sql: employees.name
+      },
+      email: {
+        name: 'email',
+        title: 'Email Address', 
+        type: 'string',
+        sql: employees.email
+      },
+      departmentName: {
+        name: 'departmentName',
+        title: 'Department',
+        type: 'string',
+        sql: departments.name
+      },
+      isActive: {
+        name: 'isActive',
+        title: 'Active Status',
+        type: 'boolean',
+        sql: employees.active
+      }
+    },
+    
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Total Employees',
+        type: 'count',
+        sql: employees.id
+      },
+      activeCount: {
+        name: 'activeCount',
+        title: 'Active Employees', 
+        type: 'count',
+        sql: employees.id,
+        filters: [
+          (ctx) => eq(employees.active, true)
+        ]
+      },
+      totalSalary: {
+        name: 'totalSalary',
+        title: 'Total Salary',
+        type: 'sum',
+        sql: employees.salary
+      },
+      avgSalary: {
+        name: 'avgSalary',
+        title: 'Average Salary',
+        type: 'avg',
+        sql: employees.salary
+      }
+    }
+  })
 }
