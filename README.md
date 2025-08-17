@@ -54,29 +54,68 @@ export const schema = { employees, departments }
 
 ```typescript
 // cubes.ts
-import { defineCube, eq } from 'drizzle-cube/server'
+import { defineCube } from 'drizzle-cube/server'
+import { eq } from 'drizzle-orm'
 import { schema } from './schema'
 
-export const employeesCube = defineCube(schema, {
-  name: 'Employees',
+export const employeesCube = defineCube('Employees', {
+  title: 'Employee Analytics',
   
-  // Use Drizzle query builder for type safety
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.employees)
-      .leftJoin(schema.departments, eq(schema.employees.departmentId, schema.departments.id))
-      .where(eq(schema.employees.organisationId, securityContext.organisationId)),
+  // Use Drizzle query structure for type safety
+  sql: (ctx) => ({
+    from: schema.employees,
+    joins: [
+      {
+        table: schema.departments,
+        on: eq(schema.employees.departmentId, schema.departments.id),
+        type: 'left'
+      }
+    ],
+    where: eq(schema.employees.organisationId, ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
-    name: { sql: schema.employees.name, type: 'string' },
-    email: { sql: schema.employees.email, type: 'string' },
-    departmentName: { sql: schema.departments.name, type: 'string' }
+    name: {
+      name: 'name',
+      title: 'Employee Name',
+      sql: schema.employees.name,
+      type: 'string'
+    },
+    email: {
+      name: 'email', 
+      title: 'Email Address',
+      sql: schema.employees.email,
+      type: 'string'
+    },
+    departmentName: {
+      name: 'departmentName',
+      title: 'Department',
+      sql: schema.departments.name,
+      type: 'string'
+    }
   },
   
   measures: {
-    count: { sql: schema.employees.id, type: 'count' },
-    totalSalary: { sql: schema.employees.salary, type: 'sum', format: 'currency' },
-    avgSalary: { sql: schema.employees.salary, type: 'avg', format: 'currency' }
+    count: {
+      name: 'count',
+      title: 'Total Employees',
+      sql: schema.employees.id,
+      type: 'count'
+    },
+    totalSalary: {
+      name: 'totalSalary',
+      title: 'Total Salary',
+      sql: schema.employees.salary,
+      type: 'sum',
+      format: 'currency'
+    },
+    avgSalary: {
+      name: 'avgSalary',
+      title: 'Average Salary', 
+      sql: schema.employees.salary,
+      type: 'avg',
+      format: 'currency'
+    }
   }
 })
 ```
@@ -89,13 +128,19 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import { SemanticLayerCompiler } from 'drizzle-cube/server'
 import postgres from 'postgres'
+import { schema } from './schema'
+import { employeesCube } from './cubes'
 
 // Setup Drizzle
 const client = postgres(process.env.DATABASE_URL!)
 const db = drizzle(client, { schema })
 
 // Create semantic layer
-const semanticLayer = new SemanticLayerCompiler({ drizzle: db, schema })
+const semanticLayer = new SemanticLayerCompiler({
+  drizzle: db,
+  schema,
+  engineType: 'postgres'
+})
 semanticLayer.registerCube(employeesCube)
 
 // Create API server with Cube.js compatibility
@@ -161,10 +206,19 @@ const condition = eq(schema.employees.name, userInput)
 Get full TypeScript support from your database schema to your analytics:
 
 ```typescript
-const cube = defineCube(schema, {
+const cube = defineCube('Employees', {
   dimensions: {
-    name: { sql: schema.employees.name },        // ✅ Type-safe
-    invalid: { sql: schema.employees.invalidCol } // ❌ TypeScript error
+    name: {
+      name: 'name',
+      title: 'Employee Name',
+      sql: schema.employees.name,        // ✅ Type-safe
+      type: 'string'
+    },
+    invalid: {
+      name: 'invalid',
+      sql: schema.employees.invalidCol,  // ❌ TypeScript error
+      type: 'string'
+    }
   }
 })
 ```
@@ -189,10 +243,13 @@ Works with multiple frameworks via adapter pattern:
 ### Complex Queries with CTEs
 
 ```typescript
-const advancedCube = defineCube(schema, {
-  name: 'DepartmentAnalytics',
+import { sql } from 'drizzle-orm'
+
+const advancedCube = defineCube('DepartmentAnalytics', {
+  title: 'Department Analytics',
   
-  sql: ({ db, securityContext }) => sql`
+  // For complex queries, you can use raw SQL
+  sql: (ctx) => sql`
     WITH department_stats AS (
       SELECT 
         d.id,
@@ -201,19 +258,35 @@ const advancedCube = defineCube(schema, {
         AVG(e.salary) as avg_salary
       FROM ${schema.departments} d
       LEFT JOIN ${schema.employees} e ON d.id = e.department_id
-      WHERE d.organisation_id = ${securityContext.organisationId}
+      WHERE d.organisation_id = ${ctx.securityContext.organisationId}
       GROUP BY d.id, d.name
     )
     SELECT * FROM department_stats
   `,
   
   dimensions: {
-    name: { sql: sql`name`, type: 'string' }
+    name: {
+      name: 'name',
+      title: 'Department Name',
+      sql: sql`name`,
+      type: 'string'
+    }
   },
   
   measures: {
-    employeeCount: { sql: sql`employee_count`, type: 'number' },
-    avgSalary: { sql: sql`avg_salary`, type: 'number', format: 'currency' }
+    employeeCount: {
+      name: 'employeeCount',
+      title: 'Employee Count',
+      sql: sql`employee_count`,
+      type: 'number'
+    },
+    avgSalary: {
+      name: 'avgSalary',
+      title: 'Average Salary',
+      sql: sql`avg_salary`,
+      type: 'number',
+      format: 'currency'
+    }
   }
 })
 ```
@@ -221,21 +294,39 @@ const advancedCube = defineCube(schema, {
 ### Advanced Security with Row-Level Security
 
 ```typescript
-const secureCube = defineCube(schema, {
-  name: 'SecureEmployees',
+import { and, sql } from 'drizzle-orm'
+
+const secureCube = defineCube('SecureEmployees', {
+  title: 'Secure Employee Data',
   
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.employees)
-      .where(
-        and(
-          eq(schema.employees.organisationId, securityContext.organisationId),
-          // Only show employees user has permission to see
-          securityContext.role === 'admin' 
-            ? sql`true`
-            : eq(schema.employees.managerId, securityContext.userId)
-        )
-      )
+  sql: (ctx) => ({
+    from: schema.employees,
+    where: and(
+      eq(schema.employees.organisationId, ctx.securityContext.organisationId),
+      // Only show employees user has permission to see
+      ctx.securityContext.role === 'admin' 
+        ? sql`true`
+        : eq(schema.employees.managerId, ctx.securityContext.userId)
+    )
+  }),
+  
+  dimensions: {
+    name: {
+      name: 'name',
+      title: 'Employee Name',
+      sql: schema.employees.name,
+      type: 'string'
+    }
+  },
+  
+  measures: {
+    count: {
+      name: 'count',
+      title: 'Employee Count',
+      sql: schema.employees.id,
+      type: 'count'
+    }
+  }
 })
 ```
 
@@ -259,9 +350,9 @@ import Database from 'better-sqlite3'
 
 ### Core Functions
 
-- `defineCube(schema, definition)` - Create type-safe cube
-- `createSemanticLayer({ drizzle, schema })` - Setup semantic layer
-- `createCubeApp(options)` - Create Cube.js API server
+- `defineCube(name, definition)` - Create type-safe cube with name and configuration
+- `SemanticLayerCompiler({ drizzle, schema, engineType })` - Setup semantic layer compiler
+- `createCubeApp(options)` - Create Cube.js-compatible API server
 
 ### Supported Drizzle Features
 
@@ -288,17 +379,11 @@ Supports all Cube.js filter operators with Drizzle safety:
 
 ## Documentation
 
-📚 **[Complete Documentation](https://drizzle-cube.dev)**  
-🏗️ **[API Reference](https://drizzle-cube.dev/api)**  
-🎯 **[Drizzle Integration Guide](./docs/drizzle-integration.md)**  
-🚀 **[Migration Guide](https://drizzle-cube.dev/migration)**  
+Coming soon! 📚
 
 ## Examples
 
-- **[Basic Hono App](./examples/hono-basic/)**
-- **[Advanced Security](./examples/hono-security/)**
-- **[Multi-tenant SaaS](./examples/multi-tenant/)**
-- **[Real-time Dashboard](./examples/dashboard/)**
+Coming soon! Check the test files for usage patterns in the meantime.
 
 ## Contributing
 
