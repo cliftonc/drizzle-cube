@@ -11,8 +11,7 @@ import type {
   SemanticDimension, 
   SemanticMeasure, 
   SemanticJoin,
-  SemanticPreAggregation,
-  QueryContext 
+  SemanticPreAggregation
 } from './types'
 import type { 
   YamlSchema, 
@@ -244,13 +243,45 @@ function convertYamlMeasure(yamlMeasure: YamlMeasure): SemanticMeasure {
 }
 
 /**
+ * Convert YAML relationship to semantic relationship
+ */
+function convertRelationship(yamlRelationship: 'one_to_one' | 'one_to_many' | 'many_to_one'): 'belongsTo' | 'hasOne' | 'hasMany' {
+  switch (yamlRelationship) {
+    case 'one_to_one':
+      return 'hasOne'
+    case 'one_to_many':
+      return 'hasMany'
+    case 'many_to_one':
+      return 'belongsTo'
+    default:
+      return 'belongsTo'
+  }
+}
+
+/**
+ * Convert semantic relationship to YAML relationship
+ */
+function convertSemanticRelationship(semanticRelationship: 'belongsTo' | 'hasOne' | 'hasMany'): 'one_to_one' | 'one_to_many' | 'many_to_one' {
+  switch (semanticRelationship) {
+    case 'hasOne':
+      return 'one_to_one'
+    case 'hasMany':
+      return 'one_to_many'
+    case 'belongsTo':
+      return 'many_to_one'
+    default:
+      return 'many_to_one'
+  }
+}
+
+/**
  * Convert YAML join to SemanticJoin
  */
 function convertYamlJoin(yamlJoin: YamlJoin): SemanticJoin {
   return {
     name: yamlJoin.name,
     type: yamlJoin.type,
-    relationship: yamlJoin.relationship,
+    relationship: convertRelationship(yamlJoin.relationship),
     sql: yamlJoin.sql
   }
 }
@@ -393,7 +424,7 @@ export function semanticCubeToYaml(cube: SemanticCube): string {
     joins: cube.joins ? Object.values(cube.joins).map(join => ({
       name: join.name || '',
       type: join.type,
-      relationship: join.relationship,
+      relationship: convertSemanticRelationship(join.relationship),
       sql: typeof join.sql === 'string' ? join.sql : ''
     })) : undefined,
     meta: cube.meta

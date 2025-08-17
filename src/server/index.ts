@@ -41,18 +41,42 @@ export type {
   MeasureType,
   MeasureFormat,
   DimensionFormat,
+  DimensionType,
+  JoinType,
   TimeGranularity,
   FilterOperator,
   
   // Compiled types
   CompiledCube,
   
+  // Pre-aggregation types
+  SemanticPreAggregation,
+  
   // SQL helper
   SQL
 } from './types'
 
-// Export utilities (yaml-loader excluded for now - add yaml dependency if needed)
-// export { loadYamlCubesFromFile } from './yaml-loader'
+// Export YAML types
+export type {
+  YamlSchema,
+  YamlCube,
+  YamlDimension,
+  YamlMeasure,
+  YamlJoin,
+  YamlPreAggregation,
+  YamlView,
+  YamlValidationResult
+} from './yaml-types'
+
+// Export YAML utilities
+export { 
+  parseYamlCubes, 
+  loadYamlCubesFromFile, 
+  loadYamlCubes,
+  semanticCubeToYaml, 
+  yamlCubeToSemanticCube,
+  convertCubeReferences 
+} from './yaml-loader'
 
 // Re-export examples for documentation
 export * from './example-cubes'

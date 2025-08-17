@@ -67,7 +67,7 @@ export class JoinPathResolver {
       }
 
       // Also check reverse joins (where other cubes join to current cube)
-      for (const [cubeName, otherCube] of this.cubes.entries()) {
+      for (const [cubeName, otherCube] of Array.from(this.cubes.entries())) {
         if (visited.has(cubeName) || !otherCube.joins) {
           continue
         }
@@ -75,7 +75,7 @@ export class JoinPathResolver {
         for (const [joinName, join] of Object.entries(otherCube.joins)) {
           if (joinName === currentCube) {
             // Found a reverse join
-            const newPath = [...path, {
+            const newPath: JoinPath[] = [...path, {
               fromCube: currentCube,
               toCube: cubeName,
               join,
@@ -182,14 +182,12 @@ export class JoinPathResolver {
 
       // Find the best join path to this cube from any already resolved cube
       let bestPath: JoinPath[] | null = null
-      let bestFromCube = ''
       
       // Try to find a path from any already resolved cube
       for (const resolvedCube of resolved) {
         const path = this.findJoinPath(resolvedCube.cube.name, targetCube)
         if (path && (bestPath === null || path.length < bestPath.length)) {
           bestPath = path
-          bestFromCube = resolvedCube.cube.name
         }
       }
 
@@ -227,7 +225,7 @@ export class JoinPathResolver {
    * Substitute cube references in join SQL
    * Converts ${CUBE}.field and ${otherCube.field} to proper aliases
    */
-  substituteCubeReferences(joinSql: string | ((context: QueryContext) => any), context: QueryContext, fromCubeAlias: string, resolvedCubes: ResolvedJoin[]): string {
+  substituteCubeReferences(joinSql: string | ((context: QueryContext) => any), _context: QueryContext, fromCubeAlias: string, resolvedCubes: ResolvedJoin[]): string {
     if (typeof joinSql === 'function') {
       // For function-based SQL, we'd need to call it and convert to string
       // For now, return a placeholder

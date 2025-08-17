@@ -8,7 +8,6 @@ export default defineConfig({
       insertTypesEntry: true,
       rollupTypes: true,
       include: ['src/server/**/*.ts'],
-      exclude: ['src/server/yaml-loader.ts', 'src/server/yaml-types.ts', 'src/server/join-resolver.ts'],
       tsconfigPath: './tsconfig.server.json'
     })
   ],

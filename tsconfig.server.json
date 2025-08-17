@@ -5,5 +5,5 @@
     "jsx": "preserve"
   },
   "include": ["src/server/**/*.ts"],
-  "exclude": ["**/*.test.ts", "**/*.spec.ts", "src/server/yaml-loader.ts", "src/server/yaml-types.ts", "src/server/join-resolver.ts"]
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"]
 }

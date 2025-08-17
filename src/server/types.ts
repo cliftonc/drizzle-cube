@@ -20,6 +20,14 @@ export interface SemanticCube {
   measures: Record<string, SemanticMeasure>
   joins?: Record<string, SemanticJoin>
   public?: boolean
+  sqlAlias?: string
+  dataSource?: string
+  refreshKey?: {
+    every?: string
+    sql?: string
+  }
+  preAggregations?: Record<string, SemanticPreAggregation>
+  meta?: Record<string, any>
 }
 
 export interface SemanticDimension {
@@ -41,6 +49,7 @@ export interface SemanticMeasure {
   type: MeasureType
   sql: string | ((context: QueryContext) => SQL | string)
   format?: MeasureFormat
+  shown?: boolean
   filters?: Array<{ sql: string }>
   rollingWindow?: {
     trailing?: string
@@ -51,6 +60,8 @@ export interface SemanticMeasure {
 }
 
 export interface SemanticJoin {
+  name?: string
+  type?: JoinType
   sql: string
   relationship: 'belongsTo' | 'hasOne' | 'hasMany'
 }
@@ -67,7 +78,9 @@ export type MeasureType =
   | 'number'
 
 export type MeasureFormat = 'currency' | 'percent' | 'number' | 'integer'
-export type DimensionFormat = 'currency' | 'percent' | 'number' | 'date' | 'datetime'
+export type DimensionFormat = 'currency' | 'percent' | 'number' | 'date' | 'datetime' | 'id' | 'link'
+export type DimensionType = 'string' | 'number' | 'time' | 'boolean'
+export type JoinType = 'left' | 'right' | 'inner' | 'full'
 export type TimeGranularity = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
 
 export interface SemanticQuery {
@@ -181,6 +194,21 @@ export interface DimensionMetadata {
   type: string
   format?: DimensionFormat
   description?: string
+}
+
+export interface SemanticPreAggregation {
+  name: string
+  measures: string[]
+  dimensions: string[]
+  timeDimension?: {
+    dimension: string
+    granularity: TimeGranularity[]
+  }
+  refreshKey?: {
+    every: string
+    sql?: string
+  }
+  indexes?: Record<string, string[]>
 }
 
 // Helper type for SQL template literals (if using drizzle)

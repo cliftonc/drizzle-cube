@@ -19,7 +19,7 @@ export interface YamlDimension {
   primary_key?: boolean
   primaryKey?: boolean  // Support both snake_case and camelCase
   shown?: boolean
-  format?: 'id' | 'link' | 'currency' | 'percent' | 'number'
+  format?: 'id' | 'link' | 'currency' | 'percent' | 'number' | 'date' | 'datetime'
   meta?: Record<string, any>
 }
 
@@ -32,17 +32,19 @@ export interface YamlMeasure {
   description?: string
   type: MeasureType
   sql: string
-  format?: 'currency' | 'percent' | 'number'
+  format?: 'currency' | 'percent' | 'number' | 'integer'
   shown?: boolean
   filters?: Array<{
     sql: string
   }>
   rolling_window?: {
-    trailing: string
+    trailing?: string
+    leading?: string
     offset?: string
   }
   rollingWindow?: {  // Support both snake_case and camelCase
-    trailing: string
+    trailing?: string
+    leading?: string
     offset?: string
   }
   meta?: Record<string, any>
