@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "jsx": "preserve"
+  },
+  "include": ["src/server/**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"]
+}
