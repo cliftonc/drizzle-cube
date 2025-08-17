@@ -4,6 +4,10 @@
 
 Transform your Drizzle schema into a powerful, type-safe analytics platform with SQL injection protection and full TypeScript support.
 
+> **⚠️ DEVELOPMENT WARNING**  
+> **This project is under active development and is not yet fully functional. I will update here when we reach an alpha/working version!**  
+> Feel free to star ⭐ the repo to stay updated on progress.
+
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.33+-green)](https://orm.drizzle.team/)
@@ -240,56 +244,6 @@ Works with multiple frameworks via adapter pattern:
 
 ## Advanced Usage
 
-### Complex Queries with CTEs
-
-```typescript
-import { sql } from 'drizzle-orm'
-
-const advancedCube = defineCube('DepartmentAnalytics', {
-  title: 'Department Analytics',
-  
-  // For complex queries, you can use raw SQL
-  sql: (ctx) => sql`
-    WITH department_stats AS (
-      SELECT 
-        d.id,
-        d.name,
-        COUNT(e.id) as employee_count,
-        AVG(e.salary) as avg_salary
-      FROM ${schema.departments} d
-      LEFT JOIN ${schema.employees} e ON d.id = e.department_id
-      WHERE d.organisation_id = ${ctx.securityContext.organisationId}
-      GROUP BY d.id, d.name
-    )
-    SELECT * FROM department_stats
-  `,
-  
-  dimensions: {
-    name: {
-      name: 'name',
-      title: 'Department Name',
-      sql: sql`name`,
-      type: 'string'
-    }
-  },
-  
-  measures: {
-    employeeCount: {
-      name: 'employeeCount',
-      title: 'Employee Count',
-      sql: sql`employee_count`,
-      type: 'number'
-    },
-    avgSalary: {
-      name: 'avgSalary',
-      title: 'Average Salary',
-      sql: sql`avg_salary`,
-      type: 'number',
-      format: 'currency'
-    }
-  }
-})
-```
 
 ### Advanced Security with Row-Level Security
 
@@ -330,21 +284,6 @@ const secureCube = defineCube('SecureEmployees', {
 })
 ```
 
-### Multiple Database Support
-
-```typescript
-// PostgreSQL
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-
-// MySQL  
-import { drizzle } from 'drizzle-orm/mysql2'
-import mysql from 'mysql2/promise'
-
-// SQLite
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import Database from 'better-sqlite3'
-```
 
 ## API Reference
 
