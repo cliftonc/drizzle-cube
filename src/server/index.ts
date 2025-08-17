@@ -1,19 +1,32 @@
 /**
  * Drizzle Cube - Semantic Layer for Drizzle ORM
- * Framework-agnostic semantic layer with Cube.js compatibility
+ * Drizzle ORM-first semantic layer with Cube.js compatibility
  */
 
-// Export main classes
-export { SemanticLayerCompiler, semanticLayer } from './compiler'
+// Export main classes with Drizzle integration
+export { SemanticLayerCompiler, semanticLayer, createSemanticLayer } from './compiler'
 export { SemanticQueryExecutor } from './executor'
 
+// Export utility functions from types
+export { 
+  defineCube, 
+  createDatabaseExecutor,
+  createPostgresExecutor,
+  createSQLiteExecutor,
+  createMySQLExecutor,
+  BaseDatabaseExecutor,
+  PostgresExecutor,
+  SQLiteExecutor,
+  MySQLExecutor
+} from './types'
+
 // Import types for use in utility functions
-import type { DatabaseExecutor, TimeGranularity } from './types'
+import type { TimeGranularity, DrizzleDatabase } from './types'
 import { SemanticLayerCompiler, semanticLayer } from './compiler'
 
-// Export all types
+// Export all types with Drizzle integration
 export type {
-  // Core interfaces
+  // Core interfaces with Drizzle support
   SemanticCube,
   SemanticDimension,
   SemanticMeasure,
@@ -21,11 +34,19 @@ export type {
   SemanticQuery,
   SecurityContext,
   DatabaseExecutor,
+  DrizzleDatabase,
+  DrizzleColumn,
   
   // Query types
   QueryContext,
   QueryResult,
   SqlResult,
+  
+  // Filter types
+  Filter,
+  FilterCondition,
+  LogicalFilter,
+  TimeDimension,
   
   // Metadata types  
   CubeMetadata,
@@ -52,9 +73,13 @@ export type {
   // Pre-aggregation types
   SemanticPreAggregation,
   
-  // SQL helper
-  SQL
+  // Utility types
+  CubeDefinition,
+  CubeDefiner
 } from './types'
+
+// Re-export Drizzle SQL type for convenience
+export type { SQL } from 'drizzle-orm'
 
 // Export YAML types
 export type {
@@ -88,11 +113,17 @@ export * from './example-cubes'
 export const defaultSemanticLayer = semanticLayer
 
 /**
- * Create a new semantic layer instance
+ * Create a new semantic layer instance with Drizzle integration
  * Use this when you need multiple isolated instances
  */
-export function createSemanticLayer(dbExecutor?: DatabaseExecutor) {
-  return new SemanticLayerCompiler(dbExecutor)
+export function createDrizzleSemanticLayer<TSchema extends Record<string, any>>(options: {
+  drizzle: DrizzleDatabase<TSchema>
+  schema?: TSchema
+}): SemanticLayerCompiler<TSchema> {
+  return new SemanticLayerCompiler<TSchema>({
+    drizzle: options.drizzle,
+    schema: options.schema
+  })
 }
 
 /**

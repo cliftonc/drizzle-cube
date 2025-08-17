@@ -210,7 +210,7 @@ export class JoinPathResolver {
         resolved.push({
           cube: toCube,
           alias: `t_${pathStep.toCube.toLowerCase()}`,
-          joinSql,
+          joinSql: typeof joinSql === 'string' ? joinSql : joinSql?.toString(),
           relationship: pathStep.join.relationship
         })
         

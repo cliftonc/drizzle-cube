@@ -6,8 +6,9 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
-      rollupTypes: true,
-      include: ['src/adapters/**/*.ts']
+      rollupTypes: false,
+      include: ['src/adapters/**/*.ts'],
+      outDir: 'dist'
     })
   ],
   build: {

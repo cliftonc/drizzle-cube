@@ -1,7 +1,7 @@
 {
   "name": "drizzle-cube",
   "version": "0.1.0",
-  "description": "A Cube.js-compatible semantic layer for Drizzle ORM with React analytics dashboard",
+  "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
   "type": "module",
@@ -37,12 +37,16 @@
     "build:help": "cd help-site && npm run build",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:postgres": "docker-compose up -d && vitest run && docker-compose down",
+    "test:setup": "docker-compose up -d postgres",
+    "test:teardown": "docker-compose down",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run build && npm run test && npm run typecheck"
   },
   "keywords": [
+    "drizzle-orm",
     "drizzle",
     "cube",
     "cubejs",
@@ -50,7 +54,13 @@
     "analytics",
     "dashboard",
     "react",
-    "typescript"
+    "typescript",
+    "type-safe",
+    "sql-injection-protection",
+    "hono",
+    "postgres",
+    "mysql",
+    "sqlite"
   ],
   "author": "Clifton Cunningham <clifton@clifton.io>",
   "license": "MIT",
@@ -63,7 +73,8 @@
     "url": "https://github.com/cliftonc/drizzle-cube/issues"
   },
   "peerDependencies": {
-    "drizzle-orm": "^0.33.0",
+    "drizzle-orm": "^0.44.4",
+    "hono": "^4.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
@@ -76,17 +87,26 @@
     },
     "drizzle-orm": {
       "optional": false
+    },
+    "hono": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.0.0",
+    "better-sqlite3": "^11.10.0",
     "concurrently": "^8.0.0",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.4",
     "eslint": "^8.0.0",
+    "hono": "^4.0.0",
+    "postgres": "^3.4.7",
     "typescript": "^5.0.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.0.0",
