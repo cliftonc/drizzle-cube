@@ -301,11 +301,15 @@ it('should execute queries correctly', async () => {
 });
 ```
 
-## Migration Strategies
+## Migration and Interoperability
 
-### From Cube.js
+### Drizzle Cube ↔ Cube.js Migration
 
-Drizzle Cube is designed to be compatible with existing Cube.js schemas:
+Drizzle Cube and Cube.js are designed to be compatible, allowing migration in both directions depending on your needs:
+
+**Drizzle Cube → Cube.js**: As your analytics requirements become more complex, you might need Cube.js's advanced features like pre-aggregations, caching layers, or enterprise tooling. The similar schema structure makes this transition smooth.
+
+**Cube.js → Drizzle Cube**: If you want stronger type safety, Drizzle ORM integration, or simpler deployment patterns, you can migrate to Drizzle Cube while maintaining API compatibility.
 
 ```typescript
 // Cube.js schema
@@ -324,7 +328,7 @@ cube(`Sales`, {
   }
 });
 
-// Equivalent Drizzle Cube
+// Equivalent Drizzle Cube (bidirectional compatibility)
 export const salesCube = defineCube(schema, {
   name: 'Sales',
   sql: ({ db }) => db.select().from(schema.sales),
@@ -343,13 +347,27 @@ export const salesCube = defineCube(schema, {
 });
 ```
 
-### Gradual Migration
+### When to Choose Each Platform
 
-1. Start with one cube
-2. Add type safety with Drizzle schema
-3. Migrate queries one by one
-4. Add security context
-5. Optimize performance
+**Choose Drizzle Cube when:**
+- You want type safety and Drizzle ORM integration
+- You prefer simpler deployment (single process, no Redis)
+- You need strong SQL injection protection
+- Your analytics needs are moderate complexity
+
+**Consider Cube.js when:**
+- You need advanced pre-aggregation strategies
+- You require horizontal scaling with caching layers
+- You want enterprise features and commercial support
+- You have complex analytics requirements across large datasets
+
+### Migration Path
+
+1. **Start small** - Begin with one cube in either direction
+2. **Maintain compatibility** - Both platforms support similar query APIs
+3. **Gradual transition** - Migrate cubes and queries incrementally  
+4. **Test thoroughly** - Validate query results during migration
+5. **Update clients** - Frontend applications often require minimal changes
 
 ## Next Steps
 

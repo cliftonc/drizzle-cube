@@ -33,7 +33,7 @@ renderer.heading = function(token) {
 
 // Override paragraph renderer
 renderer.paragraph = function(token) {
-  return `<p class="mb-4 text-gray-600 leading-relaxed">${token.text}</p>`;
+  return `<p class="mb-4 text-gray-600 leading-relaxed">${this.parser.parseInline(token.tokens)}</p>`;
 };
 
 // Override list renderers
@@ -113,13 +113,15 @@ renderer.tablecell = function(token) {
 
 // Override link renderer to handle internal help links
 renderer.link = function(token) {
+  const linkText = this.parser.parseInline(token.tokens);
+  
   if (token.href.startsWith('/help/')) {
     const topic = token.href.replace('/help/', '');
-    return `<a href="#" data-help-link="${topic}" class="text-drizzle-600 hover:text-drizzle-700 underline font-medium" ${token.title ? `title="${token.title}"` : ''}>${token.text}</a>`;
+    return `<a href="#" data-help-link="${topic}" class="text-drizzle-600 hover:text-drizzle-700 underline font-medium" ${token.title ? `title="${token.title}"` : ''}>${linkText}</a>`;
   }
   
   const titleAttr = token.title ? ` title="${token.title}"` : '';
-  return `<a href="${token.href}" class="text-drizzle-600 hover:text-drizzle-700 underline font-medium" target="_blank" rel="noopener noreferrer"${titleAttr}>${token.text}</a>`;
+  return `<a href="${token.href}" class="text-drizzle-600 hover:text-drizzle-700 underline font-medium" target="_blank" rel="noopener noreferrer"${titleAttr}>${linkText}</a>`;
 };
 
 // Override image renderer
@@ -129,13 +131,22 @@ renderer.image = function(token) {
   return `<img src="${token.href}" class="max-w-full h-auto rounded-lg shadow-md mb-4"${altAttr}${titleAttr} />`;
 };
 
+// Override strong (bold) renderer
+renderer.strong = function(token) {
+  return `<strong class="font-semibold text-slate-700">${this.parser.parseInline(token.tokens)}</strong>`;
+};
+
+// Override em (italic) renderer
+renderer.em = function(token) {
+  return `<em class="italic text-gray-700">${this.parser.parseInline(token.tokens)}</em>`;
+};
+
 // Configure marked
-marked.setOptions({
+marked.use({
   renderer: renderer,
   gfm: true,
   breaks: false,
   pedantic: false,
-  sanitize: false,
   smartLists: true,
   smartypants: false
 });
