@@ -50,7 +50,8 @@ Handles different database engines:
 
 ```typescript
 const executor = createDatabaseExecutor(db, schema, 'postgres');
-// Supports: 'postgres', 'mysql', 'sqlite'
+// Currently supports: 'postgres' (including Neon)
+// Coming soon: 'mysql', 'sqlite'
 ```
 
 ### Semantic Layer Compiler

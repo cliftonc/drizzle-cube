@@ -50,20 +50,27 @@ const HomePage: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       {/* Hero Section */}
       <div className="text-center mb-12">
-        <div className="flex items-center justify-center space-x-4 mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-drizzle-500 to-drizzle-700 rounded-xl flex items-center justify-center">
-            <span className="text-white font-bold text-2xl">DC</span>
-          </div>
-          <div className="text-left">
-            <h1 className="text-4xl font-bold text-gray-900">Drizzle Cube</h1>
-            <p className="text-lg text-gray-600">Help Center</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-gray-900">Drizzle Cube</h1>
+          <p className="text-lg text-gray-600">Help Center</p>
         </div>
         
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
           Drizzle ORM-first semantic layer with Cube.js compatibility. 
           Type-safe analytics and dashboards with SQL injection protection.
         </p>
+
+        {/* Dashboard Preview */}
+        <div className="mb-12 max-w-5xl mx-auto">
+          <img 
+            src="/dashboard-screenshot.png" 
+            alt="Drizzle Cube Analytics Dashboard showing productivity trends and team happiness distribution charts"
+            className="w-full rounded-lg shadow-lg border border-gray-200"
+          />
+          <p className="text-center text-sm text-gray-500 mt-3">
+            Example dashboard showing real-time analytics with Drizzle Cube
+          </p>
+        </div>
 
         {/* Search Bar */}
         <form onSubmit={handleSearchSubmit} className="max-w-2xl mx-auto mb-8">
