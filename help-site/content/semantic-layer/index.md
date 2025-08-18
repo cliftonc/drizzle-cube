@@ -304,16 +304,16 @@ it('should execute queries correctly', async () => {
 
 ## Migration and Interoperability
 
-### Drizzle Cube ↔ Cube.js Migration
+### Drizzle Cube ↔ [Cube.js](https://cube.dev) Migration
 
-Drizzle Cube and Cube.js are designed to be compatible, allowing migration in both directions depending on your needs:
+Drizzle Cube and [Cube.js](https://cube.dev) are designed to be compatible, allowing migration in both directions depending on your needs:
 
-**Drizzle Cube → Cube.js**: As your analytics requirements become more complex, you might need Cube.js's advanced features like pre-aggregations, caching layers, or enterprise tooling. The similar schema structure makes this transition smooth.
+**Drizzle Cube → [Cube.js](https://cube.dev)**: As your analytics requirements become more complex, you might need [Cube.js](https://cube.dev)'s advanced features like pre-aggregations, caching layers, or enterprise tooling. The similar schema structure makes this transition smooth.
 
-**Cube.js → Drizzle Cube**: If you want stronger type safety, Drizzle ORM integration, or simpler deployment patterns, you can migrate to Drizzle Cube while maintaining API compatibility.
+**[Cube.js](https://cube.dev) → Drizzle Cube**: If you want stronger type safety, Drizzle ORM integration, or simpler deployment patterns, you can migrate to Drizzle Cube while maintaining API compatibility.
 
 ```typescript
-// Cube.js schema
+// [Cube.js](https://cube.dev) schema
 cube(`Sales`, {
   sql: `SELECT * FROM sales`,
   dimensions: {
@@ -356,7 +356,7 @@ export const salesCube = defineCube(schema, {
 - You need strong SQL injection protection
 - Your analytics needs are moderate complexity
 
-**Consider Cube.js when:**
+**Consider [Cube.js](https://cube.dev) when:**
 - You need advanced pre-aggregation strategies
 - You require horizontal scaling with caching layers
 - You want enterprise features and commercial support

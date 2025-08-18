@@ -15,6 +15,7 @@ const renderer = new marked.Renderer();
 
 // Override heading renderer to add anchor IDs and Tailwind classes
 renderer.heading = function(token) {
+  const headingText = this.parser.parseInline(token.tokens);
   const anchor = token.text.toLowerCase()
     .replace(/[^\w\- ]/g, '')
     .replace(/\s+/g, '-');
@@ -28,7 +29,7 @@ renderer.heading = function(token) {
     6: 'text-base font-medium text-gray-600 mt-2 mb-1'
   };
   
-  return `<h${token.depth} id="${anchor}" class="${classes[token.depth] || classes[6]}">${token.text}</h${token.depth}>`;
+  return `<h${token.depth} id="${anchor}" class="${classes[token.depth] || classes[6]}">${headingText}</h${token.depth}>`;
 };
 
 // Override paragraph renderer

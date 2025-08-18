@@ -1,6 +1,6 @@
 # Hono Adapter
 
-The Hono adapter provides a complete Cube.js-compatible API for the [Hono](https://hono.dev) web framework, making it easy to add analytics capabilities to your Hono applications.
+The Hono adapter provides a complete [Cube.js](https://cube.dev)-compatible API for the [Hono](https://hono.dev) web framework, making it easy to add analytics capabilities to your Hono applications.
 
 ## Installation
 
@@ -161,7 +161,7 @@ const cubeApp = createCubeApp({
 
 ## API Endpoints
 
-The Hono adapter provides these Cube.js-compatible endpoints:
+The Hono adapter provides these [Cube.js](https://cube.dev)-compatible endpoints:
 
 ### Load Data
 ```http

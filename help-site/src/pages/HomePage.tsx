@@ -56,7 +56,7 @@ const HomePage: React.FC = () => {
         </div>
         
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          Drizzle ORM-first semantic layer with Cube.js compatibility. 
+          <a href="https://orm.drizzle.team" target="_blank" rel="noopener noreferrer" className="text-drizzle-600 hover:text-drizzle-700 underline font-medium">Drizzle</a> ORM-first semantic layer with <a href="https://cube.dev" target="_blank" rel="noopener noreferrer" className="text-drizzle-600 hover:text-drizzle-700 underline font-medium">Cube.js</a> compatibility. 
           Type-safe analytics and dashboards with SQL injection protection.
         </p>
 
