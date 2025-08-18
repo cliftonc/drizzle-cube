@@ -3,10 +3,30 @@
  */
 
 import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
 import { employees, departments, productivity, analyticsPages, schema } from '../schema'
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
+
+// Auto-detect Neon vs local PostgreSQL based on connection string
+function isNeonUrl(url: string): boolean {
+  return url.includes('.neon.tech') || url.includes('neon.database')
+}
+
+// Create database connection factory
+function createDatabase(databaseUrl: string) {
+  if (isNeonUrl(databaseUrl)) {
+    console.log('🚀 Connecting to Neon serverless database')
+    const sql = neon(databaseUrl)
+    return drizzleNeon(sql, { schema })
+  } else {
+    console.log('🐘 Connecting to local PostgreSQL database')
+    const client = postgres(databaseUrl)
+    return drizzle(client, { schema })
+  }
+}
 
 // Sample data
 const sampleDepartments = [
@@ -500,8 +520,13 @@ const sampleAnalyticsPage = {
 async function seedDatabase() {
   console.log('🌱 Seeding database with sample data...')
   
-  const client = postgres(connectionString)
-  const db = drizzle(client, { schema })
+  const db = createDatabase(connectionString)
+  let client: any = null
+  
+  // For cleanup, we need to handle both connection types
+  if (!isNeonUrl(connectionString)) {
+    client = postgres(connectionString)
+  }
   
   try {
     // Clear existing data
@@ -574,7 +599,10 @@ async function seedDatabase() {
     console.error('❌ Seeding failed:', error)
     process.exit(1)
   } finally {
-    await client.end()
+    // Only close client for non-Neon connections
+    if (client) {
+      await client.end()
+    }
   }
 }
 

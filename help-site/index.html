@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drizzle Cube Help</title>
+    <meta name="description" content="Drizzle Cube documentation and help center - Learn how to use Drizzle ORM-first semantic layer with Cube.js compatibility" />
+    
+    <!-- Google Fonts for Source Code Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <!-- Custom CSS to override Prism.js styles -->
+    <style>
+      /* Make code blocks smaller but readable with Source Code Pro font */
+      pre[class*="language-"], pre[class*="language-"] code {
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+        font-family: 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace !important;
+        font-weight: 400 !important;
+      }
+      
+      /* Make inline code smaller too */
+      code[class*="language-"] {
+        font-size: 13px !important;
+        font-family: 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace !important;
+        font-weight: 400 !important;
+      }
+      
+      /* Ensure our Tailwind styles are preserved with white background */
+      pre.bg-white {
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.5rem !important;
+        padding: 1rem !important;
+        overflow-x: auto !important;
+        margin-bottom: 1rem !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

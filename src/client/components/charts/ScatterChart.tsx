@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
-import { CHART_COLORS, RESPONSIVE_CHART_MARGINS } from '../../utils/chartConstants'
+import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
@@ -129,10 +129,19 @@ export default function ScatterChart({
 
     const seriesKeys = Object.keys(seriesGroups)
     const hasSeries = seriesKeys.length > 1
+    
+    // Determine if legend will be shown
+    const showLegend = safeDisplayConfig.showLegend && hasSeries
+    
+    // Calculate dynamic margins based on what's being displayed
+    const chartMargins = {
+      ...CHART_MARGINS,
+      bottom: showLegend ? 50 : 20 // Reserve space for legend if needed, otherwise minimal space
+    }
 
     return (
       <ChartContainer height={height}>
-        <RechartsScatterChart data={scatterData} margin={RESPONSIVE_CHART_MARGINS}>
+        <RechartsScatterChart data={scatterData} margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -151,7 +160,7 @@ export default function ScatterChart({
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
           )}
-          {(safeDisplayConfig.showLegend && hasSeries) && (
+          {showLegend && (
             <Legend 
               wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
               iconType="circle"

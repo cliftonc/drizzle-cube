@@ -7,7 +7,9 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
 import { SemanticLayerCompiler } from 'drizzle-cube/server'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import type { SecurityContext, DrizzleDatabase } from 'drizzle-cube/server'
@@ -20,10 +22,52 @@ interface Variables {
   db: DrizzleDatabase<Schema>
 }
 
-// Database connection
-const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
-const client = postgres(connectionString)
-const db = drizzle(client, { schema })
+// Environment detection - handle both Node.js and Cloudflare Workers
+function getEnvironment() {
+  // Check if we're in Cloudflare Workers
+  if (typeof globalThis !== 'undefined' && 'caches' in globalThis) {
+    return 'worker'
+  }
+  // Check if we're in Node.js
+  if (typeof process !== 'undefined' && process.env) {
+    return 'node'
+  }
+  return 'unknown'
+}
+
+// Get environment variable with fallback for different runtimes
+function getEnvVar(key: string, fallback: string = ''): string {
+  const env = getEnvironment()
+  
+  if (env === 'node' && typeof process !== 'undefined') {
+    return process.env[key] || fallback
+  }
+  
+  // For Cloudflare Workers, we'll set this up in the handler
+  return fallback
+}
+
+// Auto-detect Neon vs local PostgreSQL based on connection string
+function isNeonUrl(url: string): boolean {
+  return url.includes('.neon.tech') || url.includes('neon.database')
+}
+
+// Create database connection factory
+function createDatabase(databaseUrl: string) {
+  if (isNeonUrl(databaseUrl)) {
+    console.log('🚀 Connecting to Neon serverless database')
+    const sql = neon(databaseUrl)
+    return drizzleNeon(sql, { schema })
+  } else {
+    console.log('🐘 Connecting to local PostgreSQL database')
+    const client = postgres(databaseUrl)
+    return drizzle(client, { schema })
+  }
+}
+
+// Default database connection for Node.js environment
+const defaultConnectionString = 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
+const db = createDatabase(getEnvVar('DATABASE_URL', defaultConnectionString))
 
 // Create semantic layer
 const semanticLayer = new SemanticLayerCompiler<Schema>({

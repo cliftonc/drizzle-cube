@@ -19,7 +19,9 @@
     "baseUrl": ".",
     "paths": {
       "drizzle-orm": ["../../node_modules/drizzle-orm"],
-      "drizzle-orm/*": ["../../node_modules/drizzle-orm/*"]
+      "drizzle-orm/*": ["../../node_modules/drizzle-orm/*"],
+      "drizzle-cube/server": ["../../dist/server"],
+      "drizzle-cube/adapters/hono": ["../../dist/adapters/hono"]
     }
   },
   "include": [

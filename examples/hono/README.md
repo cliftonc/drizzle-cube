@@ -12,6 +12,8 @@ A complete full-stack analytics application with [Hono](https://hono.dev/) backe
 - 📈 **Real-time analytics** - Employee and department analytics with joins
 - 💾 **Persistent dashboards** - Save and load dashboard configurations
 - 🎯 **Type safety** - Full TypeScript support from database to frontend
+- ☁️ **Cloudflare Workers** - Deploy to edge locations globally with Wrangler
+- 🌐 **Neon Integration** - Auto-detects Neon URLs for serverless PostgreSQL
 
 ## Quick Start
 
@@ -373,11 +375,58 @@ From pgAdmin:
 
 ## Production Deployment
 
+### Traditional Server Deployment
+
 1. **Environment**: Set `NODE_ENV=production`
 2. **Database**: Use managed PostgreSQL (AWS RDS, etc.)
 3. **Security**: Implement proper JWT validation
 4. **Monitoring**: Add logging and metrics
 5. **Scaling**: Use load balancers and connection pooling
+
+### Cloudflare Workers Deployment ☁️
+
+Deploy to Cloudflare's global edge network for automatic scaling and minimal cold starts.
+
+#### Prerequisites
+- Cloudflare account (free tier works)
+- Neon PostgreSQL database for production
+
+#### Quick Deploy
+```bash
+# 1. Authenticate with Cloudflare
+npm run cf:login
+
+# 2. Set production database URL
+npx wrangler secret put DATABASE_URL
+# Paste your Neon connection string when prompted
+
+# 3. Deploy to production
+npm run deploy
+```
+
+#### Development with Wrangler
+```bash
+# Create local environment file
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars with your DATABASE_URL
+
+# Start local Wrangler development server
+npm run dev:worker
+```
+
+#### Environment Management
+- **Local**: Use `.dev.vars` for development
+- **Production**: Use `wrangler secret put` for sensitive data
+- **Staging**: Deploy with `npm run deploy:staging`
+
+#### Key Benefits
+- **Global Edge**: 200+ locations worldwide
+- **Auto Scaling**: Scales from 0 to millions of requests
+- **Zero Cold Starts**: V8 isolates start in <1ms
+- **Neon Integration**: Built-in database connection pooling
+- **Cost Effective**: Free tier includes 100,000 requests/day
+
+📖 **Complete Guide**: See [CLOUDFLARE.md](./CLOUDFLARE.md) for detailed setup instructions.
 
 ## Learn More
 

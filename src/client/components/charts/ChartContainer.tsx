@@ -9,9 +9,11 @@ interface ChartContainerProps {
 export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
   try {
     return (
-      <ResponsiveContainer width="100%" height={height}>
-        {children}
-      </ResponsiveContainer>
+      <div className="w-full h-full">
+        <ResponsiveContainer width="100%" height={height}>
+          {children}
+        </ResponsiveContainer>
+      </div>
     )
   } catch (error) {
     console.error('ChartContainer ResponsiveContainer error:', error)

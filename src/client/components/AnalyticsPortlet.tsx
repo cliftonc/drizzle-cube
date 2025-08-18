@@ -276,7 +276,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       }}
       cubeQuery={query}
     >
-      <div className="w-full" style={{ height }}>
+      <div className="w-full h-full flex flex-col">
         {renderChart()}
       </div>
     </ChartErrorBoundary>

@@ -9,16 +9,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Essential Commands
 
 ### Development
-- `npm run dev` - Start concurrent development servers (server, client, examples)
+- `npm run dev` - Start concurrent development servers (server, client, examples, help)
 - `npm run dev:server` - Watch server build only  
 - `npm run dev:client` - Watch client build only
 - `npm run dev:examples` - Start example applications
+- `npm run dev:help` - Start help site development server
 
 ### Building
 - `npm run build` - Build all packages (server, client, adapters)
 - `npm run build:server` - Build server only
 - `npm run build:client` - Build client only  
 - `npm run build:adapters` - Build adapters only
+- `npm run build:help` - Build help site to /dist-help
+- `npm run build:all` - Build everything including help site
 
 ### Testing
 - `npm test` - Run all tests using Vitest
@@ -58,6 +61,14 @@ This project is **Drizzle ORM-first**. The entire architecture revolves around D
 - `hono/` - Hono web framework adapter with Cube.js API endpoints
 - Framework-agnostic adapter pattern for different web frameworks
 
+**Help Site (`help-site/`)**:
+- Standalone React SPA with comprehensive documentation
+- Markdown-based content system with automatic processing
+- Real-time search functionality across all documentation
+- Responsive design with Tailwind CSS styling
+- Builds to `/dist-help` for static hosting
+- Development server at `http://localhost:5174`
+
 ### Type Safety Flow
 1. Drizzle schema defines database structure with full TypeScript types
 2. Cubes reference schema columns directly for compile-time validation
@@ -91,6 +102,18 @@ This project is **Drizzle ORM-first**. The entire architecture revolves around D
 - TypeScript compilation with `vite-plugin-dts` for type generation
 - Separate builds for server, client, and adapters
 - ES modules only (no CommonJS support)
+
+### Help Site Development
+- Content is written in Markdown files in `help-site/content/`
+- Build script processes Markdown into TypeScript with Tailwind CSS classes
+- Development server includes live reload for content changes
+- Search functionality works client-side with processed content
+- Builds to `/dist-help` for static hosting (Netlify, Vercel, GitHub Pages)
+- To add new documentation:
+  1. Create `.md` files in appropriate `help-site/content/` subdirectory
+  2. Follow existing content structure and naming conventions
+  3. Use internal links like `/help/topic-name` for cross-references
+  4. Run `npm run dev:help` to preview changes locally
 
 ## Security Model
 

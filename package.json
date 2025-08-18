@@ -26,12 +26,13 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:examples\"",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:examples\" \"npm run dev:help\"",
     "dev:server": "vite build src/server --watch --mode development",
     "dev:client": "vite build src/client --watch --mode development",
     "dev:examples": "cd examples/hono-app && npm run dev",
     "dev:help": "cd help-site && npm run dev",
     "build": "npm run build:server && npm run build:client && npm run build:adapters",
+    "build:all": "npm run build && npm run build:help",
     "build:server": "vite build --config vite.config.server.ts",
     "build:client": "vite build --config vite.config.client.ts",
     "build:adapters": "vite build --config vite.config.adapters.ts",
@@ -74,6 +75,7 @@
     "url": "https://github.com/cliftonc/drizzle-cube/issues"
   },
   "peerDependencies": {
+    "@neondatabase/serverless": "^1.0.1",
     "drizzle-orm": "^0.44.4",
     "hono": "^4.0.0",
     "react": "^18.0.0",
@@ -90,6 +92,9 @@
       "optional": false
     },
     "hono": {
+      "optional": true
+    },
+    "@neondatabase/serverless": {
       "optional": true
     }
   },

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AreaChart as RechartsAreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
-import { CHART_COLORS, RESPONSIVE_CHART_MARGINS } from '../../utils/chartConstants'
+import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
@@ -79,6 +79,15 @@ export default function AreaChart({
       seriesFields
     )
     
+    // Determine if legend will be shown
+    const showLegend = safeDisplayConfig.showLegend && seriesKeys.length > 1
+    
+    // Calculate dynamic margins based on what's being displayed
+    const chartMargins = {
+      ...CHART_MARGINS,
+      bottom: showLegend ? 50 : 20 // Reserve space for legend if needed, otherwise minimal space
+    }
+    
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
@@ -93,7 +102,7 @@ export default function AreaChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsAreaChart data={chartData} margin={RESPONSIVE_CHART_MARGINS}>
+        <RechartsAreaChart data={chartData} margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -108,7 +117,7 @@ export default function AreaChart({
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
           )}
-          {(safeDisplayConfig.showLegend && seriesKeys.length > 1) && (
+          {showLegend && (
             <Legend 
               wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
               iconType="rect"

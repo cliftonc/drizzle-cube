@@ -561,12 +561,12 @@ export default function PortletEditModal({
                   Cube.js Query (JSON)
                 </label>
                 <a
-                  href="/analytics-playground"
+                  href="/cubejs-api/v1/meta"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:text-blue-800 underline"
                 >
-                  Test in playground →
+                  View Cube Meta →
                 </a>
               </div>
               <textarea

@@ -318,11 +318,31 @@ Supports all Cube.js filter operators with Drizzle safety:
 
 ## Documentation
 
-Coming soon! 📚
+📚 **[Full Documentation](https://drizzle-cube.dev/help)** - Complete guides and API reference
+
+### Quick Links
+- [Getting Started](https://drizzle-cube.dev/help/getting-started) - Installation and first steps
+- [Core Concepts](https://drizzle-cube.dev/help/getting-started/concepts) - Cubes, dimensions, and measures
+- [Semantic Layer](https://drizzle-cube.dev/help/semantic-layer) - Advanced semantic layer features
+- [React Client](https://drizzle-cube.dev/help/client) - Dashboard and chart components
+- [Hono Adapter](https://drizzle-cube.dev/help/adapters/hono) - Web framework integration
+- [Security](https://drizzle-cube.dev/help/semantic-layer/security) - Multi-tenant security patterns
+
+### Local Development
+```bash
+# Run documentation site locally
+npm run dev:help
+
+# Build documentation site
+npm run build:help
+```
 
 ## Examples
 
-Coming soon! Check the test files for usage patterns in the meantime.
+🚀 **[Live Examples](https://github.com/cliftonc/drizzle-cube/tree/main/examples)**
+
+- **[Basic Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/basic)** - Simple semantic layer setup
+- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured dashboard with Cloudflare Workers
 
 ## Contributing
 

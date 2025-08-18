@@ -1,0 +1,41 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "drizzle-cube-hono-example"
+main = "dist/worker.js"
+compatibility_date = "2024-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets binding
+[assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Worker configuration
+[env.production]
+name = "drizzle-cube-hono-example"
+
+[env.staging]
+name = "drizzle-cube-hono-example-staging"
+
+# Variables that will be available at runtime
+[vars]
+NODE_ENV = "production"
+
+# Secret variables (set via: wrangler secret put <KEY>)
+# DATABASE_URL = "..." # Set via: wrangler secret put DATABASE_URL
+
+# D1 Database binding (if using Cloudflare D1 instead of Neon)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "drizzle-cube-db"
+# database_id = ""
+
+# KV binding (if needed for caching)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = ""
+
+# R2 binding (if needed for file storage)
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "drizzle-cube-assets"

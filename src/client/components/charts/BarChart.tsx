@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
-import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, RESPONSIVE_CHART_MARGINS } from '../../utils/chartConstants'
+import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
@@ -90,6 +90,15 @@ export default function BarChart({
       return typeof value === 'number' && value < 0
     })
     
+    // Determine if legend will be shown
+    const showLegend = safeDisplayConfig.showLegend && seriesKeys.length > 1
+    
+    // Calculate dynamic margins based on what's being displayed
+    const chartMargins = {
+      ...CHART_MARGINS,
+      bottom: showLegend ? 50 : 30 // Reserve space for legend if needed, otherwise minimal space
+    }
+    
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
@@ -104,7 +113,7 @@ export default function BarChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsBarChart data={chartData} margin={RESPONSIVE_CHART_MARGINS}>
+        <RechartsBarChart data={chartData} margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -119,9 +128,9 @@ export default function BarChart({
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
           )}
-          {(safeDisplayConfig.showLegend && seriesKeys.length > 1) && (
+          {showLegend && (
             <Legend 
-              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              wrapperStyle={{ fontSize: '12px', paddingTop: '25px' }}
               iconType="rect"
               iconSize={8}
               layout="horizontal"
