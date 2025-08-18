@@ -9,6 +9,7 @@ export default function DataTable({
   data, 
   height = 300 
 }: ChartProps) {
+  
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>

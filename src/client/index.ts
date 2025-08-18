@@ -5,20 +5,23 @@
  * Designed to be embedded in existing applications with their own auth/navigation.
  */
 
+// Import styles to include in build
+import './styles.css'
+
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
 export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
 
 // Chart components
 export {
-  BarChart,
-  LineChart,
-  AreaChart,
-  PieChart,
-  ScatterChart,
-  RadarChart,
-  RadialBarChart,
-  TreeMapChart,
+  RechartsBarChart,
+  RechartsLineChart,
+  RechartsAreaChart,
+  RechartsPieChart,
+  RechartsScatterChart,
+  RechartsRadarChart,
+  RechartsRadialBarChart,
+  RechartsTreeMapChart,
   DataTable
 } from './components/charts'
 
@@ -27,7 +30,9 @@ export { default as DashboardGrid } from './components/DashboardGrid'
 export { default as PortletContainer } from './components/PortletContainer'
 
 // Modals and configuration
-export { default as PortletModal } from './components/PortletModal'
+export { default as PortletEditModal } from './components/PortletEditModal'
+export { default as DashboardEditModal } from './components/DashboardEditModal'
+export { default as Modal } from './components/Modal'
 export { default as ChartConfigEditor } from './components/ChartConfigEditor'
 
 // Data provider and hooks

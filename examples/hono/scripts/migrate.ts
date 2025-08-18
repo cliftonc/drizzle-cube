@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/mydb'
+const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
 
 async function runMigration() {
   console.log('🔄 Running database migrations...')

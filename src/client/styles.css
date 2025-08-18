@@ -1,0 +1,255 @@
+/* Drizzle Cube Client Styles */
+/* Import react-grid-layout styles */
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
+
+/* React Grid Layout CSS */
+.react-grid-layout {
+  position: relative;
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIGZpbGw9IiM0NDRDY2MiIGZpbGwtb3BhY2l0eT0iLjMiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZD0ibTUgNWgtNHYtNGg0eiIvPjwvZz48L3N2Zz4=');
+  background-position: bottom right;
+  padding: 0 3px 3px 0;
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  box-sizing: border-box;
+  cursor: se-resize;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: red;
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+/* Portlet specific styles */
+.drizzle-cube-portlet {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.drizzle-cube-portlet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  background: #f9fafb;
+  border-radius: 0.5rem 0.5rem 0 0;
+  margin: -1px -1px 0 -1px;
+}
+
+.drizzle-cube-portlet-drag-handle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: move;
+  flex: 1;
+  min-width: 0;
+}
+
+.drizzle-cube-portlet-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.drizzle-cube-portlet-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.drizzle-cube-portlet-control-button {
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.25rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.drizzle-cube-portlet-control-button:hover {
+  background: #e5e7eb;
+}
+
+.drizzle-cube-portlet-content {
+  padding: 0.75rem;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Loading spinner */
+.drizzle-cube-spinner {
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error states */
+.drizzle-cube-error {
+  color: #dc2626;
+  text-align: center;
+  padding: 1rem;
+}
+
+.drizzle-cube-empty-state {
+  color: #6b7280;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Modal backdrop and positioning */
+.drizzle-cube-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.drizzle-cube-modal {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-height: 90vh;
+  max-width: 90vw;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1.5rem;
+}
+
+.drizzle-cube-modal-sm {
+  max-width: 24rem; /* 384px */
+}
+
+.drizzle-cube-modal-md {
+  max-width: 42rem; /* 672px */
+}
+
+.drizzle-cube-modal-lg {
+  max-width: 56rem; /* 896px */
+}
+
+.drizzle-cube-modal-xl {
+  max-width: 72rem; /* 1152px */
+}
+
+.drizzle-cube-modal-full {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.drizzle-cube-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.drizzle-cube-modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin: 0;
+  color: #111827;
+}
+
+.drizzle-cube-modal-close {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease-in-out;
+}
+
+.drizzle-cube-modal-close:hover {
+  color: #4b5563;
+}
+
+.drizzle-cube-modal-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.drizzle-cube-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .drizzle-cube-portlet-header {
+    padding: 0.5rem;
+  }
+  
+  .drizzle-cube-portlet-content {
+    padding: 0.5rem;
+  }
+  
+  .drizzle-cube-portlet-title {
+    font-size: 0.8125rem;
+  }
+
+  .drizzle-cube-modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .drizzle-cube-modal {
+    padding: 1rem;
+  }
+}

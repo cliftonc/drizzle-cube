@@ -1,29 +1,165 @@
-/**
- * Simple Radial Bar Chart component using Recharts
- */
-
-import { RadialBarChart as RechartsRadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { RadialBarChart as RechartsRadialBarChart, RadialBar, Legend, Cell } from 'recharts'
+import ChartContainer from './ChartContainer'
+import ChartTooltip from './ChartTooltip'
+import { CHART_COLORS } from '../../utils/chartConstants'
+import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
 export default function RadialBarChart({ 
   data, 
-  height = 300 
+  chartConfig,
+  displayConfig = {},
+  queryObject,
+  height = "100%" 
 }: ChartProps) {
-  if (!data || data.length === 0) {
+  const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  
+  try {
+    const safeDisplayConfig = {
+      showLegend: displayConfig?.showLegend ?? true,
+      showTooltip: displayConfig?.showTooltip ?? true
+    }
+
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No data available</div>
+            <div className="text-xs">No data points to display in radial bar chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    let radialData: Array<{name: string, value: number, fill?: string}>
+
+    if (chartConfig?.xAxis && chartConfig?.yAxis) {
+      // New format - use chart config
+      const xAxisField = chartConfig.xAxis[0] // Name/category field
+      const yAxisField = chartConfig.yAxis[0] // Value field
+
+      const granularity = getFieldGranularity(queryObject, xAxisField)
+      radialData = data.map((item, index) => ({
+        name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
+        value: typeof item[yAxisField] === 'string' 
+          ? parseFloat(item[yAxisField]) 
+          : (item[yAxisField] || 0),
+        fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+      }))
+    } else {
+      // Legacy format or auto-detection
+      const firstRow = data[0]
+      const keys = Object.keys(firstRow)
+      
+      // Try to find name/label field
+      const nameField = keys.find(key => 
+        typeof firstRow[key] === 'string' ||
+        key.toLowerCase().includes('name') ||
+        key.toLowerCase().includes('label') ||
+        key.toLowerCase().includes('category')
+      ) || keys[0]
+
+      // Find a numeric field for values
+      const valueField = keys.find(key => 
+        typeof firstRow[key] === 'number' && key !== nameField
+      ) || keys[1]
+
+      if (!valueField) {
+        return (
+          <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+            <div className="text-center">
+              <div className="text-sm font-semibold mb-1">Configuration Error</div>
+              <div className="text-xs">No numeric field found for radial bar chart values</div>
+            </div>
+          </div>
+        )
+      }
+
+      // Transform data for radial bar chart
+      radialData = data.map((item, index) => {
+        let name = item[nameField]
+        // Handle boolean values with better labels
+        if (typeof name === 'boolean') {
+          name = name ? 'Active' : 'Inactive'
+        } else if (name === 'true' || name === 'false') {
+          name = name === 'true' ? 'Active' : 'Inactive'
+        } else {
+          name = String(name)
+        }
+        return {
+          name,
+          value: typeof item[valueField] === 'string' 
+            ? parseFloat(item[valueField]) 
+            : (item[valueField] || 0),
+          fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+        }
+      })
+    }
+
+    // Filter out zero/null values
+    radialData = radialData.filter(item => item.value != null && item.value !== 0)
+    
+    if (radialData.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No valid data</div>
+            <div className="text-xs">No valid data points for radial bar chart after transformation</div>
+          </div>
+        </div>
+      )
+    }
+
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <ChartContainer height={height}>
+        <RechartsRadialBarChart 
+          data={radialData}
+          innerRadius="10%"
+          outerRadius="80%"
+          margin={{ top: 20, right: 30, bottom: 20, left: 30 }}
+        >
+          {safeDisplayConfig.showTooltip && (
+            <ChartTooltip />
+          )}
+          {safeDisplayConfig.showLegend && (
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              iconType="circle"
+              iconSize={8}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+              onMouseEnter={(o) => setHoveredLegend(String(o.value || ''))}
+              onMouseLeave={() => setHoveredLegend(null)}
+            />
+          )}
+          <RadialBar 
+            dataKey="value" 
+            cornerRadius={4}
+            label={{ position: 'insideStart', fill: '#fff', fontSize: 12 }}
+          >
+            {radialData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.fill}
+                fillOpacity={hoveredLegend ? (hoveredLegend === entry.name ? 1 : 0.3) : 1}
+              />
+            ))}
+          </RadialBar>
+        </RechartsRadialBarChart>
+      </ChartContainer>
+    )
+  } catch (error) {
+    console.error('RadialBarChart rendering error:', error)
+    return (
+      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
+          <div className="text-sm font-semibold mb-1">Radial Bar Chart Error</div>
+          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="text-xs text-gray-600">Check the data and configuration</div>
         </div>
       </div>
     )
   }
-
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <RechartsRadialBarChart data={data}>
-        <RadialBar dataKey="value" fill="#3b82f6" />
-      </RechartsRadialBarChart>
-    </ResponsiveContainer>
-  )
 }

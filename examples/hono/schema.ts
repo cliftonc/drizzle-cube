@@ -3,7 +3,7 @@
  * This demonstrates a typical business analytics schema with employees and departments
  */
 
-import { pgTable, integer, text, real, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, integer, text, real, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // Employee table
@@ -26,6 +26,39 @@ export const departments = pgTable('departments', {
   budget: real('budget')
 })
 
+// Analytics Pages table - for storing dashboard configurations
+export const analyticsPages = pgTable('analytics_pages', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  description: text('description'),
+  organisationId: integer('organisation_id').notNull(),
+  config: jsonb('config').notNull().$type<{
+    portlets: Array<{
+      id: string
+      title: string
+      query: string
+      chartType: 'line' | 'bar' | 'pie' | 'table' | 'area' | 'treemap'
+      chartConfig: {
+        x?: string
+        y?: string[]
+        series?: string
+      }
+      displayConfig?: {
+        showLegend?: boolean
+        stacked?: boolean
+      }
+      w: number
+      h: number
+      x: number
+      y: number
+    }>
+  }>(),
+  order: integer('order').default(0),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one }) => ({
   department: one(departments, {
@@ -42,6 +75,7 @@ export const departmentsRelations = relations(departments, ({ many }) => ({
 export const schema = { 
   employees, 
   departments,
+  analyticsPages,
   employeesRelations,
   departmentsRelations
 }

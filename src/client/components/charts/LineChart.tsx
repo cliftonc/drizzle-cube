@@ -1,96 +1,149 @@
-/**
- * Simple Line Chart component using Recharts
- */
-
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
+import ChartContainer from './ChartContainer'
+import ChartTooltip from './ChartTooltip'
+import { CHART_COLORS, RESPONSIVE_CHART_MARGINS } from '../../utils/chartConstants'
+import { transformChartDataWithSeries } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
-
-const CHART_COLORS = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-  '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'
-]
 
 export default function LineChart({ 
   data, 
   chartConfig, 
   displayConfig = {},
-  height = 300 
+  queryObject,
+  height = "100%" 
 }: ChartProps) {
-  if (!data || data.length === 0) {
+  const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  
+  try {
+    const safeDisplayConfig = {
+      showLegend: displayConfig?.showLegend ?? true,
+      showGrid: displayConfig?.showGrid ?? true,
+      showTooltip: displayConfig?.showTooltip ?? true
+    }
+
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No data available</div>
+            <div className="text-xs">No data points to display in line chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    // Validate chartConfig - support both legacy and new formats
+    let xAxisField: string
+    let yAxisFields: string[]
+    let seriesFields: string[] = []
+    
+    if (chartConfig?.xAxis && chartConfig?.yAxis) {
+      // New format
+      xAxisField = chartConfig.xAxis[0]
+      yAxisFields = chartConfig.yAxis
+      seriesFields = chartConfig.series || []
+    } else if (chartConfig?.x && chartConfig?.y) {
+      // Legacy format
+      xAxisField = chartConfig.x
+      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
+    } else {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">Invalid or missing chart axis configuration</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
+          </div>
+        </div>
+      )
+    }
+
+    // Use shared function to transform data and handle series
+    const { data: chartData, seriesKeys } = transformChartDataWithSeries(
+      data, 
+      xAxisField, 
+      yAxisFields, 
+      queryObject,
+      seriesFields
+    )
+    
+    // Validate transformed data
+    if (!chartData || chartData.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No valid data</div>
+            <div className="text-xs">No valid data points for line chart after transformation</div>
+          </div>
+        </div>
+      )
+    }
+
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <ChartContainer height={height}>
+        <RechartsLineChart data={chartData} margin={RESPONSIVE_CHART_MARGINS}>
+          {safeDisplayConfig.showGrid && (
+            <CartesianGrid strokeDasharray="3 3" />
+          )}
+          <XAxis 
+            dataKey="name"
+            tick={{ fontSize: 12 }}
+            angle={-45}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis tick={{ fontSize: 12 }} />
+          {safeDisplayConfig.showTooltip && (
+            <ChartTooltip />
+          )}
+          {(safeDisplayConfig.showLegend && seriesKeys.length > 1) && (
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              iconType="line"
+              iconSize={8}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+              onMouseEnter={(o) => setHoveredLegend(String(o.dataKey || ''))}
+              onMouseLeave={() => setHoveredLegend(null)}
+            />
+          )}
+          {seriesKeys.map((seriesKey, index) => (
+            <Line
+              key={seriesKey}
+              type="monotone"
+              dataKey={seriesKey}
+              stroke={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+              strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+            />
+          ))}
+        </RechartsLineChart>
+      </ChartContainer>
+    )
+  } catch (error) {
+    console.error('LineChart rendering error:', error)
+    return (
+      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs">No data points to display</div>
+          <div className="text-sm font-semibold mb-1">Line Chart Error</div>
+          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="text-xs text-gray-600">Check the data and configuration</div>
         </div>
       </div>
     )
   }
-
-  if (!chartConfig?.x || !chartConfig?.y) {
-    return (
-      <div className="flex items-center justify-center w-full text-amber-600" style={{ height }}>
-        <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">Missing chart axis configuration</div>
-        </div>
-      </div>
-    )
-  }
-
-  const xField = chartConfig.x
-  const yFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
-
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <RechartsLineChart
-        data={data}
-        margin={{
-          top: 20,
-          right: 30,
-          left: 20,
-          bottom: 5,
-        }}
-      >
-        {displayConfig.showGrid !== false && (
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-        )}
-        <XAxis 
-          dataKey={xField}
-          tick={{ fontSize: 12 }}
-          className="text-gray-600"
-        />
-        <YAxis 
-          tick={{ fontSize: 12 }}
-          className="text-gray-600"
-        />
-        {displayConfig.showTooltip !== false && (
-          <Tooltip 
-            contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '6px',
-              fontSize: '12px'
-            }}
-          />
-        )}
-        {displayConfig.showLegend && yFields.length > 1 && (
-          <Legend 
-            wrapperStyle={{ fontSize: '12px' }}
-          />
-        )}
-        {yFields.map((field, index) => (
-          <Line
-            key={field}
-            type="monotone"
-            dataKey={field}
-            stroke={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-        ))}
-      </RechartsLineChart>
-    </ResponsiveContainer>
-  )
 }

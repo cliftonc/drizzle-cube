@@ -1,0 +1,159 @@
+import { useParams, Link } from 'react-router-dom'
+import React, { useCallback, useState, useEffect } from 'react'
+import { AnalyticsDashboard, DashboardEditModal } from 'drizzle-cube/client'
+import { useAnalyticsPage, useUpdateAnalyticsPage } from '../hooks/useAnalyticsPages'
+import type { DashboardConfig } from '../types'
+
+export default function DashboardViewPage() {
+  const { id } = useParams<{ id: string }>()
+  const { data: page, isLoading, error } = useAnalyticsPage(id!)
+  const updatePage = useUpdateAnalyticsPage()
+  const [config, setConfig] = useState<DashboardConfig>({ portlets: [] })
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  // Update config when page data loads
+  useEffect(() => {
+    if (page) {
+      setConfig(page.config)
+      setLastSaved(new Date(page.updatedAt))
+    }
+  }, [page])
+
+  // Handle config changes (for local state)
+  const handleConfigChange = useCallback((newConfig: DashboardConfig) => {
+    setConfig(newConfig)
+  }, [])
+
+  // Handle auto-save
+  const handleSave = useCallback(async (configToSave: DashboardConfig) => {
+    if (!page || !id) return
+
+    try {
+      await updatePage.mutateAsync({
+        id: parseInt(id),
+        name: page.name,
+        description: page.description || undefined,
+        config: configToSave
+      })
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+      throw error // Re-throw to keep dirty state
+    }
+  }, [page, id, updatePage])
+
+  // Handle dirty state changes
+  const handleDirtyStateChange = useCallback((isDirty: boolean) => {
+    // For view mode, we don't need to show dirty state, just save automatically
+    if (!isDirty) {
+      setLastSaved(new Date())
+    }
+  }, [])
+
+  // Handle metadata editing
+  const handleEditMetadata = useCallback(async (data: { name: string; description?: string }) => {
+    if (!page || !id) return
+
+    try {
+      await updatePage.mutateAsync({
+        id: parseInt(id),
+        name: data.name,
+        description: data.description,
+        config: config
+      })
+    } catch (error) {
+      console.error('Failed to save metadata:', error)
+      throw error // Re-throw to keep modal open
+    }
+  }, [page, id, config, updatePage])
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p className="mt-2 text-gray-600">Loading dashboard...</p>
+      </div>
+    )
+  }
+
+  if (error || !page) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Failed to load dashboard</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {error instanceof Error ? error.message : 'Dashboard not found'}
+        </p>
+        <Link
+          to="/dashboards"
+          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+        >
+          Back to Dashboards
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="sm:flex sm:items-center mb-6">
+        <div className="sm:flex-auto">
+          <nav className="flex" aria-label="Breadcrumb">
+            <ol className="flex items-center space-x-4">
+              <li>
+                <Link to="/dashboards" className="text-gray-400 hover:text-gray-500">
+                  Dashboards
+                </Link>
+              </li>
+              <li>
+                <svg
+                  className="flex-shrink-0 h-5 w-5 text-gray-300"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
+                  <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                </svg>
+              </li>
+              <li>
+                <span className="text-gray-500">{page.name}</span>
+              </li>
+            </ol>
+          </nav>
+          
+          <h1 className="mt-2 text-2xl font-semibold text-gray-900">{page.name}</h1>
+          {page.description && (
+            <p className="mt-1 text-sm text-gray-700">{page.description}</p>
+          )}
+        </div>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Edit Dashboard
+          </button>
+        </div>
+      </div>
+
+      <AnalyticsDashboard
+        config={config}
+        apiUrl="/cubejs-api/v1"
+        editable={true}
+        onConfigChange={handleConfigChange}
+        onSave={handleSave}
+        onDirtyStateChange={handleDirtyStateChange}
+      />
+
+      <DashboardEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleEditMetadata}
+        title="Edit Dashboard"
+        submitText="Save Changes"
+        initialName={page?.name}
+        initialDescription={page?.description}
+      />
+    </div>
+  )
+}

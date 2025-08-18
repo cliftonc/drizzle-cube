@@ -4,17 +4,29 @@
   "description": "Complete Hono app example with drizzle-cube integration",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch src/index.ts",
+    "dev:client": "cd client && npm run dev",
+    "dev:full": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
     "build": "tsc",
+    "build:client": "cd client && npm run build",
+    "build:full": "npm run build && npm run build:client",
     "start": "node dist/index.js",
+    "install:client": "cd client && npm install",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:reset": "docker-compose down -v && docker-compose up -d",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "setup": "npm run docker:up && sleep 5 && npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
     "hono": "^4.0.0",
-    "drizzle-orm": "^0.30.0",
+    "@hono/node-server": "^1.8.0",
+    "drizzle-orm": "^0.36.0",
     "postgres": "^3.4.0",
     "drizzle-cube": "file:../../"
   },
@@ -22,7 +34,8 @@
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
     "tsx": "^4.0.0",
-    "drizzle-kit": "^0.20.0"
+    "drizzle-kit": "^0.31.0",
+    "concurrently": "^8.2.0"
   },
   "keywords": [
     "analytics",

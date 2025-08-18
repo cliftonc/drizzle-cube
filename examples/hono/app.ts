@@ -8,14 +8,16 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { SemanticLayerCompiler, createCubeApp } from '../../src/server'
+import { SemanticLayerCompiler } from '../../src/server'
+import { createCubeApp } from '../../src/adapters/hono'
 import type { SecurityContext } from '../../src/server'
 import { schema } from './schema'
 import { allCubes } from './cubes'
 import type { Schema } from './schema'
+import analyticsApp from './src/analytics-routes'
 
 // Database connection
-const connectionString = process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/mydb'
+const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
 const client = postgres(connectionString)
 const db = drizzle(client, { schema })
 
@@ -36,8 +38,14 @@ async function getSecurityContext(c: any): Promise<SecurityContext> {
   // Example: Extract from JWT token or session
   const authHeader = c.req.header('Authorization')
   
+  // For development/demo purposes, allow requests without auth
   if (!authHeader) {
-    throw new Error('Authorization header required')
+    console.log('⚠️  No authorization header - using default demo user (organisation: 1)')
+    return {
+      organisationId: 1, // Default demo organisation
+      userId: 1,         // Default demo user
+      // Add other security context fields as needed
+    }
   }
   
   // In production, decode JWT and extract user info
@@ -54,7 +62,11 @@ async function getSecurityContext(c: any): Promise<SecurityContext> {
       // Add other security context fields as needed
     }
   } catch (error) {
-    throw new Error('Invalid authorization token')
+    console.log('⚠️  Invalid authorization token - using default demo user (organisation: 1)')
+    return {
+      organisationId: 1, // Fallback to demo organisation
+      userId: 1,         // Fallback to demo user
+    }
   }
 }
 
@@ -69,6 +81,34 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }))
+
+// Root endpoint with available routes
+app.get('/', (c) => {
+  return c.json({
+    name: 'Drizzle Cube Analytics API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      'GET /': 'This endpoint - API information',
+      'GET /health': 'Health check',
+      'GET /api/docs': 'API documentation with examples',
+      'GET /cubejs-api/v1/meta': 'Available cubes and schema',
+      'POST /cubejs-api/v1/load': 'Execute analytics queries',
+      'GET /cubejs-api/v1/load?query=...': 'Execute queries via URL',
+      'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
+      'GET /api/analytics-pages': 'List all dashboards',
+      'POST /api/analytics-pages': 'Create new dashboard',
+      'POST /api/analytics-pages/create-example': 'Create example dashboard'
+    },
+    frontend: {
+      'React Dashboard': 'http://localhost:3000',
+      'pgAdmin': 'http://localhost:5050'
+    },
+    database: {
+      'PostgreSQL': 'localhost:54921'
+    }
+  })
+})
 
 // Health check endpoint
 app.get('/health', (c) => {
@@ -135,6 +175,13 @@ const cubeApp = createCubeApp({
 
 // Mount cube routes under the main app
 app.route('/', cubeApp)
+
+// Mount analytics pages API with database access
+app.use('/api/analytics-pages/*', async (c, next) => {
+  c.set('db', db)
+  await next()
+})
+app.route('/api/analytics-pages', analyticsApp)
 
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {

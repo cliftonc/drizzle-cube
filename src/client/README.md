@@ -15,7 +15,7 @@ React components for building analytics dashboards with minimal dependencies.
 
 ```tsx
 import { AnalyticsDashboard, CubeProvider, createCubeClient } from 'drizzle-cube/client'
-import 'react-grid-layout/css/styles.css' // Required CSS
+import 'drizzle-cube/client/styles.css' // Required CSS (includes grid layout styles)
 
 const config = {
   portlets: [
@@ -202,7 +202,7 @@ See `drizzle-cube/adapters/hono` for server implementation.
 
 - React 18+
 - Tailwind CSS configured in your app
-- `react-grid-layout` CSS imported
+- Import `drizzle-cube/client/styles.css` in your app
 
 ## Dependencies
 

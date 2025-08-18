@@ -121,7 +121,7 @@ describe('Hono Adapter', () => {
     })
 
     const res = await app.request(req)
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(400)
     
     const data = await res.json()
     expect(data.error).toContain('not found')
@@ -138,7 +138,7 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(400)
     
     const data = await res.json()
-    expect(data.error).toContain('must specify at least one measure or dimension')
+    expect(data.error).toContain('Query must reference at least one cube')
   })
 
   it('should support custom base path', async () => {

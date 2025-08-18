@@ -774,45 +774,66 @@ export default function PortletEditModal({
         
         {/* Validation section */}
         {(hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
-          <div className="p-3 bg-gray-100 rounded-lg border">
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-sm text-gray-700">
-                {validationResult?.isValid && query.trim() === lastValidatedQuery.trim() ? (
-                  <span className="text-green-600 font-medium flex items-center gap-1">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Query validated and ready to save
-                  </span>
-                ) : validationResult && !validationResult.isValid ? (
-                  <span className="text-red-600 font-medium flex items-center gap-1">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Query has validation errors
-                  </span>
-                ) : hasQueryChanged ? (
-                  <span className="text-yellow-600 font-medium flex items-center gap-1">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    Query modified - validation required
-                  </span>
-                ) : (
-                  <span>Validate your query before saving</span>
-                )}
+          <div className={`rounded-lg p-4 ${
+            validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
+              ? 'bg-green-50'
+              : validationResult && !validationResult.isValid
+              ? 'bg-red-50'
+              : hasQueryChanged
+              ? 'bg-amber-50'
+              : 'bg-gray-50'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className={`w-2 h-2 rounded-full ${
+                  validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
+                    ? 'bg-green-500'
+                    : validationResult && !validationResult.isValid
+                    ? 'bg-red-500'
+                    : hasQueryChanged
+                    ? 'bg-amber-500'
+                    : 'bg-gray-400'
+                }`}></div>
+                <div>
+                  <h3 className={`text-sm font-medium ${
+                    validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
+                      ? 'text-green-800'
+                      : validationResult && !validationResult.isValid
+                      ? 'text-red-800'
+                      : hasQueryChanged
+                      ? 'text-amber-800'
+                      : 'text-gray-700'
+                  }`}>
+                    {validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
+                      ? 'Query validated successfully'
+                      : validationResult && !validationResult.isValid
+                      ? 'Query validation failed'
+                      : hasQueryChanged
+                      ? 'Query modified - validation required'
+                      : 'Query validation required'
+                    }
+                  </h3>
+                  {validationResult && (
+                    <p className={`text-xs mt-1 ${
+                      validationResult.isValid ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {validationResult.message}
+                    </p>
+                  )}
+                </div>
               </div>
+              
               <button
                 type="button"
                 onClick={handleValidateQuery}
                 disabled={isValidating || !query.trim()}
-                className={`px-3 py-1 text-sm rounded flex items-center gap-1 ${
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center space-x-1.5 ${
                   validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
                     : validationResult && !validationResult.isValid
-                    ? 'bg-red-600 text-white'
-                    : 'bg-blue-600 text-white'
-                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
               >
                 {isValidating ? (
                   <>
@@ -820,42 +841,25 @@ export default function PortletEditModal({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Validating...
+                    <span>Validating</span>
                   </>
                 ) : validationResult?.isValid && query.trim() === lastValidatedQuery.trim() ? (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Validated
+                    <span>Validated</span>
                   </>
                 ) : (
                   <>
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Validate Query
+                    <span>Validate</span>
                   </>
                 )}
               </button>
             </div>
-            
-            {validationResult && (
-              <div className={`mt-2 text-sm flex items-center gap-1 ${
-                validationResult.isValid ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {validationResult.isValid ? (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-                {validationResult.message}
-              </div>
-            )}
           </div>
         )}
 

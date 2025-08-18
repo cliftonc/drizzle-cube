@@ -32,11 +32,6 @@ export default function DashboardGrid({
   onSave,
   apiUrl = '/cubejs-api/v1'
 }: DashboardGridProps) {
-  console.log('DashboardGrid render:', { 
-    config, 
-    editable, 
-    portletCount: config?.portlets?.length || 0 
-  })
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
@@ -228,7 +223,6 @@ export default function DashboardGrid({
     minH: 3
   }))
 
-  console.log('DashboardGrid: generated gridLayout:', gridLayout)
 
   return (
     <>

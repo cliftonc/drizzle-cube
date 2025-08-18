@@ -35,7 +35,7 @@ export default function ChartConfigEditor({
     const updatedChartConfig: ChartAxisConfig = {
       x: newConfig.x || undefined,
       y: newConfig.y ? newConfig.y.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-      series: newConfig.series || undefined
+      series: newConfig.series ? (Array.isArray(newConfig.series) ? newConfig.series : [newConfig.series]) : undefined
     }
 
     const updatedDisplayConfig: ChartDisplayConfig = {

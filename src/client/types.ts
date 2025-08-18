@@ -16,9 +16,14 @@ export type ChartType =
 
 // Chart configuration
 export interface ChartAxisConfig {
-  x?: string // Dimension field for X axis
+  // New format (for advanced portlet editor)
+  xAxis?: string[] // Dimension fields for X axis
+  yAxis?: string[] // Measure fields for Y axis  
+  series?: string[] // Fields to use for series/grouping
+  
+  // Legacy format (for backward compatibility)
+  x?: string // Single dimension field for X axis
   y?: string[] // Measure fields for Y axis  
-  series?: string // Field to use for series/grouping
 }
 
 export interface ChartDisplayConfig {
@@ -28,6 +33,7 @@ export interface ChartDisplayConfig {
   colors?: string[]
   orientation?: 'horizontal' | 'vertical'
   stacked?: boolean
+  stackedBarChart?: boolean
 }
 
 // Portlet configuration
@@ -37,7 +43,7 @@ export interface PortletConfig {
   query: string // JSON string of cube query
   chartType: ChartType
   labelField?: string // For pie charts
-  chartConfig: ChartAxisConfig
+  chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   w: number // Grid width
   h: number // Grid height  
@@ -97,7 +103,7 @@ export interface AnalyticsPortletProps {
   query: string
   chartType: ChartType
   labelField?: string
-  chartConfig: ChartAxisConfig
+  chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   height?: string | number
   title?: string
@@ -109,6 +115,8 @@ export interface AnalyticsDashboardProps {
   apiOptions?: CubeApiOptions
   editable?: boolean
   onConfigChange?: (config: DashboardConfig) => void
+  onSave?: (config: DashboardConfig) => Promise<void> | void
+  onDirtyStateChange?: (isDirty: boolean) => void
 }
 
 export interface ChartProps {

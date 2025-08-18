@@ -14,6 +14,7 @@
       "types": "./dist/client/index.d.ts",
       "import": "./dist/client/index.js"
     },
+    "./client/styles.css": "./dist/client/styles.css",
     "./adapters/hono": {
       "types": "./dist/adapters/hono/index.d.ts",
       "import": "./dist/adapters/hono/index.js"

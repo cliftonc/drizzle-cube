@@ -21,8 +21,10 @@ interface CubeProviderProps {
 }
 
 export function CubeProvider({ cubeApi, options = {}, children }: CubeProviderProps) {
+  const contextValue = { cubeApi, options }
+  
   return (
-    <CubeContext.Provider value={{ cubeApi, options }}>
+    <CubeContext.Provider value={contextValue}>
       {children}
     </CubeContext.Provider>
   )
@@ -30,6 +32,7 @@ export function CubeProvider({ cubeApi, options = {}, children }: CubeProviderPr
 
 export function useCubeContext() {
   const context = useContext(CubeContext)
+  
   if (!context) {
     throw new Error('useCubeContext must be used within a CubeProvider')
   }

@@ -5,18 +5,20 @@
 
 import { useMemo, useState, forwardRef, useImperativeHandle } from 'react'
 import { useCubeQuery } from '../hooks/useCubeQuery'
+import ChartErrorBoundary from './ChartErrorBoundary'
 import { 
-  BarChart, 
-  LineChart, 
-  AreaChart, 
-  PieChart, 
-  ScatterChart, 
-  RadarChart, 
-  RadialBarChart, 
-  TreeMapChart, 
+  RechartsBarChart, 
+  RechartsLineChart, 
+  RechartsAreaChart, 
+  RechartsPieChart, 
+  RechartsScatterChart, 
+  RechartsRadarChart, 
+  RechartsRadialBarChart, 
+  RechartsTreeMapChart, 
   DataTable 
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
+
 
 interface AnalyticsPortletRef {
   refresh: () => void
@@ -37,12 +39,13 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   const queryObject = useMemo(() => {
     try {
       const parsed = JSON.parse(query)
-      return {
+      const result = {
         ...parsed,
         __refresh_counter: refreshCounter
       }
+      return result
     } catch (e) {
-      console.error('Invalid query JSON:', e)
+      console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return null
     }
   }, [query, refreshCounter])
@@ -82,10 +85,45 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center w-full p-4 text-center" style={{ height }}>
-        <div className="text-red-500 mb-2">⚠️</div>
-        <div className="text-sm text-red-500 font-semibold mb-1">Failed to load data</div>
-        <div className="text-xs text-gray-600">{error.toString()}</div>
+      <div className="p-4 border border-red-300 bg-red-50 rounded" style={{ height }}>
+        <div className="mb-2">
+          <div className="flex items-center justify-between">
+            <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
+            <button
+              onClick={() => setRefreshCounter(prev => prev + 1)}
+              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+        
+        <div className="mb-3">
+          <div className="text-xs text-red-700 bg-white p-2 rounded border">
+            {error.message || error.toString()}
+          </div>
+        </div>
+        
+        <div className="space-y-2 text-xs">
+          <details>
+            <summary className="cursor-pointer text-gray-700 font-medium">Original Query</summary>
+            <pre className="mt-1 bg-blue-50 p-2 rounded text-xs overflow-auto max-h-20">
+              {query}
+            </pre>
+          </details>
+          
+          <details>
+            <summary className="cursor-pointer text-gray-700 font-medium">Chart Config</summary>
+            <pre className="mt-1 bg-purple-50 p-2 rounded text-xs overflow-auto max-h-20">
+              {JSON.stringify({
+                chartType,
+                labelField,
+                chartConfig,
+                displayConfig
+              }, null, 2)}
+            </pre>
+          </details>
+        </div>
       </div>
     )
   }
@@ -117,34 +155,94 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   // Render appropriate chart component
   const renderChart = () => {
     try {
-      const commonProps = {
-        data,
-        chartConfig,
-        displayConfig,
-        queryObject,
-        height,
-        labelField
-      }
-
       switch (chartType) {
         case 'bar':
-          return <BarChart {...commonProps} />
+          return (
+            <RechartsBarChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'line':
-          return <LineChart {...commonProps} />
+          return (
+            <RechartsLineChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'area':
-          return <AreaChart {...commonProps} />
+          return (
+            <RechartsAreaChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'pie':
-          return <PieChart {...commonProps} />
+          return (
+            <RechartsPieChart
+              data={data}
+              labelField={labelField}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'scatter':
-          return <ScatterChart {...commonProps} />
+          return (
+            <RechartsScatterChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'radar':
-          return <RadarChart {...commonProps} />
+          return (
+            <RechartsRadarChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'radialBar':
-          return <RadialBarChart {...commonProps} />
+          return (
+            <RechartsRadialBarChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'treemap':
-          return <TreeMapChart {...commonProps} />
+          return (
+            <RechartsTreeMapChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         case 'table':
-          return <DataTable {...commonProps} />
+          return (
+            <DataTable
+              data={data}
+              queryObject={queryObject}
+              height={height}
+            />
+          )
         default:
           return (
             <div className="flex items-center justify-center w-full" style={{ height }}>
@@ -169,9 +267,21 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   }
 
   return (
-    <div className="w-full" style={{ height }}>
-      {renderChart()}
-    </div>
+    <ChartErrorBoundary 
+      portletTitle={_title}
+      portletConfig={{
+        chartType,
+        labelField,
+        chartConfig,
+        displayConfig,
+        height
+      }}
+      cubeQuery={query}
+    >
+      <div className="w-full" style={{ height }}>
+        {renderChart()}
+      </div>
+    </ChartErrorBoundary>
   )
 })
 

@@ -32,8 +32,25 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Cube query failed: ${response.status} ${error}`)
+      let errorMessage = `Cube query failed: ${response.status}`
+      try {
+        const errorText = await response.text()
+        // Try to parse as JSON first to get structured error
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          } else {
+            errorMessage += ` ${errorText}`
+          }
+        } catch {
+          // If not JSON, use the raw text
+          errorMessage += ` ${errorText}`
+        }
+      } catch {
+        // If we can't read the response, just use the status
+      }
+      throw new Error(errorMessage)
     }
 
     const result = await response.json()

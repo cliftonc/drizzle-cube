@@ -1,47 +1,200 @@
-/**
- * Simple Scatter Chart component using Recharts
- */
-
-import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
+import ChartContainer from './ChartContainer'
+import ChartTooltip from './ChartTooltip'
+import { CHART_COLORS, RESPONSIVE_CHART_MARGINS } from '../../utils/chartConstants'
+import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
-
-const CHART_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b']
 
 export default function ScatterChart({ 
   data, 
   chartConfig, 
   displayConfig = {},
-  height = 300 
+  queryObject,
+  height = "100%" 
 }: ChartProps) {
-  if (!data || data.length === 0) {
+  const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  
+  try {
+    const safeDisplayConfig = {
+      showLegend: displayConfig?.showLegend ?? true,
+      showGrid: displayConfig?.showGrid ?? true,
+      showTooltip: displayConfig?.showTooltip ?? true
+    }
+
+    if (!data || data.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No data available</div>
+            <div className="text-xs">No data points to display in scatter chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    // Validate chartConfig - support both legacy and new formats
+    let xAxisField: string
+    let yAxisField: string
+    let seriesFields: string[] = []
+    
+    if (chartConfig?.xAxis && chartConfig?.yAxis) {
+      // New format
+      xAxisField = chartConfig.xAxis[0]
+      yAxisField = chartConfig.yAxis[0]
+      seriesFields = chartConfig.series || []
+    } else if (chartConfig?.x && chartConfig?.y) {
+      // Legacy format (adapt for scatter chart)
+      xAxisField = chartConfig.x
+      yAxisField = Array.isArray(chartConfig.y) ? chartConfig.y[0] : chartConfig.y
+    } else {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">Invalid or missing chart axis configuration</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (!xAxisField || !yAxisField) {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
+          </div>
+        </div>
+      )
+    }
+
+    // Transform data for scatter plot
+    let scatterData: any[]
+    let seriesGroups: { [key: string]: any[] } = {}
+
+    if (seriesFields.length > 0) {
+      // Group data by series field
+      const seriesField = seriesFields[0]
+      data.forEach(item => {
+        const seriesValue = String(item[seriesField] || 'Default')
+        if (!seriesGroups[seriesValue]) {
+          seriesGroups[seriesValue] = []
+        }
+        
+        const xGranularity = getFieldGranularity(queryObject, xAxisField)
+        const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
+        const yValue = typeof item[yAxisField] === 'string' 
+          ? parseFloat(item[yAxisField]) 
+          : (item[yAxisField] || 0)
+          
+        seriesGroups[seriesValue].push({
+          x: typeof xValue === 'string' ? parseFloat(xValue) || 0 : xValue,
+          y: yValue,
+          name: `${seriesValue} (${xValue}, ${yValue})`
+        })
+      })
+      
+      // Use the first series as primary data
+      const seriesKeys = Object.keys(seriesGroups)
+      scatterData = seriesGroups[seriesKeys[0]] || []
+    } else {
+      // Single series scatter plot
+      const xGranularity = getFieldGranularity(queryObject, xAxisField)
+      scatterData = data.map(item => {
+        const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
+        const yValue = typeof item[yAxisField] === 'string' 
+          ? parseFloat(item[yAxisField]) 
+          : (item[yAxisField] || 0)
+          
+        return {
+          x: typeof xValue === 'string' ? parseFloat(xValue) || 0 : xValue,
+          y: yValue,
+          name: `(${xValue}, ${yValue})`
+        }
+      })
+    }
+    
+    // Validate transformed data
+    if (!scatterData || scatterData.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No valid data</div>
+            <div className="text-xs">No valid data points for scatter chart after transformation</div>
+          </div>
+        </div>
+      )
+    }
+
+    const seriesKeys = Object.keys(seriesGroups)
+    const hasSeries = seriesKeys.length > 1
+
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <ChartContainer height={height}>
+        <RechartsScatterChart data={scatterData} margin={RESPONSIVE_CHART_MARGINS}>
+          {safeDisplayConfig.showGrid && (
+            <CartesianGrid strokeDasharray="3 3" />
+          )}
+          <XAxis 
+            type="number"
+            dataKey="x"
+            name={xAxisField}
+            tick={{ fontSize: 12 }}
+          />
+          <YAxis 
+            type="number"
+            dataKey="y"
+            name={yAxisField}
+            tick={{ fontSize: 12 }}
+          />
+          {safeDisplayConfig.showTooltip && (
+            <ChartTooltip />
+          )}
+          {(safeDisplayConfig.showLegend && hasSeries) && (
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              iconType="circle"
+              iconSize={8}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+              onMouseEnter={(o) => setHoveredLegend(String(o.dataKey || ''))}
+              onMouseLeave={() => setHoveredLegend(null)}
+            />
+          )}
+          {hasSeries ? (
+            // Multiple series
+            seriesKeys.map((seriesKey, index) => (
+              <Scatter
+                key={seriesKey}
+                name={seriesKey}
+                data={seriesGroups[seriesKey]}
+                fill={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+                fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+              />
+            ))
+          ) : (
+            // Single series
+            <Scatter
+              name="Data"
+              data={scatterData}
+              fill={displayConfig.colors?.[0] || CHART_COLORS[0]}
+            />
+          )}
+        </RechartsScatterChart>
+      </ChartContainer>
+    )
+  } catch (error) {
+    console.error('ScatterChart rendering error:', error)
+    return (
+      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
+          <div className="text-sm font-semibold mb-1">Scatter Chart Error</div>
+          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="text-xs text-gray-600">Check the data and configuration</div>
         </div>
       </div>
     )
   }
-
-  if (!chartConfig?.x || !chartConfig?.y) {
-    return (
-      <div className="flex items-center justify-center w-full text-amber-600" style={{ height }}>
-        <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <RechartsScatterChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-        {displayConfig.showGrid !== false && <CartesianGrid strokeDasharray="3 3" />}
-        <XAxis dataKey={chartConfig.x} tick={{ fontSize: 12 }} />
-        <YAxis dataKey={chartConfig.y?.[0]} tick={{ fontSize: 12 }} />
-        {displayConfig.showTooltip !== false && <Tooltip />}
-        <Scatter name="Data" data={data} fill={CHART_COLORS[0]} />
-      </RechartsScatterChart>
-    </ResponsiveContainer>
-  )
 }

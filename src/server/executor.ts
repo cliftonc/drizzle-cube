@@ -219,8 +219,70 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
+    // Build the query using the reusable method
+    const builtQuery = this.buildMultiCubeQuery(cubes, query, securityContext)
 
-    // Build multi-cube query plan and execute
+    // Execute the final query
+    const data = await this.dbExecutor.execute(builtQuery)
+    
+    // Build context for annotation generation
+    const context: QueryContext<TSchema> = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema!,
+      securityContext
+    }
+    
+    // Generate query plan for annotations
+    const queryPlan = this.multiCubeBuilder.buildMultiCubeQueryPlan(cubes, query, context)
+    
+    // Generate annotations for UI (using all cubes)
+    const annotation = this.generateMultiCubeAnnotations(queryPlan, query)
+    
+    return {
+      data: Array.isArray(data) ? data : [data],
+      annotation
+    }
+  }
+
+  /**
+   * Generate raw SQL for debugging (without execution)
+   */
+  async generateSQL(
+    cube: Cube<TSchema>, 
+    query: SemanticQuery, 
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    return this.generateCubeSQL(cube, query, securityContext)
+  }
+
+  /**
+   * Generate raw SQL for multi-cube queries without execution
+   */
+  async generateMultiCubeSQL(
+    cubes: Map<string, CubeWithJoins<TSchema>>,
+    query: SemanticQuery, 
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    // Build the query using the same logic as executeMultiCube but extract SQL
+    const builtQuery = this.buildMultiCubeQuery(cubes, query, securityContext)
+    
+    // Extract SQL from the built query
+    const sqlObj = builtQuery.toSQL()
+    
+    return {
+      sql: sqlObj.sql,
+      params: sqlObj.params
+    }
+  }
+
+  /**
+   * Build multi-cube query (extracted from executeMultiCube for reuse)
+   */
+  private buildMultiCubeQuery(
+    cubes: Map<string, CubeWithJoins<TSchema>>,
+    query: SemanticQuery, 
+    securityContext: SecurityContext
+  ) {
     const context: QueryContext<TSchema> = {
       db: this.dbExecutor.db,
       schema: this.dbExecutor.schema!,
@@ -252,6 +314,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           case 'full':
             innerQuery = innerQuery.fullJoin(join.table, join.on)
             break
+          default:
+            innerQuery = innerQuery.leftJoin(join.table, join.on)
         }
       }
     }
@@ -309,40 +373,17 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       innerQuery = innerQuery.orderBy(...orderByFields)
     }
 
-    // Add LIMIT and OFFSET
+    // Add LIMIT if specified
     if (query.limit) {
       innerQuery = innerQuery.limit(query.limit)
     }
-    
+
+    // Add OFFSET if specified
     if (query.offset) {
       innerQuery = innerQuery.offset(query.offset)
     }
 
-    // For now, skip CTE and just execute the inner query directly
-    // TODO: Implement proper multi-cube CTEs when we have actual joins between cubes
-    const finalQuery = innerQuery
-
-    // Execute the final query
-    const data = await this.dbExecutor.execute(finalQuery)
-    
-    // Generate annotations for UI (using all cubes)
-    const annotation = this.generateMultiCubeAnnotations(queryPlan, query)
-    
-    return {
-      data: Array.isArray(data) ? data : [data],
-      annotation
-    }
-  }
-
-  /**
-   * Generate raw SQL for debugging (without execution)
-   */
-  async generateSQL(
-    cube: Cube<TSchema>, 
-    query: SemanticQuery, 
-    securityContext: SecurityContext
-  ): Promise<{ sql: string; params?: any[] }> {
-    return this.generateCubeSQL(cube, query, securityContext)
+    return innerQuery
   }
 
   /**

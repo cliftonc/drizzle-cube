@@ -8,9 +8,11 @@ export default defineConfig({
     react(),
     dts({
       insertTypesEntry: true,
-      rollupTypes: true,
+      rollupTypes: false,
       include: ['src/client/**/*.ts', 'src/client/**/*.tsx'],
-      tsconfigPath: './tsconfig.client.json'
+      tsconfigPath: './tsconfig.client.json',
+      outDir: 'dist/client',
+      entryRoot: 'src/client'
     })
   ],
   build: {
@@ -21,13 +23,29 @@ export default defineConfig({
       fileName: 'index'
     },
     outDir: 'dist/client',
+    cssCodeSplit: false,
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      external: [
+        'react', 
+        'react-dom', 
+        'react/jsx-runtime',
+        'react-grid-layout',
+        'react-resizable'
+      ],
+      input: {
+        index: resolve(__dirname, 'src/client/index.ts')
+      },
       output: {
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
           'react/jsx-runtime': 'jsxRuntime'
+        },
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'style.css') {
+            return 'styles.css'
+          }
+          return assetInfo.name
         }
       }
     }

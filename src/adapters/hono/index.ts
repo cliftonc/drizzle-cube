@@ -85,15 +85,19 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
    */
   app.post(`${basePath}/load`, async (c) => {
     try {
-      const query: SemanticQuery = await c.req.json()
+      const requestBody = await c.req.json()
+      
+      // Handle both direct query and nested query formats
+      const query: SemanticQuery = requestBody.query || requestBody
       
       // Extract security context using user-provided function
       const securityContext = await getSecurityContext(c)
       
-      // Validate query has at least measures or dimensions
-      if (!query.measures?.length && !query.dimensions?.length) {
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
         return c.json({
-          error: 'Query must specify at least one measure or dimension'
+          error: `Query validation failed: ${validation.errors.join(', ')}`
         }, 400)
       }
 
@@ -133,10 +137,11 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       // Extract security context
       const securityContext = await getSecurityContext(c)
       
-      // Validate query has at least measures or dimensions
-      if (!query.measures?.length && !query.dimensions?.length) {
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
         return c.json({
-          error: 'Query must specify at least one measure or dimension'
+          error: `Query validation failed: ${validation.errors.join(', ')}`
         }, 400)
       }
 
@@ -189,10 +194,11 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       
       const securityContext = await getSecurityContext(c)
       
-      // Validate query has at least measures or dimensions
-      if (!query.measures?.length && !query.dimensions?.length) {
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
         return c.json({
-          error: 'Query must specify at least one measure or dimension'
+          error: `Query validation failed: ${validation.errors.join(', ')}`
         }, 400)
       }
 
@@ -238,10 +244,11 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       const query: SemanticQuery = JSON.parse(queryParam)
       const securityContext = await getSecurityContext(c)
       
-      // Validate query has at least measures or dimensions
-      if (!query.measures?.length && !query.dimensions?.length) {
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
         return c.json({
-          error: 'Query must specify at least one measure or dimension'
+          error: `Query validation failed: ${validation.errors.join(', ')}`
         }, 400)
       }
 
@@ -269,6 +276,166 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       return c.json({
         error: error instanceof Error ? error.message : 'SQL generation failed'
       }, 500)
+    }
+  })
+
+  /**
+   * Helper function to calculate query complexity
+   */
+  function calculateQueryComplexity(query: SemanticQuery): string {
+    let complexity = 0
+    complexity += (query.measures?.length || 0) * 1
+    complexity += (query.dimensions?.length || 0) * 1
+    complexity += (query.filters?.length || 0) * 2
+    complexity += (query.timeDimensions?.length || 0) * 3
+    
+    if (complexity <= 5) return 'low'
+    if (complexity <= 15) return 'medium'
+    return 'high'
+  }
+
+  /**
+   * Helper function to handle dry-run logic for both GET and POST requests
+   */
+  async function handleDryRun(query: SemanticQuery, securityContext: SecurityContext) {
+    // Validate query structure and field existence
+    const validation = semanticLayer.validateQuery(query)
+    if (!validation.isValid) {
+      throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Get all referenced cubes from measures and dimensions
+    const referencedCubes = new Set<string>()
+    
+    query.measures?.forEach(measure => {
+      const cubeName = measure.split('.')[0]
+      referencedCubes.add(cubeName)
+    })
+    
+    query.dimensions?.forEach(dimension => {
+      const cubeName = dimension.split('.')[0]
+      referencedCubes.add(cubeName)
+    })
+
+    // Also include cubes from timeDimensions and filters
+    query.timeDimensions?.forEach(timeDimension => {
+      const cubeName = timeDimension.dimension.split('.')[0]
+      referencedCubes.add(cubeName)
+    })
+
+    query.filters?.forEach(filter => {
+      if ('member' in filter) {
+        const cubeName = filter.member.split('.')[0]
+        referencedCubes.add(cubeName)
+      }
+    })
+
+    // Determine if this is a multi-cube query
+    const isMultiCube = referencedCubes.size > 1
+
+    // Generate SQL using the semantic layer compiler
+    let sqlResult
+    if (isMultiCube) {
+      // For multi-cube queries, use the new multi-cube SQL generation
+      sqlResult = await semanticLayer.generateMultiCubeSQL(query, securityContext)
+    } else {
+      // For single cube queries, use the cube-specific SQL generation
+      const cubeName = Array.from(referencedCubes)[0]
+      sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
+    }
+
+    // Create normalized queries array (for Cube.js compatibility)
+    const normalizedQueries = Array.from(referencedCubes).map(cubeName => ({
+      cube: cubeName,
+      query: {
+        measures: query.measures?.filter(m => m.startsWith(cubeName + '.')) || [],
+        dimensions: query.dimensions?.filter(d => d.startsWith(cubeName + '.')) || [],
+        filters: query.filters || [],
+        timeDimensions: query.timeDimensions || [],
+        order: query.order || {},
+        limit: query.limit,
+        offset: query.offset
+      }
+    }))
+
+    // Build comprehensive response
+    return {
+      queryType: "regularQuery",
+      normalizedQueries,
+      queryOrder: Array.from(referencedCubes),
+      transformedQueries: normalizedQueries,
+      pivotQuery: {
+        query,
+        cubes: Array.from(referencedCubes)
+      },
+      sql: {
+        sql: [sqlResult.sql],
+        params: sqlResult.params || []
+      },
+      complexity: calculateQueryComplexity(query),
+      valid: true,
+      cubesUsed: Array.from(referencedCubes),
+      joinType: isMultiCube ? "multi_cube_join" : "single_cube",
+      query
+    }
+  }
+
+  /**
+   * POST /cubejs-api/v1/dry-run - Validate queries without execution
+   */
+  app.post(`${basePath}/dry-run`, async (c) => {
+    try {
+      const requestBody = await c.req.json()
+      
+      // Handle both direct query and nested query formats
+      const query: SemanticQuery = requestBody.query || requestBody
+      
+      // Extract security context using user-provided function
+      const securityContext = await getSecurityContext(c)
+      
+      // Perform dry-run analysis
+      const result = await handleDryRun(query, securityContext)
+      
+      return c.json(result)
+      
+    } catch (error) {
+      console.error('Dry-run error:', error)
+      return c.json({
+        error: error instanceof Error ? error.message : 'Dry-run validation failed',
+        valid: false
+      }, 400)
+    }
+  })
+
+  /**
+   * GET /cubejs-api/v1/dry-run - Validate queries via query string
+   */
+  app.get(`${basePath}/dry-run`, async (c) => {
+    try {
+      const queryParam = c.req.query('query')
+      if (!queryParam) {
+        return c.json({
+          error: 'Query parameter is required',
+          valid: false
+        }, 400)
+      }
+
+      const query: SemanticQuery = JSON.parse(queryParam)
+      
+      // Extract security context
+      const securityContext = await getSecurityContext(c)
+      
+      // Perform dry-run analysis
+      const result = await handleDryRun(query, securityContext)
+      
+      return c.json(result)
+      
+    } catch (error) {
+      console.error('Dry-run error:', error)
+      return c.json({
+        error: error instanceof Error ? error.message : 'Dry-run validation failed',
+        valid: false
+      }, 400)
     }
   })
 

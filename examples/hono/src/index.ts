@@ -5,7 +5,7 @@
 import { serve } from '@hono/node-server'
 import app from '../app'
 
-const port = parseInt(process.env.PORT || '3000')
+const port = parseInt(process.env.PORT || '3001')
 
 console.log(`🚀 Starting Hono server on http://localhost:${port}`)
 console.log(`📊 Analytics API available at http://localhost:${port}/cubejs-api/v1/meta`)

@@ -4,9 +4,9 @@
 
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { employees, departments, schema } from '../schema'
+import { employees, departments, analyticsPages, schema } from '../schema'
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/mydb'
+const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
 
 // Sample data
 const sampleDepartments = [
@@ -73,6 +73,139 @@ const sampleEmployees = [
   }
 ]
 
+// Sample analytics page configuration
+const sampleAnalyticsPage = {
+  name: 'HR Analytics Dashboard',
+  description: 'Comprehensive workforce analytics including headcount, compensation, trends, and detailed employee data',
+  organisationId: 1,
+  order: 0,
+  config: {
+    portlets: [
+      {
+        id: 'department-headcount',
+        title: 'Workforce Distribution by Department',
+        query: JSON.stringify({
+          measures: ['Employees.count'],
+          dimensions: ['Employees.departmentName']
+        }),
+        chartType: 'pie' as const,
+        chartConfig: {
+          x: 'Employees.departmentName',
+          y: ['Employees.count']
+        },
+        displayConfig: {
+          showLegend: true
+        },
+        w: 6,
+        h: 6,
+        x: 0,
+        y: 0
+      },
+      {
+        id: 'active-vs-inactive',
+        title: 'Employee Status Overview',
+        query: JSON.stringify({
+          measures: ['Employees.count'],
+          dimensions: ['Employees.isActive']
+        }),
+        chartType: 'pie' as const,
+        labelField: 'Employees.isActive',
+        chartConfig: {
+          x: 'Employees.isActive',
+          y: ['Employees.count']
+        },
+        displayConfig: {
+          showLegend: true
+        },
+        w: 6,
+        h: 6,
+        x: 6,
+        y: 0
+      },
+      {
+        id: 'salary-by-department',
+        title: 'Average Salary by Department',
+        query: JSON.stringify({
+          measures: ['Employees.avgSalary'],
+          dimensions: ['Employees.departmentName']
+        }),
+        chartType: 'bar' as const,
+        chartConfig: {
+          x: 'Employees.departmentName',
+          y: ['Employees.avgSalary']
+        },
+        displayConfig: {
+          showLegend: false
+        },
+        w: 6,
+        h: 6,
+        x: 0,
+        y: 6
+      },
+      {
+        id: 'total-payroll',
+        title: 'Total Payroll by Department',
+        query: JSON.stringify({
+          measures: ['Employees.totalSalary'],
+          dimensions: ['Employees.departmentName']
+        }),
+        chartType: 'bar' as const,
+        chartConfig: {
+          x: 'Employees.departmentName',
+          y: ['Employees.totalSalary']
+        },
+        displayConfig: {
+          showLegend: false,
+          orientation: 'horizontal'
+        },
+        w: 6,
+        h: 6,
+        x: 6,
+        y: 6
+      },
+      {
+        id: 'hiring-trends',
+        title: 'Employee Growth Over Time',
+        query: JSON.stringify({
+          measures: ['Employees.count'],
+          timeDimensions: [{
+            dimension: 'Employees.createdAt',
+            granularity: 'month'
+          }]
+        }),
+        chartType: 'line' as const,
+        chartConfig: {
+          x: 'Employees.createdAt.month',
+          y: ['Employees.count']
+        },
+        displayConfig: {
+          showLegend: false
+        },
+        w: 12,
+        h: 5,
+        x: 0,
+        y: 12
+      },
+      {
+        id: 'employee-table',
+        title: 'Employee Directory',
+        query: JSON.stringify({
+          dimensions: ['Employees.name', 'Employees.email', 'Employees.departmentName', 'Employees.isActive'],
+          measures: [],
+          limit: 25
+        }),
+        chartType: 'table' as const,
+        chartConfig: {},
+        displayConfig: {},
+        w: 12,
+        h: 8,
+        x: 0,
+        y: 17
+      }
+    ]
+  }
+}
+
 async function seedDatabase() {
   console.log('🌱 Seeding database with sample data...')
   
@@ -84,6 +217,7 @@ async function seedDatabase() {
     console.log('🧹 Clearing existing data...')
     await db.delete(employees)
     await db.delete(departments)
+    await db.delete(analyticsPages)
     
     // Insert departments first (referenced by employees)
     console.log('🏢 Inserting departments...')
@@ -107,8 +241,21 @@ async function seedDatabase() {
     
     console.log(`✅ Inserted ${insertedEmployees.length} employees`)
     
+    // Insert sample analytics page
+    console.log('📊 Inserting sample analytics page...')
+    const insertedPage = await db.insert(analyticsPages)
+      .values(sampleAnalyticsPage)
+      .returning()
+    
+    console.log(`✅ Inserted analytics page: ${insertedPage[0].name}`)
+    
     console.log('🎉 Database seeded successfully!')
-    console.log('\n📊 Sample queries you can try:')
+    console.log('\n📊 What you can do now:')
+    console.log('- Visit http://localhost:3000 to see the React dashboard')
+    console.log('- View the sample "Executive Dashboard" with employee analytics')
+    console.log('- Create new dashboards with custom charts')
+    console.log('- Query the API at http://localhost:3001/cubejs-api/v1/meta')
+    console.log('\n🔍 Sample queries you can try:')
     console.log('- Employee count by department: measures: ["Employees.count"], dimensions: ["Employees.departmentName"]')
     console.log('- Salary analytics: measures: ["Employees.avgSalary", "Employees.totalSalary"], dimensions: ["Employees.departmentName"]')
     console.log('- Active employees: measures: ["Employees.activeCount"], dimensions: ["Employees.departmentName"]')
