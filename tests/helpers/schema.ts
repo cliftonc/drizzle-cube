@@ -16,7 +16,7 @@ export const employees = pgTable('employees', {
   departmentId: integer('department_id'),
   organisationId: integer('organisation_id').notNull(),
   salary: real('salary'),
-  createdAt: timestamp('created_at').defaultNow()
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
 })
 
 // Department table
@@ -31,14 +31,14 @@ export const departments = pgTable('departments', {
 export const productivity = pgTable('productivity', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   employeeId: integer('employee_id').notNull(),
-  date: timestamp('date').notNull(),
+  date: timestamp('date', { mode: 'date' }).notNull(),
   linesOfCode: integer('lines_of_code').default(0),
   pullRequests: integer('pull_requests').default(0),
   liveDeployments: integer('live_deployments').default(0),
   daysOff: boolean('days_off').default(false),
   happinessIndex: integer('happiness_index'), // 1-10 scale
   organisationId: integer('organisation_id').notNull(),
-  createdAt: timestamp('created_at').defaultNow()
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
 })
 
 // Analytics Pages table - for storing dashboard configurations
@@ -70,8 +70,8 @@ export const analyticsPages = pgTable('analytics_pages', {
   }>(),
   order: integer('order').default(0),
   isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow()
 })
 
 // Define relations for better type inference

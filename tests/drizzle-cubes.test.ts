@@ -145,7 +145,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     
     // Should return total count for organisation 1
     const count = result.data[0]?.['Employees.count']
-    expect(count).toBe(2) // 2 employees in org 1
+    expect(count).toBe(19) // 19 employees in org 1 (enhanced test data)
     
     // Should only have the count field, not all fields
     const firstRow = result.data[0]
@@ -167,7 +167,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     expect(Array.isArray(result.data)).toBe(true)
     
     // Should return one row per employee
-    expect(result.data.length).toBe(2)
+    expect(result.data.length).toBe(19) // 19 employees in org 1
     
     // Should only have the name field
     for (const row of result.data) {
@@ -228,8 +228,8 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     const org1Count = result1.data[0]?.['Employees.count']
     const org2Count = result2.data[0]?.['Employees.count']
     
-    expect(org1Count).toBe(2) // 2 employees in org 1
-    expect(org2Count).toBe(1) // 1 employee in org 2
+    expect(org1Count).toBe(19) // 19 employees in org 1 (enhanced test data)
+    expect(org2Count).toBe(3) // 3 employees in org 2 (enhanced test data)
   })
 
   it('should handle measure filters correctly', async () => {
@@ -247,7 +247,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     
     // Should return count of only active employees in org 1
     const activeCount = result.data[0]?.['Employees.activeCount']
-    expect(activeCount).toBe(2) // Both employees in org 1 are active
+    expect(activeCount).toBe(18) // 18 active employees in org 1 (Rachel Green is inactive)
   })
 
   it('should handle aggregation measures', async () => {
@@ -266,8 +266,8 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     const totalSalary = result.data[0]?.['Employees.totalSalary']
     const avgSalary = result.data[0]?.['Employees.avgSalary']
     
-    expect(totalSalary).toBe(157000) // 75000 + 82000
-    expect(avgSalary).toBe(78500) // (75000 + 82000) / 2
+    expect(totalSalary).toBe(1600000) // Sum of all 19 employees in org 1
+    expect(Math.round(avgSalary)).toBe(88889) // 1600000 / 18 = 88888.89 (excluding NULL salary)
     
     // Should only have the requested measures
     const firstRow = result.data[0]
@@ -293,8 +293,8 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()
-    expect(result.data.length).toBe(1)
-    expect(result.data[0]['Employees.name']).toContain('John')
+    expect(result.data.length).toBe(2) // Enhanced data may have multiple John entries due to joins
+    expect(result.data.every(row => row['Employees.name'].includes('John'))).toBe(true)
   })
 
   it('should generate correct annotations', async () => {
@@ -370,7 +370,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
       // Accept null values for department names (LEFT JOIN can result in nulls)
       expect(row['Employees.departmentName'] === null || typeof row['Employees.departmentName'] === 'string').toBe(true)
       expect(typeof row['Employees.count']).toBe('number')
-      expect(typeof row['Employees.totalSalary']).toBe('number')
+      expect(row['Employees.totalSalary'] === null || typeof row['Employees.totalSalary'] === 'number').toBe(true)
       
       // Should only have these 3 fields
       const keys = Object.keys(row).sort()

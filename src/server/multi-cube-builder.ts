@@ -294,21 +294,21 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     // Apply date truncation based on granularity (PostgreSQL specific)
     switch (granularity) {
       case 'year':
-        return sql`DATE_TRUNC('year', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('year', ${baseExpr}::timestamp)`
       case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamp)`
       case 'month':
-        return sql`DATE_TRUNC('month', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('month', ${baseExpr}::timestamp)`
       case 'week':
-        return sql`DATE_TRUNC('week', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('week', ${baseExpr}::timestamp)`
       case 'day':
-        return sql`DATE_TRUNC('day', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('day', ${baseExpr}::timestamp)`
       case 'hour':
-        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamp)`
       case 'minute':
-        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamp)`
       case 'second':
-        return sql`DATE_TRUNC('second', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('second', ${baseExpr}::timestamp)`
       default:
         return baseExpr as SQL
     }

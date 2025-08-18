@@ -15,6 +15,8 @@ import {
   lte, 
   isNull,
   isNotNull,
+  inArray,
+  notInArray,
   count, 
   sum, 
   avg, 
@@ -47,6 +49,7 @@ import type {
 
 import { resolveSqlExpression } from './types-drizzle'
 import { MultiCubeBuilder } from './multi-cube-builder'
+import { validateQueryAgainstCubes } from './compiler'
 
 export class QueryExecutor<TSchema extends Record<string, any> = Record<string, any>> {
   private multiCubeBuilder: MultiCubeBuilder<TSchema>
@@ -64,6 +67,12 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     securityContext: SecurityContext
   ): Promise<QueryResult> {
     try {
+      // Validate query before execution
+      const validation = validateQueryAgainstCubes(cubes, query)
+      if (!validation.isValid) {
+        throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+      }
+
       // Analyze which cubes are involved
       const cubesUsed = this.multiCubeBuilder.analyzeCubeUsage(query)
       
@@ -186,23 +195,55 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         drizzleQuery = drizzleQuery.orderBy(...orderByFields)
       }
 
-      // Add LIMIT and OFFSET
-      if (query.limit) {
+      // Add LIMIT and OFFSET with validation
+      if (query.limit !== undefined) {
+        if (query.limit < 0) {
+          throw new Error('Limit must be non-negative')
+        }
         drizzleQuery = drizzleQuery.limit(query.limit)
       }
       
-      if (query.offset) {
+      if (query.offset !== undefined) {
+        if (query.offset < 0) {
+          throw new Error('Offset must be non-negative')
+        }
         drizzleQuery = drizzleQuery.offset(query.offset)
       }
 
-      // Execute query
-      const data = await this.dbExecutor.execute(drizzleQuery)
+      // Execute query - pass measure fields for selective numeric conversion
+      const measureFieldNames = query.measures || []
+      const data = await this.dbExecutor.execute(drizzleQuery, measureFieldNames)
+      
+      // TODO: Move timestamp formatting to database level using PostgreSQL timezone functions
+      // Format timestamps in the result data
+      const mappedData = Array.isArray(data) ? data.map(row => {
+        const mappedRow = { ...row }
+        if (query.timeDimensions) {
+          for (const timeDim of query.timeDimensions) {
+            if (timeDim.dimension in mappedRow) {
+              let dateValue = mappedRow[timeDim.dimension]
+              
+              // Convert PostgreSQL timestamp format to ISO format for consistency
+              if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
+                dateValue = dateValue.replace(' ', 'T')
+                // Add 'Z' to indicate UTC timezone if not already present
+                if (!dateValue.endsWith('Z') && !dateValue.includes('+')) {
+                  dateValue = dateValue + 'Z'
+                }
+              }
+              
+              mappedRow[timeDim.dimension] = dateValue
+            }
+          }
+        }
+        return mappedRow
+      }) : [data]
       
       // Generate annotations for UI
       const annotation = this.generateAnnotations(cube, query)
       
       return {
-        data: Array.isArray(data) ? data : [data],
+        data: mappedData,
         annotation
       }
     } catch (error) {
@@ -222,8 +263,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     // Build the query using the reusable method
     const builtQuery = this.buildMultiCubeQuery(cubes, query, securityContext)
 
-    // Execute the final query
-    const data = await this.dbExecutor.execute(builtQuery)
+    // Execute the final query - pass measure fields for selective numeric conversion
+    const measureFieldNames = query.measures || []
+    const data = await this.dbExecutor.execute(builtQuery, measureFieldNames)
     
     // Build context for annotation generation
     const context: QueryContext<TSchema> = {
@@ -320,23 +362,30 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       }
     }
 
-    // Add multi-cube joins from query plan
+    // Add multi-cube joins from query plan (these represent cross-cube relationships)
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
       for (const joinCube of queryPlan.joinCubes) {
         const joinCubeBase = joinCube.cube.sql(context)
-        switch (joinCube.joinType || 'left') {
-          case 'left':
-            innerQuery = innerQuery.leftJoin(joinCubeBase.from, joinCube.joinCondition)
-            break
-          case 'inner':
-            innerQuery = innerQuery.innerJoin(joinCubeBase.from, joinCube.joinCondition)
-            break
-          case 'right':
-            innerQuery = innerQuery.rightJoin(joinCubeBase.from, joinCube.joinCondition)
-            break
-          case 'full':
-            innerQuery = innerQuery.fullJoin(joinCubeBase.from, joinCube.joinCondition)
-            break
+        
+        try {
+          switch (joinCube.joinType || 'left') {
+            case 'left':
+              innerQuery = innerQuery.leftJoin(joinCubeBase.from, joinCube.joinCondition)
+              break
+            case 'inner':
+              innerQuery = innerQuery.innerJoin(joinCubeBase.from, joinCube.joinCondition)
+              break
+            case 'right':
+              innerQuery = innerQuery.rightJoin(joinCubeBase.from, joinCube.joinCondition)
+              break
+            case 'full':
+              innerQuery = innerQuery.fullJoin(joinCubeBase.from, joinCube.joinCondition)
+              break
+          }
+        } catch (error) {
+          // If join fails (e.g., duplicate alias), log and continue
+          // This might be expected in some multi-cube scenarios
+          console.warn(`Multi-cube join failed for ${joinCube.cube.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
         }
       }
     }
@@ -374,12 +423,18 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     }
 
     // Add LIMIT if specified
-    if (query.limit) {
+    if (query.limit !== undefined) {
+      if (query.limit < 0) {
+        throw new Error('Limit must be non-negative')
+      }
       innerQuery = innerQuery.limit(query.limit)
     }
 
     // Add OFFSET if specified
-    if (query.offset) {
+    if (query.offset !== undefined) {
+      if (query.offset < 0) {
+        throw new Error('Offset must be non-negative')
+      }
       innerQuery = innerQuery.offset(query.offset)
     }
 
@@ -450,11 +505,17 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       drizzleQuery = drizzleQuery.orderBy(...orderByFields)
     }
 
-    if (query.limit) {
+    if (query.limit !== undefined) {
+      if (query.limit < 0) {
+        throw new Error('Limit must be non-negative')
+      }
       drizzleQuery = drizzleQuery.limit(query.limit)
     }
     
-    if (query.offset) {
+    if (query.offset !== undefined) {
+      if (query.offset < 0) {
+        throw new Error('Offset must be non-negative')
+      }
       drizzleQuery = drizzleQuery.offset(query.offset)
     }
 
@@ -487,7 +548,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         if (cubeName === cube.name && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, context)
-          selections[dimensionName] = sqlExpr
+          // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
+          selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
       }
     }
@@ -499,7 +561,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         if (cubeName === cube.name && cube.measures[fieldName]) {
           const measure = cube.measures[fieldName]
           const aggregatedExpr = this.buildMeasureExpression(measure, context)
-          selections[measureName] = aggregatedExpr
+          // Use explicit alias for measure expressions so they can be referenced in ORDER BY
+          selections[measureName] = sql`${aggregatedExpr}`.as(measureName) as unknown as SQL
         }
       }
     }
@@ -515,7 +578,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
             timeDim.granularity, 
             context
           )
-          selections[timeDim.dimension] = timeExpr
+          // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
+          selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
       }
     }
@@ -579,28 +643,29 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     const baseExpr = resolveSqlExpression(dimensionSql, context)
     
     if (!granularity) {
-      return baseExpr as SQL
+      return sql`${baseExpr}`
     }
     
     // TODO: Make this database-agnostic based on dbExecutor type
-    // For now, using PostgreSQL DATE_TRUNC syntax
+    // For now, using PostgreSQL DATE_TRUNC syntax with explicit text formatting
     switch (granularity) {
       case 'year':
-        return sql`DATE_TRUNC('year', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('year', ${baseExpr}::timestamp)`
       case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamp)`
       case 'month':
-        return sql`DATE_TRUNC('month', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('month', ${baseExpr}::timestamp)`
       case 'week':
-        return sql`DATE_TRUNC('week', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('week', ${baseExpr}::timestamp)`
       case 'day':
-        return sql`DATE_TRUNC('day', ${baseExpr}::timestamptz)`
+        // Ensure we return the truncated date as a timestamp
+        return sql`DATE_TRUNC('day', ${baseExpr}::timestamp)::timestamp`
       case 'hour':
-        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamp)`
       case 'minute':
-        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamp)`
       case 'second':
-        return sql`DATE_TRUNC('second', ${baseExpr}::timestamptz)`
+        return sql`DATE_TRUNC('second', ${baseExpr}::timestamp)`
       default:
         return baseExpr as SQL
     }
@@ -614,16 +679,32 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     query: SemanticQuery, 
     context: QueryContext<TSchema>
   ): SQL[] {
-    if (!query.filters || query.filters.length === 0) {
-      return []
-    }
-
     const conditions: SQL[] = []
     
-    for (const filter of query.filters) {
-      const condition = this.processFilter(filter, cube, context)
-      if (condition) {
-        conditions.push(condition)
+    // Process regular filters
+    if (query.filters && query.filters.length > 0) {
+      for (const filter of query.filters) {
+        const condition = this.processFilter(filter, cube, context)
+        if (condition) {
+          conditions.push(condition)
+        }
+      }
+    }
+
+    // Process time dimension date range filters
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        const [cubeName, fieldName] = timeDim.dimension.split('.')
+        if (cubeName === cube.name && cube.dimensions[fieldName] && timeDim.dateRange) {
+          const dimension = cube.dimensions[fieldName]
+          // Use the raw field expression for date filtering (not the truncated version)
+          // This ensures we filter on the actual timestamp values before aggregation
+          const fieldExpr = resolveSqlExpression(dimension.sql, context)
+          const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+          if (dateCondition) {
+            conditions.push(dateCondition)
+          }
+        }
       }
     }
     
@@ -680,21 +761,49 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     operator: FilterOperator, 
     values: any[]
   ): SQL | null {
-    const value = values[0]
+    // Handle empty values
+    if (!values || values.length === 0) {
+      // For empty equals filter, return condition that matches nothing
+      if (operator === 'equals') {
+        return sql`FALSE`
+      }
+      return null
+    }
+
+    // Filter out empty/null values and values containing null bytes for security
+    const filteredValues = values.filter(v => {
+      if (v === null || v === undefined || v === '') return false
+      // Reject values containing null bytes for security
+      if (typeof v === 'string' && v.includes('\x00')) return false
+      return true
+    })
+    
+    // For certain operators, we need at least one non-empty value
+    if (filteredValues.length === 0 && !['set', 'notSet'].includes(operator)) {
+      // For empty equals filter, return condition that matches nothing
+      if (operator === 'equals') {
+        return sql`FALSE`
+      }
+      return null
+    }
+
+    const value = filteredValues[0]
     
     switch (operator) {
       case 'equals':
-        if (values.length > 1) {
-          return sql`${fieldExpr} IN ${values}`
-        } else {
+        if (filteredValues.length > 1) {
+          return inArray(fieldExpr as AnyColumn, filteredValues)
+        } else if (filteredValues.length === 1) {
           return eq(fieldExpr as AnyColumn, value)
         }
+        return sql`FALSE`
       case 'notEquals':
-        if (values.length > 1) {
-          return sql`${fieldExpr} NOT IN ${values}`
-        } else {
+        if (filteredValues.length > 1) {
+          return notInArray(fieldExpr as AnyColumn, filteredValues)
+        } else if (filteredValues.length === 1) {
           return ne(fieldExpr as AnyColumn, value)
         }
+        return null
       case 'contains':
         return sql`${fieldExpr} ILIKE ${'%' + value + '%'}`
       case 'notContains':
@@ -716,20 +825,176 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       case 'notSet':
         return isNull(fieldExpr as AnyColumn)
       case 'inDateRange':
-        if (values.length >= 2) {
-          return and(
-            gte(fieldExpr as AnyColumn, values[0]), 
-            lte(fieldExpr as AnyColumn, values[1])
-          ) as SQL
+        if (filteredValues.length >= 2) {
+          const startDate = this.normalizeDate(filteredValues[0])
+          const endDate = this.normalizeDate(filteredValues[1])
+          if (startDate && endDate) {
+            return and(
+              gte(fieldExpr as AnyColumn, startDate), 
+              lte(fieldExpr as AnyColumn, endDate)
+            ) as SQL
+          }
         }
         return null
-      case 'beforeDate':
-        return lt(fieldExpr as AnyColumn, value)
-      case 'afterDate':
-        return gt(fieldExpr as AnyColumn, value)
+      case 'beforeDate': {
+        const beforeValue = this.normalizeDate(value)
+        if (beforeValue) {
+          return lt(fieldExpr as AnyColumn, beforeValue)
+        }
+        return null
+      }
+      case 'afterDate': {
+        const afterValue = this.normalizeDate(value)
+        if (afterValue) {
+          return gt(fieldExpr as AnyColumn, afterValue)
+        }
+        return null
+      }
       default:
         return null
     }
+  }
+
+  /**
+   * Build date range condition for time dimensions
+   */
+  private buildDateRangeCondition(
+    fieldExpr: AnyColumn | SQL,
+    dateRange: string | string[]
+  ): SQL | null {
+    if (!dateRange) return null
+
+    // Handle array date range first
+    if (Array.isArray(dateRange) && dateRange.length >= 2) {
+      const startDate = this.normalizeDate(dateRange[0])
+      const endDate = this.normalizeDate(dateRange[1])
+      
+      if (!startDate || !endDate) return null
+      
+      return and(
+        gte(fieldExpr as AnyColumn, startDate),
+        lte(fieldExpr as AnyColumn, endDate)
+      ) as SQL
+    }
+
+    // Handle string date range
+    if (typeof dateRange === 'string') {
+      // Handle relative date expressions
+      const relativeDates = this.parseRelativeDateRange(dateRange)
+      if (relativeDates) {
+        return and(
+          gte(fieldExpr as AnyColumn, relativeDates.start),
+          lte(fieldExpr as AnyColumn, relativeDates.end)
+        ) as SQL
+      }
+
+      // Handle absolute date (single date)
+      const normalizedDate = this.normalizeDate(dateRange)
+      if (!normalizedDate) return null
+      
+      // For single date, create range for the whole day
+      const startOfDay = new Date(normalizedDate)
+      startOfDay.setUTCHours(0, 0, 0, 0)  // Ensure we start at midnight UTC
+      const endOfDay = new Date(normalizedDate)
+      endOfDay.setUTCHours(23, 59, 59, 999)  // Ensure we end at 11:59:59.999 UTC
+      
+      return and(
+        gte(fieldExpr as AnyColumn, startOfDay),
+        lte(fieldExpr as AnyColumn, endOfDay)
+      ) as SQL
+    }
+
+    return null
+  }
+
+  /**
+   * Parse relative date range expressions like "last 7 days", "this month"
+   */
+  private parseRelativeDateRange(dateRange: string): { start: Date; end: Date } | null {
+    const now = new Date()
+    const lowerRange = dateRange.toLowerCase().trim()
+
+    // Handle "last N days" pattern
+    const lastDaysMatch = lowerRange.match(/^last\s+(\d+)\s+days?$/)
+    if (lastDaysMatch) {
+      const days = parseInt(lastDaysMatch[1], 10)
+      const start = new Date(now)
+      start.setDate(now.getDate() - days)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "this month" pattern
+    if (lowerRange === 'this month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "last N months" pattern
+    const lastMonthsMatch = lowerRange.match(/^last\s+(\d+)\s+months?$/)
+    if (lastMonthsMatch) {
+      const months = parseInt(lastMonthsMatch[1], 10)
+      const start = new Date(now.getFullYear(), now.getMonth() - months, 1, 0, 0, 0, 0)
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "this year" pattern
+    if (lowerRange === 'this year') {
+      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "last N years" pattern
+    const lastYearsMatch = lowerRange.match(/^last\s+(\d+)\s+years?$/)
+    if (lastYearsMatch) {
+      const years = parseInt(lastYearsMatch[1], 10)
+      const start = new Date(now.getFullYear() - years, 0, 1, 0, 0, 0, 0)
+      const end = new Date(now)
+      end.setHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    return null
+  }
+
+  /**
+   * Normalize date values to handle both string and Date objects
+   * For PostgreSQL timestamp fields, Drizzle expects Date objects
+   */
+  private normalizeDate(value: any): Date | null {
+    if (!value) return null
+    
+    // If it's already a Date object, validate and return it
+    if (value instanceof Date) {
+      if (!isNaN(value.getTime())) {
+        return value
+      }
+      return null
+    }
+    
+    // If it's a string, try to parse it as a Date
+    if (typeof value === 'string') {
+      const parsed = new Date(value)
+      if (!isNaN(parsed.getTime())) {
+        return parsed
+      }
+      return null
+    }
+    
+    // Try to parse any other type as date
+    const parsed = new Date(value)
+    if (!isNaN(parsed.getTime())) {
+      return parsed
+    }
+    
+    // Invalid date value
+    return null
   }
 
   /**
@@ -777,17 +1042,29 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   /**
    * Build ORDER BY clause
    */
-  private buildOrderBy(query: SemanticQuery): SQL[] {
+  private buildOrderBy(query: SemanticQuery, selectedFields?: string[]): SQL[] {
     if (!query.order || Object.keys(query.order).length === 0) {
       return []
     }
     
     const orderClauses: SQL[] = []
     
+    // Get all selected fields (measures + dimensions + timeDimensions)
+    const allSelectedFields = selectedFields || [
+      ...(query.measures || []),
+      ...(query.dimensions || []),
+      ...(query.timeDimensions?.map(td => td.dimension) || [])
+    ]
+    
     for (const [field, direction] of Object.entries(query.order)) {
-      const fieldRef = sql.identifier(field)
+      // Validate that the field exists in the selected fields
+      if (!allSelectedFields.includes(field)) {
+        throw new Error(`Cannot order by '${field}': field is not selected in the query`)
+      }
+      
       const directionSQL = direction === 'desc' ? sql`DESC` : sql`ASC`
-      orderClauses.push(sql`${fieldRef} ${directionSQL}`)
+      // Use quoted identifier for proper alias reference
+      orderClauses.push(sql`${sql.identifier(field)} ${directionSQL}`)
     }
     
     return orderClauses
@@ -932,5 +1209,6 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       timeDimensions
     }
   }
+
 
 }

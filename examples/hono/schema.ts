@@ -26,6 +26,20 @@ export const departments = pgTable('departments', {
   budget: real('budget')
 })
 
+// Productivity metrics table - daily productivity data per employee
+export const productivity = pgTable('productivity', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  employeeId: integer('employee_id').notNull(),
+  date: timestamp('date').notNull(),
+  linesOfCode: integer('lines_of_code').default(0),
+  pullRequests: integer('pull_requests').default(0),
+  liveDeployments: integer('live_deployments').default(0),
+  daysOff: boolean('days_off').default(false),
+  happinessIndex: integer('happiness_index'), // 1-10 scale
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
 // Analytics Pages table - for storing dashboard configurations
 export const analyticsPages = pgTable('analytics_pages', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -60,24 +74,34 @@ export const analyticsPages = pgTable('analytics_pages', {
 })
 
 // Define relations for better type inference
-export const employeesRelations = relations(employees, ({ one }) => ({
+export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
     fields: [employees.departmentId],
     references: [departments.id]
-  })
+  }),
+  productivityMetrics: many(productivity)
 }))
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
   employees: many(employees)
 }))
 
+export const productivityRelations = relations(productivity, ({ one }) => ({
+  employee: one(employees, {
+    fields: [productivity.employeeId],
+    references: [employees.id]
+  })
+}))
+
 // Export schema for use with Drizzle
 export const schema = { 
   employees, 
   departments,
+  productivity,
   analyticsPages,
   employeesRelations,
-  departmentsRelations
+  departmentsRelations,
+  productivityRelations
 }
 
 export type Schema = typeof schema

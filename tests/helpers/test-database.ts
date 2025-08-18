@@ -15,6 +15,7 @@ import type { DatabaseExecutor } from '../../src/server'
 // Import schema from dedicated schema file
 import { testSchema, employees, departments, productivity, analyticsPages } from './schema'
 import type { TestSchema } from './schema'
+import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData } from './enhanced-test-data'
 
 // Re-export for backward compatibility
 export { testSchema, employees, departments, productivity, analyticsPages }
@@ -350,19 +351,19 @@ export async function setupTestDatabase(db: ReturnType<typeof drizzle>) {
     // Sequence might not exist yet
   }
 
-  // Insert sample data - this should remain static throughout all tests
-  const insertedDepartments = await db.insert(departments).values(sampleDepartments).returning()
+  // Insert enhanced sample data - this should remain static throughout all tests
+  const insertedDepartments = await db.insert(departments).values(enhancedDepartments).returning()
   
   // Update employee department IDs to match actual inserted IDs
-  const updatedEmployees = sampleEmployees.map(emp => ({
+  const updatedEmployees = enhancedEmployees.map(emp => ({
     ...emp,
-    departmentId: insertedDepartments[emp.departmentId - 1]?.id || null
+    departmentId: emp.departmentId ? insertedDepartments.find(d => d.name === enhancedDepartments[emp.departmentId - 1]?.name)?.id || null : null
   }))
   
   const insertedEmployees = await db.insert(employees).values(updatedEmployees).returning()
   
-  // Generate and insert productivity data for testing
-  const productivityData = generateProductivityData(insertedEmployees)
+  // Generate and insert comprehensive productivity data for testing
+  const productivityData = generateComprehensiveProductivityData(insertedEmployees)
   
   // Insert productivity data in smaller batches for test database
   const batchSize = 500
@@ -480,6 +481,12 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
       type: 'boolean',
       sql: employees.active
     },
+    salary: {
+      name: 'salary',
+      title: 'Salary',
+      type: 'number',
+      sql: employees.salary
+    },
     createdAt: {
       name: 'createdAt',
       title: 'Hire Date',
@@ -517,6 +524,13 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
       type: 'avg',
       sql: employees.salary,
       format: 'currency'
+    }
+  },
+  
+  // Define joins to other cubes for multi-cube queries
+  joins: {
+    Productivity: {
+      condition: (ctx) => eq(employees.id, productivity.employeeId)
     }
   }
 })
@@ -727,6 +741,13 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
       title: 'Total Records',
       type: 'count',
       sql: productivity.id
+    }
+  },
+  
+  // Define joins to other cubes for multi-cube queries
+  joins: {
+    Employees: {
+      condition: (ctx) => eq(productivity.employeeId, employees.id)
     }
   }
 })

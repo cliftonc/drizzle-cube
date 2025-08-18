@@ -126,7 +126,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       throw new Error(`Cube '${cubeName}' not found`)
     }
     
-    // Use unified execution which will auto-detect single cube
+    // Use unified execution which will auto-detect single cube and includes validation
     return this.execute(query, securityContext)
   }
 
@@ -238,135 +238,162 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    * Ensures all referenced cubes and fields exist
    */
   validateQuery(query: SemanticQuery): { isValid: boolean; errors: string[] } {
-    const errors: string[] = []
+    return validateQueryAgainstCubes(this.cubes, query)
+  }
+}
 
-    // Track all referenced cubes
-    const referencedCubes = new Set<string>()
+/**
+ * Validate a query against a cubes map
+ * Standalone function that can be used by both compiler and executor
+ */
+export function validateQueryAgainstCubes<TSchema extends Record<string, any>>(
+  cubes: Map<string, CubeWithJoins<TSchema>>,
+  query: SemanticQuery
+): { isValid: boolean; errors: string[] } {
+  const errors: string[] = []
 
-    // Validate measures
-    if (query.measures) {
-      for (const measure of query.measures) {
-        const [cubeName, fieldName] = measure.split('.')
-        
-        if (!cubeName || !fieldName) {
-          errors.push(`Invalid measure format: ${measure}. Expected format: 'CubeName.fieldName'`)
-          continue
-        }
+  // Track all referenced cubes
+  const referencedCubes = new Set<string>()
 
-        referencedCubes.add(cubeName)
+  // Validate measures
+  if (query.measures) {
+    for (const measure of query.measures) {
+      const [cubeName, fieldName] = measure.split('.')
+      
+      if (!cubeName || !fieldName) {
+        errors.push(`Invalid measure format: ${measure}. Expected format: 'CubeName.fieldName'`)
+        continue
+      }
 
-        // Check if cube exists
-        const cube = this.getCube(cubeName)
-        if (!cube) {
-          errors.push(`Cube '${cubeName}' not found (referenced in measure '${measure}')`)
-          continue
-        }
+      referencedCubes.add(cubeName)
 
-        // Check if measure exists on cube
-        if (!cube.measures[fieldName]) {
-          errors.push(`Measure '${fieldName}' not found on cube '${cubeName}'`)
-        }
+      // Check if cube exists
+      const cube = cubes.get(cubeName)
+      if (!cube) {
+        errors.push(`Cube '${cubeName}' not found (referenced in measure '${measure}')`)
+        continue
+      }
+
+      // Check if measure exists on cube
+      if (!cube.measures[fieldName]) {
+        errors.push(`Measure '${fieldName}' not found on cube '${cubeName}'`)
       }
     }
+  }
 
-    // Validate dimensions
-    if (query.dimensions) {
-      for (const dimension of query.dimensions) {
-        const [cubeName, fieldName] = dimension.split('.')
-        
-        if (!cubeName || !fieldName) {
-          errors.push(`Invalid dimension format: ${dimension}. Expected format: 'CubeName.fieldName'`)
-          continue
-        }
+  // Validate dimensions
+  if (query.dimensions) {
+    for (const dimension of query.dimensions) {
+      const [cubeName, fieldName] = dimension.split('.')
+      
+      if (!cubeName || !fieldName) {
+        errors.push(`Invalid dimension format: ${dimension}. Expected format: 'CubeName.fieldName'`)
+        continue
+      }
 
-        referencedCubes.add(cubeName)
+      referencedCubes.add(cubeName)
 
-        // Check if cube exists
-        const cube = this.getCube(cubeName)
-        if (!cube) {
-          errors.push(`Cube '${cubeName}' not found (referenced in dimension '${dimension}')`)
-          continue
-        }
+      // Check if cube exists
+      const cube = cubes.get(cubeName)
+      if (!cube) {
+        errors.push(`Cube '${cubeName}' not found (referenced in dimension '${dimension}')`)
+        continue
+      }
 
-        // Check if dimension exists on cube
-        if (!cube.dimensions[fieldName]) {
-          errors.push(`Dimension '${fieldName}' not found on cube '${cubeName}'`)
-        }
+      // Check if dimension exists on cube
+      if (!cube.dimensions[fieldName]) {
+        errors.push(`Dimension '${fieldName}' not found on cube '${cubeName}'`)
       }
     }
+  }
 
-    // Validate timeDimensions
-    if (query.timeDimensions) {
-      for (const timeDimension of query.timeDimensions) {
-        const [cubeName, fieldName] = timeDimension.dimension.split('.')
-        
-        if (!cubeName || !fieldName) {
-          errors.push(`Invalid timeDimension format: ${timeDimension.dimension}. Expected format: 'CubeName.fieldName'`)
-          continue
-        }
+  // Validate timeDimensions
+  if (query.timeDimensions) {
+    for (const timeDimension of query.timeDimensions) {
+      const [cubeName, fieldName] = timeDimension.dimension.split('.')
+      
+      if (!cubeName || !fieldName) {
+        errors.push(`Invalid timeDimension format: ${timeDimension.dimension}. Expected format: 'CubeName.fieldName'`)
+        continue
+      }
 
-        referencedCubes.add(cubeName)
+      referencedCubes.add(cubeName)
 
-        // Check if cube exists
-        const cube = this.getCube(cubeName)
-        if (!cube) {
-          errors.push(`Cube '${cubeName}' not found (referenced in timeDimension '${timeDimension.dimension}')`)
-          continue
-        }
+      // Check if cube exists
+      const cube = cubes.get(cubeName)
+      if (!cube) {
+        errors.push(`Cube '${cubeName}' not found (referenced in timeDimension '${timeDimension.dimension}')`)
+        continue
+      }
 
-        // Check if dimension exists on cube (timeDimensions reference dimensions)
-        if (!cube.dimensions[fieldName]) {
-          errors.push(`TimeDimension '${fieldName}' not found on cube '${cubeName}' (must be a dimension with time type)`)
-        }
+      // Check if dimension exists on cube (timeDimensions reference dimensions)
+      if (!cube.dimensions[fieldName]) {
+        errors.push(`TimeDimension '${fieldName}' not found on cube '${cubeName}' (must be a dimension with time type)`)
       }
     }
+  }
 
-    // Validate filters
-    if (query.filters) {
-      for (const filter of query.filters) {
-        // Handle both simple filters and logical filters
-        if ('member' in filter) {
-          // Simple filter condition
-          const [cubeName, fieldName] = filter.member.split('.')
-          
-          if (!cubeName || !fieldName) {
-            errors.push(`Invalid filter member format: ${filter.member}. Expected format: 'CubeName.fieldName'`)
-            continue
-          }
-
-          referencedCubes.add(cubeName)
-
-          // Check if cube exists
-          const cube = this.getCube(cubeName)
-          if (!cube) {
-            errors.push(`Cube '${cubeName}' not found (referenced in filter '${filter.member}')`)
-            continue
-          }
-
-          // Check if field exists on cube (can be dimension or measure)
-          if (!cube.dimensions[fieldName] && !cube.measures[fieldName]) {
-            errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)`)
-          }
-        } else if ('and' in filter || 'or' in filter) {
-          // Logical filter - recursively validate
-          const logicalFilters = filter.and || filter.or || []
-          for (const subFilter of logicalFilters) {
-            const subValidation = this.validateQuery({ filters: [subFilter] } as SemanticQuery)
-            errors.push(...subValidation.errors)
-          }
-        }
-      }
+  // Validate filters
+  if (query.filters) {
+    for (const filter of query.filters) {
+      validateFilter(filter, cubes, errors, referencedCubes)
     }
+  }
 
-    // Ensure at least one cube is referenced
-    if (referencedCubes.size === 0) {
-      errors.push('Query must reference at least one cube through measures, dimensions, or filters')
-    }
+  // Ensure at least one cube is referenced
+  if (referencedCubes.size === 0) {
+    errors.push('Query must reference at least one cube through measures, dimensions, or filters')
+  }
 
-    return {
-      isValid: errors.length === 0,
-      errors
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}
+
+/**
+ * Validate a single filter (recursive for logical filters)
+ */
+function validateFilter<TSchema extends Record<string, any>>(
+  filter: any,
+  cubes: Map<string, CubeWithJoins<TSchema>>,
+  errors: string[],
+  referencedCubes: Set<string>
+): void {
+  // Handle logical filters (AND/OR)
+  if ('and' in filter || 'or' in filter) {
+    const logicalFilters = filter.and || filter.or || []
+    for (const subFilter of logicalFilters) {
+      validateFilter(subFilter, cubes, errors, referencedCubes)
     }
+    return
+  }
+
+  // Handle simple filter condition
+  if (!('member' in filter)) {
+    errors.push('Filter must have a member field')
+    return
+  }
+
+  const [cubeName, fieldName] = filter.member.split('.')
+  
+  if (!cubeName || !fieldName) {
+    errors.push(`Invalid filter member format: ${filter.member}. Expected format: 'CubeName.fieldName'`)
+    return
+  }
+
+  referencedCubes.add(cubeName)
+
+  // Check if cube exists
+  const cube = cubes.get(cubeName)
+  if (!cube) {
+    errors.push(`Cube '${cubeName}' not found (referenced in filter '${filter.member}')`)
+    return
+  }
+
+  // Check if field exists on cube (can be dimension or measure)
+  if (!cube.dimensions[fieldName] && !cube.measures[fieldName]) {
+    errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)`)
   }
 }
 

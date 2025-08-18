@@ -175,7 +175,7 @@ describe('Simplified Multi-Cube Dynamic Query Building', () => {
     
     // Should return count for organisation 1
     const count = result.data[0]?.['Employees.count']
-    expect(count).toBe(2) // 2 employees in org 1
+    expect(count).toBe(19) // 19 employees in org 1 (enhanced test data)
     
     // Should only have the count field
     const firstRow = result.data[0]
