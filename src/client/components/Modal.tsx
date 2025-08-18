@@ -57,13 +57,31 @@ const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null
 
+  const getSizeClasses = () => {
+    switch (size) {
+      case 'sm':
+        return 'max-w-md'
+      case 'md':
+        return 'max-w-lg'
+      case 'lg':
+        return 'max-w-2xl'
+      case 'xl':
+        return 'max-w-6xl'
+      case 'full':
+        return 'max-w-7xl'
+      default:
+        return 'max-w-lg'
+    }
+  }
+
   return (
     <div 
-      className="drizzle-cube-modal-backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
       onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div 
-        className={`drizzle-cube-modal ${size ? `drizzle-cube-modal-${size}` : 'drizzle-cube-modal-md'}`}
+        className={`relative bg-white border border-gray-300 rounded-lg shadow-2xl mx-4 ${getSizeClasses()} max-h-[90vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -71,9 +89,9 @@ const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="drizzle-cube-modal-header">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             {title && (
-              <h2 id="modal-title" className="drizzle-cube-modal-title">
+              <h2 id="modal-title" className="text-xl font-semibold text-gray-900">
                 {title}
               </h2>
             )}
@@ -81,7 +99,7 @@ const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="drizzle-cube-modal-close"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2"
                 aria-label="Close modal"
               >
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -93,13 +111,13 @@ const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Content */}
-        <div className="drizzle-cube-modal-content">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="drizzle-cube-modal-footer">
+          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
             {footer}
           </div>
         )}

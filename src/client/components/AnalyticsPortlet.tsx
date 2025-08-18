@@ -153,6 +153,9 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   // Render appropriate chart component
   const renderChart = () => {
     try {
+      // Pass height directly to charts - let ChartContainer handle it
+      const chartHeight = height
+      
       switch (chartType) {
         case 'bar':
           return (
@@ -161,7 +164,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'line':
@@ -171,7 +174,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'area':
@@ -181,7 +184,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'pie':
@@ -191,7 +194,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'scatter':
@@ -201,7 +204,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'radar':
@@ -211,7 +214,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'radialBar':
@@ -221,7 +224,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'treemap':
@@ -231,7 +234,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         case 'table':
@@ -239,7 +242,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
             <DataTable
               data={data}
               queryObject={queryObject}
-              height={height}
+              height={chartHeight}
             />
           )
         default:
@@ -276,7 +279,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       }}
       cubeQuery={query}
     >
-      <div className="w-full h-full flex flex-col">
+      <div className="w-full h-full flex flex-col flex-1" style={{ minHeight: '200px' }}>
         {renderChart()}
       </div>
     </ChartErrorBoundary>

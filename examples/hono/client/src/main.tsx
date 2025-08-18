@@ -5,10 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
 
-// Required CSS for react-grid-layout
-import 'react-grid-layout/css/styles.css'
-import 'react-resizable/css/styles.css'
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

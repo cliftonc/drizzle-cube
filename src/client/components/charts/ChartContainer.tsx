@@ -8,9 +8,27 @@ interface ChartContainerProps {
 
 export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
   try {
+    if (height === "100%") {
+      // For 100% height, make the container fill the available flex space with proper sizing
+      return (
+        <div className="w-full h-full flex-1 flex flex-col" style={{ minHeight: '250px', overflow: 'hidden' }}>
+          <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
+            {children}
+          </ResponsiveContainer>
+        </div>
+      )
+    }
+    
+    // For specific heights, use them directly
+    const containerStyle = {
+      height: typeof height === 'number' ? `${height}px` : height,
+      width: '100%',
+      minHeight: '200px'
+    }
+    
     return (
-      <div className="w-full h-full">
-        <ResponsiveContainer width="100%" height={height}>
+      <div className="w-full flex flex-col" style={{ ...containerStyle, overflow: 'hidden' }}>
+        <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
           {children}
         </ResponsiveContainer>
       </div>

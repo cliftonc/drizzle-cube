@@ -37,12 +37,13 @@ renderer.paragraph = function(token) {
   return `<p class="mb-4 text-gray-600 leading-relaxed">${this.parser.parseInline(token.tokens)}</p>`;
 };
 
-// Override list renderers
+// Override list renderers - properly handle inline formatting
 renderer.list = function(token) {
   const tag = token.ordered ? 'ol' : 'ul';
   const classes = token.ordered 
     ? 'list-decimal list-inside mb-4 space-y-2 text-gray-600 ml-4'
     : 'list-disc list-inside mb-4 space-y-2 text-gray-600 ml-4';
+  
   let body = '';
   for (let j = 0; j < token.items.length; j++) {
     body += this.listitem(token.items[j]);
@@ -52,15 +53,39 @@ renderer.list = function(token) {
 
 renderer.listitem = function(item) {
   let itemBody = '';
+  
   if (item.task) {
-    itemBody += this.checkbox({ checked: !!item.checked });
+    const checked = item.checked ? ' checked=""' : '';
+    itemBody += `<input${checked} disabled="" type="checkbox"> `;
   }
-  if (item.loose && item.tokens.length > 0 && item.tokens[0].type === 'paragraph') {
-    item.tokens[0].text = this.parser.parseInline(item.tokens[0].tokens);
-    itemBody += this.parser.parse(item.tokens, false);
-  } else {
-    itemBody += this.parser.parseInline(item.tokens);
+  
+  // Handle different item structures
+  if (item.tokens && item.tokens.length > 0) {
+    try {
+      // For list items with a single paragraph token, parse it properly
+      if (item.tokens.length === 1 && item.tokens[0].type === 'paragraph') {
+        itemBody += this.parser.parseInline(item.tokens[0].tokens);
+      } else {
+        // For more complex structures, use full parsing
+        itemBody += this.parser.parse(item.tokens, false);
+      }
+    } catch (error) {
+      // If inline parsing fails, try manual basic formatting
+      const text = item.text || '';
+      itemBody += text
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+        .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+    }
+  } else if (item.text) {
+    // Apply basic markdown formatting to text
+    const text = item.text;
+    itemBody += text
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   }
+  
   return `<li class="leading-relaxed">${itemBody}</li>`;
 };
 
@@ -72,6 +97,15 @@ renderer.code = function(token) {
 
 renderer.codespan = function(token) {
   return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded text-sm font-mono">${token.text}</code>`;
+};
+
+// Override inline text formatting
+renderer.strong = function(token) {
+  return `<strong class="font-semibold text-gray-900">${this.parser.parseInline(token.tokens)}</strong>`;
+};
+
+renderer.em = function(token) {
+  return `<em class="italic">${this.parser.parseInline(token.tokens)}</em>`;
 };
 
 // Override blockquote renderer
@@ -233,11 +267,21 @@ export const searchableContent = helpContent.map(item => ({
   // Write the TypeScript file
   fs.writeFileSync(outputFile, tsContent, 'utf-8');
   
-  // Generate sitemap
+  // Generate sitemap with home page
   const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.drizzle-cube.dev/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
 ${helpItems.map(item => `  <url>
-    <loc>https://drizzle-cube.dev/help/${item.slug}</loc>
+    <loc>https://www.drizzle-cube.dev/help/${item.slug}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`).join('\n')}

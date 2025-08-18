@@ -24,14 +24,14 @@ export default function PortletContainer({
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg">
+      <div className="flex items-center justify-between border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg" style={{ padding: '24px' }}>
         <h3 className="font-semibold text-sm truncate">{portlet.title}</h3>
         
         {editable && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 ml-4">
             <button
               onClick={() => onRefresh?.(portlet.id)}
-              className="p-1 hover:bg-gray-200 rounded text-gray-600"
+              className="p-1.5 hover:bg-gray-200 rounded text-gray-600"
               title="Refresh"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,7 +40,7 @@ export default function PortletContainer({
             </button>
             <button
               onClick={() => onEdit?.(portlet)}
-              className="p-1 hover:bg-gray-200 rounded text-gray-600"
+              className="p-1.5 hover:bg-gray-200 rounded text-gray-600"
               title="Edit"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,7 +49,7 @@ export default function PortletContainer({
             </button>
             <button
               onClick={() => onDelete?.(portlet.id)}
-              className="p-1 hover:bg-red-100 rounded text-red-600"
+              className="p-1.5 hover:bg-red-100 rounded text-red-600"
               title="Delete"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -61,7 +61,7 @@ export default function PortletContainer({
       </div>
 
       {/* Content */}
-      <div className="p-3 flex-1 min-h-0">
+      <div className="px-4 pt-6 pb-4 flex-1 min-h-0">
         <AnalyticsPortlet
           query={portlet.query}
           chartType={portlet.chartType}

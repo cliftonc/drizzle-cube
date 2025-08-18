@@ -35,6 +35,9 @@ export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 export { default as ChartConfigEditor } from './components/ChartConfigEditor'
 
+// Query Builder
+export { default as QueryBuilder } from './components/QueryBuilder'
+
 // Data provider and hooks
 export { CubeProvider } from './providers/CubeProvider'
 export { useCubeQuery } from './hooks/useCubeQuery'

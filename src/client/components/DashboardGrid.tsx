@@ -257,20 +257,20 @@ export default function DashboardGrid({
             key={portlet.id}
             data-portlet-id={portlet.id}
             ref={el => portletRefs.current[portlet.id] = el}
-            className="drizzle-cube-portlet"
+            className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
           {/* Portlet Header */}
-          <div className="drizzle-cube-portlet-header">
-            <div className="drizzle-cube-portlet-drag-handle portlet-drag-handle">
-              <h3 className="drizzle-cube-portlet-title">{portlet.title}</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg">
+            <div className="flex items-center gap-2 cursor-move flex-1 min-w-0 portlet-drag-handle">
+              <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
             </div>
-            <div className="drizzle-cube-portlet-controls">
+            <div className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   handlePortletRefresh(portlet.id)
                 }}
-                className="drizzle-cube-portlet-control-button"
+                className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
                 title="Refresh portlet data"
               >
                 <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -282,7 +282,7 @@ export default function DashboardGrid({
                       e.stopPropagation()
                       handleEditPortlet(portlet)
                     }}
-                    className="drizzle-cube-portlet-control-button"
+                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
                     title="Edit portlet"
                   >
                     <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -292,7 +292,7 @@ export default function DashboardGrid({
                       e.stopPropagation()
                       handleDeletePortlet(portlet.id)
                     }}
-                    className="drizzle-cube-portlet-control-button"
+                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
                     title="Delete portlet"
                   >
                     <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -303,7 +303,7 @@ export default function DashboardGrid({
           </div>
 
           {/* Portlet Content */}
-          <div className="drizzle-cube-portlet-content">
+          <div className="flex-1 px-4 py-4 min-h-0 overflow-visible flex flex-col">
             <AnalyticsPortlet
               ref={el => portletComponentRefs.current[portlet.id] = el}
               query={portlet.query}

@@ -96,7 +96,7 @@ export default function BarChart({
     // Calculate dynamic margins based on what's being displayed
     const chartMargins = {
       ...CHART_MARGINS,
-      bottom: showLegend ? 50 : 30 // Reserve space for legend if needed, otherwise minimal space
+      bottom: showLegend ? 70 : 30 // Reserve more space for legend (25px padding + 45px content)
     }
     
     // Validate transformed data
