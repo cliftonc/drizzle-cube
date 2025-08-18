@@ -11,7 +11,7 @@
     "dev:worker": "wrangler dev",
     "build": "npm run build:client && npm run build:worker",
     "build:client": "cd client && npm run build",
-    "build:worker": "tsc --project tsconfig.worker.json && cp dist/src/worker.js dist/worker.js && cp dist/src/analytics-routes.js dist/analytics-routes.js",
+    "build:worker": "tsc --project tsconfig.worker.json && cp dist/src/worker.js dist/worker.js && cp dist/src/analytics-routes.js dist/analytics-routes.js && cp dist/src/dashboard-config.js dist/dashboard-config.js",
     "build:full": "npm run build",
     "start": "node dist/index.js",
     "deploy": "npm run build && wrangler deploy",

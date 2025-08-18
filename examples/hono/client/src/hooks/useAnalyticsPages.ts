@@ -119,6 +119,30 @@ export function useUpdateAnalyticsPage() {
   })
 }
 
+// Reset analytics page to default configuration
+export function useResetAnalyticsPage() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (id: number): Promise<AnalyticsPage> => {
+      const response = await fetch(`${API_BASE}/${id}/reset`, {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to reset analytics page')
+      }
+      
+      const data = await response.json()
+      return data.data
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['analytics-pages'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics-pages', id] })
+    }
+  })
+}
+
 // Delete analytics page
 export function useDeleteAnalyticsPage() {
   const queryClient = useQueryClient()

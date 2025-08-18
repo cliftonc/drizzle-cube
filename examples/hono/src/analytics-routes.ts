@@ -8,6 +8,7 @@ import { eq, and, asc } from 'drizzle-orm'
 import type { DrizzleDatabase } from 'drizzle-cube/server'
 import { analyticsPages } from '../schema'
 import type { Schema } from '../schema'
+import { productivityDashboardConfig } from './dashboard-config'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -128,75 +129,11 @@ analyticsApp.post('/create-example', async (c) => {
   const organisationId = c.get('organisationId')
 
   try {
-    const exampleConfig = {
-      portlets: [
-        {
-          id: 'employee-table',
-          title: 'Employee Details',
-          query: JSON.stringify({
-            dimensions: ['employees.name', 'employees.email', 'departments.name'],
-            measures: ['employees.salary'],
-            limit: 20
-          }),
-          chartType: 'table' as const,
-          chartConfig: {},
-          displayConfig: {},
-          w: 12,
-          h: 5,
-          x: 0,
-          y: 0
-        },
-        {
-          id: 'department-headcount',
-          title: 'Employee Count by Department',
-          query: JSON.stringify({
-            measures: ['employees.count'],
-            dimensions: ['departments.name']
-          }),
-          chartType: 'pie' as const,
-          chartConfig: {
-            x: 'departments.name',
-            y: ['employees.count']
-          },
-          displayConfig: {
-            showLegend: true
-          },
-          w: 6,
-          h: 6,
-          x: 0,
-          y: 5
-        },
-        {
-          id: 'salary-by-department',
-          title: 'Average Salary by Department',
-          query: JSON.stringify({
-            measures: ['employees.avgSalary'],
-            dimensions: ['departments.name']
-          }),
-          chartType: 'bar' as const,
-          chartConfig: {
-            x: 'departments.name',
-            y: ['employees.avgSalary']
-          },
-          displayConfig: {
-            showLegend: false
-          },
-          w: 6,
-          h: 6,
-          x: 6,
-          y: 5
-        }
-      ]
-    }
-
     const newPage = await db
       .insert(analyticsPages)
       .values({
-        name: 'Example Dashboard',
-        description: 'Default dashboard with employee and department analytics',
-        order: 0,
-        organisationId,
-        config: exampleConfig
+        ...productivityDashboardConfig,
+        organisationId
       })
       .returning()
 
@@ -261,6 +198,46 @@ analyticsApp.put('/:id', async (c) => {
   } catch (error) {
     console.error('Error updating analytics page:', error)
     return c.json({ error: 'Failed to update analytics page' }, 500)
+  }
+})
+
+// Reset analytics page to default configuration
+analyticsApp.post('/:id/reset', async (c) => {
+  const db = c.get('db')
+  const organisationId = c.get('organisationId')
+  const id = parseInt(c.req.param('id'))
+
+  if (isNaN(id)) {
+    return c.json({ error: 'Invalid page ID' }, 400)
+  }
+
+  try {
+    const resetPage = await db
+      .update(analyticsPages)
+      .set({
+        ...productivityDashboardConfig,
+        organisationId,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(analyticsPages.id, id),
+          eq(analyticsPages.organisationId, organisationId)
+        )
+      )
+      .returning()
+
+    if (resetPage.length === 0) {
+      return c.json({ error: 'Analytics page not found' }, 404)
+    }
+
+    return c.json({ 
+      data: resetPage[0],
+      message: 'Dashboard reset to default configuration successfully' 
+    })
+  } catch (error) {
+    console.error('Error resetting analytics page:', error)
+    return c.json({ error: 'Failed to reset analytics page' }, 500)
   }
 })
 
