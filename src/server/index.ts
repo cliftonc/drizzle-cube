@@ -94,7 +94,6 @@ export type {
 // Export drizzle types
 export type {
   Cube,
-  CubeWithJoins,
   Dimension,
   Measure,
   QueryContext,

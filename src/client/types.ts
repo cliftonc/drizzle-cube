@@ -42,7 +42,6 @@ export interface PortletConfig {
   title: string
   query: string // JSON string of cube query
   chartType: ChartType
-  labelField?: string // For pie charts
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   w: number // Grid width
@@ -102,7 +101,6 @@ export interface CubeResultSet {
 export interface AnalyticsPortletProps {
   query: string
   chartType: ChartType
-  labelField?: string
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   height?: string | number
@@ -125,7 +123,6 @@ export interface ChartProps {
   displayConfig?: ChartDisplayConfig
   queryObject?: CubeQuery
   height?: string | number
-  labelField?: string // For pie charts
 }
 
 // Grid layout types (simplified)

@@ -14,10 +14,10 @@ import type {
 } from './types'
 import { createDatabaseExecutor } from './types'
 import { QueryExecutor } from './executor'
-import type { CubeWithJoins } from './types-drizzle'
+import type { Cube } from './types-drizzle'
 
 export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<string, any>> {
-  private cubes: Map<string, CubeWithJoins<TSchema>> = new Map()
+  private cubes: Map<string, Cube<TSchema>> = new Map()
   private dbExecutor?: DatabaseExecutor<TSchema>
 
   constructor(options?: {
@@ -62,28 +62,28 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Register a simplified cube with dynamic query building
    */
-  registerCube(cube: CubeWithJoins<TSchema>): void {
+  registerCube(cube: Cube<TSchema>): void {
     this.cubes.set(cube.name, cube)
   }
 
   /**
    * Get a cube by name
    */
-  getCube(name: string): CubeWithJoins<TSchema> | undefined {
+  getCube(name: string): Cube<TSchema> | undefined {
     return this.cubes.get(name)
   }
 
   /**
    * Get all registered cubes
    */
-  getAllCubes(): CubeWithJoins<TSchema>[] {
+  getAllCubes(): Cube<TSchema>[] {
     return Array.from(this.cubes.values())
   }
 
   /**
    * Get all cubes as a Map for multi-cube queries
    */
-  getAllCubesMap(): Map<string, CubeWithJoins<TSchema>> {
+  getAllCubesMap(): Map<string, Cube<TSchema>> {
     return this.cubes
   }
 
@@ -140,7 +140,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Generate cube metadata for API responses from cubes
    */
-  private generateCubeMetadata(cube: CubeWithJoins<TSchema>): CubeMetadata {
+  private generateCubeMetadata(cube: Cube<TSchema>): CubeMetadata {
     const measures: MeasureMetadata[] = Object.entries(cube.measures).map(([key, measure]) => ({
       name: `${cube.name}.${key}`,
       title: measure.title || key,
@@ -247,7 +247,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
  * Standalone function that can be used by both compiler and executor
  */
 export function validateQueryAgainstCubes<TSchema extends Record<string, any>>(
-  cubes: Map<string, CubeWithJoins<TSchema>>,
+  cubes: Map<string, Cube<TSchema>>,
   query: SemanticQuery
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
@@ -356,7 +356,7 @@ export function validateQueryAgainstCubes<TSchema extends Record<string, any>>(
  */
 function validateFilter<TSchema extends Record<string, any>>(
   filter: any,
-  cubes: Map<string, CubeWithJoins<TSchema>>,
+  cubes: Map<string, Cube<TSchema>>,
   errors: string[],
   referencedCubes: Set<string>
 ): void {

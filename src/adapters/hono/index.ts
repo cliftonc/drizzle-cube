@@ -12,6 +12,9 @@ import type {
   DatabaseExecutor,
   DrizzleDatabase
 } from '../../server'
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import type { MySql2Database } from 'drizzle-orm/mysql2'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 export interface HonoAdapterOptions<TSchema extends Record<string, any> = Record<string, any>> {
   /**
@@ -22,8 +25,9 @@ export interface HonoAdapterOptions<TSchema extends Record<string, any> = Record
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
+   * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
-  drizzle: DrizzleDatabase<TSchema>
+  drizzle: PostgresJsDatabase<TSchema> | MySql2Database<TSchema> | BetterSQLite3Database<TSchema> | DrizzleDatabase<TSchema>
   
   /**
    * Database schema for type inference (RECOMMENDED)

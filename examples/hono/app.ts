@@ -8,13 +8,17 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { SemanticLayerCompiler } from '../../src/server'
-import { createCubeApp } from '../../src/adapters/hono'
-import type { SecurityContext } from '../../src/server'
+import { SemanticLayerCompiler } from 'drizzle-cube/server'
+import { createCubeApp } from 'drizzle-cube/adapters/hono'
+import type { SecurityContext, DrizzleDatabase } from 'drizzle-cube/server'
 import { schema } from './schema'
 import { allCubes } from './cubes'
 import type { Schema } from './schema'
 import analyticsApp from './src/analytics-routes'
+
+interface Variables {
+  db: DrizzleDatabase<Schema>
+}
 
 // Database connection
 const connectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
@@ -52,7 +56,7 @@ async function getSecurityContext(c: any): Promise<SecurityContext> {
   // For this example, we'll use a simple approach
   try {
     // Mock JWT decode - replace with your actual JWT library
-    const token = authHeader.replace('Bearer ', '')
+    authHeader.replace('Bearer ', '')
     
     // For demo purposes, assume organisationId is in the token
     // In real implementation, decode JWT and extract user context
@@ -71,7 +75,7 @@ async function getSecurityContext(c: any): Promise<SecurityContext> {
 }
 
 // Create the main Hono app
-const app = new Hono()
+const app = new Hono<{ Variables: Variables }>()
 
 // Add middleware
 app.use('*', logger())
@@ -140,15 +144,18 @@ app.get('/api/docs', (c) => {
     examples: {
       'Employee count by department': {
         measures: ['Employees.count'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Departments.name'],
+        cubes: ['Employees', 'Departments']
       },
       'Salary analytics': {
         measures: ['Employees.avgSalary', 'Employees.totalSalary'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Departments.name'],
+        cubes: ['Employees', 'Departments']
       },
       'Active employees only': {
         measures: ['Employees.activeCount'],
-        dimensions: ['Employees.departmentName'],
+        dimensions: ['Departments.name'],
+        cubes: ['Employees', 'Departments'],
         filters: [{
           member: 'Employees.isActive',
           operator: 'equals',

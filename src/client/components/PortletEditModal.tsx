@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { ChartBarIcon, ChartPieIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
@@ -26,30 +27,57 @@ const CHART_TYPES = [
 
 const SAMPLE_QUERIES = [
   {
-    name: 'People by Active Status',
+    name: 'Employee Count by Department',
     query: JSON.stringify({
-      "measures": ["People.count", "People.totalFte"],
-      "dimensions": ["People.active"],
-      "order": { "People.count": "desc" }
+      "measures": ["Employees.count"],
+      "dimensions": ["Departments.name"],
+      "order": { "Employees.count": "desc" }
     }, null, 2)
   },
   {
-    name: 'Budget Cost Analysis',
+    name: 'Employee Hiring Trends',
     query: JSON.stringify({
-      "measures": ["Budgets.totalCost", "Budgets.totalOpex", "Budgets.totalCapex"],
-      "dimensions": ["Budgets.budgetStatus", "Budgets.costCategory"],
-      "filters": [
-        { "member": "Budgets.totalCost", "operator": "gt", "values": [0] }
-      ],
-      "order": { "Budgets.totalCost": "desc" }
+      "measures": ["Employees.count"],
+      "timeDimensions": [{
+        "dimension": "Employees.createdAt",
+        "granularity": "month"
+      }],
+      "order": { "Employees.createdAt": "asc" }
     }, null, 2)
   },
   {
-    name: 'Department Overview',
+    name: 'Department Budget Analysis',
     query: JSON.stringify({
-      "measures": ["Departments.count", "Departments.activeDepartments"],
-      "dimensions": ["Departments.active", "Departments.githubLinked"],
-      "order": { "Departments.count": "desc" }
+      "measures": ["Departments.totalBudget", "Departments.avgBudget"],
+      "dimensions": ["Departments.name"],
+      "order": { "Departments.totalBudget": "desc" }
+    }, null, 2)
+  },
+  {
+    name: 'Daily Productivity Trends',
+    query: JSON.stringify({
+      "measures": ["Productivity.avgLinesOfCode", "Productivity.totalPullRequests"],
+      "timeDimensions": [{
+        "dimension": "Productivity.date",
+        "granularity": "day"
+      }],
+      "order": { "Productivity.date": "asc" }
+    }, null, 2)
+  },
+  {
+    name: 'Happiness by Department',
+    query: JSON.stringify({
+      "measures": ["Productivity.avgHappinessIndex", "Productivity.workingDaysCount"],
+      "dimensions": ["Departments.name"],
+      "order": { "Productivity.avgHappinessIndex": "desc" }
+    }, null, 2)
+  },
+  {
+    name: 'Employee Salary Overview',
+    query: JSON.stringify({
+      "measures": ["Employees.count", "Employees.avgSalary", "Employees.totalSalary"],
+      "dimensions": ["Employees.isActive"],
+      "order": { "Employees.avgSalary": "desc" }
     }, null, 2)
   }
 ]
@@ -66,7 +94,6 @@ export default function PortletEditModal({
   const [formTitle, setFormTitle] = useState('')
   const [query, setQuery] = useState('')
   const [chartType, setChartType] = useState<ChartType>('bar')
-  const [labelField, setLabelField] = useState('')
   const [isValidating, setIsValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ isValid: boolean; message: string } | null>(null)
   const [lastValidatedQuery, setLastValidatedQuery] = useState<string>('')
@@ -78,6 +105,40 @@ export default function PortletEditModal({
   // Sensible defaults: slightly larger than 1/3 width with good aspect ratio
   const defaultWidth = 5
   const defaultHeight = 4
+
+  // Helper function to get field styling based on type
+  const getFieldStyling = (field: string) => {
+    const isTimeDimension = availableFields?.timeDimensions?.includes(field) || false
+    const isDimension = availableFields?.dimensions?.includes(field) || false
+    const isMeasure = availableFields?.measures?.includes(field) || false
+
+    if (isTimeDimension) {
+      return {
+        IconComponent: CalendarIcon,
+        bgStyle: { backgroundColor: '#dbeafe', color: '#1e40af' },
+        hoverBgColor: '#bfdbfe'
+      }
+    } else if (isDimension) {
+      return {
+        IconComponent: ChartBarIcon,
+        bgStyle: { backgroundColor: '#fef3c7', color: '#92400e' },
+        hoverBgColor: '#fde68a'
+      }
+    } else if (isMeasure) {
+      return {
+        IconComponent: ChartPieIcon,
+        bgStyle: { backgroundColor: '#dcfce7', color: '#166534' },
+        hoverBgColor: '#bbf7d0'
+      }
+    }
+    
+    // Default fallback
+    return {
+      IconComponent: ChartBarIcon,
+      bgStyle: { backgroundColor: '#f3f4f6', color: '#374151' },
+      hoverBgColor: '#e5e7eb'
+    }
+  }
 
   // Initialize form values when modal opens or portlet changes
   useEffect(() => {
@@ -94,7 +155,6 @@ export default function PortletEditModal({
         })()
         setQuery(formattedQuery)
         setChartType(portlet.chartType)
-        setLabelField(portlet.labelField || '')
         setChartConfig(portlet.chartConfig || { xAxis: [], yAxis: [], series: [] })
         setDisplayConfig({
           showLegend: portlet.displayConfig?.showLegend ?? true,
@@ -114,7 +174,6 @@ export default function PortletEditModal({
         setFormTitle('')
         setQuery('')
         setChartType('bar')
-        setLabelField('')
         setChartConfig({ xAxis: [], yAxis: [], series: [] })
         setDisplayConfig({ showLegend: true, stackedBarChart: false })
         setOriginalQuery('')
@@ -154,7 +213,6 @@ export default function PortletEditModal({
         title: formTitle.trim(),
         query: query.trim(),
         chartType,
-        labelField: chartType === 'pie' ? labelField.trim() : undefined,
         chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
         displayConfig: displayConfig,
         w: portlet.w || defaultWidth,
@@ -166,7 +224,6 @@ export default function PortletEditModal({
         title: formTitle.trim(),
         query: query.trim(),
         chartType,
-        labelField: chartType === 'pie' ? labelField.trim() : undefined,
         chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
         displayConfig: displayConfig,
         w: defaultWidth,
@@ -341,7 +398,6 @@ export default function PortletEditModal({
     setFormTitle('')
     setQuery('')
     setChartType('bar')
-    setLabelField('')
     setChartConfig({ xAxis: [], yAxis: [], series: [] })
     setDisplayConfig({ showLegend: true, stackedBarChart: false })
     setOriginalQuery('')
@@ -497,26 +553,6 @@ export default function PortletEditModal({
               </select>
             </div>
 
-            {/* Label Field - only show for pie charts */}
-            {chartType === 'pie' && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Label Field
-                  <span className="text-xs font-normal text-gray-500 ml-2">For pie chart labels</span>
-                </label>
-                <input
-                  type="text"
-                  value={labelField}
-                  onChange={(e) => setLabelField(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., People.active, Departments.name"
-                  title="Specify the dimension field to use for pie chart labels"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Enter the exact dimension field from your query that should be used for pie chart labels
-                </p>
-              </div>
-            )}
 
             {/* Query Editor */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -563,7 +599,7 @@ export default function PortletEditModal({
                 </div>
               </div>
             ) : (
-              <div style={{ flex: 1, overflowY: 'auto' }} className="border border-gray-300 rounded-lg bg-white p-3">
+              <div style={{ flex: 1, overflowY: 'auto' }} className="rounded-lg bg-white p-3">
                 {/* Available Fields */}
                 {unassignedFields && (unassignedFields.dimensions.length > 0 || unassignedFields.timeDimensions.length > 0 || unassignedFields.measures.length > 0) && (
                   <div className="mb-3">
@@ -574,9 +610,12 @@ export default function PortletEditModal({
                           key={dim}
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs cursor-move hover:bg-blue-200 border"
+                          className="rounded text-xs cursor-move border"
+                          style={{ padding: '8px 12px', backgroundColor: '#fef3c7', color: '#92400e' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}
                         >
-                          📊 {dim}
+                          <span className="flex items-center"><ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{dim}</span></span>
                         </div>
                       ))}
                       {unassignedFields.timeDimensions.map((dim: string) => (
@@ -584,9 +623,12 @@ export default function PortletEditModal({
                           key={dim}
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                          className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs cursor-move hover:bg-purple-200 border"
+                          className="rounded text-xs cursor-move border"
+                          style={{ padding: '8px 12px', backgroundColor: '#dbeafe', color: '#1e40af' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bfdbfe'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
                         >
-                          📅 {dim}
+                          <span className="flex items-center"><CalendarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{dim}</span></span>
                         </div>
                       ))}
                       {unassignedFields.measures.map((measure: string) => (
@@ -594,9 +636,12 @@ export default function PortletEditModal({
                           key={measure}
                           draggable
                           onDragStart={(e) => handleDragStart(e, measure, 'available')}
-                          className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs cursor-move hover:bg-green-200 border"
+                          className="rounded text-xs cursor-move border"
+                          style={{ padding: '8px 12px', backgroundColor: '#dcfce7', color: '#166534' }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
                         >
-                          📈 {measure}
+                          <span className="flex items-center"><ChartPieIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{measure}</span></span>
                         </div>
                       ))}
                     </div>
@@ -616,16 +661,18 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {(chartConfig.xAxis || []).map((field) => {
-                          const isTimeDimension = availableFields?.timeDimensions?.includes(field) || false
-                          const icon = isTimeDimension ? '📅' : '📊'
+                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'xAxis')}
-                              className="px-2 py-1 bg-blue-200 text-blue-900 rounded text-xs cursor-move hover:bg-blue-300 border flex items-center justify-between"
+                              className="rounded text-xs cursor-move border flex items-center justify-between"
+                              style={{ padding: '8px 12px', ...bgStyle }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
                             >
-                              <span>{icon} {field}</span>
+                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'xAxis')}
@@ -646,7 +693,7 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Y-Axis (Values & Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    📈 Measures = numeric values • 📊 Dimensions = separate series
+                    <span className="flex items-center"><ChartPieIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Measures = numeric values • <ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Dimensions = separate series</span>
                   </div>
                   <div
                     className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
@@ -658,35 +705,23 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {(chartConfig.yAxis || []).map((field) => {
-                          const isTimeDimension = availableFields?.timeDimensions?.includes(field) || false
-                          const isDimension = availableFields?.dimensions?.includes(field) || false
-                          
-                          let icon = '📈'
-                          let bgClass = 'bg-green-200 text-green-900 hover:bg-green-300'
-                          let removeClass = 'text-green-700'
-                          
-                          if (isTimeDimension) {
-                            icon = '📅'
-                            bgClass = 'bg-purple-200 text-purple-900 hover:bg-purple-300'
-                            removeClass = 'text-purple-700'
-                          } else if (isDimension) {
-                            icon = '📊'
-                            bgClass = 'bg-blue-200 text-blue-900 hover:bg-blue-300'
-                            removeClass = 'text-blue-700'
-                          }
+                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
                           
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'yAxis')}
-                              className={`px-2 py-1 ${bgClass} rounded text-xs cursor-move border flex items-center justify-between`}
+                              className="rounded text-xs cursor-move border flex items-center justify-between"
+                              style={{ padding: '8px 12px', ...bgStyle }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
                             >
-                              <span>{icon} {field}</span>
+                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'yAxis')}
-                                className={`${removeClass} hover:text-red-600 ml-2`}
+                                className="text-gray-600 hover:text-red-600 ml-2"
                                 title="Remove from Y-axis"
                               >
                                 ✕
@@ -703,7 +738,7 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Series (Split into Multiple Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    📊 Drop dimensions here to create separate data series
+                    <span className="flex items-center"><ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Drop dimensions here to create separate data series</span>
                   </div>
                   <div
                     className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
@@ -715,16 +750,18 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {chartConfig.series.map((field) => {
-                          const isTimeDimension = availableFields?.timeDimensions?.includes(field) || false
-                          const icon = isTimeDimension ? '📅' : '📊'
+                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'series')}
-                              className="px-2 py-1 bg-orange-200 text-orange-900 rounded text-xs cursor-move hover:bg-orange-300 border flex items-center justify-between"
+                              className="rounded text-xs cursor-move border flex items-center justify-between"
+                              style={{ padding: '8px 12px', ...bgStyle }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
                             >
-                              <span>{icon} {field}</span>
+                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'series')}
@@ -744,7 +781,7 @@ export default function PortletEditModal({
                 {/* Display Options */}
                 <div>
                   <h4 className="text-xs font-semibold text-gray-700 mb-2">Display Options</h4>
-                  <div className="border border-gray-300 rounded-lg bg-gray-50 p-2 space-y-2">
+                  <div className="rounded-lg bg-gray-50 p-2 space-y-2">
                     <label className="flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -867,13 +904,31 @@ export default function PortletEditModal({
         {!isEditMode && (
           <div>
             <label className="block text-sm text-gray-600 mb-2">Sample Queries (click to use)</label>
-            <div className="flex flex-wrap gap-2">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
               {SAMPLE_QUERIES.map((sample, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => handleSampleQuery(sample.query)}
-                  className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    margin: '2px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e5e7eb'
+                    e.currentTarget.style.borderColor = '#9ca3af'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6'
+                    e.currentTarget.style.borderColor = '#d1d5db'
+                  }}
                 >
                   {sample.name}
                 </button>

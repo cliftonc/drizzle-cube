@@ -7,14 +7,15 @@ const testData = [
 ]
 
 export default function SimpleChartTest() {
-  // Simple test query matching our API data structure
+  // Simple test query matching our API data structure (using cube joins)
   const testQuery = JSON.stringify({
     measures: ['Employees.count'],
-    dimensions: ['Employees.departmentName']
+    dimensions: ['Departments.name'],
+    cubes: ['Employees', 'Departments']
   })
 
   const chartConfig = {
-    x: 'Employees.departmentName',
+    x: 'Departments.name',
     y: ['Employees.count']
   }
 

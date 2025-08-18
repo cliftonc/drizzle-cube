@@ -43,7 +43,6 @@ import type {
 
 import type { 
   Cube,
-  CubeWithJoins,
   QueryContext
 } from './types-drizzle'
 
@@ -62,7 +61,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Unified query execution method that handles both single and multi-cube queries
    */
   async execute(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
@@ -256,7 +255,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Execute multi-cube query using JOIN resolution
    */
   private async executeMultiCube(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
@@ -301,7 +300,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Generate raw SQL for multi-cube queries without execution
    */
   async generateMultiCubeSQL(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
@@ -321,7 +320,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Build multi-cube query (extracted from executeMultiCube for reuse)
    */
   private buildMultiCubeQuery(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery, 
     securityContext: SecurityContext
   ) {
@@ -1040,13 +1039,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
 
 
   /**
-   * Build ORDER BY clause
+   * Build ORDER BY clause with automatic time dimension sorting
    */
   private buildOrderBy(query: SemanticQuery, selectedFields?: string[]): SQL[] {
-    if (!query.order || Object.keys(query.order).length === 0) {
-      return []
-    }
-    
     const orderClauses: SQL[] = []
     
     // Get all selected fields (measures + dimensions + timeDimensions)
@@ -1056,15 +1051,35 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       ...(query.timeDimensions?.map(td => td.dimension) || [])
     ]
     
-    for (const [field, direction] of Object.entries(query.order)) {
-      // Validate that the field exists in the selected fields
-      if (!allSelectedFields.includes(field)) {
-        throw new Error(`Cannot order by '${field}': field is not selected in the query`)
+    // First, add explicit ordering from query.order
+    if (query.order && Object.keys(query.order).length > 0) {
+      for (const [field, direction] of Object.entries(query.order)) {
+        // Validate that the field exists in the selected fields
+        if (!allSelectedFields.includes(field)) {
+          throw new Error(`Cannot order by '${field}': field is not selected in the query`)
+        }
+        
+        const directionSQL = direction === 'desc' ? sql`DESC` : sql`ASC`
+        // Use quoted identifier for proper alias reference
+        orderClauses.push(sql`${sql.identifier(field)} ${directionSQL}`)
       }
+    }
+    
+    // Then, automatically add time dimension sorting for any time dimensions not explicitly ordered
+    if (query.timeDimensions && query.timeDimensions.length > 0) {
+      const explicitlyOrderedFields = new Set(Object.keys(query.order || {}))
       
-      const directionSQL = direction === 'desc' ? sql`DESC` : sql`ASC`
-      // Use quoted identifier for proper alias reference
-      orderClauses.push(sql`${sql.identifier(field)} ${directionSQL}`)
+      // Sort time dimensions by their dimension name to ensure consistent ordering
+      const sortedTimeDimensions = [...query.timeDimensions].sort((a, b) => 
+        a.dimension.localeCompare(b.dimension)
+      )
+      
+      for (const timeDim of sortedTimeDimensions) {
+        if (!explicitlyOrderedFields.has(timeDim.dimension)) {
+          // Automatically sort time dimensions in ascending order (earliest to latest)
+          orderClauses.push(sql`${sql.identifier(timeDim.dimension)} ASC`)
+        }
+      }
     }
     
     return orderClauses

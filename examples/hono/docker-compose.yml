@@ -24,29 +24,8 @@ services:
     networks:
       - drizzle-cube-network
 
-  # Optional: PostgreSQL Admin Interface
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: drizzle-cube-pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@drizzlecube.local
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-    ports:
-      - "5050:80"  # Non-default port
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - drizzle-cube-network
-
 volumes:
   postgres_data:
-    driver: local
-  pgadmin_data:
     driver: local
 
 networks:

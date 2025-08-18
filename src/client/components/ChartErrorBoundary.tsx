@@ -1,4 +1,5 @@
 import React, { Component, ReactNode } from 'react'
+import { ArrowPathIcon } from '@heroicons/react/24/outline'
 
 interface Props {
   children: ReactNode
@@ -119,7 +120,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
             onClick={this.handleReset}
             className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
           >
-            🔄 Try Again
+            <ArrowPathIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
           </button>
         </div>
       )

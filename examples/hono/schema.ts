@@ -30,6 +30,7 @@ export const departments = pgTable('departments', {
 export const productivity = pgTable('productivity', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   employeeId: integer('employee_id').notNull(),
+  departmentId: integer('department_id'),
   date: timestamp('date').notNull(),
   linesOfCode: integer('lines_of_code').default(0),
   pullRequests: integer('pull_requests').default(0),

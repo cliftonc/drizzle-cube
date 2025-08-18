@@ -105,8 +105,8 @@ function MyCharts() {
       />
       
       <PieChart 
-        data={data} 
-        labelField="category"
+        data={data}
+        chartConfig={{ x: 'category', y: ['value'] }}
         height={300}
       />
       
@@ -165,7 +165,6 @@ interface PortletConfig {
   chartType: ChartType
   chartConfig: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
-  labelField?: string     // For pie charts
   w: number              // Grid width (1-12)
   h: number              // Grid height
   x: number              // Grid X position

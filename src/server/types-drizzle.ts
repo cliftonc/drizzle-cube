@@ -61,6 +61,9 @@ export interface Cube<TSchema extends Record<string, any> = Record<string, any>>
   
   /** Cube measures using direct column references */
   measures: Record<string, Measure<TSchema>>
+  
+  /** Optional joins to other cubes for multi-cube queries */
+  joins?: Record<string, CubeJoin<TSchema>>
 }
 
 /**
@@ -169,14 +172,6 @@ export interface CubeJoin<TSchema extends Record<string, any> = Record<string, a
   relationship: 'belongsTo' | 'hasOne' | 'hasMany'
 }
 
-/**
- * Enhanced Cube with join definitions for multi-cube support
- */
-export interface CubeWithJoins<TSchema extends Record<string, any> = Record<string, any>> 
-  extends Cube<TSchema> {
-  /** Joins to other cubes for multi-cube queries */
-  joins?: Record<string, CubeJoin<TSchema>>
-}
 
 /**
  * Helper to resolve SQL expressions

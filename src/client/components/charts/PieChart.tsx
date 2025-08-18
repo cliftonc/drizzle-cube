@@ -9,7 +9,6 @@ import type { ChartProps } from '../../types'
 export default function PieChart({ 
   data, 
   chartConfig,
-  labelField,
   displayConfig = {},
   queryObject,
   height = "100%" 
@@ -35,90 +34,81 @@ export default function PieChart({
 
     let pieData: Array<{name: string, value: number}>
 
-    // Handle different pie chart configurations
+    // Validate chartConfig - support both legacy and new formats
+    let xAxisField: string
+    let yAxisFields: string[]
+    let seriesFields: string[] = []
+    
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format - use chart config
-      const xAxisField = chartConfig.xAxis[0]
-      const yAxisFields = chartConfig.yAxis
-      const seriesFields = chartConfig.series || []
+      // New format
+      xAxisField = chartConfig.xAxis[0]
+      yAxisFields = chartConfig.yAxis
+      seriesFields = chartConfig.series || []
+    } else if (chartConfig?.x && chartConfig?.y) {
+      // Legacy format
+      xAxisField = chartConfig.x
+      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
+    } else {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart</div>
+          </div>
+        </div>
+      )
+    }
 
-      if (seriesFields.length > 0) {
-        // Use series-based transformation for dimension-based pie slices
-        const { data: chartData } = transformChartDataWithSeries(
-          data, 
-          xAxisField, 
-          yAxisFields, 
-          queryObject,
-          seriesFields
-        )
-        
-        // Convert series data to pie format
-        pieData = []
-        if (chartData.length > 0) {
-          const firstRow = chartData[0]
-          Object.keys(firstRow).forEach(key => {
-            if (key !== 'name' && typeof firstRow[key] === 'number') {
-              pieData.push({
-                name: String(key),
-                value: firstRow[key]
-              })
-            }
-          })
-        }
-      } else {
-        // Standard measure-based pie chart
-        const granularity = getFieldGranularity(queryObject, xAxisField)
-        pieData = data.map(item => ({
-          name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
-          value: typeof item[yAxisFields[0]] === 'string' 
-            ? parseFloat(item[yAxisFields[0]]) 
-            : (item[yAxisFields[0]] || 0)
-        }))
+    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
+      return (
+        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">Configuration Error</div>
+            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (seriesFields.length > 0) {
+      // Use series-based transformation for dimension-based pie slices
+      const { data: chartData } = transformChartDataWithSeries(
+        data, 
+        xAxisField, 
+        yAxisFields, 
+        queryObject,
+        seriesFields
+      )
+      
+      // Convert series data to pie format
+      pieData = []
+      if (chartData.length > 0) {
+        const firstRow = chartData[0]
+        Object.keys(firstRow).forEach(key => {
+          if (key !== 'name' && typeof firstRow[key] === 'number') {
+            pieData.push({
+              name: String(key),
+              value: firstRow[key]
+            })
+          }
+        })
       }
     } else {
-      // Legacy format or auto-detection
-      const firstRow = data[0]
-      const keys = Object.keys(firstRow)
-      
-      // Use labelField if provided, otherwise try to find a suitable field
-      const nameField = labelField || keys.find(key => 
-        typeof firstRow[key] === 'string' || 
-        key.toLowerCase().includes('name') ||
-        key.toLowerCase().includes('label')
-      ) || keys[0]
-
-      // Find a numeric field for values
-      const valueField = keys.find(key => 
-        typeof firstRow[key] === 'number' && key !== nameField
-      ) || keys[1]
-
-      if (!valueField) {
-        return (
-          <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
-            <div className="text-center">
-              <div className="text-sm font-semibold mb-1">Configuration Error</div>
-              <div className="text-xs">No numeric field found for pie chart values</div>
-            </div>
-          </div>
-        )
-      }
-
-      // Transform data for pie chart
+      // Standard measure-based pie chart
+      const granularity = getFieldGranularity(queryObject, xAxisField)
       pieData = data.map(item => {
-        let name = item[nameField]
+        let name = formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown'
         // Handle boolean values with better labels
-        if (typeof name === 'boolean') {
-          name = name ? 'Active' : 'Inactive'
+        if (typeof item[xAxisField] === 'boolean') {
+          name = item[xAxisField] ? 'Active' : 'Inactive'
         } else if (name === 'true' || name === 'false') {
           name = name === 'true' ? 'Active' : 'Inactive'
-        } else {
-          name = String(name)
         }
         return {
           name,
-          value: typeof item[valueField] === 'string' 
-            ? parseFloat(item[valueField]) 
-            : (item[valueField] || 0)
+          value: typeof item[yAxisFields[0]] === 'string' 
+            ? parseFloat(item[yAxisFields[0]]) 
+            : (item[yAxisFields[0]] || 0)
         }
       })
     }

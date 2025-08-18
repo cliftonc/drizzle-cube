@@ -6,6 +6,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { Responsive, WidthProvider } from 'react-grid-layout'
+import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
 import type { DashboardConfig, PortletConfig } from '../types'
@@ -181,7 +182,7 @@ export default function DashboardGrid({
       <>
         <div className="flex justify-center items-center min-h-[50vh]">
           <div className="text-center">
-            <div className="text-4xl mb-4">📊</div>
+            <ChartBarIcon style={{ width: '64px', height: '64px', color: '#9ca3af', margin: '0 auto 16px auto' }} />
             <h3 className="text-lg font-semibold mb-2">No Portlets</h3>
             <p className="text-sm text-gray-600 mb-4">Add your first portlet to start visualizing your data</p>
             {editable && (
@@ -270,9 +271,7 @@ export default function DashboardGrid({
                 className="drizzle-cube-portlet-control-button"
                 title="Refresh portlet data"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
               </button>
               {editable && (
                 <>
@@ -284,7 +283,7 @@ export default function DashboardGrid({
                     className="drizzle-cube-portlet-control-button"
                     title="Edit portlet"
                   >
-                    ✏️
+                    <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                   </button>
                   <button
                     onClick={(e) => {
@@ -294,9 +293,7 @@ export default function DashboardGrid({
                     className="drizzle-cube-portlet-control-button"
                     title="Delete portlet"
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                   </button>
                 </>
               )}
@@ -309,7 +306,6 @@ export default function DashboardGrid({
               ref={el => portletComponentRefs.current[portlet.id] = el}
               query={portlet.query}
               chartType={portlet.chartType}
-              labelField={portlet.labelField}
               chartConfig={portlet.chartConfig}
               displayConfig={portlet.displayConfig}
               title={portlet.title}

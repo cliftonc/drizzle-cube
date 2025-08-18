@@ -27,7 +27,6 @@ interface AnalyticsPortletRef {
 const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({ 
   query, 
   chartType, 
-  labelField, 
   chartConfig, 
   displayConfig, 
   height = 300, 
@@ -117,7 +116,6 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
             <pre className="mt-1 bg-purple-50 p-2 rounded text-xs overflow-auto max-h-20">
               {JSON.stringify({
                 chartType,
-                labelField,
                 chartConfig,
                 displayConfig
               }, null, 2)}
@@ -190,7 +188,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
           return (
             <RechartsPieChart
               data={data}
-              labelField={labelField}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
               queryObject={queryObject}
               height={height}
             />
@@ -271,7 +270,6 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       portletTitle={_title}
       portletConfig={{
         chartType,
-        labelField,
         chartConfig,
         displayConfig,
         height

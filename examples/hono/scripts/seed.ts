@@ -223,6 +223,7 @@ function generateProductivityData(insertedEmployees: any[]): any[] {
       
       productivityData.push({
         employeeId: employee.id,
+        departmentId: employee.departmentId,
         date: new Date(date),
         linesOfCode,
         pullRequests,
@@ -279,7 +280,7 @@ const sampleAnalyticsPage = {
         }),
         chartType: 'line' as const,
         chartConfig: {
-          x: 'Productivity.date.week',
+          x: 'Productivity.date',
           y: ['Productivity.avgLinesOfCode']
         },
         displayConfig: {
@@ -322,11 +323,12 @@ const sampleAnalyticsPage = {
         title: 'Productivity by Department',
         query: JSON.stringify({
           measures: ['Productivity.totalLinesOfCode', 'Productivity.totalPullRequests', 'Productivity.totalDeployments'],
-          dimensions: ['Productivity.departmentName']
+          dimensions: ['Departments.name'],
+          cubes: ['Productivity', 'Employees', 'Departments']
         }),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Productivity.departmentName',
+          x: 'Departments.name',
           y: ['Productivity.totalLinesOfCode', 'Productivity.totalPullRequests', 'Productivity.totalDeployments']
         },
         displayConfig: {
@@ -343,11 +345,12 @@ const sampleAnalyticsPage = {
         title: 'Happiness by Department',
         query: JSON.stringify({
           measures: ['Productivity.avgHappinessIndex'],
-          dimensions: ['Productivity.departmentName']
+          dimensions: ['Departments.name'],
+          cubes: ['Productivity', 'Employees', 'Departments']
         }),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Productivity.departmentName',
+          x: 'Departments.name',
           y: ['Productivity.avgHappinessIndex']
         },
         displayConfig: {
@@ -365,7 +368,8 @@ const sampleAnalyticsPage = {
         title: 'Top Performers (Last 30 Days)',
         query: JSON.stringify({
           measures: ['Productivity.recordCount', 'Productivity.avgHappinessIndex'],
-          dimensions: ['Productivity.employeeName', 'Productivity.departmentName'],
+          dimensions: ['Employees.name', 'Departments.name'],
+          cubes: ['Productivity', 'Employees', 'Departments'],
           order: {
             'Productivity.avgHappinessIndex': 'desc'
           },
@@ -384,11 +388,12 @@ const sampleAnalyticsPage = {
         title: 'Work-Life Balance Metrics',
         query: JSON.stringify({
           measures: ['Productivity.workingDaysCount', 'Productivity.daysOffCount'],
-          dimensions: ['Productivity.employeeName']
+          dimensions: ['Employees.name'],
+          cubes: ['Productivity', 'Employees']
         }),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Productivity.employeeName',
+          x: 'Employees.name',
           y: ['Productivity.workingDaysCount', 'Productivity.daysOffCount']
         },
         displayConfig: {
@@ -419,7 +424,7 @@ const sampleAnalyticsPage = {
         }),
         chartType: 'area' as const,
         chartConfig: {
-          x: 'Productivity.date.month',
+          x: 'Productivity.date',
           y: ['Productivity.totalLinesOfCode']
         },
         displayConfig: {
@@ -435,7 +440,8 @@ const sampleAnalyticsPage = {
         title: 'Deployment Frequency by Department',
         query: JSON.stringify({
           measures: ['Productivity.totalDeployments'],
-          dimensions: ['Productivity.departmentName'],
+          dimensions: ['Departments.name'],
+          cubes: ['Productivity', 'Employees', 'Departments'],
           timeDimensions: [{
             dimension: 'Productivity.date',
             granularity: 'month'
@@ -448,9 +454,9 @@ const sampleAnalyticsPage = {
         }),
         chartType: 'line' as const,
         chartConfig: {
-          x: 'Productivity.date.month',
+          x: 'Productivity.date',
           y: ['Productivity.totalDeployments'],
-          series: 'Productivity.departmentName'
+          series: 'Departments.name'
         },
         displayConfig: {
           showLegend: true
@@ -466,7 +472,8 @@ const sampleAnalyticsPage = {
         id: 'productivity-summary',
         title: 'Comprehensive Productivity Summary',
         query: JSON.stringify({
-          dimensions: ['Productivity.employeeName', 'Productivity.departmentName'],
+          dimensions: ['Employees.name', 'Departments.name'],
+          cubes: ['Productivity', 'Employees', 'Departments'],
           measures: [
             'Productivity.recordCount', 
             'Productivity.avgHappinessIndex',
@@ -558,10 +565,10 @@ async function seedDatabase() {
     console.log('- View the sample "Executive Dashboard" with employee analytics')
     console.log('- Create new dashboards with custom charts')
     console.log('- Query the API at http://localhost:3001/cubejs-api/v1/meta')
-    console.log('\n🔍 Sample queries you can try:')
-    console.log('- Employee count by department: measures: ["Employees.count"], dimensions: ["Employees.departmentName"]')
-    console.log('- Salary analytics: measures: ["Employees.avgSalary", "Employees.totalSalary"], dimensions: ["Employees.departmentName"]')
-    console.log('- Active employees: measures: ["Employees.activeCount"], dimensions: ["Employees.departmentName"]')
+    console.log('\n🔍 Sample queries you can try (using cube joins):')
+    console.log('- Employee count by department: measures: ["Employees.count"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
+    console.log('- Salary analytics: measures: ["Employees.avgSalary", "Employees.totalSalary"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
+    console.log('- Active employees: measures: ["Employees.activeCount"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
     
   } catch (error) {
     console.error('❌ Seeding failed:', error)

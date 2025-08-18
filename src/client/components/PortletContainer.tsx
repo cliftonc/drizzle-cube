@@ -65,7 +65,6 @@ export default function PortletContainer({
         <AnalyticsPortlet
           query={portlet.query}
           chartType={portlet.chartType}
-          labelField={portlet.labelField}
           chartConfig={portlet.chartConfig}
           displayConfig={portlet.displayConfig}
           title={portlet.title}

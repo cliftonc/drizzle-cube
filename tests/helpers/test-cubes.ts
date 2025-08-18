@@ -7,7 +7,6 @@ import { eq, and, sql } from 'drizzle-orm'
 import { defineCube } from '../../src/server/types-drizzle'
 import type { 
   Cube, 
-  CubeWithJoins,
   QueryContext,
   BaseQueryDefinition 
 } from '../../src/server/types-drizzle'
@@ -18,7 +17,7 @@ import { employees, departments, productivity, analyticsPages } from './schema'
  * Comprehensive Employees Cube
  * Used for testing all employee-related queries, filters, and aggregations
  */
-export const testEmployeesCube: CubeWithJoins<TestSchema> = defineCube('Employees', {
+export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
   title: 'Employees Analytics',
   description: 'Comprehensive employee data with department information and all field types',
   
@@ -251,6 +250,25 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
     ],
     where: eq(productivity.organisationId, ctx.securityContext.organisationId)
   }),
+
+  // Cube-level joins for multi-cube queries
+  joins: {
+    'Employees': {
+      targetCube: 'Employees',
+      condition: (ctx) => eq(productivity.employeeId, employees.id),
+      type: 'left',
+      relationship: 'belongsTo'
+    },
+    'Departments': {
+      targetCube: 'Departments',
+      condition: (ctx) => and(
+        eq(productivity.employeeId, employees.id),
+        eq(employees.departmentId, departments.id)
+      ),
+      type: 'left',
+      relationship: 'belongsTo'
+    }
+  },
   
   dimensions: {
     id: {

@@ -26,16 +26,16 @@
   "dependencies": {
     "hono": "^4.0.0",
     "@hono/node-server": "^1.8.0",
-    "drizzle-orm": "^0.36.0",
     "postgres": "^3.4.0",
-    "drizzle-cube": "file:../../"
+    "drizzle-cube": "file:../..",
+    "drizzle-orm": "^0.44.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
     "tsx": "^4.0.0",
-    "drizzle-kit": "^0.31.0",
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "drizzle-kit": "^0.31.4"
   },
   "keywords": [
     "analytics",

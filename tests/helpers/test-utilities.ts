@@ -12,7 +12,7 @@ import type {
 } from '../../src/server/types'
 import type { QueryExecutor } from '../../src/server/executor'
 import type { TestSchema } from './schema'
-import type { CubeWithJoins } from '../../src/server/types-drizzle'
+import type { Cube } from '../../src/server/types-drizzle'
 
 /**
  * Query builder helper for comprehensive testing
@@ -635,7 +635,7 @@ export class TestDataGenerator {
 export class TestExecutor {
   constructor(
     private executor: QueryExecutor<TestSchema>,
-    private cubes: Map<string, CubeWithJoins<TestSchema>>,
+    private cubes: Map<string, Cube<TestSchema>>,
     private securityContext: SecurityContext
   ) {}
 

@@ -35,7 +35,7 @@ export default function DashboardListPage() {
 
   const handleCreateDashboard = async (data: { name: string; description?: string }) => {
     try {
-      const newPage = await createPage.mutateAsync({
+      await createPage.mutateAsync({
         name: data.name,
         description: data.description,
         config: { portlets: [] }

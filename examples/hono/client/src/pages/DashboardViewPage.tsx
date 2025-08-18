@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
-import React, { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { AnalyticsDashboard, DashboardEditModal } from 'drizzle-cube/client'
 import { useAnalyticsPage, useUpdateAnalyticsPage } from '../hooks/useAnalyticsPages'
 import type { DashboardConfig } from '../types'
@@ -9,7 +9,7 @@ export default function DashboardViewPage() {
   const { data: page, isLoading, error } = useAnalyticsPage(id!)
   const updatePage = useUpdateAnalyticsPage()
   const [config, setConfig] = useState<DashboardConfig>({ portlets: [] })
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [, setLastSaved] = useState<Date | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   // Update config when page data loads

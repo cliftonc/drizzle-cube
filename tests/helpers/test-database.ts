@@ -9,7 +9,6 @@ import postgres from 'postgres'
 import { sql, eq, and } from 'drizzle-orm'
 import { SemanticLayerCompiler, createPostgresExecutor } from '../../src/server'
 import { defineCube } from '../../src/server/types-drizzle'
-import type { Cube, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
 import type { DatabaseExecutor } from '../../src/server'
 
 // Import schema from dedicated schema file
@@ -23,7 +22,7 @@ export type { TestSchema }
 
 // Import cube utilities
 import { defineCube } from '../../src/server/types-drizzle'
-import type { CubeWithJoins, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
+import type { Cube, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
 
 // Sample data - realistic company structure
 export const sampleDepartments = [

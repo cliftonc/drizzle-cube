@@ -13,7 +13,6 @@ import {
 
 import type { 
   Cube,
-  CubeWithJoins,
   QueryContext,
   MultiCubeQueryPlan
 } from './types-drizzle'
@@ -63,7 +62,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
    * Build a multi-cube query plan
    */
   buildMultiCubeQueryPlan(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     ctx: QueryContext<TSchema>
   ): MultiCubeQueryPlan<TSchema> {
@@ -125,8 +124,8 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
    * Build join plan for multi-cube query
    */
   private buildJoinPlan(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
-    primaryCube: CubeWithJoins<TSchema>,
+    cubes: Map<string, Cube<TSchema>>,
+    primaryCube: Cube<TSchema>,
     cubeNames: string[],
     securityContext: SecurityContext
   ): MultiCubeQueryPlan<TSchema>['joinCubes'] {
@@ -175,7 +174,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
    * Build selections across multiple cubes
    */
   private buildMultiCubeSelections(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Record<string, SQL | AnyColumn> {
@@ -197,7 +196,8 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
         if (cube && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, baseContext)
-          selections[dimensionName] = sqlExpr
+          // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
+          selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
       }
     }
@@ -211,7 +211,8 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
         if (cube && cube.measures[fieldName]) {
           const measure = cube.measures[fieldName]
           const aggregatedExpr = this.buildMeasureExpression(measure, baseContext)
-          selections[measureName] = aggregatedExpr
+          // Use explicit alias for measure expressions so they can be referenced in ORDER BY
+          selections[measureName] = sql`${aggregatedExpr}`.as(measureName) as unknown as SQL
         }
       }
     }
@@ -229,7 +230,8 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
             timeDim.granularity, 
             baseContext
           )
-          selections[timeDim.dimension] = timeExpr
+          // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
+          selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
       }
     }
@@ -318,7 +320,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
    * Build WHERE conditions for multi-cube query
    */
   private buildMultiCubeWhereConditions(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     ctx: QueryContext<TSchema>
   ): SQL[] {
@@ -377,7 +379,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
    * Build GROUP BY fields for multi-cube query
    */
   private buildMultiCubeGroupByFields(
-    cubes: Map<string, CubeWithJoins<TSchema>>,
+    cubes: Map<string, Cube<TSchema>>,
     query: SemanticQuery,
     securityContext: SecurityContext
   ): (SQL | AnyColumn)[] {

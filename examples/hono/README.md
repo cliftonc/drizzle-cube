@@ -140,7 +140,8 @@ curl -X POST http://localhost:3001/cubejs-api/v1/load \
   -H "Authorization: Bearer your-token" \
   -d '{
     "measures": ["Employees.count"],
-    "dimensions": ["Employees.departmentName"]
+    "dimensions": ["Departments.name"],
+    "cubes": ["Employees", "Departments"]
   }'
 ```
 
@@ -152,7 +153,8 @@ curl -X POST http://localhost:3001/cubejs-api/v1/load \
   -H "Authorization: Bearer your-token" \
   -d '{
     "measures": ["Employees.avgSalary", "Employees.totalSalary"],
-    "dimensions": ["Employees.departmentName"]
+    "dimensions": ["Departments.name"],
+    "cubes": ["Employees", "Departments"]
   }'
 ```
 
@@ -164,7 +166,8 @@ curl -X POST http://localhost:3001/cubejs-api/v1/load \
   -H "Authorization: Bearer your-token" \
   -d '{
     "measures": ["Employees.activeCount"],
-    "dimensions": ["Employees.departmentName"],
+    "dimensions": ["Departments.name"],
+    "cubes": ["Employees", "Departments"],
     "filters": [{
       "member": "Employees.isActive",
       "operator": "equals",
