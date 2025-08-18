@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useHelpSearch } from '../hooks/useHelpSearch';
 import { highlightText, getRelevanceClass } from '../utils/helpUtils';
 
@@ -27,26 +27,22 @@ const HomePage: React.FC = () => {
     { 
       title: 'Semantic Layer', 
       slug: 'semantic-layer', 
-      description: 'Learn how to define type-safe data cubes with Drizzle ORM',
-      icon: '🏗️'
+      description: 'Learn how to define type-safe data cubes with Drizzle ORM'
     },
     { 
       title: 'React Components', 
       slug: 'client', 
-      description: 'Pre-built dashboard and chart components for React',
-      icon: '⚛️'
+      description: 'Pre-built dashboard and chart components for React'
     },
     { 
       title: 'Security', 
       slug: 'semantic-layer/security', 
-      description: 'Multi-tenant security with SQL injection protection',
-      icon: '🔒'
+      description: 'Multi-tenant security with SQL injection protection'
     },
     { 
       title: 'Performance', 
       slug: 'advanced/performance', 
-      description: 'Optimization techniques for large datasets',
-      icon: '⚡'
+      description: 'Optimization techniques for large datasets'
     },
   ];
 
@@ -135,11 +131,10 @@ const HomePage: React.FC = () => {
               to={`/help/${link.slug}`}
               className="group p-6 bg-white rounded-lg border border-gray-200 hover:border-drizzle-300 hover:shadow-md transition-all"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2">
                 <h3 className="text-lg font-semibold text-gray-900 group-hover:text-drizzle-700">
                   {link.title}
                 </h3>
-                <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-drizzle-600 transition-colors" />
               </div>
               <p className="text-gray-600">{link.description}</p>
             </Link>
@@ -157,14 +152,11 @@ const HomePage: React.FC = () => {
               to={`/help/${topic.slug}`}
               className="group p-6 bg-white rounded-lg border border-gray-200 hover:border-drizzle-300 hover:shadow-md transition-all"
             >
-              <div className="flex items-start space-x-4">
-                <div className="text-3xl">{topic.icon}</div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-drizzle-700 mb-2">
-                    {topic.title}
-                  </h3>
-                  <p className="text-gray-600">{topic.description}</p>
-                </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-drizzle-700 mb-2">
+                  {topic.title}
+                </h3>
+                <p className="text-gray-600">{topic.description}</p>
               </div>
             </Link>
           ))}
