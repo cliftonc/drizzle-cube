@@ -24,14 +24,16 @@ export const productivityDashboardConfig = {
             operator: 'equals',
             values: [false]
           }]
-        }),
+        }, null, 2),
         chartType: 'line' as const,
         chartConfig: {
-          x: 'Productivity.date',
-          y: ['Productivity.avgLinesOfCode']
+          xAxis: ['Productivity.date'],
+          yAxis: ['Productivity.avgLinesOfCode'],
+          series: []
         },
         displayConfig: {
-          showLegend: false
+          showLegend: false,
+          stackedBarChart: false
         },
         w: 8,
         h: 6,
@@ -49,14 +51,16 @@ export const productivityDashboardConfig = {
             operator: 'equals',
             values: [false]
           }]
-        }),
+        }, null, 2),
         chartType: 'pie' as const,
         chartConfig: {
-          x: 'Productivity.happinessLevel',
-          y: ['Productivity.recordCount']
+          xAxis: ['Productivity.happinessLevel'],
+          yAxis: ['Productivity.recordCount'],
+          series: []
         },
         displayConfig: {
-          showLegend: true
+          showLegend: true,
+          stackedBarChart: false
         },
         w: 4,
         h: 6,
@@ -72,15 +76,16 @@ export const productivityDashboardConfig = {
           measures: ['Productivity.totalLinesOfCode', 'Productivity.totalPullRequests', 'Productivity.totalDeployments'],
           dimensions: ['Departments.name'],
           cubes: ['Productivity', 'Employees', 'Departments']
-        }),
+        }, null, 2),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Departments.name',
-          y: ['Productivity.totalLinesOfCode', 'Productivity.totalPullRequests', 'Productivity.totalDeployments']
+          xAxis: ['Departments.name'],
+          yAxis: ['Productivity.totalLinesOfCode', 'Productivity.totalPullRequests', 'Productivity.totalDeployments'],
+          series: []
         },
         displayConfig: {
           showLegend: true,
-          stacked: false
+          stackedBarChart: false
         },
         w: 6,
         h: 6,
@@ -94,14 +99,16 @@ export const productivityDashboardConfig = {
           measures: ['Productivity.avgHappinessIndex'],
           dimensions: ['Departments.name'],
           cubes: ['Productivity', 'Employees', 'Departments']
-        }),
+        }, null, 2),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Departments.name',
-          y: ['Productivity.avgHappinessIndex']
+          xAxis: ['Departments.name'],
+          yAxis: ['Productivity.avgHappinessIndex'],
+          series: []
         },
         displayConfig: {
-          showLegend: false
+          showLegend: false,
+          stackedBarChart: false
         },
         w: 6,
         h: 6,
@@ -121,7 +128,7 @@ export const productivityDashboardConfig = {
             'Productivity.avgHappinessIndex': 'desc'
           },
           limit: 10
-        }),
+        }, null, 2),
         chartType: 'table' as const,
         chartConfig: {},
         displayConfig: {},
@@ -137,15 +144,16 @@ export const productivityDashboardConfig = {
           measures: ['Productivity.workingDaysCount', 'Productivity.daysOffCount'],
           dimensions: ['Employees.name'],
           cubes: ['Productivity', 'Employees']
-        }),
+        }, null, 2),
         chartType: 'bar' as const,
         chartConfig: {
-          x: 'Employees.name',
-          y: ['Productivity.workingDaysCount', 'Productivity.daysOffCount']
+          xAxis: ['Employees.name'],
+          yAxis: ['Productivity.workingDaysCount', 'Productivity.daysOffCount'],
+          series: []
         },
         displayConfig: {
           showLegend: true,
-          stacked: true
+          stackedBarChart: true
         },
         w: 6,
         h: 8,
@@ -168,14 +176,16 @@ export const productivityDashboardConfig = {
             operator: 'equals',
             values: [false]
           }]
-        }),
+        }, null, 2),
         chartType: 'area' as const,
         chartConfig: {
-          x: 'Productivity.date',
-          y: ['Productivity.totalLinesOfCode']
+          xAxis: ['Productivity.date'],
+          yAxis: ['Productivity.totalLinesOfCode'],
+          series: []
         },
         displayConfig: {
-          showLegend: false
+          showLegend: false,
+          stackedBarChart: false
         },
         w: 6,
         h: 6,
@@ -198,15 +208,16 @@ export const productivityDashboardConfig = {
             operator: 'gt',
             values: [0]
           }]
-        }),
+        }, null, 2),
         chartType: 'line' as const,
         chartConfig: {
-          x: 'Productivity.date',
-          y: ['Productivity.totalDeployments'],
-          series: 'Departments.name'
+          xAxis: ['Productivity.date'],
+          yAxis: ['Productivity.totalDeployments'],
+          series: ['Departments.name']
         },
         displayConfig: {
-          showLegend: true
+          showLegend: true,
+          stackedBarChart: false
         },
         w: 6,
         h: 6,
@@ -231,7 +242,7 @@ export const productivityDashboardConfig = {
             'Productivity.avgHappinessIndex': 'desc'
           },
           limit: 50
-        }),
+        }, null, 2),
         chartType: 'table' as const,
         chartConfig: {},
         displayConfig: {},
