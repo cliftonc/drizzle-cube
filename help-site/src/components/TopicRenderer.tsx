@@ -23,7 +23,10 @@ const TopicRenderer: React.FC<TopicRendererProps> = ({ content, title, showToc =
     // Handle internal help links
     const handleHelpLinkClick = (e: Event) => {
       const target = e.target as HTMLElement;
-      const helpLink = target.getAttribute('data-help-link');
+      
+      // Find the closest element with data-help-link (could be the target or a parent)
+      const linkElement = target.closest('[data-help-link]') as HTMLElement;
+      const helpLink = linkElement?.getAttribute('data-help-link');
       
       if (helpLink) {
         e.preventDefault();

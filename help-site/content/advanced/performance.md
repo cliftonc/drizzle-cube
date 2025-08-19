@@ -89,7 +89,7 @@ export const performanceTestCube: Cube<Schema> = defineCube('Performance', {
 
 ### Result Set Caching
 
-Implement caching at multiple levels:
+Drizzle Cube provides basic query memoization. For advanced caching, you can implement additional caching layers:
 
 ```typescript
 // Client-side caching with useCubeQuery
@@ -130,6 +130,8 @@ class CachedSemanticLayer extends SemanticLayerCompiler {
   }
 }
 ```
+
+> **Note**: The `CachedSemanticLayer` example above is custom implementation code that you would need to build. Drizzle Cube currently provides basic client-side query memoization but does not include built-in server-side result caching.
 
 ### Query Batching
 
@@ -614,11 +616,15 @@ INCLUDE (lines_of_code, date);
 - Review database-specific optimization guides
 - Set up performance monitoring in production
 
-## Roadmap Ideas
+## Future Performance Features *(Planned for Upcoming Releases)*
 
-- Automatic query optimization suggestions
-- Built-in performance monitoring dashboard
-- Query execution plan visualization
-- Intelligent caching strategies
-- Performance regression testing
-- Cost-based query optimization
+The following performance enhancements are planned for future versions of Drizzle Cube:
+
+- **Automatic query optimization suggestions** - AI-powered query analysis
+- **Built-in performance monitoring dashboard** - Real-time performance metrics
+- **Query execution plan visualization** - Visual query plan analysis
+- **Intelligent caching strategies** - Smart pre-computation and cache invalidation
+- **Performance regression testing** - Automated performance testing suite
+- **Cost-based query optimization** - Advanced query planning algorithms
+
+These features are not currently available but are on our development roadmap.

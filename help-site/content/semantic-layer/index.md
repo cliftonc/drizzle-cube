@@ -103,24 +103,9 @@ Query across multiple cubes with automatic join resolution:
 }
 ```
 
-### Time Intelligence
+### Time Intelligence *(Coming Soon)*
 
-Automatic time-based calculations:
-
-```typescript
-measures: {
-  revenueGrowth: {
-    sql: schema.sales.amount,
-    type: 'sum',
-    timeComparison: 'previousPeriod' // Compare to previous period
-  },
-  
-  runningTotal: {
-    sql: schema.sales.amount,
-    type: 'runningSum' // Cumulative sum over time
-  }
-}
-```
+Time-based calculations are planned for future releases. Currently, time dimensions are supported for grouping data by time periods using standard SQL aggregation patterns.
 
 ### Calculated Members
 
@@ -139,19 +124,6 @@ measures: {
 }
 ```
 
-### Hierarchical Dimensions
-
-Support drill-down analytics:
-
-```typescript
-dimensions: {
-  location: {
-    sql: schema.sales.region,
-    type: 'string',
-    hierarchy: ['country', 'region', 'city']
-  }
-}
-```
 
 ## Security Model
 
@@ -198,24 +170,6 @@ sql: ({ db, securityContext }) => {
 ```
 
 ## Performance Optimization
-
-### Pre-aggregations
-
-Create summary tables for fast queries:
-
-```typescript
-preAggregations: {
-  monthlySales: {
-    measures: ['Sales.totalRevenue', 'Sales.orderCount'],
-    dimensions: ['Sales.productCategory'],
-    timeDimension: 'Sales.orderDate',
-    granularity: 'month',
-    refreshKey: {
-      every: '1 hour'
-    }
-  }
-}
-```
 
 ### Indexes
 

@@ -3,10 +3,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HelpLayout from './components/HelpLayout';
 import HomePage from './pages/HomePage';
 import TopicPage from './pages/TopicPage';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen bg-gray-50">
         <HelpLayout>
           <Routes>

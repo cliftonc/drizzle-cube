@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import SearchInterface from './SearchInterface';
 import Navigation from './Navigation';
+import BackToTop from './BackToTop';
 
 interface HelpLayoutProps {
   children: React.ReactNode;
@@ -139,6 +140,9 @@ const HelpLayout: React.FC<HelpLayoutProps> = ({ children }) => {
         isOpen={isSearchOpen} 
         onClose={() => setIsSearchOpen(false)} 
       />
+
+      {/* Back to Top Button */}
+      <BackToTop />
     </div>
   );
 };

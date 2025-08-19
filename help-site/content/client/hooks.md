@@ -311,33 +311,9 @@ function RevenueOverTime() {
 }
 ```
 
-### Comparative Analysis Hook
+### Comparative Analysis Hook *(Coming Soon)*
 
-```tsx
-function useComparativeAnalysis(
-  query: CubeQuery,
-  timeDimension: string,
-  compareToLastPeriod: boolean = true
-) {
-  const currentPeriod = useCubeQuery(query)
-  
-  const previousPeriod = useCubeQuery(
-    compareToLastPeriod ? {
-      ...query,
-      timeDimensions: query.timeDimensions?.map(td => ({
-        ...td,
-        compareDateRange: td.dateRange  // Compare to previous period
-      }))
-    } : null
-  )
-
-  return {
-    current: currentPeriod,
-    previous: previousPeriod,
-    growth: calculateGrowth(currentPeriod.resultSet, previousPeriod.resultSet)
-  }
-}
-```
+Time-based comparison features are planned for future releases. Currently, you can implement comparative analysis by making separate queries with different date ranges.
 
 ## Error Handling
 
@@ -527,11 +503,15 @@ const { resultSet } = useCubeQuery(
 - Review [React Client](/help/client) overview
 - Check out hook examples in the repository
 
-## Roadmap Ideas
+## Future Features *(Planned for Upcoming Releases)*
 
-- Query builder hook with visual interface
-- Real-time data hooks with WebSocket support
-- Advanced caching strategies and invalidation
-- Query performance monitoring and optimization hooks
-- Offline-capable hooks with local storage
-- Hook composition utilities for complex analytics patterns
+The following hooks and features are planned for future versions of Drizzle Cube:
+
+- **Query builder hook** with visual interface
+- **Real-time data hooks** with WebSocket support
+- **Advanced caching strategies** and invalidation
+- **Query performance monitoring** and optimization hooks
+- **Offline-capable hooks** with local storage
+- **Hook composition utilities** for complex analytics patterns
+
+These features are not currently available but are on our development roadmap.

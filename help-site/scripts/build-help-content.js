@@ -92,11 +92,25 @@ renderer.listitem = function(item) {
 // Override code renderers
 renderer.code = function(token) {
   const language = token.lang || 'text';
-  return `<pre class="bg-white rounded-lg p-4 overflow-x-auto mb-4 border"><code class="text-xs text-gray-800 language-${language}">${token.text}</code></pre>`;
+  // Properly escape HTML entities in code blocks
+  const escapedText = token.text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  return `<pre class="bg-white rounded-lg p-4 overflow-x-auto mb-4 border"><code class="text-xs text-gray-800 language-${language}">${escapedText}</code></pre>`;
 };
 
 renderer.codespan = function(token) {
-  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded text-sm font-mono">${token.text}</code>`;
+  // Properly escape HTML entities in inline code
+  const escapedText = token.text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded text-sm font-mono">${escapedText}</code>`;
 };
 
 // Override inline text formatting
