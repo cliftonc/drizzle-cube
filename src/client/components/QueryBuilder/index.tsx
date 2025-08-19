@@ -328,49 +328,34 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }))
 
     try {
-      const response = await fetch(`${apiConfig.baseApiUrl}/dry-run`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(apiConfig.apiToken && { 'Authorization': `Bearer ${apiConfig.apiToken}` })
-        },
-        credentials: 'include',
-        body: JSON.stringify({ query: queryToValidate })
-      })
-
-      if (response.ok) {
-        const result: ValidationResult = await response.json()
-        
-        // Store the full validation result for parent access
-        setFullValidationResult(result)
-        
-        // Store the validated query to prevent reset
-        if (result.valid) {
-          lastValidatedQueryRef.current = queryStr
-        }
-        
-        console.log('Validation result:', result.valid ? 'VALID' : 'INVALID', 'Query after validation:', state.query)
-        
-        setState(prev => {
-          console.log('Setting validation status to:', result.valid ? 'valid' : 'invalid')
-          console.log('Query in prev state:', prev.query)
-          return {
-            ...prev,
-            validationStatus: result.valid ? 'valid' : 'invalid',
-            validationError: result.error || null,
-            validationSql: result.sql || null
-          }
-        })
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        setFullValidationResult(null)
-        setState(prev => ({
-          ...prev,
-          validationStatus: 'invalid',
-          validationError: errorData.error || `Validation failed with status ${response.status}`,
-          validationSql: null
-        }))
+      const result: ValidationResult = await cubeClient.dryRun(queryToValidate)
+      
+      // Store the full validation result for parent access
+      setFullValidationResult(result)
+      
+      // Check if validation is successful:
+      // 1. Must have queryType (always present in successful Cube.js responses)
+      // 2. Must not have an error
+      // 3. For compatibility, also check result.valid if present
+      const isValid = !result.error && result.queryType && (result.valid !== false)
+      
+      // Store the validated query to prevent reset
+      if (isValid) {
+        lastValidatedQueryRef.current = queryStr
       }
+      
+      console.log('Validation result:', isValid ? 'VALID' : 'INVALID', 'Query after validation:', state.query)
+      
+      setState(prev => {
+        console.log('Setting validation status to:', isValid ? 'valid' : 'invalid')
+        console.log('Query in prev state:', prev.query)
+        return {
+          ...prev,
+          validationStatus: isValid ? 'valid' : 'invalid',
+          validationError: result.error || null,
+          validationSql: result.sql || null
+        }
+      })
     } catch (error) {
       console.error('Validation error:', error)
       setFullValidationResult(null)
@@ -381,7 +366,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         validationSql: null
       }))
     }
-  }, [state.query, apiConfig.baseApiUrl, apiConfig.apiToken])
+  }, [state.query, cubeClient])
 
   const handleExecuteQuery = useCallback(async () => {
     if (!hasQueryContent(state.query) || state.validationStatus !== 'valid') return

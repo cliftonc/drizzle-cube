@@ -17,18 +17,24 @@ export class CubeClient {
     }
     
     if (token) {
-      this.headers['Authorization'] = `Bearer ${token}`
+      this.headers['Authorization'] = token
     }
   }
 
   async load(query: CubeQuery): Promise<CubeResultSet> {
-    const url = `${this.apiUrl}/load`
+    // Use GET with query parameter for standard Cube.js compatibility
+    const queryParam = encodeURIComponent(JSON.stringify(query))
+    const url = `${this.apiUrl}/load?query=${queryParam}`
     
     const response = await fetch(url, {
-      method: 'POST',
-      headers: this.headers,
-      credentials: 'include', // Include cookies for session auth
-      body: JSON.stringify({ query })
+      method: 'GET',
+      headers: {
+        // Remove Content-Type for GET request
+        ...Object.fromEntries(
+          Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
+        )
+      },
+      credentials: 'include' // Include cookies for session auth
     })
 
     if (!response.ok) {
@@ -74,7 +80,30 @@ export class CubeClient {
   }
 
   async sql(query: CubeQuery): Promise<any> {
-    const url = `${this.apiUrl}/sql`
+    // Use GET with query parameter for standard Cube.js compatibility
+    const queryParam = encodeURIComponent(JSON.stringify(query))
+    const url = `${this.apiUrl}/sql?query=${queryParam}`
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        // Remove Content-Type for GET request
+        ...Object.fromEntries(
+          Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
+        )
+      },
+      credentials: 'include'
+    })
+
+    if (!response.ok) {
+      throw new Error(`SQL generation failed: ${response.status}`)
+    }
+
+    return response.json()
+  }
+
+  async dryRun(query: CubeQuery): Promise<any> {
+    const url = `${this.apiUrl}/dry-run`
     
     const response = await fetch(url, {
       method: 'POST',
@@ -84,7 +113,23 @@ export class CubeClient {
     })
 
     if (!response.ok) {
-      throw new Error(`SQL generation failed: ${response.status}`)
+      let errorMessage = `Dry run failed: ${response.status}`
+      try {
+        const errorText = await response.text()
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          } else {
+            errorMessage += ` ${errorText}`
+          }
+        } catch {
+          errorMessage += ` ${errorText}`
+        }
+      } catch {
+        // If we can't read the response, just use the status
+      }
+      throw new Error(errorMessage)
     }
 
     return response.json()

@@ -48,14 +48,14 @@ export interface QueryBuilderState {
 
 // Validation response from /dry-run endpoint
 export interface ValidationResult {
-  valid: boolean
+  valid?: boolean              // Our custom property (may not be present in official Cube.js)
   error?: string
   query?: CubeQuery
   sql?: {
     sql: string[]
     params: any[]
   }
-  queryType?: string
+  queryType?: string           // Always present in successful Cube.js responses
   normalizedQueries?: any[]
   queryOrder?: string[]
   transformedQueries?: any[]

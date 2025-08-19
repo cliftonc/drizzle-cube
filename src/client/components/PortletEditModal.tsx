@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
 import QueryBuilder from './QueryBuilder'
+import { createCubeClient } from '../client/CubeClient'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
 interface PortletEditModalProps {
@@ -105,6 +106,11 @@ export default function PortletEditModal({
   const [showQueryBuilder, setShowQueryBuilder] = useState(false)
   const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
   const queryBuilderRef = useRef<any>(null)
+  
+  // Create cube client for API calls
+  const cubeClient = useMemo(() => {
+    return createCubeClient(undefined, { apiUrl })
+  }, [apiUrl])
 
   // Shared function to auto-populate chart config from validation result
   const autoPopulateChartConfig = (result: any, queryText: string) => {
@@ -325,19 +331,14 @@ export default function PortletEditModal({
     }
 
     try {
-      const response = await fetch(`${apiUrl}/dry-run`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: parsedQuery
-        })
-      })
+      const result = await cubeClient.dryRun(parsedQuery)
 
-      const result = await response.json()
-
-      if (response.ok && !result.error) {
+      // Check if validation is successful:
+      // 1. Must have queryType (always present in successful Cube.js responses)  
+      // 2. Must not have an error
+      const isValid = !result.error && result.queryType
+      
+      if (isValid) {
         setDryRunData(result)
         
         if (!silent) {
