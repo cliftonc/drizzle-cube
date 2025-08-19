@@ -24,10 +24,6 @@ export default function QueryBuilderPage() {
       <div className="flex-1 min-h-0">
         <QueryBuilder 
           baseUrl={cubeApiUrl}
-          onQueryChange={(query) => {
-            // Optional: Log query changes for debugging
-            console.log('Query changed:', query)
-          }}
         />
       </div>
     </div>
