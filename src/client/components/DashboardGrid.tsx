@@ -41,10 +41,10 @@ export default function DashboardGrid({
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
   const [editingPortlet, setEditingPortlet] = useState<PortletConfig | null>(null)
 
-  const handleLayoutChange = useCallback(async (currentLayout: any[], allLayouts: any) => {
+  const handleLayoutChange = useCallback((currentLayout: any[], allLayouts: any) => {
     if (!editable || !onConfigChange) return
 
-    // Update portlet positions
+    // Update portlet positions (config state only, no auto-save)
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = currentLayout.find(item => item.i === portlet.id)
       if (layoutItem) {
@@ -65,16 +65,71 @@ export default function DashboardGrid({
     }
     
     onConfigChange(updatedConfig)
-    
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
+  }, [config.portlets, editable, onConfigChange])
+
+  // Handle drag stop - save when user finishes dragging
+  const handleDragStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+    if (!editable || !onSave) return
+
+    // Get the current updated config from the layout change
+    const updatedPortlets = config.portlets.map(portlet => {
+      const layoutItem = layout.find(item => item.i === portlet.id)
+      if (layoutItem) {
+        return {
+          ...portlet,
+          x: layoutItem.x,
+          y: layoutItem.y,
+          w: layoutItem.w,
+          h: layoutItem.h
+        }
       }
+      return portlet
+    })
+
+    const updatedConfig = {
+      portlets: updatedPortlets,
+      layouts: { lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }
     }
-  }, [config.portlets, editable, onConfigChange, onSave])
+
+    // Auto-save after drag operation
+    try {
+      await onSave(updatedConfig)
+    } catch (error) {
+      console.error('Auto-save failed after drag:', error)
+    }
+  }, [config.portlets, editable, onSave])
+
+  // Handle resize stop - save when user finishes resizing
+  const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+    if (!editable || !onSave) return
+
+    // Get the current updated config from the layout change
+    const updatedPortlets = config.portlets.map(portlet => {
+      const layoutItem = layout.find(item => item.i === portlet.id)
+      if (layoutItem) {
+        return {
+          ...portlet,
+          x: layoutItem.x,
+          y: layoutItem.y,
+          w: layoutItem.w,
+          h: layoutItem.h
+        }
+      }
+      return portlet
+    })
+
+    const updatedConfig = {
+      portlets: updatedPortlets,
+      layouts: { lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }
+    }
+
+    // Auto-save after resize operation
+    try {
+      await onSave(updatedConfig)
+    } catch (error) {
+      console.error('Auto-save failed after resize:', error)
+    }
+  }, [config.portlets, editable, onSave])
 
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
@@ -244,6 +299,8 @@ export default function DashboardGrid({
         className="layout"
         layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout, xs: gridLayout, xxs: gridLayout }}
         onLayoutChange={handleLayoutChange}
+        onDragStop={handleDragStop}
+        onResizeStop={handleResizeStop}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         isDraggable={editable}
