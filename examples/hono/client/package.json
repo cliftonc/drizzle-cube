@@ -20,13 +20,13 @@
     "recharts": "^2.8.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/react-grid-layout": "^1.3.0",
     "@vitejs/plugin-react": "^4.2.0",
-    "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
-    "tailwindcss": "^3.4.0",
+    "tailwindcss": "^4.1.12",
     "typescript": "^5.0.0",
     "vite": "^5.0.0"
   }

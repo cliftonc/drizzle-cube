@@ -16,7 +16,7 @@ export default function DebugDashboard({ config, apiUrl }: DebugDashboardProps) 
         
         <div>
           <strong>Config:</strong>
-          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+          <pre className="mt-2 p-2 bg-gray-100 rounded-sm text-xs overflow-auto">
             <code className="language-json">{JSON.stringify(config, null, 2)}</code>
           </pre>
         </div>
@@ -30,7 +30,7 @@ export default function DebugDashboard({ config, apiUrl }: DebugDashboardProps) 
             <strong>Portlets:</strong>
             <ul className="mt-2 space-y-2">
               {config.portlets.map((portlet: any, index: number) => (
-                <li key={portlet.id || index} className="p-2 bg-gray-50 rounded">
+                <li key={portlet.id || index} className="p-2 bg-gray-50 rounded-sm">
                   <div><strong>Title:</strong> {portlet.title}</div>
                   <div><strong>Type:</strong> {portlet.chartType}</div>
                   <div><strong>Query:</strong> {portlet.query}</div>

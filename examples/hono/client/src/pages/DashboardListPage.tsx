@@ -81,13 +81,13 @@ export default function DashboardListPage() {
           <button
             onClick={handleCreateExample}
             disabled={createExample.isPending}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
           >
             {createExample.isPending ? 'Creating...' : 'Create Example'}
           </button>
           <button
             onClick={() => setIsNewModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             New Dashboard
           </button>
@@ -119,13 +119,13 @@ export default function DashboardListPage() {
             <button
               onClick={handleCreateExample}
               disabled={createExample.isPending}
-              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50"
             >
               Create Example Dashboard
             </button>
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700"
             >
               Create New Dashboard
             </button>
@@ -136,7 +136,7 @@ export default function DashboardListPage() {
           {pages.map((page) => (
             <div
               key={page.id}
-              className="relative group bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+              className="relative group bg-white rounded-lg shadow-xs hover:shadow-md transition-shadow"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between">

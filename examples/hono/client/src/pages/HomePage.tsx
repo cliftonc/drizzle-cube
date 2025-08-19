@@ -32,7 +32,7 @@ export default function HomePage() {
       
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6">
+          <h1 className="text-6xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6">
             Drizzle Cube
           </h1>
           <p className="text-2xl text-gray-700 mb-4 font-medium">
@@ -47,7 +47,7 @@ export default function HomePage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <Link
             to="/dashboards"
-            className="group bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="group bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-xl p-6 transition-all duration-200 shadow-xs hover:shadow-md"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center mb-4 transition-colors">
@@ -60,7 +60,7 @@ export default function HomePage() {
           
           <Link
             to="/query-builder"
-            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-6 transition-all duration-200 shadow-xs hover:shadow-md"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-lg flex items-center justify-center mb-4 transition-colors">
@@ -75,7 +75,7 @@ export default function HomePage() {
             href="http://localhost:5174"
             target="_blank"
             rel="noopener noreferrer"
-            className="group bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="group bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-xl p-6 transition-all duration-200 shadow-xs hover:shadow-md"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-purple-100 group-hover:bg-purple-200 rounded-lg flex items-center justify-center mb-4 transition-colors">
@@ -90,7 +90,7 @@ export default function HomePage() {
             href="https://github.com/cliftonc/drizzle-cube"
             target="_blank"
             rel="noopener noreferrer"
-            className="group bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl p-6 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="group bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl p-6 transition-all duration-200 shadow-xs hover:shadow-md"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-gray-100 group-hover:bg-gray-200 rounded-lg flex items-center justify-center mb-4 transition-colors">

@@ -12,7 +12,7 @@ export default function QueryBuilderPage() {
   return (
     <div className="-m-6 min-h-screen flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-white/20 px-6 py-4">
+      <div className="shrink-0 border-b border-white/20 px-6 py-4">
         <h1 className="text-2xl font-bold text-gray-900">Query Builder</h1>
         <p className="mt-1 text-sm text-gray-600">
           Build and test queries against your cube schema. Select dimensions, measures, and time dimensions 
