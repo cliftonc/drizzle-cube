@@ -4,11 +4,8 @@
 
 Transform your Drizzle schema into a powerful, type-safe analytics platform with SQL injection protection and full TypeScript support.
 
-📖 **[Documentation](https://www.drizzle-cube.dev/)** • 🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)**
-
-> **⚠️ DEVELOPMENT WARNING**  
-> **This project is under active development and is not yet fully functional. I will update here when we reach an alpha/working version!**  
-> Feel free to star ⭐ the repo to stay updated on progress.
+📖 **[Documentation](https://www.drizzle-cube.dev/)** 
+🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)**
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
@@ -320,15 +317,8 @@ Supports all Cube.js filter operators with Drizzle safety:
 
 ## Documentation
 
-📚 **[Full Documentation](https://drizzle-cube.dev/help)** - Complete guides and API reference
-
-### Quick Links
-- [Getting Started](https://drizzle-cube.dev/help/getting-started) - Installation and first steps
-- [Core Concepts](https://drizzle-cube.dev/help/getting-started/concepts) - Cubes, dimensions, and measures
-- [Semantic Layer](https://drizzle-cube.dev/help/semantic-layer) - Advanced semantic layer features
-- [React Client](https://drizzle-cube.dev/help/client) - Dashboard and chart components
-- [Hono Adapter](https://drizzle-cube.dev/help/adapters/hono) - Web framework integration
-- [Security](https://drizzle-cube.dev/help/semantic-layer/security) - Multi-tenant security patterns
+📚 **[Full Documentation](https://www.drizzle-cube.dev/)** - Complete guides and API reference
+ 🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)** - Working example version to experiment with
 
 ### Local Development
 ```bash
@@ -341,9 +331,6 @@ npm run build:help
 
 ## Examples
 
-🚀 **[Live Examples](https://github.com/cliftonc/drizzle-cube/tree/main/examples)**
-
-- **[Basic Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/basic)** - Simple semantic layer setup
 - **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured dashboard with Cloudflare Workers
 
 ## Contributing

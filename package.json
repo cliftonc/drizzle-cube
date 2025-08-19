@@ -125,6 +125,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "daisyui": "^5.0.50",
     "react-grid-layout": "^1.4.0",
     "react-hook-form": "^7.47.0",
     "recharts": "^2.8.0",
