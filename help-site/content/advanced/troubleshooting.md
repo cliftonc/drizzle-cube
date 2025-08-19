@@ -80,7 +80,8 @@ export const getSecurityContext = async (c: any): Promise<SecurityContext> => {
     throw new Error('Missing Authorization header')
   }
 
-  const token = authHeader.replace('Bearer ', '')
+  // Note: Authorization header is now used as-is (no 'Bearer ' prefix removal needed)
+  const token = authHeader
   const user = await validateJWT(token)
   
   if (!user.organisationId) {
@@ -328,31 +329,125 @@ export const debugCube = defineCube('Debug', {
 })
 ```
 
+### API Response Format Issues
+
+#### Error: "Cannot read property 'data' of undefined"
+
+**Symptoms:**
+- Client fails to read response data
+- Undefined response structure errors
+- Charts not rendering despite successful API calls
+
+**Solutions:**
+
+The API now returns Cube.js-compatible response format. Update client code:
+
+```typescript
+// OLD format (deprecated)
+{
+  data: [...],
+  annotation: {...},
+  query: {...}
+}
+
+// NEW format (current)
+{
+  queryType: "regularQuery",
+  results: [{
+    data: [...],           // Raw data moved to results[0].data
+    annotation: {...},     // Annotation moved to results[0].annotation
+    query: {...},
+    requestId: "...",
+    lastRefreshTime: "..."
+  }],
+  pivotQuery: {...},
+  slowQuery: false
+}
+```
+
+The CubeClient automatically handles both formats, but custom client code needs updates:
+
+```typescript
+// Update manual API handling
+const response = await fetch('/api/cube/load?query=' + encodeURIComponent(JSON.stringify(query)))
+const result = await response.json()
+
+// Handle both old and new response formats
+const data = result.results?.[0]?.data || result.data || []
+const annotation = result.results?.[0]?.annotation || result.annotation || {}
+```
+
+#### Error: "HTTP method not allowed"
+
+**Symptoms:**
+- 405 Method Not Allowed errors
+- API endpoints returning wrong status codes
+
+**Solutions:**
+
+API endpoints now use different HTTP methods:
+
+```typescript
+// OLD: POST with body
+fetch('/api/cube/load', {
+  method: 'POST',
+  body: JSON.stringify({ query })
+})
+
+// NEW: GET with query parameter
+const queryParam = encodeURIComponent(JSON.stringify(query))
+fetch(`/api/cube/load?query=${queryParam}`, {
+  method: 'GET'
+})
+
+// SQL endpoint also uses GET now
+fetch(`/api/cube/sql?query=${queryParam}`, {
+  method: 'GET'
+})
+
+// New dry-run endpoint uses POST
+fetch('/api/cube/dry-run', {
+  method: 'POST',
+  body: JSON.stringify({ query })
+})
+```
+
 ### Network Debugging
 
 Debug API communication issues:
 
 ```typescript
-// Client-side debugging
-const cubeApi = new CubeApi({
-  apiUrl: '/cubejs-api/v1',
+// Client-side debugging with updated CubeClient
+import { CubeClient } from 'drizzle-cube/client'
+
+const cubeClient = new CubeClient('your-token', {
+  apiUrl: '/api/cube',
   headers: {
-    'Authorization': `Bearer ${token}`
+    'X-Organisation-ID': '1'
   }
 })
 
-// Log all API requests
-const originalRequest = cubeApi.request
-cubeApi.request = async function(method, path, body) {
-  console.log(`API Request: ${method} ${path}`, body)
+// Test different endpoints
+try {
+  // Test load endpoint (GET method)
+  const result = await cubeClient.load(query)
+  console.log('Load result:', result.rawData())
   
-  try {
-    const response = await originalRequest.call(this, method, path, body)
-    console.log('API Response:', response)
-    return response
-  } catch (error) {
-    console.error('API Error:', error)
-    throw error
+  // Test SQL generation (GET method)  
+  const sqlResult = await cubeClient.sql(query)
+  console.log('Generated SQL:', sqlResult)
+  
+  // Test dry run (POST method)
+  const dryRunResult = await cubeClient.dryRun(query)
+  console.log('Dry run result:', dryRunResult)
+  
+} catch (error) {
+  console.error('API Error:', error.message)
+  
+  // Enhanced error logging
+  if (error.response) {
+    console.error('Response status:', error.response.status)
+    console.error('Response headers:', error.response.headers)
   }
 }
 ```
@@ -369,6 +464,9 @@ cubeApi.request = async function(method, path, body) {
 | `Access denied` | Security context/permissions | Verify security filtering and roles |
 | `Invalid date format` | Wrong date string format | Use ISO format: YYYY-MM-DD |
 | `Table does not exist` | Schema not found | Check Drizzle schema import and registration |
+| `Cannot read property 'data'` | Old response format handling | Update to use results[0].data format |
+| `HTTP method not allowed` | Wrong HTTP method | Use GET for /load and /sql, POST for /dry-run |
+| `Dry run failed` | Query validation error | Check query structure and cube references |
 
 ### HTTP Status Codes
 

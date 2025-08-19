@@ -165,18 +165,67 @@ The Hono adapter provides these [Cube.js](https://cube.dev)-compatible endpoints
 
 ### Load Data
 ```http
-POST /api/cube/load
-Content-Type: application/json
+GET /api/cube/load?query=%7B%22measures%22%3A%5B%22Sales.totalRevenue%22%5D%2C%22dimensions%22%3A%5B%22Sales.productCategory%22%5D%2C%22timeDimensions%22%3A%5B%7B%22dimension%22%3A%22Sales.orderDate%22%2C%22granularity%22%3A%22month%22%7D%5D%7D
+```
 
+Or with decoded query parameter:
+```http
+GET /api/cube/load?query={"measures":["Sales.totalRevenue"],"dimensions":["Sales.productCategory"],"timeDimensions":[{"dimension":"Sales.orderDate","granularity":"month"}]}
+```
+
+**Response Format:**
+```json
 {
-  "query": {
+  "queryType": "regularQuery",
+  "results": [{
+    "query": {
+      "measures": ["Sales.totalRevenue"],
+      "dimensions": ["Sales.productCategory"],
+      "timeDimensions": [{"dimension": "Sales.orderDate", "granularity": "month"}]
+    },
+    "lastRefreshTime": "2024-01-15T10:30:00.000Z",
+    "usedPreAggregations": {},
+    "transformedQuery": {
+      "measures": ["Sales.totalRevenue"],
+      "dimensions": ["Sales.productCategory"],
+      "timeDimensions": [{"dimension": "Sales.orderDate", "granularity": "month"}]
+    },
+    "requestId": "1705312200000-abc123",
+    "annotation": {
+      "measures": {
+        "Sales.totalRevenue": {
+          "title": "Total Revenue",
+          "type": "number",
+          "drillMembers": []
+        }
+      },
+      "dimensions": {
+        "Sales.productCategory": {
+          "title": "Product Category",
+          "type": "string"
+        }
+      }
+    },
+    "dataSource": "default",
+    "dbType": "postgres",
+    "extDbType": "postgres",
+    "external": false,
+    "slowQuery": false,
+    "data": [
+      {
+        "Sales.totalRevenue": "12500.00",
+        "Sales.productCategory": "Electronics",
+        "Sales.orderDate": "2024-01-01T00:00:00.000Z"
+      }
+    ]
+  }],
+  "pivotQuery": {
     "measures": ["Sales.totalRevenue"],
     "dimensions": ["Sales.productCategory"],
-    "timeDimensions": [{
-      "dimension": "Sales.orderDate",
-      "granularity": "month"
-    }]
-  }
+    "timeDimensions": [{"dimension": "Sales.orderDate", "granularity": "month"}],
+    "queryType": "regularQuery"
+  },
+  "slowQuery": false
 }
 ```
 
@@ -189,18 +238,62 @@ Returns available cubes, dimensions, and measures.
 
 ### Execute SQL
 ```http
-POST /api/cube/sql
-Content-Type: application/json
+GET /api/cube/sql?query=%7B%22measures%22%3A%5B%22Sales.totalRevenue%22%5D%2C%22dimensions%22%3A%5B%22Sales.productCategory%22%5D%7D
+```
 
-{
-  "query": {
-    "measures": ["Sales.totalRevenue"],
-    "dimensions": ["Sales.productCategory"]
-  }
-}
+Or with decoded query parameter:
+```http
+GET /api/cube/sql?query={"measures":["Sales.totalRevenue"],"dimensions":["Sales.productCategory"]}
 ```
 
 Returns the generated SQL without executing it.
+
+**Response Format:**
+```json
+{
+  "queryType": "regularQuery",
+  "results": [{
+    "query": {
+      "measures": ["Sales.totalRevenue"],
+      "dimensions": ["Sales.productCategory"]
+    },
+    "lastRefreshTime": "2024-01-15T10:30:00.000Z",
+    "usedPreAggregations": {},
+    "transformedQuery": {
+      "measures": ["Sales.totalRevenue"],
+      "dimensions": ["Sales.productCategory"]
+    },
+    "requestId": "1705312200000-def456",
+    "annotation": {
+      "measures": {
+        "Sales.totalRevenue": {
+          "title": "Total Revenue",
+          "type": "number",
+          "drillMembers": []
+        }
+      },
+      "dimensions": {
+        "Sales.productCategory": {
+          "title": "Product Category",
+          "type": "string"
+        }
+      }
+    },
+    "dataSource": "default",
+    "dbType": "postgres",
+    "extDbType": "postgres",
+    "external": false,
+    "slowQuery": false,
+    "sql": "SELECT \"products\".\"category\" AS \"Sales.productCategory\", SUM(\"sales\".\"amount\") AS \"Sales.totalRevenue\" FROM \"sales\" LEFT JOIN \"products\" ON \"sales\".\"product_id\" = \"products\".\"id\" WHERE \"sales\".\"organisation_id\" = $1 GROUP BY \"products\".\"category\""
+  }],
+  "pivotQuery": {
+    "measures": ["Sales.totalRevenue"],
+    "dimensions": ["Sales.productCategory"],
+    "queryType": "regularQuery"
+  },
+  "slowQuery": false
+}
+```
 
 ### Query Validation
 ```http
@@ -214,6 +307,21 @@ Content-Type: application/json
   }
 }
 ```
+
+### Dry Run (SQL Generation Only)
+```http
+POST /api/cube/dry-run
+Content-Type: application/json
+
+{
+  "query": {
+    "measures": ["Sales.totalRevenue"],
+    "dimensions": ["Sales.productCategory"]
+  }
+}
+```
+
+Returns the generated SQL and query metadata without executing the query. Useful for debugging and query optimization.
 
 ## Security Context
 

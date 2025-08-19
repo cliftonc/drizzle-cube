@@ -18,7 +18,7 @@ function App() {
   const cubeApi = {
     url: '/api/cube',
     headers: {
-      'Authorization': 'Bearer your-token',
+      'Authorization': 'your-token', // Token is used as-is, no 'Bearer' prefix needed
       'X-Organisation-ID': '1'
     }
   };
@@ -59,7 +59,7 @@ function App() {
   const cubeApi = {
     url: '/api/cube',
     headers: {
-      'Authorization': 'Bearer your-jwt-token',
+      'Authorization': 'your-jwt-token', // Token is used as-is, no 'Bearer' prefix needed
       'X-Organisation-ID': '123'
     }
   };
@@ -183,6 +183,46 @@ import { AnalyticsPortlet } from 'drizzle-cube/client';
 />
 ```
 
+### QueryBuilder
+
+Interactive query builder with API configuration:
+
+```tsx
+import { QueryBuilder } from 'drizzle-cube/client';
+
+<QueryBuilder
+  initialQuery={{
+    measures: ['Sales.totalRevenue'],
+    dimensions: ['Sales.productCategory']
+  }}
+  
+  // API configuration (optional - uses context by default)
+  apiConfig={{
+    apiUrl: '/api/cube',
+    authToken: 'your-token'
+  }}
+  
+  // Show API setup panel for configuration
+  showSetupPanel={true}
+  
+  onQueryChange={(query) => {
+    console.log('Query updated:', query);
+  }}
+  
+  onExecute={(query, data) => {
+    console.log('Query executed:', { query, data });
+  }}
+/>
+```
+
+**QueryBuilder Features:**
+- **Interactive Cube Explorer**: Browse available cubes, measures, and dimensions
+- **Drag & Drop Query Building**: Visual query construction interface  
+- **API Configuration Panel**: Configure endpoint URL and authentication
+- **Real-time Query Execution**: Execute queries and view results instantly
+- **SQL Preview**: View generated SQL for debugging
+- **Dry Run Mode**: Validate queries without execution
+
 ## Chart Types
 
 ### Line Charts
@@ -254,7 +294,7 @@ Execute queries and get real-time data:
 import { useCubeQuery } from 'drizzle-cube/client';
 
 function SalesMetric() {
-  const { data, isLoading, error } = useCubeQuery({
+  const { data, isLoading, error, resultSet } = useCubeQuery({
     measures: ['Sales.totalRevenue'],
     dimensions: ['Sales.productCategory'],
     filters: [{
@@ -267,9 +307,15 @@ function SalesMetric() {
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
+  // The client automatically handles both old and new response formats
+  // data contains the raw data array from results[0].data or legacy data field
+  // resultSet provides access to the full Cube.js response structure
+
   return (
     <div>
-      <h2>Total Revenue: ${data.totalRevenue}</h2>
+      <h2>Total Revenue: ${data[0]?.['Sales.totalRevenue'] || 0}</h2>
+      {/* Access annotation metadata */}
+      <p>Query executed at: {resultSet?.annotation?.lastRefreshTime}</p>
       {/* Render your data */}
     </div>
   );
@@ -368,7 +414,7 @@ const cubeApi = {
   url: '/api/cube',
   websocketUrl: 'ws://localhost:3000/ws',
   headers: {
-    'Authorization': 'Bearer token'
+    'Authorization': 'token' // Token is used as-is, no 'Bearer' prefix needed
   }
 };
 

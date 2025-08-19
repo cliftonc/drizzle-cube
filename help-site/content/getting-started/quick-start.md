@@ -212,17 +212,30 @@ const query = {
 };
 
 // Make request to your API
-const response = await fetch('/api/cube/load', {
-  method: 'POST',
+const queryParam = encodeURIComponent(JSON.stringify(query));
+const response = await fetch(`/api/cube/load?query=${queryParam}`, {
+  method: 'GET',
   headers: {
-    'Content-Type': 'application/json',
     'X-Organisation-ID': '1'
-  },
-  body: JSON.stringify({ query })
+  }
 });
 
 const data = await response.json();
 console.log(data);
+
+// The response now follows the official Cube.js format:
+// {
+//   "queryType": "regularQuery",
+//   "results": [{
+//     "query": { ... },
+//     "data": [ ... ],
+//     "annotation": { ... },
+//     "requestId": "...",
+//     "lastRefreshTime": "..."
+//   }],
+//   "pivotQuery": { ... },
+//   "slowQuery": false
+// }
 ```
 
 ## Step 5: React Dashboard (Optional)
