@@ -81,14 +81,14 @@ const HomePage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search documentation..."
-              className="w-full rounded-xl border border-gray-300 py-4 pl-12 pr-4 text-lg focus:border-drizzle-500 focus:outline-none focus:ring-2 focus:ring-drizzle-500 shadow-sm"
+              className="w-full rounded-xl border border-gray-300 py-4 pl-12 pr-4 text-lg focus:border-drizzle-500 focus:outline-hidden focus:ring-2 focus:ring-drizzle-500 shadow-xs"
             />
           </div>
         </form>
 
         {/* Search Results Preview */}
         {searchQuery && results.length > 0 && (
-          <div className="max-w-2xl mx-auto mb-8 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="max-w-2xl mx-auto mb-8 bg-white rounded-lg border border-gray-200 shadow-xs overflow-hidden">
             <div className="p-4 bg-gray-50 border-b border-gray-200">
               <p className="text-sm text-gray-600">Search Results</p>
             </div>
@@ -110,7 +110,7 @@ const HomePage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div className={`ml-4 flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium border ${getRelevanceClass(result.relevance)}`}>
+                    <div className={`ml-4 shrink-0 px-2 py-1 rounded-full text-xs font-medium border ${getRelevanceClass(result.relevance)}`}>
                       {Math.round(result.relevance * 100)}%
                     </div>
                   </div>

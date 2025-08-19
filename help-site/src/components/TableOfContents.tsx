@@ -56,7 +56,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ headings }) => {
   }
 
   return (
-    <nav className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+    <nav className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
       <h3 className="text-sm font-semibold text-gray-900 mb-3">On this page</h3>
       <ul className="space-y-2 text-sm">
         {headings.map((heading, index) => (

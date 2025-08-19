@@ -96,7 +96,7 @@ const TopicRenderer: React.FC<TopicRendererProps> = ({ content, title, showToc =
       </article>
       
       {showTableOfContents && (
-        <aside className="hidden xl:block w-56 flex-shrink-0">
+        <aside className="hidden xl:block w-56 shrink-0">
           <div className="sticky top-8">
             <TableOfContents headings={headings} />
           </div>

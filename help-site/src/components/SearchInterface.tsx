@@ -86,7 +86,7 @@ const SearchInterface: React.FC<SearchInterfaceProps> = ({ isOpen, onClose }) =>
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search for help topics, features, or concepts..."
-                  className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 text-sm focus:border-drizzle-500 focus:outline-none focus:ring-2 focus:ring-drizzle-500"
+                  className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 text-sm focus:border-drizzle-500 focus:outline-hidden focus:ring-2 focus:ring-drizzle-500"
                 />
               </div>
             </form>
@@ -132,7 +132,7 @@ const SearchInterface: React.FC<SearchInterfaceProps> = ({ isOpen, onClose }) =>
                         </p>
                       </div>
                       
-                      <div className={`ml-4 flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium border ${getRelevanceClass(result.relevance)}`}>
+                      <div className={`ml-4 shrink-0 px-2 py-1 rounded-full text-xs font-medium border ${getRelevanceClass(result.relevance)}`}>
                         {Math.round(result.relevance * 100)}%
                       </div>
                     </div>

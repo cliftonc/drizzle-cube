@@ -75,7 +75,7 @@ renderer.listitem = function(item) {
       itemBody += text
         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-        .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+        .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded-sm text-sm font-mono">$1</code>');
     }
   } else if (item.text) {
     // Apply basic markdown formatting to text
@@ -83,7 +83,7 @@ renderer.listitem = function(item) {
     itemBody += text
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded-sm text-sm font-mono">$1</code>');
   }
   
   return `<li class="leading-relaxed">${itemBody}</li>`;
@@ -110,7 +110,7 @@ renderer.codespan = function(token) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded text-sm font-mono">${escapedText}</code>`;
+  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded-sm text-sm font-mono">${escapedText}</code>`;
 };
 
 // Override inline text formatting
