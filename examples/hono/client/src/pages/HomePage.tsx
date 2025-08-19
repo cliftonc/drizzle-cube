@@ -36,10 +36,11 @@ export default function HomePage() {
             Drizzle Cube
           </h1>
           <p className="text-2xl text-gray-700 mb-4 font-medium">
-            Drizzle ORM-first semantic layer with Cube.js compatibility
+            Embeddable Analytics Solution for Platform Builders
           </p>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Build type-safe analytics dashboards with SQL injection protection by leveraging Drizzle ORM as your core SQL building engine.
+            Deliver scalable, type-safe dashboarding capabilities to your platform users. 
+            Embed rich analytics directly into your existing application with zero infrastructure overhead.
           </p>
         </div>
 
@@ -103,55 +104,55 @@ export default function HomePage() {
 
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">What is Drizzle Cube?</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Why Embed Analytics?</h2>
             <p className="text-gray-600 mb-4">
-              A semantic layer that bridges your database and analytics applications, providing type-safe analytics with SQL injection protection.
+              Turn your platform into a data-driven powerhouse. Embed sophisticated analytics directly into your application to increase user engagement, reduce churn, and drive revenue growth.
             </p>
             <ul className="text-sm text-gray-600 space-y-2">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span><strong>Type-safe semantic layer</strong> - Full TypeScript support</span>
+                <span><strong>Zero infrastructure setup</strong> - Uses your existing database</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span><strong>SQL injection protection</strong> - Parameterized queries via Drizzle</span>
+                <span><strong>Seamless integration</strong> - Embed in any React application</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span><strong>Cube.js compatibility</strong> - Drop-in replacement</span>
+                <span><strong>Multi-tenant by design</strong> - Secure data isolation built-in</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span><strong>Multi-tenant security</strong> - Built-in isolation</span>
+                <span><strong>Developer-friendly</strong> - Type-safe with Drizzle ORM</span>
               </li>
             </ul>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Architecture</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">How It Works</h2>
             <p className="text-gray-600 mb-4">
-              Drizzle-first architecture ensures type safety at every layer:
+              Simple 5-step process to add analytics to your platform:
             </p>
             <div className="space-y-3 text-sm text-gray-600">
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold mr-3">1</div>
-                <span><strong>Database Schema</strong> - Drizzle ORM definitions</span>
+                <span><strong>Use your existing schema</strong> - Already have Drizzle ORM? You're 80% done</span>
               </div>
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold mr-3">2</div>
-                <span><strong>Semantic Layer</strong> - Cubes with dimensions & measures</span>
+                <span><strong>Define analytics cubes</strong> - Map your data to business metrics</span>
               </div>
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold mr-3">3</div>
-                <span><strong>Query Execution</strong> - Type-safe SQL generation</span>
+                <span><strong>Add REST endpoints</strong> - One-line integration with your framework</span>
               </div>
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold mr-3">4</div>
-                <span><strong>Framework Integration</strong> - Adapters for any framework</span>
+                <span><strong>Embed React components</strong> - Drop charts and dashboards into your UI</span>
               </div>
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold mr-3">5</div>
-                <span><strong>Client Components</strong> - React dashboard components</span>
+                <span><strong>Ship to users</strong> - Your customers now have powerful analytics</span>
               </div>
             </div>
           </div>
@@ -203,15 +204,26 @@ export const productsCube = defineCube(schema, {
   dimensions: {
     name: { sql: schema.products.name, type: 'string' },
     category: { sql: schema.products.category, type: 'string' },
-    createdAt: { sql: schema.products.createdAt, type: 'time' }
+    createdAt: { sql: schema.products.createdAt, type: 'time' },
+    priceRange: {
+      sql: sql\`CASE 
+        WHEN \${schema.products.price} < 50 THEN 'Budget'
+        WHEN \${schema.products.price} < 200 THEN 'Mid-range'
+        ELSE 'Premium'
+      END\`,
+      type: 'string',
+      title: 'Price Range'
+    }
   },
   
   measures: {
     count: { sql: schema.products.id, type: 'count' },
     avgPrice: { sql: schema.products.price, type: 'avg' },
+    maxPrice: { sql: schema.products.price, type: 'max' },
+    minPrice: { sql: schema.products.price, type: 'min' },
     totalValue: { 
-      sql: sql\`\${schema.products.price} * COUNT(\${schema.products.id})\`, 
-      type: 'number',
+      sql: sql\`SUM(\${schema.products.price})\`, 
+      type: 'sum',
       title: 'Total Inventory Value'
     }
   }
@@ -221,18 +233,48 @@ export const productsCube = defineCube(schema, {
               </div>
             </div>
 
-            {/* Column 2: Query Examples + Results */}
+            {/* Column 2: API Setup + Query Examples + Results */}
             <div className="space-y-6">
-              {/* Step 3: Queries */}
+              {/* Step 3: API Setup */}
               <div>
                 <h4 className="text-lg font-semibold mb-3 text-purple-600 flex items-center">
                   <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">3</div>
+                  Add to your existing application
+                </h4>
+                <div className="border border-gray-200 rounded-lg text-xs bg-gray-50">
+                  <pre className="language-ts text-gray-700 overflow-x-auto p-3 bg-gray-50"><code className="language-ts">
+{`// app.ts - Your existing Hono app
+import { createCubeApp } from 'drizzle-cube/adapters/hono'
+import { productsCube } from './cubes'
+
+const semanticLayer = new SemanticLayerCompiler({ 
+  databaseExecutor: createDatabaseExecutor(db, schema, 'postgres')
+})
+semanticLayer.addCube(productsCube)
+
+// One line to add analytics APIs
+const cubeApp = createCubeApp({ semanticLayer, drizzle: db, schema })
+app.route('/cubejs-api/v1', cubeApp) // Done!`}
+                  </code></pre>
+                </div>
+              </div>
+
+              {/* Step 4: Queries */}
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-orange-600 flex items-center">
+                  <div className="w-6 h-6 bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">4</div>
                   Then use simple queries
                 </h4>
                 <div className="border border-gray-200 rounded-lg text-xs bg-gray-50">
                   <pre className="language-json text-gray-700 overflow-x-auto p-3 bg-gray-50"><code className="language-json">
-{`{
-  "measures": ["Products.count", "Products.avgPrice"],
+{`GET https://your.application.com/cubejs-api/v1/load?query=
+
+{
+  "measures": [
+    "Products.count", 
+    "Products.avgPrice", 
+    "Products.totalValue"
+  ],
   "dimensions": ["Products.category"],
   "timeDimensions": [{
     "dimension": "Products.createdAt",
@@ -248,10 +290,10 @@ export const productsCube = defineCube(schema, {
                 </div>
               </div>
 
-              {/* Step 4: Results */}
+              {/* Step 5: Results */}
               <div>
-                <h4 className="text-lg font-semibold mb-3 text-orange-600 flex items-center">
-                  <div className="w-6 h-6 bg-orange-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">4</div>
+                <h4 className="text-lg font-semibold mb-3 text-red-600 flex items-center">
+                  <div className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">5</div>
                   To get fast results
                 </h4>
                 <div className="border border-gray-200 rounded-lg text-xs bg-gray-50">
@@ -260,7 +302,8 @@ export const productsCube = defineCube(schema, {
   "Products.category": "Electronics",
   "Products.createdAt": "2024-01",
   "Products.count": "15",
-  "Products.avgPrice": "299.99"
+  "Products.avgPrice": "299.99",
+  "Products.totalValue": "4499.85"
 }]`}
                   </code></pre>
                 </div>

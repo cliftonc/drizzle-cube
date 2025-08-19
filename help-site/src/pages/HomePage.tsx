@@ -17,32 +17,32 @@ const HomePage: React.FC = () => {
   };
 
   const quickStartLinks = [
-    { title: 'Installation', slug: 'getting-started/installation', description: 'Get Drizzle Cube up and running' },
-    { title: 'Quick Start', slug: 'getting-started/quick-start', description: 'Build your first semantic layer' },
-    { title: 'Core Concepts', slug: 'getting-started/concepts', description: 'Understanding cubes, dimensions, and measures' },
-    { title: 'Hono Adapter', slug: 'adapters/hono', description: 'Web framework integration' },
+    { title: 'Installation', slug: 'getting-started/installation', description: 'Add analytics to your existing platform' },
+    { title: 'Quick Start', slug: 'getting-started/quick-start', description: 'Embed your first dashboard in 5 minutes' },
+    { title: 'Core Concepts', slug: 'getting-started/concepts', description: 'Understanding embeddable analytics architecture' },
+    { title: 'Hono Adapter', slug: 'adapters/hono', description: 'One-line integration with your web framework' },
   ];
 
   const featuredTopics = [
     { 
+      title: 'Embedding Components', 
+      slug: 'client', 
+      description: 'Drop-in React components for dashboards and charts'
+    },
+    { 
+      title: 'Multi-Tenant Security', 
+      slug: 'semantic-layer/security', 
+      description: 'Secure data isolation for your platform users'
+    },
+    { 
       title: 'Semantic Layer', 
       slug: 'semantic-layer', 
-      description: 'Learn how to define type-safe data cubes with Drizzle ORM'
+      description: 'Transform your database into business metrics'
     },
     { 
-      title: 'React Components', 
-      slug: 'client', 
-      description: 'Pre-built dashboard and chart components for React'
-    },
-    { 
-      title: 'Security', 
-      slug: 'semantic-layer/security', 
-      description: 'Multi-tenant security with SQL injection protection'
-    },
-    { 
-      title: 'Performance', 
+      title: 'Scaling Analytics', 
       slug: 'advanced/performance', 
-      description: 'Optimization techniques for large datasets'
+      description: 'Handle thousands of users with optimized queries'
     },
   ];
 
@@ -56,8 +56,8 @@ const HomePage: React.FC = () => {
         </div>
         
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-          <a href="https://orm.drizzle.team" target="_blank" rel="noopener noreferrer" className="text-drizzle-600 hover:text-drizzle-700 underline font-medium">Drizzle</a> ORM-first semantic layer with <a href="https://cube.dev" target="_blank" rel="noopener noreferrer" className="text-drizzle-600 hover:text-drizzle-700 underline font-medium">Cube.js</a> compatibility. 
-          Type-safe analytics and dashboards with SQL injection protection.
+          <strong>Embeddable Analytics Solution</strong> for platform builders. 
+          Deliver scalable, type-safe dashboarding capabilities directly to your users with zero infrastructure overhead.
         </p>
 
         {/* Dashboard Preview */}
