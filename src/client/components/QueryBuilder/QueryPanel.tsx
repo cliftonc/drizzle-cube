@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
@@ -21,7 +21,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onExecute,
   onRemoveField,
   onTimeDimensionGranularityChange,
-  onClearQuery
+  onClearQuery,
+  showSettings,
+  onSettingsClick
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
@@ -173,6 +175,15 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   )}
                 </div>
               </>
+            )}
+            {showSettings && onSettingsClick && (
+              <button
+                onClick={onSettingsClick}
+                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                title="API Configuration"
+              >
+                <CogIcon className="w-4 h-4" />
+              </button>
             )}
             <ValidationStatusIcon />
           </div>

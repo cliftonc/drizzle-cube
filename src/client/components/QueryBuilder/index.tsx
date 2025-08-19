@@ -5,28 +5,51 @@
  * Manages state and coordinates between the meta explorer, query panel, and results panel.
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
 import { createCubeClient } from '../../client/CubeClient'
+import { CubeProvider } from '../../providers/CubeProvider'
 import CubeMetaExplorer from './CubeMetaExplorer'
 import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
+import SetupPanel from './SetupPanel'
 import type { 
   QueryBuilderProps, 
   QueryBuilderRef,
   QueryBuilderState, 
   MetaResponse,
-  ValidationResult
+  ValidationResult,
+  ApiConfig
 } from './types'
 import { createEmptyQuery, hasQueryContent, cleanQuery } from './utils'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
+const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
 
 const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   baseUrl,
   className = '',
   initialQuery,
-  disableLocalStorage = false
+  disableLocalStorage = false,
+  hideSettings = false
 }, ref) => {
+  // Load initial API configuration from localStorage
+  const getInitialApiConfig = (): ApiConfig => {
+    if (!disableLocalStorage) {
+      try {
+        const saved = localStorage.getItem(API_CONFIG_STORAGE_KEY)
+        if (saved) {
+          return JSON.parse(saved)
+        }
+      } catch (error) {
+        console.warn('Failed to load API config from localStorage:', error)
+      }
+    }
+    return {
+      baseApiUrl: baseUrl,
+      apiToken: ''
+    }
+  }
+
   // Load initial state from localStorage if available, or use provided initialQuery
   const getInitialState = (): QueryBuilderState => {
     // If initialQuery is provided, use it instead of localStorage
@@ -34,6 +57,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       return {
         query: initialQuery,
         schema: null,
+        schemaStatus: 'idle',
+        schemaError: null,
         validationStatus: 'idle',
         validationError: null,
         validationSql: null,
@@ -54,6 +79,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           return {
             query: parsedState.query || createEmptyQuery(),
             schema: null, // Schema is always loaded fresh
+            schemaStatus: 'idle', // Reset schema status
+            schemaError: null,
             validationStatus: 'idle', // Reset validation status
             validationError: null,
             validationSql: null,
@@ -72,6 +99,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     return {
       query: createEmptyQuery(),
       schema: null,
+      schemaStatus: 'idle',
+      schemaError: null,
       validationStatus: 'idle',
       validationError: null,
       validationSql: null,
@@ -87,6 +116,10 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   
   // Separate state for display limit (doesn't affect the actual query object)
   const [displayLimit, setDisplayLimit] = useState<number>(10)
+  
+  // API configuration state
+  const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
+  const [showSetupPanel, setShowSetupPanel] = useState(false)
 
   // Update query when initialQuery prop changes (for modal usage)
   useEffect(() => {
@@ -94,6 +127,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       setState(prev => ({
         ...prev,
         query: initialQuery,
+        schemaStatus: 'idle',
+        schemaError: null,
         validationStatus: 'idle',
         validationError: null,
         validationSql: null,
@@ -109,8 +144,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   // Track the last validated query to avoid resetting validation on unrelated updates
   const lastValidatedQueryRef = useRef<string>('')
 
-  // Create cube client instance
-  const cubeClient = createCubeClient(undefined, { apiUrl: baseUrl })
+  // Create cube client instance with current API configuration
+  // Use useMemo to prevent unnecessary re-creation
+  const cubeClient = useMemo(() => {
+    return createCubeClient(apiConfig.apiToken, { apiUrl: apiConfig.baseApiUrl })
+  }, [apiConfig.apiToken, apiConfig.baseApiUrl])
 
   // Store the full validation result for access via ref
   const [fullValidationResult, setFullValidationResult] = useState<ValidationResult | null>(null)
@@ -131,26 +169,37 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     getValidationResult: () => fullValidationResult
   }), [state.query, state.validationStatus, state.validationError, state.validationSql, fullValidationResult])
 
-  // Load schema on mount
+  // Load schema on mount and when API config changes
   useEffect(() => {
     const loadSchema = async () => {
+      setState(prev => ({
+        ...prev,
+        schemaStatus: 'loading',
+        schemaError: null
+      }))
+
       try {
         const metaResponse: MetaResponse = await cubeClient.meta()
         setState(prev => ({
           ...prev,
-          schema: metaResponse
+          schema: metaResponse,
+          schemaStatus: 'success',
+          schemaError: null
         }))
       } catch (error) {
         console.error('Failed to load schema:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
         setState(prev => ({
           ...prev,
-          schema: null
+          schema: null,
+          schemaStatus: 'error',
+          schemaError: errorMessage
         }))
       }
     }
 
     loadSchema()
-  }, [baseUrl])
+  }, [apiConfig.baseApiUrl, apiConfig.apiToken])
 
   // Save query to localStorage whenever it changes (if not disabled)
   useEffect(() => {
@@ -162,6 +211,17 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       }
     }
   }, [state.query, disableLocalStorage])
+
+  // Save API config to localStorage whenever it changes (if not disabled)
+  useEffect(() => {
+    if (!disableLocalStorage) {
+      try {
+        localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig))
+      } catch (error) {
+        console.warn('Failed to save API config to localStorage:', error)
+      }
+    }
+  }, [apiConfig, disableLocalStorage])
 
 
 
@@ -268,10 +328,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }))
 
     try {
-      const response = await fetch(`${baseUrl}/dry-run`, {
+      const response = await fetch(`${apiConfig.baseApiUrl}/dry-run`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(apiConfig.apiToken && { 'Authorization': `Bearer ${apiConfig.apiToken}` })
         },
         credentials: 'include',
         body: JSON.stringify({ query: queryToValidate })
@@ -320,7 +381,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         validationSql: null
       }))
     }
-  }, [state.query, baseUrl])
+  }, [state.query, apiConfig.baseApiUrl, apiConfig.apiToken])
 
   const handleExecuteQuery = useCallback(async () => {
     if (!hasQueryContent(state.query) || state.validationStatus !== 'valid') return
@@ -381,6 +442,60 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }))
   }, [])
 
+  const handleApiConfigChange = useCallback((newConfig: ApiConfig) => {
+    setApiConfig(newConfig)
+    // Reset all state when API config changes
+    setState(prev => ({
+      ...prev,
+      schema: null,
+      schemaStatus: 'idle',
+      schemaError: null,
+      validationStatus: 'idle',
+      validationError: null,
+      validationSql: null,
+      executionStatus: 'idle',
+      executionResults: null,
+      executionError: null,
+      totalRowCount: null,
+      totalRowCountStatus: 'idle'
+    }))
+  }, [])
+
+  const handleResetApiConfig = useCallback(() => {
+    const defaultConfig = {
+      baseApiUrl: baseUrl,
+      apiToken: ''
+    }
+    setApiConfig(defaultConfig)
+  }, [baseUrl])
+
+  const handleRetrySchema = useCallback(async () => {
+    setState(prev => ({
+      ...prev,
+      schemaStatus: 'loading',
+      schemaError: null
+    }))
+
+    try {
+      const metaResponse: MetaResponse = await cubeClient.meta()
+      setState(prev => ({
+        ...prev,
+        schema: metaResponse,
+        schemaStatus: 'success',
+        schemaError: null
+      }))
+    } catch (error) {
+      console.error('Failed to retry schema:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
+      setState(prev => ({
+        ...prev,
+        schema: null,
+        schemaStatus: 'error',
+        schemaError: errorMessage
+      }))
+    }
+  }, [cubeClient])
+
   const selectedFields = {
     measures: state.query.measures || [],
     dimensions: state.query.dimensions || [],
@@ -388,17 +503,32 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   }
 
   return (
-    <div className={`h-full bg-gray-50 ${className}`} style={{ display: 'block', position: 'relative' }}>
-      <div 
-        className="h-full gap-4 p-4" 
-        style={{ 
-          display: 'flex', 
-          flexDirection: 'row', 
-          height: '100%',
-          gap: '1rem',
-          padding: '1rem'
-        }}
-      >
+    <CubeProvider cubeApi={cubeClient}>
+      <div className={`h-full bg-gray-50 ${className}`} style={{ display: 'block', position: 'relative' }}>
+        {/* Setup Panel - only show when not in modal and not hidden */}
+        {!hideSettings && (
+          <div className="p-4 pb-0">
+            <SetupPanel
+              isOpen={showSetupPanel}
+              onToggle={() => setShowSetupPanel(!showSetupPanel)}
+              config={apiConfig}
+              onConfigChange={handleApiConfigChange}
+              onReset={handleResetApiConfig}
+            />
+          </div>
+        )}
+        
+        <div 
+          className="h-full gap-4 p-4" 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'row', 
+            height: hideSettings ? '100%' : 'calc(100% - 0rem)',
+            gap: '1rem',
+            padding: '1rem',
+            paddingTop: hideSettings ? '1rem' : '0rem'
+          }}
+        >
         {/* Schema Explorer - Left Column (1/3 width) */}
         <div 
           className="w-1/3 min-w-0" 
@@ -410,9 +540,13 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         >
           <CubeMetaExplorer
             schema={state.schema}
+            schemaStatus={state.schemaStatus}
+            schemaError={state.schemaError}
             selectedFields={selectedFields}
             onFieldSelect={handleFieldSelect}
             onFieldDeselect={handleFieldDeselect}
+            onRetrySchema={handleRetrySchema}
+            onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
           />
         </div>
 
@@ -442,6 +576,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onRemoveField={handleFieldDeselect}
               onTimeDimensionGranularityChange={handleTimeDimensionGranularityChange}
               onClearQuery={handleClearQuery}
+              showSettings={!hideSettings}
+              onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
             />
           </div>
 
@@ -465,8 +601,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </CubeProvider>
   )
 })
 

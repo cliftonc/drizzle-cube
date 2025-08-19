@@ -6,26 +6,107 @@
  */
 
 import React, { useState } from 'react'
-import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
 
 const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   schema,
+  schemaStatus,
+  schemaError,
   selectedFields,
   onFieldSelect,
-  onFieldDeselect
+  onFieldDeselect,
+  onRetrySchema,
+  onOpenSettings
 }) => {
   const [expandedCubes, setExpandedCubes] = useState<Set<string>>(new Set())
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Loading state
+  if (schemaStatus === 'loading') {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+          <div className="text-sm font-semibold mb-1">Loading Schema...</div>
+          <div className="text-xs">Fetching cube metadata</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (schemaStatus === 'error') {
+    const isCorsError = schemaError?.toLowerCase().includes('cors') || 
+                       schemaError?.toLowerCase().includes('fetch')
+    
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-sm p-6">
+          <ExclamationTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <div className="text-sm font-semibold text-gray-900 mb-2">
+            Failed to Load Schema
+          </div>
+          <div className="text-xs text-gray-600 mb-4">
+            {isCorsError ? (
+              <>
+                CORS error detected. The API endpoint may be incorrect or not accessible.
+              </>
+            ) : (
+              <>
+                {schemaError || 'Unable to connect to the Cube.js API'}
+              </>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            {onRetrySchema && (
+              <button
+                onClick={onRetrySchema}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <ArrowPathIcon className="w-4 h-4" />
+                <span>Retry</span>
+              </button>
+            )}
+            
+            {onOpenSettings && (
+              <button
+                onClick={onOpenSettings}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <CogIcon className="w-4 h-4" />
+                <span>Check API Settings</span>
+              </button>
+            )}
+          </div>
+          
+          {isCorsError && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="text-xs text-amber-800">
+                <div className="font-medium mb-1">Common solutions:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Verify the Base API URL is correct</li>
+                  <li>Ensure the server supports CORS</li>
+                  <li>Check if authentication is required</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // No schema loaded yet
   if (!schema) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500">
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Loading Schema...</div>
-          <div className="text-xs">Fetching cube metadata</div>
+          <div className="text-sm font-semibold mb-1">No Schema</div>
+          <div className="text-xs">Schema not loaded</div>
         </div>
       </div>
     )

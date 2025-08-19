@@ -29,10 +29,13 @@ export interface MetaResponse {
 // Query builder state types
 export type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid'
 export type ExecutionStatus = 'idle' | 'loading' | 'success' | 'error'
+export type SchemaStatus = 'idle' | 'loading' | 'success' | 'error'
 
 export interface QueryBuilderState {
   query: CubeQuery                 // Current query being built
   schema: MetaResponse | null      // Schema from /meta endpoint
+  schemaStatus: SchemaStatus       // Status of schema loading
+  schemaError: string | null       // Error from schema loading
   validationStatus: ValidationStatus
   validationError: string | null
   validationSql: { sql: string[], params: any[] } | null     // Generated SQL from validation
@@ -63,12 +66,19 @@ export interface ValidationResult {
   // Additional validation metadata can be added here
 }
 
+// API Configuration
+export interface ApiConfig {
+  baseApiUrl: string               // Base URL for Cube API (default: '/cubejs-api/v1')
+  apiToken: string                 // API token for authentication (default: empty)
+}
+
 // Component props
 export interface QueryBuilderProps {
   baseUrl: string                  // Configurable Cube API base URL
   className?: string               // Optional CSS classes
   initialQuery?: CubeQuery         // Initial query to load (overrides localStorage)
   disableLocalStorage?: boolean    // Disable localStorage persistence
+  hideSettings?: boolean           // Hide the settings/configuration button
 }
 
 export interface QueryBuilderRef {
@@ -79,6 +89,8 @@ export interface QueryBuilderRef {
 
 export interface CubeMetaExplorerProps {
   schema: MetaResponse | null
+  schemaStatus: SchemaStatus
+  schemaError: string | null
   selectedFields: {
     measures: string[]
     dimensions: string[]
@@ -86,6 +98,8 @@ export interface CubeMetaExplorerProps {
   }
   onFieldSelect: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onFieldDeselect: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
+  onRetrySchema?: () => void
+  onOpenSettings?: () => void
 }
 
 export interface QueryPanelProps {
@@ -98,6 +112,8 @@ export interface QueryPanelProps {
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onTimeDimensionGranularityChange: (dimensionName: string, granularity: string) => void
   onClearQuery?: () => void
+  showSettings?: boolean           // Show the settings/configuration button
+  onSettingsClick?: () => void     // Handler for settings button click
 }
 
 export interface ResultsPanelProps {

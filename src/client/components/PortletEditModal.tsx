@@ -623,6 +623,7 @@ export default function PortletEditModal({
           baseUrl={apiUrl}
           initialQuery={queryBuilderInitialQuery}
           disableLocalStorage={true}
+          hideSettings={true}
           className="flex-1 w-full"
         />
       ) : (
