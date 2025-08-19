@@ -58,10 +58,11 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(200)
     
     const data = await res.json()
-    expect(data.data).toBeDefined()
-    expect(Array.isArray(data.data)).toBe(true)
-    expect(data.annotation).toBeDefined()
-    expect(data.query).toBeDefined()
+    expect(data.results).toBeDefined()
+    expect(data.results[0].data).toBeDefined()
+    expect(Array.isArray(data.results[0].data)).toBe(true)
+    expect(data.results[0].annotation).toBeDefined()
+    expect(data.pivotQuery).toBeDefined()
   })
 
   it('should handle GET /cubejs-api/v1/meta', async () => {
@@ -107,8 +108,9 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(200)
     
     const data = await res.json()
-    expect(data.data).toBeDefined()
-    expect(Array.isArray(data.data)).toBe(true)
+    expect(data.results).toBeDefined()
+    expect(data.results[0].data).toBeDefined()
+    expect(Array.isArray(data.results[0].data)).toBe(true)
   })
 
   it('should handle errors gracefully', async () => {
@@ -198,11 +200,12 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(200)
     
     const data = await res.json()
-    expect(data.data).toBeDefined()
-    expect(data.data.length).toBeGreaterThan(0)
+    expect(data.results).toBeDefined()
+    expect(data.results[0].data).toBeDefined()
+    expect(data.results[0].data.length).toBeGreaterThan(0)
     
     // Check that we get actual employee names
-    const firstRow = data.data[0]
+    const firstRow = data.results[0].data[0]
     expect(firstRow['Employees.name']).toBeDefined()
     expect(typeof firstRow['Employees.name']).toBe('string')
     expect(firstRow['Employees.count']).toBeDefined()
@@ -228,9 +231,10 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(200)
     
     const data = await res.json()
-    expect(data.data).toBeDefined()
-    expect(data.data.length).toBe(2) // Enhanced data may have multiple John entries due to joins
-    expect(data.data.every(row => row['Employees.name'].includes('John'))).toBe(true)
+    expect(data.results).toBeDefined()
+    expect(data.results[0].data).toBeDefined()
+    expect(data.results[0].data.length).toBe(2) // Enhanced data may have multiple John entries due to joins
+    expect(data.results[0].data.every(row => row['Employees.name'].includes('John'))).toBe(true)
   })
 
   it('should handle aggregation measures', async () => {
@@ -246,10 +250,11 @@ describe('Hono Adapter', () => {
     expect(res.status).toBe(200)
     
     const data = await res.json()
-    expect(data.data).toBeDefined()
-    expect(data.data.length).toBe(1)
+    expect(data.results).toBeDefined()
+    expect(data.results[0].data).toBeDefined()
+    expect(data.results[0].data.length).toBe(1)
     
-    const row = data.data[0]
+    const row = data.results[0].data[0]
     expect(typeof row['Employees.avgSalary']).toBe('number')
     expect(typeof row['Employees.totalSalary']).toBe('number')
     expect(row['Employees.avgSalary']).toBeGreaterThan(0)

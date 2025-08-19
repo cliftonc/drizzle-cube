@@ -108,11 +108,37 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       // Execute multi-cube query (handles both single and multi-cube automatically)
       const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
       
-      // Return in Cube.js format
+      // Get database type
+      const dbType = getDatabaseType(semanticLayer)
+      
+      // Generate request ID and timestamps
+      const requestId = generateRequestId()
+      const lastRefreshTime = new Date().toISOString()
+      
+      // Build transformed query metadata
+      const transformedQuery = buildTransformedQuery(query)
+      
+      // Return in official Cube.js format
       return c.json({
-        data: result.data,
-        annotation: result.annotation,
-        query,
+        queryType: "regularQuery",
+        results: [{
+          query,
+          lastRefreshTime,
+          usedPreAggregations: {},
+          transformedQuery,
+          requestId,
+          annotation: result.annotation,
+          dataSource: "default",
+          dbType,
+          extDbType: dbType,
+          external: false,
+          slowQuery: false,
+          data: result.data
+        }],
+        pivotQuery: {
+          ...query,
+          queryType: "regularQuery"
+        },
         slowQuery: false
       })
       
@@ -152,10 +178,37 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
       // Execute multi-cube query (handles both single and multi-cube automatically)
       const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
       
+      // Get database type
+      const dbType = getDatabaseType(semanticLayer)
+      
+      // Generate request ID and timestamps
+      const requestId = generateRequestId()
+      const lastRefreshTime = new Date().toISOString()
+      
+      // Build transformed query metadata
+      const transformedQuery = buildTransformedQuery(query)
+      
+      // Return in official Cube.js format
       return c.json({
-        data: result.data,
-        annotation: result.annotation,
-        query,
+        queryType: "regularQuery",
+        results: [{
+          query,
+          lastRefreshTime,
+          usedPreAggregations: {},
+          transformedQuery,
+          requestId,
+          annotation: result.annotation,
+          dataSource: "default",
+          dbType,
+          extDbType: dbType,
+          external: false,
+          slowQuery: false,
+          data: result.data
+        }],
+        pivotQuery: {
+          ...query,
+          queryType: "regularQuery"
+        },
         slowQuery: false
       })
       
@@ -298,6 +351,61 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
     if (complexity <= 5) return 'low'
     if (complexity <= 15) return 'medium'
     return 'high'
+  }
+
+  /**
+   * Generate a unique request ID
+   */
+  function generateRequestId(): string {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 9)
+    return `${timestamp}-${random}`
+  }
+
+  /**
+   * Build transformed query metadata
+   */
+  function buildTransformedQuery(query: SemanticQuery): any {
+    const sortedDimensions = query.dimensions || []
+    const sortedTimeDimensions = query.timeDimensions || []
+    const measures = query.measures || []
+
+    return {
+      sortedDimensions,
+      sortedTimeDimensions,
+      timeDimensions: sortedTimeDimensions,
+      measures,
+      leafMeasureAdditive: true,
+      leafMeasures: measures,
+      measureToLeafMeasures: {},
+      hasNoTimeDimensionsWithoutGranularity: true,
+      allFiltersWithinSelectedDimensions: true,
+      isAdditive: true,
+      granularityHierarchies: {},
+      hasMultipliedMeasures: false,
+      hasCumulativeMeasures: false,
+      windowGranularity: null,
+      filterDimensionsSingleValueEqual: {},
+      ownedDimensions: sortedDimensions,
+      ownedTimeDimensionsWithRollupGranularity: [],
+      ownedTimeDimensionsAsIs: [],
+      allBackAliasMembers: {},
+      hasMultiStage: false
+    }
+  }
+
+  /**
+   * Get database type from semantic layer
+   */
+  function getDatabaseType(semanticLayer: SemanticLayerCompiler<any>): string {
+    // Extract from the semantic layer's database executor
+    if (semanticLayer.hasExecutor()) {
+      const executor = (semanticLayer as any).databaseExecutor
+      if (executor?.engineType) {
+        return executor.engineType
+      }
+    }
+    return 'postgres' // default fallback
   }
 
   /**

@@ -147,6 +147,11 @@ class ResultSet implements CubeResultSet {
   }
 
   rawData(): any[] {
+    // Handle new nested structure: loadResponse.results[0].data
+    // Keep backward compatibility with old structure: loadResponse.data
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].data || []
+    }
     return this.loadResponse.data || []
   }
 
@@ -161,6 +166,11 @@ class ResultSet implements CubeResultSet {
   }
 
   annotation(): any {
+    // Handle new nested structure: loadResponse.results[0].annotation
+    // Keep backward compatibility with old structure: loadResponse.annotation
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].annotation || {}
+    }
     return this.loadResponse.annotation || {}
   }
 }
