@@ -159,7 +159,7 @@ npx tsx test.ts
 Now that Drizzle Cube is installed, you can:
 
 1. [**Set up your first cube**](/help/getting-started/quick-start)
-2. [**Learn core concepts**](/help/getting-started/concepts)  
+2. [**Learn core concepts**](/help/semantic-layer)  
 3. [**Explore the Hono adapter**](/help/adapters/hono)
 
 ## Troubleshooting

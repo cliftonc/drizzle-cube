@@ -52,7 +52,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
   const EmptyState = () => (
     <div className="h-full flex items-center justify-center">
-      <div className="text-center">
+      <div className="text-center mb-16">
         <ClockIcon className="w-12 h-12 mx-auto text-gray-300 mb-3" />
         <div className="text-sm font-semibold text-gray-700 mb-1">No Results Yet</div>
         <div className="text-xs text-gray-500">Build and run a query to see results here</div>

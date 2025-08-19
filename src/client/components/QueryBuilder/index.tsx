@@ -489,7 +489,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   return (
     <CubeProvider cubeApi={cubeClient}>
-      <div className={`h-full bg-gray-50 ${className}`} style={{ display: 'block', position: 'relative' }}>
+      <div className={`h-full ${className}`} style={{ display: 'block', position: 'relative' }}>
         {/* Setup Panel - only show when not in modal and not hidden */}
         {!hideSettings && (
           <div className="p-4 pb-0">
@@ -568,10 +568,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
           {/* Results Panel - Lower Right */}
           <div 
-            className="flex-1 min-h-0" 
+            className={`${state.executionStatus === 'idle' ? 'flex-shrink-0 h-48' : 'flex-1 min-h-[400px]'}`}
             style={{ 
-              flex: '1 1 0%',
-              minHeight: '0'
+              ...(state.executionStatus === 'idle' 
+                ? { flexShrink: 0, height: '12rem' }
+                : { flex: '1 1 0%', minHeight: '400px' })
             }}
           >
             <ResultsPanel

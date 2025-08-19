@@ -179,26 +179,65 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       }
     })()
 
+    const getSelectedStyles = () => {
+      if (!isSelected) return 'hover:bg-gray-100 text-gray-700'
+      
+      switch (fieldType) {
+        case 'measures':
+          return 'bg-amber-100 text-amber-800 border border-amber-200'
+        case 'dimensions':
+          return 'bg-green-100 text-green-800 border border-green-200'
+        case 'timeDimensions':
+          return 'bg-blue-100 text-blue-800 border border-blue-200'
+        default:
+          return 'bg-blue-100 text-blue-800 border border-blue-200'
+      }
+    }
+
+    const getIconColor = () => {
+      if (!isSelected) return 'text-gray-400'
+      
+      switch (fieldType) {
+        case 'measures':
+          return 'text-amber-600'
+        case 'dimensions':
+          return 'text-green-600'
+        case 'timeDimensions':
+          return 'text-blue-600'
+        default:
+          return 'text-blue-600'
+      }
+    }
+
+    const getCheckmarkColor = () => {
+      switch (fieldType) {
+        case 'measures':
+          return 'text-amber-600'
+        case 'dimensions':
+          return 'text-green-600'
+        case 'timeDimensions':
+          return 'text-blue-600'
+        default:
+          return 'text-blue-600'
+      }
+    }
+
     return (
       <div
-        className={`flex items-center px-3 py-2 text-sm cursor-pointer rounded-md transition-colors ${
-          isSelected 
-            ? 'bg-blue-100 text-blue-800 border border-blue-200' 
-            : 'hover:bg-gray-100 text-gray-700'
-        }`}
+        className={`flex items-center px-2 py-1.5 text-xs cursor-pointer rounded-md transition-colors ${getSelectedStyles()}`}
         onClick={() => handleFieldClick(field, fieldType)}
         title={field.description || field.title}
       >
-        <div className={`mr-2 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`}>
-          {icon}
+        <div className={`mr-1.5 ${getIconColor()}`}>
+          {React.cloneElement(icon as React.ReactElement, { className: 'w-3 h-3' })}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate">{field.shortTitle}</div>
+          <div className="font-medium truncate text-xs">{field.shortTitle}</div>
           <div className="text-xs text-gray-500 truncate">{field.name}</div>
         </div>
         {isSelected && (
-          <div className="ml-2 text-blue-600">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <div className={`ml-1.5 ${getCheckmarkColor()}`}>
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </div>
@@ -217,21 +256,21 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     
     return (
       <div
-        className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-50 rounded-md"
+        className="flex items-center px-2 py-1 text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-50 rounded-md"
         onClick={() => toggleSectionExpansion(sectionKey)}
       >
-        <div className="mr-2">
+        <div className="mr-1.5">
           {isExpanded ? (
-            <ChevronDownIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-3 h-3" />
           ) : (
-            <ChevronRightIcon className="w-4 h-4" />
+            <ChevronRightIcon className="w-3 h-3" />
           )}
         </div>
-        <div className="mr-2 text-gray-500">
-          {icon}
+        <div className="mr-1.5 text-gray-500">
+          {React.cloneElement(icon as React.ReactElement, { className: 'w-3 h-3' })}
         </div>
         <span className="flex-1">{title}</span>
-        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+        <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full">
           {count}
         </span>
       </div>
@@ -239,10 +278,10 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-gray-200">
+    <div className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Schema Explorer</h3>
+      <div className="p-3 border-b border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 mb-2">Schema Explorer</h3>
         
         {/* Search */}
         <div className="relative">
@@ -251,7 +290,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             placeholder="Search fields..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -262,7 +301,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       </div>
 
       {/* Cubes */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {schema.cubes.map((cube: MetaCube) => {
           const isExpanded = expandedCubes.has(cube.name)
           const timeDimensions = cube.dimensions.filter(d => d.type === 'time')
@@ -272,25 +311,25 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             <div key={cube.name} className="border border-gray-200 rounded-lg">
               {/* Cube Header */}
               <div
-                className="flex items-center px-4 py-3 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 rounded-t-lg"
                 onClick={() => toggleCubeExpansion(cube.name)}
               >
-                <div className="mr-3">
+                <div className="mr-2">
                   {isExpanded ? (
-                    <ChevronDownIcon className="w-5 h-5 text-gray-600" />
+                    <ChevronDownIcon className="w-4 h-4 text-gray-600" />
                   ) : (
-                    <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+                    <ChevronRightIcon className="w-4 h-4 text-gray-600" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-gray-900">{cube.title}</div>
-                  <div className="text-sm text-gray-500">{cube.description}</div>
+                  <div className="font-medium text-sm text-gray-900">{cube.title}</div>
+                  <div className="text-xs text-gray-500">{cube.description}</div>
                 </div>
               </div>
 
               {/* Cube Content */}
               {isExpanded && (
-                <div className="border-t border-gray-200 p-3 space-y-3">
+                <div className="border-t border-gray-200 p-2 space-y-1">
                   {/* Measures */}
                   {cube.measures.length > 0 && (
                     <div>
@@ -301,7 +340,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                         icon={<ChartBarIcon className="w-4 h-4" />}
                       />
                       {expandedSections.has(`${cube.name}-measures`) && (
-                        <div className="ml-6 space-y-1 mt-2">
+                        <div className="ml-5 space-y-1 mt-1">
                           {filterFields(cube.measures).map(measure => (
                             <FieldItem
                               key={measure.name}
@@ -325,7 +364,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                         icon={<TagIcon className="w-4 h-4" />}
                       />
                       {expandedSections.has(`${cube.name}-dimensions`) && (
-                        <div className="ml-6 space-y-1 mt-2">
+                        <div className="ml-5 space-y-1 mt-1">
                           {filterFields(regularDimensions).map(dimension => (
                             <FieldItem
                               key={dimension.name}
@@ -349,7 +388,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                         icon={<CalendarIcon className="w-4 h-4" />}
                       />
                       {expandedSections.has(`${cube.name}-timeDimensions`) && (
-                        <div className="ml-6 space-y-1 mt-2">
+                        <div className="ml-5 space-y-1 mt-1">
                           {filterFields(timeDimensions).map(timeDimension => (
                             <FieldItem
                               key={timeDimension.name}

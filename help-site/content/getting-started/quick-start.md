@@ -299,8 +299,7 @@ export default Dashboard;
 Congratulations! You've created your first semantic layer with Drizzle Cube. Here's what you can explore next:
 
 ### Learn More
-- [**Core Concepts**](/help/getting-started/concepts) - Deep dive into cubes, dimensions, and measures
-- [**Semantic Layer**](/help/semantic-layer) - Advanced semantic layer features
+- [**Semantic Layer**](/help/semantic-layer) - Deep dive into cubes, dimensions, and measures
 - [**Security**](/help/semantic-layer/security) - Multi-tenant security patterns
 
 ### Explore Components

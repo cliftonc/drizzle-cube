@@ -13,15 +13,38 @@ A semantic layer is a **business representation** of your data that:
 
 ## Architecture Overview
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Applications  │────│  Semantic Layer  │────│    Database     │
-│                 │    │                  │    │                 │
-│ • Dashboards    │    │ • Cubes         │    │ • Tables        │
-│ • Reports       │    │ • Dimensions    │    │ • Views         │
-│ • APIs          │    │ • Measures      │    │ • Indexes       │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+<div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin: 20px 0; font-family: monospace;">
+  <div style="border: 2px solid #374151; border-radius: 8px; padding: 16px; background: #f9fafb; min-width: 140px;">
+    <div style="font-weight: bold; text-align: center; margin-bottom: 8px;">Applications</div>
+    <div style="font-size: 14px; color: #6b7280;">
+      • Dashboards<br>
+      • Reports<br>
+      • APIs
+    </div>
+  </div>
+  
+  <div style="color: #6b7280; font-size: 24px;">→</div>
+  
+  <div style="border: 2px solid #059669; border-radius: 8px; padding: 16px; background: #f0fdf4; min-width: 140px;">
+    <div style="font-weight: bold; text-align: center; margin-bottom: 8px; color: #059669;">Semantic Layer</div>
+    <div style="font-size: 14px; color: #6b7280;">
+      • Cubes<br>
+      • Dimensions<br>
+      • Measures
+    </div>
+  </div>
+  
+  <div style="color: #6b7280; font-size: 24px;">→</div>
+  
+  <div style="border: 2px solid #374151; border-radius: 8px; padding: 16px; background: #f9fafb; min-width: 140px;">
+    <div style="font-weight: bold; text-align: center; margin-bottom: 8px;">Database</div>
+    <div style="font-size: 14px; color: #6b7280;">
+      • Tables<br>
+      • Views<br>
+      • Indexes
+    </div>
+  </div>
+</div>
 
 ## Key Components
 

@@ -102,29 +102,36 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     timeDimension: { dimension: string; granularity?: string }
     label: string
   }> = ({ timeDimension, label }) => (
-    <div className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-lg border border-blue-200 w-full">
-      <div className="mr-2">
-        <CalendarIcon className="w-4 h-4" />
+    <div className="bg-blue-100 text-blue-800 text-sm px-3 py-2 rounded-lg border border-blue-200 w-full">
+      {/* Top row with icon, label, and remove button */}
+      <div className="flex items-center mb-1">
+        <div className="mr-2">
+          <CalendarIcon className="w-4 h-4" />
+        </div>
+        <span className="flex-1 text-xs break-all">{label}</span>
+        <button
+          onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
+          className="text-gray-600 hover:text-red-600 focus:outline-none ml-2"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
       </div>
-      <span className="mr-2 flex-1 text-xs break-all">{label}</span>
-      <select
-        value={timeDimension.granularity || 'month'}
-        onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
-        className="bg-blue-100 border-none text-blue-800 text-xs rounded focus:ring-2 focus:ring-blue-500 mr-1"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {TIME_GRANULARITIES.map(granularity => (
-          <option key={granularity.value} value={granularity.value}>
-            {granularity.label}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-        className="text-gray-600 hover:text-red-600 focus:outline-none"
-      >
-        <XMarkIcon className="w-4 h-4" />
-      </button>
+      {/* Bottom row with granularity dropdown */}
+      <div className="ml-6 flex items-center">
+        <span className="text-xs text-blue-700 mr-2">Granularity:</span>
+        <select
+          value={timeDimension.granularity || 'month'}
+          onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
+          className="bg-blue-100 border-none text-blue-800 text-xs rounded focus:ring-2 focus:ring-blue-500 flex-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {TIME_GRANULARITIES.map(granularity => (
+            <option key={granularity.value} value={granularity.value}>
+              {granularity.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   )
 

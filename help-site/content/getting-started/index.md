@@ -16,10 +16,19 @@ Drizzle Cube bridges the gap between your database and your analytics applicatio
 ## Core Concepts
 
 ### Semantic Layer
-The semantic layer is where you define your business logic and data models. Instead of writing raw SQL queries throughout your application, you define **cubes** that encapsulate your data models.
+The **semantic layer** is a business-friendly abstraction over your database that sits between your raw data and your analytics applications. Instead of writing raw SQL queries throughout your application, you define **cubes** that encapsulate your business logic and provide:
+
+- **Consistent metrics** - Define calculations once, use everywhere
+- **Security by default** - Multi-tenant isolation and access control
+- **Business terminology** - Use familiar names instead of database columns
+- **Type safety** - Full TypeScript support prevents runtime errors
 
 ### Cubes
-Cubes are the building blocks of your semantic layer. Each cube represents a table or a set of joined tables with defined dimensions and measures.
+**Cubes** are the building blocks of your semantic layer. Each cube represents a business entity (like Sales, Users, Products) with:
+
+- **Dimensions** - Attributes you can filter and group by (like product category, customer name)
+- **Measures** - Numeric values you want to analyze (like total revenue, order count)
+- **Security context** - Automatic multi-tenant isolation
 
 ```typescript
 export const salesCube = defineCube(schema, {
@@ -30,34 +39,35 @@ export const salesCube = defineCube(schema, {
       .where(eq(schema.sales.organisationId, securityContext.organisationId)),
   
   dimensions: {
-    productName: { 
-      sql: schema.sales.productName, 
-      type: 'string' 
-    },
-    orderDate: { 
-      sql: schema.sales.orderDate, 
-      type: 'time' 
-    }
+    productName: { sql: schema.sales.productName, type: 'string' },
+    orderDate: { sql: schema.sales.orderDate, type: 'time' }
   },
   
   measures: {
-    totalSales: { 
-      sql: schema.sales.amount, 
-      type: 'sum' 
-    },
-    orderCount: { 
-      sql: schema.sales.id, 
-      type: 'count' 
-    }
+    totalSales: { sql: schema.sales.amount, type: 'sum' },
+    orderCount: { sql: schema.sales.id, type: 'count' }
   }
 });
 ```
 
-### Dimensions
-Dimensions are attributes of your data that you can filter, group, and segment by. They are typically categorical data like product names, dates, or customer segments.
+### Query Structure
+When you query cubes, you specify what you want to analyze:
 
-### Measures
-Measures are the quantitative values you want to analyze - things like revenue, count of orders, average order value, etc.
+```json
+{
+  "measures": ["Sales.totalSales", "Sales.orderCount"],
+  "dimensions": ["Sales.productName"], 
+  "timeDimensions": [{
+    "dimension": "Sales.orderDate",
+    "granularity": "month"
+  }],
+  "filters": [{
+    "member": "Sales.productName",
+    "operator": "equals", 
+    "values": ["Electronics"]
+  }]
+}
+```
 
 ## Architecture
 
@@ -83,7 +93,8 @@ Ready to get started? Here's what to do next:
 
 1. [**Installation**](/help/getting-started/installation) - Install Drizzle Cube in your project
 2. [**Quick Start**](/help/getting-started/quick-start) - Build your first semantic layer
-3. [**Core Concepts**](/help/getting-started/concepts) - Understand cubes, dimensions, and measures in detail
+3. [**Scaling Your SaaS**](/help/getting-started/scaling) - Learn how Drizzle Cube grows with your business
+4. [**Semantic Layer**](/help/semantic-layer) - Deep dive into cubes, dimensions, and measures
 
 ## Example Applications
 

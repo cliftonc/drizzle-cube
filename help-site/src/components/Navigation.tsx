@@ -22,7 +22,7 @@ const navigationSections: NavSection[] = [
       { title: 'Introduction', slug: 'getting-started', description: 'What is Drizzle Cube?' },
       { title: 'Installation', slug: 'getting-started/installation', description: 'Install and setup' },
       { title: 'Quick Start', slug: 'getting-started/quick-start', description: 'Build your first semantic layer' },
-      { title: 'Core Concepts', slug: 'getting-started/concepts', description: 'Understanding the basics' },
+      { title: 'Scaling Your SaaS', slug: 'getting-started/scaling', description: 'How Drizzle Cube grows with your business' },
     ]
   },
   {
