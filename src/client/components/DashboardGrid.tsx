@@ -99,9 +99,9 @@ export default function DashboardGrid({
     }
   }, [config.portlets, editable, onSave])
 
-  // Handle resize stop - save when user finishes resizing
+  // Handle resize stop - update config but do NOT auto-save (resize shouldn't trigger save)
   const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
-    if (!editable || !onSave) return
+    if (!editable || !onConfigChange) return
 
     // Get the current updated config from the layout change
     const updatedPortlets = config.portlets.map(portlet => {
@@ -123,13 +123,9 @@ export default function DashboardGrid({
       layouts: { lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }
     }
 
-    // Auto-save after resize operation
-    try {
-      await onSave(updatedConfig)
-    } catch (error) {
-      console.error('Auto-save failed after resize:', error)
-    }
-  }, [config.portlets, editable, onSave])
+    // Update config but do NOT auto-save (resize events should not trigger save)
+    onConfigChange(updatedConfig)
+  }, [config.portlets, editable, onConfigChange])
 
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
