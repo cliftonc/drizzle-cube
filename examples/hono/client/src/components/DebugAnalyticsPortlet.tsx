@@ -50,7 +50,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
         <div>
           <strong>Query:</strong>
           <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-            {JSON.stringify(parsedQuery, null, 2)}
+            <code className="language-json">{JSON.stringify(parsedQuery, null, 2)}</code>
           </pre>
         </div>
         
@@ -62,7 +62,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
           <div>
             <strong>useCubeQuery Error:</strong>
             <pre className="bg-red-100 p-2 rounded text-xs text-red-700">
-              {JSON.stringify(error, null, 2)}
+              <code className="language-json">{JSON.stringify(error, null, 2)}</code>
             </pre>
           </div>
         )}
@@ -71,7 +71,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
           <div>
             <strong>useCubeQuery Data:</strong>
             <pre className="bg-green-100 p-2 rounded text-xs max-h-40 overflow-auto">
-              {JSON.stringify(resultSet, null, 2)}
+              <code className="language-json">{JSON.stringify(resultSet, null, 2)}</code>
             </pre>
           </div>
         )}
@@ -87,11 +87,11 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
             <strong>Direct API Test:</strong>
             {networkTest.success ? (
               <pre className="bg-blue-100 p-2 rounded text-xs max-h-40 overflow-auto">
-                {JSON.stringify(networkTest.data, null, 2)}
+                <code className="language-json">{JSON.stringify(networkTest.data, null, 2)}</code>
               </pre>
             ) : (
               <pre className="bg-red-100 p-2 rounded text-xs text-red-700">
-                {JSON.stringify(networkTest.error, null, 2)}
+                <code className="language-json">{JSON.stringify(networkTest.error, null, 2)}</code>
               </pre>
             )}
           </div>

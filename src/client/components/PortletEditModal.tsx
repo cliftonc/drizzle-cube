@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { ChartBarIcon, ChartPieIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect, useRef } from 'react'
+import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
+import QueryBuilder from './QueryBuilder'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
 interface PortletEditModalProps {
@@ -101,6 +102,57 @@ export default function PortletEditModal({
   const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({ xAxis: [], yAxis: [], series: [] })
   const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({ showLegend: true, stackedBarChart: false })
   const [originalQuery, setOriginalQuery] = useState<string>('')
+  const [showQueryBuilder, setShowQueryBuilder] = useState(false)
+  const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
+  const queryBuilderRef = useRef<any>(null)
+
+  // Shared function to auto-populate chart config from validation result
+  const autoPopulateChartConfig = (result: any, queryText: string) => {
+    const queryHasChanged = queryText.trim() !== originalQuery.trim()
+    const shouldOverrideConfig = queryHasChanged || ((chartConfig.xAxis?.length ?? 0) === 0 && (chartConfig.yAxis?.length ?? 0) === 0 && (!chartConfig.series || chartConfig.series.length === 0))
+    
+    if (result.pivotQuery?.query && shouldOverrideConfig) {
+      const timeDimensions = result.pivotQuery.query.timeDimensions?.map((td: any) => td.dimension) || []
+      const regularDimensions = result.pivotQuery.query.dimensions || []
+      const allMeasures = result.pivotQuery.query.measures || []
+      
+      const isDateLikeDimension = (dim: string) => {
+        const lowerDim = dim.toLowerCase()
+        return lowerDim.includes('date') || 
+               lowerDim.includes('time') || 
+               lowerDim.includes('created') || 
+               lowerDim.includes('updated') ||
+               lowerDim.includes('month') ||
+               lowerDim.includes('year') ||
+               lowerDim.includes('quarter') ||
+               lowerDim.includes('day') ||
+               lowerDim.includes('period')
+      }
+      
+      const dateLikeDimensions = regularDimensions.filter(isDateLikeDimension)
+      const nonDateDimensions = regularDimensions.filter((dim: string) => !isDateLikeDimension(dim))
+      const allTimeDimensions = [...timeDimensions, ...dateLikeDimensions]
+      
+      let xAxisFields: string[] = []
+      let seriesFields: string[] = []
+      
+      if (allTimeDimensions.length > 0) {
+        xAxisFields = allTimeDimensions
+        seriesFields = nonDateDimensions
+      } else if (nonDateDimensions.length > 0) {
+        xAxisFields = [nonDateDimensions[0]]
+        seriesFields = nonDateDimensions.slice(1)
+      }
+      
+      const newConfig = {
+        xAxis: xAxisFields,
+        yAxis: allMeasures,
+        series: seriesFields
+      }
+      
+      setChartConfig(newConfig)
+    }
+  }
   
   // Sensible defaults: slightly larger than 1/3 width with good aspect ratio
   const defaultWidth = 5
@@ -115,28 +167,28 @@ export default function PortletEditModal({
     if (isTimeDimension) {
       return {
         IconComponent: CalendarIcon,
-        bgStyle: { backgroundColor: '#dbeafe', color: '#1e40af' },
-        hoverBgColor: '#bfdbfe'
+        baseClasses: 'bg-blue-100 text-blue-800 border border-blue-200',
+        hoverClasses: 'hover:bg-blue-200'
       }
     } else if (isDimension) {
       return {
-        IconComponent: ChartBarIcon,
-        bgStyle: { backgroundColor: '#fef3c7', color: '#92400e' },
-        hoverBgColor: '#fde68a'
+        IconComponent: TagIcon,
+        baseClasses: 'bg-green-100 text-green-800 border border-green-200',
+        hoverClasses: 'hover:bg-green-200'
       }
     } else if (isMeasure) {
       return {
-        IconComponent: ChartPieIcon,
-        bgStyle: { backgroundColor: '#dcfce7', color: '#166534' },
-        hoverBgColor: '#bbf7d0'
+        IconComponent: ChartBarIcon,
+        baseClasses: 'bg-amber-100 text-amber-800 border border-amber-200',
+        hoverClasses: 'hover:bg-amber-200'
       }
     }
     
     // Default fallback
     return {
       IconComponent: ChartBarIcon,
-      bgStyle: { backgroundColor: '#f3f4f6', color: '#374151' },
-      hoverBgColor: '#e5e7eb'
+      baseClasses: 'bg-gray-100 text-gray-800 border border-gray-200',
+      hoverClasses: 'hover:bg-gray-200'
     }
   }
 
@@ -186,9 +238,11 @@ export default function PortletEditModal({
   }, [isOpen, portlet])
 
   const handleSubmit = (e: React.FormEvent) => {
+    console.log('handleSubmit called!')
     e.preventDefault()
     
     if (!formTitle.trim() || !query.trim()) {
+      console.log('handleSubmit: missing title or query, returning')
       return
     }
 
@@ -320,49 +374,8 @@ export default function PortletEditModal({
         }
 
         // Auto-populate chart config with sensible defaults on successful validation
-        const queryHasChanged = queryToValidate.trim() !== originalQuery.trim()
-        const shouldOverrideConfig = queryHasChanged || (!isEditModeLoad && ((chartConfig.xAxis?.length ?? 0) === 0 && (chartConfig.yAxis?.length ?? 0) === 0 && (!chartConfig.series || chartConfig.series.length === 0)))
-        
-        if (result.pivotQuery?.query && shouldOverrideConfig) {
-          const timeDimensions = result.pivotQuery.query.timeDimensions?.map((td: any) => td.dimension) || []
-          const regularDimensions = result.pivotQuery.query.dimensions || []
-          const allMeasures = result.pivotQuery.query.measures || []
-          
-          const isDateLikeDimension = (dim: string) => {
-            const lowerDim = dim.toLowerCase()
-            return lowerDim.includes('date') || 
-                   lowerDim.includes('time') || 
-                   lowerDim.includes('created') || 
-                   lowerDim.includes('updated') ||
-                   lowerDim.includes('month') ||
-                   lowerDim.includes('year') ||
-                   lowerDim.includes('quarter') ||
-                   lowerDim.includes('day') ||
-                   lowerDim.includes('period')
-          }
-          
-          const dateLikeDimensions = regularDimensions.filter(isDateLikeDimension)
-          const nonDateDimensions = regularDimensions.filter((dim: string) => !isDateLikeDimension(dim))
-          const allTimeDimensions = [...timeDimensions, ...dateLikeDimensions]
-          
-          let xAxisFields: string[] = []
-          let seriesFields: string[] = []
-          
-          if (allTimeDimensions.length > 0) {
-            xAxisFields = allTimeDimensions
-            seriesFields = nonDateDimensions
-          } else if (nonDateDimensions.length > 0) {
-            xAxisFields = [nonDateDimensions[0]]
-            seriesFields = nonDateDimensions.slice(1)
-          }
-          
-          const newConfig = {
-            xAxis: xAxisFields,
-            yAxis: allMeasures,
-            series: seriesFields
-          }
-          
-          setChartConfig(newConfig)
+        if (!isEditModeLoad) {
+          autoPopulateChartConfig(result, queryToValidate)
         }
       } else {
         if (!silent) {
@@ -394,6 +407,75 @@ export default function PortletEditModal({
     await runDryRunValidation(query)
   }
 
+  const handleOpenQueryBuilder = () => {
+    // Parse the current query and set it as the initial query for QueryBuilder
+    const initialQuery = query ? (() => {
+      try {
+        return JSON.parse(query)
+      } catch {
+        return {}
+      }
+    })() : {}
+    
+    setQueryBuilderInitialQuery(initialQuery)
+    setShowQueryBuilder(true)
+  }
+
+
+  const handleApplyQueryBuilderQuery = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    
+    if (!queryBuilderRef.current) return
+    
+    console.log('Apply Query clicked - starting...')
+    
+    // Get current query and validation state from QueryBuilder
+    const currentQuery = queryBuilderRef.current.getCurrentQuery()
+    const validationState = queryBuilderRef.current.getValidationState()
+    const validationResult = queryBuilderRef.current.getValidationResult()
+    
+    console.log('Current query:', currentQuery)
+    console.log('Validation state:', validationState)
+    console.log('Full validation result:', validationResult)
+    
+    // Apply the query to the form
+    const formattedQuery = JSON.stringify(currentQuery, null, 2)
+    setQuery(formattedQuery)
+    
+    // If QueryBuilder had a valid query, transfer the validation state and dry-run data
+    if (validationState?.status === 'valid' && validationResult) {
+      setValidationResult({ 
+        isValid: true, 
+        message: 'Query validated in Query Builder' 
+      })
+      setLastValidatedQuery(formattedQuery)
+      
+      // Transfer the dry-run data from QueryBuilder validation result
+      setDryRunData(validationResult)
+      
+      // Auto-populate chart config using the same logic as form validation
+      autoPopulateChartConfig(validationResult, formattedQuery)
+    } else {
+      // Reset validation state if query wasn't validated in QueryBuilder
+      setValidationResult(null)
+      setLastValidatedQuery('')
+      setDryRunData(null)
+    }
+    
+    console.log('About to switch back to form mode...')
+    
+    // Return to form view to continue editing
+    setShowQueryBuilder(false)
+    
+    console.log('Switched back to form mode.')
+  }
+
+  const handleBackToForm = () => {
+    setShowQueryBuilder(false)
+    setQueryBuilderInitialQuery(null)
+  }
+
   const handleClose = () => {
     setFormTitle('')
     setQuery('')
@@ -405,6 +487,8 @@ export default function PortletEditModal({
     setIsValidating(false)
     setLastValidatedQuery('')
     setDryRunData(null)
+    setShowQueryBuilder(false)
+    setQueryBuilderInitialQuery(null)
     onClose()
   }
 
@@ -485,7 +569,25 @@ export default function PortletEditModal({
     )
   } : null
 
-  const footer = (
+  const footer = showQueryBuilder ? (
+    <>
+      <button
+        type="button"
+        onClick={handleBackToForm}
+        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        Back to Form
+      </button>
+      <button
+        type="button"
+        onClick={handleApplyQueryBuilderQuery}
+        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        title="Apply query to form"
+      >
+        Apply Query
+      </button>
+    </>
+  ) : (
     <>
       <button
         type="button"
@@ -510,11 +612,21 @@ export default function PortletEditModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={title}
-      size="xl"
+      title={showQueryBuilder ? "Query Builder" : title}
+      size="fullscreen"
       footer={footer}
+      noPadding={showQueryBuilder}
     >
-      <form id="portlet-form" onSubmit={handleSubmit} className="space-y-4">
+      {showQueryBuilder ? (
+        <QueryBuilder
+          ref={queryBuilderRef}
+          baseUrl={apiUrl}
+          initialQuery={queryBuilderInitialQuery}
+          disableLocalStorage={true}
+          className="flex-1 w-full"
+        />
+      ) : (
+        <form id="portlet-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Main layout - Split into left and right */}
         <div style={{ display: 'flex', gap: '1rem', height: '550px' }}>
           {/* Left side - Title, Chart Type, Query */}
@@ -560,14 +672,15 @@ export default function PortletEditModal({
                 <label className="block text-sm font-semibold text-gray-700">
                   Cube.js Query (JSON)
                 </label>
-                <a
-                  href="/cubejs-api/v1/meta"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  View Cube Meta →
-                </a>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenQueryBuilder}
+                    className="text-xs px-2 py-1 text-white bg-blue-600 hover:bg-blue-700 rounded border border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Edit in Query Builder
+                  </button>
+                </div>
               </div>
               <textarea
                 value={query}
@@ -605,45 +718,54 @@ export default function PortletEditModal({
                   <div className="mb-3">
                     <h4 className="text-xs font-semibold text-gray-700 mb-2">Available Fields</h4>
                     <div className="space-y-1">
-                      {unassignedFields.dimensions.map((dim: string) => (
-                        <div
-                          key={dim}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                          className="rounded text-xs cursor-move border"
-                          style={{ padding: '8px 12px', backgroundColor: '#fef3c7', color: '#92400e' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fde68a'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}
-                        >
-                          <span className="flex items-center"><ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{dim}</span></span>
-                        </div>
-                      ))}
-                      {unassignedFields.timeDimensions.map((dim: string) => (
-                        <div
-                          key={dim}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                          className="rounded text-xs cursor-move border"
-                          style={{ padding: '8px 12px', backgroundColor: '#dbeafe', color: '#1e40af' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bfdbfe'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
-                        >
-                          <span className="flex items-center"><CalendarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{dim}</span></span>
-                        </div>
-                      ))}
-                      {unassignedFields.measures.map((measure: string) => (
-                        <div
-                          key={measure}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, measure, 'available')}
-                          className="rounded text-xs cursor-move border"
-                          style={{ padding: '8px 12px', backgroundColor: '#dcfce7', color: '#166534' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
-                        >
-                          <span className="flex items-center"><ChartPieIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{measure}</span></span>
-                        </div>
-                      ))}
+                      {unassignedFields.dimensions.map((dim: string) => {
+                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(dim)
+                        return (
+                          <div
+                            key={dim}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, dim, 'available')}
+                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
+                          >
+                            <span className="flex items-center">
+                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <span>{dim}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
+                      {unassignedFields.timeDimensions.map((dim: string) => {
+                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(dim)
+                        return (
+                          <div
+                            key={dim}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, dim, 'available')}
+                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
+                          >
+                            <span className="flex items-center">
+                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <span>{dim}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
+                      {unassignedFields.measures.map((measure: string) => {
+                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(measure)
+                        return (
+                          <div
+                            key={measure}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, measure, 'available')}
+                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
+                          >
+                            <span className="flex items-center">
+                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <span>{measure}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -661,22 +783,22 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {(chartConfig.xAxis || []).map((field) => {
-                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
+                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'xAxis')}
-                              className="rounded text-xs cursor-move border flex items-center justify-between"
-                              style={{ padding: '8px 12px', ...bgStyle }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
+                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
-                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
+                              <span className="flex items-center">
+                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <span>{field}</span>
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'xAxis')}
-                                className="text-blue-700 hover:text-red-600 ml-2"
+                                className="text-gray-600 hover:text-red-600 ml-2"
                                 title="Remove from X-axis"
                               >
                                 ✕
@@ -693,7 +815,7 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Y-Axis (Values & Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><ChartPieIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Measures = numeric values • <ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Dimensions = separate series</span>
+                    <span className="flex items-center"><ChartBarIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Measures = numeric values • <TagIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Dimensions = separate series</span>
                   </div>
                   <div
                     className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
@@ -705,19 +827,19 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {(chartConfig.yAxis || []).map((field) => {
-                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
+                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
                           
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'yAxis')}
-                              className="rounded text-xs cursor-move border flex items-center justify-between"
-                              style={{ padding: '8px 12px', ...bgStyle }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
+                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
-                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
+                              <span className="flex items-center">
+                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <span>{field}</span>
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'yAxis')}
@@ -738,7 +860,7 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Series (Split into Multiple Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><ChartBarIcon style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} />Drop dimensions here to create separate data series</span>
+                    <span className="flex items-center"><TagIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Drop dimensions here to create separate data series</span>
                   </div>
                   <div
                     className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
@@ -750,22 +872,22 @@ export default function PortletEditModal({
                     ) : (
                       <div className="space-y-1">
                         {chartConfig.series.map((field) => {
-                          const { IconComponent, bgStyle, hoverBgColor } = getFieldStyling(field)
+                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
                           return (
                             <div
                               key={field}
                               draggable
                               onDragStart={(e) => handleDragStart(e, field, 'series')}
-                              className="rounded text-xs cursor-move border flex items-center justify-between"
-                              style={{ padding: '8px 12px', ...bgStyle }}
-                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
-                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgStyle.backgroundColor}
+                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
-                              <span className="flex items-center"><IconComponent style={{ width: '14px', height: '14px', marginRight: '4px', flexShrink: 0 }} /><span>{field}</span></span>
+                              <span className="flex items-center">
+                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <span>{field}</span>
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveFromAxis(field, 'series')}
-                                className="text-orange-700 hover:text-red-600 ml-2"
+                                className="text-gray-600 hover:text-red-600 ml-2"
                                 title="Remove from Series"
                               >
                                 ✕
@@ -936,7 +1058,8 @@ export default function PortletEditModal({
             </div>
           </div>
         )}
-      </form>
+        </form>
+      )}
     </Modal>
   )
 }

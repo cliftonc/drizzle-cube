@@ -35,9 +35,12 @@ export interface QueryBuilderState {
   schema: MetaResponse | null      // Schema from /meta endpoint
   validationStatus: ValidationStatus
   validationError: string | null
+  validationSql: { sql: string[], params: any[] } | null     // Generated SQL from validation
   executionStatus: ExecutionStatus
   executionResults: any[] | null
   executionError: string | null
+  totalRowCount: number | null     // Total rows without limit
+  totalRowCountStatus: 'idle' | 'loading' | 'success' | 'error'
 }
 
 // Validation response from /dry-run endpoint
@@ -45,6 +48,18 @@ export interface ValidationResult {
   valid: boolean
   error?: string
   query?: CubeQuery
+  sql?: {
+    sql: string[]
+    params: any[]
+  }
+  queryType?: string
+  normalizedQueries?: any[]
+  queryOrder?: string[]
+  transformedQueries?: any[]
+  pivotQuery?: any
+  complexity?: string
+  cubesUsed?: string[]
+  joinType?: string
   // Additional validation metadata can be added here
 }
 
@@ -52,7 +67,14 @@ export interface ValidationResult {
 export interface QueryBuilderProps {
   baseUrl: string                  // Configurable Cube API base URL
   className?: string               // Optional CSS classes
-  onQueryChange?: (query: CubeQuery) => void  // Optional callback for query changes
+  initialQuery?: CubeQuery         // Initial query to load (overrides localStorage)
+  disableLocalStorage?: boolean    // Disable localStorage persistence
+}
+
+export interface QueryBuilderRef {
+  getCurrentQuery: () => CubeQuery
+  getValidationState: () => { status: ValidationStatus, result?: ValidationResult }
+  getValidationResult: () => ValidationResult | null
 }
 
 export interface CubeMetaExplorerProps {
@@ -70,10 +92,12 @@ export interface QueryPanelProps {
   query: CubeQuery
   validationStatus: ValidationStatus
   validationError: string | null
+  validationSql: { sql: string[], params: any[] } | null
   onValidate: () => void
   onExecute: () => void
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onTimeDimensionGranularityChange: (dimensionName: string, granularity: string) => void
+  onClearQuery?: () => void
 }
 
 export interface ResultsPanelProps {
@@ -81,6 +105,10 @@ export interface ResultsPanelProps {
   executionResults: any[] | null
   executionError: string | null
   query: CubeQuery
+  displayLimit?: number
+  onDisplayLimitChange?: (limit: number) => void
+  totalRowCount?: number | null
+  totalRowCountStatus?: 'idle' | 'loading' | 'success' | 'error'
 }
 
 // Time dimension granularity options

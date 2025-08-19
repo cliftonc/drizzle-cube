@@ -169,12 +169,14 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
 
   /**
    * GET /cubejs-api/v1/meta - Get cube metadata
+   * Optimized for fast response times with caching
    */
-  app.get(`${basePath}/meta`, async (c) => {
+  app.get(`${basePath}/meta`, (c) => {
     try {
       // Extract security context (some apps may want to filter cubes by context)
       // await getSecurityContext(c) // Available if needed for filtering
       
+      // Get cached metadata (fast path)
       const metadata = semanticLayer.getMetadata()
       
       return c.json({

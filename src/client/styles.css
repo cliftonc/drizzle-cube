@@ -1,4 +1,10 @@
-/* Drizzle Cube Client Styles - Minimal CSS for Grid Layout Only */
-/* Import react-grid-layout and react-resizable styles */
+/* Drizzle Cube Client Styles */
+
+/* Import react-grid-layout and react-resizable styles first */
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
+
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

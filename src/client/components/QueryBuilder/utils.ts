@@ -118,12 +118,49 @@ export function groupFieldsByCube(fields: MetaField[]): Record<string, MetaField
 }
 
 /**
+ * Clean query object by removing empty arrays
+ */
+export function cleanQuery(query: CubeQuery): CubeQuery {
+  const cleanedQuery: CubeQuery = {}
+  
+  if (query.measures && query.measures.length > 0) {
+    cleanedQuery.measures = query.measures
+  }
+  
+  if (query.dimensions && query.dimensions.length > 0) {
+    cleanedQuery.dimensions = query.dimensions
+  }
+  
+  if (query.timeDimensions && query.timeDimensions.length > 0) {
+    cleanedQuery.timeDimensions = query.timeDimensions
+  }
+  
+  if (query.filters && query.filters.length > 0) {
+    cleanedQuery.filters = query.filters
+  }
+  
+  if (query.order) {
+    cleanedQuery.order = query.order
+  }
+  
+  if (query.limit) {
+    cleanedQuery.limit = query.limit
+  }
+  
+  if (query.offset) {
+    cleanedQuery.offset = query.offset
+  }
+  
+  if (query.segments && query.segments.length > 0) {
+    cleanedQuery.segments = query.segments
+  }
+  
+  return cleanedQuery
+}
+
+/**
  * Create an empty query object
  */
 export function createEmptyQuery(): CubeQuery {
-  return {
-    measures: [],
-    dimensions: [],
-    timeDimensions: []
-  }
+  return {}
 }

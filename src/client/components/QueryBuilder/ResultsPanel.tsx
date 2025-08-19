@@ -5,8 +5,8 @@
  * Reuses the existing DataTable component for result display.
  */
 
-import React, { useState } from 'react'
-import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
+import React from 'react'
+import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { DataTable } from '../../components/charts'
 import type { ResultsPanelProps } from './types'
 
@@ -14,9 +14,12 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   executionStatus,
   executionResults,
   executionError,
-  query
+  query: _query,
+  displayLimit = 10,
+  onDisplayLimitChange,
+  totalRowCount,
+  totalRowCountStatus
 }) => {
-  const [showQueryDetails, setShowQueryDetails] = useState(false)
 
   const LoadingState = () => (
     <div className="h-full flex items-center justify-center">
@@ -77,25 +80,46 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
-              <span className="text-sm font-semibold text-gray-700">
-                Query Results ({executionResults.length} row{executionResults.length !== 1 ? 's' : ''})
-              </span>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-700">
+                  Query Results ({executionResults.length} row{executionResults.length !== 1 ? 's' : ''} shown)
+                </span>
+                {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && (
+                  <span className="text-xs text-gray-500">
+                    Total: {totalRowCount.toLocaleString()} row{totalRowCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {totalRowCountStatus === 'loading' && (
+                  <span className="text-xs text-gray-500">
+                    Counting total rows...
+                  </span>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => setShowQueryDetails(!showQueryDetails)}
-              className="text-xs text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
-            >
-              {showQueryDetails ? 'Hide' : 'Show'} Query Details
-            </button>
+            {onDisplayLimitChange && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-600">Show:</label>
+                <select
+                  value={displayLimit}
+                  onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value={10}>10 rows</option>
+                  <option value={50}>50 rows</option>
+                  <option value={100}>100 rows</option>
+                </select>
+              </div>
+            )}
           </div>
-
-          {/* Query Details */}
-          {showQueryDetails && (
-            <div className="mt-3 bg-white border border-gray-200 rounded-lg p-3">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Executed Query:</div>
-              <pre className="text-xs text-gray-600 overflow-x-auto bg-gray-50 p-2 rounded">
-                {JSON.stringify(query, null, 2)}
-              </pre>
+          
+          {/* Performance Warning */}
+          {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && totalRowCount > 500 && (
+            <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start">
+              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-800">
+                <span className="font-semibold">Performance Warning:</span> This query returns {totalRowCount.toLocaleString()} rows, 
+                which may impact performance. Consider adding filters to reduce the dataset size.
+              </div>
             </div>
           )}
         </div>

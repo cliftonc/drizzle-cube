@@ -5,8 +5,8 @@
  * Includes validation status, JSON preview, and action buttons.
  */
 
-import React, { useState } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect } from 'react'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
@@ -16,49 +16,99 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
   validationStatus,
   validationError,
+  validationSql,
   onValidate,
   onExecute,
   onRemoveField,
-  onTimeDimensionGranularityChange
+  onTimeDimensionGranularityChange,
+  onClearQuery
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
+  const [showSqlPreview, setShowSqlPreview] = useState(false)
+
+  // Trigger Prism highlighting when preview content changes
+  useEffect(() => {
+    if ((showJsonPreview || showSqlPreview) && typeof window !== 'undefined' && (window as any).Prism) {
+      // Use setTimeout to ensure DOM is updated before highlighting
+      setTimeout(() => {
+        try {
+          ;(window as any).Prism.highlightAll()
+        } catch (error) {
+          // Silently fail if Prism is not available or encounters an error
+          console.debug('Prism highlighting failed:', error)
+        }
+      }, 0)
+    }
+  }, [showJsonPreview, showSqlPreview, query, validationSql])
 
   const hasContent = hasQueryContent(query)
   const selectedCount = getSelectedFieldsCount(query)
+  
+  const handleCopyQuery = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(query, null, 2))
+      // You could add a toast notification here if desired
+    } catch (error) {
+      console.error('Failed to copy query:', error)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = JSON.stringify(query, null, 2)
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
+  }
+  
 
   const RemovableChip: React.FC<{ 
     label: string
     fieldName: string
     fieldType: 'measures' | 'dimensions' | 'timeDimensions'
     icon: React.ReactNode
-  }> = ({ label, fieldName, fieldType, icon }) => (
-    <div className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full border border-blue-200">
-      <div className="mr-2">
-        {icon}
+  }> = ({ label, fieldName, fieldType, icon }) => {
+    const getChipClasses = () => {
+      switch (fieldType) {
+        case 'measures':
+          return 'bg-amber-100 text-amber-800 border-amber-200'
+        case 'dimensions':
+          return 'bg-green-100 text-green-800 border-green-200'
+        case 'timeDimensions':
+          return 'bg-blue-100 text-blue-800 border-blue-200'
+        default:
+          return 'bg-blue-100 text-blue-800 border-blue-200'
+      }
+    }
+
+    return (
+      <div className={`inline-flex items-center text-sm px-3 py-1 rounded-lg border w-full ${getChipClasses()}`}>
+        <div className="mr-2 flex-shrink-0">
+          {icon}
+        </div>
+        <span className="mr-2 flex-1 text-xs break-all">{label}</span>
+        <button
+          onClick={() => onRemoveField(fieldName, fieldType)}
+          className="text-gray-600 hover:text-red-600 focus:outline-none flex-shrink-0"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
       </div>
-      <span className="mr-2">{label}</span>
-      <button
-        onClick={() => onRemoveField(fieldName, fieldType)}
-        className="text-blue-600 hover:text-blue-800 focus:outline-none"
-      >
-        <XMarkIcon className="w-4 h-4" />
-      </button>
-    </div>
-  )
+    )
+  }
 
   const TimeDimensionChip: React.FC<{ 
     timeDimension: { dimension: string; granularity?: string }
     label: string
   }> = ({ timeDimension, label }) => (
-    <div className="inline-flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full border border-purple-200">
+    <div className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-lg border border-blue-200 w-full">
       <div className="mr-2">
         <CalendarIcon className="w-4 h-4" />
       </div>
-      <span className="mr-2">{label}</span>
+      <span className="mr-2 flex-1 text-xs break-all">{label}</span>
       <select
         value={timeDimension.granularity || 'month'}
         onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
-        className="bg-purple-100 border-none text-purple-800 text-xs rounded focus:ring-2 focus:ring-purple-500 mr-1"
+        className="bg-blue-100 border-none text-blue-800 text-xs rounded focus:ring-2 focus:ring-blue-500 mr-1"
         onClick={(e) => e.stopPropagation()}
       >
         {TIME_GRANULARITIES.map(granularity => (
@@ -69,7 +119,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       </select>
       <button
         onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-        className="text-purple-600 hover:text-purple-800 focus:outline-none"
+        className="text-gray-600 hover:text-red-600 focus:outline-none"
       >
         <XMarkIcon className="w-4 h-4" />
       </button>
@@ -99,9 +149,30 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           <h3 className="text-lg font-semibold text-gray-900">Query Builder</h3>
           <div className="flex items-center space-x-2">
             {hasContent && (
-              <span className="text-sm text-gray-500">
-                {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
-              </span>
+              <>
+                <span className="text-sm text-gray-500">
+                  {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleCopyQuery}
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    title="Copy query to clipboard"
+                  >
+                    <ClipboardDocumentIcon className="w-3 h-3" />
+                    <span>Copy Query</span>
+                  </button>
+                  {onClearQuery && (
+                    <button
+                      onClick={onClearQuery}
+                      className="text-gray-400 hover:text-red-600 focus:outline-none"
+                      title="Clear all fields"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </>
             )}
             <ValidationStatusIcon />
           </div>
@@ -120,75 +191,63 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Measures */}
-            {query.measures && query.measures.length > 0 && (
-              <div>
+            {/* Column Layout Grid */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Measures Column */}
+              <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                   <ChartBarIcon className="w-4 h-4 mr-2" />
-                  Measures ({query.measures.length})
+                  Measures ({(query.measures || []).length})
                 </h4>
-                <div className="flex flex-wrap gap-2">
-                  {query.measures.map(measure => {
-                    const label = measure.split('.')[1] || measure
-                    return (
-                      <RemovableChip
-                        key={measure}
-                        label={label}
-                        fieldName={measure}
-                        fieldType="measures"
-                        icon={<ChartBarIcon className="w-4 h-4" />}
-                      />
-                    )
-                  })}
+                <div className="flex flex-col gap-2">
+                  {(query.measures || []).map(measure => (
+                    <RemovableChip
+                      key={measure}
+                      label={measure}
+                      fieldName={measure}
+                      fieldType="measures"
+                      icon={<ChartBarIcon className="w-4 h-4" />}
+                    />
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* Dimensions */}
-            {query.dimensions && query.dimensions.length > 0 && (
-              <div>
+              {/* Dimensions Column */}
+              <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                   <TagIcon className="w-4 h-4 mr-2" />
-                  Dimensions ({query.dimensions.length})
+                  Dimensions ({(query.dimensions || []).length})
                 </h4>
-                <div className="flex flex-wrap gap-2">
-                  {query.dimensions.map(dimension => {
-                    const label = dimension.split('.')[1] || dimension
-                    return (
-                      <RemovableChip
-                        key={dimension}
-                        label={label}
-                        fieldName={dimension}
-                        fieldType="dimensions"
-                        icon={<TagIcon className="w-4 h-4" />}
-                      />
-                    )
-                  })}
+                <div className="flex flex-col gap-2">
+                  {(query.dimensions || []).map(dimension => (
+                    <RemovableChip
+                      key={dimension}
+                      label={dimension}
+                      fieldName={dimension}
+                      fieldType="dimensions"
+                      icon={<TagIcon className="w-4 h-4" />}
+                    />
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* Time Dimensions */}
-            {query.timeDimensions && query.timeDimensions.length > 0 && (
-              <div>
+              {/* Time Dimensions Column */}
+              <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                   <CalendarIcon className="w-4 h-4 mr-2" />
-                  Time Dimensions ({query.timeDimensions.length})
+                  Time Dimensions ({(query.timeDimensions || []).length})
                 </h4>
-                <div className="flex flex-wrap gap-2">
-                  {query.timeDimensions.map(timeDimension => {
-                    const label = timeDimension.dimension.split('.')[1] || timeDimension.dimension
-                    return (
-                      <TimeDimensionChip
-                        key={timeDimension.dimension}
-                        timeDimension={timeDimension}
-                        label={label}
-                      />
-                    )
-                  })}
+                <div className="flex flex-col gap-2">
+                  {(query.timeDimensions || []).map(timeDimension => (
+                    <TimeDimensionChip
+                      key={timeDimension.dimension}
+                      timeDimension={timeDimension}
+                      label={timeDimension.dimension}
+                    />
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Validation Error */}
             {validationError && (
@@ -203,20 +262,56 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               </div>
             )}
 
-            {/* JSON Preview Toggle */}
-            <div>
-              <button
-                onClick={() => setShowJsonPreview(!showJsonPreview)}
-                className="text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
-              >
-                {showJsonPreview ? 'Hide' : 'Show'} JSON Query
-              </button>
+            {/* Preview Toggles */}
+            <div className="space-y-3">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    const newJsonState = !showJsonPreview
+                    setShowJsonPreview(newJsonState)
+                    if (newJsonState) setShowSqlPreview(false) // Hide SQL when showing JSON
+                  }}
+                  className="text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
+                >
+                  {showJsonPreview ? 'Hide' : 'Show'} JSON Query
+                </button>
+                {validationSql && (
+                  <button
+                    onClick={() => {
+                      const newSqlState = !showSqlPreview
+                      setShowSqlPreview(newSqlState)
+                      if (newSqlState) setShowJsonPreview(false) // Hide JSON when showing SQL
+                    }}
+                    className="text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
+                  >
+                    {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
+                  </button>
+                )}
+              </div>
 
               {showJsonPreview && (
-                <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <pre className="text-xs text-gray-700 overflow-x-auto">
-                    {JSON.stringify(query, null, 2)}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">JSON Query:</div>
+                  <pre className="text-gray-700 overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                    <code className="language-json">{JSON.stringify(query, null, 2)}</code>
                   </pre>
+                </div>
+              )}
+
+              {showSqlPreview && validationSql && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">Generated SQL:</div>
+                  <pre className="text-gray-700 overflow-x-auto whitespace-pre-wrap font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                    <code className="language-sql">{validationSql.sql.join(';\n\n')}</code>
+                  </pre>
+                  {validationSql.params && validationSql.params.length > 0 && (
+                    <>
+                      <div className="text-xs font-semibold text-gray-700 mb-2 mt-4">Parameters:</div>
+                      <pre className="text-gray-700 overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                        <code className="language-json">{JSON.stringify(validationSql.params, null, 2)}</code>
+                      </pre>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -225,7 +320,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       </div>
 
       {/* Actions */}
-      {hasContent && (
+      {(hasContent || validationStatus === 'valid' || validationStatus === 'invalid') && (
         <div className="border-t border-gray-200 p-4">
           <div className="flex space-x-3">
             <button
@@ -235,7 +330,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 validationStatus === 'validating'
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : validationStatus === 'valid'
-                  ? 'bg-green-100 text-green-800 border border-green-200'
+                  ? 'bg-green-100 text-green-800 border border-green-200 hover:bg-green-200'
+                  : validationStatus === 'invalid'
+                  ? 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-200'
                   : 'bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200'
               }`}
             >
@@ -247,7 +344,12 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               ) : validationStatus === 'valid' ? (
                 <>
                   <CheckIcon className="w-4 h-4 mr-2" />
-                  Valid Query
+                  Re-validate Query
+                </>
+              ) : validationStatus === 'invalid' ? (
+                <>
+                  <ExclamationCircleIcon className="w-4 h-4 mr-2" />
+                  Validate Again
                 </>
               ) : (
                 <>
@@ -262,8 +364,8 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               disabled={validationStatus !== 'valid'}
               className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                 validationStatus !== 'valid'
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                  : 'bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 border border-green-700'
               }`}
             >
               <PlayIcon className="w-4 h-4 mr-2" />

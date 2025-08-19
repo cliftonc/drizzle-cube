@@ -19,6 +19,9 @@ import type { Cube } from './types-drizzle'
 export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<string, any>> {
   private cubes: Map<string, Cube<TSchema>> = new Map()
   private dbExecutor?: DatabaseExecutor<TSchema>
+  private metadataCache?: CubeMetadata[]
+  private metadataCacheTimestamp?: number
+  private readonly METADATA_CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
 
   constructor(options?: {
     drizzle?: DatabaseExecutor<TSchema>['db']
@@ -64,6 +67,8 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    */
   registerCube(cube: Cube<TSchema>): void {
     this.cubes.set(cube.name, cube)
+    // Invalidate metadata cache when cubes change
+    this.invalidateMetadataCache()
   }
 
   /**
@@ -132,32 +137,66 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
 
   /**
    * Get metadata for all cubes (for API responses)
+   * Uses caching to improve performance for repeated requests
    */
   getMetadata(): CubeMetadata[] {
-    return Array.from(this.cubes.values()).map(cube => this.generateCubeMetadata(cube))
+    const now = Date.now()
+    
+    // Check if cache is valid
+    if (this.metadataCache && this.metadataCacheTimestamp && 
+        (now - this.metadataCacheTimestamp) < this.METADATA_CACHE_TTL) {
+      return this.metadataCache
+    }
+    
+    // Generate fresh metadata
+    const metadata = Array.from(this.cubes.values()).map(cube => this.generateCubeMetadata(cube))
+    
+    // Update cache
+    this.metadataCache = metadata
+    this.metadataCacheTimestamp = now
+    
+    return metadata
   }
 
   /**
    * Generate cube metadata for API responses from cubes
+   * Optimized version that minimizes object iterations
    */
   private generateCubeMetadata(cube: Cube<TSchema>): CubeMetadata {
-    const measures: MeasureMetadata[] = Object.entries(cube.measures).map(([key, measure]) => ({
-      name: `${cube.name}.${key}`,
-      title: measure.title || key,
-      shortTitle: measure.title || key,
-      type: measure.type,
-      format: undefined, // Measure doesn't have format field
-      description: measure.description
-    }))
+    // Pre-allocate arrays for better performance
+    const measureKeys = Object.keys(cube.measures)
+    const dimensionKeys = Object.keys(cube.dimensions)
+    
+    const measures: MeasureMetadata[] = new Array(measureKeys.length)
+    const dimensions: DimensionMetadata[] = new Array(dimensionKeys.length)
 
-    const dimensions: DimensionMetadata[] = Object.entries(cube.dimensions).map(([key, dimension]) => ({
-      name: `${cube.name}.${key}`,
-      title: dimension.title || key,
-      shortTitle: dimension.title || key,
-      type: dimension.type,
-      format: undefined, // Dimension doesn't have format field
-      description: dimension.description
-    }))
+    // Process measures efficiently
+    for (let i = 0; i < measureKeys.length; i++) {
+      const key = measureKeys[i]
+      const measure = cube.measures[key]
+      measures[i] = {
+        name: `${cube.name}.${key}`,
+        title: measure.title || key,
+        shortTitle: measure.title || key,
+        type: measure.type,
+        format: undefined, // Measure doesn't have format field
+        description: measure.description
+      }
+    }
+
+    // Process dimensions efficiently  
+    for (let i = 0; i < dimensionKeys.length; i++) {
+      const key = dimensionKeys[i]
+      const dimension = cube.dimensions[key]
+      dimensions[i] = {
+        name: `${cube.name}.${key}`,
+        title: dimension.title || key,
+        shortTitle: dimension.title || key,
+        type: dimension.type,
+        format: undefined, // Dimension doesn't have format field
+        description: dimension.description
+      }
+    }
 
     return {
       name: cube.name,
@@ -216,7 +255,11 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    * Remove a cube
    */
   removeCube(name: string): boolean {
-    return this.cubes.delete(name)
+    const result = this.cubes.delete(name)
+    if (result) {
+      this.invalidateMetadataCache()
+    }
+    return result
   }
 
   /**
@@ -224,6 +267,16 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    */
   clearCubes(): void {
     this.cubes.clear()
+    this.invalidateMetadataCache()
+  }
+
+  /**
+   * Invalidate the metadata cache
+   * Called whenever cubes are modified
+   */
+  private invalidateMetadataCache(): void {
+    this.metadataCache = undefined
+    this.metadataCacheTimestamp = undefined
   }
 
   /**

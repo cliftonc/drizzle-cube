@@ -4,13 +4,14 @@ export interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'fullscreen'
   closeOnBackdropClick?: boolean
   closeOnEscape?: boolean
   showCloseButton?: boolean
   className?: string
   children: React.ReactNode
   footer?: React.ReactNode
+  noPadding?: boolean
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -22,7 +23,8 @@ const Modal: React.FC<ModalProps> = ({
   closeOnEscape = true,
   showCloseButton = true,
   children,
-  footer
+  footer,
+  noPadding = false
 }) => {
   // Handle ESC key press
   const handleEscapeKey = useCallback((event: KeyboardEvent) => {
@@ -69,6 +71,8 @@ const Modal: React.FC<ModalProps> = ({
         return 'max-w-6xl'
       case 'full':
         return 'max-w-7xl'
+      case 'fullscreen':
+        return 'w-[90vw] h-[90vh] max-w-none'
       default:
         return 'max-w-lg'
     }
@@ -81,7 +85,7 @@ const Modal: React.FC<ModalProps> = ({
       onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div 
-        className={`relative bg-white border border-gray-300 rounded-lg shadow-2xl mx-4 ${getSizeClasses()} max-h-[90vh] flex flex-col`}
+        className={`relative bg-white border border-gray-300 rounded-lg shadow-2xl ${size === 'fullscreen' ? '' : 'mx-4'} ${getSizeClasses()} ${size === 'fullscreen' ? '' : 'max-h-[90vh]'} flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -111,7 +115,7 @@ const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className={`flex-1 overflow-y-auto ${noPadding ? '' : 'px-6 py-4'}`}>
           {children}
         </div>
 

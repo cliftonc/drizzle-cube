@@ -17,7 +17,7 @@ export default function DebugDashboard({ config, apiUrl }: DebugDashboardProps) 
         <div>
           <strong>Config:</strong>
           <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
-            {JSON.stringify(config, null, 2)}
+            <code className="language-json">{JSON.stringify(config, null, 2)}</code>
           </pre>
         </div>
         

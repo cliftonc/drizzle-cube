@@ -9,7 +9,6 @@ import React, { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
-import { isFieldSelected } from './utils'
 
 const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   schema,
@@ -53,11 +52,18 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   }
 
   const handleFieldClick = (field: MetaField, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
-    const isSelected = isFieldSelected(field.name, fieldType, {
-      measures: selectedFields.measures,
-      dimensions: selectedFields.dimensions,
-      timeDimensions: selectedFields.timeDimensions.map(td => ({ dimension: td, granularity: 'month' }))
-    })
+    const isSelected = (() => {
+      switch (fieldType) {
+        case 'measures':
+          return selectedFields.measures.includes(field.name)
+        case 'dimensions':
+          return selectedFields.dimensions.includes(field.name)
+        case 'timeDimensions':
+          return selectedFields.timeDimensions.includes(field.name)
+        default:
+          return false
+      }
+    })()
 
     if (isSelected) {
       onFieldDeselect(field.name, fieldType)
@@ -79,11 +85,18 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     fieldType: 'measures' | 'dimensions' | 'timeDimensions'
     icon: React.ReactNode
   }> = ({ field, fieldType, icon }) => {
-    const isSelected = isFieldSelected(field.name, fieldType, {
-      measures: selectedFields.measures,
-      dimensions: selectedFields.dimensions,
-      timeDimensions: selectedFields.timeDimensions.map(td => ({ dimension: td, granularity: 'month' }))
-    })
+    const isSelected = (() => {
+      switch (fieldType) {
+        case 'measures':
+          return selectedFields.measures.includes(field.name)
+        case 'dimensions':
+          return selectedFields.dimensions.includes(field.name)
+        case 'timeDimensions':
+          return selectedFields.timeDimensions.includes(field.name)
+        default:
+          return false
+      }
+    })()
 
     return (
       <div
