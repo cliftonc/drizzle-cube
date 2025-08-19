@@ -1,7 +1,7 @@
+@import 'tailwindcss';
+
 /* Import Drizzle Cube styles (includes grid layout styles) */
 @import 'drizzle-cube/client/styles.css' layer(base);
-
-@import 'tailwindcss';
 
 @source '../node_modules/drizzle-cube/dist/**/*.js';
 
