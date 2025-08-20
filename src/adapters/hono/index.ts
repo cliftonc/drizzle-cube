@@ -162,7 +162,14 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
         }, 400)
       }
 
-      const query: SemanticQuery = JSON.parse(queryParam)
+      let query: SemanticQuery
+      try {
+        query = JSON.parse(queryParam)
+      } catch (parseError) {
+        return c.json({
+          error: 'Invalid JSON in query parameter'
+        }, 400)
+      }
       
       // Extract security context
       const securityContext = await getSecurityContext(c)

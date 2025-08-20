@@ -3,21 +3,13 @@
  * Tests all filter operators, logical combinations, edge cases, and SQL injection prevention
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq, and } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
-  testSchema,
-  employees,
-  departments,
-  productivity
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
 import { defineCube } from '../src/server/types-drizzle'
@@ -41,17 +33,24 @@ describe('Comprehensive Filter Operations', () => {
   let testExecutor: TestExecutor
   let performanceMeasurer: PerformanceMeasurer
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the existing global test database (do not delete/re-insert)
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
     // Setup test executor with shared cube definitions
-    const dbExecutor = createPostgresExecutor(db, testSchema)
     const executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     cubes = getTestCubes(['Employees', 'Productivity'])
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   describe('String Filter Operators', () => {
@@ -415,26 +414,23 @@ describe('Comprehensive Filter Operations', () => {
       }
 
       // Generate SQL to debug the issue
-      const dbExecutor = createPostgresExecutor(createTestDatabase().db, testSchema)
-      const executor = new QueryExecutor(dbExecutor)
-      
       try {
-        const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-        console.log('Generated SQL:', generatedSQL.sql)
-        console.log('Generated Params:', generatedSQL.params)
+        const generatedSQL = await testExecutor.executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
       } catch (error) {
         console.log('Error generating SQL:', error)
       }
 
       const { result, validation } = await testExecutor.validateQuery(
         query,
-        ['Productivity.recordCount', 'Employees.name', 'Productivity.happinessIndex'],
+        ['Productivity.recordCount', 'Employees.name', 'Productivity.happinessIndex', 'Productivity.date'],
         { 
           'Productivity.recordCount': 'number', 
           'Employees.name': 'string', 
-          'Productivity.happinessIndex': 'number' 
+          'Productivity.happinessIndex': 'number',
+          'Productivity.date': 'string' 
         }
       )
+
 
       expect(validation.isValid).toBe(true)
       expect(validation.errors).toEqual([])
@@ -453,7 +449,7 @@ describe('Comprehensive Filter Operations', () => {
         .measures(['Employees.count'])
         .orFilter([
           { member: 'Employees.salary', operator: 'gt', values: [120000] },
-          { member: 'Employees.departmentName', operator: 'equals', values: ['HR'] }
+          { member: 'Employees.departmentId', operator: 'equals', values: [4] }
         ])
         .build()
 
@@ -466,14 +462,14 @@ describe('Comprehensive Filter Operations', () => {
     it('should handle nested AND/OR combinations', async () => {
       const query = {
         measures: ['Employees.count'],
-        dimensions: ['Employees.name', 'Employees.departmentName'],
+        dimensions: ['Employees.name', 'Employees.departmentId'],
         filters: [
           {
             or: [
               { member: 'Employees.salary', operator: 'gt', values: [120000] },
               {
                 and: [
-                  { member: 'Employees.departmentName', operator: 'equals', values: ['Engineering'] },
+                  { member: 'Employees.departmentId', operator: 'equals', values: [1] },
                   { member: 'Employees.isActive', operator: 'equals', values: [true] }
                 ]
               }
@@ -496,7 +492,7 @@ describe('Comprehensive Filter Operations', () => {
         ])
         .orFilter([
           { member: 'Employees.salary', operator: 'gt', values: [100000] },
-          { member: 'Employees.departmentName', operator: 'equals', values: ['Marketing'] }
+          { member: 'Employees.departmentId', operator: 'equals', values: [2] }
         ])
         .build()
 
@@ -599,9 +595,24 @@ describe('Comprehensive Filter Operations', () => {
         .build()
 
       // Should either handle gracefully or throw type error
-      await expect(async () => {
-        await testExecutor.executeQuery(query)
-      }).rejects.toThrow()
+      // Different databases handle invalid numeric input differently:
+      // PostgreSQL: throws an error for invalid numeric format
+      // MySQL: handles gracefully due to implicit type conversion
+      
+      if (process.env.TEST_DB_TYPE === 'mysql') {
+        // MySQL handles the malicious input gracefully (parameterized queries prevent injection)
+        const result = await testExecutor.executeQuery(query)
+        expect(result.data).toBeDefined()
+        // Verify no actual SQL injection occurred by checking the table still exists
+        const countQuery = TestQueryBuilder.create().measures(['Employees.count']).build()
+        const countResult = await testExecutor.executeQuery(countQuery)
+        expect(countResult.data[0]['Employees.count']).toBeGreaterThan(0) // Table still exists
+      } else {
+        // PostgreSQL should throw an error for invalid numeric format
+        await expect(async () => {
+          await testExecutor.executeQuery(query)
+        }).rejects.toThrow()
+      }
     })
 
     it('should prevent injection in date filters', async () => {
@@ -646,7 +657,7 @@ describe('Comprehensive Filter Operations', () => {
               {
                 or: [
                   { member: 'Employees.salary', operator: 'gt', values: [100000] },
-                  { member: 'Employees.departmentName', operator: 'equals', values: ['Engineering'] }
+                  { member: 'Employees.departmentId', operator: 'equals', values: [1] }
                 ]
               }
             ]
@@ -699,7 +710,6 @@ describe('Comprehensive Filter Operations', () => {
   afterAll(() => {
     // Output performance statistics
     const allStats = performanceMeasurer.getStats()
-    console.log('\n=== Filter Performance Statistics ===')
     console.log(`Total measurements: ${allStats.count}`)
     console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
     console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)

@@ -3,21 +3,13 @@
  * Tests all time granularities, date ranges, timezone handling, and edge cases
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq, and } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
-  testSchema,
-  employees,
-  departments,
-  productivity
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
 import { defineCube } from '../src/server/types-drizzle'
@@ -40,17 +32,24 @@ describe('Comprehensive Time Dimensions', () => {
   let testExecutor: TestExecutor
   let performanceMeasurer: PerformanceMeasurer
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the existing global test database (do not delete/re-insert)
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
     // Setup test executor with shared cube definitions
-    const dbExecutor = createPostgresExecutor(db, testSchema)
     const executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     cubes = getTestCubes(['Productivity', 'Employees'])
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   describe('Time Granularity Testing', () => {
@@ -173,7 +172,6 @@ describe('Comprehensive Time Dimensions', () => {
 
       const result = await testExecutor.executeQuery(query)
 
-      console.log(result)
 
       if (result.data.length > 0) {
         const dateValue = new Date(result.data[0]['Productivity.date'])
@@ -250,7 +248,7 @@ describe('Comprehensive Time Dimensions', () => {
     it('should handle time dimensions with measures and regular dimensions', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.avgHappinessIndex'])
-        .dimensions(['Productivity.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'week'
@@ -270,7 +268,7 @@ describe('Comprehensive Time Dimensions', () => {
       const expectedFields = [
         'Productivity.totalLinesOfCode',
         'Productivity.avgHappinessIndex',
-        'Productivity.departmentName',
+        'Employees.departmentId',
         'Productivity.date'
       ]
       const validation = QueryValidator.validateQueryResult(result, expectedFields)
@@ -627,7 +625,6 @@ describe('Comprehensive Time Dimensions', () => {
   afterAll(() => {
     // Output performance statistics
     const allStats = performanceMeasurer.getStats()
-    console.log('\n=== Time Dimension Performance Statistics ===')
     console.log(`Total measurements: ${allStats.count}`)
     console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
     console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)
@@ -637,7 +634,6 @@ describe('Comprehensive Time Dimensions', () => {
     // Granularity-specific stats
     const granularityStats = performanceMeasurer.getStats('granularity-')
     if (granularityStats.count > 0) {
-      console.log('\n=== Granularity Performance ===')
       console.log(`Granularity tests: ${granularityStats.count}`)
       console.log(`Average granularity duration: ${granularityStats.avgDuration.toFixed(2)}ms`)
     }

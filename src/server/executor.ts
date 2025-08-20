@@ -38,7 +38,8 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter,
-  DatabaseExecutor
+  DatabaseExecutor,
+  TimeGranularity
 } from './types'
 
 import type { 
@@ -49,12 +50,19 @@ import type {
 import { resolveSqlExpression } from './types-drizzle'
 import { MultiCubeBuilder } from './multi-cube-builder'
 import { validateQueryAgainstCubes } from './compiler'
+import type { DatabaseAdapter } from './adapters/base-adapter'
 
 export class QueryExecutor<TSchema extends Record<string, any> = Record<string, any>> {
   private multiCubeBuilder: MultiCubeBuilder<TSchema>
+  private databaseAdapter: DatabaseAdapter
 
   constructor(private dbExecutor: DatabaseExecutor<TSchema>) {
-    this.multiCubeBuilder = new MultiCubeBuilder<TSchema>()
+    // Get the database adapter from the executor
+    this.databaseAdapter = (dbExecutor as any).databaseAdapter
+    if (!this.databaseAdapter) {
+      throw new Error('DatabaseExecutor must have a databaseAdapter property')
+    }
+    this.multiCubeBuilder = new MultiCubeBuilder<TSchema>(this.databaseAdapter)
   }
 
   /**
@@ -194,24 +202,12 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         drizzleQuery = drizzleQuery.orderBy(...orderByFields)
       }
 
-      // Add LIMIT and OFFSET with validation
-      if (query.limit !== undefined) {
-        if (query.limit < 0) {
-          throw new Error('Limit must be non-negative')
-        }
-        drizzleQuery = drizzleQuery.limit(query.limit)
-      }
-      
-      if (query.offset !== undefined) {
-        if (query.offset < 0) {
-          throw new Error('Offset must be non-negative')
-        }
-        drizzleQuery = drizzleQuery.offset(query.offset)
-      }
+      // Add LIMIT and OFFSET
+      drizzleQuery = this.applyLimitAndOffset(drizzleQuery, query)
 
-      // Execute query - pass measure fields for selective numeric conversion
-      const measureFieldNames = query.measures || []
-      const data = await this.dbExecutor.execute(drizzleQuery, measureFieldNames)
+      // Execute query - pass numeric field names for selective conversion
+      const numericFields = this.collectNumericFields(cube, query)
+      const data = await this.dbExecutor.execute(drizzleQuery, numericFields)
       
       // TODO: Move timestamp formatting to database level using PostgreSQL timezone functions
       // Format timestamps in the result data
@@ -261,10 +257,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   ): Promise<QueryResult> {
     // Build the query using the reusable method
     const builtQuery = this.buildMultiCubeQuery(cubes, query, securityContext)
-
-    // Execute the final query - pass measure fields for selective numeric conversion
-    const measureFieldNames = query.measures || []
-    const data = await this.dbExecutor.execute(builtQuery, measureFieldNames)
+    // Execute the final query - pass numeric field names for selective conversion
+    const numericFields = this.collectNumericFieldsMultiCube(cubes, query)
+    const data = await this.dbExecutor.execute(builtQuery, numericFields)
     
     // Build context for annotation generation
     const context: QueryContext<TSchema> = {
@@ -421,23 +416,98 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       innerQuery = innerQuery.orderBy(...orderByFields)
     }
 
-    // Add LIMIT if specified
-    if (query.limit !== undefined) {
-      if (query.limit < 0) {
-        throw new Error('Limit must be non-negative')
-      }
-      innerQuery = innerQuery.limit(query.limit)
-    }
-
-    // Add OFFSET if specified
-    if (query.offset !== undefined) {
-      if (query.offset < 0) {
-        throw new Error('Offset must be non-negative')
-      }
-      innerQuery = innerQuery.offset(query.offset)
-    }
+    // Add LIMIT and OFFSET
+    innerQuery = this.applyLimitAndOffset(innerQuery, query)
 
     return innerQuery
+  }
+
+  /**
+   * Collect numeric field names (measures + numeric dimensions) for type conversion
+   */
+  private collectNumericFields(cube: Cube<TSchema>, query: SemanticQuery): string[] {
+    const numericFields: string[] = []
+    
+    // Add all measure fields (they are always numeric)
+    if (query.measures) {
+      numericFields.push(...query.measures)
+    }
+    
+    // Add numeric dimension fields
+    if (query.dimensions) {
+      for (const dimensionName of query.dimensions) {
+        // Strip cube prefix to get the actual dimension key
+        const dimensionKey = dimensionName.includes('.') ? dimensionName.split('.')[1] : dimensionName
+        const dimension = cube.dimensions[dimensionKey]
+        if (dimension && dimension.type === 'number') {
+          // Use the full name (with prefix) as it appears in the result
+          numericFields.push(dimensionName)
+        }
+      }
+    }
+    
+    return numericFields
+  }
+
+  /**
+   * Collect numeric field names for multi-cube queries
+   */
+  private collectNumericFieldsMultiCube(cubes: Map<string, Cube<TSchema>>, query: SemanticQuery): string[] {
+    const numericFields: string[] = []
+    
+    // Add all measure fields (they are always numeric)
+    if (query.measures) {
+      numericFields.push(...query.measures)
+    }
+    
+    // Add numeric dimension fields
+    if (query.dimensions) {
+      for (const dimensionName of query.dimensions) {
+        // Strip cube prefix to get the actual dimension key
+        const dimensionKey = dimensionName.includes('.') ? dimensionName.split('.')[1] : dimensionName
+        // Find which cube contains this dimension
+        for (const cube of cubes.values()) {
+          const dimension = cube.dimensions[dimensionKey]
+          if (dimension && dimension.type === 'number') {
+            // Use the full name (with prefix) as it appears in the result
+            numericFields.push(dimensionName)
+            break // Found it, no need to check other cubes
+          }
+        }
+      }
+    }
+    
+    return numericFields
+  }
+
+  /**
+   * Apply LIMIT and OFFSET to a query with validation
+   * If offset is provided without limit, add a reasonable default limit
+   */
+  private applyLimitAndOffset<T>(query: T, semanticQuery: SemanticQuery): T {
+    // If offset is provided without limit, add a reasonable default limit
+    let effectiveLimit = semanticQuery.limit
+    if (semanticQuery.offset !== undefined && semanticQuery.offset > 0 && effectiveLimit === undefined) {
+      effectiveLimit = 50 // Default limit when offset is used
+    }
+    
+    let result = query
+    
+    if (effectiveLimit !== undefined) {
+      if (effectiveLimit < 0) {
+        throw new Error('Limit must be non-negative')
+      }
+      result = (result as any).limit(effectiveLimit)
+    }
+    
+    if (semanticQuery.offset !== undefined) {
+      if (semanticQuery.offset < 0) {
+        throw new Error('Offset must be non-negative')
+      }
+      result = (result as any).offset(semanticQuery.offset)
+    }
+    
+    return result
   }
 
   /**
@@ -632,7 +702,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   }
 
   /**
-   * Build time dimension expression with granularity
+   * Build time dimension expression with granularity using database adapter
    */
   private buildTimeDimensionExpression(
     dimensionSql: any,
@@ -645,29 +715,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       return sql`${baseExpr}`
     }
     
-    // TODO: Make this database-agnostic based on dbExecutor type
-    // For now, using PostgreSQL DATE_TRUNC syntax with explicit text formatting
-    switch (granularity) {
-      case 'year':
-        return sql`DATE_TRUNC('year', ${baseExpr}::timestamp)`
-      case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamp)`
-      case 'month':
-        return sql`DATE_TRUNC('month', ${baseExpr}::timestamp)`
-      case 'week':
-        return sql`DATE_TRUNC('week', ${baseExpr}::timestamp)`
-      case 'day':
-        // Ensure we return the truncated date as a timestamp
-        return sql`DATE_TRUNC('day', ${baseExpr}::timestamp)::timestamp`
-      case 'hour':
-        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamp)`
-      case 'minute':
-        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamp)`
-      case 'second':
-        return sql`DATE_TRUNC('second', ${baseExpr}::timestamp)`
-      default:
-        return baseExpr as SQL
-    }
+    // Use database adapter for database-specific time dimension building
+    return this.databaseAdapter.buildTimeDimension(granularity as TimeGranularity, baseExpr)
   }
 
   /**
@@ -804,13 +853,13 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         }
         return null
       case 'contains':
-        return sql`${fieldExpr} ILIKE ${'%' + value + '%'}`
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'contains', value)
       case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${'%' + value + '%'}`
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notContains', value)
       case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${value + '%'}`
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'startsWith', value)
       case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${'%' + value}`
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'endsWith', value)
       case 'gt':
         return gt(fieldExpr as AnyColumn, value)
       case 'gte':

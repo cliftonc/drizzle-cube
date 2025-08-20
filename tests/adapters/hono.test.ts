@@ -3,10 +3,11 @@ import { Hono } from 'hono'
 import { createCubeRoutes } from '../../src/adapters/hono'
 import { 
   createTestSemanticLayer,
-  testEmployeesCube,
-  testSecurityContext,
-  testSchema
+  testSchema,
+  getTestDatabaseType
 } from '../helpers/test-database'
+import { testSecurityContexts } from '../helpers/enhanced-test-data'
+import { testEmployeesCube, createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
 describe('Hono Adapter', () => {
   let app: Hono
@@ -15,7 +16,7 @@ describe('Hono Adapter', () => {
   let drizzleDb
 
   // Mock security context extractor
-  const mockGetSecurityContext = async (_c: any) => testSecurityContext
+  const mockGetSecurityContext = async (_c: any) => testSecurityContexts.org1
 
   beforeAll(async () => {
     const { semanticLayer, db, close } = await createTestSemanticLayer()
@@ -23,7 +24,9 @@ describe('Hono Adapter', () => {
     semanticLayerFn = semanticLayer
     drizzleDb = db
     
-    semanticLayerFn.registerCube(testEmployeesCube)
+    // Use dynamic cube creation to ensure correct schema for current database type
+    const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
+    semanticLayerFn.registerCube(dynamicEmployeesCube)
     
     app = createCubeRoutes({
       semanticLayer: semanticLayerFn,
@@ -50,7 +53,7 @@ describe('Hono Adapter', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         measures: ['Employees.count'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Employees.name']
       })
     })
 
@@ -83,7 +86,7 @@ describe('Hono Adapter', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         measures: ['Employees.count'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Employees.name']
       })
     })
 
@@ -99,7 +102,7 @@ describe('Hono Adapter', () => {
   it('should handle query via GET with query string', async () => {
     const query = {
       measures: ['Employees.count'],
-      dimensions: ['Employees.departmentName']
+      dimensions: ['Employees.name']
     }
     
     const req = new Request(`http://localhost/cubejs-api/v1/load?query=${encodeURIComponent(JSON.stringify(query))}`)
@@ -162,7 +165,7 @@ describe('Hono Adapter', () => {
   it('should handle SQL generation via GET', async () => {
     const query = {
       measures: ['Employees.count'],
-      dimensions: ['Employees.departmentName']
+      dimensions: ['Employees.name']
     }
     
     const req = new Request(`http://localhost/cubejs-api/v1/sql?query=${encodeURIComponent(JSON.stringify(query))}`)
@@ -180,7 +183,7 @@ describe('Hono Adapter', () => {
     const req = new Request('http://localhost/cubejs-api/v1/load?query=invalid-json')
     const res = await app.request(req)
     
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(400)
     
     const data = await res.json()
     expect(data.error).toBeDefined()

@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
+  createTestDatabaseExecutor,   
   testSchema,
   employees,
   departments
@@ -14,8 +14,7 @@ import {
 import type { TestSchema } from './helpers/test-database'
 
 import { 
-  SemanticLayerCompiler,
-  createPostgresExecutor
+  SemanticLayerCompiler
 } from '../src/server'
 
 import { defineCube } from '../src/server/types-drizzle'
@@ -72,9 +71,8 @@ describe('Query Validation', () => {
   let compiler: SemanticLayerCompiler<TestSchema>
 
   beforeAll(async () => {
-    // Create database and executor
-    const db = await createTestDatabase()
-    const executor = createPostgresExecutor(db, testSchema)
+    // Create database and executor using the unified database utilities
+    const { executor, close } = await createTestDatabaseExecutor()
     
     // Create compiler and register cubes
     compiler = new SemanticLayerCompiler({ databaseExecutor: executor })

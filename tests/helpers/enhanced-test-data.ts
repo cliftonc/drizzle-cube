@@ -276,6 +276,7 @@ export const enhancedEmployees = [
 export function generateComprehensiveProductivityData(insertedEmployees: any[]): any[] {
   const productivityData: any[] = []
   
+  
   // Generate data for a full year (2024) for comprehensive time dimension testing
   const startDate = new Date('2024-01-01')
   const endDate = new Date('2024-12-31')
@@ -361,20 +362,22 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
         daysOff = true
         happinessIndex = 5
       } else if (!isWorkDay && !weekendWork) {
-        // Regular days off
+        // Regular days off (weekends and holidays)
         daysOff = true
         happinessIndex = Math.round(Math.max(6, Math.min(10, 8 + Math.random() * 2 - 1))) // Higher happiness on days off
       } else {
         // Working day - generate realistic productivity
         const overallModifier = seasonalModifier * dayModifier * (0.5 + Math.random() * 0.8) // Random variation
         
-        // Vacation days (random throughout the year)
-        const vacationProbability = profile.role.includes('Senior') ? 0.015 : 0.012 // Senior staff take more vacation
+        // Vacation days (realistic probability - ~15-20 vacation days per year)
+        // Work days per year ~260, so 15-20 vacation days = 15-20/260 = 0.058-0.077 probability
+        const vacationProbability = profile.role.includes('Senior') ? 0.070 : 0.055
         if (Math.random() < vacationProbability) {
           daysOff = true
           happinessIndex = Math.round(Math.max(8, Math.min(10, 9 + Math.random() * 1))) // Very happy on vacation
         } else {
           // Regular work day with edge cases
+          daysOff = false // Explicitly set working day
           
           // Occasional zero productivity days (sick days, bad days)
           if (Math.random() < 0.02) {

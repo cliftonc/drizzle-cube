@@ -4,15 +4,13 @@
  * to identify and fix filtering issues
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { 
-  createTestDatabase,
-  testSchema
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
-import { createPostgresExecutor } from '../src/server'
 import { QueryExecutor } from '../src/server/executor'
 import { getTestCubes } from './helpers/test-cubes'
 import type { Cube } from '../src/server/types-drizzle'
@@ -20,12 +18,19 @@ import type { Cube } from '../src/server/types-drizzle'
 describe('Time Dimension Filters', () => {
   let executor: QueryExecutor<TestSchema>
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    const { db } = createTestDatabase()
-    const dbExecutor = createPostgresExecutor(db, testSchema)
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     cubes = getTestCubes(['Employees', 'Productivity'])
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   describe('TimeDimension Filter in filters array', () => {
@@ -57,17 +62,7 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      console.log('=== Testing timeDimension filter in filters array ===')
-      
-      // Generate SQL to debug
-      const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-      console.log('Generated SQL:', generatedSQL.sql)
-      console.log('Generated Params:', generatedSQL.params)
-
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
-      
-      console.log('Query result data:', JSON.stringify(result.data, null, 2))
-      console.log('Query result annotation:', JSON.stringify(result.annotation, null, 2))
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -109,16 +104,12 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      console.log('=== Testing timeDimension equals filter in filters array ===')
       
       // Generate SQL to debug
       const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-      console.log('Generated SQL:', generatedSQL.sql)
-      console.log('Generated Params:', generatedSQL.params)
 
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
       
-      console.log('Query result data:', JSON.stringify(result.data, null, 2))
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -147,16 +138,12 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      console.log('=== Testing timeDimension dateRange property ===')
       
       // Generate SQL to debug
       const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-      console.log('Generated SQL:', generatedSQL.sql)
-      console.log('Generated Params:', generatedSQL.params)
 
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
       
-      console.log('Query result data:', JSON.stringify(result.data, null, 2))
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -205,13 +192,10 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      console.log('=== Comparing both filter methods ===')
       
       const result1 = await executor.execute(cubes, query1, testSecurityContexts.org1)
       const result2 = await executor.execute(cubes, query2, testSecurityContexts.org1)
 
-      console.log('Filters array result:', JSON.stringify(result1.data, null, 2))
-      console.log('DateRange property result:', JSON.stringify(result2.data, null, 2))
 
       // Both methods should produce similar filtering results
       expect(result1.data).toBeDefined()
@@ -223,8 +207,6 @@ describe('Time Dimension Filters', () => {
         const total1 = result1.data.reduce((sum, row) => sum + (row['Productivity.recordCount'] || 0), 0)
         const total2 = result2.data.reduce((sum, row) => sum + (row['Productivity.recordCount'] || 0), 0)
         
-        console.log('Total records method 1:', total1)
-        console.log('Total records method 2:', total2)
         
         // They should be equal if both filters are working correctly
         expect(total1).toBe(total2)
@@ -270,7 +252,6 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      console.log('=== Debugging exact user example ===')
       
       // First, let's see all data without filters
       const noFilterQuery = {
@@ -285,7 +266,6 @@ describe('Time Dimension Filters', () => {
       }
 
       const unfilteredResult = await executor.execute(cubes, noFilterQuery, testSecurityContexts.org1)
-      console.log('Unfiltered data:', JSON.stringify(unfilteredResult.data, null, 2))
 
       // Now test with just the name filter
       const nameOnlyQuery = {
@@ -307,15 +287,9 @@ describe('Time Dimension Filters', () => {
       }
 
       const nameFilterResult = await executor.execute(cubes, nameOnlyQuery, testSecurityContexts.org1)
-      console.log('Name-only filtered data:', JSON.stringify(nameFilterResult.data, null, 2))
 
       // Finally, test with both filters
-      const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-      console.log('Generated SQL for both filters:', generatedSQL.sql)
-      console.log('Generated Params:', generatedSQL.params)
-
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
-      console.log('Both filters result:', JSON.stringify(result.data, null, 2))
 
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
@@ -325,9 +299,6 @@ describe('Time Dimension Filters', () => {
       const nameOnlyCount = nameFilterResult.data.length  
       const bothFiltersCount = result.data.length
       
-      console.log('Unfiltered count:', unfilteredCount)
-      console.log('Name-only count:', nameOnlyCount)
-      console.log('Both filters count:', bothFiltersCount)
       
       // If date filtering is working, bothFiltersCount should be <= nameOnlyCount
       expect(bothFiltersCount).toBeLessThanOrEqual(nameOnlyCount)

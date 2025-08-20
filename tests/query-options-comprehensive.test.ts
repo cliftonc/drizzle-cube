@@ -3,17 +3,12 @@
  * Tests limit/offset, ordering, complex combinations, and query parameter validation
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { 
-  createTestDatabase,   
-  testSchema
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../src/server/types-drizzle'
@@ -30,24 +25,31 @@ describe('Comprehensive Query Options', () => {
   let testExecutor: TestExecutor
   let performanceMeasurer: PerformanceMeasurer
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the existing global test database (do not delete/re-insert)
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
     // Setup test executor with shared cube definitions
-    const dbExecutor = createPostgresExecutor(db, testSchema)
     const executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     cubes = getTestCubes()
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   describe('Limit and Offset Operations', () => {
     it('should handle basic limit functionality', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.employeeName'])
+        .dimensions(['Productivity.employeeId'])
         .limit(5)
         .build()
 
@@ -71,7 +73,7 @@ describe('Comprehensive Query Options', () => {
     it('should handle large limit values', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.employeeName'])
+        .dimensions(['Productivity.employeeId'])
         .limit(10000)
         .build()
 
@@ -86,8 +88,8 @@ describe('Comprehensive Query Options', () => {
       // First get results without offset
       const baseQuery = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.employeeName'])
-        .order({ 'Productivity.employeeName': 'asc' })
+        .dimensions(['Productivity.employeeId'])
+        .order({ 'Productivity.employeeId': 'asc' })
         .limit(10)
         .build()
 
@@ -96,8 +98,8 @@ describe('Comprehensive Query Options', () => {
       // Then get results with offset
       const offsetQuery = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.employeeName'])
-        .order({ 'Productivity.employeeName': 'asc' })
+        .dimensions(['Productivity.employeeId'])
+        .order({ 'Productivity.employeeId': 'asc' })
         .limit(10)
         .offset(5)
         .build()
@@ -109,7 +111,7 @@ describe('Comprehensive Query Options', () => {
 
       // Results should be different (offset skips the first 5 rows)
       if (baseResult.data.length >= 6 && offsetResult.data.length > 0) {
-        expect(baseResult.data[5]['Productivity.employeeName']).toBe(offsetResult.data[0]['Productivity.employeeName'])
+        expect(baseResult.data[5]['Productivity.employeeId']).toBe(offsetResult.data[0]['Productivity.employeeId'])
       }
     })
 
@@ -133,8 +135,8 @@ describe('Comprehensive Query Options', () => {
       for (let page = 0; page < 3; page++) {
         const query = TestQueryBuilder.create()
           .measures(['Productivity.recordCount'])
-          .dimensions(['Productivity.employeeName'])
-          .order({ 'Productivity.employeeName': 'asc' })
+          .dimensions(['Productivity.employeeId'])
+          .order({ 'Productivity.employeeId': 'asc' })
           .limit(pageSize)
           .offset(page * pageSize)
           .build()
@@ -148,8 +150,8 @@ describe('Comprehensive Query Options', () => {
 
       // Check that pages don't overlap
       for (let i = 1; i < pages.length && pages[i].length > 0; i++) {
-        const prevPageLastEmployee = pages[i - 1][pages[i - 1].length - 1]?.['Productivity.employeeName']
-        const currentPageFirstEmployee = pages[i][0]?.['Productivity.employeeName']
+        const prevPageLastEmployee = pages[i - 1][pages[i - 1].length - 1]?.['Productivity.employeeId']
+        const currentPageFirstEmployee = pages[i][0]?.['Productivity.employeeId']
         
         if (prevPageLastEmployee && currentPageFirstEmployee) {
           expect(prevPageLastEmployee).not.toBe(currentPageFirstEmployee)
@@ -222,10 +224,10 @@ describe('Comprehensive Query Options', () => {
     it('should handle multiple field ordering', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.departmentName', 'Productivity.employeeName'])
+        .dimensions(['Employees.departmentId', 'Productivity.employeeId'])
         .order({ 
-          'Productivity.departmentName': 'asc',
-          'Productivity.employeeName': 'asc'
+          'Employees.departmentId': 'asc',
+          'Productivity.employeeId': 'asc'
         })
         .limit(20)
         .build()
@@ -235,11 +237,11 @@ describe('Comprehensive Query Options', () => {
       expect(result.data.length).toBeGreaterThan(0)
 
       // Validate primary sort (department)
-      let lastDept: string | null = null
+      let lastDept: number | null = null
       for (const row of result.data) {
-        const currentDept = row['Productivity.departmentName']
-        if (lastDept && currentDept) {
-          expect(lastDept.localeCompare(currentDept)).toBeLessThanOrEqual(0)
+        const currentDept = row['Employees.departmentId']
+        if (lastDept !== null && currentDept !== null) {
+          expect(lastDept).toBeLessThanOrEqual(currentDept)
         }
         lastDept = currentDept
       }
@@ -248,7 +250,7 @@ describe('Comprehensive Query Options', () => {
     it('should handle ordering by measures', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.totalSalary'])
-        .dimensions(['Employees.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .order({ 'Employees.totalSalary': 'desc' })
         .build()
 
@@ -326,9 +328,9 @@ describe('Comprehensive Query Options', () => {
     it('should handle mixed asc/desc ordering', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode'])
-        .dimensions(['Productivity.departmentName', 'Productivity.employeeName'])
+        .dimensions(['Employees.departmentId', 'Productivity.employeeId'])
         .order({ 
-          'Productivity.departmentName': 'asc',
+          'Employees.departmentId': 'asc',
           'Productivity.totalLinesOfCode': 'desc'
         })
         .limit(15)
@@ -343,7 +345,7 @@ describe('Comprehensive Query Options', () => {
       let lastLinesOfCode: number | null = null
 
       for (const row of result.data) {
-        const dept = row['Productivity.departmentName']
+        const dept = row['Employees.departmentId']
         const linesOfCode = row['Productivity.totalLinesOfCode']
 
         if (dept !== currentDept) {
@@ -364,7 +366,7 @@ describe('Comprehensive Query Options', () => {
     it('should handle limit + offset + order combinations', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.avgHappinessIndex'])
-        .dimensions(['Productivity.employeeName'])
+        .dimensions(['Productivity.employeeId'])
         .order({ 'Productivity.avgHappinessIndex': 'desc' })
         .limit(5)
         .offset(2)
@@ -386,13 +388,13 @@ describe('Comprehensive Query Options', () => {
     it('should handle complex filtering + ordering + pagination', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode'])
-        .dimensions(['Productivity.employeeName', 'Productivity.departmentName'])
+        .dimensions(['Productivity.employeeId', 'Employees.departmentId'])
         .andFilter([
           { member: 'Productivity.isWorkDay', operator: 'equals', values: [true] },
           { member: 'Productivity.totalLinesOfCode', operator: 'gt', values: [100] }
         ])
         .order({ 
-          'Productivity.departmentName': 'asc',
+          'Employees.departmentId': 'asc',
           'Productivity.totalLinesOfCode': 'desc' 
         })
         .limit(10)
@@ -440,10 +442,10 @@ describe('Comprehensive Query Options', () => {
     it('should handle aggregations + grouping + ordering + pagination', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Employees.avgSalary', 'Employees.totalSalary'])
-        .dimensions(['Employees.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .order({ 
           'Employees.totalSalary': 'desc',
-          'Employees.departmentName': 'asc'
+          'Employees.departmentId': 'asc'
         })
         .limit(6)
         .build()
@@ -558,7 +560,7 @@ describe('Comprehensive Query Options', () => {
     it('should efficiently handle large limit values', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount'])
-        .dimensions(['Productivity.employeeName'])
+        .dimensions(['Productivity.employeeId'])
         .limit(1000)
         .build()
 
@@ -576,11 +578,11 @@ describe('Comprehensive Query Options', () => {
     it('should efficiently handle complex ordering', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.avgHappinessIndex'])
-        .dimensions(['Productivity.employeeName', 'Productivity.departmentName'])
+        .dimensions(['Productivity.employeeId', 'Employees.departmentId'])
         .order({ 
-          'Productivity.departmentName': 'asc',
+          'Employees.departmentId': 'asc',
           'Productivity.totalLinesOfCode': 'desc',
-          'Productivity.employeeName': 'asc'
+          'Productivity.employeeId': 'asc'
         })
         .limit(50)
         .build()
@@ -603,8 +605,8 @@ describe('Comprehensive Query Options', () => {
       for (let page = 0; page < pagesToTest; page++) {
         const query = TestQueryBuilder.create()
           .measures(['Productivity.recordCount'])
-          .dimensions(['Productivity.employeeName'])
-          .order({ 'Productivity.employeeName': 'asc' })
+          .dimensions(['Productivity.employeeId'])
+          .order({ 'Productivity.employeeId': 'asc' })
           .limit(pageSize)
           .offset(page * pageSize)
           .build()
@@ -625,14 +627,14 @@ describe('Comprehensive Query Options', () => {
     it('should validate query options in result structure', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Employees.avgSalary'])
-        .dimensions(['Employees.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .order({ 'Employees.avgSalary': 'desc' })
         .limit(3)
         .build()
 
       const { result, validation } = await testExecutor.validateQuery(
         query,
-        ['Employees.count', 'Employees.avgSalary', 'Employees.departmentName']
+        ['Employees.count', 'Employees.avgSalary', 'Employees.departmentId']
       )
 
       expect(validation.isValid).toBe(true)
@@ -647,7 +649,7 @@ describe('Comprehensive Query Options', () => {
     it('should maintain result integrity with complex options', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode'])
-        .dimensions(['Productivity.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .filters([
           { member: 'Productivity.isWorkDay', operator: 'equals', values: [true] }
         ])
@@ -674,7 +676,6 @@ describe('Comprehensive Query Options', () => {
   afterAll(() => {
     // Output performance statistics
     const allStats = performanceMeasurer.getStats()
-    console.log('\n=== Query Options Performance Statistics ===')
     console.log(`Total measurements: ${allStats.count}`)
     console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
     console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)

@@ -3,19 +3,12 @@
  * Demonstrates cross-cube queries with dynamic field selection
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
-  testSchema,
-  employees,
-  departments
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
+import type { TestSchema } from './helpers/databases/types'
 
 import { QueryExecutor } from '../src/server/executor'
 import { defineCube } from '../src/server/types-drizzle'
@@ -25,8 +18,17 @@ import type {
   BaseQueryDefinition 
 } from '../src/server/types-drizzle'
 
-// Create test cubes with join definitions
-const testEmployeesCubeWithJoins: CubeWithJoins<TestSchema> = {
+// We'll dynamically get the schema and create the cubes after database setup
+let testEmployeesCubeWithJoins: CubeWithJoins<TestSchema>
+let testDepartmentsCubeWithJoins: CubeWithJoins<TestSchema>
+let employees: any
+let departments: any
+
+const createCubeDefinitions = (schema: any) => {
+  employees = schema.employees
+  departments = schema.departments
+  
+  testEmployeesCubeWithJoins = {
   ...defineCube('Employees', {
     title: 'Employees Cube',
     description: 'Employee data with join support',
@@ -85,8 +87,8 @@ const testEmployeesCubeWithJoins: CubeWithJoins<TestSchema> = {
   }
 }
 
-const testDepartmentsCubeWithJoins: CubeWithJoins<TestSchema> = {
-  ...defineCube('Departments', {
+  testDepartmentsCubeWithJoins = {
+    ...defineCube('Departments', {
     title: 'Departments Cube',
     description: 'Department data with join support',
     
@@ -136,6 +138,7 @@ const testDepartmentsCubeWithJoins: CubeWithJoins<TestSchema> = {
       relationship: 'hasMany'
     }
   }
+  }
 }
 
 // Test security contexts
@@ -144,20 +147,29 @@ const testSecurityContext = { organisationId: 1 }
 describe('Simplified Multi-Cube Dynamic Query Building', () => {
   let executor: QueryExecutor<TestSchema>
   let cubes: Map<string, CubeWithJoins<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the global test database setup
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
-    // Create the simplified executor
-    const dbExecutor = createPostgresExecutor(db, testSchema)
+    // Get the schema from the executor to create the cubes
+    createCubeDefinitions(dbExecutor.schema)
+    
     executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     
     // Setup cubes map
     cubes = new Map([
       ['Employees', testEmployeesCubeWithJoins],
       ['Departments', testDepartmentsCubeWithJoins]
     ])
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   it('should detect single cube queries and use simple executor', async () => {

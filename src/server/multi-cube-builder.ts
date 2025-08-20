@@ -26,12 +26,23 @@ import type {
 
 import type { 
   SemanticQuery,
-  SecurityContext
+  SecurityContext,
+  TimeGranularity
 } from './types'
 
 import { resolveSqlExpression, createMultiCubeContext } from './types-drizzle'
+import type { DatabaseAdapter } from './adapters/base-adapter'
 
 export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<string, any>> {
+  constructor(private databaseAdapter?: DatabaseAdapter) {}
+  
+  /**
+   * Set the database adapter (for use when not provided in constructor)
+   */
+  setDatabaseAdapter(adapter: DatabaseAdapter): void {
+    this.databaseAdapter = adapter
+  }
+  
   /**
    * Analyze a semantic query to determine which cubes are involved
    */
@@ -89,7 +100,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     }
     
     // Build join plan
-    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx.securityContext)
+    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx)
     
     // Build combined selections
     const selections = this.buildMultiCubeSelections(cubes, query, ctx.securityContext)
@@ -134,7 +145,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     cubes: Map<string, Cube<TSchema>>,
     primaryCube: Cube<TSchema>,
     cubeNames: string[],
-    securityContext: SecurityContext
+    ctx: QueryContext<TSchema>
   ): MultiCubeQueryPlan<TSchema>['joinCubes'] {
     const joinCubes: MultiCubeQueryPlan<TSchema>['joinCubes'] = []
     
@@ -155,11 +166,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
       
       // Create multi-cube context for join condition
       const context = createMultiCubeContext(
-        {
-          db: {} as any, // Will be filled in during execution
-          schema: {} as any, // Will be filled in during execution
-          securityContext
-        },
+        ctx,
         cubes,
         cube
       )
@@ -265,24 +272,28 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
       baseExpr = sql`CASE WHEN ${and(...filterConditions)} THEN ${baseExpr} END`
     }
     
-    // Apply aggregation function based on measure type
+    // Apply aggregation function using database adapter for database-specific implementations
+    if (!this.databaseAdapter) {
+      throw new Error('DatabaseAdapter is required for measure aggregation')
+    }
+    
     switch (measure.type) {
       case 'count':
-        return sql`COUNT(${baseExpr})`
+        return this.databaseAdapter.buildCount(baseExpr)
       case 'countDistinct':
-        return sql`COUNT(DISTINCT ${baseExpr})`
+        return this.databaseAdapter.buildCountDistinct(baseExpr)
       case 'sum':
-        return sql`SUM(${baseExpr})`
+        return this.databaseAdapter.buildSum(baseExpr)
       case 'avg':
-        return sql`AVG(${baseExpr})`
+        return this.databaseAdapter.buildAvg(baseExpr)
       case 'min':
-        return sql`MIN(${baseExpr})`
+        return this.databaseAdapter.buildMin(baseExpr)
       case 'max':
-        return sql`MAX(${baseExpr})`
+        return this.databaseAdapter.buildMax(baseExpr)
       case 'number':
         return baseExpr as SQL
       default:
-        return sql`COUNT(${baseExpr})`
+        return this.databaseAdapter.buildCount(baseExpr)
     }
   }
 
@@ -300,27 +311,12 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
       return baseExpr as SQL
     }
     
-    // Apply date truncation based on granularity (PostgreSQL specific)
-    switch (granularity) {
-      case 'year':
-        return sql`DATE_TRUNC('year', ${baseExpr}::timestamp)`
-      case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${baseExpr}::timestamp)`
-      case 'month':
-        return sql`DATE_TRUNC('month', ${baseExpr}::timestamp)`
-      case 'week':
-        return sql`DATE_TRUNC('week', ${baseExpr}::timestamp)`
-      case 'day':
-        return sql`DATE_TRUNC('day', ${baseExpr}::timestamp)`
-      case 'hour':
-        return sql`DATE_TRUNC('hour', ${baseExpr}::timestamp)`
-      case 'minute':
-        return sql`DATE_TRUNC('minute', ${baseExpr}::timestamp)`
-      case 'second':
-        return sql`DATE_TRUNC('second', ${baseExpr}::timestamp)`
-      default:
-        return baseExpr as SQL
+    // Use database adapter for database-specific time dimension building
+    if (!this.databaseAdapter) {
+      throw new Error('DatabaseAdapter is required for time dimension building')
     }
+    
+    return this.databaseAdapter.buildTimeDimension(granularity as TimeGranularity, baseExpr)
   }
 
   /**
@@ -465,13 +461,25 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
         }
         return null
       case 'contains':
-        return sql`${fieldExpr} ILIKE ${'%' + value + '%'}`
+        if (!this.databaseAdapter) {
+          throw new Error('DatabaseAdapter is required for string conditions')
+        }
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'contains', value)
       case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${'%' + value + '%'}`
+        if (!this.databaseAdapter) {
+          throw new Error('DatabaseAdapter is required for string conditions')
+        }
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notContains', value)
       case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${value + '%'}`
+        if (!this.databaseAdapter) {
+          throw new Error('DatabaseAdapter is required for string conditions')
+        }
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'startsWith', value)
       case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${'%' + value}`
+        if (!this.databaseAdapter) {
+          throw new Error('DatabaseAdapter is required for string conditions')
+        }
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'endsWith', value)
       case 'gt':
         return gt(fieldExpr as AnyColumn, value)
       case 'gte':

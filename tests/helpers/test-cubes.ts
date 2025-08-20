@@ -10,8 +10,46 @@ import type {
   QueryContext,
   BaseQueryDefinition 
 } from '../../src/server/types-drizzle'
-import type { TestSchema } from './schema'
-import { employees, departments, productivity, analyticsPages } from './schema'
+import { getTestDatabaseType } from './test-database'
+
+// Dynamic cube creation based on database type
+async function createCubesForDatabaseType() {
+  const dbType = getTestDatabaseType()
+  
+  if (dbType === 'mysql') {
+    const { 
+      mysqlTestSchema,
+      employees, 
+      departments, 
+      productivity 
+    } = await import('./databases/mysql/schema')
+    
+    return {
+      employees,
+      departments, 
+      productivity,
+      schema: mysqlTestSchema
+    }
+  } else {
+    const { 
+      testSchema,
+      employees, 
+      departments, 
+      productivity 
+    } = await import('./databases/postgres/schema')
+    
+    return {
+      employees,
+      departments,
+      productivity,
+      schema: testSchema
+    }
+  }
+}
+
+// For backward compatibility, keep static PostgreSQL imports as default
+import type { TestSchema } from './test-database'
+import { employees, departments, productivity } from './test-database'
 
 /**
  * Comprehensive Employees Cube
@@ -22,34 +60,28 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
   description: 'Comprehensive employee data with department information and all field types',
   
   sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
-    from: employees,
-    joins: [
-      {
-        table: departments,
-        on: and(
-          eq(employees.departmentId, departments.id),
-          eq(departments.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
-      }
-    ],
+    from: employees,    
     where: eq(employees.organisationId, ctx.securityContext.organisationId)
   }),
   
   joins: {
     'Productivity': {
+      targetCube: 'Productivity',
       relationship: 'hasMany',
       condition: (ctx) => and(
         eq(productivity.employeeId, employees.id),
         eq(productivity.organisationId, ctx.securityContext.organisationId)
-      )
+      ),
+      type: 'left'
     },
     'Departments': {
+      targetCube: 'Departments',
       relationship: 'belongsTo',
       condition: (ctx) => and(
         eq(employees.departmentId, departments.id),
         eq(departments.organisationId, ctx.securityContext.organisationId)
-      )
+      ),
+      type: 'left'
     }
   },
   
@@ -73,11 +105,11 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
       type: 'string',
       sql: employees.email
     },
-    departmentName: {
-      name: 'departmentName',
-      title: 'Department',
-      type: 'string',
-      sql: departments.name
+    departmentId: {
+      name: 'departmentId',
+      title: 'Department ID',
+      type: 'number',
+      sql: employees.departmentId
     },
     isActive: {
       name: 'isActive',
@@ -103,13 +135,13 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
     count: {
       name: 'count',
       title: 'Total Employees',
-      type: 'count',
+      type: 'countDistinct',
       sql: employees.id
     },
     activeCount: {
       name: 'activeCount',
       title: 'Active Employees',
-      type: 'count',
+      type: 'countDistinct',
       sql: employees.id,
       filters: [
         (ctx) => eq(employees.active, true)
@@ -118,7 +150,7 @@ export const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
     inactiveCount: {
       name: 'inactiveCount',
       title: 'Inactive Employees',
-      type: 'count',
+      type: 'countDistinct',
       sql: employees.id,
       filters: [
         (ctx) => eq(employees.active, false)
@@ -190,7 +222,7 @@ export const testDepartmentsCube: Cube<TestSchema> = defineCube('Departments', {
     count: {
       name: 'count',
       title: 'Department Count',
-      type: 'count',
+      type: 'countDistinct',
       sql: departments.id
     },
     totalBudget: {
@@ -230,24 +262,6 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
   
   sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
     from: productivity,
-    joins: [
-      {
-        table: employees,
-        on: and(
-          eq(productivity.employeeId, employees.id),
-          eq(employees.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
-      },
-      {
-        table: departments,
-        on: and(
-          eq(employees.departmentId, departments.id),
-          eq(departments.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
-      }
-    ],
     where: eq(productivity.organisationId, ctx.securityContext.organisationId)
   }),
 
@@ -278,17 +292,11 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
       sql: productivity.id,
       primaryKey: true
     },
-    employeeName: {
-      name: 'employeeName',
-      title: 'Employee Name',
-      type: 'string',
-      sql: employees.name
-    },
-    departmentName: {
-      name: 'departmentName',
-      title: 'Department',
-      type: 'string',
-      sql: departments.name
+    employeeId: {
+      name: 'employeeId',
+      title: 'Employee ID',
+      type: 'number',
+      sql: productivity.employeeId
     },
     date: {
       name: 'date',
@@ -457,12 +465,6 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
       type: 'countDistinct',
       sql: productivity.employeeId
     },
-    countDistinctDepartments: {
-      name: 'countDistinctDepartments',
-      title: 'Unique Departments',
-      type: 'countDistinct',
-      sql: employees.departmentId
-    },
     
     // Conditional measures for testing edge cases
     highProductivityDays: {
@@ -498,83 +500,6 @@ export const testProductivityCube: Cube<TestSchema> = defineCube('Productivity',
   }
 })
 
-/**
- * Analytics Pages Cube
- * Used for testing JSON fields and complex nested data
- */
-export const testAnalyticsPagesCube: Cube<TestSchema> = defineCube('AnalyticsPages', {
-  title: 'Analytics Pages',
-  description: 'Dashboard and analytics page configurations',
-  
-  sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
-    from: analyticsPages,
-    where: eq(analyticsPages.organisationId, ctx.securityContext.organisationId)
-  }),
-  
-  dimensions: {
-    id: {
-      name: 'id',
-      title: 'Page ID',
-      type: 'number',
-      sql: analyticsPages.id,
-      primaryKey: true
-    },
-    name: {
-      name: 'name',
-      title: 'Page Name',
-      type: 'string',
-      sql: analyticsPages.name
-    },
-    description: {
-      name: 'description',
-      title: 'Description',
-      type: 'string',
-      sql: analyticsPages.description
-    },
-    isActive: {
-      name: 'isActive',
-      title: 'Is Active',
-      type: 'boolean',
-      sql: analyticsPages.isActive
-    },
-    createdAt: {
-      name: 'createdAt',
-      title: 'Created At',
-      type: 'time',
-      sql: analyticsPages.createdAt
-    },
-    order: {
-      name: 'order',
-      title: 'Display Order',
-      type: 'number',
-      sql: analyticsPages.order
-    }
-  },
-  
-  measures: {
-    count: {
-      name: 'count',
-      title: 'Page Count',
-      type: 'count',
-      sql: analyticsPages.id
-    },
-    activeCount: {
-      name: 'activeCount',
-      title: 'Active Pages',
-      type: 'count',
-      sql: analyticsPages.id,
-      filters: [
-        (ctx) => eq(analyticsPages.isActive, true)
-      ]
-    },
-    avgOrder: {
-      name: 'avgOrder',
-      title: 'Average Order',
-      type: 'avg',
-      sql: analyticsPages.order
-    }
-  }
-})
 
 /**
  * Standard cube map for all tests
@@ -582,8 +507,7 @@ export const testAnalyticsPagesCube: Cube<TestSchema> = defineCube('AnalyticsPag
 export const allTestCubes = new Map([
   ['Employees', testEmployeesCube],
   ['Departments', testDepartmentsCube],
-  ['Productivity', testProductivityCube],
-  ['AnalyticsPages', testAnalyticsPagesCube]
+  ['Productivity', testProductivityCube]
 ])
 
 /**
@@ -602,4 +526,171 @@ export function getTestCubes(cubeNames?: string[]): Map<string, Cube<TestSchema>
     }
   }
   return filteredCubes
+}
+
+/**
+ * Create cubes dynamically for the current database type
+ * This ensures that cubes use the correct schema tables (MySQL vs PostgreSQL)
+ */
+export async function createTestCubesForCurrentDatabase(): Promise<{
+  testEmployeesCube: Cube<any>
+  testDepartmentsCube: Cube<any> 
+  testProductivityCube: Cube<any>
+}> {
+  const { employees, departments, productivity, schema } = await createCubesForDatabaseType()
+  
+  // Create employees cube with correct schema
+  const testEmployeesCube = defineCube('Employees', {
+    title: 'Employees Analytics',
+    description: 'Comprehensive employee data with department information and all field types',
+    
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: employees,    
+      where: eq(employees.organisationId, ctx.securityContext.organisationId)
+    }),
+    
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Employee ID',
+        type: 'number',
+        sql: employees.id,
+        primaryKey: true
+      },
+      name: {
+        name: 'name',
+        title: 'Name',
+        type: 'string',
+        sql: employees.name
+      },
+      email: {
+        name: 'email',
+        title: 'Email',
+        type: 'string',
+        sql: employees.email
+      },
+      active: {
+        name: 'active',
+        title: 'Active',
+        type: 'boolean',
+        sql: employees.active
+      },
+      createdAt: {
+        name: 'createdAt',
+        title: 'Created At',
+        type: 'time',
+        sql: employees.createdAt
+      }
+    },
+    
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Total Employees',
+        type: 'count',
+        sql: employees.id
+      },
+      avgSalary: {
+        name: 'avgSalary',
+        title: 'Average Salary',
+        type: 'avg',
+        sql: employees.salary
+      }
+    }
+  })
+
+  // Create departments cube with correct schema  
+  const testDepartmentsCube = defineCube('Departments', {
+    title: 'Departments Analytics',
+    description: 'Department information and metrics',
+    
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: departments,
+      where: eq(departments.organisationId, ctx.securityContext.organisationId)
+    }),
+    
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Department ID', 
+        type: 'number',
+        sql: departments.id,
+        primaryKey: true
+      },
+      name: {
+        name: 'name',
+        title: 'Name',
+        type: 'string',
+        sql: departments.name
+      }
+    },
+    
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Total Departments',
+        type: 'count',
+        sql: departments.id
+      },
+      totalBudget: {
+        name: 'totalBudget',
+        title: 'Total Budget',
+        type: 'sum',
+        sql: departments.budget
+      }
+    }
+  })
+
+  // Create productivity cube with correct schema
+  const testProductivityCube = defineCube('Productivity', {
+    title: 'Productivity Analytics',
+    description: 'Employee productivity metrics and KPIs',
+    
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: productivity,
+      where: eq(productivity.organisationId, ctx.securityContext.organisationId)
+    }),
+    
+    dimensions: {
+      employeeId: {
+        name: 'employeeId',
+        title: 'Employee ID',
+        type: 'number',
+        sql: productivity.employeeId
+      },
+      date: {
+        name: 'date',
+        title: 'Date',
+        type: 'time',
+        sql: productivity.date
+      }
+    },
+    
+    measures: {
+      recordCount: {
+        name: 'recordCount',
+        title: 'Total Records',
+        type: 'count',
+        sql: productivity.id
+      },
+      avgHappinessIndex: {
+        name: 'avgHappinessIndex',
+        title: 'Average Happiness Index',
+        type: 'avg',
+        sql: productivity.happinessIndex
+      },
+      totalLinesOfCode: {
+        name: 'totalLinesOfCode',
+        title: 'Total Lines of Code',
+        type: 'sum',
+        sql: productivity.linesOfCode
+      }
+    }
+  })
+
+  return {
+    testEmployeesCube,
+    testDepartmentsCube, 
+    testProductivityCube
+  }
 }

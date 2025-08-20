@@ -9,7 +9,7 @@ Before installing Drizzle Cube, make sure you have:
 - **Node.js** 18 or higher
 - **TypeScript** 5.0 or higher  
 - **Drizzle ORM** 0.44.4 or higher
-- A PostgreSQL database (MySQL and SQLite support coming soon)
+- A PostgreSQL or MySQL database (SQLite support coming soon)
 
 ## Package Installation
 
@@ -118,14 +118,14 @@ your-project/
 Create a `.env` file with your database connection details:
 
 ```env
-# PostgreSQL (currently supported)
+# PostgreSQL
 DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 
-# Neon PostgreSQL (currently supported)
+# Neon PostgreSQL  
 DATABASE_URL="postgresql://user:password@ep-example-123456.us-east-1.aws.neon.tech/dbname"
 
-# MySQL (coming soon)
-# DATABASE_URL="mysql://user:password@localhost:3306/mydb"
+# MySQL (now supported)
+DATABASE_URL="mysql://user:password@localhost:3306/mydb"
 
 # SQLite (coming soon)  
 # DATABASE_URL="file:./dev.db"

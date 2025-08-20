@@ -3,17 +3,12 @@
  * Tests all measure types, combinations, NULL handling, and complex aggregation scenarios
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { 
-  createTestDatabase,   
-  testSchema
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../src/server/types-drizzle'
@@ -30,17 +25,24 @@ describe('Comprehensive Aggregations', () => {
   let testExecutor: TestExecutor
   let performanceMeasurer: PerformanceMeasurer
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the existing global test database (do not delete/re-insert)
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
     // Setup test executor with all cube definitions
-    const dbExecutor = createPostgresExecutor(db, testSchema)
     const executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     cubes = getTestCubes() // Get all cubes
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   describe('Basic Aggregation Types', () => {
@@ -278,7 +280,7 @@ describe('Comprehensive Aggregations', () => {
     it('should handle aggregations with single dimension grouping', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Employees.avgSalary'])
-        .dimensions(['Employees.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .order({ 'Employees.count': 'desc' })
         .build()
 
@@ -293,14 +295,14 @@ describe('Comprehensive Aggregations', () => {
         if (row['Employees.avgSalary'] !== null) {
           expect(row['Employees.avgSalary']).toBeGreaterThan(0)
         }
-        expect(['string', 'object'].includes(typeof row['Employees.departmentName']) && (typeof row['Employees.departmentName'] !== 'object' || row['Employees.departmentName'] === null)).toBe(true)
+        expect(['number', 'object'].includes(typeof row['Employees.departmentId']) && (typeof row['Employees.departmentId'] !== 'object' || row['Employees.departmentId'] === null)).toBe(true)
       }
     })
 
     it('should handle aggregations with multiple dimension grouping', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount', 'Productivity.avgHappinessIndex'])
-        .dimensions(['Productivity.departmentName', 'Productivity.happinessLevel'])
+        .dimensions(['Employees.departmentId', 'Productivity.happinessLevel'])
         .order({ 'Productivity.recordCount': 'desc' })
         .limit(10)
         .build()
@@ -432,7 +434,7 @@ describe('Comprehensive Aggregations', () => {
     it('should handle complex calculated measures', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.productivityScore'])
-        .dimensions(['Productivity.employeeName'])
+        .dimensions(['Employees.name'])
         .order({ 'Productivity.productivityScore': 'desc' })
         .limit(5)
         .build()
@@ -445,7 +447,7 @@ describe('Comprehensive Aggregations', () => {
       // Validate productivity scores are reasonable
       for (const row of result.data) {
         expect(row['Productivity.productivityScore']).toBeGreaterThanOrEqual(0)
-        expect(typeof row['Productivity.employeeName']).toBe('string')
+        expect(typeof row['Employees.name']).toBe('string')
       }
     })
 
@@ -457,7 +459,7 @@ describe('Comprehensive Aggregations', () => {
           'Productivity.totalLinesOfCode',
           'Productivity.workingDaysCount'
         ])
-        .dimensions(['Productivity.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .filters([
           { member: 'Productivity.isWorkDay', operator: 'equals', values: [true] }
         ])
@@ -500,8 +502,12 @@ describe('Comprehensive Aggregations', () => {
       // Validate all measures are present and have reasonable values
       for (const measure of allMeasures) {
         expect(result.data[0]).toHaveProperty(measure)
-        expect(typeof result.data[0][measure]).toBe('number')
-        expect(result.data[0][measure]).toBeGreaterThanOrEqual(0)
+        const value = result.data[0][measure]
+        // Aggregations can return null when no matching data exists
+        if (value !== null) {
+          expect(typeof value).toBe('number')
+          expect(value).toBeGreaterThanOrEqual(0)
+        }
       }
 
       // Performance should be reasonable
@@ -512,7 +518,7 @@ describe('Comprehensive Aggregations', () => {
     it('should efficiently handle aggregations with large groupings', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.recordCount', 'Productivity.avgLinesOfCode'])
-        .dimensions(['Productivity.employeeName', 'Productivity.date'])
+        .dimensions(['Employees.name', 'Productivity.date'])
         .filters([
           { member: 'Productivity.date', operator: 'inDateRange', values: ['2024-01-01', '2024-03-31'] }
         ])
@@ -540,7 +546,7 @@ describe('Comprehensive Aggregations', () => {
           'Productivity.highProductivityDays',
           'Productivity.happyWorkDays'
         ])
-        .dimensions(['Productivity.departmentName'])
+        .dimensions(['Employees.departmentId'])
         .build()
 
       const result = await performanceMeasurer.measure(
@@ -576,7 +582,7 @@ describe('Comprehensive Aggregations', () => {
       // Check COUNT annotation
       const countAnnotation = result.annotation.measures['Employees.count']
       expect(countAnnotation).toBeDefined()
-      expect(countAnnotation.type).toBe('count')
+      expect(countAnnotation.type).toBe('countDistinct')
       expect(countAnnotation.title).toBe('Total Employees')
 
       // Check AVG annotation
@@ -600,7 +606,7 @@ describe('Comprehensive Aggregations', () => {
       const result = await testExecutor.executeQuery(query)
 
       expect(result.annotation.measures['Employees.activeCount']).toBeDefined()
-      expect(result.annotation.measures['Employees.activeCount'].type).toBe('count')
+      expect(result.annotation.measures['Employees.activeCount'].type).toBe('countDistinct')
       expect(result.annotation.measures['Employees.activeCount'].title).toBe('Active Employees')
 
       expect(result.annotation.measures['Productivity.workingDaysCount']).toBeDefined()
@@ -612,7 +618,6 @@ describe('Comprehensive Aggregations', () => {
   afterAll(() => {
     // Output performance statistics
     const allStats = performanceMeasurer.getStats()
-    console.log('\n=== Aggregation Performance Statistics ===')
     console.log(`Total measurements: ${allStats.count}`)
     console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
     console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)

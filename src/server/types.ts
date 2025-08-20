@@ -5,6 +5,8 @@
 
 // Import Drizzle ORM types
 import type { SQL } from 'drizzle-orm'
+import type { DatabaseAdapter } from './adapters/base-adapter'
+import { createDatabaseAdapter } from './database-utils'
 
 // Re-export Drizzle-first types
 
@@ -25,8 +27,10 @@ export interface DatabaseExecutor<TSchema extends Record<string, any> = Record<s
   db: DrizzleDatabase<TSchema>
   /** Optional schema for type inference */
   schema?: TSchema
+  /** Database adapter for SQL dialect-specific operations */
+  databaseAdapter: DatabaseAdapter
   /** Execute a Drizzle SQL query or query object */
-  execute<T = any[]>(query: SQL | any, measureFields?: string[]): Promise<T>
+  execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
   /** Get the database engine type */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite'
 }
@@ -412,12 +416,19 @@ export function defineCube<TSchema extends Record<string, any>>(
  * Abstract base class for database executors
  */
 export abstract class BaseDatabaseExecutor<TSchema extends Record<string, any> = Record<string, any>> implements DatabaseExecutor<TSchema> {
+  public databaseAdapter: DatabaseAdapter
+  
   constructor(
     public db: DrizzleDatabase<TSchema>,
-    public schema?: TSchema
-  ) {}
+    public schema?: TSchema,
+    engineType?: 'postgres' | 'mysql' | 'sqlite'
+  ) {
+    // Create database adapter based on engine type or auto-detect
+    const actualEngineType = engineType || this.getEngineType()
+    this.databaseAdapter = createDatabaseAdapter(actualEngineType)
+  }
 
-  abstract execute<T = any[]>(query: SQL | any, measureFields?: string[]): Promise<T>
+  abstract execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite'
 }
 
@@ -426,14 +437,14 @@ export abstract class BaseDatabaseExecutor<TSchema extends Record<string, any> =
  * Works with postgres.js and Neon drivers
  */
 export class PostgresExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL | any, measureFields?: string[]): Promise<T> {
+  async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
     // Handle Drizzle query objects directly
     if (query && typeof query === 'object') {
       // Check for various execution methods that Drizzle queries might have
       if (typeof query.execute === 'function') {
         const result = await query.execute()
         if (Array.isArray(result)) {
-          return result.map(row => this.convertNumericFields(row, measureFields)) as T
+          return result.map(row => this.convertNumericFields(row, numericFields)) as T
         }
         return result as T
       }
@@ -443,7 +454,7 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
         try {
           const result = await this.db.execute(query)
           if (Array.isArray(result)) {
-            return result.map(row => this.convertNumericFields(row, measureFields)) as T
+            return result.map(row => this.convertNumericFields(row, numericFields)) as T
           }
           return result as T
         } catch (error) {
@@ -452,7 +463,7 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
             const sqlResult = query.getSQL()
             const result = await this.db.execute(sqlResult)
             if (Array.isArray(result)) {
-              return result.map(row => this.convertNumericFields(row, measureFields)) as T
+              return result.map(row => this.convertNumericFields(row, numericFields)) as T
             }
             return result as T
           }
@@ -469,7 +480,7 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
     
     // Convert numeric strings to numbers for PostgreSQL results
     if (Array.isArray(result)) {
-      return result.map(row => this.convertNumericFields(row, measureFields)) as T
+      return result.map(row => this.convertNumericFields(row, numericFields)) as T
     }
     
     return result as T
@@ -478,14 +489,14 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
   /**
    * Convert numeric string fields to numbers (only for measure fields)
    */
-  private convertNumericFields(row: any, measureFields?: string[]): any {
+  private convertNumericFields(row: any, numericFields?: string[]): any {
     if (!row || typeof row !== 'object') return row
     
     const converted: any = {}
     for (const [key, value] of Object.entries(row)) {
       // Only convert measure fields to numbers
       // Dimensions and time dimensions should keep their original types
-      if (measureFields && measureFields.includes(key)) {
+      if (numericFields && numericFields.includes(key)) {
         converted[key] = this.coerceToNumber(value)
       } else {
         converted[key] = value
@@ -557,13 +568,13 @@ export class PostgresExecutor<TSchema extends Record<string, any> = Record<strin
  * Works with better-sqlite3 driver
  */
 export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL | any, measureFields?: string[]): Promise<T> {
+  async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
     // Handle Drizzle query objects directly
     if (query && typeof query === 'object' && typeof query.execute === 'function') {
       // This is a Drizzle query object, execute it directly
       const result = await query.execute()
       if (Array.isArray(result)) {
-        return result.map(row => this.convertNumericFields(row, measureFields)) as T
+        return result.map(row => this.convertNumericFields(row, numericFields)) as T
       }
       return result as T
     }
@@ -575,7 +586,7 @@ export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string,
       if (this.db.all) {
         const result = this.db.all(query)
         if (Array.isArray(result)) {
-          return result.map(row => this.convertNumericFields(row, measureFields)) as T
+          return result.map(row => this.convertNumericFields(row, numericFields)) as T
         }
         return result as T
       } else if (this.db.run) {
@@ -593,14 +604,14 @@ export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string,
   /**
    * Convert numeric string fields to numbers (only for measure fields)
    */
-  private convertNumericFields(row: any, measureFields?: string[]): any {
+  private convertNumericFields(row: any, numericFields?: string[]): any {
     if (!row || typeof row !== 'object') return row
     
     const converted: any = {}
     for (const [key, value] of Object.entries(row)) {
       // Only convert measure fields to numbers
       // Dimensions and time dimensions should keep their original types
-      if (measureFields && measureFields.includes(key)) {
+      if (numericFields && numericFields.includes(key)) {
         converted[key] = this.coerceToNumber(value)
       } else {
         converted[key] = value
@@ -646,13 +657,13 @@ export class SQLiteExecutor<TSchema extends Record<string, any> = Record<string,
  * Works with mysql2 driver
  */
 export class MySQLExecutor<TSchema extends Record<string, any> = Record<string, any>> extends BaseDatabaseExecutor<TSchema> {
-  async execute<T = any[]>(query: SQL | any, measureFields?: string[]): Promise<T> {
+  async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
     // Handle Drizzle query objects directly
     if (query && typeof query === 'object' && typeof query.execute === 'function') {
       // This is a Drizzle query object, execute it directly
       const result = await query.execute()
       if (Array.isArray(result)) {
-        return result.map(row => this.convertNumericFields(row, measureFields)) as T
+        return result.map(row => this.convertNumericFields(row, numericFields)) as T
       }
       return result as T
     }
@@ -662,22 +673,22 @@ export class MySQLExecutor<TSchema extends Record<string, any> = Record<string, 
     }
     const result = await this.db.execute(query)
     if (Array.isArray(result)) {
-      return result.map(row => this.convertNumericFields(row, measureFields)) as T
+      return result.map(row => this.convertNumericFields(row, numericFields)) as T
     }
     return result as T
   }
 
   /**
-   * Convert numeric string fields to numbers (only for measure fields)
+   * Convert numeric string fields to numbers (measure fields + numeric dimensions)
    */
-  private convertNumericFields(row: any, measureFields?: string[]): any {
+  private convertNumericFields(row: any, numericFields?: string[]): any {
     if (!row || typeof row !== 'object') return row
     
     const converted: any = {}
     for (const [key, value] of Object.entries(row)) {
-      // Only convert measure fields to numbers
-      // Dimensions and time dimensions should keep their original types
-      if (measureFields && measureFields.includes(key)) {
+      // Only convert specified numeric fields (measures + numeric dimensions)
+      // Other dimensions and time dimensions keep their original types
+      if (numericFields && numericFields.includes(key)) {
         converted[key] = this.coerceToNumber(value)
       } else {
         converted[key] = value
@@ -725,21 +736,21 @@ export function createPostgresExecutor<TSchema extends Record<string, any>>(
   db: DrizzleDatabase<TSchema>,
   schema?: TSchema
 ): PostgresExecutor<TSchema> {
-  return new PostgresExecutor(db, schema)
+  return new PostgresExecutor(db, schema, 'postgres')
 }
 
 export function createSQLiteExecutor<TSchema extends Record<string, any>>(
   db: DrizzleDatabase<TSchema>,
   schema?: TSchema
 ): SQLiteExecutor<TSchema> {
-  return new SQLiteExecutor(db, schema)
+  return new SQLiteExecutor(db, schema, 'sqlite')
 }
 
 export function createMySQLExecutor<TSchema extends Record<string, any>>(
   db: DrizzleDatabase<TSchema>,
   schema?: TSchema
 ): MySQLExecutor<TSchema> {
-  return new MySQLExecutor(db, schema)
+  return new MySQLExecutor(db, schema, 'mysql')
 }
 
 /**

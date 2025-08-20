@@ -4,18 +4,15 @@
  * and dynamically adding only requested fields
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq, and } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
-  testSchema,
-  employees,
-  departments
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 
-import { 
-  createPostgresExecutor
+import type { 
+  DatabaseExecutor
 } from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
@@ -26,91 +23,100 @@ import type {
   BaseQueryDefinition 
 } from '../src/server/types-drizzle'
 
-// Create a test cube using the new approach
-const testEmployeesCube: Cube<TestSchema> = defineCube('Employees', {
-  title: 'Employees Cube',
-  description: 'Test cube using dynamic query building',
+// We'll dynamically get the schema and create the cube after database setup
+let testEmployeesCube: Cube<TestSchema>
+let employees: any
+let departments: any
+
+const createCubeDefinition = (schema: any) => {
+  employees = schema.employees
+  departments = schema.departments
   
-  // This returns just the base query setup, NOT a complete SELECT
-  sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
-    from: employees,
-    joins: [
-      {
-        table: departments,
-        on: and(
-          eq(employees.departmentId, departments.id),
-          eq(departments.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
+  return defineCube('Employees', {
+    title: 'Employees Cube',
+    description: 'Test cube using dynamic query building',
+    
+    // This returns just the base query setup, NOT a complete SELECT
+    sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
+      from: employees,
+      joins: [
+        {
+          table: departments,
+          on: and(
+            eq(employees.departmentId, departments.id),
+            eq(departments.organisationId, ctx.securityContext.organisationId)
+          ),
+          type: 'left'
+        }
+      ],
+      where: eq(employees.organisationId, ctx.securityContext.organisationId)
+    }),
+
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Employee ID',
+        type: 'number',
+        sql: employees.id,
+        primaryKey: true
+      },
+      name: {
+        name: 'name',
+        title: 'Employee Name',
+        type: 'string',
+        sql: employees.name
+      },
+      email: {
+        name: 'email',
+        title: 'Email Address',
+        type: 'string',
+        sql: employees.email
+      },
+      departmentId: {
+        name: 'departmentId',
+        title: 'Department',
+        type: 'string',
+        sql: departments.name
+      },
+      active: {
+        name: 'active',
+        title: 'Active Status',
+        type: 'boolean',
+        sql: employees.active
       }
-    ],
-    where: eq(employees.organisationId, ctx.securityContext.organisationId)
-  }),
-  
-  dimensions: {
-    id: {
-      name: 'id',
-      title: 'Employee ID',
-      type: 'number',
-      sql: employees.id,
-      primaryKey: true
     },
-    name: {
-      name: 'name',
-      title: 'Employee Name',
-      type: 'string',
-      sql: employees.name
-    },
-    email: {
-      name: 'email',
-      title: 'Email Address',
-      type: 'string',
-      sql: employees.email
-    },
-    departmentName: {
-      name: 'departmentName',
-      title: 'Department',
-      type: 'string',
-      sql: departments.name
-    },
-    active: {
-      name: 'active',
-      title: 'Active Status',
-      type: 'boolean',
-      sql: employees.active
+    
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Employee Count',
+        type: 'count',
+        sql: employees.id
+      },
+      activeCount: {
+        name: 'activeCount',
+        title: 'Active Employees',
+        type: 'count',
+        sql: employees.id,
+        filters: [
+          (ctx) => eq(employees.active, true)
+        ]
+      },
+      totalSalary: {
+        name: 'totalSalary',
+        title: 'Total Salary',
+        type: 'sum',
+        sql: employees.salary
+      },
+      avgSalary: {
+        name: 'avgSalary',
+        title: 'Average Salary',
+        type: 'avg',
+        sql: employees.salary
+      }
     }
-  },
-  
-  measures: {
-    count: {
-      name: 'count',
-      title: 'Employee Count',
-      type: 'count',
-      sql: employees.id
-    },
-    activeCount: {
-      name: 'activeCount',
-      title: 'Active Employees',
-      type: 'count',
-      sql: employees.id,
-      filters: [
-        (ctx) => eq(employees.active, true)
-      ]
-    },
-    totalSalary: {
-      name: 'totalSalary',
-      title: 'Total Salary',
-      type: 'sum',
-      sql: employees.salary
-    },
-    avgSalary: {
-      name: 'avgSalary',
-      title: 'Average Salary',
-      type: 'avg',
-      sql: employees.salary
-    }
-  }
-})
+  })
+}
 
 // Test security contexts
 const testSecurityContext = { organisationId: 1 }
@@ -118,14 +124,23 @@ const altSecurityContext = { organisationId: 2 }
 
 describe('Simplified Drizzle Dynamic Query Building', () => {
   let executor: QueryExecutor<TestSchema>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the global test database setup
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
-    // Create the simplified executor
-    const dbExecutor = createPostgresExecutor(db, testSchema)
+    // Get the schema from the executor to create the cube
+    testEmployeesCube = createCubeDefinition(dbExecutor.schema)
+    
     executor = new QueryExecutor(dbExecutor)
+    close = cleanup
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   it('should execute basic count query with minimal selection', async () => {
@@ -182,7 +197,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
       cubes,
       { 
         measures: ['Employees.count'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Employees.departmentId']
       },
       testSecurityContext
     )
@@ -197,10 +212,10 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     // Should only have the requested fields
     for (const row of result.data) {
       const keys = Object.keys(row).sort()
-      expect(keys).toEqual(['Employees.count', 'Employees.departmentName'])
+      expect(keys).toEqual(['Employees.count', 'Employees.departmentId'])
       
       // LEFT JOIN can result in null department names (this is expected behavior)
-      expect(row['Employees.departmentName'] === null || typeof row['Employees.departmentName'] === 'string').toBe(true)
+      expect(row['Employees.departmentId'] === null || typeof row['Employees.departmentId'] === 'string').toBe(true)
       expect(typeof row['Employees.count']).toBe('number')
     }
   })
@@ -342,9 +357,9 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
       const keys = Object.keys(row).sort()
       expect(keys).toEqual(['Employees.count', 'Employees.name'])
       
-      // Should NOT have email, departmentName, active, etc.
+      // Should NOT have email, departmentId, active, etc.
       expect(row).not.toHaveProperty('Employees.email')
-      expect(row).not.toHaveProperty('Employees.departmentName')
+      expect(row).not.toHaveProperty('Employees.departmentId')
       expect(row).not.toHaveProperty('Employees.active')
       expect(row).not.toHaveProperty('Employees.id')
     }
@@ -356,7 +371,7 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
       cubes,
       { 
         measures: ['Employees.count', 'Employees.totalSalary'],
-        dimensions: ['Employees.departmentName']
+        dimensions: ['Employees.departmentId']
       },
       testSecurityContext
     )
@@ -368,13 +383,13 @@ describe('Simplified Drizzle Dynamic Query Building', () => {
     // Should be grouped by department with aggregated values
     for (const row of result.data) {
       // Accept null values for department names (LEFT JOIN can result in nulls)
-      expect(row['Employees.departmentName'] === null || typeof row['Employees.departmentName'] === 'string').toBe(true)
+      expect(row['Employees.departmentId'] === null || typeof row['Employees.departmentId'] === 'string').toBe(true)
       expect(typeof row['Employees.count']).toBe('number')
       expect(row['Employees.totalSalary'] === null || typeof row['Employees.totalSalary'] === 'number').toBe(true)
       
       // Should only have these 3 fields
       const keys = Object.keys(row).sort()
-      expect(keys).toEqual(['Employees.count', 'Employees.departmentName', 'Employees.totalSalary'])
+      expect(keys).toEqual(['Employees.count', 'Employees.departmentId', 'Employees.totalSalary'])
     }
   })
 })

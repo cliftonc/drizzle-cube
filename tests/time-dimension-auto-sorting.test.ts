@@ -3,21 +3,13 @@
  * Verifies that time dimensions are automatically sorted in chronological order
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { eq, and } from 'drizzle-orm'
 import { 
-  createTestDatabase,   
-  testSchema,
-  employees,
-  departments,
-  productivity
+  createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+import type { TestSchema } from './helpers/databases/types'
 import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
-
-import { 
-  createPostgresExecutor
-} from '../src/server'
 
 import { QueryExecutor } from '../src/server/executor'
 import { defineCube } from '../src/server/types-drizzle'
@@ -39,17 +31,24 @@ import { getTestCubes } from './helpers/test-cubes'
 describe('Time Dimension Auto-Sorting', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube<TestSchema>>
+  let close: () => void
 
   beforeAll(async () => {
-    // Use the existing global test database (do not delete/re-insert)
-    const { db } = createTestDatabase()
+    // Use the new test database setup
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     
     // Setup test executor with shared cube definitions
-    const dbExecutor = createPostgresExecutor(db, testSchema)
     const executor = new QueryExecutor(dbExecutor)
+    close = cleanup
     
     cubes = getTestCubes(['Productivity', 'Employees'])
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
+  })
+  
+  afterAll(() => {
+    if (close) {
+      close()
+    }
   })
 
   it('should automatically sort time dimensions in ascending chronological order when no explicit order is provided', async () => {
@@ -141,12 +140,12 @@ describe('Time Dimension Auto-Sorting', () => {
     // For this test, we'll just verify the logic by checking that explicit order takes precedence
     const result = await testExecutor.executeQuery({
       measures: ['Productivity.recordCount'],
-      dimensions: ['Productivity.employeeName'],
+      dimensions: ['Productivity.employeeId'],
       timeDimensions: [
         { dimension: 'Productivity.date', granularity: 'day' }
       ],
       order: {
-        'Productivity.employeeName': 'desc' // Explicit order for dimension, not time dimension
+        'Productivity.employeeId': 'desc' // Explicit order for dimension, not time dimension
       }
     })
 
@@ -155,7 +154,7 @@ describe('Time Dimension Auto-Sorting', () => {
     // Time dimension should still be auto-sorted in ascending order
     // while the regular dimension follows explicit desc order
     const timeData = result.data.map(row => new Date(row['Productivity.date']).getTime())
-    const employeeData = result.data.map(row => row['Productivity.employeeName'])
+    const employeeData = result.data.map(row => row['Productivity.employeeId'])
     
     // Check that time dimension is sorted ascending (auto-sort)
     if (timeData.length > 1) {

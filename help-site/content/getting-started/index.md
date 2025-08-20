@@ -9,7 +9,7 @@ Drizzle Cube bridges the gap between your database and your analytics applicatio
 - **Type-safe semantic layer** - Define cubes, dimensions, and measures with full TypeScript support
 - **SQL injection protection** - All queries use Drizzle's parameterized query system
 - **[Cube.js](https://cube.dev) compatibility** - Drop-in replacement for existing [Cube.js](https://cube.dev) implementations
-- **PostgreSQL support** - Currently supports PostgreSQL (including Neon), with MySQL and SQLite coming soon
+- **Multi-database support** - Supports PostgreSQL (including Neon) and MySQL, with SQLite coming soon
 - **React components** - Pre-built dashboard and chart components
 - **Framework agnostic** - Use with any web framework via adapters
 
