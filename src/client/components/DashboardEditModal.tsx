@@ -88,10 +88,10 @@ export default function DashboardEditModal({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="fullscreen-mobile"
       footer={footer}
     >
-      <form id="dashboard-form" onSubmit={handleSubmit} className="space-y-4" style={{ minWidth: '500px' }}>
+      <form id="dashboard-form" onSubmit={handleSubmit} className="space-y-4 w-full">
         <div>
           <label htmlFor="dashboard-name" className="block text-sm font-medium text-gray-700 mb-1">
             Dashboard Name

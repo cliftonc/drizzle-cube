@@ -37,3 +37,44 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Mobile-optimized focus states and accessibility */
+@media (max-width: 768px) {
+  /* Larger touch targets on mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Enhanced focus visibility on mobile */
+  button:focus,
+  a:focus,
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+  
+  /* Improved button padding for mobile */
+  button {
+    min-height: 44px;
+  }
+  
+  /* Better text readability on mobile */
+  .text-xs {
+    font-size: 0.8125rem;
+  }
+  
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px;
+  }
+  
+  /* Better spacing for mobile cards */
+  .group .touch-manipulation {
+    padding: 0.75rem;
+  }
+}

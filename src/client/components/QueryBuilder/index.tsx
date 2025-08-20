@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { createCubeClient } from '../../client/CubeClient'
 import { CubeProvider } from '../../providers/CubeProvider'
 import CubeMetaExplorer from './CubeMetaExplorer'
@@ -121,6 +122,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   // API configuration state
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
   const [showSetupPanel, setShowSetupPanel] = useState(false)
+  const [showSchemaMobile, setShowSchemaMobile] = useState(false)
 
   // Update query when initialQuery prop changes (for modal usage)
   useEffect(() => {
@@ -521,9 +523,55 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           </div>
         )}
         
-        <div className="flex-1 flex flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
-        {/* Schema Explorer - Left Column (1/3 width) */}
-        <div className="w-1/3 min-w-0 flex-shrink-0 flex flex-col">
+        {/* Mobile Schema Toggle Button */}
+        <div className="md:hidden flex-shrink-0 px-4 pb-2">
+          <button
+            onClick={() => setShowSchemaMobile(!showSchemaMobile)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            {showSchemaMobile ? (
+              <><XMarkIcon className="w-4 h-4" /> Hide Schema</>
+            ) : (
+              <><Bars3Icon className="w-4 h-4" /> Show Schema</>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile Schema Panel Overlay */}
+        {showSchemaMobile && (
+          <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50 flex">
+            <div className="w-full max-w-md sm:max-w-lg bg-white h-full overflow-y-auto">
+              <div className="p-4 border-b">
+                <button
+                  onClick={() => setShowSchemaMobile(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  <XMarkIcon className="w-4 h-4" /> Close Schema
+                </button>
+              </div>
+              <div className="p-4">
+                <CubeMetaExplorer
+                  schema={state.schema}
+                  schemaStatus={state.schemaStatus}
+                  schemaError={state.schemaError}
+                  selectedFields={selectedFields}
+                  onFieldSelect={(field, type) => {
+                    handleFieldSelect(field, type)
+                    setShowSchemaMobile(false)
+                  }}
+                  onFieldDeselect={handleFieldDeselect}
+                  onRetrySchema={handleRetrySchema}
+                  onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
+                />
+              </div>
+            </div>
+            <div className="flex-1" onClick={() => setShowSchemaMobile(false)}></div>
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
+        {/* Schema Explorer - Left Column (Desktop only) */}
+        <div className="hidden md:flex md:w-1/3 min-w-0 flex-shrink-0 flex-col">
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}
@@ -536,9 +584,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           />
         </div>
 
-        {/* Right Column - Query Builder + Results (2/3 width) */}
+        {/* Main Content - Query Builder + Results */}
         <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
-          {/* Query Builder - Upper Right */}
+          {/* Query Builder */}
           <div className="flex-shrink-0">
             <QueryPanel
               query={state.query}
@@ -557,7 +605,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             />
           </div>
 
-          {/* Results Panel - Lower Right */}
+          {/* Results Panel */}
           <div className={`${state.executionStatus === 'idle' ? 'flex-shrink-0 h-48' : 'flex-1 min-h-0'}`}>
             <ResultsPanel
               executionStatus={state.executionStatus}

@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { DocumentTextIcon } from '@heroicons/react/24/outline'
+import { DocumentTextIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { useState } from 'react'
 
 // GitHub icon component
 const GitHubIcon = ({ className }: { className?: string }) => (
@@ -15,6 +16,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -28,13 +30,15 @@ export default function Layout({ children }: LayoutProps) {
       <nav className="bg-white shadow-xs border-b relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
+            {/* Desktop layout */}
             <div className="flex">
               <div className="shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">
+                <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
                   Drizzle Cube Analytics
-                </h1>
+                </Link>
               </div>
-              <div className="ml-6 flex space-x-8">
+              {/* Desktop navigation */}
+              <div className="hidden md:ml-6 md:flex md:space-x-8">
                 <Link
                   to="/"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
@@ -67,7 +71,9 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            
+            {/* Desktop external links */}
+            <div className="hidden md:flex md:items-center md:space-x-4">
               <a
                 href="https://www.drizzle-cube.dev"
                 target="_blank"
@@ -87,8 +93,89 @@ export default function Layout({ children }: LayoutProps) {
                 GitHub
               </a>
             </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                aria-expanded="false"
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMobileMenuOpen ? (
+                  <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              <Link
+                to="/"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/')
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Home
+              </Link>
+              <Link
+                to="/dashboards"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/dashboards')
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Dashboards
+              </Link>
+              <Link
+                to="/query-builder"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/query-builder')
+                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                Query Builder
+              </Link>
+              
+              {/* Mobile external links */}
+              <div className="border-t border-gray-200 pt-4 pb-3">
+                <div className="space-y-1">
+                  <a
+                    href="https://www.drizzle-cube.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  >
+                    <DocumentTextIcon className="w-5 h-5 inline mr-2" />
+                    Documentation
+                  </a>
+                  <a
+                    href="https://github.com/cliftonc/drizzle-cube"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  >
+                    <GitHubIcon className="w-5 h-5 inline mr-2" />
+                    GitHub
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {isHomePage ? (

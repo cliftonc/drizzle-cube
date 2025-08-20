@@ -4,7 +4,7 @@ export interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title?: string
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'fullscreen'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'fullscreen' | 'fullscreen-mobile'
   closeOnBackdropClick?: boolean
   closeOnEscape?: boolean
   showCloseButton?: boolean
@@ -73,6 +73,8 @@ const Modal: React.FC<ModalProps> = ({
         return 'max-w-7xl'
       case 'fullscreen':
         return 'w-[90vw] h-[90vh] max-w-none'
+      case 'fullscreen-mobile':
+        return 'w-full h-full md:w-[90vw] md:h-[90vh] max-w-none'
       default:
         return 'max-w-lg'
     }
@@ -80,12 +82,12 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center backdrop-blur-md"
+      className={`fixed inset-0 z-[9999] backdrop-blur-md ${size === 'fullscreen-mobile' ? 'flex md:flex md:items-center md:justify-center' : 'flex items-center justify-center'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
       onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div 
-        className={`relative bg-white border border-gray-300 rounded-lg shadow-2xl ${size === 'fullscreen' ? '' : 'mx-4'} ${getSizeClasses()} ${size === 'fullscreen' ? '' : 'max-h-[90vh]'} flex flex-col`}
+        className={`relative bg-white border border-gray-300 ${size === 'fullscreen-mobile' ? 'rounded-none md:rounded-lg' : 'rounded-lg'} shadow-2xl ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'mx-4'} ${getSizeClasses()} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'max-h-[90vh]'} flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

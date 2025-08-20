@@ -213,27 +213,8 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Column Layout Grid */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* Measures Column */}
-              <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                  <ChartBarIcon className="w-4 h-4 mr-2" />
-                  Measures ({(query.measures || []).length})
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {(query.measures || []).map(measure => (
-                    <RemovableChip
-                      key={measure}
-                      label={measure}
-                      fieldName={measure}
-                      fieldType="measures"
-                      icon={<ChartBarIcon className="w-4 h-4" />}
-                    />
-                  ))}
-                </div>
-              </div>
-
+            {/* Responsive Layout Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Dimensions Column */}
               <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
@@ -265,6 +246,25 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                       key={timeDimension.dimension}
                       timeDimension={timeDimension}
                       label={timeDimension.dimension}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Measures Column */}
+              <div className="min-h-24">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                  <ChartBarIcon className="w-4 h-4 mr-2" />
+                  Measures ({(query.measures || []).length})
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {(query.measures || []).map(measure => (
+                    <RemovableChip
+                      key={measure}
+                      label={measure}
+                      fieldName={measure}
+                      fieldType="measures"
+                      icon={<ChartBarIcon className="w-4 h-4" />}
                     />
                   ))}
                 </div>

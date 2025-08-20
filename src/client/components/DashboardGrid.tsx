@@ -302,7 +302,7 @@ export default function DashboardGrid({
         isDraggable={editable}
         isResizable={editable}
         draggableHandle=".portlet-drag-handle"
-        margin={[16, 16]}
+        margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
         rowHeight={80}
       >
         {config.portlets.map(portlet => (
@@ -313,7 +313,7 @@ export default function DashboardGrid({
             className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
           {/* Portlet Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg">
+          <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg">
             <div className="flex items-center gap-2 cursor-move flex-1 min-w-0 portlet-drag-handle">
               <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
             </div>
@@ -356,7 +356,7 @@ export default function DashboardGrid({
           </div>
 
           {/* Portlet Content */}
-          <div className="flex-1 px-4 py-4 min-h-0 overflow-visible flex flex-col">
+          <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
             <AnalyticsPortlet
               ref={el => portletComponentRefs.current[portlet.id] = el}
               query={portlet.query}

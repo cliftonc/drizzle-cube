@@ -614,7 +614,7 @@ export default function PortletEditModal({
       isOpen={isOpen}
       onClose={handleClose}
       title={showQueryBuilder ? "Query Builder" : title}
-      size="fullscreen"
+      size="fullscreen-mobile"
       footer={footer}
       noPadding={showQueryBuilder}
     >
@@ -629,8 +629,8 @@ export default function PortletEditModal({
         />
       ) : (
         <form id="portlet-form" onSubmit={handleSubmit} className="space-y-4">
-        {/* Main layout - Split into left and right */}
-        <div className="flex gap-4">
+        {/* Main layout - Responsive: single column on mobile, two columns on desktop */}
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Left side - Title, Chart Type, Query */}
           <div className="flex-1 flex flex-col gap-4">
             {/* Title */}

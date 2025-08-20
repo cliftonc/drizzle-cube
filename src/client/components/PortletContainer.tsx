@@ -24,7 +24,7 @@ export default function PortletContainer({
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg" style={{ padding: '24px' }}>
+      <div className="flex items-center justify-between border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg px-3 py-2 md:px-6 md:py-3">
         <h3 className="font-semibold text-sm truncate">{portlet.title}</h3>
         
         {editable && (
@@ -61,7 +61,7 @@ export default function PortletContainer({
       </div>
 
       {/* Content */}
-      <div className="px-4 pt-6 pb-4 flex-1 min-h-0">
+      <div className="px-2 py-3 md:px-4 md:pt-6 md:pb-4 flex-1 min-h-0">
         <AnalyticsPortlet
           query={portlet.query}
           chartType={portlet.chartType}
