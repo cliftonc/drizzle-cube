@@ -11,7 +11,7 @@ import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroi
 import FilterBuilder from './FilterBuilder'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
-import { hasQueryContent, getSelectedFieldsCount } from './utils'
+import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer } from './utils'
 
 const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
@@ -50,14 +50,15 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   const selectedCount = getSelectedFieldsCount(query)
   
   const handleCopyQuery = async () => {
+    const cleanedQuery = cleanQueryForServer(query)
     try {
-      await navigator.clipboard.writeText(JSON.stringify(query, null, 2))
+      await navigator.clipboard.writeText(JSON.stringify(cleanedQuery, null, 2))
       // You could add a toast notification here if desired
     } catch (error) {
       console.error('Failed to copy query:', error)
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
-      textArea.value = JSON.stringify(query, null, 2)
+      textArea.value = JSON.stringify(cleanedQuery, null, 2)
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand('copy')
@@ -324,7 +325,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="text-xs font-semibold text-gray-700 mb-2">JSON Query:</div>
                   <pre className="text-gray-700 overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                    <code className="language-json">{JSON.stringify(query, null, 2)}</code>
+                    <code className="language-json">{JSON.stringify(cleanQueryForServer(query), null, 2)}</code>
                   </pre>
                 </div>
               )}

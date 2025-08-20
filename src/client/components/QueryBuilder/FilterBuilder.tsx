@@ -10,9 +10,10 @@ import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import FilterItem from './FilterItem'
 import FilterGroup from './FilterGroup'
 import type { FilterBuilderProps } from './types'
-import type { SimpleFilter, AndFilter, OrFilter } from '../../types'
+import type { SimpleFilter, GroupFilter } from '../../types'
 import { 
   isSimpleFilter, 
+  isGroupFilter,
   isAndFilter, 
   isOrFilter, 
   createSimpleFilter, 
@@ -28,6 +29,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   query,
   onFiltersChange
 }) => {
+  
   
   const totalFilterCount = countFilters(filters)
   
@@ -57,12 +59,12 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
     } else if (filters.length === 1 && isAndFilter(filters[0])) {
       // Additional filter - add to existing AND group
       const existingAndGroup = filters[0]
-      const updatedAndGroup = createAndFilter([...existingAndGroup.and, newFilter])
+      const updatedAndGroup = createAndFilter([...existingAndGroup.filters, newFilter])
       onFiltersChange([updatedAndGroup])
     } else if (filters.length === 1 && isOrFilter(filters[0])) {
       // Additional filter - add to existing OR group
       const existingOrGroup = filters[0]
-      const updatedOrGroup = createOrFilter([...existingOrGroup.or, newFilter])
+      const updatedOrGroup = createOrFilter([...existingOrGroup.filters, newFilter])
       onFiltersChange([updatedOrGroup])
     } else {
       // Fallback: just add to the end (shouldn't happen with new logic)
@@ -78,50 +80,30 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   }
   
   const handleFilterRemove = (index: number) => {
-    // Handle removal with automatic group unwrapping logic:
-    // - If we have a group with 2 filters and remove 1, unwrap to simple filter
-    // - Otherwise, just remove the filter from the group
-    
-    if (filters.length === 1 && isAndFilter(filters[0])) {
-      const andGroup = filters[0]
-      if (andGroup.and.length === 2) {
-        // Removing one filter from a 2-filter AND group - unwrap to simple filter
-        const remainingFilter = andGroup.and.filter((_, i) => i !== index)[0]
-        onFiltersChange([remainingFilter])
-      } else if (andGroup.and.length > 2) {
-        // Removing one filter from 3+ filter AND group - keep the group
-        const updatedAndFilters = andGroup.and.filter((_, i) => i !== index)
-        const updatedAndGroup = createAndFilter(updatedAndFilters)
-        onFiltersChange([updatedAndGroup])
-      } else {
-        // Edge case: AND group with 1 or 0 filters - remove everything
-        onFiltersChange([])
-      }
-    } else if (filters.length === 1 && isOrFilter(filters[0])) {
-      const orGroup = filters[0]
-      if (orGroup.or.length === 2) {
-        // Removing one filter from a 2-filter OR group - unwrap to simple filter
-        const remainingFilter = orGroup.or.filter((_, i) => i !== index)[0]
-        onFiltersChange([remainingFilter])
-      } else if (orGroup.or.length > 2) {
-        // Removing one filter from 3+ filter OR group - keep the group
-        const updatedOrFilters = orGroup.or.filter((_, i) => i !== index)
-        const updatedOrGroup = createOrFilter(updatedOrFilters)
-        onFiltersChange([updatedOrGroup])
-      } else {
-        // Edge case: OR group with 1 or 0 filters - remove everything
-        onFiltersChange([])
-      }
-    } else {
-      // Simple case: just remove the filter
-      const newFilters = filters.filter((_, i) => i !== index)
-      onFiltersChange(newFilters)
-    }
+    // Simple case: just remove the filter
+    // The handleGroupChange method will automatically handle unwrapping if needed
+    const newFilters = filters.filter((_, i) => i !== index)
+    onFiltersChange(newFilters)
   }
   
-  const handleGroupChange = (index: number, newGroup: AndFilter | OrFilter) => {
+  const handleGroupChange = (index: number, newGroup: GroupFilter) => {
     const newFilters = [...filters]
     newFilters[index] = newGroup
+    onFiltersChange(newFilters)
+  }
+  
+  const handleGroupChangeWithUnwrap = (index: number, newGroup: GroupFilter) => {
+    const newFilters = [...filters]
+    
+    // Check if the group has been reduced to a single filter and should be unwrapped
+    // This is only used during filter removal operations
+    if (newGroup.filters.length === 1 && isSimpleFilter(newGroup.filters[0])) {
+      // Unwrap the single filter from the group
+      newFilters[index] = newGroup.filters[0]
+    } else {
+      newFilters[index] = newGroup
+    }
+    
     onFiltersChange(newFilters)
   }
   
@@ -176,6 +158,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
       {filters.length > 0 && (
         <div className="space-y-3">
           {filters.map((filter, index) => {
+            
             if (isSimpleFilter(filter)) {
               return (
                 <FilterItem
@@ -188,13 +171,14 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   query={query}
                 />
               )
-            } else if (isAndFilter(filter) || isOrFilter(filter)) {
+            } else if (isGroupFilter(filter)) {
               return (
                 <FilterGroup
                   key={index}
                   group={filter}
                   index={index}
                   onGroupChange={handleGroupChange}
+                  onGroupChangeWithUnwrap={handleGroupChangeWithUnwrap}
                   onGroupRemove={handleGroupRemove}
                   schema={schema}
                   query={query}

@@ -377,6 +377,77 @@ describe('Comprehensive Filter Operations', () => {
       // All returned employees should be active AND have salary > 100000
     })
 
+    it('should handle multi-cube AND filters with time dimensions', async () => {
+      const query = {
+        measures: [
+          "Productivity.recordCount"
+        ],
+        dimensions: [
+          "Employees.name",
+          "Productivity.happinessIndex"
+        ],
+        timeDimensions: [
+          {
+            dimension: "Productivity.date",
+            granularity: "year"
+          }
+        ],
+        filters: [
+          {
+            and: [
+              {
+                member: "Productivity.happinessIndex",
+                operator: "equals",
+                values: [
+                  5
+                ]
+              },
+              {
+                member: "Employees.name",
+                operator: "equals",
+                values: [
+                  "Alex Chen"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+
+      // Generate SQL to debug the issue
+      const dbExecutor = createPostgresExecutor(createTestDatabase().db, testSchema)
+      const executor = new QueryExecutor(dbExecutor)
+      
+      try {
+        const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
+        console.log('Generated SQL:', generatedSQL.sql)
+        console.log('Generated Params:', generatedSQL.params)
+      } catch (error) {
+        console.log('Error generating SQL:', error)
+      }
+
+      const { result, validation } = await testExecutor.validateQuery(
+        query,
+        ['Productivity.recordCount', 'Employees.name', 'Productivity.happinessIndex'],
+        { 
+          'Productivity.recordCount': 'number', 
+          'Employees.name': 'string', 
+          'Productivity.happinessIndex': 'number' 
+        }
+      )
+
+      expect(validation.isValid).toBe(true)
+      expect(validation.errors).toEqual([])
+      
+      // Verify results are properly filtered if any data is returned
+      if (result.data.length > 0) {
+        for (const row of result.data) {
+          expect(row['Productivity.happinessIndex']).toBe(5)
+          expect(row['Employees.name']).toBe('Alex Chen')
+        }
+      }
+    })
+
     it('should handle OR logical filters', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])

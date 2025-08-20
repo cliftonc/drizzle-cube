@@ -21,7 +21,7 @@ import type {
   ApiConfig
 } from './types'
 import type { Filter } from '../../types'
-import { createEmptyQuery, hasQueryContent, cleanQuery, cleanupFilters } from './utils'
+import { createEmptyQuery, hasQueryContent, cleanQuery, cleanQueryForServer, cleanupFilters } from './utils'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
 const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
@@ -156,7 +156,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   // Expose query and validation state to parent via ref (only called when Apply is clicked)
   useImperativeHandle(ref, () => ({
-    getCurrentQuery: () => cleanQuery(state.query),
+    getCurrentQuery: () => cleanQueryForServer(state.query),
     getValidationState: () => ({
       status: state.validationStatus,
       result: state.validationStatus === 'valid' ? {
@@ -332,8 +332,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   const handleValidateQuery = useCallback(async () => {
     if (!hasQueryContent(state.query)) return
 
-    // Store the query being validated (cleaned)
-    const queryToValidate = cleanQuery(state.query)
+    // Store the query being validated (cleaned and server-formatted)
+    const queryToValidate = cleanQueryForServer(state.query)
     const queryStr = JSON.stringify(queryToValidate)
     
     console.log('Starting validation with query:', queryToValidate)
@@ -399,7 +399,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
     try {
       // Run both queries in parallel: one with limit and one without for total count
-      const cleanedQuery = cleanQuery(state.query)
+      const cleanedQuery = cleanQueryForServer(state.query)
       const [limitedResultSet, totalResultSet] = await Promise.all([
         cubeClient.load({ ...cleanedQuery, limit: displayLimit }),
         cubeClient.load(cleanedQuery) // No limit for total count

@@ -9,11 +9,10 @@ import React, { useState } from 'react'
 import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
 import FilterItem from './FilterItem'
 import type { FilterGroupProps } from './types'
-import type { SimpleFilter, AndFilter, OrFilter } from '../../types'
+import type { SimpleFilter, GroupFilter } from '../../types'
 import { 
   isSimpleFilter, 
-  isAndFilter, 
-  isOrFilter, 
+  isGroupFilter,
   createSimpleFilter, 
   createAndFilter, 
   createOrFilter,
@@ -24,6 +23,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   group,
   index,
   onGroupChange,
+  onGroupChangeWithUnwrap,
   onGroupRemove,
   schema,
   query,
@@ -31,9 +31,9 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false)
   
-  const isAndGroup = isAndFilter(group)
+  const isAndGroup = group.type === 'and'
   const groupType = isAndGroup ? 'AND' : 'OR'
-  const filters = isAndGroup ? group.and : group.or
+  const filters = group.filters
   
   // Style based on depth for visual nesting
   const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 16)}` : ''
@@ -43,10 +43,10 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   
   const handleGroupTypeToggle = () => {
     if (isAndGroup) {
-      const newGroup: OrFilter = createOrFilter(filters)
+      const newGroup = createOrFilter(filters)
       onGroupChange(index, newGroup)
     } else {
-      const newGroup: AndFilter = createAndFilter(filters)
+      const newGroup = createAndFilter(filters)
       onGroupChange(index, newGroup)
     }
   }
@@ -122,14 +122,26 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
       return
     }
     
-    if (isAndGroup) {
-      onGroupChange(index, createAndFilter(newFilters))
-    } else {
-      onGroupChange(index, createOrFilter(newFilters))
+    // If only one filter left, use unwrapping handler if available
+    if (newFilters.length === 1) {
+      const newGroup = group.type === 'and' ? createAndFilter(newFilters) : createOrFilter(newFilters)
+      
+      if (onGroupChangeWithUnwrap) {
+        // Use the unwrapping handler for removal scenarios
+        onGroupChangeWithUnwrap(index, newGroup)
+      } else {
+        // Fallback to regular handler (for nested groups)
+        onGroupChange(index, newGroup)
+      }
+      return
     }
+    
+    // Otherwise, update the group with remaining filters (preserve the group type)
+    const updatedGroup = group.type === 'and' ? createAndFilter(newFilters) : createOrFilter(newFilters)
+    onGroupChange(index, updatedGroup)
   }
   
-  const handleNestedGroupChange = (filterIndex: number, newGroup: AndFilter | OrFilter) => {
+  const handleNestedGroupChange = (filterIndex: number, newGroup: GroupFilter) => {
     const newFilters = [...filters]
     newFilters[filterIndex] = newGroup
     
@@ -221,7 +233,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
                 query={query}
               />
             )
-          } else if (isAndFilter(filter) || isOrFilter(filter)) {
+          } else if (isGroupFilter(filter)) {
             return (
               <FilterGroup
                 key={filterIndex}

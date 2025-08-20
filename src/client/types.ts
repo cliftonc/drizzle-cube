@@ -73,15 +73,12 @@ export interface SimpleFilter {
   values: any[]
 }
 
-export interface AndFilter {
-  and: Filter[]
+export interface GroupFilter {
+  type: 'and' | 'or'
+  filters: Filter[]
 }
 
-export interface OrFilter {
-  or: Filter[]
-}
-
-export type Filter = SimpleFilter | AndFilter | OrFilter
+export type Filter = SimpleFilter | GroupFilter
 
 // Cube query types
 export interface CubeQuery {

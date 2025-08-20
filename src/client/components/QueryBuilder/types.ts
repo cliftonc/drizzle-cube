@@ -2,7 +2,7 @@
  * Type definitions for QueryBuilder components
  */
 
-import type { CubeQuery, FilterOperator, Filter, SimpleFilter, AndFilter, OrFilter } from '../../types'
+import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter } from '../../types'
 
 // Meta endpoint response types
 export interface MetaField {
@@ -295,9 +295,10 @@ export interface FilterItemProps {
 }
 
 export interface FilterGroupProps {
-  group: AndFilter | OrFilter
+  group: GroupFilter
   index: number
-  onGroupChange: (index: number, group: AndFilter | OrFilter) => void
+  onGroupChange: (index: number, group: GroupFilter) => void
+  onGroupChangeWithUnwrap?: (index: number, group: GroupFilter) => void
   onGroupRemove: (index: number) => void
   schema: MetaResponse | null
   query: CubeQuery

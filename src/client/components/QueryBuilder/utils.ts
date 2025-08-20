@@ -2,7 +2,7 @@
  * Utility functions for QueryBuilder components
  */
 
-import type { CubeQuery, Filter, SimpleFilter, AndFilter, OrFilter } from '../../types'
+import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../../types'
 import type { MetaField, MetaResponse } from './types'
 import { FILTER_OPERATORS } from './types'
 
@@ -160,6 +160,21 @@ export function cleanQuery(query: CubeQuery): CubeQuery {
 }
 
 /**
+ * Clean a query and transform filters for server compatibility
+ * This version transforms GroupFilter to legacy and/or format
+ */
+export function cleanQueryForServer(query: CubeQuery): CubeQuery {
+  const cleanedQuery = cleanQuery(query)
+  
+  // Apply server transformation to filters
+  if (cleanedQuery.filters && cleanedQuery.filters.length > 0) {
+    cleanedQuery.filters = transformFiltersForServer(cleanedQuery.filters) as any
+  }
+  
+  return cleanedQuery
+}
+
+/**
  * Create an empty query object
  */
 export function createEmptyQuery(): CubeQuery {
@@ -178,17 +193,24 @@ export function isSimpleFilter(filter: Filter): filter is SimpleFilter {
 }
 
 /**
+ * Check if a filter is a group filter
+ */
+export function isGroupFilter(filter: Filter): filter is GroupFilter {
+  return 'type' in filter && 'filters' in filter
+}
+
+/**
  * Check if a filter is an AND filter
  */
-export function isAndFilter(filter: Filter): filter is AndFilter {
-  return 'and' in filter
+export function isAndFilter(filter: Filter): filter is GroupFilter {
+  return isGroupFilter(filter) && filter.type === 'and'
 }
 
 /**
  * Check if a filter is an OR filter
  */
-export function isOrFilter(filter: Filter): filter is OrFilter {
-  return 'or' in filter
+export function isOrFilter(filter: Filter): filter is GroupFilter {
+  return isGroupFilter(filter) && filter.type === 'or'
 }
 
 /**
@@ -200,10 +222,8 @@ export function flattenFilters(filters: Filter[]): SimpleFilter[] {
   const flatten = (filter: Filter) => {
     if (isSimpleFilter(filter)) {
       simple.push(filter)
-    } else if (isAndFilter(filter)) {
-      filter.and.forEach(flatten)
-    } else if (isOrFilter(filter)) {
-      filter.or.forEach(flatten)
+    } else if (isGroupFilter(filter)) {
+      filter.filters.forEach(flatten)
     }
   }
   
@@ -339,10 +359,8 @@ export function countFilters(filters: Filter[]): number {
   const countFilter = (filter: Filter) => {
     if (isSimpleFilter(filter)) {
       count++
-    } else if (isAndFilter(filter)) {
-      filter.and.forEach(countFilter)
-    } else if (isOrFilter(filter)) {
-      filter.or.forEach(countFilter)
+    } else if (isGroupFilter(filter)) {
+      filter.filters.forEach(countFilter)
     }
   }
   
@@ -364,18 +382,20 @@ export function createSimpleFilter(member: string, operator: string = 'equals', 
 /**
  * Create a new AND filter group
  */
-export function createAndFilter(filters: Filter[] = []): AndFilter {
+export function createAndFilter(filters: Filter[] = []): GroupFilter {
   return {
-    and: filters
+    type: 'and',
+    filters
   }
 }
 
 /**
  * Create a new OR filter group
  */
-export function createOrFilter(filters: Filter[] = []): OrFilter {
+export function createOrFilter(filters: Filter[] = []): GroupFilter {
   return {
-    or: filters
+    type: 'or',
+    filters
   }
 }
 
@@ -410,14 +430,10 @@ export function cleanupFilters(filters: Filter[], query: CubeQuery): Filter[] {
     if (isSimpleFilter(filter)) {
       // Remove filter if its field is not selected
       return selectedFields.has(filter.member) ? filter : null
-    } else if (isAndFilter(filter)) {
-      // Clean AND group recursively
-      const cleanedFilters = filter.and.map(cleanFilter).filter(f => f !== null) as Filter[]
-      return cleanedFilters.length > 0 ? { and: cleanedFilters } : null
-    } else if (isOrFilter(filter)) {
-      // Clean OR group recursively  
-      const cleanedFilters = filter.or.map(cleanFilter).filter(f => f !== null) as Filter[]
-      return cleanedFilters.length > 0 ? { or: cleanedFilters } : null
+    } else if (isGroupFilter(filter)) {
+      // Clean group recursively
+      const cleanedFilters = filter.filters.map(cleanFilter).filter(f => f !== null) as Filter[]
+      return cleanedFilters.length > 0 ? { type: filter.type, filters: cleanedFilters } : null
     }
     return null
   }
@@ -426,4 +442,27 @@ export function cleanupFilters(filters: Filter[], query: CubeQuery): Filter[] {
   const cleanedFilters = filters.map(cleanFilter).filter(f => f !== null) as Filter[]
   
   return cleanedFilters
+}
+
+/**
+ * Transform filters from new GroupFilter format to legacy server format
+ * Server expects { and: [...] } and { or: [...] } instead of { type: 'and', filters: [...] }
+ */
+export function transformFiltersForServer(filters: Filter[]): any[] {
+  const transformFilter = (filter: Filter): any => {
+    if (isSimpleFilter(filter)) {
+      return filter
+    } else if (isGroupFilter(filter)) {
+      const transformedSubFilters = filter.filters.map(transformFilter)
+      
+      if (filter.type === 'and') {
+        return { and: transformedSubFilters }
+      } else {
+        return { or: transformedSubFilters }
+      }
+    }
+    return filter
+  }
+  
+  return filters.map(transformFilter)
 }

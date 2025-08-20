@@ -6,7 +6,14 @@
 import { 
   sql, 
   and, 
+  or,
   eq,
+  gt,
+  gte,
+  lt,
+  lte,
+  isNull,
+  isNotNull,
   type SQL,
   type AnyColumn
 } from 'drizzle-orm'
@@ -329,18 +336,27 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     // Process filters from query
     if (query.filters) {
       for (const filter of query.filters) {
-        // Extract cube name from filter member
-        if ('member' in filter) {
-          const [cubeName] = filter.member.split('.')
+        const condition = this.processMultiCubeFilter(filter, cubes, ctx)
+        if (condition) {
+          conditions.push(condition)
+        }
+      }
+    }
+    
+    // Process time dimension date range filters
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        if (timeDim.dateRange) {
+          const [cubeName, fieldName] = timeDim.dimension.split('.')
           const cube = cubes.get(cubeName)
           
-          if (cube) {
-            // Build filter condition using single-cube logic
-            // This is simplified - in reality you'd reuse the filter building logic
-            // from DrizzleExecutor
-            const condition = this.buildFilterCondition(filter, cube, ctx)
-            if (condition) {
-              conditions.push(condition)
+          if (cube && cube.dimensions[fieldName]) {
+            const dimension = cube.dimensions[fieldName]
+            // Use the raw field expression for date filtering (not the truncated version)
+            const fieldExpr = resolveSqlExpression(dimension.sql, ctx)
+            const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+            if (dateCondition) {
+              conditions.push(dateCondition)
             }
           }
         }
@@ -351,27 +367,231 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
   }
 
   /**
-   * Filter condition builder (would reuse logic from DrizzleExecutor)
+   * Process a single filter for multi-cube queries (handles logical and simple filters)
+   */
+  private processMultiCubeFilter(
+    filter: any,
+    cubes: Map<string, Cube<TSchema>>,
+    ctx: QueryContext<TSchema>
+  ): SQL | null {
+    // Handle logical filters (AND/OR)
+    if ('and' in filter || 'or' in filter) {
+      if (filter.and) {
+        const conditions = filter.and
+          .map((f: any) => this.processMultiCubeFilter(f, cubes, ctx))
+          .filter((condition: SQL | null): condition is SQL => condition !== null)
+        return conditions.length > 0 ? and(...conditions) as SQL : null
+      }
+      
+      if (filter.or) {
+        const conditions = filter.or
+          .map((f: any) => this.processMultiCubeFilter(f, cubes, ctx))
+          .filter((condition: SQL | null): condition is SQL => condition !== null)
+        return conditions.length > 0 ? or(...conditions) as SQL : null
+      }
+    }
+    
+    // Handle simple filter condition
+    if ('member' in filter) {
+      const [cubeName] = filter.member.split('.')
+      const cube = cubes.get(cubeName)
+      
+      if (cube) {
+        return this.buildFilterCondition(filter, cube, ctx)
+      }
+    }
+    
+    return null
+  }
+
+  /**
+   * Filter condition builder with comprehensive operator support
    */
   private buildFilterCondition(
     filter: any, 
     cube: Cube<TSchema>, 
     ctx: QueryContext<TSchema>
   ): SQL | null {
-    // Extract filter building logic from DrizzleExecutor
-    // For now, implement basic equals condition
-    if (filter.operator === 'equals' && filter.values && filter.values.length > 0) {
-      const [cubeName, fieldName] = filter.member.split('.')
-      if (cubeName === cube.name) {
-        const field = cube.dimensions[fieldName] || cube.measures[fieldName]
-        if (field) {
-          const fieldExpr = typeof field.sql === 'function' 
-            ? field.sql(ctx)
-            : field.sql
-          return eq(fieldExpr as any, filter.values[0])
-        }
-      }
+    if (!filter.member || !filter.operator) {
+      return null
     }
+
+    const [cubeName, fieldName] = filter.member.split('.')
+    if (cubeName !== cube.name) {
+      return null
+    }
+
+    const field = cube.dimensions[fieldName] || cube.measures[fieldName]
+    if (!field) {
+      return null
+    }
+
+    const fieldExpr = resolveSqlExpression(field.sql, ctx)
+    const values = filter.values || []
+    
+    // Filter out null/undefined values but keep empty strings and zeros
+    const filteredValues = values.filter((v: any) => v !== null && v !== undefined)
+    
+    if (filteredValues.length === 0 && !['set', 'notSet'].includes(filter.operator)) {
+      return null
+    }
+
+    const value = filteredValues[0]
+    
+    // Handle different operators
+    switch (filter.operator) {
+      case 'equals':
+        if (filteredValues.length === 0) {
+          // Empty equals filter should return no results
+          return sql`1 = 0`
+        } else if (filteredValues.length === 1) {
+          // For time-type fields, normalize the date value
+          const normalizedValue = field.type === 'time' ? this.normalizeDate(value) || value : value
+          return eq(fieldExpr as AnyColumn, normalizedValue)
+        } else {
+          // For multiple values, use IN clause with proper normalization for time fields
+          if (field.type === 'time') {
+            const normalizedValues = filteredValues.map((v: any) => this.normalizeDate(v) || v)
+            return sql`${fieldExpr} IN (${sql.join(normalizedValues.map((v: any) => sql`${v}`), sql`, `)})`
+          } else {
+            return sql`${fieldExpr} IN (${sql.join(filteredValues.map((v: any) => sql`${v}`), sql`, `)})`
+          }
+        }
+      case 'notEquals':
+        if (filteredValues.length === 1) {
+          return sql`${fieldExpr} <> ${value}`
+        } else if (filteredValues.length > 1) {
+          return sql`${fieldExpr} NOT IN (${sql.join(filteredValues.map((v: any) => sql`${v}`), sql`, `)})`
+        }
+        return null
+      case 'contains':
+        return sql`${fieldExpr} ILIKE ${'%' + value + '%'}`
+      case 'notContains':
+        return sql`${fieldExpr} NOT ILIKE ${'%' + value + '%'}`
+      case 'startsWith':
+        return sql`${fieldExpr} ILIKE ${value + '%'}`
+      case 'endsWith':
+        return sql`${fieldExpr} ILIKE ${'%' + value}`
+      case 'gt':
+        return gt(fieldExpr as AnyColumn, value)
+      case 'gte':
+        return gte(fieldExpr as AnyColumn, value)
+      case 'lt':
+        return lt(fieldExpr as AnyColumn, value)
+      case 'lte':
+        return lte(fieldExpr as AnyColumn, value)
+      case 'set':
+        return isNotNull(fieldExpr as AnyColumn)
+      case 'notSet':
+        return isNull(fieldExpr as AnyColumn)
+      case 'inDateRange':
+        if (filteredValues.length >= 2) {
+          const startDate = this.normalizeDate(filteredValues[0])
+          const endDate = this.normalizeDate(filteredValues[1])
+          if (startDate && endDate) {
+            return and(
+              gte(fieldExpr as AnyColumn, startDate), 
+              lte(fieldExpr as AnyColumn, endDate)
+            ) as SQL
+          }
+        }
+        return null
+      case 'beforeDate': {
+        const beforeValue = this.normalizeDate(value)
+        if (beforeValue) {
+          return lt(fieldExpr as AnyColumn, beforeValue)
+        }
+        return null
+      }
+      case 'afterDate': {
+        const afterValue = this.normalizeDate(value)
+        if (afterValue) {
+          return gt(fieldExpr as AnyColumn, afterValue)
+        }
+        return null
+      }
+      default:
+        return null
+    }
+  }
+
+  /**
+   * Build date range condition for time dimensions
+   */
+  private buildDateRangeCondition(
+    fieldExpr: AnyColumn | SQL,
+    dateRange: string | string[]
+  ): SQL | null {
+    if (!dateRange) return null
+
+    // Handle array date range first
+    if (Array.isArray(dateRange) && dateRange.length >= 2) {
+      const startDate = this.normalizeDate(dateRange[0])
+      const endDate = this.normalizeDate(dateRange[1])
+      
+      if (!startDate || !endDate) return null
+      
+      return and(
+        gte(fieldExpr as AnyColumn, startDate),
+        lte(fieldExpr as AnyColumn, endDate)
+      ) as SQL
+    }
+
+    // Handle string date range
+    if (typeof dateRange === 'string') {
+      // Handle absolute date (single date)
+      const normalizedDate = this.normalizeDate(dateRange)
+      if (!normalizedDate) return null
+      
+      // For single date, create range for the whole day
+      const startOfDay = new Date(normalizedDate)
+      startOfDay.setUTCHours(0, 0, 0, 0)
+      const endOfDay = new Date(normalizedDate)
+      endOfDay.setUTCHours(23, 59, 59, 999)
+      
+      return and(
+        gte(fieldExpr as AnyColumn, startOfDay),
+        lte(fieldExpr as AnyColumn, endOfDay)
+      ) as SQL
+    }
+
+    return null
+  }
+
+  /**
+   * Normalize date values to handle both string and Date objects
+   * For PostgreSQL timestamp fields, Drizzle expects Date objects
+   */
+  private normalizeDate(value: any): Date | null {
+    if (!value) return null
+    
+    // If it's already a Date object, validate and return it
+    if (value instanceof Date) {
+      if (!isNaN(value.getTime())) {
+        return value
+      }
+      return null
+    }
+    
+    // If it's a string, try to parse it as a Date
+    if (typeof value === 'string') {
+      const parsed = new Date(value)
+      if (!isNaN(parsed.getTime())) {
+        return parsed
+      }
+      return null
+    }
+    
+    // Try to parse any other type as date
+    try {
+      const parsed = new Date(value)
+      if (!isNaN(parsed.getTime())) {
+        return parsed
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+    
     return null
   }
 
