@@ -170,6 +170,40 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Used By Section */}
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Used by these websites</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <a
+            href="https://www.fintune.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group p-6 bg-white rounded-lg border border-gray-200 hover:border-drizzle-300 hover:shadow-md transition-all flex items-center space-x-4"
+          >
+            <img 
+              src="/fintune.png" 
+              alt="Fintune logo" 
+              className="w-12 h-12 object-contain flex-shrink-0"
+            />
+            <div className="text-left">
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-drizzle-700 mb-1">
+                Fintune
+              </h3>
+              <p className="text-gray-600">Smart team and financial budgeting and forecasting</p>
+            </div>
+          </a>
+          
+          <div className="group p-6 bg-gray-50 rounded-lg border border-gray-200 border-dashed flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-600 mb-1">
+                Add your site here?
+              </h3>
+              <p className="text-gray-500 text-sm">Contact us to showcase your project</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Additional Resources */}
       <section className="bg-drizzle-50 rounded-lg p-8 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Need More Help?</h2>
