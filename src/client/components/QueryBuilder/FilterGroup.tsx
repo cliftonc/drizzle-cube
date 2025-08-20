@@ -16,7 +16,8 @@ import {
   isOrFilter, 
   createSimpleFilter, 
   createAndFilter, 
-  createOrFilter
+  createOrFilter,
+  getFilterableFields
 } from './utils'
 
 const FilterGroup: React.FC<FilterGroupProps> = ({
@@ -51,7 +52,12 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   }
   
   const handleAddSimpleFilter = () => {
-    const newFilter = createSimpleFilter('', 'equals', [])
+    if (!schema) return
+    
+    // Get the first available field as default
+    const filterableFields = getFilterableFields(schema, query)
+    const defaultField = filterableFields[0]?.name || ''
+    const newFilter = createSimpleFilter(defaultField, 'equals', [])
     const newFilters = [...filters, newFilter]
     
     if (isAndGroup) {
@@ -63,7 +69,12 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   }
   
   const handleAddAndGroup = () => {
-    const newGroup = createAndFilter([createSimpleFilter('', 'equals', [])])
+    if (!schema) return
+    
+    // Get the first available field as default
+    const filterableFields = getFilterableFields(schema, query)
+    const defaultField = filterableFields[0]?.name || ''
+    const newGroup = createAndFilter([createSimpleFilter(defaultField, 'equals', [])])
     const newFilters = [...filters, newGroup]
     
     if (isAndGroup) {
@@ -75,7 +86,12 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   }
   
   const handleAddOrGroup = () => {
-    const newGroup = createOrFilter([createSimpleFilter('', 'equals', [])])
+    if (!schema) return
+    
+    // Get the first available field as default
+    const filterableFields = getFilterableFields(schema, query)
+    const defaultField = filterableFields[0]?.name || ''
+    const newGroup = createOrFilter([createSimpleFilter(defaultField, 'equals', [])])
     const newFilters = [...filters, newGroup]
     
     if (isAndGroup) {

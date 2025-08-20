@@ -39,7 +39,9 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   const handleAddSimpleFilter = () => {
     if (!hasFilterableFields) return
     
-    const newFilter = createSimpleFilter('', 'equals', [])
+    // Use the first available field as default
+    const defaultField = filterableFields[0]?.name || ''
+    const newFilter = createSimpleFilter(defaultField, 'equals', [])
     onFiltersChange([...filters, newFilter])
     setShowAddMenu(false)
   }
@@ -47,7 +49,9 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   const handleAddAndGroup = () => {
     if (!hasFilterableFields) return
     
-    const newGroup = createAndFilter([createSimpleFilter('', 'equals', [])])
+    // Use the first available field as default
+    const defaultField = filterableFields[0]?.name || ''
+    const newGroup = createAndFilter([createSimpleFilter(defaultField, 'equals', [])])
     onFiltersChange([...filters, newGroup])
     setShowAddMenu(false)
   }
@@ -55,7 +59,9 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   const handleAddOrGroup = () => {
     if (!hasFilterableFields) return
     
-    const newGroup = createOrFilter([createSimpleFilter('', 'equals', [])])
+    // Use the first available field as default
+    const defaultField = filterableFields[0]?.name || ''
+    const newGroup = createOrFilter([createSimpleFilter(defaultField, 'equals', [])])
     onFiltersChange([...filters, newGroup])
     setShowAddMenu(false)
   }
