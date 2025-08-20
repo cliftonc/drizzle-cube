@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(256,256)" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round">
+    <!-- 
+    Proper isometric cube with corner gaps
+    Front-bottom-left: (-80, 120)
+    Front-bottom-right: (80, 120)
+    Front-top-right: (80, -40)
+    Front-top-left: (-80, -40)
+    Back-bottom-left: (-40, 80)
+    Back-bottom-right: (120, 80)
+    Back-top-right: (120, -80)
+    Back-top-left: (-40, -80)
+    
+    Gap: 25px along each edge
+    -->
+    
+    <!-- Front face (4 edges) -->
+    <path d="M -55 -40 L 55 -40"/>     <!-- top -->
+    <path d="M 80 -15 L 80 95"/>       <!-- right -->
+    <path d="M 55 120 L -55 120"/>     <!-- bottom -->
+    <path d="M -80 95 L -80 -15"/>     <!-- left -->
+    
+    <!-- Back face (4 edges) -->
+    <path d="M -15 -80 L 95 -80"/>     <!-- top -->
+    <path d="M 120 -55 L 120 55"/>     <!-- right -->
+    <path d="M 95 80 L -15 80"/>       <!-- bottom -->
+    <path d="M -40 55 L -40 -55"/>     <!-- left -->
+    
+    <!-- Connecting edges (4 diagonals) -->
+    <path d="M -55 -40 L -15 -80"/>    <!-- front-top-left to back-top-left -->
+    <path d="M 55 -40 L 95 -80"/>      <!-- front-top-right to back-top-right -->
+    <path d="M 55 120 L 95 80"/>       <!-- front-bottom-right to back-bottom-right -->
+    <path d="M -55 120 L -15 80"/>     <!-- front-bottom-left to back-bottom-left -->
+  </g>
+</svg>

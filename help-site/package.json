@@ -7,8 +7,8 @@
     "dev": "concurrently \"npm run build:help-content\" \"vite\"",
     "build": "npm run build:help-content && vite build && vite build --config vite.config.worker.ts",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
-    "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "deploy": "npm run build && node scripts/inject-analytics.js && wrangler deploy",
+    "deploy:staging": "npm run build && node scripts/inject-analytics.js && wrangler deploy --env staging",
     "build:help-content": "node scripts/build-help-content.js",
     "watch:help-content": "node scripts/watch-help-content.js"
   },
