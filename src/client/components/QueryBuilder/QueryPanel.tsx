@@ -8,12 +8,14 @@
 import React, { useState, useEffect } from 'react'
 import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
+import FilterBuilder from './FilterBuilder'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { hasQueryContent, getSelectedFieldsCount } from './utils'
 
 const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
+  schema,
   validationStatus,
   validationError,
   validationSql,
@@ -21,6 +23,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onExecute,
   onRemoveField,
   onTimeDimensionGranularityChange,
+  onFiltersChange,
   onClearQuery,
   showSettings,
   onSettingsClick
@@ -265,6 +268,15 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Filters Section */}
+            <div className="mt-6">
+              <FilterBuilder
+                filters={query.filters || []}
+                schema={schema}
+                onFiltersChange={onFiltersChange}
+              />
             </div>
 
             {/* Validation Error */}

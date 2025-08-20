@@ -56,6 +56,33 @@ export interface DashboardConfig {
   layouts?: { [key: string]: any } // react-grid-layout layouts
 }
 
+// Filter types - hierarchical structure supporting AND/OR logic
+export type FilterOperator = 
+  // String operators
+  | 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith'
+  // Numeric operators  
+  | 'gt' | 'gte' | 'lt' | 'lte'
+  // Null operators
+  | 'set' | 'notSet'
+  // Date operators
+  | 'inDateRange' | 'beforeDate' | 'afterDate'
+
+export interface SimpleFilter {
+  member: string
+  operator: FilterOperator
+  values: any[]
+}
+
+export interface AndFilter {
+  and: Filter[]
+}
+
+export interface OrFilter {
+  or: Filter[]
+}
+
+export type Filter = SimpleFilter | AndFilter | OrFilter
+
 // Cube query types
 export interface CubeQuery {
   measures?: string[]
@@ -65,11 +92,7 @@ export interface CubeQuery {
     granularity?: string
     dateRange?: string[] | string
   }>
-  filters?: Array<{
-    member: string
-    operator: string
-    values: any[]
-  }>
+  filters?: Filter[]
   order?: { [key: string]: 'asc' | 'desc' }
   limit?: number
   offset?: number

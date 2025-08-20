@@ -2,7 +2,7 @@
  * Type definitions for QueryBuilder components
  */
 
-import type { CubeQuery } from '../../types'
+import type { CubeQuery, FilterOperator, Filter, SimpleFilter, AndFilter, OrFilter } from '../../types'
 
 // Meta endpoint response types
 export interface MetaField {
@@ -104,6 +104,7 @@ export interface CubeMetaExplorerProps {
 
 export interface QueryPanelProps {
   query: CubeQuery
+  schema: MetaResponse | null
   validationStatus: ValidationStatus
   validationError: string | null
   validationSql: { sql: string[], params: any[] } | null
@@ -111,6 +112,7 @@ export interface QueryPanelProps {
   onExecute: () => void
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onTimeDimensionGranularityChange: (dimensionName: string, granularity: string) => void
+  onFiltersChange: (filters: Filter[]) => void
   onClearQuery?: () => void
   showSettings?: boolean           // Show the settings/configuration button
   onSettingsClick?: () => void     // Handler for settings button click
@@ -137,3 +139,171 @@ export const TIME_GRANULARITIES = [
 ] as const
 
 export type TimeGranularity = typeof TIME_GRANULARITIES[number]['value']
+
+// Filter operator metadata
+export interface FilterOperatorMeta {
+  label: string
+  description: string
+  requiresValues: boolean
+  supportsMultipleValues: boolean
+  valueType: 'string' | 'number' | 'date' | 'boolean' | 'any'
+  fieldTypes: string[] // Which field types support this operator
+}
+
+export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
+  // String operators
+  equals: {
+    label: 'Equals',
+    description: 'Exact match',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'boolean']
+  },
+  notEquals: {
+    label: 'Not equals',
+    description: 'Does not match',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'boolean']
+  },
+  contains: {
+    label: 'Contains',
+    description: 'Contains text (case insensitive)',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  notContains: {
+    label: 'Not contains',
+    description: 'Does not contain text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  startsWith: {
+    label: 'Starts with',
+    description: 'Starts with text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  endsWith: {
+    label: 'Ends with',
+    description: 'Ends with text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  // Numeric operators
+  gt: {
+    label: 'Greater than',
+    description: 'Greater than value',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
+  },
+  gte: {
+    label: 'Greater than or equal',
+    description: 'Greater than or equal to value',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
+  },
+  lt: {
+    label: 'Less than',
+    description: 'Less than value',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
+  },
+  lte: {
+    label: 'Less than or equal',
+    description: 'Less than or equal to value',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
+  },
+  // Null operators
+  set: {
+    label: 'Is set',
+    description: 'Is not null/empty',
+    requiresValues: false,
+    supportsMultipleValues: false,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'time', 'boolean']
+  },
+  notSet: {
+    label: 'Is not set',
+    description: 'Is null/empty',
+    requiresValues: false,
+    supportsMultipleValues: false,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'time', 'boolean']
+  },
+  // Date operators
+  inDateRange: {
+    label: 'In date range',
+    description: 'Between two dates',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'date',
+    fieldTypes: ['time']
+  },
+  beforeDate: {
+    label: 'Before date',
+    description: 'Before specified date',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'date',
+    fieldTypes: ['time']
+  },
+  afterDate: {
+    label: 'After date',
+    description: 'After specified date',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'date',
+    fieldTypes: ['time']
+  }
+}
+
+// Filter builder component props
+export interface FilterBuilderProps {
+  filters: Filter[]
+  schema: MetaResponse | null
+  onFiltersChange: (filters: Filter[]) => void
+}
+
+export interface FilterItemProps {
+  filter: SimpleFilter
+  index: number
+  onFilterChange: (index: number, filter: SimpleFilter) => void
+  onFilterRemove: (index: number) => void
+  schema: MetaResponse | null
+}
+
+export interface FilterGroupProps {
+  group: AndFilter | OrFilter
+  index: number
+  onGroupChange: (index: number, group: AndFilter | OrFilter) => void
+  onGroupRemove: (index: number) => void
+  schema: MetaResponse | null
+  depth: number
+}
+
+export interface FilterValueSelectorProps {
+  fieldName: string
+  operator: FilterOperator
+  values: any[]
+  onValuesChange: (values: any[]) => void
+}

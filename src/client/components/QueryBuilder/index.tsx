@@ -20,6 +20,7 @@ import type {
   ValidationResult,
   ApiConfig
 } from './types'
+import type { Filter } from '../../types'
 import { createEmptyQuery, hasQueryContent, cleanQuery } from './utils'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
@@ -311,6 +312,16 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     })
   }, [updateQuery])
 
+  const handleFiltersChange = useCallback((filters: Filter[]) => {
+    updateQuery(prev => {
+      const newQuery = {
+        ...prev,
+        filters
+      }
+      return cleanQuery(newQuery)
+    })
+  }, [updateQuery])
+
   const handleValidateQuery = useCallback(async () => {
     if (!hasQueryContent(state.query)) return
 
@@ -553,6 +564,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           >
             <QueryPanel
               query={state.query}
+              schema={state.schema}
               validationStatus={state.validationStatus}
               validationError={state.validationError}
               validationSql={state.validationSql}
@@ -560,6 +572,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onExecute={handleExecuteQuery}
               onRemoveField={handleFieldDeselect}
               onTimeDimensionGranularityChange={handleTimeDimensionGranularityChange}
+              onFiltersChange={handleFiltersChange}
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
