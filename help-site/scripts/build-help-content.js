@@ -255,7 +255,6 @@ function buildHelpContent() {
   
   // Generate TypeScript content
   const tsContent = `// Auto-generated help content - do not edit manually
-// Generated on ${new Date().toISOString()}
 
 export interface HelpTopic {
   slug: string;

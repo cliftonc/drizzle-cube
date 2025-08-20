@@ -1,5 +1,4 @@
 // Auto-generated help content - do not edit manually
-// Generated on 2025-08-20T04:56:07.942Z
 
 export interface HelpTopic {
   slug: string;
