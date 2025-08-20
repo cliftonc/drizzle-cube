@@ -630,9 +630,9 @@ export default function PortletEditModal({
       ) : (
         <form id="portlet-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Main layout - Split into left and right */}
-        <div style={{ display: 'flex', gap: '1rem', height: '550px' }}>
+        <div className="flex gap-4">
           {/* Left side - Title, Chart Type, Query */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="flex-1 flex flex-col gap-4">
             {/* Title */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -669,7 +669,7 @@ export default function PortletEditModal({
 
 
             {/* Query Editor */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div className="flex-1 flex flex-col">
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-semibold text-gray-700">
                   Cube.js Query (JSON)
@@ -687,8 +687,7 @@ export default function PortletEditModal({
               <textarea
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
-                style={{ flex: 1, width: '100%' }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs resize-none"
+                className="flex-1 w-full min-h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs resize-y"
                 placeholder={`{
   "measures": ["People.count"],
   "dimensions": ["People.active"]
@@ -699,13 +698,13 @@ export default function PortletEditModal({
           </div>
 
           {/* Right side - Chart Configuration */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div className="flex-1 flex flex-col">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Chart Axis Configuration
             </label>
             
             {!dryRunData || !isQueryValidAndCurrent ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                 <div className="text-center text-gray-500">
                   <svg className="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -714,7 +713,7 @@ export default function PortletEditModal({
                 </div>
               </div>
             ) : (
-              <div style={{ flex: 1, overflowY: 'auto' }} className="rounded-lg bg-white p-3">
+              <div className="rounded-lg bg-white p-3 border border-gray-200">
                 {/* Available Fields */}
                 {unassignedFields && (unassignedFields.dimensions.length > 0 || unassignedFields.timeDimensions.length > 0 || unassignedFields.measures.length > 0) && (
                   <div className="mb-3">
@@ -730,7 +729,7 @@ export default function PortletEditModal({
                             className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
                           >
                             <span className="flex items-center">
-                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                               <span>{dim}</span>
                             </span>
                           </div>
@@ -746,7 +745,7 @@ export default function PortletEditModal({
                             className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
                           >
                             <span className="flex items-center">
-                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                               <span>{dim}</span>
                             </span>
                           </div>
@@ -762,7 +761,7 @@ export default function PortletEditModal({
                             className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
                           >
                             <span className="flex items-center">
-                              <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                               <span>{measure}</span>
                             </span>
                           </div>
@@ -776,7 +775,7 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">X-Axis (Categories)</h4>
                   <div
-                    className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
+                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, 'xAxis')}
                   >
@@ -794,7 +793,7 @@ export default function PortletEditModal({
                               className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
                               <span className="flex items-center">
-                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                                 <span>{field}</span>
                               </span>
                               <button
@@ -817,10 +816,10 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Y-Axis (Values & Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><ChartBarIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Measures = numeric values • <TagIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Dimensions = separate series</span>
+                    <span className="flex items-center"><ChartBarIcon className="w-4 h-4 mr-1 flex-shrink-0" />Measures = numeric values • <TagIcon className="w-4 h-4 mr-1 flex-shrink-0" />Dimensions = separate series</span>
                   </div>
                   <div
-                    className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
+                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, 'yAxis')}
                   >
@@ -839,7 +838,7 @@ export default function PortletEditModal({
                               className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
                               <span className="flex items-center">
-                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                                 <span>{field}</span>
                               </span>
                               <button
@@ -862,10 +861,10 @@ export default function PortletEditModal({
                 <div className="mb-3">
                   <h4 className="text-xs font-semibold mb-2">Series (Split into Multiple Series)</h4>
                   <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><TagIcon className="w-3.5 h-3.5 mr-1 flex-shrink-0" />Drop dimensions here to create separate data series</span>
+                    <span className="flex items-center"><TagIcon className="w-4 h-4 mr-1 flex-shrink-0" />Drop dimensions here to create separate data series</span>
                   </div>
                   <div
-                    className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
+                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, 'series')}
                   >
@@ -883,7 +882,7 @@ export default function PortletEditModal({
                               className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
                             >
                               <span className="flex items-center">
-                                <IconComponent className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
                                 <span>{field}</span>
                               </span>
                               <button
@@ -994,7 +993,7 @@ export default function PortletEditModal({
                     : validationResult && !validationResult.isValid
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 {isValidating ? (
                   <>
@@ -1028,31 +1027,13 @@ export default function PortletEditModal({
         {!isEditMode && (
           <div>
             <label className="block text-sm text-gray-600 mb-2">Sample Queries (click to use)</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+            <div className="flex flex-wrap gap-2 mb-2">
               {SAMPLE_QUERIES.map((sample, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => handleSampleQuery(sample.query)}
-                  style={{
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    backgroundColor: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    margin: '2px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#e5e7eb'
-                    e.currentTarget.style.borderColor = '#9ca3af'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6'
-                    e.currentTarget.style.borderColor = '#d1d5db'
-                  }}
+                  className="px-2 py-1 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-200 hover:border-gray-400 m-0.5"
                 >
                   {sample.name}
                 </button>
