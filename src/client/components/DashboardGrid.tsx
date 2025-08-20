@@ -4,7 +4,7 @@
  * Simplified version without app-specific dependencies
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { Responsive, WidthProvider } from 'react-grid-layout'
 import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
@@ -37,16 +37,58 @@ export default function DashboardGrid({
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
 
+  // Track if component has been initialized to prevent saves during initial load
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [lastKnownLayout, setLastKnownLayout] = useState<any[]>([])
+
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
   const [editingPortlet, setEditingPortlet] = useState<PortletConfig | null>(null)
 
+  // Set up initialization tracking
+  useEffect(() => {
+    // Mark as initialized after first render to prevent saves during load/resize
+    const timer = setTimeout(() => {
+      setIsInitialized(true)
+      // Store initial layout for comparison
+      const initialLayout = config.portlets.map(portlet => ({
+        i: portlet.id,
+        x: portlet.x,
+        y: portlet.y,
+        w: portlet.w,
+        h: portlet.h
+      }))
+      setLastKnownLayout(initialLayout)
+    }, 200) // Slightly longer delay to ensure responsive grid is fully settled
+
+    return () => clearTimeout(timer)
+  }, [config.portlets])
+
+  // Helper function to check if layout actually changed (not just reordered due to responsive changes)
+  const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
+    if (!isInitialized || lastKnownLayout.length === 0) return false
+    
+    // Compare each item's position and size
+    for (const newItem of newLayout) {
+      const oldItem = lastKnownLayout.find(item => item.i === newItem.i)
+      if (!oldItem) continue // New item, this is a change
+      
+      if (oldItem.x !== newItem.x || oldItem.y !== newItem.y || 
+          oldItem.w !== newItem.w || oldItem.h !== newItem.h) {
+        return true
+      }
+    }
+    return false
+  }, [isInitialized, lastKnownLayout])
+
   const handleLayoutChange = useCallback((currentLayout: any[], allLayouts: any) => {
     if (!editable || !onConfigChange) return
 
-    // Update portlet positions (config state only, no auto-save)
+    // Only update portlet positions based on the large (desktop) layout to preserve original sizing
+    // This prevents mobile responsive changes from permanently affecting the desktop layout
+    const lgLayout = allLayouts.lg || currentLayout
     const updatedPortlets = config.portlets.map(portlet => {
-      const layoutItem = currentLayout.find(item => item.i === portlet.id)
+      const layoutItem = lgLayout.find((item: any) => item.i === portlet.id)
       if (layoutItem) {
         return {
           ...portlet,
@@ -67,11 +109,16 @@ export default function DashboardGrid({
     onConfigChange(updatedConfig)
   }, [config.portlets, editable, onConfigChange])
 
-  // Handle drag stop - save when user finishes dragging
+  // Handle drag stop - save when user finishes dragging (only if layout actually changed)
   const handleDragStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
-    if (!editable || !onSave) return
+    if (!editable || !onSave || !isInitialized) return
 
-    // Get the current updated config from the layout change
+    // Only save if the layout actually changed from user interaction
+    if (!hasLayoutActuallyChanged(layout)) {
+      return // No actual change, don't save
+    }
+
+    // Get the current updated config from the layout change (only update from lg layout)
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
@@ -86,10 +133,17 @@ export default function DashboardGrid({
       return portlet
     })
 
+    // Preserve existing responsive layouts, only update with new lg layout
     const updatedConfig = {
       portlets: updatedPortlets,
-      layouts: { lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }
+      layouts: {
+        ...config.layouts,
+        lg: layout // Only save the large layout, let RGL handle responsive adjustments
+      }
     }
+
+    // Update our tracking of the last known layout
+    setLastKnownLayout(layout)
 
     // Auto-save after drag operation
     try {
@@ -97,13 +151,18 @@ export default function DashboardGrid({
     } catch (error) {
       console.error('Auto-save failed after drag:', error)
     }
-  }, [config.portlets, editable, onSave])
+  }, [config.portlets, config.layouts, editable, onSave, isInitialized, hasLayoutActuallyChanged])
 
-  // Handle resize stop - update config but do NOT auto-save (resize shouldn't trigger save)
+  // Handle resize stop - update config and save (resize is user interaction)
   const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
-    if (!editable || !onConfigChange) return
+    if (!editable || !onConfigChange || !isInitialized) return
 
-    // Get the current updated config from the layout change
+    // Only proceed if the layout actually changed from user interaction
+    if (!hasLayoutActuallyChanged(layout)) {
+      return // No actual change, don't save
+    }
+
+    // Get the current updated config from the layout change (only update from lg layout)
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
@@ -118,14 +177,30 @@ export default function DashboardGrid({
       return portlet
     })
 
+    // Preserve existing responsive layouts, only update with new lg layout
     const updatedConfig = {
       portlets: updatedPortlets,
-      layouts: { lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }
+      layouts: {
+        ...config.layouts,
+        lg: layout // Only save the large layout, let RGL handle responsive adjustments
+      }
     }
 
-    // Update config but do NOT auto-save (resize events should not trigger save)
+    // Update our tracking of the last known layout
+    setLastKnownLayout(layout)
+
+    // Update config state
     onConfigChange(updatedConfig)
-  }, [config.portlets, editable, onConfigChange])
+
+    // Auto-save after resize operation (user deliberately resized)
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed after resize:', error)
+      }
+    }
+  }, [config.portlets, config.layouts, editable, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
@@ -265,8 +340,9 @@ export default function DashboardGrid({
     )
   }
 
-  // Generate grid layout from portlets (like fintune-react does)
-  const gridLayout = config.portlets.map(portlet => ({
+  // Generate grid layout from portlets - only use for lg (desktop) breakpoint
+  // Let react-grid-layout handle responsive adjustments automatically
+  const baseLayout = config.portlets.map(portlet => ({
     i: portlet.id,
     x: portlet.x,
     y: portlet.y,
@@ -275,6 +351,13 @@ export default function DashboardGrid({
     minW: 3,
     minH: 3
   }))
+
+  // Create responsive layouts - use stored layouts if available, otherwise let RGL auto-generate
+  // The key insight: only the 'lg' layout should be controlled by our stored portlet positions
+  // All other breakpoints should be auto-generated by react-grid-layout for proper responsive behavior
+  const responsiveLayouts = {
+    lg: baseLayout // Only control the large desktop layout, let RGL handle all responsive adjustments
+  }
 
 
   return (
@@ -293,7 +376,7 @@ export default function DashboardGrid({
       
       <ResponsiveGridLayout
         className="layout"
-        layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout, xs: gridLayout, xxs: gridLayout }}
+        layouts={responsiveLayouts}
         onLayoutChange={handleLayoutChange}
         onDragStop={handleDragStop}
         onResizeStop={handleResizeStop}
@@ -304,6 +387,8 @@ export default function DashboardGrid({
         draggableHandle=".portlet-drag-handle"
         margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
         rowHeight={80}
+        compactType="vertical"
+        preventCollision={false}
       >
         {config.portlets.map(portlet => (
           <div 

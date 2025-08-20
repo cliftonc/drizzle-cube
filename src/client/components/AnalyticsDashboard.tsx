@@ -4,7 +4,7 @@
  * Minimal dependencies, designed to be embedded in existing apps
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { CubeProvider } from '../providers/CubeProvider'
 import { createCubeClient } from '../client/CubeClient'
 import DashboardGrid from './DashboardGrid'
@@ -19,6 +19,10 @@ export default function AnalyticsDashboard({
   onSave,
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
+  // Track initial config to prevent saves during initial load
+  const initialConfigRef = useRef(config)
+  const hasConfigChangedFromInitial = useRef(false)
+
   // Create Cube.js client instance
   const cubeApi = useMemo(() => {
     return createCubeClient(
@@ -30,8 +34,13 @@ export default function AnalyticsDashboard({
     )
   }, [apiUrl, apiOptions])
 
-  // Enhanced save handler that tracks dirty state
+  // Enhanced save handler that tracks dirty state and prevents saves during initial load
   const handleSaveWithDirtyTracking = useCallback(async (config: DashboardConfig) => {
+    // Don't save if this config hasn't actually changed from the initial load
+    if (!hasConfigChangedFromInitial.current) {
+      return // Prevent saves during initial load/responsive changes
+    }
+    
     if (onDirtyStateChange) {
       onDirtyStateChange(true) // Mark as dirty when save starts
     }
@@ -40,6 +49,9 @@ export default function AnalyticsDashboard({
       if (onSave) {
         await onSave(config)
       }
+      
+      // Update our reference point after successful save
+      initialConfigRef.current = config
       
       // Mark as clean after successful save
       if (onDirtyStateChange) {
@@ -52,14 +64,22 @@ export default function AnalyticsDashboard({
     }
   }, [onSave, onDirtyStateChange])
 
-  // Enhanced config change handler that marks as dirty
+  // Enhanced config change handler that marks as dirty (only after initial load)
   const handleConfigChangeWithDirtyTracking = useCallback((config: DashboardConfig) => {
     if (onConfigChange) {
       onConfigChange(config)
     }
     
-    if (onDirtyStateChange) {
-      onDirtyStateChange(true)
+    // Check if this is a meaningful change from the initial config
+    const configString = JSON.stringify(config)
+    const initialConfigString = JSON.stringify(initialConfigRef.current)
+    
+    if (configString !== initialConfigString) {
+      hasConfigChangedFromInitial.current = true
+      
+      if (onDirtyStateChange) {
+        onDirtyStateChange(true)
+      }
     }
   }, [onConfigChange, onDirtyStateChange])
 
