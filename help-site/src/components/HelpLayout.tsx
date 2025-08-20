@@ -61,7 +61,7 @@ const HelpLayout: React.FC<HelpLayoutProps> = ({ children }) => {
                 href="https://try.drizzle-cube.dev"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-2 lg:px-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                className="px-3 py-2 lg:px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
               >
                 <span className="lg:hidden">🚀 Try Live</span>
                 <span className="hidden lg:inline">🚀 View Live Sandbox</span>

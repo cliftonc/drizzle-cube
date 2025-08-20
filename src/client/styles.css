@@ -4,41 +4,7 @@
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
 
-/* Tailwind CSS v4 */
-@import "tailwindcss";
-
-/* DaisyUI Plugin with Themes */
-@plugin "daisyui" {
-  themes: light --default, 
-          dark --prefersdark, 
-          cupcake, 
-          bumblebee, 
-          emerald, 
-          corporate, 
-          synthwave, 
-          retro, 
-          cyberpunk, 
-          valentine, 
-          halloween, 
-          garden, 
-          forest, 
-          aqua, 
-          lofi, 
-          pastel, 
-          fantasy, 
-          wireframe, 
-          black, 
-          luxury, 
-          dracula, 
-          cmyk, 
-          autumn, 
-          business, 
-          acid, 
-          lemonade, 
-          night, 
-          coffee, 
-          winter, 
-          dim, 
-          nord, 
-          sunset;
-}
+/* Tailwind CSS v3 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,9 +1,9 @@
-@import 'tailwindcss';
-
 /* Import Drizzle Cube styles (includes grid layout styles) */
-@import 'drizzle-cube/client/styles.css' layer(base);
+@import 'drizzle-cube/client/styles.css';
 
-@source '../node_modules/drizzle-cube/dist/**/*.js';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
