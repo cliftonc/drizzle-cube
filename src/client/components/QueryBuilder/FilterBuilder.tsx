@@ -5,7 +5,7 @@
  * Handles the top-level filter state and provides controls for adding new filters and groups.
  */
 
-import React, { useState } from 'react'
+import React from 'react'
 import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import FilterItem from './FilterItem'
 import FilterGroup from './FilterGroup'
@@ -28,7 +28,6 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   query,
   onFiltersChange
 }) => {
-  const [showAddMenu, setShowAddMenu] = useState(false)
   
   const totalFilterCount = countFilters(filters)
   
@@ -42,29 +41,35 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
     // Use the first available field as default
     const defaultField = filterableFields[0]?.name || ''
     const newFilter = createSimpleFilter(defaultField, 'equals', [])
-    onFiltersChange([...filters, newFilter])
-    setShowAddMenu(false)
+    
+    // Smart filter grouping logic:
+    // - First filter: add as simple filter
+    // - Second filter: create AND group with first filter + new filter
+    // - Additional filters: add to existing group (AND or OR, respecting current type)
+    
+    if (filters.length === 0) {
+      // First filter - add as simple filter
+      onFiltersChange([newFilter])
+    } else if (filters.length === 1 && isSimpleFilter(filters[0])) {
+      // Second filter - create AND group with existing filter + new filter
+      const andGroup = createAndFilter([filters[0], newFilter])
+      onFiltersChange([andGroup])
+    } else if (filters.length === 1 && isAndFilter(filters[0])) {
+      // Additional filter - add to existing AND group
+      const existingAndGroup = filters[0]
+      const updatedAndGroup = createAndFilter([...existingAndGroup.and, newFilter])
+      onFiltersChange([updatedAndGroup])
+    } else if (filters.length === 1 && isOrFilter(filters[0])) {
+      // Additional filter - add to existing OR group
+      const existingOrGroup = filters[0]
+      const updatedOrGroup = createOrFilter([...existingOrGroup.or, newFilter])
+      onFiltersChange([updatedOrGroup])
+    } else {
+      // Fallback: just add to the end (shouldn't happen with new logic)
+      onFiltersChange([...filters, newFilter])
+    }
   }
   
-  const handleAddAndGroup = () => {
-    if (!hasFilterableFields) return
-    
-    // Use the first available field as default
-    const defaultField = filterableFields[0]?.name || ''
-    const newGroup = createAndFilter([createSimpleFilter(defaultField, 'equals', [])])
-    onFiltersChange([...filters, newGroup])
-    setShowAddMenu(false)
-  }
-  
-  const handleAddOrGroup = () => {
-    if (!hasFilterableFields) return
-    
-    // Use the first available field as default
-    const defaultField = filterableFields[0]?.name || ''
-    const newGroup = createOrFilter([createSimpleFilter(defaultField, 'equals', [])])
-    onFiltersChange([...filters, newGroup])
-    setShowAddMenu(false)
-  }
   
   const handleFilterChange = (index: number, newFilter: SimpleFilter) => {
     const newFilters = [...filters]
@@ -73,8 +78,45 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   }
   
   const handleFilterRemove = (index: number) => {
-    const newFilters = filters.filter((_, i) => i !== index)
-    onFiltersChange(newFilters)
+    // Handle removal with automatic group unwrapping logic:
+    // - If we have a group with 2 filters and remove 1, unwrap to simple filter
+    // - Otherwise, just remove the filter from the group
+    
+    if (filters.length === 1 && isAndFilter(filters[0])) {
+      const andGroup = filters[0]
+      if (andGroup.and.length === 2) {
+        // Removing one filter from a 2-filter AND group - unwrap to simple filter
+        const remainingFilter = andGroup.and.filter((_, i) => i !== index)[0]
+        onFiltersChange([remainingFilter])
+      } else if (andGroup.and.length > 2) {
+        // Removing one filter from 3+ filter AND group - keep the group
+        const updatedAndFilters = andGroup.and.filter((_, i) => i !== index)
+        const updatedAndGroup = createAndFilter(updatedAndFilters)
+        onFiltersChange([updatedAndGroup])
+      } else {
+        // Edge case: AND group with 1 or 0 filters - remove everything
+        onFiltersChange([])
+      }
+    } else if (filters.length === 1 && isOrFilter(filters[0])) {
+      const orGroup = filters[0]
+      if (orGroup.or.length === 2) {
+        // Removing one filter from a 2-filter OR group - unwrap to simple filter
+        const remainingFilter = orGroup.or.filter((_, i) => i !== index)[0]
+        onFiltersChange([remainingFilter])
+      } else if (orGroup.or.length > 2) {
+        // Removing one filter from 3+ filter OR group - keep the group
+        const updatedOrFilters = orGroup.or.filter((_, i) => i !== index)
+        const updatedOrGroup = createOrFilter(updatedOrFilters)
+        onFiltersChange([updatedOrGroup])
+      } else {
+        // Edge case: OR group with 1 or 0 filters - remove everything
+        onFiltersChange([])
+      }
+    } else {
+      // Simple case: just remove the filter
+      const newFilters = filters.filter((_, i) => i !== index)
+      onFiltersChange(newFilters)
+    }
   }
   
   const handleGroupChange = (index: number, newGroup: AndFilter | OrFilter) => {
@@ -83,9 +125,9 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
     onFiltersChange(newFilters)
   }
   
-  const handleGroupRemove = (index: number) => {
-    const newFilters = filters.filter((_, i) => i !== index)
-    onFiltersChange(newFilters)
+  const handleGroupRemove = () => {
+    // When removing an AND group, we should remove all filters
+    onFiltersChange([])
   }
   
   const handleClearAllFilters = () => {
@@ -114,76 +156,26 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             </button>
           )}
           
-          {/* Add menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowAddMenu(!showAddMenu)}
-              disabled={!hasFilterableFields}
-              className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-none focus:ring-2 ${
-                hasFilterableFields
-                  ? 'text-blue-700 bg-blue-100 border border-blue-200 hover:bg-blue-200 focus:ring-blue-500'
-                  : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
-              }`}
-            >
-              <PlusIcon className="w-3 h-3" />
-              <span>Add Filter</span>
-            </button>
-            
-            {showAddMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-300 rounded-md shadow-lg z-20">
-                <button
-                  onClick={handleAddSimpleFilter}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-                >
-                  <div className="font-medium">Add Filter</div>
-                  <div className="text-xs text-gray-500">Single condition</div>
-                </button>
-                <button
-                  onClick={handleAddAndGroup}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-                >
-                  <div className="font-medium">Add AND Group</div>
-                  <div className="text-xs text-gray-500">All conditions must be true</div>
-                </button>
-                <button
-                  onClick={handleAddOrGroup}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
-                >
-                  <div className="font-medium">Add OR Group</div>
-                  <div className="text-xs text-gray-500">Any condition can be true</div>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Add Filter button */}
+          <button
+            onClick={handleAddSimpleFilter}
+            disabled={!hasFilterableFields}
+            className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-none focus:ring-2 ${
+              hasFilterableFields
+                ? 'text-purple-700 bg-purple-100 border border-purple-200 hover:bg-purple-200 focus:ring-purple-500'
+                : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+            }`}
+          >
+            <PlusIcon className="w-3 h-3" />
+            <span>Add Filter</span>
+          </button>
         </div>
       </div>
       
       {/* Filters list */}
-      <div className="space-y-3">
-        {filters.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <FunnelIcon className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-            {hasFilterableFields ? (
-              <>
-                <div className="text-sm font-medium mb-1">No filters applied</div>
-                <div className="text-xs mb-3">Add filters to narrow down your results</div>
-                <button
-                  onClick={handleAddSimpleFilter}
-                  className="inline-flex items-center space-x-1 px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  <span>Add your first filter</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-medium mb-1">No fields selected</div>
-                <div className="text-xs">Select measures, dimensions, or time dimensions first to enable filtering</div>
-              </>
-            )}
-          </div>
-        ) : (
-          filters.map((filter, index) => {
+      {filters.length > 0 && (
+        <div className="space-y-3">
+          {filters.map((filter, index) => {
             if (isSimpleFilter(filter)) {
               return (
                 <FilterItem
@@ -211,22 +203,10 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
               )
             }
             return null
-          })
-        )}
-      </div>
-      
-      {/* Help text */}
-      {filters.length > 0 && (
-        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          <div className="font-medium mb-1">Filter Logic:</div>
-          <ul className="list-disc list-inside space-y-1">
-            <li><strong>AND groups:</strong> All conditions in the group must be true</li>
-            <li><strong>OR groups:</strong> At least one condition in the group must be true</li>
-            <li><strong>Nesting:</strong> Groups can contain other groups for complex logic</li>
-            <li><strong>Multiple top-level filters:</strong> Combined with AND logic</li>
-          </ul>
+          })}
         </div>
       )}
+      
     </div>
   )
 }

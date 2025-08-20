@@ -125,7 +125,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
         </div>
 
         {/* Results Table */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0">
           <DataTable 
             data={executionResults} 
             height="100%" 
@@ -136,14 +136,14 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   }
 
   return (
-    <div className="h-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-lg min-h-0">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
         <h3 className="text-sm font-semibold text-gray-900">Query Results</h3>
       </div>
 
       {/* Content */}
-      <div className="h-full">
+      <div className="flex-1 min-h-0">
         {executionStatus === 'loading' && <LoadingState />}
         {executionStatus === 'error' && <ErrorState />}
         {executionStatus === 'success' && <SuccessState />}

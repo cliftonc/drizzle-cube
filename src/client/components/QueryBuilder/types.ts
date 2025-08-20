@@ -153,23 +153,23 @@ export interface FilterOperatorMeta {
 export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   // String operators
   equals: {
-    label: 'Equals',
+    label: 'equals',
     description: 'Exact match',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
-    fieldTypes: ['string', 'number', 'boolean']
+    fieldTypes: ['string', 'number', 'boolean', 'time']
   },
   notEquals: {
-    label: 'Not equals',
+    label: 'not equals',
     description: 'Does not match',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
-    fieldTypes: ['string', 'number', 'boolean']
+    fieldTypes: ['string', 'number', 'boolean', 'time']
   },
   contains: {
-    label: 'Contains',
+    label: 'contains',
     description: 'Contains text (case insensitive)',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -177,7 +177,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['string']
   },
   notContains: {
-    label: 'Not contains',
+    label: 'not contains',
     description: 'Does not contain text',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -185,7 +185,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['string']
   },
   startsWith: {
-    label: 'Starts with',
+    label: 'starts with',
     description: 'Starts with text',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -193,7 +193,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['string']
   },
   endsWith: {
-    label: 'Ends with',
+    label: 'ends with',
     description: 'Ends with text',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -202,7 +202,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Numeric operators
   gt: {
-    label: 'Greater than',
+    label: 'greater than',
     description: 'Greater than value',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -210,7 +210,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   gte: {
-    label: 'Greater than or equal',
+    label: 'greater than or equal',
     description: 'Greater than or equal to value',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -218,7 +218,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   lt: {
-    label: 'Less than',
+    label: 'less than',
     description: 'Less than value',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -226,7 +226,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   lte: {
-    label: 'Less than or equal',
+    label: 'less than or equal',
     description: 'Less than or equal to value',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -235,7 +235,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Null operators
   set: {
-    label: 'Is set',
+    label: 'is set',
     description: 'Is not null/empty',
     requiresValues: false,
     supportsMultipleValues: false,
@@ -243,7 +243,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['string', 'number', 'time', 'boolean']
   },
   notSet: {
-    label: 'Is not set',
+    label: 'is not set',
     description: 'Is null/empty',
     requiresValues: false,
     supportsMultipleValues: false,
@@ -252,7 +252,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Date operators
   inDateRange: {
-    label: 'In date range',
+    label: 'in date range',
     description: 'Between two dates',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -260,7 +260,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['time']
   },
   beforeDate: {
-    label: 'Before date',
+    label: 'before date',
     description: 'Before specified date',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -268,7 +268,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     fieldTypes: ['time']
   },
   afterDate: {
-    label: 'After date',
+    label: 'after date',
     description: 'After specified date',
     requiresValues: true,
     supportsMultipleValues: false,
@@ -309,4 +309,5 @@ export interface FilterValueSelectorProps {
   operator: FilterOperator
   values: any[]
   onValuesChange: (values: any[]) => void
+  schema: MetaResponse | null
 }

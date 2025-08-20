@@ -8,9 +8,10 @@
  * - No input for set/notSet operators
  */
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useFilterValues } from '../../hooks/useFilterValues'
+import { useDebounce } from '../../hooks/useDebounce'
 import type { FilterValueSelectorProps } from './types'
 import { FILTER_OPERATORS } from './types'
 
@@ -18,19 +19,41 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   fieldName,
   operator,
   values,
-  onValuesChange
+  onValuesChange,
+  schema
 }) => {
   const operatorMeta = FILTER_OPERATORS[operator]
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const lastSearchedTerm = useRef<string>('')
   
-  // Fetch distinct values for combo box (only for equals/notEquals)
-  const shouldFetchValues = operator === 'equals' || operator === 'notEquals'
+  // Debounce the search text
+  const debouncedSearchText = useDebounce(searchText, 300)
+  
+  // Check if the field is a dimension (not a measure)
+  const isDimension = useMemo(() => schema ? schema.cubes.some(cube => 
+    cube.dimensions.some(dim => dim.name === fieldName)
+  ) : false, [schema, fieldName])
+  
+  // Check if the field is a time dimension
+  const isTimeDimension = useMemo(() => schema ? schema.cubes.some(cube => 
+    cube.dimensions.some(dim => dim.name === fieldName && dim.type === 'time')
+  ) : false, [schema, fieldName])
+  
+  // Fetch distinct values for combo box (only for equals/notEquals on non-time dimensions)
+  const shouldFetchValues = useMemo(() => 
+    (operator === 'equals' || operator === 'notEquals') && isDimension && !isTimeDimension,
+    [operator, isDimension, isTimeDimension]
+  )
+  const shouldShowComboBox = shouldFetchValues
+  
   const { 
     values: distinctValues, 
     loading: valuesLoading, 
-    error: valuesError 
+    error: valuesError,
+    searchValues
   } = useFilterValues(fieldName, shouldFetchValues)
   
   // Close dropdown when clicking outside
@@ -45,13 +68,43 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
   
-  // Filter values based on search text
-  const filteredValues = distinctValues.filter(value => 
-    String(value).toLowerCase().includes(searchText.toLowerCase())
-  )
+  // Load initial values when dropdown opens
+  useEffect(() => {
+    if (isOpen && shouldFetchValues && searchValues) {
+      searchValues('', true) // Force load with empty search
+      setHasLoadedInitial(true)
+      lastSearchedTerm.current = ''
+    }
+  }, [isOpen, shouldFetchValues, searchValues])
+  
+  // Trigger search when debounced search text changes
+  useEffect(() => {
+    if (hasLoadedInitial && shouldFetchValues && searchValues && debouncedSearchText !== lastSearchedTerm.current) {
+      lastSearchedTerm.current = debouncedSearchText
+      searchValues(debouncedSearchText)
+    }
+  }, [debouncedSearchText, hasLoadedInitial, shouldFetchValues, searchValues])
+  
+  // Handle dropdown toggle
+  const handleDropdownToggle = useCallback(() => {
+    const newIsOpen = !isOpen
+    setIsOpen(newIsOpen)
+    
+    // Reset search when closing dropdown
+    if (!newIsOpen) {
+      setSearchText('')
+      lastSearchedTerm.current = ''
+    }
+  }, [isOpen])
+  
+  // Handle search input change
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSearchText = e.target.value
+    setSearchText(newSearchText)
+  }, [])
   
   // Handle value selection for combo box
-  const handleValueSelect = (value: any) => {
+  const handleValueSelect = useCallback((value: any) => {
     if (operatorMeta.supportsMultipleValues) {
       // Add to selection if not already selected
       if (!values.includes(value)) {
@@ -62,16 +115,18 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       onValuesChange([value])
       setIsOpen(false)
     }
+    // Clear search after selection
     setSearchText('')
-  }
+  }, [operatorMeta.supportsMultipleValues, values, onValuesChange])
   
   // Handle value removal for multi-select
-  const handleValueRemove = (valueToRemove: any) => {
+  const handleValueRemove = useCallback((valueToRemove: any) => {
     onValuesChange(values.filter(v => v !== valueToRemove))
-  }
+  }, [values, onValuesChange])
   
   // Handle direct text input for non-combo operators
-  const handleDirectInput = (value: string) => {
+  const handleDirectInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
     if (operatorMeta.valueType === 'number') {
       const numValue = parseFloat(value)
       if (!isNaN(numValue)) {
@@ -82,10 +137,11 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     } else {
       onValuesChange(value ? [value] : [])
     }
-  }
+  }, [operatorMeta.valueType, onValuesChange])
   
   // Handle date input
-  const handleDateInput = (value: string) => {
+  const handleDateInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
     if (operator === 'inDateRange') {
       // For date range, we need two values
       const currentValues = values.length >= 2 ? values : ['', '']
@@ -94,12 +150,13 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       // Single date value
       onValuesChange(value ? [value] : [])
     }
-  }
+  }, [operator, values, onValuesChange])
   
-  const handleDateRangeEndInput = (value: string) => {
+  const handleDateRangeEndInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
     const currentValues = values.length >= 2 ? values : ['', '']
     onValuesChange([currentValues[0], value])
-  }
+  }, [values, onValuesChange])
   
   // Render based on operator type
   if (!operatorMeta.requiresValues) {
@@ -118,14 +175,14 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         <input
           type="date"
           value={values[0] || ''}
-          onChange={(e) => handleDateInput(e.target.value)}
+          onChange={handleDateInput}
           className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         <span className="text-sm text-gray-500">to</span>
         <input
           type="date"
           value={values[1] || ''}
-          onChange={(e) => handleDateRangeEndInput(e.target.value)}
+          onChange={handleDateRangeEndInput}
           className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
@@ -138,7 +195,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       <input
         type="date"
         value={values[0] || ''}
-        onChange={(e) => handleDateInput(e.target.value)}
+        onChange={handleDateInput}
         className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
@@ -150,14 +207,67 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       <input
         type="number"
         value={values[0] || ''}
-        onChange={(e) => handleDirectInput(e.target.value)}
+        onChange={handleDirectInput}
         placeholder="Enter number"
         className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
   }
   
-  if (shouldFetchValues && distinctValues.length > 0) {
+  // Time dimension with equals/notEquals - use date picker
+  if (isTimeDimension && (operator === 'equals' || operator === 'notEquals')) {
+    if (operatorMeta.supportsMultipleValues) {
+      // Multi-select date picker (for notEquals that supports multiple values)
+      return (
+        <div className="space-y-2">
+          {/* Selected dates display */}
+          {values.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {values.map((value, index) => (
+                <div
+                  key={index}
+                  className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200"
+                >
+                  <span className="mr-1">{String(value)}</span>
+                  <button
+                    onClick={() => handleValueRemove(value)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  >
+                    <XMarkIcon className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Add new date */}
+          <input
+            type="date"
+            onChange={(e) => {
+              if (e.target.value && !values.includes(e.target.value)) {
+                onValuesChange([...values, e.target.value])
+                e.target.value = '' // Clear the input
+              }
+            }}
+            className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Add date..."
+          />
+        </div>
+      )
+    } else {
+      // Single date picker
+      return (
+        <input
+          type="date"
+          value={values[0] || ''}
+          onChange={handleDateInput}
+          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      )
+    }
+  }
+  
+  if (shouldShowComboBox) {
     // Combo box with API-fetched values
     return (
       <div className="relative" ref={dropdownRef}>
@@ -198,11 +308,11 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         
         {/* Dropdown trigger */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleDropdownToggle}
           className="w-full text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
         >
           <span className="text-gray-500">
-            {valuesLoading ? 'Loading values...' : 'Select value...'}
+            {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
           </span>
           <ChevronDownIcon className="w-4 h-4 text-gray-400" />
         </button>
@@ -215,7 +325,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
               <input
                 type="text"
                 value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
+                onChange={handleSearchChange}
                 placeholder="Search values..."
                 className="w-full text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
@@ -224,20 +334,25 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
             
             {/* Values list */}
             <div className="max-h-48 overflow-y-auto">
-              {valuesError ? (
+              {valuesLoading ? (
+                <div className="p-2 text-sm text-gray-500">
+                  {searchText ? 'Searching...' : 'Loading values...'}
+                </div>
+              ) : valuesError ? (
                 <div className="p-2 text-sm text-red-600">
                   Error loading values: {valuesError}
                 </div>
-              ) : filteredValues.length === 0 ? (
+              ) : distinctValues.length === 0 ? (
                 <div className="p-2 text-sm text-gray-500">
                   {searchText ? 'No matching values' : 'No values available'}
                 </div>
               ) : (
-                filteredValues.map((value, index) => {
+                distinctValues.map((value, index) => {
                   const isSelected = values.includes(value)
+                  
                   return (
                     <button
-                      key={index}
+                      key={`${value}-${index}`}
                       onClick={() => handleValueSelect(value)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
                         isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
@@ -263,7 +378,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     <input
       type="text"
       value={values[0] || ''}
-      onChange={(e) => handleDirectInput(e.target.value)}
+      onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
       className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
     />

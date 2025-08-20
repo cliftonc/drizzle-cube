@@ -168,7 +168,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleCopyQuery}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     title="Copy query to clipboard"
                   >
                     <ClipboardDocumentIcon className="w-3 h-3" />
@@ -201,7 +201,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4 max-h-96 overflow-y-auto">
+      <div className="p-4">
         {!hasContent ? (
           <div className="py-8 flex items-center justify-center text-gray-500">
             <div className="text-center">
@@ -364,7 +364,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   ? 'bg-green-100 text-green-800 border border-green-200 hover:bg-green-200'
                   : validationStatus === 'invalid'
                   ? 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-200'
-                  : 'bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200'
+                  : 'bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-200'
               }`}
             >
               {validationStatus === 'validating' ? (

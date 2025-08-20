@@ -11,6 +11,7 @@ interface UseCubeQueryResult {
   resultSet: CubeResultSet | null
   isLoading: boolean
   error: Error | null
+  queryId: string | null
 }
 
 export function useCubeQuery(
@@ -18,9 +19,14 @@ export function useCubeQuery(
   options: CubeQueryOptions = {}
 ): UseCubeQueryResult {
   const { cubeApi } = useCubeContext()
-  const [resultSet, setResultSet] = useState<CubeResultSet | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+  
+  // Use a single state object to ensure atomic updates
+  const [state, setState] = useState<UseCubeQueryResult>({
+    resultSet: null,
+    isLoading: false,
+    error: null,
+    queryId: null
+  })
   
   // Track the last query to avoid unnecessary re-fetches
   const lastQueryRef = useRef<string>('')
@@ -40,29 +46,48 @@ export function useCubeQuery(
     }
 
     lastQueryRef.current = queryString
+    
+    // Create a unique ID for this query execution
+    const queryId = `${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-    // Reset result set if requested
-    if (options.resetResultSetOnChange) {
-      setResultSet(null)
-    }
-
-    setIsLoading(true)
-    setError(null)
+    // Update state atomically with new query ID and loading state
+    setState(prevState => ({
+      resultSet: options.resetResultSetOnChange ? null : prevState.resultSet,
+      isLoading: true,
+      error: null,
+      queryId
+    }))
 
     cubeApi.load(query)
       .then((result) => {
-        setResultSet(result)
-        setIsLoading(false)
+        setState(prevState => {
+          // Only update if this is still the current query
+          if (prevState.queryId === queryId) {
+            return {
+              resultSet: result,
+              isLoading: false,
+              error: null,
+              queryId
+            }
+          }
+          return prevState
+        })
       })
       .catch((err) => {
-        setError(err instanceof Error ? err : new Error(String(err)))
-        setIsLoading(false)
+        setState(prevState => {
+          // Only update if this is still the current query
+          if (prevState.queryId === queryId) {
+            return {
+              resultSet: null,
+              isLoading: false,
+              error: err instanceof Error ? err : new Error(String(err)),
+              queryId
+            }
+          }
+          return prevState
+        })
       })
   }, [query, cubeApi, options.skip, options.resetResultSetOnChange])
 
-  return {
-    resultSet,
-    isLoading,
-    error
-  }
+  return state
 }

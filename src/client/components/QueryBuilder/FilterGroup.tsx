@@ -244,7 +244,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
             No conditions in this group.
             <button
               onClick={handleAddSimpleFilter}
-              className="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none underline"
+              className="ml-2 text-purple-600 hover:text-purple-800 focus:outline-none underline"
             >
               Add a filter
             </button>

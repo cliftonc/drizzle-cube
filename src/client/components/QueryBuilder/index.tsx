@@ -507,10 +507,10 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   return (
     <CubeProvider cubeApi={cubeClient}>
-      <div className={`h-full ${className}`} style={{ display: 'block', position: 'relative' }}>
+      <div className={`h-full flex flex-col ${className}`} style={{ minHeight: '100%' }}>
         {/* Setup Panel - only show when not in modal and not hidden */}
         {!hideSettings && (
-          <div className="p-4 pb-0">
+          <div className="flex-shrink-0 p-4 pb-0">
             <SetupPanel
               isOpen={showSetupPanel}
               onToggle={() => setShowSetupPanel(!showSetupPanel)}
@@ -521,26 +521,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           </div>
         )}
         
-        <div 
-          className="h-full gap-4 p-4" 
-          style={{ 
-            display: 'flex', 
-            flexDirection: 'row', 
-            height: hideSettings ? '100%' : 'calc(100% - 0rem)',
-            gap: '1rem',
-            padding: '1rem',
-            paddingTop: hideSettings ? '1rem' : '0rem'
-          }}
-        >
+        <div className="flex-1 flex flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
         {/* Schema Explorer - Left Column (1/3 width) */}
-        <div 
-          className="w-1/3 min-w-0" 
-          style={{ 
-            width: '33.333333%', 
-            minWidth: '0',
-            flex: '0 0 33.333333%'
-          }}
-        >
+        <div className="w-1/3 min-w-0 flex-shrink-0 flex flex-col">
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}
@@ -554,21 +537,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         </div>
 
         {/* Right Column - Query Builder + Results (2/3 width) */}
-        <div 
-          className="flex-1 flex flex-col gap-4 min-w-0" 
-          style={{ 
-            flex: '1 1 0%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            minWidth: '0'
-          }}
-        >
+        <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
           {/* Query Builder - Upper Right */}
-          <div 
-            className="flex-shrink-0" 
-            style={{ flexShrink: 0 }}
-          >
+          <div className="flex-shrink-0">
             <QueryPanel
               query={state.query}
               schema={state.schema}
@@ -587,14 +558,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           </div>
 
           {/* Results Panel - Lower Right */}
-          <div 
-            className={`${state.executionStatus === 'idle' ? 'flex-shrink-0 h-48' : 'flex-1 min-h-[400px]'}`}
-            style={{ 
-              ...(state.executionStatus === 'idle' 
-                ? { flexShrink: 0, height: '12rem' }
-                : { flex: '1 1 0%', minHeight: '400px' })
-            }}
-          >
+          <div className={`${state.executionStatus === 'idle' ? 'flex-shrink-0 h-48' : 'flex-1 min-h-0'}`}>
             <ResultsPanel
               executionStatus={state.executionStatus}
               executionResults={state.executionResults}

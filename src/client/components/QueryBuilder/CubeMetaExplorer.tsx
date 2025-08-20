@@ -278,7 +278,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
+    <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-lg min-h-0">
       {/* Header */}
       <div className="p-3 border-b border-gray-200">
         <h3 className="text-base font-semibold text-gray-900 mb-2">Schema Explorer</h3>
@@ -301,7 +301,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       </div>
 
       {/* Cubes */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 p-3 space-y-2 min-h-0 overflow-y-auto">
         {schema.cubes.map((cube: MetaCube) => {
           const isExpanded = expandedCubes.has(cube.name)
           const timeDimensions = cube.dimensions.filter(d => d.type === 'time')
