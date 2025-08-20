@@ -18,31 +18,43 @@ import {
   createSimpleFilter, 
   createAndFilter, 
   createOrFilter,
-  countFilters
+  countFilters,
+  getFilterableFields
 } from './utils'
 
 const FilterBuilder: React.FC<FilterBuilderProps> = ({
   filters,
   schema,
+  query,
   onFiltersChange
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false)
   
   const totalFilterCount = countFilters(filters)
   
+  // Get filterable fields from currently selected query fields
+  const filterableFields = schema ? getFilterableFields(schema, query) : []
+  const hasFilterableFields = filterableFields.length > 0
+  
   const handleAddSimpleFilter = () => {
+    if (!hasFilterableFields) return
+    
     const newFilter = createSimpleFilter('', 'equals', [])
     onFiltersChange([...filters, newFilter])
     setShowAddMenu(false)
   }
   
   const handleAddAndGroup = () => {
+    if (!hasFilterableFields) return
+    
     const newGroup = createAndFilter([createSimpleFilter('', 'equals', [])])
     onFiltersChange([...filters, newGroup])
     setShowAddMenu(false)
   }
   
   const handleAddOrGroup = () => {
+    if (!hasFilterableFields) return
+    
     const newGroup = createOrFilter([createSimpleFilter('', 'equals', [])])
     onFiltersChange([...filters, newGroup])
     setShowAddMenu(false)
@@ -100,7 +112,12 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowAddMenu(!showAddMenu)}
-              className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!hasFilterableFields}
+              className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-none focus:ring-2 ${
+                hasFilterableFields
+                  ? 'text-blue-700 bg-blue-100 border border-blue-200 hover:bg-blue-200 focus:ring-blue-500'
+                  : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+              }`}
             >
               <PlusIcon className="w-3 h-3" />
               <span>Add Filter</span>
@@ -140,15 +157,24 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
         {filters.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <FunnelIcon className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-            <div className="text-sm font-medium mb-1">No filters applied</div>
-            <div className="text-xs mb-3">Add filters to narrow down your results</div>
-            <button
-              onClick={handleAddSimpleFilter}
-              className="inline-flex items-center space-x-1 px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <PlusIcon className="w-4 h-4" />
-              <span>Add your first filter</span>
-            </button>
+            {hasFilterableFields ? (
+              <>
+                <div className="text-sm font-medium mb-1">No filters applied</div>
+                <div className="text-xs mb-3">Add filters to narrow down your results</div>
+                <button
+                  onClick={handleAddSimpleFilter}
+                  className="inline-flex items-center space-x-1 px-3 py-1 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  <span>Add your first filter</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-medium mb-1">No fields selected</div>
+                <div className="text-xs">Select measures, dimensions, or time dimensions first to enable filtering</div>
+              </>
+            )}
           </div>
         ) : (
           filters.map((filter, index) => {
@@ -161,6 +187,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   onFilterChange={handleFilterChange}
                   onFilterRemove={handleFilterRemove}
                   schema={schema}
+                  query={query}
                 />
               )
             } else if (isAndFilter(filter) || isOrFilter(filter)) {
@@ -172,6 +199,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   onGroupChange={handleGroupChange}
                   onGroupRemove={handleGroupRemove}
                   schema={schema}
+                  query={query}
                   depth={0}
                 />
               )

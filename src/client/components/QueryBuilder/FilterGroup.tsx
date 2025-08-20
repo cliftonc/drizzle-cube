@@ -25,6 +25,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   onGroupChange,
   onGroupRemove,
   schema,
+  query,
   depth = 0
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -201,6 +202,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
                 onFilterChange={handleFilterChange}
                 onFilterRemove={handleFilterRemove}
                 schema={schema}
+                query={query}
               />
             )
           } else if (isAndFilter(filter) || isOrFilter(filter)) {
@@ -212,6 +214,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
                 onGroupChange={handleNestedGroupChange}
                 onGroupRemove={handleNestedGroupRemove}
                 schema={schema}
+                query={query}
                 depth={depth + 1}
               />
             )

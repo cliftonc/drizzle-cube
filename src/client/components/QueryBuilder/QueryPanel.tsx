@@ -275,6 +275,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               <FilterBuilder
                 filters={query.filters || []}
                 schema={schema}
+                query={query}
                 onFiltersChange={onFiltersChange}
               />
             </div>

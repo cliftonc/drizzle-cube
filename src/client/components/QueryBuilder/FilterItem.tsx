@@ -16,7 +16,8 @@ const FilterItem: React.FC<FilterItemProps> = ({
   index,
   onFilterChange,
   onFilterRemove,
-  schema
+  schema,
+  query
 }) => {
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
@@ -29,10 +30,32 @@ const FilterItem: React.FC<FilterItemProps> = ({
     )
   }
   
-  const filterableFields = getFilterableFields(schema)
+  const filterableFields = getFilterableFields(schema, query)
   const selectedField = filterableFields.find(f => f.name === filter.member)
   const fieldType = selectedField ? selectedField.type : 'string'
   const availableOperators = getAvailableOperators(fieldType)
+  
+  // If no filterable fields are available, show a message
+  if (filterableFields.length === 0) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="text-yellow-600 text-sm">
+              ⚠️ No fields available for filtering. Select measures, dimensions, or time dimensions first.
+            </div>
+          </div>
+          <button
+            onClick={() => onFilterRemove(index)}
+            className="text-gray-400 hover:text-red-600 focus:outline-none"
+            title="Remove filter"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    )
+  }
   
   const handleFieldChange = (fieldName: string) => {
     // When field changes, reset operator and values

@@ -21,7 +21,7 @@ import type {
   ApiConfig
 } from './types'
 import type { Filter } from '../../types'
-import { createEmptyQuery, hasQueryContent, cleanQuery } from './utils'
+import { createEmptyQuery, hasQueryContent, cleanQuery, cleanupFilters } from './utils'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
 const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
@@ -237,11 +237,18 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   const updateQuery = useCallback((updater: (prev: typeof state.query) => typeof state.query) => {
     setState(prev => {
       const newQuery = updater(prev.query)
-      const queryChanged = JSON.stringify(newQuery) !== JSON.stringify(prev.query)
+      
+      // Clean up filters to remove any that reference fields no longer in the query
+      const cleanedQuery = {
+        ...newQuery,
+        filters: newQuery.filters ? cleanupFilters(newQuery.filters, newQuery) : undefined
+      }
+      
+      const queryChanged = JSON.stringify(cleanedQuery) !== JSON.stringify(prev.query)
       
       return {
         ...prev,
-        query: newQuery,
+        query: cleanedQuery,
         // Only reset validation if query actually changed
         validationStatus: queryChanged ? 'idle' : prev.validationStatus,
         validationError: queryChanged ? null : prev.validationError,

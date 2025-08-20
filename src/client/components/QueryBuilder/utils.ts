@@ -214,15 +214,41 @@ export function flattenFilters(filters: Filter[]): SimpleFilter[] {
 /**
  * Get all filterable fields from schema (measures, dimensions, and time dimensions)
  */
-export function getFilterableFields(schema: MetaResponse): MetaField[] {
-  const fields: MetaField[] = []
+export function getFilterableFields(schema: MetaResponse, query?: CubeQuery): MetaField[] {
+  const allFields: MetaField[] = []
   
   schema.cubes.forEach(cube => {
-    fields.push(...cube.measures)
-    fields.push(...cube.dimensions)
+    allFields.push(...cube.measures)
+    allFields.push(...cube.dimensions)
   })
   
-  return fields.sort((a, b) => a.name.localeCompare(b.name))
+  // If no query provided, return all fields
+  if (!query) {
+    return allFields.sort((a, b) => a.name.localeCompare(b.name))
+  }
+  
+  // Get currently selected fields from the query
+  const selectedFields = new Set<string>()
+  
+  // Add measures
+  if (query.measures) {
+    query.measures.forEach(measure => selectedFields.add(measure))
+  }
+  
+  // Add dimensions
+  if (query.dimensions) {
+    query.dimensions.forEach(dimension => selectedFields.add(dimension))
+  }
+  
+  // Add time dimensions
+  if (query.timeDimensions) {
+    query.timeDimensions.forEach(td => selectedFields.add(td.dimension))
+  }
+  
+  // Filter to only include selected fields
+  const filterableFields = allFields.filter(field => selectedFields.has(field.name))
+  
+  return filterableFields.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
@@ -351,4 +377,53 @@ export function createOrFilter(filters: Filter[] = []): OrFilter {
   return {
     or: filters
   }
+}
+
+/**
+ * Clean up filters by removing any that reference fields not in the current query
+ */
+export function cleanupFilters(filters: Filter[], query: CubeQuery): Filter[] {
+  if (!filters || filters.length === 0) {
+    return []
+  }
+  
+  // Get currently selected fields from the query
+  const selectedFields = new Set<string>()
+  
+  // Add measures
+  if (query.measures) {
+    query.measures.forEach(measure => selectedFields.add(measure))
+  }
+  
+  // Add dimensions
+  if (query.dimensions) {
+    query.dimensions.forEach(dimension => selectedFields.add(dimension))
+  }
+  
+  // Add time dimensions
+  if (query.timeDimensions) {
+    query.timeDimensions.forEach(td => selectedFields.add(td.dimension))
+  }
+  
+  // Recursively clean filters
+  const cleanFilter = (filter: Filter): Filter | null => {
+    if (isSimpleFilter(filter)) {
+      // Remove filter if its field is not selected
+      return selectedFields.has(filter.member) ? filter : null
+    } else if (isAndFilter(filter)) {
+      // Clean AND group recursively
+      const cleanedFilters = filter.and.map(cleanFilter).filter(f => f !== null) as Filter[]
+      return cleanedFilters.length > 0 ? { and: cleanedFilters } : null
+    } else if (isOrFilter(filter)) {
+      // Clean OR group recursively  
+      const cleanedFilters = filter.or.map(cleanFilter).filter(f => f !== null) as Filter[]
+      return cleanedFilters.length > 0 ? { or: cleanedFilters } : null
+    }
+    return null
+  }
+  
+  // Clean all filters and remove nulls
+  const cleanedFilters = filters.map(cleanFilter).filter(f => f !== null) as Filter[]
+  
+  return cleanedFilters
 }

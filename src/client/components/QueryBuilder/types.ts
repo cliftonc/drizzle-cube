@@ -281,6 +281,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
 export interface FilterBuilderProps {
   filters: Filter[]
   schema: MetaResponse | null
+  query: CubeQuery
   onFiltersChange: (filters: Filter[]) => void
 }
 
@@ -290,6 +291,7 @@ export interface FilterItemProps {
   onFilterChange: (index: number, filter: SimpleFilter) => void
   onFilterRemove: (index: number) => void
   schema: MetaResponse | null
+  query: CubeQuery
 }
 
 export interface FilterGroupProps {
@@ -298,6 +300,7 @@ export interface FilterGroupProps {
   onGroupChange: (index: number, group: AndFilter | OrFilter) => void
   onGroupRemove: (index: number) => void
   schema: MetaResponse | null
+  query: CubeQuery
   depth: number
 }
 
