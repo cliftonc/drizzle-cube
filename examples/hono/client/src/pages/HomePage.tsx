@@ -72,7 +72,7 @@ export default function HomePage() {
           </Link>
           
           <a
-            href="http://localhost:5174"
+            href="https://www.drizzle-cube.dev"
             target="_blank"
             rel="noopener noreferrer"
             className="group bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation"
