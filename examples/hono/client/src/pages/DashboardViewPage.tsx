@@ -137,10 +137,30 @@ export default function DashboardViewPage() {
             </ol>
           </nav>
           
-          <h1 className="mt-2 text-xl sm:text-2xl font-semibold text-gray-900">{page.name}</h1>
-          {page.description && (
-            <p className="mt-1 text-sm text-gray-700 leading-relaxed">{page.description}</p>
-          )}
+          <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{page.name}</h1>
+              {page.description && (
+                <p className="mt-1 text-sm text-gray-700 leading-relaxed">{page.description}</p>
+              )}
+            </div>
+            
+            {/* Reset/Edit buttons aligned with title */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
+              >
+                Reset Dashboard
+              </button>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
+              >
+                Edit Dashboard
+              </button>
+            </div>
+          </div>
           
           <div className="mt-4 px-4 py-3 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
             <div className="flex items-start">
@@ -155,22 +175,6 @@ export default function DashboardViewPage() {
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Mobile-first button layout */}
-        <div className="mt-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
-          >
-            Reset Dashboard
-          </button>
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
-          >
-            Edit Dashboard
-          </button>
         </div>
       </div>
 

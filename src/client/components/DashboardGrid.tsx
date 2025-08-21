@@ -396,6 +396,7 @@ export default function DashboardGrid({
         isResizable={editable}
         draggableHandle=".portlet-drag-handle"
         margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
+        containerPadding={[0, 0]}
         rowHeight={80}
         compactType="vertical"
         preventCollision={false}

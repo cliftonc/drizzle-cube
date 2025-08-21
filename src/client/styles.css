@@ -8,3 +8,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Override react-grid-layout outer container margins */
+.react-grid-layout {
+  margin: 0 !important;
+}
