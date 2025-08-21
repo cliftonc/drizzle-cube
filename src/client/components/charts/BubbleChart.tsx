@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import ChartContainer from './ChartContainer'
-import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
+import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
@@ -102,8 +102,8 @@ export default function BubbleChart({
       return
     }
 
-    const xAxisField = chartConfig.xAxis[0]
-    const yAxisField = chartConfig.yAxis[0]
+    const xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
+    const yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis
     const seriesField = Array.isArray(chartConfig.series) ? chartConfig.series[0] : chartConfig.series
     const sizeFieldName = Array.isArray(chartConfig.sizeField) ? chartConfig.sizeField[0] : chartConfig.sizeField || yAxisField
     const colorFieldName = Array.isArray(chartConfig.colorField) ? chartConfig.colorField[0] : chartConfig.colorField
@@ -149,7 +149,7 @@ export default function BubbleChart({
     const margin = { 
       ...CHART_MARGINS, 
       left: CHART_MARGINS.left + 30,  // Add extra 30px left margin for Y-axis label
-      bottom: safeDisplayConfig.showLegend ? 70 : 40  // Add extra 10px bottom margin
+      bottom: (safeDisplayConfig.showLegend && colorFieldName) ? 100 : 40  // Add extra space for legend
     }
     const width = dimensions.width - margin.left - margin.right
     const chartHeight = dimensions.height - margin.top - margin.bottom
@@ -177,17 +177,31 @@ export default function BubbleChart({
       .range([safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize])
 
     // Set up color scale
-    let colorScale: d3.ScaleOrdinal<string, string> | d3.ScaleSequential<string>
-    const uniqueColors = colorFieldName ? [...new Set(bubbleData.map(d => String(d.color)))] : []
+    let colorScale: d3.ScaleOrdinal<string, string> | d3.ScaleQuantize<string>
+    let isNumericColorField = false
+    let uniqueColors: string[] = []
     
-    if (colorFieldName && uniqueColors.length > 0) {
-      if (typeof bubbleData[0].color === 'number') {
-        // Numeric color field - use sequential scale
-        const colorExtent = d3.extent(bubbleData, d => d.color as number) as [number, number]
-        colorScale = d3.scaleSequential(d3.interpolateViridis)
-          .domain(colorExtent)
+    if (colorFieldName && bubbleData.length > 0) {
+      // Check if color field is numeric for color scaling (same logic as TreeMapChart)
+      const colorValues = bubbleData.map(item => {
+        const value = item.color
+        return typeof value === 'string' ? parseFloat(value) : value
+      }).filter((val): val is number => !isNaN(val as number))
+      
+      isNumericColorField = colorValues.length === bubbleData.length && colorValues.every(val => typeof val === 'number')
+      
+      if (isNumericColorField) {
+        // Use D3 quantize scale for better color distribution with small ranges
+        const minValue = Math.min(...colorValues)
+        const maxValue = Math.max(...colorValues)
+        
+        // Create D3 quantize color scale - maps continuous data to discrete color bands
+        colorScale = d3.scaleQuantize<string>()
+          .domain([minValue, maxValue])
+          .range(CHART_COLORS_GRADIENT)
       } else {
         // Categorical color field - use CHART_COLORS
+        uniqueColors = [...new Set(bubbleData.map(d => String(d.color)))]
         colorScale = d3.scaleOrdinal<string>()
           .domain(uniqueColors)
           .range(CHART_COLORS)
@@ -270,8 +284,8 @@ export default function BubbleChart({
       .attr('r', d => sizeScale(d.size))
       .style('fill', d => {
         if (colorFieldName && d.color !== undefined) {
-          return typeof d.color === 'number' 
-            ? (colorScale as d3.ScaleSequential<string>)(d.color)
+          return isNumericColorField
+            ? (colorScale as d3.ScaleQuantize<string>)(d.color as number)
             : (colorScale as d3.ScaleOrdinal<string, string>)(String(d.color))
         }
         return CHART_COLORS[0]
@@ -332,54 +346,120 @@ export default function BubbleChart({
 
     // Add legend if needed
     if (safeDisplayConfig.showLegend && colorFieldName) {
-      const legendItems = typeof bubbleData[0].color === 'string' ? uniqueColors : []
-
-      if (legendItems.length > 0) {
+      if (isNumericColorField) {
+        // Create gradient legend for numeric color field
+        const legendWidth = 200
+        const legendHeight = 20
+        const minValue = Math.min(...bubbleData.map(d => d.color as number))
+        const maxValue = Math.max(...bubbleData.map(d => d.color as number))
+        
         const legend = g.append('g')
-          .attr('class', 'legend')
-          .attr('transform', `translate(${width / 2 - (legendItems.length * 80) / 2}, ${chartHeight + 45})`)
+          .attr('class', 'color-legend')
+          .attr('transform', `translate(${width / 2 - legendWidth / 2}, ${chartHeight + 60})`)
 
-        const legendItem = legend.selectAll('.legend-item')
-          .data(legendItems)
-          .enter().append('g')
-          .attr('class', 'legend-item')
-          .attr('transform', (_d, i) => `translate(${i * 80}, 0)`)
-          .style('cursor', 'pointer')
+        // Create gradient definition
+        const defs = svg.append('defs')
+        const gradient = defs.append('linearGradient')
+          .attr('id', 'color-scale-gradient')
+          .attr('x1', '0%')
+          .attr('y1', '0%')
+          .attr('x2', '100%')
+          .attr('y2', '0%')
 
-        legendItem.append('circle')
-          .attr('cx', 5)
-          .attr('cy', 5)
-          .attr('r', 5)
-          .style('fill', d => (colorScale as d3.ScaleOrdinal<string, string>)(d as string))
-          .style('opacity', safeDisplayConfig.bubbleOpacity)
+        // Add color stops for the gradient
+        CHART_COLORS_GRADIENT.forEach((color, i) => {
+          gradient.append('stop')
+            .attr('offset', `${(i / (CHART_COLORS_GRADIENT.length - 1)) * 100}%`)
+            .attr('stop-color', color)
+        })
 
-        legendItem.append('text')
-          .attr('x', 15)
-          .attr('y', 5)
-          .attr('dy', '.35em')
+        // Add the gradient rectangle
+        legend.append('rect')
+          .attr('width', legendWidth)
+          .attr('height', legendHeight)
+          .style('fill', 'url(#color-scale-gradient)')
+          .style('stroke', '#ccc')
+          .style('stroke-width', 1)
+
+        // Add min value label
+        legend.append('text')
+          .attr('x', 0)
+          .attr('y', legendHeight + 15)
+          .attr('text-anchor', 'start')
           .style('font-size', '11px')
           .style('fill', 'currentColor')
-          .text(d => String(d))
+          .text(minValue.toFixed(2))
 
-        // Legend hover effects
-        legendItem
-          .on('mouseover', function(_event, legendKey) {
-            // Highlight matching bubbles
-            bubbles
-              .transition()
-              .duration(200)
-              .style('opacity', d => {
-                const matches = colorFieldName && String(d.color) === legendKey
-                return matches ? 1 : 0.2
-              })
-          })
-          .on('mouseout', function() {
-            // Reset all bubbles
-            bubbles
-              .transition()
-              .duration(200)
-              .style('opacity', safeDisplayConfig.bubbleOpacity)
-          })
+        // Add max value label
+        legend.append('text')
+          .attr('x', legendWidth)
+          .attr('y', legendHeight + 15)
+          .attr('text-anchor', 'end')
+          .style('font-size', '11px')
+          .style('fill', 'currentColor')
+          .text(maxValue.toFixed(2))
+
+        // Add field name label
+        legend.append('text')
+          .attr('x', legendWidth / 2)
+          .attr('y', -5)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '12px')
+          .style('font-weight', 'bold')
+          .style('fill', 'currentColor')
+          .text(getFieldLabel(colorFieldName))
+
+      } else {
+        // Original categorical legend
+        const legendItems = uniqueColors
+
+        if (legendItems.length > 0) {
+          const legend = g.append('g')
+            .attr('class', 'legend')
+            .attr('transform', `translate(${width / 2 - (legendItems.length * 80) / 2}, ${chartHeight + 60})`)
+
+          const legendItem = legend.selectAll('.legend-item')
+            .data(legendItems)
+            .enter().append('g')
+            .attr('class', 'legend-item')
+            .attr('transform', (_d, i) => `translate(${i * 80}, 0)`)
+            .style('cursor', 'pointer')
+
+          legendItem.append('circle')
+            .attr('cx', 5)
+            .attr('cy', 5)
+            .attr('r', 5)
+            .style('fill', d => (colorScale as d3.ScaleOrdinal<string, string>)(d as string))
+            .style('opacity', safeDisplayConfig.bubbleOpacity)
+
+          legendItem.append('text')
+            .attr('x', 15)
+            .attr('y', 5)
+            .attr('dy', '.35em')
+            .style('font-size', '11px')
+            .style('fill', 'currentColor')
+            .text(d => String(d))
+
+          // Legend hover effects
+          legendItem
+            .on('mouseover', function(_event, legendKey) {
+              // Highlight matching bubbles
+              bubbles
+                .transition()
+                .duration(200)
+                .style('opacity', d => {
+                  const matches = colorFieldName && String(d.color) === legendKey
+                  return matches ? 1 : 0.2
+                })
+            })
+            .on('mouseout', function() {
+              // Reset all bubbles
+              bubbles
+                .transition()
+                .duration(200)
+                .style('opacity', safeDisplayConfig.bubbleOpacity)
+            })
+        }
       }
     }
 
@@ -401,7 +481,8 @@ export default function BubbleChart({
   }
 
   // Validate that we have required fields
-  if (!chartConfig?.xAxis || !chartConfig?.yAxis || !chartConfig?.series) {
+  const hasValidConfig = chartConfig?.xAxis && chartConfig?.yAxis && chartConfig?.series
+  if (!hasValidConfig) {
     return (
       <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
         <div className="text-center">

@@ -9,7 +9,41 @@ export const productivityDashboardConfig = {
   order: 0,
   config: {
     portlets: [
-      // Top Row - Executive Overview
+      // New Top Row - Bubble Chart
+      {
+        id: 'productivity-bubble',
+        title: 'Productivity Metrics Correlation',
+        query: JSON.stringify({
+          measures: [
+            'Productivity.avgLinesOfCode',
+            'Productivity.avgPullRequests',
+            'Productivity.avgDeployments',
+            'Productivity.avgHappinessIndex'
+          ],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'week'
+          }]
+        }, null, 2),
+        chartType: 'bubble' as const,
+        chartConfig: {
+          xAxis: 'Productivity.avgPullRequests',
+          yAxis: 'Productivity.avgLinesOfCode',
+          series: 'Productivity.date',
+          sizeField: 'Productivity.avgDeployments',
+          colorField: 'Productivity.avgHappinessIndex'
+        },
+        displayConfig: {
+          showLegend: true,
+          stackedBarChart: false
+        },
+        w: 12,
+        h: 8,
+        x: 0,
+        y: 0
+      },
+      
+      // Second Row - Executive Overview
       {
         id: 'productivity-trends',
         title: 'Team Productivity Trends (Last 90 Days)',
@@ -38,7 +72,7 @@ export const productivityDashboardConfig = {
         w: 8,
         h: 6,
         x: 0,
-        y: 0
+        y: 8
       },
       {
         id: 'happiness-by-level',
@@ -65,10 +99,10 @@ export const productivityDashboardConfig = {
         w: 4,
         h: 6,
         x: 8,
-        y: 0
+        y: 8
       },
       
-      // Second Row - Department Comparison
+      // Third Row - Department Comparison
       {
         id: 'department-productivity',
         title: 'Productivity by Department',
@@ -90,7 +124,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 0,
-        y: 6
+        y: 14
       },
       {
         id: 'happiness-by-department',
@@ -113,10 +147,43 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 6,
-        y: 6
+        y: 14
       },
       
-      // Third Row - Individual Performance
+      // Fourth Row - Treemap Visualization
+      {
+        id: 'happiness-treemap',
+        title: 'Employee Happiness by Department (Treemap)',
+        query: JSON.stringify({
+          measures: [
+            'Productivity.avgHappinessIndex',
+            'Productivity.daysOffCount'
+          ],
+          dimensions: [
+            'Employees.name',
+            'Departments.name'
+          ],
+          cubes: ['Productivity', 'Employees', 'Departments']
+        }, null, 2),
+        chartType: 'treemap' as const,
+        chartConfig: {
+          xAxis: [
+            'Employees.name'
+          ],
+          yAxis: 'Productivity.avgHappinessIndex',
+          series: 'Departments.name'
+        },
+        displayConfig: {
+          showLegend: true,
+          stackedBarChart: false
+        },
+        w: 12,
+        h: 8,
+        x: 0,
+        y: 20
+      },
+      
+      // Fifth Row - Individual Performance
       {
         id: 'top-performers',
         title: 'Top Performers (Last 30 Days)',
@@ -135,7 +202,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 8,
         x: 0,
-        y: 12
+        y: 28
       },
       {
         id: 'work-life-balance',
@@ -158,10 +225,10 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 8,
         x: 6,
-        y: 12
+        y: 28
       },
       
-      // Fourth Row - Detailed Analytics
+      // Sixth Row - Detailed Analytics
       {
         id: 'code-output-trends',
         title: 'Code Output Trends by Month',
@@ -190,7 +257,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 0,
-        y: 20
+        y: 36
       },
       {
         id: 'deployment-frequency',
@@ -222,10 +289,10 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 6,
-        y: 20
+        y: 36
       },
       
-      // Fifth Row - Summary Table
+      // Seventh Row - Summary Table
       {
         id: 'productivity-summary',
         title: 'Comprehensive Productivity Summary',
@@ -249,7 +316,7 @@ export const productivityDashboardConfig = {
         w: 12,
         h: 10,
         x: 0,
-        y: 26
+        y: 42
       }
     ]
   }

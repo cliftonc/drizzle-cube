@@ -41,6 +41,15 @@ export interface ChartTypeConfig {
   
   /** Optional custom validation function */
   validate?: (config: any) => { isValid: boolean; message?: string }
+  
+  /** Icon component for the chart type */
+  icon?: ComponentType<{ className?: string }>
+  
+  /** Brief description of the chart */
+  description?: string
+  
+  /** When to use this chart type */
+  useCase?: string
 }
 
 /**

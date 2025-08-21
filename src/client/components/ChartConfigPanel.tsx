@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import AxisDropZone from './AxisDropZone'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
@@ -32,6 +32,52 @@ export default function ChartConfigPanel({
     getChartConfig(chartType, chartConfigRegistry),
     [chartType]
   )
+
+  // Get fields for each drop zone
+  const getFieldsForDropZone = (key: string): string[] => {
+    const value = chartConfig[key as keyof ChartAxisConfig]
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') return [value]
+    return []
+  }
+
+  // Clean up chart config when available fields change
+  useEffect(() => {
+    if (!availableFields) return
+
+    const allAvailableFields = [
+      ...availableFields.dimensions,
+      ...availableFields.timeDimensions,
+      ...availableFields.measures
+    ]
+
+    let hasChanges = false
+    const newConfig = { ...chartConfig }
+
+    // Check each axis and remove fields that are no longer available
+    chartTypeConfig.dropZones.forEach(dropZone => {
+      const currentFields = getFieldsForDropZone(dropZone.key)
+      const validFields = currentFields.filter(field => allAvailableFields.includes(field))
+      
+      if (validFields.length !== currentFields.length) {
+        hasChanges = true
+        if (validFields.length === 0) {
+          // Remove the axis property entirely if no valid fields remain
+          delete newConfig[dropZone.key as keyof ChartAxisConfig]
+        } else if (dropZone.maxItems === 1) {
+          // Single field axis - always store as string
+          newConfig[dropZone.key as keyof ChartAxisConfig] = validFields[0] as any
+        } else {
+          // Multi-field axis - always store as array
+          newConfig[dropZone.key as keyof ChartAxisConfig] = validFields as any
+        }
+      }
+    })
+
+    if (hasChanges) {
+      onChartConfigChange(newConfig)
+    }
+  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange])
 
   // Helper to determine field type and styling
   const getFieldType = (field: string): 'dimension' | 'timeDimension' | 'measure' => {
@@ -94,17 +140,17 @@ export default function ChartConfigPanel({
     
     // Add to new location
     const toValue = newConfig[toAxis as keyof ChartAxisConfig]
-    if (Array.isArray(toValue)) {
-      if (!toValue.includes(field)) {
-        newConfig[toAxis as keyof ChartAxisConfig] = [...toValue, field] as any
-      }
-    } else if (typeof toValue === 'string') {
+    const dropZoneConfig = chartTypeConfig.dropZones.find(dz => dz.key === toAxis)
+    
+    if (dropZoneConfig?.maxItems === 1) {
+      // Single field - always store as string
       newConfig[toAxis as keyof ChartAxisConfig] = field as any
     } else {
-      // Initialize as array or string based on config
-      const dropZoneConfig = chartTypeConfig.dropZones.find(dz => dz.key === toAxis)
-      if (dropZoneConfig?.maxItems === 1) {
-        newConfig[toAxis as keyof ChartAxisConfig] = field as any
+      // Multiple fields - always store as array
+      if (Array.isArray(toValue)) {
+        if (!toValue.includes(field)) {
+          newConfig[toAxis as keyof ChartAxisConfig] = [...toValue, field] as any
+        }
       } else {
         newConfig[toAxis as keyof ChartAxisConfig] = [field] as any
       }
@@ -124,14 +170,6 @@ export default function ChartConfigPanel({
     }
     
     onChartConfigChange(newConfig)
-  }
-
-  // Get fields for each drop zone
-  const getFieldsForDropZone = (key: string): string[] => {
-    const value = chartConfig[key as keyof ChartAxisConfig]
-    if (Array.isArray(value)) return value
-    if (typeof value === 'string') return [value]
-    return []
   }
 
   // Get unassigned fields

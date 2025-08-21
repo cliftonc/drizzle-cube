@@ -137,6 +137,13 @@ export interface AnalyticsPortletProps {
   displayConfig?: ChartDisplayConfig
   height?: string | number
   title?: string
+  onDebugDataReady?: (debugData: {
+    chartConfig: ChartAxisConfig
+    displayConfig: ChartDisplayConfig
+    queryObject: any
+    data: any[]
+    chartType: ChartType
+  }) => void
 }
 
 export interface AnalyticsDashboardProps {

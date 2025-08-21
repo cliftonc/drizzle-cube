@@ -9,6 +9,16 @@ export const CHART_COLORS = [
   '#84cc16', // lime
 ]
 
+// Gradient colors for continuous numeric scales using D3's Viridis scheme (good contrast for white text)
+export const CHART_COLORS_GRADIENT = [
+  '#440154', // dark purple
+  '#414487', // purple-blue
+  '#2a788e', // teal
+  '#22a884', // green-teal  
+  '#7ad151', // green
+  '#fde725', // yellow
+]
+
 // Colors for positive/negative values
 export const POSITIVE_COLOR = '#10b981' // green
 export const NEGATIVE_COLOR = '#ef4444' // red

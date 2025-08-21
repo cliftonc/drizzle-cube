@@ -11,7 +11,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     if (height === "100%") {
       // For 100% height, make the container fill the available flex space with proper sizing
       return (
-        <div className="w-full h-full flex-1 flex flex-col" style={{ minHeight: '250px', overflow: 'hidden' }}>
+        <div className="w-full h-full flex-1 flex flex-col relative" style={{ minHeight: '250px', overflow: 'hidden' }}>
           <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
             {children}
           </ResponsiveContainer>
@@ -27,7 +27,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     }
     
     return (
-      <div className="w-full flex flex-col" style={{ ...containerStyle, overflow: 'hidden' }}>
+      <div className="w-full flex flex-col relative" style={{ ...containerStyle, overflow: 'hidden' }}>
         <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
           {children}
         </ResponsiveContainer>

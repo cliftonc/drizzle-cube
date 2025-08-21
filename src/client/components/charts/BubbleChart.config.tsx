@@ -1,9 +1,14 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { Icon } from '@iconify/react'
+import chartBubbleIcon from '@iconify-icons/tabler/chart-bubble'
 
 /**
  * Configuration for the bubble chart type
  */
 export const bubbleChartConfig: ChartTypeConfig = {
+  icon: ({ className }) => <Icon icon={chartBubbleIcon} className={className} />,
+  description: 'Compare three dimensions of data',
+  useCase: 'Best for showing relationships between three variables (X, Y, and size), market analysis',
   dropZones: [
     {
       key: 'xAxis',

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Modal from './Modal'
 import QueryBuilder from './QueryBuilder'
 import ChartConfigPanel from './ChartConfigPanel'
+import ChartTypeSelector from './ChartTypeSelector'
 import { createCubeClient } from '../client/CubeClient'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
@@ -15,18 +16,6 @@ interface PortletEditModalProps {
   apiUrl?: string
 }
 
-const CHART_TYPES = [
-  { value: 'line' as const, label: 'Line Chart', description: 'Best for trends over time' },
-  { value: 'bar' as const, label: 'Bar Chart', description: 'Best for comparing categories' },
-  { value: 'area' as const, label: 'Area Chart', description: 'Best for cumulative trends' },
-  { value: 'pie' as const, label: 'Pie Chart', description: 'Best for showing proportions' },
-  { value: 'scatter' as const, label: 'Scatter Plot', description: 'Best for correlations between measures' },
-  { value: 'bubble' as const, label: 'Bubble Chart', description: 'Best for showing 3+ dimensions (X, Y, size, color)' },
-  { value: 'radar' as const, label: 'Radar Chart', description: 'Best for multi-dimensional comparisons' },
-  { value: 'radialBar' as const, label: 'Radial Bar Chart', description: 'Best for circular progress visualization' },
-  { value: 'treemap' as const, label: 'TreeMap', description: 'Best for hierarchical data visualization' },
-  { value: 'table' as const, label: 'Data Table', description: 'Best for detailed data view' }
-]
 
 const SAMPLE_QUERIES = [
   {
@@ -103,7 +92,6 @@ export default function PortletEditModal({
   const [dryRunData, setDryRunData] = useState<any>(null)
   const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({ xAxis: [], yAxis: [], series: [] })
   const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
-  const [originalQuery, setOriginalQuery] = useState<string>('')
   const [showQueryBuilder, setShowQueryBuilder] = useState(false)
   const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
   const queryBuilderRef = useRef<any>(null)
@@ -113,52 +101,10 @@ export default function PortletEditModal({
     return createCubeClient(undefined, { apiUrl })
   }, [apiUrl])
 
-  // Shared function to auto-populate chart config from validation result
-  const autoPopulateChartConfig = (result: any, queryText: string) => {
-    const queryHasChanged = queryText.trim() !== originalQuery.trim()
-    const shouldOverrideConfig = queryHasChanged || ((chartConfig.xAxis?.length ?? 0) === 0 && (chartConfig.yAxis?.length ?? 0) === 0 && (!chartConfig.series || chartConfig.series.length === 0))
-    
-    if (result.pivotQuery?.query && shouldOverrideConfig) {
-      const timeDimensions = result.pivotQuery.query.timeDimensions?.map((td: any) => td.dimension) || []
-      const regularDimensions = result.pivotQuery.query.dimensions || []
-      const allMeasures = result.pivotQuery.query.measures || []
-      
-      const isDateLikeDimension = (dim: string) => {
-        const lowerDim = dim.toLowerCase()
-        return lowerDim.includes('date') || 
-               lowerDim.includes('time') || 
-               lowerDim.includes('created') || 
-               lowerDim.includes('updated') ||
-               lowerDim.includes('month') ||
-               lowerDim.includes('year') ||
-               lowerDim.includes('quarter') ||
-               lowerDim.includes('day') ||
-               lowerDim.includes('period')
-      }
-      
-      const dateLikeDimensions = regularDimensions.filter(isDateLikeDimension)
-      const nonDateDimensions = regularDimensions.filter((dim: string) => !isDateLikeDimension(dim))
-      const allTimeDimensions = [...timeDimensions, ...dateLikeDimensions]
-      
-      let xAxisFields: string[] = []
-      let seriesFields: string[] = []
-      
-      if (allTimeDimensions.length > 0) {
-        xAxisFields = allTimeDimensions
-        seriesFields = nonDateDimensions
-      } else if (nonDateDimensions.length > 0) {
-        xAxisFields = [nonDateDimensions[0]]
-        seriesFields = nonDateDimensions.slice(1)
-      }
-      
-      const newConfig = {
-        xAxis: xAxisFields,
-        yAxis: allMeasures,
-        series: seriesFields
-      }
-      
-      setChartConfig(newConfig)
-    }
+  // Validation only - no automatic chart config changes
+  const autoPopulateChartConfig = (_result: any) => {
+    // Do nothing - let the chart configuration panel handle all axis assignments manually
+    // This preserves any existing user configuration and doesn't auto-assign fields
   }
   
   // Sensible defaults: slightly larger than 1/3 width with good aspect ratio
@@ -183,7 +129,6 @@ export default function PortletEditModal({
         setChartType(portlet.chartType)
         setChartConfig(portlet.chartConfig || { xAxis: [], yAxis: [], series: [] })
         setDisplayConfig(portlet.displayConfig || {})
-        setOriginalQuery(formattedQuery)
         setLastValidatedQuery(formattedQuery)
         setValidationResult({ isValid: true, message: 'Loaded query (assumed valid)' })
         setDryRunData(null)
@@ -199,7 +144,6 @@ export default function PortletEditModal({
         setChartType('bar')
         setChartConfig({ xAxis: [], yAxis: [], series: [] })
         setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
-        setOriginalQuery('')
         setLastValidatedQuery('')
         setValidationResult(null)
         setDryRunData(null)
@@ -262,6 +206,7 @@ export default function PortletEditModal({
     setValidationResult(null)
     setLastValidatedQuery('')
     setDryRunData(null)
+    // Sample queries always clear chart config since they're completely different
     setChartConfig({ xAxis: [], yAxis: [], series: [] })
   }
 
@@ -269,7 +214,10 @@ export default function PortletEditModal({
     setQuery(value)
     setValidationResult(null)
     setDryRunData(null)
-    setChartConfig({ xAxis: [], yAxis: [], series: [] })
+    // Only clear chart config for new portlets, preserve existing config for edits
+    if (!portlet) {
+      setChartConfig({ xAxis: [], yAxis: [], series: [] })
+    }
   }
 
   const runDryRunValidation = async (queryToValidate: string, silent = false, isEditModeLoad = false) => {
@@ -341,7 +289,7 @@ export default function PortletEditModal({
 
         // Auto-populate chart config with sensible defaults on successful validation
         if (!isEditModeLoad) {
-          autoPopulateChartConfig(result, queryToValidate)
+          autoPopulateChartConfig(result)
         }
       } else {
         if (!silent) {
@@ -421,7 +369,7 @@ export default function PortletEditModal({
       setDryRunData(validationResult)
       
       // Auto-populate chart config using the same logic as form validation
-      autoPopulateChartConfig(validationResult, formattedQuery)
+      autoPopulateChartConfig(validationResult)
     } else {
       // Reset validation state if query wasn't validated in QueryBuilder
       setValidationResult(null)
@@ -448,7 +396,6 @@ export default function PortletEditModal({
     setChartType('bar')
     setChartConfig({ xAxis: [], yAxis: [], series: [] })
     setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
-    setOriginalQuery('')
     setValidationResult(null)
     setIsValidating(false)
     setLastValidatedQuery('')
@@ -551,20 +498,13 @@ export default function PortletEditModal({
 
             {/* Chart Type */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Chart Type
               </label>
-              <select
-                value={chartType}
-                onChange={(e) => setChartType(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                {CHART_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label} - {type.description}
-                  </option>
-                ))}
-              </select>
+              <ChartTypeSelector
+                selectedType={chartType}
+                onTypeChange={setChartType}
+              />
             </div>
 
 

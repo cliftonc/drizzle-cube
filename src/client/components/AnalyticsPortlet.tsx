@@ -3,7 +3,7 @@
  * Simplified version with minimal dependencies
  */
 
-import { useMemo, useState, forwardRef, useImperativeHandle } from 'react'
+import { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useCubeQuery } from '../hooks/useCubeQuery'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import { 
@@ -31,9 +31,16 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   chartConfig, 
   displayConfig, 
   height = 300, 
-  title: _title 
+  title: _title,
+  onDebugDataReady
 }, ref) => {
   const [refreshCounter, setRefreshCounter] = useState(0)
+  const onDebugDataReadyRef = useRef(onDebugDataReady)
+  
+  // Update ref when callback changes
+  useEffect(() => {
+    onDebugDataReadyRef.current = onDebugDataReady
+  }, [onDebugDataReady])
 
   // Parse query from JSON string and include refresh counter to force re-query
   const queryObject = useMemo(() => {
@@ -62,6 +69,32 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       setRefreshCounter(prev => prev + 1)
     }
   }), [])
+
+  // Send debug data to parent when ready (must be before any returns)
+  useEffect(() => {
+    if (onDebugDataReadyRef.current && chartConfig && queryObject && resultSet && !error) {
+      const getData = () => {
+        switch (chartType) {
+          case 'pie':
+          case 'table':
+            return resultSet.tablePivot()
+          default:
+            return resultSet.rawData()
+        }
+      }
+      const data = getData()
+      
+      if (data) {
+        onDebugDataReadyRef.current({
+          chartConfig: chartConfig || {},
+          displayConfig: displayConfig || {},
+          queryObject,
+          data,
+          chartType
+        })
+      }
+    }
+  }, [chartConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided
   if (!chartConfig) {

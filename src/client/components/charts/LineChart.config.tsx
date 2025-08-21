@@ -1,9 +1,14 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { Icon } from '@iconify/react'
+import chartLineIcon from '@iconify-icons/tabler/chart-line'
 
 /**
  * Configuration for the line chart type
  */
 export const lineChartConfig: ChartTypeConfig = {
+  icon: ({ className }) => <Icon icon={chartLineIcon} className={className} />,
+  description: 'Show trends and changes over time',
+  useCase: 'Best for continuous data, trends, time series, and showing relationships between multiple series',
   dropZones: [
     {
       key: 'xAxis',

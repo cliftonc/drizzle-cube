@@ -9,6 +9,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout'
 import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
+import DebugModal from './DebugModal'
 import type { DashboardConfig, PortletConfig } from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
@@ -44,6 +45,15 @@ export default function DashboardGrid({
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
   const [editingPortlet, setEditingPortlet] = useState<PortletConfig | null>(null)
+
+  // Debug data state - keyed by portlet ID
+  const [debugData, setDebugData] = useState<{ [portletId: string]: {
+    chartConfig: any
+    displayConfig: any
+    queryObject: any
+    data: any[]
+    chartType: string
+  } }>({})
 
   // Set up initialization tracking
   useEffect(() => {
@@ -398,11 +408,24 @@ export default function DashboardGrid({
             className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
           {/* Portlet Header */}
-          <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg">
-            <div className="flex items-center gap-2 cursor-move flex-1 min-w-0 portlet-drag-handle">
+          <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg cursor-move portlet-drag-handle">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
+              {/* Debug button - right next to title, outside drag area */}
+              {debugData[portlet.id] && (
+                <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                  <DebugModal 
+                    chartConfig={debugData[portlet.id].chartConfig}
+                    displayConfig={debugData[portlet.id].displayConfig}
+                    queryObject={debugData[portlet.id].queryObject}
+                    data={debugData[portlet.id].data}
+                    chartType={debugData[portlet.id].chartType}
+                  />
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2">
+            <div className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+              
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -450,6 +473,12 @@ export default function DashboardGrid({
               displayConfig={portlet.displayConfig}
               title={portlet.title}
               height="100%"
+              onDebugDataReady={(data) => {
+                setDebugData(prev => ({
+                  ...prev,
+                  [portlet.id]: data
+                }))
+              }}
             />
           </div>
         </div>
