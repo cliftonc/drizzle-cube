@@ -1,3 +1,15 @@
+import type { FieldLabelMap } from '../hooks/useCubeMeta'
+
+// Utility function to get field label from field name
+export function getFieldLabel(fieldName: string, labelMap: FieldLabelMap): string {
+  return labelMap[fieldName] || fieldName
+}
+
+// Utility function to transform series keys to use labels
+export function transformSeriesKeysWithLabels(seriesKeys: string[], labelMap: FieldLabelMap): string[] {
+  return seriesKeys.map(key => getFieldLabel(key, labelMap))
+}
+
 // Utility function to format time values for better display using known granularity
 export function formatTimeValue(value: any, granularity?: string): string {
   if (!value) return String(value || 'Unknown')
@@ -124,7 +136,7 @@ export function getFieldGranularity(queryObject: any, fieldName: string): string
 }
 
 // Transform data for charts with proper type handling
-export function transformChartData(data: any[], xAxisField: string, yAxisFields: string[], queryObject: any) {
+export function transformChartData(data: any[], xAxisField: string, yAxisFields: string[], queryObject: any, labelMap: FieldLabelMap = {}) {
   if (!data || data.length === 0) return []
 
   const granularity = getFieldGranularity(queryObject, xAxisField)
@@ -135,7 +147,7 @@ export function transformChartData(data: any[], xAxisField: string, yAxisFields:
     }
     
     yAxisFields.forEach(field => {
-      const displayName = field.split('.').pop() || field
+      const displayName = getFieldLabel(field, labelMap)
       transformed[displayName] = typeof row[field] === 'string' 
         ? parseFloat(row[field]) 
         : (row[field] || 0)
@@ -157,7 +169,8 @@ export function transformChartDataWithSeries(
   xAxisField: string, 
   yAxisFields: string[], 
   queryObject: any,
-  seriesFields?: string[] // New optional parameter for explicit series fields
+  seriesFields?: string[], // New optional parameter for explicit series fields
+  labelMap: FieldLabelMap = {} // Optional label map for field names
 ): ChartSeriesResult {
   if (!data || data.length === 0) {
     return { data: [], seriesKeys: [], hasDimensions: false }
@@ -188,7 +201,7 @@ export function transformChartDataWithSeries(
       
       // Add measures
       yAxisMeasures.forEach(measure => {
-        const displayName = measure.split('.').pop() || measure
+        const displayName = getFieldLabel(measure, labelMap)
         groupedData[xValue][displayName] = (groupedData[xValue][displayName] || 0) + 
           (typeof row[measure] === 'string' ? parseFloat(row[measure]) : (row[measure] || 0))
       })
@@ -237,8 +250,8 @@ export function transformChartDataWithSeries(
   }
   
   // Standard measures-only path
-  const chartData = transformChartData(data, xAxisField, yAxisFields, queryObject)
-  const seriesKeys = yAxisFields.map(field => field.split('.').pop() || field)
+  const chartData = transformChartData(data, xAxisField, yAxisFields, queryObject, labelMap)
+  const seriesKeys = yAxisFields.map(field => getFieldLabel(field, labelMap))
   
   return {
     data: chartData,

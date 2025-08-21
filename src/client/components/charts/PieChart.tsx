@@ -4,6 +4,7 @@ import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
 export default function PieChart({ 
@@ -14,6 +15,7 @@ export default function PieChart({
   height = "100%" 
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  const { labelMap } = useCubeContext()
   
   try {
     const safeDisplayConfig = {
@@ -77,7 +79,8 @@ export default function PieChart({
         xAxisField, 
         yAxisFields, 
         queryObject,
-        seriesFields
+        seriesFields,
+        labelMap
       )
       
       // Convert series data to pie format

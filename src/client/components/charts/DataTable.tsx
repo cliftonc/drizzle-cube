@@ -3,12 +3,15 @@
  * Minimal styling with Tailwind
  */
 
+import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
 export default function DataTable({ 
   data, 
+  chartConfig,
   height = 300 
 }: ChartProps) {
+  const { getFieldLabel } = useCubeContext()
   
   if (!data || data.length === 0) {
     return (
@@ -21,7 +24,11 @@ export default function DataTable({
     )
   }
 
-  const columns = Object.keys(data[0] || {})
+  // Use chartConfig.xAxis to filter columns, or show all if not specified
+  const allColumns = Object.keys(data[0] || {})
+  const columns = chartConfig?.xAxis && chartConfig.xAxis.length > 0 
+    ? chartConfig.xAxis.filter(col => allColumns.includes(col))
+    : allColumns
 
   if (columns.length === 0) {
     return (
@@ -44,7 +51,7 @@ export default function DataTable({
                 key={column}
                 className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                {column}
+                {getFieldLabel(column)}
               </th>
             ))}
           </tr>

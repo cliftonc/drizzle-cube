@@ -4,6 +4,7 @@ import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries } from '../../utils/chartUtils'
+import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
 export default function BarChart({ 
@@ -14,13 +15,14 @@ export default function BarChart({
   height = "100%" 
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  const { labelMap, getFieldLabel: contextGetFieldLabel } = useCubeContext()
   
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showGrid: displayConfig?.showGrid ?? true,
       showTooltip: displayConfig?.showTooltip ?? true,
-      stackedBarChart: displayConfig?.stackedBarChart ?? false
+      stacked: displayConfig?.stacked ?? false
     }
 
     if (!data || data.length === 0) {
@@ -76,12 +78,13 @@ export default function BarChart({
       xAxisField, 
       yAxisFields, 
       queryObject,
-      seriesFields
+      seriesFields,
+      labelMap
     )
 
     
     // Stacking is now controlled only by the explicit config
-    const shouldStack = safeDisplayConfig.stackedBarChart === true
+    const shouldStack = safeDisplayConfig.stacked === true
     
     // Check if we should use positive/negative coloring
     // This is enabled when we have single series data with mixed positive/negative values
@@ -91,12 +94,12 @@ export default function BarChart({
     })
     
     // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend && seriesKeys.length > 1
+    const showLegend = safeDisplayConfig.showLegend
     
-    // Calculate dynamic margins based on what's being displayed
+    // Use custom chart margins with extra left space for Y-axis label
     const chartMargins = {
       ...CHART_MARGINS,
-      bottom: showLegend ? 70 : 30 // Reserve more space for legend (25px padding + 45px content)
+      left: 40 // Increased from 20 to 40 for Y-axis label space
     }
     
     // Validate transformed data
@@ -124,7 +127,10 @@ export default function BarChart({
             textAnchor="end"
             height={60}
           />
-          <YAxis tick={{ fontSize: 12 }} />
+          <YAxis 
+            tick={{ fontSize: 12 }} 
+            label={{ value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+          />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
           )}

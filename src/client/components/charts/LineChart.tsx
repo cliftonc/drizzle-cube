@@ -4,6 +4,7 @@ import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries } from '../../utils/chartUtils'
+import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
 export default function LineChart({ 
@@ -14,6 +15,7 @@ export default function LineChart({
   height = "100%" 
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
+  const { labelMap, getFieldLabel } = useCubeContext()
   
   try {
     const safeDisplayConfig = {
@@ -75,16 +77,17 @@ export default function LineChart({
       xAxisField, 
       yAxisFields, 
       queryObject,
-      seriesFields
+      seriesFields,
+      labelMap
     )
     
     // Determine if legend will be shown
-    const showLegend = safeDisplayConfig.showLegend && seriesKeys.length > 1
+    const showLegend = safeDisplayConfig.showLegend
     
-    // Calculate dynamic margins based on what's being displayed
+    // Use custom chart margins with extra left space for Y-axis label
     const chartMargins = {
       ...CHART_MARGINS,
-      bottom: showLegend ? 50 : 20 // Reserve space for legend if needed, otherwise minimal space
+      left: 40 // Increased from 20 to 40 for Y-axis label space
     }
     
     // Validate transformed data
@@ -112,7 +115,10 @@ export default function LineChart({
             textAnchor="end"
             height={60}
           />
-          <YAxis tick={{ fontSize: 12 }} />
+          <YAxis 
+            tick={{ fontSize: 12 }} 
+            label={{ value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+          />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
           )}

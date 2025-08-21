@@ -141,6 +141,20 @@ export default function DashboardViewPage() {
           {page.description && (
             <p className="mt-1 text-sm text-gray-700 leading-relaxed">{page.description}</p>
           )}
+          
+          <div className="mt-4 px-4 py-3 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
+            <div className="flex items-start">
+              <span className="text-2xl mr-3">💡</span>
+              <div>
+                <p className="text-sm font-semibold text-purple-900">
+                  Demo Note
+                </p>
+                <p className="text-sm text-purple-700 mt-1">
+                  This dashboard uses the <code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">AnalyticsDashboard</code> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* Mobile-first button layout */}

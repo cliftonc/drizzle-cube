@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import Modal from './Modal'
 import QueryBuilder from './QueryBuilder'
+import ChartConfigPanel from './ChartConfigPanel'
 import { createCubeClient } from '../client/CubeClient'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
@@ -21,6 +21,7 @@ const CHART_TYPES = [
   { value: 'area' as const, label: 'Area Chart', description: 'Best for cumulative trends' },
   { value: 'pie' as const, label: 'Pie Chart', description: 'Best for showing proportions' },
   { value: 'scatter' as const, label: 'Scatter Plot', description: 'Best for correlations between measures' },
+  { value: 'bubble' as const, label: 'Bubble Chart', description: 'Best for showing 3+ dimensions (X, Y, size, color)' },
   { value: 'radar' as const, label: 'Radar Chart', description: 'Best for multi-dimensional comparisons' },
   { value: 'radialBar' as const, label: 'Radial Bar Chart', description: 'Best for circular progress visualization' },
   { value: 'treemap' as const, label: 'TreeMap', description: 'Best for hierarchical data visualization' },
@@ -101,7 +102,7 @@ export default function PortletEditModal({
   const [lastValidatedQuery, setLastValidatedQuery] = useState<string>('')
   const [dryRunData, setDryRunData] = useState<any>(null)
   const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({ xAxis: [], yAxis: [], series: [] })
-  const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({ showLegend: true, stackedBarChart: false })
+  const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
   const [originalQuery, setOriginalQuery] = useState<string>('')
   const [showQueryBuilder, setShowQueryBuilder] = useState(false)
   const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
@@ -164,39 +165,6 @@ export default function PortletEditModal({
   const defaultWidth = 5
   const defaultHeight = 4
 
-  // Helper function to get field styling based on type
-  const getFieldStyling = (field: string) => {
-    const isTimeDimension = availableFields?.timeDimensions?.includes(field) || false
-    const isDimension = availableFields?.dimensions?.includes(field) || false
-    const isMeasure = availableFields?.measures?.includes(field) || false
-
-    if (isTimeDimension) {
-      return {
-        IconComponent: CalendarIcon,
-        baseClasses: 'bg-blue-100 text-blue-800 border border-blue-200',
-        hoverClasses: 'hover:bg-blue-200'
-      }
-    } else if (isDimension) {
-      return {
-        IconComponent: TagIcon,
-        baseClasses: 'bg-green-100 text-green-800 border border-green-200',
-        hoverClasses: 'hover:bg-green-200'
-      }
-    } else if (isMeasure) {
-      return {
-        IconComponent: ChartBarIcon,
-        baseClasses: 'bg-amber-100 text-amber-800 border border-amber-200',
-        hoverClasses: 'hover:bg-amber-200'
-      }
-    }
-    
-    // Default fallback
-    return {
-      IconComponent: ChartBarIcon,
-      baseClasses: 'bg-gray-100 text-gray-800 border border-gray-200',
-      hoverClasses: 'hover:bg-gray-200'
-    }
-  }
 
   // Initialize form values when modal opens or portlet changes
   useEffect(() => {
@@ -214,10 +182,7 @@ export default function PortletEditModal({
         setQuery(formattedQuery)
         setChartType(portlet.chartType)
         setChartConfig(portlet.chartConfig || { xAxis: [], yAxis: [], series: [] })
-        setDisplayConfig({
-          showLegend: portlet.displayConfig?.showLegend ?? true,
-          stackedBarChart: portlet.displayConfig?.stackedBarChart ?? false
-        })
+        setDisplayConfig(portlet.displayConfig || {})
         setOriginalQuery(formattedQuery)
         setLastValidatedQuery(formattedQuery)
         setValidationResult({ isValid: true, message: 'Loaded query (assumed valid)' })
@@ -233,7 +198,7 @@ export default function PortletEditModal({
         setQuery('')
         setChartType('bar')
         setChartConfig({ xAxis: [], yAxis: [], series: [] })
-        setDisplayConfig({ showLegend: true, stackedBarChart: false })
+        setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
         setOriginalQuery('')
         setLastValidatedQuery('')
         setValidationResult(null)
@@ -482,7 +447,7 @@ export default function PortletEditModal({
     setQuery('')
     setChartType('bar')
     setChartConfig({ xAxis: [], yAxis: [], series: [] })
-    setDisplayConfig({ showLegend: true, stackedBarChart: false })
+    setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
     setOriginalQuery('')
     setValidationResult(null)
     setIsValidating(false)
@@ -497,60 +462,6 @@ export default function PortletEditModal({
   const hasQueryChanged = query.trim() !== lastValidatedQuery.trim() && lastValidatedQuery !== ''
   const isQueryValidAndCurrent = validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
 
-  // Drag and drop handlers for chart configuration
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, field: string, fromAxis: 'xAxis' | 'yAxis' | 'series' | 'available') => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ field, fromAxis }))
-  }
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, toAxis: 'xAxis' | 'yAxis' | 'series') => {
-    e.preventDefault()
-    const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-    const { field, fromAxis } = data
-
-    setChartConfig(prev => {
-      const newConfig = { ...prev }
-      
-      if (fromAxis === 'xAxis') {
-        newConfig.xAxis = (newConfig.xAxis || []).filter(f => f !== field)
-      } else if (fromAxis === 'yAxis') {
-        newConfig.yAxis = (newConfig.yAxis || []).filter(f => f !== field)
-      } else if (fromAxis === 'series' && newConfig.series) {
-        newConfig.series = newConfig.series.filter(f => f !== field)
-      }
-      
-      if (toAxis === 'xAxis' && !(newConfig.xAxis || []).includes(field)) {
-        newConfig.xAxis = [...(newConfig.xAxis || []), field]
-      } else if (toAxis === 'yAxis' && !(newConfig.yAxis || []).includes(field)) {
-        newConfig.yAxis = [...(newConfig.yAxis || []), field]
-      } else if (toAxis === 'series') {
-        if (!newConfig.series) newConfig.series = []
-        if (!newConfig.series.includes(field)) {
-          newConfig.series = [...newConfig.series, field]
-        }
-      }
-      
-      return newConfig
-    })
-  }
-
-  const handleRemoveFromAxis = (field: string, fromAxis: 'xAxis' | 'yAxis' | 'series') => {
-    setChartConfig(prev => {
-      if (fromAxis === 'series') {
-        return {
-          ...prev,
-          series: prev.series ? prev.series.filter(f => f !== field) : []
-        }
-      }
-      return {
-        ...prev,
-        [fromAxis]: (prev[fromAxis] || []).filter((f: string) => f !== field)
-      }
-    })
-  }
 
   const availableFields = dryRunData?.pivotQuery?.query ? {
     dimensions: dryRunData.pivotQuery.query.dimensions || [],
@@ -558,17 +469,6 @@ export default function PortletEditModal({
     measures: dryRunData.pivotQuery.query.measures || []
   } : null
 
-  const unassignedFields = availableFields ? {
-    dimensions: availableFields.dimensions.filter((dim: string) => 
-      !(chartConfig.xAxis || []).includes(dim) && !(chartConfig.yAxis || []).includes(dim) && !(chartConfig.series && chartConfig.series.includes(dim))
-    ),
-    timeDimensions: availableFields.timeDimensions.filter((dim: string) => 
-      !(chartConfig.xAxis || []).includes(dim) && !(chartConfig.yAxis || []).includes(dim) && !(chartConfig.series && chartConfig.series.includes(dim))
-    ),
-    measures: availableFields.measures.filter((measure: string) => 
-      !(chartConfig.xAxis || []).includes(measure) && !(chartConfig.yAxis || []).includes(measure) && !(chartConfig.series && chartConfig.series.includes(measure))
-    )
-  } : null
 
   const footer = showQueryBuilder ? (
     <>
@@ -714,219 +614,14 @@ export default function PortletEditModal({
               </div>
             ) : (
               <div className="rounded-lg bg-white p-3 border border-gray-200">
-                {/* Available Fields */}
-                {unassignedFields && (unassignedFields.dimensions.length > 0 || unassignedFields.timeDimensions.length > 0 || unassignedFields.measures.length > 0) && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-gray-700 mb-2">Available Fields</h4>
-                    <div className="space-y-1">
-                      {unassignedFields.dimensions.map((dim: string) => {
-                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(dim)
-                        return (
-                          <div
-                            key={dim}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
-                          >
-                            <span className="flex items-center">
-                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                              <span>{dim}</span>
-                            </span>
-                          </div>
-                        )
-                      })}
-                      {unassignedFields.timeDimensions.map((dim: string) => {
-                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(dim)
-                        return (
-                          <div
-                            key={dim}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
-                          >
-                            <span className="flex items-center">
-                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                              <span>{dim}</span>
-                            </span>
-                          </div>
-                        )
-                      })}
-                      {unassignedFields.measures.map((measure: string) => {
-                        const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(measure)
-                        return (
-                          <div
-                            key={measure}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, measure, 'available')}
-                            className={`rounded text-xs cursor-move px-3 py-2 ${baseClasses} ${hoverClasses}`}
-                          >
-                            <span className="flex items-center">
-                              <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                              <span>{measure}</span>
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* X-Axis */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-semibold mb-2">X-Axis (Categories)</h4>
-                  <div
-                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, 'xAxis')}
-                  >
-                    {(chartConfig.xAxis?.length ?? 0) === 0 ? (
-                      <div className="text-xs text-gray-500 text-center">Drop dimensions & time dimensions here</div>
-                    ) : (
-                      <div className="space-y-1">
-                        {(chartConfig.xAxis || []).map((field) => {
-                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
-                          return (
-                            <div
-                              key={field}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, field, 'xAxis')}
-                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
-                            >
-                              <span className="flex items-center">
-                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span>{field}</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFromAxis(field, 'xAxis')}
-                                className="text-gray-600 hover:text-red-600 ml-2"
-                                title="Remove from X-axis"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Y-Axis */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-semibold mb-2">Y-Axis (Values & Series)</h4>
-                  <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><ChartBarIcon className="w-4 h-4 mr-1 flex-shrink-0" />Measures = numeric values • <TagIcon className="w-4 h-4 mr-1 flex-shrink-0" />Dimensions = separate series</span>
-                  </div>
-                  <div
-                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, 'yAxis')}
-                  >
-                    {(chartConfig.yAxis?.length ?? 0) === 0 ? (
-                      <div className="text-xs text-gray-500 text-center">Drop measures or dimensions here</div>
-                    ) : (
-                      <div className="space-y-1">
-                        {(chartConfig.yAxis || []).map((field) => {
-                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
-                          
-                          return (
-                            <div
-                              key={field}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, field, 'yAxis')}
-                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
-                            >
-                              <span className="flex items-center">
-                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span>{field}</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFromAxis(field, 'yAxis')}
-                                className="text-gray-600 hover:text-red-600 ml-2"
-                                title="Remove from Y-axis"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Series */}
-                <div className="mb-3">
-                  <h4 className="text-xs font-semibold mb-2">Series (Split into Multiple Series)</h4>
-                  <div className="text-xs text-gray-600 mb-2">
-                    <span className="flex items-center"><TagIcon className="w-4 h-4 mr-1 flex-shrink-0" />Drop dimensions here to create separate data series</span>
-                  </div>
-                  <div
-                    className="min-h-16 border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, 'series')}
-                  >
-                    {!chartConfig.series || chartConfig.series.length === 0 ? (
-                      <div className="text-xs text-gray-500 text-center">Drop dimensions here to split data into series</div>
-                    ) : (
-                      <div className="space-y-1">
-                        {chartConfig.series.map((field) => {
-                          const { IconComponent, baseClasses, hoverClasses } = getFieldStyling(field)
-                          return (
-                            <div
-                              key={field}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, field, 'series')}
-                              className={`rounded text-xs cursor-move px-3 py-2 flex items-center justify-between ${baseClasses} ${hoverClasses}`}
-                            >
-                              <span className="flex items-center">
-                                <IconComponent className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span>{field}</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFromAxis(field, 'series')}
-                                className="text-gray-600 hover:text-red-600 ml-2"
-                                title="Remove from Series"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Display Options */}
-                <div>
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Display Options</h4>
-                  <div className="rounded-lg bg-gray-50 p-2 space-y-2">
-                    <label className="flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={displayConfig.showLegend}
-                        onChange={(e) => setDisplayConfig(prev => ({ ...prev, showLegend: e.target.checked }))}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" 
-                      />
-                      <span className="ml-2 text-xs text-gray-700">Show Legend</span> 
-                    </label>
-                    {chartType === 'bar' && (
-                      <label className="flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={displayConfig.stackedBarChart || false}
-                          onChange={(e) => setDisplayConfig(prev => ({ ...prev, stackedBarChart: e.target.checked }))}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" 
-                        />
-                        <span className="ml-2 text-xs text-gray-700">Stacked Bar Chart</span> 
-                      </label>
-                    )}
-                  </div>
-                </div>
+                <ChartConfigPanel
+                  chartType={chartType}
+                  chartConfig={chartConfig}
+                  displayConfig={displayConfig}
+                  availableFields={availableFields}
+                  onChartConfigChange={setChartConfig}
+                  onDisplayConfigChange={setDisplayConfig}
+                />
               </div>
             )}
           </div>

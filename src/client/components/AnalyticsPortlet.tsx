@@ -15,6 +15,7 @@ import {
   RechartsRadarChart, 
   RechartsRadialBarChart, 
   RechartsTreeMapChart, 
+  BubbleChart,
   DataTable 
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
@@ -237,10 +238,22 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               height={chartHeight}
             />
           )
+        case 'bubble':
+          return (
+            <BubbleChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+            />
+          )
         case 'table':
           return (
             <DataTable
               data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
             />

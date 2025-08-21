@@ -126,6 +126,8 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
     "react-grid-layout": "^1.4.0",
     "react-hook-form": "^7.47.0",
     "recharts": "^2.8.0",

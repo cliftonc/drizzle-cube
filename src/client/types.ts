@@ -2,6 +2,9 @@
  * Type definitions for drizzle-cube client components
  */
 
+// Re-export metadata types from useCubeMeta hook
+export type { CubeMeta, CubeMetaCube, CubeMetaField, FieldLabelMap } from './hooks/useCubeMeta'
+
 // Chart types
 export type ChartType = 
   | 'line' 
@@ -13,6 +16,7 @@ export type ChartType =
   | 'radar' 
   | 'radialBar' 
   | 'treemap'
+  | 'bubble'
 
 // Chart configuration
 export interface ChartAxisConfig {
@@ -20,6 +24,10 @@ export interface ChartAxisConfig {
   xAxis?: string[] // Dimension fields for X axis
   yAxis?: string[] // Measure fields for Y axis  
   series?: string[] // Fields to use for series/grouping
+  
+  // Bubble chart specific fields
+  sizeField?: string // Field for bubble size
+  colorField?: string // Field for bubble color
   
   // Legacy format (for backward compatibility)
   x?: string // Single dimension field for X axis
@@ -33,7 +41,11 @@ export interface ChartDisplayConfig {
   colors?: string[]
   orientation?: 'horizontal' | 'vertical'
   stacked?: boolean
-  stackedBarChart?: boolean
+  
+  // Bubble chart specific display options
+  minBubbleSize?: number
+  maxBubbleSize?: number
+  bubbleOpacity?: number
 }
 
 // Portlet configuration

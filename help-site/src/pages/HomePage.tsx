@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useHelpSearch } from '../hooks/useHelpSearch';
 import { highlightText, getRelevanceClass } from '../utils/helpUtils';
 
 const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const navigate = useNavigate();
   const { results } = useHelpSearch(searchQuery);
 
@@ -62,13 +63,34 @@ const HomePage: React.FC = () => {
 
         {/* Dashboard Preview */}
         <div className="mb-12 max-w-5xl mx-auto">
-          <img 
-            src="/dashboard-screenshot.png" 
-            alt="Drizzle Cube Analytics Dashboard showing productivity trends and team happiness distribution charts"
-            className="w-full rounded-lg shadow-lg border border-gray-200"
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="relative group cursor-pointer" onClick={() => setFullscreenImage('/dashboard-screenshot.png')}>
+              <img 
+                src="/dashboard-screenshot.png" 
+                alt="Drizzle Cube Analytics Dashboard showing productivity trends and team happiness distribution charts"
+                className="w-full h-64 object-cover rounded-lg shadow-lg border border-gray-200 group-hover:shadow-xl transition-shadow"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all duration-200 flex items-center justify-center">
+                <div className="bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to view full size
+                </div>
+              </div>
+            </div>
+            <div className="relative group cursor-pointer" onClick={() => setFullscreenImage('/query-builder.png')}>
+              <img 
+                src="/query-builder.png" 
+                alt="Drizzle Cube Query Builder interface for building analytics queries"
+                className="w-full h-64 object-cover rounded-lg shadow-lg border border-gray-200 group-hover:shadow-xl transition-shadow"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all duration-200 flex items-center justify-center">
+                <div className="bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to view full size
+                </div>
+              </div>
+            </div>
+          </div>
           <p className="text-center text-sm text-gray-500 mt-3">
-            Example dashboard showing real-time analytics with Drizzle Cube
+            Dashboard and Query Builder interfaces with Drizzle Cube
           </p>
         </div>
 
@@ -229,6 +251,29 @@ const HomePage: React.FC = () => {
           </a>
         </div>
       </section>
+
+      {/* Fullscreen Image Modal */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full text-white transition-colors"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Fullscreen view"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

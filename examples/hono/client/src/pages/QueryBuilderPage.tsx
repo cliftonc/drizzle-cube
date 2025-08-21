@@ -18,6 +18,19 @@ export default function QueryBuilderPage() {
           Build and test queries against your cube schema. Select dimensions, measures, and time dimensions 
           from the schema explorer, then validate and run your queries to see results.
         </p>
+        <div className="mt-4 px-4 py-3 bg-gradient-to-br from-purple-50 via-violet-50 to-pink-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
+          <div className="flex items-start">
+            <span className="text-2xl mr-3">💡</span>
+            <div>
+              <p className="text-sm font-semibold text-purple-900">
+                Demo Note
+              </p>
+              <p className="text-sm text-purple-700 mt-1">
+                This page demonstrates the <code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">QueryBuilder</code> React component from drizzle-cube/client that you can embed in your own application.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Query Builder - Responsive height for mobile */}

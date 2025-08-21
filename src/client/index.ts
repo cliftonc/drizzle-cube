@@ -33,7 +33,6 @@ export { default as PortletContainer } from './components/PortletContainer'
 export { default as PortletEditModal } from './components/PortletEditModal'
 export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
-export { default as ChartConfigEditor } from './components/ChartConfigEditor'
 
 // Query Builder
 export { default as QueryBuilder } from './components/QueryBuilder'

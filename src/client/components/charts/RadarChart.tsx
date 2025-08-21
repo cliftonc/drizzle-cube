@@ -18,7 +18,8 @@ export default function RadarChart({
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true
+      showTooltip: displayConfig?.showTooltip ?? true,
+      showGrid: displayConfig?.showGrid ?? true
     }
 
     if (!data || data.length === 0) {
@@ -87,7 +88,7 @@ export default function RadarChart({
         const granularity = getFieldGranularity(queryObject, subjectField)
         radarData = data.map(item => {
           const transformedItem: any = {
-            subject: formatTimeValue(item[subjectField], granularity) || String(item[subjectField]) || 'Unknown'
+            name: formatTimeValue(item[subjectField], granularity) || String(item[subjectField]) || 'Unknown'
           }
           
           valueFields.forEach(field => {
@@ -104,7 +105,7 @@ export default function RadarChart({
       } else {
         // Fallback - use first value field only
         radarData = data.map(item => ({
-          subject: String(item[keys[0]] || 'Unknown'),
+          name: String(item[keys[0]] || 'Unknown'),
           value: typeof item[valueFields[0]] === 'string' 
             ? parseFloat(item[valueFields[0]]) 
             : (item[valueFields[0]] || 0)
@@ -128,9 +129,11 @@ export default function RadarChart({
     return (
       <ChartContainer height={height}>
         <RechartsRadarChart data={radarData} margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
-          <PolarGrid />
+          {safeDisplayConfig.showGrid && (
+            <PolarGrid />
+          )}
           <PolarAngleAxis 
-            dataKey={chartConfig?.xAxis ? "name" : "subject"}
+            dataKey="name"
             tick={{ fontSize: 12 }}
             className="text-gray-600"
           />

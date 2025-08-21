@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Treemap } from 'recharts'
+import { Treemap, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
@@ -17,7 +17,8 @@ export default function TreeMapChart({
   
   try {
     const safeDisplayConfig = {
-      showTooltip: displayConfig?.showTooltip ?? true
+      showTooltip: displayConfig?.showTooltip ?? true,
+      showLegend: displayConfig?.showLegend ?? true
     }
 
     if (!data || data.length === 0) {
@@ -31,21 +32,44 @@ export default function TreeMapChart({
       )
     }
 
-    let treemapData: Array<{name: string, size: number, fill?: string}>
+    let treemapData: Array<{name: string, size: number, fill?: string, series?: string}>
 
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format - use chart config
       const xAxisField = chartConfig.xAxis[0] // Name/category field
       const yAxisField = chartConfig.yAxis[0] // Size field
+      const seriesField = chartConfig.series?.[0] // Color grouping field
 
       const granularity = getFieldGranularity(queryObject, xAxisField)
-      treemapData = data.map((item, index) => ({
-        name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
-        size: typeof item[yAxisField] === 'string' 
-          ? parseFloat(item[yAxisField]) 
-          : (item[yAxisField] || 0),
-        fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
-      }))
+      
+      if (seriesField) {
+        // Use series field for color grouping
+        const uniqueSeriesValues = [...new Set(data.map(item => String(item[seriesField])))]
+        const seriesColorMap = Object.fromEntries(
+          uniqueSeriesValues.map((value, index) => [
+            value, 
+            displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+          ])
+        )
+        
+        treemapData = data.map((item) => ({
+          name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
+          size: typeof item[yAxisField] === 'string' 
+            ? parseFloat(item[yAxisField]) 
+            : (item[yAxisField] || 0),
+          fill: seriesColorMap[String(item[seriesField])] || CHART_COLORS[0],
+          series: String(item[seriesField])
+        }))
+      } else {
+        // No series grouping - use index-based colors
+        treemapData = data.map((item, index) => ({
+          name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
+          size: typeof item[yAxisField] === 'string' 
+            ? parseFloat(item[yAxisField]) 
+            : (item[yAxisField] || 0),
+          fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+        }))
+      }
     } else {
       // Legacy format or auto-detection
       const firstRow = data[0]
@@ -164,6 +188,12 @@ export default function TreeMapChart({
       )
     }
 
+    // Check if we have series data for legend
+    const hasSeriesData = treemapData.some(item => 'series' in item)
+    const uniqueSeries = hasSeriesData 
+      ? [...new Set(treemapData.map(item => item.series).filter(Boolean))]
+      : []
+
     return (
       <ChartContainer height={height}>
         <Treemap
@@ -175,6 +205,21 @@ export default function TreeMapChart({
         >
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
+          )}
+          {(safeDisplayConfig.showLegend && uniqueSeries.length > 1) && (
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              iconType="rect"
+              iconSize={8}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+              payload={uniqueSeries.map((series, index) => ({
+                value: series,
+                type: 'rect',
+                color: CHART_COLORS[index % CHART_COLORS.length]
+              }))}
+            />
           )}
         </Treemap>
       </ChartContainer>
