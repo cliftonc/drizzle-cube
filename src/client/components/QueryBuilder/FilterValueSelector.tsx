@@ -309,9 +309,9 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Dropdown trigger */}
         <button
           onClick={handleDropdownToggle}
-          className="w-full text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+          className="w-full text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
         >
-          <span className="text-gray-500">
+          <span className="text-gray-500 truncate">
             {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
           </span>
           <ChevronDownIcon className="w-4 h-4 text-gray-400" />
@@ -319,7 +319,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         
         {/* Dropdown menu */}
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {/* Search input */}
             <div className="p-2 border-b border-gray-200">
               <input

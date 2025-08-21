@@ -191,7 +191,7 @@ export default function TreeMapChart({
       )
     }
 
-    // Custom content renderer for treemap cells
+    // Custom content renderer for treemap cells with HTML overlays
     const CustomizedContent = (props: any) => {
       const { x, y, width, height, index, name, size } = props
       
@@ -214,32 +214,57 @@ export default function TreeMapChart({
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
           />
-          {width > 40 && height > 30 && (
-            <text
-              x={x + width / 2}
-              y={y + height / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={Math.min(12, width / 8, height / 4)}
-              fill="#fff"
-              fontWeight="bold"
+          <foreignObject 
+            x={x} 
+            y={y} 
+            width={width} 
+            height={height}
+            style={{ pointerEvents: 'none', overflow: 'visible' }}
+          >
+            <div 
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                boxSizing: 'border-box',
+                color: '#ffffff',
+                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                overflow: 'hidden'
+              }}
             >
-              {name}
-            </text>
-          )}
-          {width > 60 && height > 45 && (
-            <text
-              x={x + width / 2}
-              y={y + height / 2 + 15}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize={Math.min(10, width / 10, height / 6)}
-              fill="#fff"
-              opacity={0.9}
-            >
-              {size}
-            </text>
-          )}
+              {width > 40 && height > 30 && (
+                <div 
+                  style={{
+                    fontSize: `${Math.max(10, Math.min(width / 8, height / 8, 16))}px`,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    lineHeight: '1.2',
+                    marginBottom: width > 60 && height > 45 ? '4px' : '0',
+                    wordBreak: 'break-word',
+                    hyphens: 'auto'
+                  }}
+                >
+                  {name}
+                </div>
+              )}
+              {width > 60 && height > 45 && (
+                <div 
+                  style={{
+                    fontSize: `${Math.max(8, Math.min(width / 10, height / 10, 14))}px`,
+                    textAlign: 'center',
+                    opacity: 0.9
+                  }}
+                >
+                  {typeof size === 'number' ? size.toLocaleString() : size}
+                </div>
+              )}
+            </div>
+          </foreignObject>
         </g>
       )
     }

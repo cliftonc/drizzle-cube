@@ -113,17 +113,17 @@ const FilterItem: React.FC<FilterItemProps> = ({
   
   return (
     <div ref={containerRef} className="bg-white border border-gray-200 rounded-lg p-3">
-      {/* Responsive layout - row on desktop, column on mobile */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3">
-        {/* Filter icon and field selection - combined on mobile */}
-        <div className="flex items-center gap-3 flex-1">
+      {/* Responsive layout - stacks on mobile, single row on desktop */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
+        {/* Row 1 on mobile: Filter icon and field selection */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <FunnelIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
           
           {/* Field selection */}
           <div className="relative flex-1 min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
             >
               <span className="truncate">
                 {selectedField ? (
@@ -138,7 +138,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
             </button>
             
             {isFieldDropdownOpen && (
-              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                 {filterableFields.map((field) => (
                   <button
                     key={field.name}
@@ -159,14 +159,14 @@ const FilterItem: React.FC<FilterItemProps> = ({
           </div>
         </div>
         
-        {/* Operator and Value selection - row on mobile, but each takes full width */}
+        {/* Row 2 on mobile: Operator and Value selection */}
         {selectedField && (
-          <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1 md:flex-initial">
+          <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
             {/* Operator selection */}
-            <div className="relative w-full md:w-32 flex-shrink-0">
+            <div className="relative flex-shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <span className="truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
@@ -177,7 +177,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
               </button>
               
               {isOperatorDropdownOpen && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                   {availableOperators.map((operator) => (
                     <button
                       key={operator.operator}
@@ -206,14 +206,16 @@ const FilterItem: React.FC<FilterItemProps> = ({
           </div>
         )}
         
-        {/* Remove button */}
-        <button
-          onClick={() => onFilterRemove(index)}
-          className="text-gray-400 hover:text-red-600 focus:outline-none flex-shrink-0 self-start md:self-center"
-          title="Remove filter"
-        >
-          <XMarkIcon className="w-4 h-4" />
-        </button>
+        {/* Row 3 on mobile: Remove button - positioned at the end */}
+        <div className="flex justify-end sm:justify-start">
+          <button
+            onClick={() => onFilterRemove(index)}
+            className="text-gray-400 hover:text-red-600 focus:outline-none flex-shrink-0"
+            title="Remove filter"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   )
