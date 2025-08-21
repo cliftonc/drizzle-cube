@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import type { AxisDropZoneConfig } from '../charts/chartConfigs'
 
@@ -16,6 +16,7 @@ interface AxisDropZoneProps {
   onDragStart: (e: React.DragEvent<HTMLDivElement>, field: string, fromKey: string) => void
   onDragOver: (e: React.DragEvent<HTMLDivElement>) => void
   getFieldStyling: (field: string) => FieldStyling
+  onReorder?: (fromIndex: number, toIndex: number, axisKey: string) => void
 }
 
 export default function AxisDropZone({
@@ -25,13 +26,73 @@ export default function AxisDropZone({
   onRemove,
   onDragStart,
   onDragOver,
-  getFieldStyling
+  getFieldStyling,
+  onReorder
 }: AxisDropZoneProps) {
   const { key, label, description, mandatory, maxItems, emptyText, icon: IconComponent } = config
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [draggedFromIndex, setDraggedFromIndex] = useState<number | null>(null)
+  const [isDraggingFromSameAxis, setIsDraggingFromSameAxis] = useState(false)
   
   // Check if we can accept more items
   const canAcceptMore = !maxItems || fields.length < maxItems
   const isFull = maxItems && fields.length >= maxItems
+
+  // Helper to handle reordering within the same axis
+  const handleReorderDragStart = (e: React.DragEvent<HTMLDivElement>, field: string, index: number) => {
+    setDraggedFromIndex(index)
+    setIsDraggingFromSameAxis(true)
+    
+    // Set both the regular drag data and the reorder data
+    e.dataTransfer.setData('text/plain', JSON.stringify({ 
+      field, 
+      fromAxis: key,
+      fromIndex: index,
+      isReorder: true
+    }))
+  }
+
+  const handleReorderDragEnd = () => {
+    setDraggedFromIndex(null)
+    setIsDraggingFromSameAxis(false)
+    setDragOverIndex(null)
+  }
+
+  const handleReorderDragOver = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
+    // Only prevent default and show indicator if we're dragging from the same axis
+    if (isDraggingFromSameAxis && draggedFromIndex !== null && draggedFromIndex !== targetIndex) {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragOverIndex(targetIndex)
+    }
+  }
+
+  const handleReorderDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleReorderDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverIndex(null)
+    
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+      if (data.isReorder && data.fromAxis === key && onReorder && draggedFromIndex !== null) {
+        // Only reorder if we're actually changing positions
+        if (draggedFromIndex !== targetIndex) {
+          onReorder(draggedFromIndex, targetIndex, key)
+        }
+      }
+    } catch {
+      // If we can't parse the data, try using the stored state
+      if (isDraggingFromSameAxis && draggedFromIndex !== null && draggedFromIndex !== targetIndex && onReorder) {
+        onReorder(draggedFromIndex, targetIndex, key)
+      }
+    }
+    
+    handleReorderDragEnd()
+  }
   
   return (
     <div className="mb-2">
@@ -60,6 +121,11 @@ export default function AxisDropZone({
             : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
         }`}
         onDragOver={(e) => {
+          // Don't interfere with internal reordering
+          if (isDraggingFromSameAxis) {
+            return
+          }
+          
           if (canAcceptMore) {
             onDragOver(e)
           } else {
@@ -68,6 +134,11 @@ export default function AxisDropZone({
           }
         }}
         onDrop={(e) => {
+          // Don't interfere with internal reordering
+          if (isDraggingFromSameAxis) {
+            return
+          }
+          
           if (canAcceptMore) {
             onDrop(e, key)
           } else {
@@ -81,25 +152,46 @@ export default function AxisDropZone({
           </div>
         ) : (
           <div className="flex flex-wrap gap-1">
-            {fields.map((field) => {
+            {fields.map((field, index) => {
               const { IconComponent: FieldIcon, baseClasses, hoverClasses } = getFieldStyling(field)
+              const isDragOver = dragOverIndex === index
+              
               return (
                 <div
-                  key={field}
-                  draggable
-                  onDragStart={(e) => onDragStart(e, field, key)}
-                  className={`rounded text-xs cursor-move px-2 py-1 flex items-center ${baseClasses} ${hoverClasses}`}
+                  key={`${field}-${index}`}
+                  className={`relative ${isDragOver ? 'transform scale-105' : ''}`}
                 >
-                  <FieldIcon className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <span>{field}</span>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(field, key)}
-                    className="text-gray-600 hover:text-red-600 ml-1.5"
-                    title={`Remove from ${label}`}
+                  {/* Drop indicator line for reordering */}
+                  {isDragOver && (
+                    <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 rounded-full z-10" />
+                  )}
+                  
+                  <div
+                    draggable
+                    onDragStart={(e) => {
+                      // Handle both regular drag (to other axes) and reorder drag (within same axis)
+                      onDragStart(e, field, key)
+                      handleReorderDragStart(e, field, index)
+                    }}
+                    onDragEnd={handleReorderDragEnd}
+                    onDragOver={(e) => handleReorderDragOver(e, index)}
+                    onDragLeave={handleReorderDragLeave}
+                    onDrop={(e) => handleReorderDrop(e, index)}
+                    className={`rounded text-xs cursor-move px-2 py-1 flex items-center transition-transform ${baseClasses} ${hoverClasses} ${
+                      isDragOver ? 'bg-opacity-75' : ''
+                    } ${draggedFromIndex === index ? 'opacity-50' : ''}`}
                   >
-                    <XMarkIcon className="w-3 h-3" />
-                  </button>
+                    <FieldIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>{field}</span>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(field, key)}
+                      className="text-gray-600 hover:text-red-600 ml-1.5"
+                      title={`Remove from ${label}`}
+                    >
+                      <XMarkIcon className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
               )
             })}

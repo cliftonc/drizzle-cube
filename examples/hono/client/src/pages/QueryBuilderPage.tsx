@@ -26,7 +26,7 @@ export default function QueryBuilderPage() {
                 Demo Note
               </p>
               <p className="text-sm text-purple-700 mt-1">
-                This page demonstrates the <code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">QueryBuilder</code> React component from drizzle-cube/client that you can embed in your own application.
+                This page demonstrates the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/QueryBuilder/index.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">QueryBuilder</code></a> React component from drizzle-cube/client that you can embed in your own application.
               </p>
             </div>
           </div>

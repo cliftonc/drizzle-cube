@@ -10,6 +10,45 @@ const GitHubIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+// Floating GitHub source button component
+const FloatingGitHubButton = () => {
+  const location = useLocation()
+  
+  // Map routes to their source files
+  const getSourcePath = (pathname: string) => {
+    const basePath = 'https://github.com/cliftonc/drizzle-cube/blob/main/examples/hono/client/src'
+    
+    if (pathname === '/') {
+      return `${basePath}/pages/HomePage.tsx`
+    } else if (pathname.startsWith('/dashboards') && pathname !== '/dashboards') {
+      return `${basePath}/pages/DashboardViewPage.tsx`
+    } else if (pathname === '/dashboards') {
+      return `${basePath}/pages/DashboardListPage.tsx`
+    } else if (pathname === '/query-builder') {
+      return `${basePath}/pages/QueryBuilderPage.tsx`
+    }
+    
+    return `${basePath}/App.tsx`
+  }
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      <a
+        href={getSourcePath(location.pathname)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center w-12 h-12 bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+        title="View this page in GitHub"
+      >
+        <GitHubIcon className="w-6 h-6" />
+        <span className="absolute right-14 bg-gray-900 text-white px-2 py-1 rounded text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          View source
+        </span>
+      </a>
+    </div>
+  )
+}
+
 interface LayoutProps {
   children: React.ReactNode
 }
@@ -28,6 +67,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <FloatingGitHubButton />
       <nav className="bg-white shadow-xs border-b relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">

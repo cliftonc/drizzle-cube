@@ -124,7 +124,12 @@ export default function ChartConfigPanel({
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toAxis: string) => {
     e.preventDefault()
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-    const { field, fromAxis } = data
+    const { field, fromAxis, isReorder } = data
+    
+    // Don't handle reorder drops here - let the AxisDropZone handle them
+    if (isReorder && fromAxis === toAxis) {
+      return
+    }
     
     const newConfig = { ...chartConfig }
     
@@ -170,6 +175,20 @@ export default function ChartConfigPanel({
     }
     
     onChartConfigChange(newConfig)
+  }
+
+  const handleReorder = (fromIndex: number, toIndex: number, axisKey: string) => {
+    const newConfig = { ...chartConfig }
+    const value = newConfig[axisKey as keyof ChartAxisConfig]
+    
+    // Only reorder if we have an array with multiple items
+    if (Array.isArray(value) && value.length > 1 && fromIndex !== toIndex) {
+      const newArray = [...value]
+      const [movedItem] = newArray.splice(fromIndex, 1)
+      newArray.splice(toIndex, 0, movedItem)
+      newConfig[axisKey as keyof ChartAxisConfig] = newArray as any
+      onChartConfigChange(newConfig)
+    }
   }
 
   // Get unassigned fields
@@ -297,6 +316,7 @@ export default function ChartConfigPanel({
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               getFieldStyling={getFieldStyling}
+              onReorder={handleReorder}
             />
           ))}
         </div>

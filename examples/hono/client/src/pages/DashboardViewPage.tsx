@@ -170,7 +170,7 @@ export default function DashboardViewPage() {
                   Demo Note
                 </p>
                 <p className="text-sm text-purple-700 mt-1">
-                  This dashboard uses the <code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">AnalyticsDashboard</code> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates.
+                  This dashboard uses the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/AnalyticsDashboard.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">AnalyticsDashboard</code></a> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates.
                 </p>
               </div>
             </div>
