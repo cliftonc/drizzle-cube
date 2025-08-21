@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { DocumentTextIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
+import DrizzleCubeIcon from './DrizzleCubeIcon'
 
 // GitHub icon component
 const GitHubIcon = ({ className }: { className?: string }) => (
@@ -33,8 +34,9 @@ export default function Layout({ children }: LayoutProps) {
             {/* Desktop layout */}
             <div className="flex">
               <div className="shrink-0 flex items-center">
-                <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                  Drizzle Cube Analytics
+                <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                  <DrizzleCubeIcon className="text-blue-600" size={28} />
+                  <span>Drizzle Cube</span>
                 </Link>
               </div>
               {/* Desktop navigation */}

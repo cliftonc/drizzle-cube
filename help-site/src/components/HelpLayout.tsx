@@ -4,6 +4,7 @@ import { MagnifyingGlassIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/o
 import SearchInterface from './SearchInterface';
 import Navigation from './Navigation';
 import BackToTop from './BackToTop';
+import DrizzleCubeIcon from './DrizzleCubeIcon';
 
 interface HelpLayoutProps {
   children: React.ReactNode;
@@ -29,7 +30,8 @@ const HelpLayout: React.FC<HelpLayoutProps> = ({ children }) => {
               >
                 <Bars3Icon className="h-6 w-6" />
               </button>
-              <Link to="/help" className="flex items-center">
+              <Link to="/help" className="flex items-center space-x-3">
+                <DrizzleCubeIcon className="text-blue-600" size={32} />
                 <div>
                   <h1 className="text-xl font-bold text-gray-900">Drizzle Cube</h1>
                   <p className="text-xs text-gray-500">Help Center</p>
