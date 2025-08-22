@@ -1,8 +1,9 @@
 /**
- * Simple dashboard configuration for Express example
+ * Simple dashboard configuration for Fastify example
  */
+import type { DashboardConfig, ChartType } from 'drizzle-cube/client'
 
-export const dashboardConfig = {
+export const dashboardConfig: DashboardConfig = {
   portlets: [
     {
       id: 'employees-by-dept',
@@ -12,7 +13,7 @@ export const dashboardConfig = {
         dimensions: ['Departments.name'],
         cubes: ['Employees', 'Departments']
       }),
-      chartType: 'bar',
+      chartType: 'bar' as ChartType,
       chartConfig: {
         xAxis: ['Departments.name'],
         yAxis: ['Employees.count']
@@ -37,7 +38,7 @@ export const dashboardConfig = {
           values: [false]
         }]
       }),
-      chartType: 'line',
+      chartType: 'line' as ChartType,
       chartConfig: {
         xAxis: ['Productivity.date'],
         yAxis: ['Productivity.avgLinesOfCode']
@@ -59,7 +60,7 @@ export const dashboardConfig = {
           values: [false]
         }]
       }),
-      chartType: 'pie',
+      chartType: 'pie' as ChartType,
       chartConfig: {
         xAxis: ['Productivity.happinessLevel'],
         yAxis: ['Productivity.recordCount']
@@ -77,7 +78,7 @@ export const dashboardConfig = {
         dimensions: ['Departments.name'],
         cubes: ['Productivity', 'Employees', 'Departments']
       }),
-      chartType: 'bar',
+      chartType: 'bar' as ChartType,
       chartConfig: {
         xAxis: ['Departments.name'],
         yAxis: ['Productivity.totalLinesOfCode']

@@ -22,7 +22,7 @@
   "dependencies": {
     "@fastify/cors": "^9.0.0",
     "@fastify/static": "^7.0.0",
-    "drizzle-cube": "file:../..",
+    "drizzle-cube": "0.1.13",
     "drizzle-orm": "^0.44.4",
     "fastify": "^4.28.0",
     "postgres": "^3.4.0",

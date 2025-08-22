@@ -405,7 +405,7 @@ export default function DashboardGrid({
           <div 
             key={portlet.id}
             data-portlet-id={portlet.id}
-            ref={el => portletRefs.current[portlet.id] = el}
+            ref={el => { portletRefs.current[portlet.id] = el }}
             className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
           {/* Portlet Header */}
@@ -467,7 +467,7 @@ export default function DashboardGrid({
           {/* Portlet Content */}
           <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
             <AnalyticsPortlet
-              ref={el => portletComponentRefs.current[portlet.id] = el}
+              ref={el => { portletComponentRefs.current[portlet.id] = el }}
               query={portlet.query}
               chartType={portlet.chartType}
               chartConfig={portlet.chartConfig}

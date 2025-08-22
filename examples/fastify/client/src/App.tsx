@@ -126,7 +126,7 @@ export default function App() {
             </div>
             <div className="bg-white rounded-lg shadow-sm border">
               <QueryBuilder 
-                apiUrl="/cubejs-api/v1"
+                baseUrl="/cubejs-api/v1"
               />
             </div>
           </div>
