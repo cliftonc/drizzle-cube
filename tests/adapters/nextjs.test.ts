@@ -88,10 +88,10 @@ describe('Next.js Adapter', () => {
     semanticLayer.registerCube(testEmployeesCube)
     
     adapterOptions = {
-      semanticLayer,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
       schema: testSchema,
-      getSecurityContext: async () => testSecurityContexts.org1,
+      extractSecurityContext: async () => testSecurityContexts.org1,
       cors: {
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS'],
@@ -465,7 +465,7 @@ describe('Next.js Adapter', () => {
       
       const customOptions: NextAdapterOptions<typeof testSchema> = {
         ...adapterOptions,
-        getSecurityContext: async (request) => {
+        extractSecurityContext: async (request) => {
           capturedContext = { organisationId: 'custom-org-456' }
           return capturedContext
         }
@@ -483,12 +483,12 @@ describe('Next.js Adapter', () => {
       expect(capturedContext.organisationId).toBe('custom-org-456')
     })
 
-    it('should pass route context to getSecurityContext', async () => {
+    it('should pass route context to extractSecurityContext', async () => {
       let capturedRouteContext: any = null
       
       const customOptions: NextAdapterOptions<typeof testSchema> = {
         ...adapterOptions,
-        getSecurityContext: async (request, context) => {
+        extractSecurityContext: async (request, context) => {
           capturedRouteContext = context
           return { organisationId: 'test-org-123' }
         }
@@ -511,7 +511,7 @@ describe('Next.js Adapter', () => {
     it('should handle semantic layer errors gracefully', async () => {
       const errorOptions: NextAdapterOptions<typeof testSchema> = {
         ...adapterOptions,
-        getSecurityContext: async () => {
+        extractSecurityContext: async () => {
           throw new Error('Authentication failed')
         }
       }

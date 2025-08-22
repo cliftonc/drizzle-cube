@@ -14,6 +14,7 @@ describe('Fastify Adapter', () => {
   let closeFn: (() => void) | null = null
   let semanticLayerFn
   let drizzleDb
+  let dynamicEmployeesCube
 
   // Mock security context extractor
   const mockGetSecurityContext = async (request: any) => testSecurityContexts.org1
@@ -25,7 +26,8 @@ describe('Fastify Adapter', () => {
     drizzleDb = db
     
     // Use dynamic cube creation to ensure correct schema for current database type
-    const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
+    const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
+    dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
     // Also register the static test cube for additional measures
@@ -34,10 +36,10 @@ describe('Fastify Adapter', () => {
     // Create Fastify app with cube plugin
     app = require('fastify')({ logger: false }) // Disable logging for tests
     await app.register(cubePlugin as any, {
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
       schema: testSchema,
-      getSecurityContext: mockGetSecurityContext
+      extractSecurityContext: mockGetSecurityContext
     })
     
     await app.ready()
@@ -153,9 +155,9 @@ describe('Fastify Adapter', () => {
   it('should support custom base path', async () => {
     const customApp = require('fastify')({ logger: false })
     await customApp.register(cubePlugin as any, {
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       basePath: '/api/analytics'
     })
     await customApp.ready()
@@ -313,9 +315,9 @@ describe('Fastify Adapter', () => {
   it('should handle CORS configuration', async () => {
     const corsApp = require('fastify')({ logger: false })
     await corsApp.register(cubePlugin as any, {
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       cors: {
         origin: 'http://localhost:3000',
         credentials: true
@@ -344,9 +346,9 @@ describe('Fastify Adapter', () => {
   it('should handle custom body limit', async () => {
     const customApp = require('fastify')({ logger: false })
     await customApp.register(cubePlugin as any, {
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       bodyLimit: 1024 * 1024 // 1MB
     })
     await customApp.ready()
@@ -369,9 +371,9 @@ describe('Fastify Adapter', () => {
 
   it('should work with createCubeApp helper', async () => {
     const standaloneApp = createCubeApp({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext
+      extractSecurityContext: mockGetSecurityContext
     })
 
     await standaloneApp.ready()

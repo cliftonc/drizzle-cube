@@ -15,6 +15,7 @@ describe('Express Adapter', () => {
   let closeFn: (() => void) | null = null
   let semanticLayerFn
   let drizzleDb
+  let dynamicEmployeesCube
 
   // Mock security context extractor
   const mockGetSecurityContext = async (req: any, res: any) => testSecurityContexts.org1
@@ -26,7 +27,8 @@ describe('Express Adapter', () => {
     drizzleDb = db
     
     // Use dynamic cube creation to ensure correct schema for current database type
-    const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
+    const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
+    dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
     // Also register the static test cube for additional measures
@@ -34,10 +36,10 @@ describe('Express Adapter', () => {
     
     app = express()
     const cubeRouter = createCubeRouter({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
       schema: testSchema,
-      getSecurityContext: mockGetSecurityContext
+      extractSecurityContext: mockGetSecurityContext
     })
     app.use('/', cubeRouter)
   })
@@ -137,9 +139,9 @@ describe('Express Adapter', () => {
   it('should support custom base path', async () => {
     const customApp = express()
     const customRouter = createCubeRouter({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       basePath: '/api/analytics'
     })
     customApp.use('/', customRouter)
@@ -279,9 +281,9 @@ describe('Express Adapter', () => {
   it('should handle CORS configuration', async () => {
     const corsApp = express()
     const corsRouter = createCubeRouter({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       cors: {
         origin: 'http://localhost:3000',
         credentials: true
@@ -301,9 +303,9 @@ describe('Express Adapter', () => {
   it('should handle custom JSON limit', async () => {
     const customApp = express()
     const customRouter = createCubeRouter({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube, testEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       jsonLimit: '1mb'
     })
     customApp.use('/', customRouter)

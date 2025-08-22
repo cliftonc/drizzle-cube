@@ -595,6 +595,12 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         title: 'Average Salary',
         type: 'avg',
         sql: employees.salary
+      },
+      totalSalary: {
+        name: 'totalSalary',
+        title: 'Total Salary',
+        type: 'sum',
+        sql: employees.salary
       }
     }
   })

@@ -14,6 +14,7 @@ describe('Hono Adapter', () => {
   let closeFn: (() => void) | null = null
   let semanticLayerFn
   let drizzleDb
+  let dynamicEmployeesCube
 
   // Mock security context extractor
   const mockGetSecurityContext = async (_c: any) => testSecurityContexts.org1
@@ -25,14 +26,15 @@ describe('Hono Adapter', () => {
     drizzleDb = db
     
     // Use dynamic cube creation to ensure correct schema for current database type
-    const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
+    const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
+    dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
     app = createCubeRoutes({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
       schema: testSchema,
-      getSecurityContext: mockGetSecurityContext
+      extractSecurityContext: mockGetSecurityContext
     })
   })
 
@@ -150,9 +152,9 @@ describe('Hono Adapter', () => {
     semanticLayerFn.registerCube(testEmployeesCube)
     
     const customApp = createCubeRoutes({
-      semanticLayer: semanticLayerFn,
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
-      getSecurityContext: mockGetSecurityContext,
+      extractSecurityContext: mockGetSecurityContext,
       basePath: '/api/analytics'
     })
 
