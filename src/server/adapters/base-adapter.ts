@@ -39,46 +39,26 @@ export interface DatabaseAdapter {
   castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
 
   /**
-   * Build COUNT aggregation expression
-   * @param fieldExpr - The field expression to count
-   * @returns SQL expression for COUNT aggregation
-   */
-  buildCount(fieldExpr: AnyColumn | SQL): SQL
-
-  /**
-   * Build COUNT DISTINCT aggregation expression
-   * @param fieldExpr - The field expression to count distinct values
-   * @returns SQL expression for COUNT DISTINCT aggregation
-   */
-  buildCountDistinct(fieldExpr: AnyColumn | SQL): SQL
-
-  /**
-   * Build SUM aggregation expression
-   * @param fieldExpr - The field expression to sum
-   * @returns SQL expression for SUM aggregation
-   */
-  buildSum(fieldExpr: AnyColumn | SQL): SQL
-
-  /**
-   * Build AVG aggregation expression
+   * Build AVG aggregation expression with database-specific null handling
    * @param fieldExpr - The field expression to average
-   * @returns SQL expression for AVG aggregation
+   * @returns SQL expression for AVG aggregation (COALESCE vs IFNULL for null handling)
    */
   buildAvg(fieldExpr: AnyColumn | SQL): SQL
 
   /**
-   * Build MIN aggregation expression
-   * @param fieldExpr - The field expression to find minimum
-   * @returns SQL expression for MIN aggregation
+   * Build CASE WHEN conditional expression
+   * @param conditions - Array of condition/result pairs
+   * @param elseValue - Optional ELSE clause value
+   * @returns SQL expression for CASE WHEN statement
    */
-  buildMin(fieldExpr: AnyColumn | SQL): SQL
+  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL
 
   /**
-   * Build MAX aggregation expression
-   * @param fieldExpr - The field expression to find maximum
-   * @returns SQL expression for MAX aggregation
+   * Build boolean literal expression
+   * @param value - Boolean value to represent
+   * @returns SQL expression for boolean literal (TRUE/FALSE/1/0 depending on database)
    */
-  buildMax(fieldExpr: AnyColumn | SQL): SQL
+  buildBooleanLiteral(value: boolean): SQL
 }
 
 /**
@@ -90,12 +70,9 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith', value: string): SQL
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
-  abstract buildCount(fieldExpr: AnyColumn | SQL): SQL
-  abstract buildCountDistinct(fieldExpr: AnyColumn | SQL): SQL
-  abstract buildSum(fieldExpr: AnyColumn | SQL): SQL
   abstract buildAvg(fieldExpr: AnyColumn | SQL): SQL
-  abstract buildMin(fieldExpr: AnyColumn | SQL): SQL
-  abstract buildMax(fieldExpr: AnyColumn | SQL): SQL
+  abstract buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL
+  abstract buildBooleanLiteral(value: boolean): SQL
 
   /**
    * Helper method to build pattern for string matching

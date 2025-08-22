@@ -8,12 +8,20 @@ import {
   and, 
   or,
   eq,
+  ne,
   gt,
   gte,
   lt,
   lte,
   isNull,
   isNotNull,
+  inArray,
+  notInArray,
+  count,
+  countDistinct,
+  sum,
+  min,
+  max,
   type SQL,
   type AnyColumn
 } from 'drizzle-orm'
@@ -273,27 +281,26 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     }
     
     // Apply aggregation function using database adapter for database-specific implementations
-    if (!this.databaseAdapter) {
-      throw new Error('DatabaseAdapter is required for measure aggregation')
-    }
-    
     switch (measure.type) {
       case 'count':
-        return this.databaseAdapter.buildCount(baseExpr)
+        return count(baseExpr)
       case 'countDistinct':
-        return this.databaseAdapter.buildCountDistinct(baseExpr)
+        return countDistinct(baseExpr)
       case 'sum':
-        return this.databaseAdapter.buildSum(baseExpr)
+        return sum(baseExpr)
       case 'avg':
+        if (!this.databaseAdapter) {
+          throw new Error('DatabaseAdapter is required for AVG aggregation with null handling')
+        }
         return this.databaseAdapter.buildAvg(baseExpr)
       case 'min':
-        return this.databaseAdapter.buildMin(baseExpr)
+        return min(baseExpr)
       case 'max':
-        return this.databaseAdapter.buildMax(baseExpr)
+        return max(baseExpr)
       case 'number':
         return baseExpr as SQL
       default:
-        return this.databaseAdapter.buildCount(baseExpr)
+        return count(baseExpr)
     }
   }
 
@@ -439,7 +446,7 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
       case 'equals':
         if (filteredValues.length === 0) {
           // Empty equals filter should return no results
-          return sql`1 = 0`
+          return this.databaseAdapter!.buildBooleanLiteral(false)
         } else if (filteredValues.length === 1) {
           // For time-type fields, normalize the date value
           const normalizedValue = field.type === 'time' ? this.normalizeDate(value) || value : value
@@ -448,16 +455,16 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
           // For multiple values, use IN clause with proper normalization for time fields
           if (field.type === 'time') {
             const normalizedValues = filteredValues.map((v: any) => this.normalizeDate(v) || v)
-            return sql`${fieldExpr} IN (${sql.join(normalizedValues.map((v: any) => sql`${v}`), sql`, `)})`
+            return inArray(fieldExpr as AnyColumn, normalizedValues)
           } else {
-            return sql`${fieldExpr} IN (${sql.join(filteredValues.map((v: any) => sql`${v}`), sql`, `)})`
+            return inArray(fieldExpr as AnyColumn, filteredValues)
           }
         }
       case 'notEquals':
         if (filteredValues.length === 1) {
-          return sql`${fieldExpr} <> ${value}`
+          return ne(fieldExpr as AnyColumn, value)
         } else if (filteredValues.length > 1) {
-          return sql`${fieldExpr} NOT IN (${sql.join(filteredValues.map((v: any) => sql`${v}`), sql`, `)})`
+          return notInArray(fieldExpr as AnyColumn, filteredValues)
         }
         return null
       case 'contains':

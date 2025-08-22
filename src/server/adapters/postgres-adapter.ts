@@ -81,29 +81,6 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     }
   }
 
-  /**
-   * Build PostgreSQL COUNT aggregation
-   * Extracted from multi-cube-builder.ts:278
-   */
-  buildCount(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COUNT(${fieldExpr})`
-  }
-
-  /**
-   * Build PostgreSQL COUNT DISTINCT aggregation
-   * Extracted from multi-cube-builder.ts:280
-   */
-  buildCountDistinct(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COUNT(DISTINCT ${fieldExpr})`
-  }
-
-  /**
-   * Build PostgreSQL SUM aggregation
-   * Extracted from multi-cube-builder.ts:282
-   */
-  buildSum(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`SUM(${fieldExpr})`
-  }
 
   /**
    * Build PostgreSQL AVG aggregation with COALESCE for NULL handling
@@ -114,19 +91,25 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     return sql`COALESCE(AVG(${fieldExpr}), 0)`
   }
 
+
   /**
-   * Build PostgreSQL MIN aggregation
-   * Extracted from multi-cube-builder.ts:286
+   * Build PostgreSQL CASE WHEN conditional expression
    */
-  buildMin(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`MIN(${fieldExpr})`
+  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
+    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
+    
+    if (elseValue !== undefined) {
+      return sql`CASE ${cases} ELSE ${elseValue} END`
+    }
+    return sql`CASE ${cases} END`
   }
 
   /**
-   * Build PostgreSQL MAX aggregation
-   * Extracted from multi-cube-builder.ts:288
+   * Build PostgreSQL boolean literal
+   * PostgreSQL uses TRUE/FALSE keywords
    */
-  buildMax(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`MAX(${fieldExpr})`
+  buildBooleanLiteral(value: boolean): SQL {
+    return value ? sql`TRUE` : sql`FALSE`
   }
+
 }

@@ -87,29 +87,6 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
     }
   }
 
-  /**
-   * Build MySQL COUNT aggregation
-   * Standard SQL COUNT function
-   */
-  buildCount(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COUNT(${fieldExpr})`
-  }
-
-  /**
-   * Build MySQL COUNT DISTINCT aggregation
-   * Standard SQL COUNT DISTINCT function
-   */
-  buildCountDistinct(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COUNT(DISTINCT ${fieldExpr})`
-  }
-
-  /**
-   * Build MySQL SUM aggregation
-   * Standard SQL SUM function
-   */
-  buildSum(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`SUM(${fieldExpr})`
-  }
 
   /**
    * Build MySQL AVG aggregation with IFNULL for NULL handling
@@ -119,19 +96,25 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
     return sql`IFNULL(AVG(${fieldExpr}), 0)`
   }
 
+
   /**
-   * Build MySQL MIN aggregation
-   * Standard SQL MIN function
+   * Build MySQL CASE WHEN conditional expression
    */
-  buildMin(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`MIN(${fieldExpr})`
+  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
+    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
+    
+    if (elseValue !== undefined) {
+      return sql`CASE ${cases} ELSE ${elseValue} END`
+    }
+    return sql`CASE ${cases} END`
   }
 
   /**
-   * Build MySQL MAX aggregation
-   * Standard SQL MAX function
+   * Build MySQL boolean literal
+   * MySQL uses TRUE/FALSE keywords (equivalent to 1/0)
    */
-  buildMax(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`MAX(${fieldExpr})`
+  buildBooleanLiteral(value: boolean): SQL {
+    return value ? sql`TRUE` : sql`FALSE`
   }
+
 }
