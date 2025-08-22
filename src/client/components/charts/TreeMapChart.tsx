@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Treemap } from 'recharts'
-import * as d3 from 'd3'
+import { scaleQuantize, scaleOrdinal } from 'd3'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants'
@@ -71,8 +71,7 @@ export default function TreeMapChart({
           const maxValue = Math.max(...seriesValues)
           
           // Create D3 quantize color scale - maps continuous data to discrete color bands
-          const colorScale = d3
-            .scaleQuantize<string>()
+          const colorScale = scaleQuantize<string>()
             .domain([minValue, maxValue])
             .range(CHART_COLORS_GRADIENT)
           
@@ -102,8 +101,7 @@ export default function TreeMapChart({
         } else {
           // Use D3 ordinal color scale for categorical series
           const uniqueSeriesValues = [...new Set(data.map(item => String(item[seriesField!])))]
-          const colorScale = d3
-            .scaleOrdinal<string>()
+          const colorScale = scaleOrdinal<string>()
             .domain(uniqueSeriesValues)
             .range(displayConfig.colors || CHART_COLORS)
           

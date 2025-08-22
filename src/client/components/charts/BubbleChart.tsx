@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import * as d3 from 'd3'
+import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, type ScaleOrdinal, type ScaleQuantize } from 'd3'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
@@ -147,7 +147,7 @@ export default function BubbleChart({
     }
 
     // Clear previous chart
-    d3.select(svgRef.current).selectAll('*').remove()
+    select(svgRef.current).selectAll('*').remove()
 
     // Debug logging
     console.log('BubbleChart: chartConfig:', chartConfig)
@@ -212,7 +212,7 @@ export default function BubbleChart({
     const width = dimensions.width - margin.left - margin.right
     const chartHeight = dimensions.height - margin.top - margin.bottom
 
-    const svg = d3.select(svgRef.current)
+    const svg = select(svgRef.current)
       .attr('width', dimensions.width)
       .attr('height', dimensions.height)
 
@@ -220,22 +220,22 @@ export default function BubbleChart({
       .attr('transform', `translate(${margin.left},${margin.top})`)
 
     // Set up scales
-    const xScale = d3.scaleLinear()
-      .domain(d3.extent(bubbleData, d => d.x) as [number, number])
+    const xScale = scaleLinear()
+      .domain(extent(bubbleData, d => d.x) as [number, number])
       .range([0, width])
       .nice()
 
-    const yScale = d3.scaleLinear()
-      .domain(d3.extent(bubbleData, d => d.y) as [number, number])
+    const yScale = scaleLinear()
+      .domain(extent(bubbleData, d => d.y) as [number, number])
       .range([chartHeight, 0])
       .nice()
 
-    const sizeScale = d3.scaleSqrt()
-      .domain([0, d3.max(bubbleData, d => d.size) as number])
+    const sizeScale = scaleSqrt()
+      .domain([0, max(bubbleData, d => d.size) as number])
       .range([safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize])
 
     // Set up color scale
-    let colorScale: d3.ScaleOrdinal<string, string> | d3.ScaleQuantize<string>
+    let colorScale: ScaleOrdinal<string, string> | ScaleQuantize<string>
     let isNumericColorField = false
     let uniqueColors: string[] = []
     
@@ -254,19 +254,19 @@ export default function BubbleChart({
         const maxValue = Math.max(...colorValues)
         
         // Create D3 quantize color scale - maps continuous data to discrete color bands
-        colorScale = d3.scaleQuantize<string>()
+        colorScale = scaleQuantize<string>()
           .domain([minValue, maxValue])
           .range(CHART_COLORS_GRADIENT)
       } else {
         // Categorical color field - use CHART_COLORS
         uniqueColors = [...new Set(bubbleData.map(d => String(d.color)))]
-        colorScale = d3.scaleOrdinal<string>()
+        colorScale = scaleOrdinal<string>()
           .domain(uniqueColors)
           .range(CHART_COLORS)
       }
     } else {
       // Single color for all bubbles
-      colorScale = d3.scaleOrdinal<string>()
+      colorScale = scaleOrdinal<string>()
         .domain(['default'])
         .range([CHART_COLORS[0]])
     }
@@ -277,7 +277,7 @@ export default function BubbleChart({
       g.append('g')
         .attr('class', 'grid')
         .attr('transform', `translate(0,${chartHeight})`)
-        .call(d3.axisBottom(xScale)
+        .call(axisBottom(xScale)
           .tickSize(-chartHeight)
           .tickFormat(() => '')
         )
@@ -287,7 +287,7 @@ export default function BubbleChart({
       // Y-axis grid
       g.append('g')
         .attr('class', 'grid')
-        .call(d3.axisLeft(yScale)
+        .call(axisLeft(yScale)
           .tickSize(-width)
           .tickFormat(() => '')
         )
@@ -298,7 +298,7 @@ export default function BubbleChart({
     // Add X axis
     g.append('g')
       .attr('transform', `translate(0,${chartHeight})`)
-      .call(d3.axisBottom(xScale))
+      .call(axisBottom(xScale))
       .append('text')
       .attr('x', width / 2)
       .attr('y', 35)
@@ -309,7 +309,7 @@ export default function BubbleChart({
 
     // Add Y axis
     g.append('g')
-      .call(d3.axisLeft(yScale))
+      .call(axisLeft(yScale))
       .append('text')
       .attr('transform', 'rotate(-90)')
       .attr('y', -35)
@@ -320,7 +320,7 @@ export default function BubbleChart({
       .text(getFieldLabel(yAxisField))
 
     // Create tooltip
-    const tooltip = d3.select('body').append('div')
+    const tooltip = select('body').append('div')
       .attr('class', 'bubble-chart-tooltip')
       .style('position', 'absolute')
       .style('padding', '8px')
@@ -343,8 +343,8 @@ export default function BubbleChart({
       .style('fill', d => {
         if (colorFieldName && d.color !== undefined) {
           return isNumericColorField
-            ? (colorScale as d3.ScaleQuantize<string>)(d.color as number)
-            : (colorScale as d3.ScaleOrdinal<string, string>)(String(d.color))
+            ? (colorScale as ScaleQuantize<string>)(d.color as number)
+            : (colorScale as ScaleOrdinal<string, string>)(String(d.color))
         }
         return CHART_COLORS[0]
       })
@@ -357,7 +357,7 @@ export default function BubbleChart({
     if (safeDisplayConfig.showTooltip) {
       bubbles
         .on('mouseover', function(event, d) {
-          d3.select(this)
+          select(this)
             .transition()
             .duration(200)
             .style('opacity', 1)
@@ -387,7 +387,7 @@ export default function BubbleChart({
             .style('top', (event.pageY - 10) + 'px')
         })
         .on('mouseout', function(_event, d) {
-          d3.select(this)
+          select(this)
             .transition()
             .duration(200)
             .style('opacity', safeDisplayConfig.bubbleOpacity)
@@ -487,7 +487,7 @@ export default function BubbleChart({
             .attr('cx', 5)
             .attr('cy', 5)
             .attr('r', 5)
-            .style('fill', d => (colorScale as d3.ScaleOrdinal<string, string>)(d as string))
+            .style('fill', d => (colorScale as ScaleOrdinal<string, string>)(d as string))
             .style('opacity', safeDisplayConfig.bubbleOpacity)
 
           legendItem.append('text')

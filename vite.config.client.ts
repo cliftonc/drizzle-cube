@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
@@ -13,6 +14,14 @@ export default defineConfig({
       tsconfigPath: './tsconfig.client.json',
       outDir: 'dist/client',
       entryRoot: 'src/client'
+    }),
+    visualizer({
+      filename: 'dist/client-bundle-stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap',
+      sourcemap: true
     })
   ],
   build: {
@@ -24,7 +33,13 @@ export default defineConfig({
     },
     outDir: 'dist/client',
     cssCodeSplit: false,
+    sourcemap: true,
     rollupOptions: {
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+        unknownGlobalSideEffects: false
+      },
       external: [
         'react', 
         'react-dom', 
