@@ -21,7 +21,7 @@
     "next": "^15.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "drizzle-cube": "0.1.13",
+    "drizzle-cube": "0.1.14",
     "drizzle-orm": "^0.44.4",
     "postgres": "^3.4.0",
     "@neondatabase/serverless": "^1.0.1",

@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "drizzle-cube": "0.1.13",
+    "drizzle-cube": "0.1.14",
     "drizzle-orm": "^0.44.4",
     "express": "^4.18.0",
     "postgres": "^3.4.0",
