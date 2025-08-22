@@ -52,15 +52,43 @@ npm install better-sqlite3
 
 Choose the adapter for your web framework:
 
+### Express.js
+
+```bash
+npm install express cors
+```
+
+📖 [**Express Adapter Documentation**](/help/adapters/express) - Full setup guide with middleware integration
+
+### Fastify
+
+```bash
+npm install fastify @fastify/cors
+```
+
+📖 [**Fastify Adapter Documentation**](/help/adapters/fastify) - High-performance plugin integration
+
 ### Hono (Recommended)
 
 ```bash
 npm install hono
 ```
 
+📖 [**Hono Adapter Documentation**](/help/adapters/hono) - Modern edge-runtime compatible adapter
+
+### Next.js
+
+```bash
+npm install next
+```
+
+📖 [**Next.js Adapter Documentation**](/help/adapters/nextjs) - App Router integration with server components
+
 ### Custom Framework
 
-You can create custom adapters for other frameworks. See [Custom Adapters](/help/adapters/custom) for details.
+You can create custom adapters for other frameworks. 
+
+📖 [**Custom Adapters Guide**](/help/adapters/custom) - Build your own adapter for any framework
 
 ## React Components (Optional)
 
@@ -158,9 +186,13 @@ npx tsx test.ts
 
 Now that Drizzle Cube is installed, you can:
 
-1. [**Set up your first cube**](/help/getting-started/quick-start)
-2. [**Learn core concepts**](/help/semantic-layer)  
-3. [**Explore the Hono adapter**](/help/adapters/hono)
+1. [**Set up your first cube**](/help/getting-started/quick-start) - Build your first semantic layer
+2. [**Learn core concepts**](/help/semantic-layer) - Understand cubes, dimensions, and measures
+3. **Choose your adapter**:
+   - [**Express.js**](/help/adapters/express) - Most popular Node.js framework
+   - [**Fastify**](/help/adapters/fastify) - High-performance alternative
+   - [**Hono**](/help/adapters/hono) - Modern edge-compatible framework
+   - [**Next.js**](/help/adapters/nextjs) - React full-stack framework
 
 ## Troubleshooting
 

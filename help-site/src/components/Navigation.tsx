@@ -48,7 +48,10 @@ const navigationSections: NavSection[] = [
   {
     title: 'Adapters',
     items: [
+      { title: 'Express', slug: 'adapters/express', description: 'Express.js web framework adapter' },
+      { title: 'Fastify', slug: 'adapters/fastify', description: 'Fastify web framework adapter' },
       { title: 'Hono', slug: 'adapters/hono', description: 'Hono web framework adapter' },
+      { title: 'Next.js', slug: 'adapters/nextjs', description: 'Next.js App Router adapter' },
       { title: 'Custom Adapters', slug: 'adapters/custom', description: 'Build your own adapter' },
     ]
   },

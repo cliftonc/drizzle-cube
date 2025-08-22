@@ -283,6 +283,8 @@ const timeSeriesQuery = {
 
 ### Custom Formatting
 
+The server does NOT format any responses, it is returned as is from the database, with the exceptio of time-dimensions.  This is included only to allow the client to format it as per its requirements (e.g. internationalisation, timezones etc).
+
 ```typescript
 dimensions: {
   salary: {
@@ -292,36 +294,6 @@ dimensions: {
     sql: employees.salary,
     format: 'currency', // Hint for client formatting
     description: 'Annual salary in USD'
-  }
-}
-```
-
-### Hierarchical Dimensions
-
-Create dimension hierarchies for drill-down:
-
-```typescript
-dimensions: {
-  // Year level
-  hireYear: {
-    name: 'hireYear',
-    title: 'Hire Year',
-    type: 'string',
-    sql: sql`EXTRACT(YEAR FROM ${employees.createdAt})::text`
-  },
-  // Quarter level
-  hireQuarter: {
-    name: 'hireQuarter',
-    title: 'Hire Quarter',
-    type: 'string',
-    sql: sql`EXTRACT(YEAR FROM ${employees.createdAt}) || '-Q' || EXTRACT(QUARTER FROM ${employees.createdAt})`
-  },
-  // Month level
-  hireMonth: {
-    name: 'hireMonth',
-    title: 'Hire Month',
-    type: 'string',
-    sql: sql`TO_CHAR(${employees.createdAt}, 'YYYY-MM')`
   }
 }
 ```
@@ -478,7 +450,6 @@ category: {
 
 - Learn about [Measures](/help/semantic-layer/measures) for metrics and aggregations
 - Explore [Joins](/help/semantic-layer/joins) for multi-cube relationships  
-- Understand [Time Dimensions](https://docs.cube.dev/schema/reference/types-and-formats#time) in detail
 - Review [Security](/help/semantic-layer/security) patterns
 
 ## Roadmap Ideas

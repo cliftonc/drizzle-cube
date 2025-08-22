@@ -14,13 +14,16 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        'hono/index': resolve(__dirname, 'src/adapters/hono/index.ts')
+        'hono/index': resolve(__dirname, 'src/adapters/hono/index.ts'),
+        'express/index': resolve(__dirname, 'src/adapters/express/index.ts'),
+        'fastify/index': resolve(__dirname, 'src/adapters/fastify/index.ts'),
+        'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts')
       },
       formats: ['es']
     },
     outDir: 'dist/adapters',
     rollupOptions: {
-      external: ['hono']
+      external: ['hono', 'express', 'fastify', '@fastify/cors', 'cors', 'next', 'next/server']
     }
   }
 })

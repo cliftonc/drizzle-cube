@@ -1,0 +1,1 @@
+ALTER TABLE "productivity" ADD COLUMN "department_id" integer;

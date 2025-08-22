@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: drizzle-cube-fastify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: drizzle_cube_db
+      POSTGRES_USER: drizzle_user
+      POSTGRES_PASSWORD: drizzle_pass123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "54923:5432"  # Different port from Express example
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drizzle_user -d drizzle_cube_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - drizzle-cube-fastify-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  drizzle-cube-fastify-network:
+    driver: bridge

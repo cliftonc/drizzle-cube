@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const contentDir = path.join(__dirname, '../content');
+const configFile = path.join(__dirname, '../help-content-config.json');
 const outputFile = path.join(__dirname, '../src/help-content.ts');
 const sitemapFile = path.join(__dirname, '../public/sitemap.xml');
 
@@ -75,7 +76,26 @@ renderer.listitem = function(item) {
       itemBody += text
         .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
         .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-        .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded-sm text-sm font-mono">$1</code>');
+        .replace(/`(.*?)`/g, (match, code) => {
+          // Handle arrow functions specially in list item code spans
+          let escapedCode = code;
+          
+          // Handle arrow functions first (before any encoding)
+          escapedCode = escapedCode.replace(/=>/g, '__ARROW_FUNCTION__');
+          
+          // Now escape HTML entities
+          escapedCode = escapedCode
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+            
+          // Restore arrow functions after escaping
+          escapedCode = escapedCode.replace(/__ARROW_FUNCTION__/g, '=>');
+          
+          return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded-sm text-sm font-mono">${escapedCode}</code>`;
+        });
     }
   } else if (item.text) {
     // Apply basic markdown formatting to text
@@ -83,7 +103,26 @@ renderer.listitem = function(item) {
     itemBody += text
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 text-drizzle-700 px-1 py-0.5 rounded-sm text-sm font-mono">$1</code>');
+      .replace(/`(.*?)`/g, (match, code) => {
+        // Handle arrow functions specially in list item code spans
+        let escapedCode = code;
+        
+        // Handle arrow functions first (before any encoding)
+        escapedCode = escapedCode.replace(/=>/g, '__ARROW_FUNCTION__');
+        
+        // Now escape HTML entities
+        escapedCode = escapedCode
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+          
+        // Restore arrow functions after escaping
+        escapedCode = escapedCode.replace(/__ARROW_FUNCTION__/g, '=>');
+        
+        return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded-sm text-sm font-mono">${escapedCode}</code>`;
+      });
   }
   
   return `<li class="leading-relaxed">${itemBody}</li>`;
@@ -91,7 +130,19 @@ renderer.listitem = function(item) {
 
 // Override code renderers
 renderer.code = function(token) {
-  const language = token.lang || 'text';
+  const rawLanguage = token.lang || 'text';
+  // Map common language aliases to their proper Prism.js names
+  const languageMap = {
+    'ts': 'typescript',
+    'js': 'javascript',
+    'jsx': 'javascript',
+    'tsx': 'typescript',
+    'sh': 'bash',
+    'shell': 'bash',
+    'yml': 'yaml',
+    'dockerfile': 'docker'
+  };
+  const language = languageMap[rawLanguage] || rawLanguage;
   // Properly escape HTML entities in code blocks
   const escapedText = token.text
     .replace(/&/g, '&amp;')
@@ -99,18 +150,36 @@ renderer.code = function(token) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-  return `<pre class="bg-white rounded-lg p-4 overflow-x-auto mb-4 border"><code class="text-xs text-gray-800 language-${language}">${escapedText}</code></pre>`;
+  return `<div class="relative group">
+    <pre class="language-${language} rounded-lg overflow-x-auto mb-4"><code class="language-${language}">${escapedText}</code></pre>
+    <button class="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 copy-code-btn" data-code="${escapedText.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+    </button>
+  </div>`;
 };
 
 renderer.codespan = function(token) {
-  // Properly escape HTML entities in inline code
-  const escapedText = token.text
+  // For inline code spans, escape all HTML entities but handle arrow functions specially
+  let text = token.text;
+  
+  // Handle arrow functions first (before any encoding)
+  text = text.replace(/=>/g, '__ARROW_FUNCTION__');
+  
+  // Now escape HTML entities
+  text = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded-sm text-sm font-mono">${escapedText}</code>`;
+    
+  // Restore arrow functions after escaping
+  text = text.replace(/__ARROW_FUNCTION__/g, '=>');
+  
+  return `<code class="bg-gray-100 text-drizzle-700 px-2 py-1 rounded-sm text-sm font-mono">${text}</code>`;
 };
 
 // Override inline text formatting
@@ -234,6 +303,49 @@ function scanDirectory(dir, basePath = '') {
   return items;
 }
 
+// Load external includes from configuration
+function loadExternalIncludes() {
+  const externalItems = [];
+  
+  if (fs.existsSync(configFile)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+      
+      if (config.externalIncludes) {
+        for (const [slug, includeConfig] of Object.entries(config.externalIncludes)) {
+          const sourcePath = path.resolve(__dirname, '..', includeConfig.source);
+          
+          if (fs.existsSync(sourcePath)) {
+            const content = fs.readFileSync(sourcePath, 'utf-8');
+            
+            // Extract title from first H1 or use configured title
+            const titleMatch = content.match(/^#\s+(.+)$/m);
+            const title = titleMatch ? titleMatch[1] : includeConfig.title;
+            
+            // Process markdown to HTML
+            const html = marked(content);
+            
+            externalItems.push({
+              slug: slug,
+              title: title,
+              content: html,
+              path: `external:${includeConfig.source}`
+            });
+            
+            console.log(`✅ Included external file: ${sourcePath} as ${slug}`);
+          } else {
+            console.warn(`⚠️  External file not found: ${sourcePath}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️  Error loading config file: ${error.message}`);
+    }
+  }
+  
+  return externalItems;
+}
+
 // Main build function
 function buildHelpContent() {
   console.log('Building help content...');
@@ -244,14 +356,18 @@ function buildHelpContent() {
   }
   
   const helpItems = scanDirectory(contentDir);
+  const externalItems = loadExternalIncludes();
   
-  if (helpItems.length === 0) {
+  // Combine local and external content
+  const allItems = [...helpItems, ...externalItems];
+  
+  if (allItems.length === 0) {
     console.warn('No help content found');
     return;
   }
   
   // Sort items by slug for consistent ordering
-  helpItems.sort((a, b) => a.slug.localeCompare(b.slug));
+  allItems.sort((a, b) => a.slug.localeCompare(b.slug));
   
   // Generate TypeScript content
   const tsContent = `// Auto-generated help content - do not edit manually
@@ -263,10 +379,10 @@ export interface HelpTopic {
   path: string;
 }
 
-export const helpContent: HelpTopic[] = ${JSON.stringify(helpItems, null, 2)};
+export const helpContent: HelpTopic[] = ${JSON.stringify(allItems, null, 2)};
 
 export const helpContentMap: Record<string, HelpTopic> = {
-${helpItems.map(item => `  '${item.slug}': ${JSON.stringify(item)}`).join(',\n')}
+${allItems.map(item => `  '${item.slug}': ${JSON.stringify(item)}`).join(',\n')}
 };
 
 // Export for search functionality
@@ -293,7 +409,7 @@ export const searchableContent = helpContent.map(item => ({
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
-${helpItems.map(item => `  <url>
+${allItems.map(item => `  <url>
     <loc>https://www.drizzle-cube.dev/help/${item.slug}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -308,7 +424,7 @@ ${helpItems.map(item => `  <url>
   
   fs.writeFileSync(sitemapFile, sitemapContent, 'utf-8');
   
-  console.log(`✅ Generated help content: ${helpItems.length} topics`);
+  console.log(`✅ Generated help content: ${allItems.length} topics (${helpItems.length} local + ${externalItems.length} external)`);
   console.log(`📝 Output: ${outputFile}`);
   console.log(`🗺️  Sitemap: ${sitemapFile}`);
 }

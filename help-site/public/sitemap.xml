@@ -16,7 +16,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.drizzle-cube.dev/help/adapters/express</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help/adapters/fastify</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.drizzle-cube.dev/help/adapters/hono</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help/adapters/nextjs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

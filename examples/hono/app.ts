@@ -69,20 +69,9 @@ function createDatabase(databaseUrl: string) {
 const defaultConnectionString = 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
 const db = createDatabase(getEnvVar('DATABASE_URL', defaultConnectionString))
 
-// Create semantic layer
-const semanticLayer = new SemanticLayerCompiler<Schema>({
-  drizzle: db,
-  schema,
-  engineType: 'postgres'
-})
-
-// Register all cubes
-allCubes.forEach(cube => {
-  semanticLayer.registerCube(cube)
-})
-
 // Security context extractor - customize based on your auth system
-async function getSecurityContext(c: any): Promise<SecurityContext> {
+// This function is called for EVERY API request to extract user permissions
+async function extractSecurityContext(c: any): Promise<SecurityContext> {
   // Example: Extract from JWT token or session
   const authHeader = c.req.header('Authorization')
   
@@ -165,7 +154,15 @@ app.get('/health', (c) => {
 
 // API documentation endpoint
 app.get('/api/docs', (c) => {
-  const metadata = semanticLayer.getMetadata()
+  // Get metadata from the cube app (we could also create a temporary semantic layer for this)
+  // For now, we'll provide static documentation. In a real app, you might extract this from the cubes
+  const metadata = allCubes.map(cube => ({
+    name: cube.name,
+    title: cube.title || cube.name,
+    description: cube.description,
+    dimensions: Object.keys(cube.dimensions || {}),
+    measures: Object.keys(cube.measures || {})
+  }))
   
   return c.json({
     title: 'Employee Analytics API',
@@ -212,10 +209,11 @@ app.get('/api/docs', (c) => {
 
 // Mount the cube API routes
 const cubeApp = createCubeApp({
-  semanticLayer,
+  cubes: allCubes,
   drizzle: db,
   schema,
-  getSecurityContext,
+  extractSecurityContext,
+  engineType: 'postgres',
   cors: {
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
@@ -237,7 +235,7 @@ app.route('/api/analytics-pages', analyticsApp)
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {
   try {
-    const securityContext = await getSecurityContext(c)
+    const securityContext = await extractSecurityContext(c)
     
     return c.json({
       organisationId: securityContext.organisationId,

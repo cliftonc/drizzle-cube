@@ -8,6 +8,52 @@ The Drizzle Cube React client provides pre-built components and hooks for creati
 npm install drizzle-cube react react-dom recharts react-grid-layout
 ```
 
+### Dependencies & Requirements
+
+**Required Dependencies:**
+- `react` (^18.2.0) - React framework
+- `react-dom` (^18.2.0) - React DOM rendering
+- `recharts` (^2.8.0) - Chart visualization library
+- `react-grid-layout` (^1.4.0) - Dashboard grid layout
+
+**Optional Dependencies:**
+- `@heroicons/react` (^2.2.0) - Icons used in components
+- `@tanstack/react-query` (^5.0.0) - Data fetching and caching
+- `react-router-dom` (^6.8.0) - Routing for multi-page dashboards
+
+**Tailwind CSS v3 Required:**
+Components are styled with Tailwind CSS v3 classes. You must have Tailwind CSS v3 configured in your project:
+
+```bash
+npm install -D tailwindcss postcss
+```
+
+Configure your `tailwind.config.js` to include the drizzle-cube components:
+
+```js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './src/**/*.{js,ts,jsx,tsx}',
+    './node_modules/drizzle-cube/dist/**/*.js', // Include drizzle-cube components
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+### Usage Options
+
+**Option 1: Import Components (Recommended)**
+```tsx
+import { AnalyticsDashboard, CubeProvider } from 'drizzle-cube/client';
+```
+
+**Option 2: Copy-Paste for Customization**
+For more control over styling and behavior, you can copy component code from the complete example at `/examples/hono/client` in the repository or view the live version at [try.drizzle-cube.dev](https://try.drizzle-cube.dev).
+
 ## Quick Start
 
 ```tsx

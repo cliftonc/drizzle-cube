@@ -1,15 +1,15 @@
 # Semantic Layer
 
-The semantic layer is the heart of Drizzle Cube. It provides a business-friendly abstraction over your database that enables consistent, secure, and performant analytics across your organization.
+The semantic layer is the heart of Drizzle Cube. It transforms your raw database tables into business-friendly concepts that anyone can understand and query safely.
 
 ## What is a Semantic Layer?
 
 A semantic layer is a **business representation** of your data that:
 
 - **Abstracts complexity** - Hide database schema details behind business terms
-- **Ensures consistency** - Single source of truth for metrics and definitions
-- **Provides security** - Row and column-level access control
-- **Enables self-service** - Non-technical users can explore data safely
+- **Ensures consistency** - Single source of truth for metrics and definitions  
+- **Enables self-service** - Non-technical users can explore data confidently
+- **Provides structure** - Organize data into logical business entities
 
 ## Architecture Overview
 
@@ -46,306 +46,244 @@ A semantic layer is a **business representation** of your data that:
   </div>
 </div>
 
-## Key Components
+## Core Concepts
 
-### Cubes
-Business entities that represent your data models:
+The semantic layer is built on three fundamental concepts:
+
+### 1. Cubes
+**Cubes** are business entities that represent the main subjects you want to analyze - like Sales, Customers, or Products. Each cube defines how to query a specific dataset.
 
 ```typescript
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
+import { defineCube } from 'drizzle-cube/server';
+import { eq } from 'drizzle-orm';
+import * as schema from './schema';
+
+export const salesCube = defineCube('Sales', {
   title: 'Sales Transactions',
-  description: 'All sales transactions with product and customer information',
+  sql: (ctx) => ({
+    from: schema.sales,
+    leftJoin: [
+      { table: schema.products, on: eq(schema.sales.productId, schema.products.id) },
+      { table: schema.customers, on: eq(schema.sales.customerId, schema.customers.id) }
+    ]
+  }),
   
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.sales)
-      .innerJoin(schema.products, eq(schema.sales.productId, schema.products.id))
-      .where(eq(schema.sales.organisationId, securityContext.organisationId)),
+  dimensions: {
+    // What you can filter and group by
+  },
   
-  dimensions: { /* ... */ },
-  measures: { /* ... */ }
+  measures: {
+    // What you want to calculate and analyze
+  }
 });
 ```
 
-### Database Executor
-Handles different database engines:
+### 2. Dimensions
+**Dimensions** are the descriptive attributes of your data - the "what", "when", "where", and "who" that you use to slice and filter your analysis.
 
 ```typescript
-const executor = createDatabaseExecutor(db, schema, 'postgres');
-// Supported: 'postgres' (including Neon), 'mysql'
-// Coming soon: 'sqlite'
+dimensions: {
+  customerName: {
+    name: 'customerName',
+    title: 'Customer Name',
+    type: 'string',
+    sql: schema.customers.name
+  },
+  productCategory: {
+    name: 'productCategory', 
+    title: 'Product Category',
+    type: 'string',
+    sql: schema.products.category
+  },
+  orderDate: {
+    name: 'orderDate',
+    title: 'Order Date',
+    type: 'time',
+    sql: schema.sales.orderDate
+  }
+}
 ```
 
-### Semantic Layer Compiler
-Orchestrates cubes and query execution:
+### 3. Measures
+**Measures** are the numeric calculations you want to perform - counts, sums, averages, and other aggregations that provide business insights.
 
 ```typescript
-const semanticLayer = new SemanticLayerCompiler({ 
-  databaseExecutor: executor 
+measures: {
+  totalSales: {
+    name: 'totalSales',
+    title: 'Total Sales',
+    type: 'sum',
+    sql: schema.sales.amount
+  },
+  orderCount: {
+    name: 'orderCount', 
+    title: 'Number of Orders',
+    type: 'count',
+    sql: schema.sales.id
+  },
+  averageOrderValue: {
+    name: 'averageOrderValue',
+    title: 'Average Order Value', 
+    type: 'avg',
+    sql: schema.sales.amount
+  }
+}
+```
+
+## Complete Example
+
+Here's a complete cube definition that brings together all three concepts:
+
+```typescript
+import { defineCube } from 'drizzle-cube/server';
+import { eq } from 'drizzle-orm';
+import * as schema from './schema';
+
+export const salesCube = defineCube('Sales', {
+  title: 'Sales Transactions',
+  description: 'All sales data with customer and product information',
+  
+  sql: (ctx) => ({
+    from: schema.sales,
+    leftJoin: [
+      { table: schema.products, on: eq(schema.sales.productId, schema.products.id) },
+      { table: schema.customers, on: eq(schema.sales.customerId, schema.customers.id) }
+    ]
+  }),
+  
+  dimensions: {
+    customerName: {
+      name: 'customerName',
+      title: 'Customer Name',
+      type: 'string',
+      sql: schema.customers.name
+    },
+    productName: {
+      name: 'productName',
+      title: 'Product Name', 
+      type: 'string',
+      sql: schema.products.name
+    },
+    productCategory: {
+      name: 'productCategory',
+      title: 'Product Category',
+      type: 'string', 
+      sql: schema.products.category
+    },
+    orderDate: {
+      name: 'orderDate',
+      title: 'Order Date',
+      type: 'time',
+      sql: schema.sales.orderDate
+    }
+  },
+  
+  measures: {
+    totalSales: {
+      name: 'totalSales',
+      title: 'Total Sales',
+      type: 'sum',
+      sql: schema.sales.amount
+    },
+    orderCount: {
+      name: 'orderCount',
+      title: 'Number of Orders',
+      type: 'count', 
+      sql: schema.sales.id
+    },
+    averageOrderValue: {
+      name: 'averageOrderValue',
+      title: 'Average Order Value',
+      type: 'avg',
+      sql: schema.sales.amount
+    },
+    totalQuantity: {
+      name: 'totalQuantity',
+      title: 'Total Quantity Sold',
+      type: 'sum',
+      sql: schema.sales.quantity
+    }
+  }
 });
-
-semanticLayer.registerCube(salesCube);
-semanticLayer.registerCube(productsCube);
-semanticLayer.registerCube(customersCube);
 ```
 
-## Advanced Features
+## How Queries Work
 
-### Multi-Cube Queries
-
-Query across multiple cubes with automatic join resolution:
+Once you've defined your cube, you can query it using a simple JSON structure:
 
 ```json
 {
-  "measures": ["Sales.totalRevenue", "Products.averagePrice"],
-  "dimensions": ["Products.category", "Sales.customerSegment"]
+  "measures": ["Sales.totalSales", "Sales.orderCount"],
+  "dimensions": ["Sales.productCategory", "Sales.customerName"],
+  "timeDimensions": [{
+    "dimension": "Sales.orderDate",
+    "granularity": "month"
+  }],
+  "filters": [{
+    "member": "Sales.productCategory", 
+    "operator": "equals",
+    "values": ["Electronics"]
+  }]
 }
 ```
 
-### Time Intelligence *(Coming Soon)*
+This query will:
+1. **Sum up total sales** and **count orders** (measures)
+2. **Group by** product category and customer name (dimensions)  
+3. **Group by month** using the order date (time dimension)
+4. **Filter to** only Electronics products (filter)
 
-Time-based calculations are planned for future releases. Currently, time dimensions are supported for grouping data by time periods using standard SQL aggregation patterns.
+## Common Patterns
 
-### Calculated Members
-
-Create complex business logic:
-
+### Basic Aggregations
 ```typescript
 measures: {
-  customerLifetimeValue: {
-    sql: sql`
-      (${schema.sales.amount} / ${schema.customers.acquisitionCost}) * 
-      ${schema.customers.retentionRate}
-    `,
-    type: 'avg',
-    title: 'Customer Lifetime Value'
-  }
+  // Count records
+  recordCount: { type: 'count', sql: schema.table.id },
+  
+  // Sum amounts
+  totalRevenue: { type: 'sum', sql: schema.table.amount },
+  
+  // Calculate averages  
+  avgOrderValue: { type: 'avg', sql: schema.table.orderValue },
+  
+  // Find min/max values
+  minPrice: { type: 'min', sql: schema.table.price },
+  maxPrice: { type: 'max', sql: schema.table.price }
 }
 ```
 
-
-## Security Model
-
-### Multi-Tenant Isolation
-
-Every cube must implement tenant isolation:
-
-```typescript
-sql: ({ db, securityContext }) => 
-  db.select()
-    .from(schema.data)
-    .where(eq(schema.data.organisationId, securityContext.organisationId))
-```
-
-### Role-Based Access
-
-Control access based on user roles:
-
+### Time Dimensions
 ```typescript
 dimensions: {
-  sensitiveData: {
-    sql: securityContext.hasRole('admin') 
-      ? schema.table.sensitiveColumn
-      : sql`NULL`,
-    type: 'string'
+  createdDate: {
+    type: 'time',
+    sql: schema.table.createdAt
+  },
+  updatedDate: {
+    type: 'time', 
+    sql: schema.table.updatedAt
   }
 }
 ```
 
-### Dynamic Filtering
-
-Apply filters based on user context:
-
+### Categorical Dimensions  
 ```typescript
-sql: ({ db, securityContext }) => {
-  let query = db.select().from(schema.sales);
-  
-  if (securityContext.role === 'salesperson') {
-    query = query.where(eq(schema.sales.salesPersonId, securityContext.userId));
-  }
-  
-  return query.where(eq(schema.sales.organisationId, securityContext.organisationId));
-}
-```
-
-## Performance Optimization
-
-### Indexes
-
-Ensure proper database indexes:
-
-```typescript
-// In your Drizzle schema
-export const salesIndex = index('sales_org_date_idx')
-  .on(sales.organisationId, sales.orderDate);
-```
-
-### Query Optimization
-
-Use efficient SQL patterns:
-
-```typescript
-// ✅ Good - use joins instead of subqueries when possible
-sql: ({ db }) => 
-  db.select()
-    .from(schema.sales)
-    .innerJoin(schema.products, eq(schema.sales.productId, schema.products.id))
-
-// ❌ Slower - subqueries can be less efficient  
-sql: ({ db }) =>
-  db.select()
-    .from(schema.sales)
-    .where(inArray(schema.sales.productId, 
-      db.select({ id: schema.products.id }).from(schema.products)
-    ))
-```
-
-## Data Modeling Best Practices
-
-### Star Schema Design
-
-Organize cubes around business processes:
-
-```
-    Customers ───┐
-                 │
-    Products ────┼──── Sales (Fact)
-                 │
-    Time ────────┘
-```
-
-### Dimensional Modeling
-
-- **Fact tables** - Events, transactions, measurements
-- **Dimension tables** - Descriptive attributes, hierarchies
-- **Bridge tables** - Many-to-many relationships
-
-### Naming Conventions
-
-```typescript
-// Cubes: Business entities (PascalCase)
-export const CustomerOrders = defineCube(/* ... */);
-
-// Dimensions: Attributes (camelCase)  
 dimensions: {
-  customerName: { /* ... */ },
-  orderDate: { /* ... */ }
-}
-
-// Measures: Metrics (camelCase)
-measures: {
-  totalRevenue: { /* ... */ },
-  averageOrderValue: { /* ... */ }
-}
-```
-
-## Testing Your Semantic Layer
-
-### Unit Tests
-
-Test cube definitions:
-
-```typescript
-import { describe, it, expect } from 'vitest';
-import { salesCube } from './cubes';
-
-describe('Sales Cube', () => {
-  it('should have required dimensions', () => {
-    expect(salesCube.dimensions.customerName).toBeDefined();
-    expect(salesCube.dimensions.orderDate).toBeDefined();
-  });
-  
-  it('should have required measures', () => {
-    expect(salesCube.measures.totalRevenue).toBeDefined();
-    expect(salesCube.measures.orderCount).toBeDefined();
-  });
-});
-```
-
-### Integration Tests
-
-Test query execution:
-
-```typescript
-it('should execute queries correctly', async () => {
-  const result = await semanticLayer.executeQuery({
-    measures: ['Sales.totalRevenue'],
-    dimensions: ['Sales.productCategory']
-  }, { organisationId: 1 });
-  
-  expect(result.data).toHaveLength(3);
-  expect(result.data[0]).toHaveProperty('Sales.totalRevenue');
-});
-```
-
-## Migration and Interoperability
-
-### Drizzle Cube ↔ [Cube.js](https://cube.dev) Migration
-
-Drizzle Cube and [Cube.js](https://cube.dev) are designed to be compatible, allowing migration in both directions depending on your needs:
-
-**Drizzle Cube → [Cube.js](https://cube.dev)**: As your analytics requirements become more complex, you might need [Cube.js](https://cube.dev)'s advanced features like pre-aggregations, caching layers, or enterprise tooling. The similar schema structure makes this transition smooth.
-
-**[Cube.js](https://cube.dev) → Drizzle Cube**: If you want stronger type safety, Drizzle ORM integration, or simpler deployment patterns, you can migrate to Drizzle Cube while maintaining API compatibility.
-
-```typescript
-// [Cube.js](https://cube.dev) schema
-cube(`Sales`, {
-  sql: `SELECT * FROM sales`,
-  dimensions: {
-    customerName: {
-      sql: `customer_name`,
-      type: `string`
-    }
+  status: {
+    type: 'string',
+    sql: schema.table.status
   },
-  measures: {
-    count: {
-      type: `count`
-    }
-  }
-});
-
-// Equivalent Drizzle Cube (bidirectional compatibility)
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db }) => db.select().from(schema.sales),
-  dimensions: {
-    customerName: {
-      sql: schema.sales.customerName,
-      type: 'string'
-    }
+  category: {
+    type: 'string',
+    sql: schema.table.category  
   },
-  measures: {
-    count: {
-      sql: schema.sales.id,
-      type: 'count'
-    }
+  isActive: {
+    type: 'boolean',
+    sql: schema.table.isActive
   }
-});
+}
 ```
-
-### When to Choose Each Platform
-
-**Choose Drizzle Cube when:**
-- You want type safety and Drizzle ORM integration
-- You prefer simpler deployment (single process, no Redis)
-- You need strong SQL injection protection
-- Your analytics needs are moderate complexity
-
-**Consider [Cube.js](https://cube.dev) when:**
-- You need advanced pre-aggregation strategies
-- You require horizontal scaling with caching layers
-- You want enterprise features and commercial support
-- You have complex analytics requirements across large datasets
-
-### Migration Path
-
-1. **Start small** - Begin with one cube in either direction
-2. **Maintain compatibility** - Both platforms support similar query APIs
-3. **Gradual transition** - Migrate cubes and queries incrementally  
-4. **Test thoroughly** - Validate query results during migration
-5. **Update clients** - Frontend applications often require minimal changes
 
 ## Next Steps
 

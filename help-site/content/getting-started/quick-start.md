@@ -240,15 +240,50 @@ console.log(data);
 
 ## Step 5: React Dashboard (Optional)
 
-Add a React dashboard using Drizzle Cube's components:
+Add a React dashboard with persistent configurations stored in your database:
+
+### Add Dashboard Schema
+
+First, add a dashboard table to your schema:
+
+```typescript
+// src/schema.ts (add to existing schema)
+export const dashboards = pgTable('dashboards', {
+  id: serial('id').primaryKey(),
+  organisationId: integer('organisation_id').references(() => organisations.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  layout: text('layout'), // JSON string of dashboard configuration
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+### Create Dashboard Component with Persistence
 
 ```tsx
 // src/Dashboard.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CubeProvider } from 'drizzle-cube/client';
 import { AnalyticsDashboard } from 'drizzle-cube/client';
 
+interface DashboardLayout {
+  id: string;
+  title: string;
+  chartType: string;
+  query: any;
+  w?: number;
+  h?: number;
+  x?: number;
+  y?: number;
+}
+
 const Dashboard: React.FC = () => {
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dashboardId, setDashboardId] = useState<number | null>(null);
+
   const cubeApi = {
     url: '/api/cube',
     headers: {
@@ -256,13 +291,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  return (
-    <CubeProvider cubeApi={cubeApi}>
-      <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">Sales Dashboard</h1>
+  // Load dashboard from database
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const response = await fetch('/api/dashboards/default', {
+          headers: {
+            'X-Organisation-ID': '1'
+          }
+        });
         
-        <AnalyticsDashboard
-          initialLayout={[
+        if (response.ok) {
+          const dashboard = await response.json();
+          setDashboardId(dashboard.id);
+          setDashboardLayout(JSON.parse(dashboard.layout || '[]'));
+        } else {
+          // Use default layout if no saved dashboard exists
+          setDashboardLayout([
             {
               id: 'sales-by-category',
               title: 'Sales by Category',
@@ -270,7 +315,8 @@ const Dashboard: React.FC = () => {
               query: {
                 measures: ['Sales.totalSales'],
                 dimensions: ['Sales.productCategory']
-              }
+              },
+              w: 6, h: 6, x: 0, y: 0
             },
             {
               id: 'sales-over-time',
@@ -282,9 +328,67 @@ const Dashboard: React.FC = () => {
                   dimension: 'Sales.orderDate',
                   granularity: 'month'
                 }]
-              }
+              },
+              w: 6, h: 6, x: 6, y: 0
             }
-          ]}
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  // Save dashboard changes to database
+  const handleLayoutChange = async (newLayout: DashboardLayout[]) => {
+    setDashboardLayout(newLayout);
+    
+    try {
+      const method = dashboardId ? 'PUT' : 'POST';
+      const url = dashboardId 
+        ? `/api/dashboards/${dashboardId}` 
+        : '/api/dashboards';
+        
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Organisation-ID': '1'
+        },
+        body: JSON.stringify({
+          name: 'Default Dashboard',
+          description: 'Auto-saved dashboard configuration',
+          layout: JSON.stringify(newLayout),
+          isDefault: true
+        })
+      });
+
+      if (response.ok && !dashboardId) {
+        const savedDashboard = await response.json();
+        setDashboardId(savedDashboard.id);
+      }
+    } catch (error) {
+      console.error('Failed to save dashboard:', error);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading dashboard...</div>;
+  }
+
+  return (
+    <CubeProvider cubeApi={cubeApi}>
+      <div className="p-6">
+        <h1 className="text-3xl font-bold mb-6">Sales Dashboard</h1>
+        
+        <AnalyticsDashboard
+          initialLayout={dashboardLayout}
+          onLayoutChange={handleLayoutChange}
+          enableEditing={true}
         />
       </div>
     </CubeProvider>
@@ -293,6 +397,91 @@ const Dashboard: React.FC = () => {
 
 export default Dashboard;
 ```
+
+### Add Dashboard API Endpoints
+
+Create API endpoints to handle dashboard persistence:
+
+```typescript
+// src/dashboardRoutes.ts
+import { Hono } from 'hono';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { eq, and } from 'drizzle-orm';
+import { dashboards } from './schema';
+
+const app = new Hono();
+
+// Get default dashboard for organization
+app.get('/api/dashboards/default', async (c) => {
+  const orgId = c.req.header('X-Organisation-ID');
+  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
+
+  const dashboard = await db.select()
+    .from(dashboards)
+    .where(and(
+      eq(dashboards.organisationId, parseInt(orgId)),
+      eq(dashboards.isDefault, true)
+    ))
+    .limit(1);
+
+  if (dashboard.length === 0) {
+    return c.json({ error: 'No default dashboard found' }, 404);
+  }
+
+  return c.json(dashboard[0]);
+});
+
+// Save/update dashboard
+app.post('/api/dashboards', async (c) => {
+  const orgId = c.req.header('X-Organisation-ID');
+  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
+
+  const body = await c.req.json();
+  
+  const [newDashboard] = await db.insert(dashboards)
+    .values({
+      organisationId: parseInt(orgId),
+      name: body.name,
+      description: body.description,
+      layout: body.layout,
+      isDefault: body.isDefault || false
+    })
+    .returning();
+
+  return c.json(newDashboard);
+});
+
+app.put('/api/dashboards/:id', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const orgId = c.req.header('X-Organisation-ID');
+  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
+
+  const body = await c.req.json();
+  
+  const [updatedDashboard] = await db.update(dashboards)
+    .set({
+      layout: body.layout,
+      updatedAt: new Date()
+    })
+    .where(and(
+      eq(dashboards.id, id),
+      eq(dashboards.organisationId, parseInt(orgId))
+    ))
+    .returning();
+
+  return c.json(updatedDashboard);
+});
+
+export default app;
+```
+
+### Key Benefits of Database Persistence
+
+- **🔒 Multi-tenant security** - Each organization has their own dashboards
+- **💾 Automatic saving** - Layout changes are saved immediately
+- **👥 Shared dashboards** - Multiple users can see the same configuration  
+- **🔄 State restoration** - Dashboard layout persists across browser sessions
+- **📊 Multiple dashboards** - Support for different dashboard types (sales, marketing, etc.)
 
 ## What's Next?
 

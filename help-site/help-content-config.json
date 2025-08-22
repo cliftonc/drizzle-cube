@@ -1,0 +1,20 @@
+{
+  "externalIncludes": {
+    "adapters/express": {
+      "source": "../src/adapters/express/README.md",
+      "title": "Express Adapter"
+    },
+    "adapters/fastify": {
+      "source": "../src/adapters/fastify/README.md",
+      "title": "Fastify Adapter"
+    },
+    "adapters/nextjs": {
+      "source": "../src/adapters/nextjs/README.md",
+      "title": "Next.js Adapter"
+    },
+    "adapters/hono": {
+      "source": "../src/adapters/hono/README.md",
+      "title": "Hono Adapter"
+    }
+  }
+}

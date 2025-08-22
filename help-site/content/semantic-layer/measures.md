@@ -289,11 +289,30 @@ measures: {
 
 ## Measure Filters
 
-Apply conditional logic to measures using filters:
+Apply conditional logic to measures using filters. Measure filters are functions that receive a `QueryContext` parameter and return Drizzle SQL expressions.
+
+### Filter Function Signature
+
+```typescript
+filters: Array<(ctx: QueryContext) => SQL>
+```
+
+The `QueryContext` parameter provides access to:
+- `ctx.db` - The Drizzle database instance
+- `ctx.schema` - Your database schema with all table definitions
+- `ctx.securityContext` - User/tenant-specific data for filtering (e.g., `organisationId`)
+
+### When to Use the Context Parameter
+
+- **Simple filters** that only reference table columns: Use `() =>` (no parameter needed)
+- **Security-aware filters** that need tenant isolation: Use `(ctx) =>` to access `securityContext`
+- **Dynamic filters** that need runtime data: Use `(ctx) =>` to access database or schema information
+
+### Filter Examples
 
 ```typescript
 measures: {
-  // Single filter condition
+  // Simple filter - no context parameter needed
   premiumCustomers: {
     name: 'premiumCustomers',
     title: 'Premium Customers',
@@ -304,7 +323,7 @@ measures: {
     ]
   },
   
-  // Multiple filter conditions (AND logic)
+  // Multiple filter conditions (AND logic) - no context needed
   activeHighValueCustomers: {
     name: 'activeHighValueCustomers',
     title: 'Active High-Value Customers',
@@ -316,7 +335,7 @@ measures: {
     ]
   },
   
-  // Complex filter logic
+  // Security-aware filter using ctx.securityContext
   qualifiedLeads: {
     name: 'qualifiedLeads',
     title: 'Qualified Leads',
@@ -329,9 +348,85 @@ measures: {
         eq(leads.organisationId, ctx.securityContext.organisationId)
       )
     ]
+  },
+  
+  // Multi-tenant filtering - essential for security
+  tenantCustomers: {
+    name: 'tenantCustomers',
+    title: 'Tenant Customers',
+    type: 'count',
+    sql: customers.id,
+    filters: [
+      (ctx) => eq(customers.organisationId, ctx.securityContext.organisationId)
+    ]
   }
 }
 ```
+
+### Security Context Usage
+
+The `securityContext` is automatically passed to your cubes and contains user/tenant-specific information:
+
+```typescript
+// Example security context structure
+const securityContext = {
+  organisationId: 'tenant-123',
+  userId: 'user-456',
+  roles: ['admin'],
+  // ... other user/tenant data
+}
+
+// Using security context in filters
+filters: [
+  (ctx) => eq(table.organisationId, ctx.securityContext.organisationId),
+  (ctx) => eq(table.createdBy, ctx.securityContext.userId)
+]
+```
+
+### Advanced Filter Patterns
+
+```typescript
+measures: {
+  // Conditional filtering based on user role
+  adminOnlyData: {
+    name: 'adminOnlyData',
+    title: 'Admin Only Data',
+    type: 'count',
+    sql: sensitiveTable.id,
+    filters: [
+      (ctx) => and(
+        eq(sensitiveTable.organisationId, ctx.securityContext.organisationId),
+        sql`${ctx.securityContext.roles}::jsonb ? 'admin'` // PostgreSQL JSON check
+      )
+    ]
+  },
+  
+  // Using schema references from context
+  crossTableFilter: {
+    name: 'crossTableFilter',
+    title: 'Cross Table Filter',
+    type: 'count',
+    sql: orders.id,
+    filters: [
+      (ctx) => and(
+        eq(orders.organisationId, ctx.securityContext.organisationId),
+        // Could reference ctx.schema.users, ctx.schema.products, etc.
+        sql`EXISTS (SELECT 1 FROM users WHERE users.id = ${orders.customerId} AND users.active = true)`
+      )
+    ]
+  }
+}
+```
+
+### Why Filters Must Be Functions
+
+Filters must be functions because they:
+
+1. **Need runtime context** - Access to current user, tenant, and database connection
+2. **Generate type-safe SQL** - Return Drizzle SQL expressions with proper typing
+3. **Support security isolation** - Automatically filter by tenant/organization
+4. **Enable dynamic filtering** - Can use runtime data to build conditional logic
+5. **Maintain SQL injection protection** - Use Drizzle's parameterized queries
 
 ## Time-Based Measures
 

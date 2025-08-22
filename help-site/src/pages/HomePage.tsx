@@ -20,7 +20,7 @@ const HomePage: React.FC = () => {
   const quickStartLinks = [
     { title: 'Installation', slug: 'getting-started/installation', description: 'Add analytics to your existing platform' },
     { title: 'Quick Start', slug: 'getting-started/quick-start', description: 'Embed your first dashboard in 5 minutes' },
-    { title: 'Core Concepts', slug: 'getting-started/concepts', description: 'Understanding embeddable analytics architecture' },
+    { title: 'Core Concepts', slug: 'getting-started', description: 'Understanding semantic layer architecture' },
     { title: 'Hono Adapter', slug: 'adapters/hono', description: 'One-line integration with your web framework' },
   ];
 
@@ -48,7 +48,7 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Hero Section */}
       <div className="text-center mb-12">
         <div className="mb-6">
