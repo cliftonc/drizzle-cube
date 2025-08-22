@@ -68,7 +68,6 @@ export default function DashboardTab() {
       </div>
       <AnalyticsDashboard 
         config={dashboardConfig}
-        apiUrl="/api/cubejs-api/v1"
         editable={isEditing}
         onConfigChange={saveDashboardConfig}
       />

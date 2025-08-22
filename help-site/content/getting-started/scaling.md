@@ -15,21 +15,32 @@ When you're starting out, simplicity is key. Drizzle Cube connects directly to y
 const db = drizzle(postgres(DATABASE_URL), { schema })
 const executor = createDatabaseExecutor(db, schema, 'postgres')
 
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.orders)
-      .where(eq(schema.orders.organisationId, securityContext.organisationId)),
+export const salesCube = defineCube('Sales', {
+  sql: (ctx) => ({
+    from: schema.orders,
+    where: eq(schema.orders.organisationId, ctx.securityContext.organisationId)
+  }),
       
   dimensions: {
-    customerName: { sql: schema.orders.customerName, type: 'string' },
-    orderDate: { sql: schema.orders.createdAt, type: 'time' }
+    customerName: { 
+      sql: schema.orders.customerName, 
+      type: 'string' 
+    },
+    orderDate: { 
+      sql: schema.orders.createdAt, 
+      type: 'time' 
+    }
   },
   
   measures: {
-    totalRevenue: { sql: schema.orders.amount, type: 'sum' },
-    orderCount: { sql: schema.orders.id, type: 'count' }
+    totalRevenue: { 
+      sql: schema.orders.amount, 
+      type: 'sum' 
+    },
+    orderCount: { 
+      sql: schema.orders.id, 
+      type: 'count' 
+    }
   }
 })
 ```
@@ -69,22 +80,30 @@ REFRESH MATERIALIZED VIEW daily_sales_summary;
 Update your cube to use the optimized view:
 
 ```typescript
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
+export const salesCube = defineCube('Sales', {
   // Same interface, different underlying source
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.dailySalesSummary)  // Now using materialized view
-      .where(eq(schema.dailySalesSummary.organisationId, securityContext.organisationId)),
+  sql: (ctx) => ({
+    from: schema.dailySalesSummary,  // Now using materialized view
+    where: eq(schema.dailySalesSummary.organisationId, ctx.securityContext.organisationId)
+  }),
       
   dimensions: {
-    orderDate: { sql: schema.dailySalesSummary.orderDate, type: 'time' }
+    orderDate: { 
+      sql: schema.dailySalesSummary.orderDate, 
+      type: 'time' 
+    }
   },
   
   measures: {
     // Pre-aggregated - much faster queries
-    totalRevenue: { sql: schema.dailySalesSummary.totalRevenue, type: 'sum' },
-    orderCount: { sql: schema.dailySalesSummary.orderCount, type: 'sum' }
+    totalRevenue: { 
+      sql: schema.dailySalesSummary.totalRevenue, 
+      type: 'sum' 
+    },
+    orderCount: { 
+      sql: schema.dailySalesSummary.orderCount, 
+      type: 'sum' 
+    }
   }
 })
 ```
@@ -94,12 +113,18 @@ export const salesCube = defineCube(schema, {
 ```typescript
 // Set up dedicated analytics database connection
 const analyticsDb = drizzle(postgres(ANALYTICS_DATABASE_URL), { schema })
-const executor = createDatabaseExecutor(analyticsDb, schema, 'postgres')
 
 // Same cubes, different database - zero code changes to dashboards!
-const semanticLayer = new SemanticLayerCompiler({ 
-  databaseExecutor: executor 
+const app = createCubeApp({
+  cubes: [salesCube],  // Same cube definitions
+  drizzle: analyticsDb,  // Different database connection
+  schema,
+  extractSecurityContext: async (c) => ({
+    organisationId: c.get('user')?.organisationId
+  })
 })
+
+// All existing dashboards continue working unchanged
 ```
 
 **Benefits:**
@@ -125,56 +150,45 @@ import { drizzle } from 'drizzle-orm/snowflake-sdk'
 const warehouseDb = drizzle(snowflakeConnection, { schema })
 const executor = createDatabaseExecutor(warehouseDb, schema, 'snowflake')
 
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.ordersFact)  // Now querying data warehouse fact table
-      .innerJoin(schema.customerDim, eq(schema.ordersFact.customerId, schema.customerDim.id))
-      .where(eq(schema.ordersFact.organisationId, securityContext.organisationId)),
+export const salesCube = defineCube('Sales', {
+  sql: (ctx) => ({
+    from: schema.ordersFact,  // Now querying data warehouse fact table
+    joins: [{
+      type: 'inner',
+      table: schema.customerDim,
+      condition: eq(schema.ordersFact.customerId, schema.customerDim.id)
+    }],
+    where: eq(schema.ordersFact.organisationId, ctx.securityContext.organisationId)
+  }),
       
   // Same dimensions and measures - dashboards still work!
   dimensions: {
-    customerSegment: { sql: schema.customerDim.segment, type: 'string' },
-    orderDate: { sql: schema.ordersFact.orderDate, type: 'time' }
+    customerSegment: { 
+      sql: schema.customerDim.segment, 
+      type: 'string' 
+    },
+    orderDate: { 
+      sql: schema.ordersFact.orderDate, 
+      type: 'time' 
+    }
   },
   
   measures: {
-    totalRevenue: { sql: schema.ordersFact.revenue, type: 'sum' },
-    orderCount: { sql: schema.ordersFact.id, type: 'count' }
+    totalRevenue: { 
+      sql: schema.ordersFact.revenue, 
+      type: 'sum' 
+    },
+    orderCount: { 
+      sql: schema.ordersFact.id, 
+      type: 'count' 
+    }
   }
 })
 ```
 
 #### Option B: Hybrid Cube.dev Integration
 
-For ultimate scale, integrate with Cube.dev while maintaining your Drizzle Cube interface:
-
-```typescript
-// Use Cube.dev for heavy lifting, Drizzle Cube for application integration
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  
-  // Delegate to pre-aggregated Cube.dev API for complex queries
-  sql: async ({ query, securityContext }) => {
-    if (isComplexQuery(query)) {
-      return await cubeDevClient.load({
-        ...query,
-        filters: [...query.filters, {
-          member: 'Sales.organisationId',
-          operator: 'equals',
-          values: [securityContext.organisationId]
-        }]
-      })
-    }
-    
-    // Simple queries still go direct to database
-    return db.select()
-      .from(schema.orders)
-      .where(eq(schema.orders.organisationId, securityContext.organisationId))
-  }
-})
-```
+Move your infra to https://cube.dev and your queries can remain the same.
 
 **Benefits:**
 - ✅ Handles billions of rows with sub-second response
@@ -190,16 +204,18 @@ The key to successful scaling is maintaining your semantic layer interface:
 
 ```typescript
 // Before: Direct database
-const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db }) => db.select().from(schema.orders),
+const salesCube = defineCube('Sales', {
+  sql: (ctx) => ({
+    from: schema.orders
+  }),
   // ... dimensions and measures
 })
 
 // After: Data warehouse - SAME interface!
-const salesCube = defineCube(schema, {
-  name: 'Sales', 
-  sql: ({ db }) => db.select().from(schema.orders_fact), // Different source
+const salesCube = defineCube('Sales', {
+  sql: (ctx) => ({
+    from: schema.orders_fact  // Different source
+  }),
   // ... SAME dimensions and measures
 })
 ```
@@ -217,9 +233,10 @@ const performanceMetrics = {
 }
 
 // 2. Create optimized version of high-impact cube
-export const optimizedSalesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db }) => db.select().from(schema.sales_summary), // Materialized view
+export const optimizedSalesCube = defineCube('Sales', {
+  sql: (ctx) => ({
+    from: schema.sales_summary  // Materialized view
+  }),
   // Same interface ensures compatibility
 })
 
@@ -229,95 +246,6 @@ if (securityContext.features?.optimizedSales) {
 } else {
   semanticLayer.registerCube(originalSalesCube)
 }
-```
-
-## Architecture Evolution Examples
-
-### E-commerce Platform Journey
-
-```typescript
-// Stage 1: Startup (Direct PostgreSQL)
-const ordersDb = postgres('postgresql://localhost/ecommerce')
-
-// Stage 2: Growth (Read Replica + Materialized Views)  
-const analyticsDb = postgres('postgresql://analytics-replica/ecommerce')
-
-// Stage 3: Scale (Snowflake Data Warehouse)
-const warehouseDb = snowflake({
-  account: 'company.snowflakecomputing.com',
-  warehouse: 'ANALYTICS_WH',
-  database: 'ECOMMERCE_DW'
-})
-
-// Same cubes work across all stages!
-```
-
-### SaaS Platform Migration Timeline
-
-| Month | Stage | Data Volume | Action |
-|-------|--------|-------------|--------|
-| 0-12 | Direct DB | < 1GB | Launch with simple setup |
-| 12-24 | Read Replica | 1-10GB | Add analytics replica |
-| 24-36 | Materialized Views | 10-50GB | Create summary tables |
-| 36+ | Data Warehouse | 50GB+ | Migrate to Snowflake/BigQuery |
-
-**Throughout entire journey:** Zero changes to dashboard code!
-
-## Best Practices for Scaling
-
-### 🎯 Design for Growth
-
-```typescript
-// Good: Flexible cube definition
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db, securityContext }) => {
-    // Can easily swap data sources
-    const baseQuery = db.select().from(getCurrentSalesTable())
-    return baseQuery.where(eq(schema.orders.organisationId, securityContext.organisationId))
-  }
-})
-
-function getCurrentSalesTable() {
-  // Environment-based source selection
-  switch (process.env.DATA_TIER) {
-    case 'warehouse': return schema.sales_fact
-    case 'replica': return schema.sales_replica  
-    default: return schema.sales
-  }
-}
-```
-
-### 📈 Monitor and Optimize
-
-```typescript
-// Track cube performance for optimization decisions
-export const instrumentedCube = defineCube(schema, {
-  name: 'Sales',
-  sql: async ({ db, securityContext, query }) => {
-    const start = performance.now()
-    
-    try {
-      const result = await db.select().from(schema.orders)
-        .where(eq(schema.orders.organisationId, securityContext.organisationId))
-        
-      const duration = performance.now() - start
-      
-      // Log performance metrics
-      await logCubePerformance({
-        cube: 'Sales',
-        duration,
-        rowCount: result.length,
-        query: JSON.stringify(query)
-      })
-      
-      return result
-    } catch (error) {
-      await logCubeError('Sales', error, query)
-      throw error
-    }
-  }
-})
 ```
 
 ## The Power of Abstraction

@@ -71,6 +71,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.drizzle-cube.dev/help/examples/express</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help/examples/fastify</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help/examples/hono</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.drizzle-cube.dev/help/examples/nextjs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.drizzle-cube.dev/help/getting-started</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

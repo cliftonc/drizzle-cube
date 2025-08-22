@@ -5,10 +5,9 @@
  * Manages state and coordinates between the meta explorer, query panel, and results panel.
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
-import { createCubeClient } from '../../client/CubeClient'
-import { CubeProvider } from '../../providers/CubeProvider'
+import { useCubeContext } from '../../providers/CubeProvider'
 import CubeMetaExplorer from './CubeMetaExplorer'
 import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
@@ -28,12 +27,14 @@ const STORAGE_KEY = 'drizzle-cube-query-builder-state'
 const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
 
 const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
-  baseUrl,
   className = '',
   initialQuery,
   disableLocalStorage = false,
   hideSettings = false
 }, ref) => {
+  // Get cube client and update function from context
+  const { cubeApi, updateApiConfig } = useCubeContext()
+  
   // Load initial API configuration from localStorage
   const getInitialApiConfig = (): ApiConfig => {
     if (!disableLocalStorage) {
@@ -47,7 +48,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       }
     }
     return {
-      baseApiUrl: baseUrl,
+      baseApiUrl: '/cubejs-api/v1',
       apiToken: ''
     }
   }
@@ -147,11 +148,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   // Track the last validated query to avoid resetting validation on unrelated updates
   const lastValidatedQueryRef = useRef<string>('')
 
-  // Create cube client instance with current API configuration
-  // Use useMemo to prevent unnecessary re-creation
-  const cubeClient = useMemo(() => {
-    return createCubeClient(apiConfig.apiToken, { apiUrl: apiConfig.baseApiUrl })
-  }, [apiConfig.apiToken, apiConfig.baseApiUrl])
+  // Note: API configuration is kept for backward compatibility but not used 
+  // since we now use the CubeClient from context
 
   // Store the full validation result for access via ref
   const [fullValidationResult, setFullValidationResult] = useState<ValidationResult | null>(null)
@@ -182,7 +180,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       }))
 
       try {
-        const metaResponse: MetaResponse = await cubeClient.meta()
+        const metaResponse: MetaResponse = await cubeApi.meta()
         setState(prev => ({
           ...prev,
           schema: metaResponse,
@@ -348,7 +346,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }))
 
     try {
-      const result: ValidationResult = await cubeClient.dryRun(queryToValidate)
+      const result: ValidationResult = await cubeApi.dryRun(queryToValidate)
       
       // Store the full validation result for parent access
       setFullValidationResult(result)
@@ -386,7 +384,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         validationSql: null
       }))
     }
-  }, [state.query, cubeClient])
+  }, [state.query, cubeApi])
 
   const handleExecuteQuery = useCallback(async () => {
     if (!hasQueryContent(state.query) || state.validationStatus !== 'valid') return
@@ -403,8 +401,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       // Run both queries in parallel: one with limit and one without for total count
       const cleanedQuery = cleanQueryForServer(state.query)
       const [limitedResultSet, totalResultSet] = await Promise.all([
-        cubeClient.load({ ...cleanedQuery, limit: displayLimit }),
-        cubeClient.load(cleanedQuery) // No limit for total count
+        cubeApi.load({ ...cleanedQuery, limit: displayLimit }),
+        cubeApi.load(cleanedQuery) // No limit for total count
       ])
       
       const limitedData = limitedResultSet.tablePivot()
@@ -430,7 +428,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         totalRowCountStatus: 'error'
       }))
     }
-  }, [state.query, state.validationStatus, cubeClient, displayLimit])
+  }, [state.query, state.validationStatus, cubeApi, displayLimit])
 
   const handleClearQuery = useCallback(() => {
     setState(prev => ({
@@ -449,6 +447,13 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   const handleApiConfigChange = useCallback((newConfig: ApiConfig) => {
     setApiConfig(newConfig)
+    
+    // Update the CubeProvider's client with new configuration
+    updateApiConfig(
+      { apiUrl: newConfig.baseApiUrl },
+      newConfig.apiToken || undefined
+    )
+    
     // Reset all state when API config changes
     setState(prev => ({
       ...prev,
@@ -464,15 +469,21 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       totalRowCount: null,
       totalRowCountStatus: 'idle'
     }))
-  }, [])
+  }, [updateApiConfig])
 
   const handleResetApiConfig = useCallback(() => {
     const defaultConfig = {
-      baseApiUrl: baseUrl,
+      baseApiUrl: '/cubejs-api/v1',
       apiToken: ''
     }
     setApiConfig(defaultConfig)
-  }, [baseUrl])
+    
+    // Update the CubeProvider's client with reset configuration
+    updateApiConfig(
+      { apiUrl: defaultConfig.baseApiUrl },
+      undefined
+    )
+  }, [updateApiConfig])
 
   const handleRetrySchema = useCallback(async () => {
     setState(prev => ({
@@ -482,7 +493,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }))
 
     try {
-      const metaResponse: MetaResponse = await cubeClient.meta()
+      const metaResponse: MetaResponse = await cubeApi.meta()
       setState(prev => ({
         ...prev,
         schema: metaResponse,
@@ -499,7 +510,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         schemaError: errorMessage
       }))
     }
-  }, [cubeClient])
+  }, [cubeApi])
 
   const selectedFields = {
     measures: state.query.measures || [],
@@ -508,9 +519,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   }
 
   return (
-    <CubeProvider cubeApi={cubeClient}>
-      <div className={`h-full flex flex-col ${className}`} style={{ minHeight: '100%' }}>
-        {/* Setup Panel - only show when not in modal and not hidden */}
+    <div className={`h-full flex flex-col ${className}`} style={{ minHeight: '100%' }}>
+      {/* Setup Panel - only show when not in modal and not hidden */}
         {!hideSettings && (
           <div className="flex-shrink-0 p-4 pb-0">
             <SetupPanel
@@ -621,7 +631,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         </div>
         </div>
       </div>
-    </CubeProvider>
   )
 })
 

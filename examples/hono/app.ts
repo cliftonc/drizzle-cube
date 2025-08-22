@@ -10,7 +10,6 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
-import { SemanticLayerCompiler } from 'drizzle-cube/server'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import type { SecurityContext, DrizzleDatabase } from 'drizzle-cube/server'
 import { schema } from './schema'
@@ -270,4 +269,4 @@ app.notFound((c) => {
 export default app
 
 // Export for testing
-export { semanticLayer, db }
+export { db }

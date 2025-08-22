@@ -61,16 +61,16 @@ import React from 'react';
 import { CubeProvider, AnalyticsDashboard } from 'drizzle-cube/client';
 
 function App() {
-  const cubeApi = {
-    url: '/api/cube',
-    headers: {
-      'Authorization': 'your-token', // Token is used as-is, no 'Bearer' prefix needed
-      'X-Organisation-ID': '1'
-    }
-  };
-
   return (
-    <CubeProvider cubeApi={cubeApi}>
+    <CubeProvider 
+      apiOptions={{ 
+        apiUrl: '/api/cube',
+        headers: {
+          'Authorization': 'your-token', // Token is used as-is, no 'Bearer' prefix needed
+          'X-Organisation-ID': '1'
+        }
+      }}
+    >
       <AnalyticsDashboard
         initialLayout={[
           {
@@ -102,16 +102,16 @@ The foundation component that provides cube API context:
 import { CubeProvider } from 'drizzle-cube/client';
 
 function App() {
-  const cubeApi = {
-    url: '/api/cube',
-    headers: {
-      'Authorization': 'your-jwt-token', // Token is used as-is, no 'Bearer' prefix needed
-      'X-Organisation-ID': '123'
-    }
-  };
-
   return (
-    <CubeProvider cubeApi={cubeApi}>
+    <CubeProvider 
+      apiOptions={{
+        apiUrl: '/api/cube',
+        headers: {
+          'Authorization': 'your-jwt-token', // Token is used as-is, no 'Bearer' prefix needed
+          'X-Organisation-ID': '123'
+        }
+      }}
+    >
       {/* Your dashboard components */}
     </CubeProvider>
   );
@@ -231,7 +231,7 @@ import { AnalyticsPortlet } from 'drizzle-cube/client';
 
 ### QueryBuilder
 
-Interactive query builder with API configuration:
+Interactive query builder:
 
 ```tsx
 import { QueryBuilder } from 'drizzle-cube/client';
@@ -242,24 +242,15 @@ import { QueryBuilder } from 'drizzle-cube/client';
     dimensions: ['Sales.productCategory']
   }}
   
-  // API configuration (optional - uses context by default)
-  apiConfig={{
-    apiUrl: '/api/cube',
-    authToken: 'your-token'
-  }}
+  // Optional: disable localStorage persistence
+  disableLocalStorage={false}
   
-  // Show API setup panel for configuration
-  showSetupPanel={true}
-  
-  onQueryChange={(query) => {
-    console.log('Query updated:', query);
-  }}
-  
-  onExecute={(query, data) => {
-    console.log('Query executed:', { query, data });
-  }}
+  // Optional: hide settings panel
+  hideSettings={false}
 />
 ```
+
+**Note**: QueryBuilder now uses the CubeProvider context for API configuration. The settings panel allows dynamic URL/token changes.
 
 **QueryBuilder Features:**
 - **Interactive Cube Explorer**: Browse available cubes, measures, and dimensions
@@ -444,7 +435,10 @@ const theme = {
   }
 };
 
-<CubeProvider cubeApi={cubeApi} theme={theme}>
+<CubeProvider 
+  apiOptions={{ apiUrl: '/api/cube' }}
+  theme={theme}
+>
   {/* Your components */}
 </CubeProvider>
 ```
@@ -456,15 +450,15 @@ const theme = {
 Enable real-time data updates:
 
 ```tsx
-const cubeApi = {
-  url: '/api/cube',
-  websocketUrl: 'ws://localhost:3000/ws',
-  headers: {
-    'Authorization': 'token' // Token is used as-is, no 'Bearer' prefix needed
-  }
-};
-
-<CubeProvider cubeApi={cubeApi}>
+<CubeProvider 
+  apiOptions={{
+    apiUrl: '/api/cube',
+    websocketUrl: 'ws://localhost:3000/ws',
+    headers: {
+      'Authorization': 'token' // Token is used as-is, no 'Bearer' prefix needed
+    }
+  }}
+>
   <AnalyticsPortlet
     query={query}
     realtime={true}

@@ -148,8 +148,6 @@ export interface AnalyticsPortletProps {
 
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
-  apiUrl?: string
-  apiOptions?: CubeApiOptions
   editable?: boolean
   onConfigChange?: (config: DashboardConfig) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void

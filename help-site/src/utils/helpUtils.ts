@@ -87,7 +87,7 @@ export function extractTableOfContents(htmlContent: string): Array<{
 }> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
-  const headings = doc.querySelectorAll('h2, h3, h4, h5, h6');
+  const headings = doc.querySelectorAll('h1, h2');
   
   return Array.from(headings).map(heading => ({
     id: heading.getAttribute('id') || '',

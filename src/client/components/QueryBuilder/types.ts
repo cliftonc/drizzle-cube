@@ -74,7 +74,6 @@ export interface ApiConfig {
 
 // Component props
 export interface QueryBuilderProps {
-  baseUrl: string                  // Configurable Cube API base URL
   className?: string               // Optional CSS classes
   initialQuery?: CubeQuery         // Initial query to load (overrides localStorage)
   disableLocalStorage?: boolean    // Disable localStorage persistence

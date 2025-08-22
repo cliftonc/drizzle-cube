@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CubeProvider } from 'drizzle-cube/client'
 import DashboardTab from '@/components/DashboardTab'
 import QueryBuilderTab from '@/components/QueryBuilderTab'
 
@@ -8,7 +9,8 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'query'>('dashboard')
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
+    <CubeProvider apiOptions={{ apiUrl: '/api/cubejs-api/v1' }}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -81,6 +83,7 @@ export default function HomePage() {
           <QueryBuilderTab />
         )}
       </div>
-    </div>
+      </div>
+    </CubeProvider>
   )
 }

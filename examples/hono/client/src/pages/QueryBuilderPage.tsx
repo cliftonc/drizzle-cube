@@ -7,8 +7,6 @@
 import { QueryBuilder } from 'drizzle-cube/client'
 
 export default function QueryBuilderPage() {
-  const cubeApiUrl = '/cubejs-api/v1'
-
   return (
     <div className="-m-6 min-h-screen flex flex-col">
       {/* Header */}
@@ -35,9 +33,7 @@ export default function QueryBuilderPage() {
 
       {/* Query Builder - Responsive height for mobile */}
       <div className="flex-1 min-h-[calc(100vh-12rem)] sm:min-h-[calc(100vh-10rem)] lg:min-h-[800px]">
-        <QueryBuilder 
-          baseUrl={cubeApiUrl}
-        />
+        <QueryBuilder />
       </div>
     </div>
   )

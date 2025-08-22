@@ -180,7 +180,6 @@ export default function DashboardViewPage() {
 
       <AnalyticsDashboard
         config={config}
-        apiUrl="/cubejs-api/v1"
         editable={true}
         onConfigChange={handleConfigChange}
         onSave={handleSave}

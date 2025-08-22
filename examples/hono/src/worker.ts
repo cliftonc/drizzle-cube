@@ -8,7 +8,6 @@ import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import { neon, neonConfig } from '@neondatabase/serverless'
-import { SemanticLayerCompiler } from 'drizzle-cube/server'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import type { SecurityContext, DrizzleDatabase } from 'drizzle-cube/server'
 import { schema } from '../schema.js'
@@ -89,29 +88,14 @@ app.get('/health', (c) => {
   })
 })
 
-// Create a separate Hono app for cube API
-const cubeApiApp = new Hono<{ Variables: Variables; Bindings: CloudflareEnv }>()
-
-cubeApiApp.use('*', async (c) => {
-  const db = c.get('db')
-  
-  // Create semantic layer for this request
-  const semanticLayer = new SemanticLayerCompiler<Schema>({
+// Create cube app using the new API
+const createCubeApiApp = (db: DrizzleDatabase<Schema>) => {
+  return createCubeApp({
+    cubes: allCubes,
     drizzle: db,
     schema,
-    engineType: 'postgres'
-  })
-
-  // Register all cubes
-  allCubes.forEach(cube => {
-    semanticLayer.registerCube(cube)
-  })
-
-  const cubeApp = createCubeApp({
-    semanticLayer,
-    drizzle: db,
-    schema,
-    getSecurityContext,
+    extractSecurityContext: getSecurityContext,
+    engineType: 'postgres',
     cors: {
       origin: ['http://localhost:3000', 'http://localhost:5173'],
       allowMethods: ['GET', 'POST', 'OPTIONS'],
@@ -119,6 +103,16 @@ cubeApiApp.use('*', async (c) => {
       credentials: true
     }
   })
+}
+
+// Create a separate Hono app for cube API
+const cubeApiApp = new Hono<{ Variables: Variables; Bindings: CloudflareEnv }>()
+
+cubeApiApp.use('*', async (c) => {
+  const db = c.get('db')
+  
+  // Create and use cube app for this request
+  const cubeApp = createCubeApiApp(db)
 
   // Forward the request to the cube app
   const response = await cubeApp.fetch(c.req.raw)
@@ -128,63 +122,6 @@ cubeApiApp.use('*', async (c) => {
 // Mount the cube API routes
 app.route('/cubejs-api', cubeApiApp)
 
-// API documentation endpoint
-app.get('/api/docs', (c) => {
-  const db = c.get('db')
-  const semanticLayer = new SemanticLayerCompiler<Schema>({
-    drizzle: db,
-    schema,
-    engineType: 'postgres'
-  })
-  
-  allCubes.forEach(cube => {
-    semanticLayer.registerCube(cube)
-  })
-  
-  const metadata = semanticLayer.getMetadata()
-  
-  return c.json({
-    title: 'Employee Analytics API',
-    description: 'Drizzle-cube powered analytics API with Cube.js compatibility',
-    version: '1.0.0',
-    endpoints: {
-      'GET /cubejs-api/v1/meta': 'Get available cubes and their schema',
-      'POST /cubejs-api/v1/load': 'Execute analytics queries',
-      'GET /cubejs-api/v1/load': 'Execute queries via query string',
-      'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
-      'GET /cubejs-api/v1/sql': 'Generate SQL via query string'
-    },
-    cubes: metadata.map(cube => ({
-      name: cube.name,
-      title: cube.title,
-      description: cube.description,
-      dimensions: Object.keys(cube.dimensions || {}),
-      measures: Object.keys(cube.measures || {})
-    })),
-    examples: {
-      'Employee count by department': {
-        measures: ['Employees.count'],
-        dimensions: ['Departments.name'],
-        cubes: ['Employees', 'Departments']
-      },
-      'Salary analytics': {
-        measures: ['Employees.avgSalary', 'Employees.totalSalary'],
-        dimensions: ['Departments.name'],
-        cubes: ['Employees', 'Departments']
-      },
-      'Active employees only': {
-        measures: ['Employees.activeCount'],
-        dimensions: ['Departments.name'],
-        cubes: ['Employees', 'Departments'],
-        filters: [{
-          member: 'Employees.isActive',
-          operator: 'equals',
-          values: [true]
-        }]
-      }
-    }
-  })
-})
 
 // API info endpoint
 app.get('/api', (c) => {

@@ -194,37 +194,52 @@ export const products = pgTable('products', {
                 <div className="border border-gray-200 rounded-lg text-xs bg-gray-50 overflow-x-auto">
                   <pre className="language-ts text-gray-700 p-3 bg-gray-50 min-w-0"><code className="language-ts">
 {`// cubes.ts
-export const productsCube = defineCube(schema, {
-  name: 'Products',
-  sql: ({ db, securityContext }) => 
-    db.select().from(schema.products)
-      .where(eq(schema.products.organisationId, 
-        securityContext.organisationId)),
+import { defineCube } from 'drizzle-cube/server'
+import { eq, sql } from 'drizzle-orm'
+
+export const productsCube = defineCube('Products', {
+  title: 'Product Analytics',
+  description: 'Product inventory and pricing metrics',
+  
+  sql: (ctx) => ({
+    from: schema.products,
+    where: eq(schema.products.organisationId, 
+      ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
-    name: { sql: schema.products.name, type: 'string' },
-    category: { sql: schema.products.category, type: 'string' },
-    createdAt: { sql: schema.products.createdAt, type: 'time' },
-    priceRange: {
-      sql: sql\`CASE 
-        WHEN \${schema.products.price} < 50 THEN 'Budget'
-        WHEN \${schema.products.price} < 200 THEN 'Mid-range'
-        ELSE 'Premium'
-      END\`,
+    name: {
+      name: 'name',
+      title: 'Product Name',
       type: 'string',
-      title: 'Price Range'
+      sql: schema.products.name
+    },
+    category: {
+      name: 'category', 
+      title: 'Category',
+      type: 'string',
+      sql: schema.products.category
+    },
+    createdAt: {
+      name: 'createdAt',
+      title: 'Created Date',
+      type: 'time',
+      sql: schema.products.createdAt
     }
   },
   
   measures: {
-    count: { sql: schema.products.id, type: 'count' },
-    avgPrice: { sql: schema.products.price, type: 'avg' },
-    maxPrice: { sql: schema.products.price, type: 'max' },
-    minPrice: { sql: schema.products.price, type: 'min' },
-    totalValue: { 
-      sql: sql\`SUM(\${schema.products.price})\`, 
-      type: 'sum',
-      title: 'Total Inventory Value'
+    count: {
+      name: 'count',
+      title: 'Product Count',
+      type: 'count',
+      sql: schema.products.id
+    },
+    avgPrice: {
+      name: 'avgPrice',
+      title: 'Average Price',
+      type: 'avg',
+      sql: schema.products.price
     }
   }
 })`}
@@ -244,17 +259,25 @@ export const productsCube = defineCube(schema, {
                 <div className="border border-gray-200 rounded-lg text-xs bg-gray-50 overflow-x-auto">
                   <pre className="language-ts text-gray-700 p-3 bg-gray-50 min-w-0"><code className="language-ts">
 {`// app.ts - Your existing Hono app
+import { Hono } from 'hono'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import { productsCube } from './cubes'
 
-const semanticLayer = new SemanticLayerCompiler({ 
-  databaseExecutor: createDatabaseExecutor(db, schema, 'postgres')
-})
-semanticLayer.addCube(productsCube)
+const app = new Hono()
 
-// One line to add analytics APIs
-const cubeApp = createCubeApp({ semanticLayer, drizzle: db, schema })
-app.route('/cubejs-api/v1', cubeApp) // Done!`}
+// Create cube app with your cubes
+const cubeApp = createCubeApp({
+  cubes: [productsCube],
+  drizzle: db,
+  schema,
+  extractSecurityContext: async (c) => ({
+    organisationId: c.get('user')?.organisationId || 1
+  }),
+  engineType: 'postgres'
+})
+
+// Mount cube API routes
+app.route('/', cubeApp) // Done!`}
                   </code></pre>
                 </div>
               </div>

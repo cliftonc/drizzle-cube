@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
 import QueryBuilder from './QueryBuilder'
 import ChartConfigPanel from './ChartConfigPanel'
 import ChartTypeSelector from './ChartTypeSelector'
-import { createCubeClient } from '../client/CubeClient'
+import { useCubeContext } from '../providers/CubeProvider'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
 
 interface PortletEditModalProps {
@@ -13,7 +13,6 @@ interface PortletEditModalProps {
   portlet?: PortletConfig | null
   title: string
   submitText: string
-  apiUrl?: string
 }
 
 
@@ -80,9 +79,10 @@ export default function PortletEditModal({
   onSave,
   portlet,
   title,
-  submitText,
-  apiUrl = '/cubejs-api/v1'
+  submitText
 }: PortletEditModalProps) {
+  // Get cube client from context
+  const { cubeApi } = useCubeContext()
   const [formTitle, setFormTitle] = useState('')
   const [query, setQuery] = useState('')
   const [chartType, setChartType] = useState<ChartType>('bar')
@@ -95,11 +95,6 @@ export default function PortletEditModal({
   const [showQueryBuilder, setShowQueryBuilder] = useState(false)
   const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
   const queryBuilderRef = useRef<any>(null)
-  
-  // Create cube client for API calls
-  const cubeClient = useMemo(() => {
-    return createCubeClient(undefined, { apiUrl })
-  }, [apiUrl])
 
   // Validation only - no automatic chart config changes
   const autoPopulateChartConfig = (_result: any) => {
@@ -244,7 +239,7 @@ export default function PortletEditModal({
     }
 
     try {
-      const result = await cubeClient.dryRun(parsedQuery)
+      const result = await cubeApi.dryRun(parsedQuery)
 
       // Check if validation is successful:
       // 1. Must have queryType (always present in successful Cube.js responses)  
@@ -468,7 +463,6 @@ export default function PortletEditModal({
       {showQueryBuilder ? (
         <QueryBuilder
           ref={queryBuilderRef}
-          baseUrl={apiUrl}
           initialQuery={queryBuilderInitialQuery}
           disableLocalStorage={true}
           hideSettings={true}

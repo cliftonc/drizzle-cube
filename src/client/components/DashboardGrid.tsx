@@ -23,7 +23,6 @@ interface DashboardGridProps {
   onConfigChange?: (config: DashboardConfig) => void
   onPortletRefresh?: (portletId: string) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
-  apiUrl?: string
 }
 
 export default function DashboardGrid({ 
@@ -31,8 +30,7 @@ export default function DashboardGrid({
   editable = false, 
   onConfigChange,
   onPortletRefresh,
-  onSave,
-  apiUrl = '/cubejs-api/v1'
+  onSave
 }: DashboardGridProps) {
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -344,7 +342,6 @@ export default function DashboardGrid({
           portlet={editingPortlet}
           title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
           submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-          apiUrl={apiUrl}
         />
       </>
     )
@@ -497,7 +494,6 @@ export default function DashboardGrid({
         portlet={editingPortlet}
         title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
         submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-        apiUrl={apiUrl}
       />
     </>
   )

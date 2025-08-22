@@ -15,6 +15,22 @@
     "adapters/hono": {
       "source": "../src/adapters/hono/README.md",
       "title": "Hono Adapter"
+    },
+    "examples/express": {
+      "source": "../examples/express/README.md",
+      "title": "Express Example"
+    },
+    "examples/fastify": {
+      "source": "../examples/fastify/README.md",
+      "title": "Fastify Example"
+    },
+    "examples/hono": {
+      "source": "../examples/hono/README.md",
+      "title": "Hono Example"
+    },
+    "examples/nextjs": {
+      "source": "../examples/nextjs/README.md",
+      "title": "Next.js Example"
     }
   }
 }

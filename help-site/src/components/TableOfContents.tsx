@@ -60,7 +60,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ headings }) => {
       <h3 className="text-sm font-semibold text-gray-900 mb-3">On this page</h3>
       <ul className="space-y-2 text-sm">
         {headings.map((heading, index) => (
-          <li key={`${heading.id}-${index}`} className={`ml-${(heading.level - 2) * 3}`}>
+          <li key={`${heading.id}-${index}`} className={heading.level === 2 ? 'ml-3' : ''}>
             <button
               onClick={() => scrollToHeading(heading.id)}
               className={`
@@ -69,9 +69,8 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ headings }) => {
                   ? 'text-drizzle-700 bg-drizzle-100 font-medium'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }
+                ${heading.level === 1 ? 'font-semibold text-base' : ''}
                 ${heading.level === 2 ? 'font-medium' : ''}
-                ${heading.level === 3 ? 'text-xs' : ''}
-                ${heading.level >= 4 ? 'text-xs opacity-75' : ''}
               `}
             >
               {heading.text}

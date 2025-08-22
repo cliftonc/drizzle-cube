@@ -138,7 +138,7 @@ const TopicRenderer: React.FC<TopicRendererProps> = ({ content, title, showToc =
   const extractHeadings = (htmlContent: string) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
-    const headings = doc.querySelectorAll('h2, h3, h4, h5, h6');
+    const headings = doc.querySelectorAll('h1, h2');
     
     return Array.from(headings).map((heading, index) => ({
       id: heading.getAttribute('id') || `heading-${index}`,

@@ -14,9 +14,7 @@ export default function QueryBuilderTab() {
         </p>
       </div>
       <div className="bg-white rounded-lg shadow-sm border">
-        <QueryBuilder 
-          baseUrl="/api/cubejs-api/v1"
-        />
+        <QueryBuilder />
       </div>
     </div>
   )

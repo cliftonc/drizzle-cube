@@ -26,6 +26,7 @@ export default function BubbleChart({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [, setHoveredBubble] = useState<string | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
+  const [dimensionsReady, setDimensionsReady] = useState(false)
   const { getFieldLabel } = useCubeContext()
 
   const safeDisplayConfig = {
@@ -37,56 +38,113 @@ export default function BubbleChart({
     bubbleOpacity: displayConfig?.bubbleOpacity ?? 0.7
   }
 
-  // Initial dimension measurement
+  // Enhanced dimension measurement with retry mechanism
   useLayoutEffect(() => {
+    let retryCount = 0
+    const maxRetries = 10
+    let rafId: number
+    let timeoutId: NodeJS.Timeout
+    
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect()
+        console.log('BubbleChart: Dimension measurement attempt', retryCount + 1, { width, height })
+        
         if (width > 0 && height > 0) {
           setDimensions({ width, height })
+          setDimensionsReady(true)
+          console.log('BubbleChart: Dimensions successfully measured:', { width, height })
+          return true
         }
       }
+      return false
     }
     
     // Immediate measurement
-    updateDimensions()
+    const success = updateDimensions()
     
-    // Fallback with requestAnimationFrame for next paint
-    const rafId = requestAnimationFrame(updateDimensions)
+    if (!success && retryCount < maxRetries) {
+      // Retry with requestAnimationFrame
+      const retryWithRaf = () => {
+        const rafSuccess = updateDimensions()
+        
+        if (!rafSuccess && retryCount < maxRetries) {
+          retryCount++
+          // Use setTimeout for additional retries with increasing delays
+          timeoutId = setTimeout(() => {
+            rafId = requestAnimationFrame(retryWithRaf)
+          }, 50 * retryCount) // Increasing delay: 50ms, 100ms, 150ms, etc.
+        }
+      }
+      
+      rafId = requestAnimationFrame(retryWithRaf)
+    }
     
     return () => {
-      cancelAnimationFrame(rafId)
+      if (rafId) cancelAnimationFrame(rafId)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [])
 
-  // Handle resize with ResizeObserver for better performance
+  // Enhanced ResizeObserver for dynamic resizing with immediate initialization
   useEffect(() => {
+    let resizeObserver: ResizeObserver | null = null
+    
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect()
         if (width > 0 && height > 0) {
           setDimensions({ width, height })
+          if (!dimensionsReady) {
+            setDimensionsReady(true)
+            console.log('BubbleChart: Dimensions ready via ResizeObserver:', { width, height })
+          }
         }
       }
     }
     
-    // Use ResizeObserver for dynamic resizing
-    const resizeObserver = new ResizeObserver(updateDimensions)
+    // Initialize ResizeObserver immediately
     if (containerRef.current) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect
+          if (width > 0 && height > 0) {
+            setDimensions({ width, height })
+            if (!dimensionsReady) {
+              setDimensionsReady(true)
+              console.log('BubbleChart: Dimensions ready via ResizeObserver:', { width, height })
+            }
+          }
+        }
+      })
+      
       resizeObserver.observe(containerRef.current)
+      
+      // Also try immediate measurement as fallback
+      updateDimensions()
     }
 
-    // Also listen to window resize as fallback
+    // Window resize as additional fallback
     window.addEventListener('resize', updateDimensions)
     
     return () => {
-      resizeObserver.disconnect()
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
       window.removeEventListener('resize', updateDimensions)
     }
-  }, [])
+  }, [dimensionsReady])
 
   useEffect(() => {
-    if (!data || data.length === 0 || !svgRef.current || dimensions.width === 0) return
+    if (!data || data.length === 0 || !svgRef.current || !dimensionsReady || dimensions.width === 0) {
+      console.log('BubbleChart: Skipping render - conditions not met:', {
+        hasData: data && data.length > 0,
+        hasSvgRef: !!svgRef.current,
+        dimensionsReady,
+        dimensions
+      })
+      return
+    }
 
     // Clear previous chart
     d3.select(svgRef.current).selectAll('*').remove()
@@ -467,7 +525,7 @@ export default function BubbleChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, safeDisplayConfig])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity])
 
   if (!data || data.length === 0) {
     return (
@@ -498,9 +556,9 @@ export default function BubbleChart({
     <ChartContainer height={height}>
       <div ref={containerRef} className="w-full h-full relative">
         <svg ref={svgRef} className="w-full h-full" />
-        {dimensions.width === 0 && (
+        {!dimensionsReady && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-gray-400 text-sm">Loading chart...</div>
+            <div className="text-gray-400 text-sm">Measuring chart dimensions...</div>
           </div>
         )}
       </div>

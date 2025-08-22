@@ -195,7 +195,7 @@ export default function App() {
             baseUrl="/cubejs-api/v1"  {/* IMPORTANT: Use relative URL */}
           />
         ) : (
-          <QueryBuilder baseUrl="/cubejs-api/v1" />
+          <QueryBuilder apiUrl="/cubejs-api/v1" />
         )}
       </div>
     </div>

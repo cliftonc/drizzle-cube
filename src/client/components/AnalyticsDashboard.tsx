@@ -1,19 +1,15 @@
 /**
  * Analytics Dashboard Component
- * Main dashboard container with configurable API endpoint
+ * Main dashboard container that uses CubeProvider context
  * Minimal dependencies, designed to be embedded in existing apps
  */
 
-import { useMemo, useCallback, useRef } from 'react'
-import { CubeProvider } from '../providers/CubeProvider'
-import { createCubeClient } from '../client/CubeClient'
+import { useCallback, useRef } from 'react'
 import DashboardGrid from './DashboardGrid'
 import type { AnalyticsDashboardProps, DashboardConfig } from '../types'
 
 export default function AnalyticsDashboard({
   config,
-  apiUrl = '/cubejs-api/v1',
-  apiOptions = {},
   editable = false,
   onConfigChange,
   onSave,
@@ -22,17 +18,6 @@ export default function AnalyticsDashboard({
   // Track initial config to prevent saves during initial load
   const initialConfigRef = useRef(config)
   const hasConfigChangedFromInitial = useRef(false)
-
-  // Create Cube.js client instance
-  const cubeApi = useMemo(() => {
-    return createCubeClient(
-      undefined, // No token - assumes session auth
-      { 
-        apiUrl,
-        ...apiOptions
-      }
-    )
-  }, [apiUrl, apiOptions])
 
   // Enhanced save handler that tracks dirty state and prevents saves during initial load
   const handleSaveWithDirtyTracking = useCallback(async (config: DashboardConfig) => {
@@ -84,16 +69,13 @@ export default function AnalyticsDashboard({
   }, [onConfigChange, onDirtyStateChange])
 
   return (
-    <CubeProvider cubeApi={cubeApi}>
-      <div className="w-full">
-        <DashboardGrid 
-          config={config}
-          editable={editable}
-          onConfigChange={handleConfigChangeWithDirtyTracking}
-          onSave={handleSaveWithDirtyTracking}
-          apiUrl={apiUrl}
-        />
-      </div>
-    </CubeProvider>
+    <div className="w-full">
+      <DashboardGrid 
+        config={config}
+        editable={editable}
+        onConfigChange={handleConfigChangeWithDirtyTracking}
+        onSave={handleSaveWithDirtyTracking}
+      />
+    </div>
   )
 }

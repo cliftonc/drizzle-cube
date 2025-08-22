@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { QueryBuilder, AnalyticsDashboard } from 'drizzle-cube/client'
+import { QueryBuilder, AnalyticsDashboard, CubeProvider } from 'drizzle-cube/client'
 import { dashboardConfig as defaultDashboardConfig } from './dashboard-config'
 
 export default function App() {
@@ -32,7 +32,8 @@ export default function App() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
+    <CubeProvider apiOptions={{ apiUrl: '/cubejs-api/v1' }}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,7 +110,6 @@ export default function App() {
             </div>
             <AnalyticsDashboard 
               config={dashboardConfig}
-              apiUrl="/cubejs-api/v1"
               editable={isEditing}
               onConfigChange={saveDashboardConfig}
             />
@@ -125,13 +125,12 @@ export default function App() {
               </p>
             </div>
             <div className="bg-white rounded-lg shadow-sm border">
-              <QueryBuilder 
-                baseUrl="/cubejs-api/v1"
-              />
+              <QueryBuilder />
             </div>
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </CubeProvider>
   )
 }

@@ -218,7 +218,7 @@ import { CubeProvider } from 'drizzle-cube/client'
 function App() {
   return (
     <CubeProvider 
-      config={{
+      apiOptions={{
         apiUrl: '/cubejs-api/v1',
         headers: {
           'Authorization': `Bearer ${getToken()}`
@@ -234,10 +234,17 @@ function App() {
 ### CubeProvider Configuration
 
 ```typescript
-interface CubeProviderConfig {
+interface CubeApiOptions {
   apiUrl: string                    // API endpoint URL
   headers?: Record<string, string>  // Default headers
   credentials?: 'include' | 'same-origin' | 'omit'  // Fetch credentials
+}
+
+interface CubeProviderProps {
+  apiOptions?: CubeApiOptions       // Dynamic API configuration (recommended)
+  cubeApi?: CubeClient             // Pre-created client (for advanced use cases)
+  token?: string                   // Authentication token
+  children: React.ReactNode
 }
 ```
 
@@ -412,7 +419,7 @@ import { useCubeQuery } from 'drizzle-cube/client'
 
 // Mock CubeProvider for testing
 const TestCubeProvider = ({ children }: { children: React.ReactNode }) => (
-  <CubeProvider config={{ apiUrl: 'http://localhost:4000/cubejs-api/v1' }}>
+  <CubeProvider apiOptions={{ apiUrl: 'http://localhost:4000/cubejs-api/v1' }}>
     {children}
   </CubeProvider>
 )

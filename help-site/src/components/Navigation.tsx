@@ -56,6 +56,15 @@ const navigationSections: NavSection[] = [
     ]
   },
   {
+    title: 'Examples',
+    items: [
+      { title: 'Express', slug: 'examples/express', description: 'Express.js server with React client' },
+      { title: 'Fastify', slug: 'examples/fastify', description: 'Fastify server with React client' },
+      { title: 'Hono', slug: 'examples/hono', description: 'Hono server with dashboard management' },
+      { title: 'Next.js', slug: 'examples/nextjs', description: 'Next.js 15 full-stack application' },
+    ]
+  },
+  {
     title: 'Advanced',
     items: [
       { title: 'Performance', slug: 'advanced/performance', description: 'Optimization techniques' },

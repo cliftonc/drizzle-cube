@@ -9,7 +9,8 @@ Transform your Drizzle schema into a powerful, type-safe analytics platform with
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
-[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.33+-green)](https://orm.drizzle.team/)
+[![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.44.4+-green)](https://orm.drizzle.team/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4+-06B6D4)](https://tailwindcss.com/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 
 ## Why Drizzle Cube?
@@ -39,15 +40,14 @@ export const employees = pgTable('employees', {
   name: text('name').notNull(),
   email: text('email'),
   active: boolean('active').default(true),
-  departmentId: integer('department_id'),
-  organisationId: integer('organisation_id').notNull(),
-  salary: integer('salary')
+  department: integer('department'),
+  organisation: integer('organisation').notNull()
 })
 
 export const departments = pgTable('departments', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
-  organisationId: integer('organisation_id').notNull()
+  organisation: integer('organisation').notNull()
 })
 
 export const schema = { employees, departments }
@@ -62,39 +62,23 @@ import { eq } from 'drizzle-orm'
 import { schema } from './schema'
 
 export const employeesCube = defineCube('Employees', {
-  title: 'Employee Analytics',
-  
-  // Use Drizzle query structure for type safety
   sql: (ctx) => ({
     from: schema.employees,
-    joins: [
-      {
-        table: schema.departments,
-        on: eq(schema.employees.departmentId, schema.departments.id),
-        type: 'left'
-      }
-    ],
-    where: eq(schema.employees.organisationId, ctx.securityContext.organisationId)
+    where: eq(schema.employees.organisation, ctx.securityContext.organisationId)
   }),
   
   dimensions: {
     name: {
       name: 'name',
       title: 'Employee Name',
-      sql: schema.employees.name,
-      type: 'string'
+      type: 'string',
+      sql: schema.employees.name
     },
     email: {
-      name: 'email', 
-      title: 'Email Address',
-      sql: schema.employees.email,
-      type: 'string'
-    },
-    departmentName: {
-      name: 'departmentName',
-      title: 'Department',
-      sql: schema.departments.name,
-      type: 'string'
+      name: 'email',
+      title: 'Email',
+      type: 'string',
+      sql: schema.employees.email
     }
   },
   
@@ -102,22 +86,8 @@ export const employeesCube = defineCube('Employees', {
     count: {
       name: 'count',
       title: 'Total Employees',
-      sql: schema.employees.id,
-      type: 'count'
-    },
-    totalSalary: {
-      name: 'totalSalary',
-      title: 'Total Salary',
-      sql: schema.employees.salary,
-      type: 'sum',
-      format: 'currency'
-    },
-    avgSalary: {
-      name: 'avgSalary',
-      title: 'Average Salary', 
-      sql: schema.employees.salary,
-      type: 'avg',
-      format: 'currency'
+      type: 'count',
+      sql: schema.employees.id
     }
   }
 })
@@ -126,33 +96,22 @@ export const employeesCube = defineCube('Employees', {
 ### 4. Setup API Server
 
 ```typescript
-// server.ts
+// server.ts (Hono example)
+import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
-import { SemanticLayerCompiler } from 'drizzle-cube/server'
 import postgres from 'postgres'
 import { schema } from './schema'
 import { employeesCube } from './cubes'
 
-// Setup Drizzle
-const client = postgres(process.env.DATABASE_URL!)
-const db = drizzle(client, { schema })
+const db = drizzle(postgres(process.env.DATABASE_URL!), { schema })
 
-// Create semantic layer
-const semanticLayer = new SemanticLayerCompiler({
-  drizzle: db,
-  schema,
-  engineType: 'postgres'
-})
-semanticLayer.registerCube(employeesCube)
-
-// Create API server with Cube.js compatibility
 const app = createCubeApp({
-  semanticLayer,
+  cubes: [employeesCube],
   drizzle: db,
   schema,
-  getSecurityContext: async (c) => ({
-    organisationId: c.get('user')?.organisationId
+  getSecurityContext: async () => ({
+    organisationId: 1 // Your auth logic here
   })
 })
 
@@ -162,176 +121,55 @@ export default app
 ### 5. Query from Frontend
 
 ```typescript
-// Use with Cube.js React SDK
-import { useCubeQuery } from '@cubejs-client/react'
+// Use built-in React components
+import { QueryBuilder, AnalyticsDashboard } from 'drizzle-cube/client'
 
-function EmployeeStats() {
-  const { resultSet, isLoading } = useCubeQuery({
-    measures: ['Employees.count', 'Employees.avgSalary'],
-    dimensions: ['Employees.departmentName'],
-    filters: [
-      { member: 'Employees.active', operator: 'equals', values: [true] }
-    ]
-  })
-
-  if (isLoading) return <div>Loading...</div>
-
+function App() {
   return (
-    <table>
-      {resultSet.tablePivot().map((row, i) => (
-        <tr key={i}>
-          <td>{row['Employees.departmentName']}</td>
-          <td>{row['Employees.count']}</td>
-          <td>${row['Employees.avgSalary']}</td>
-        </tr>
-      ))}
-    </table>
+    <div>
+      <QueryBuilder apiUrl="/cubejs-api/v1" />
+      <AnalyticsDashboard 
+        config={dashboardConfig} 
+        baseUrl="/cubejs-api/v1" 
+      />
+    </div>
   )
 }
 ```
 
 ## Key Features
 
-### 🔐 Security First
-
-All SQL is generated using Drizzle's parameterized queries, making SQL injection impossible:
-
-```typescript
-// ❌ Vulnerable (string concatenation)
-const sql = `WHERE name = '${userInput}'`
-
-// ✅ Safe (Drizzle parameterization)  
-const condition = eq(schema.employees.name, userInput)
-```
-
-### 🏗️ Type Safety
-
-Get full TypeScript support from your database schema to your analytics:
-
-```typescript
-const cube = defineCube('Employees', {
-  dimensions: {
-    name: {
-      name: 'name',
-      title: 'Employee Name',
-      sql: schema.employees.name,        // ✅ Type-safe
-      type: 'string'
-    },
-    invalid: {
-      name: 'invalid',
-      sql: schema.employees.invalidCol,  // ❌ TypeScript error
-      type: 'string'
-    }
-  }
-})
-```
-
-### ⚡ Performance
-
-- **Prepared Statements**: Drizzle generates optimized prepared statements
-- **Query Planning**: Database optimizes repeated queries automatically  
-- **Connection Pooling**: Leverages Drizzle's connection management
-
-### 🧩 Framework Support
-
-Works with multiple frameworks via adapter pattern:
-
-- **Hono** - Built-in adapter
-- **Express** - Coming soon
-- **Fastify** - Coming soon
-- **Next.js** - Coming soon
-
-## Advanced Usage
+🔒 **SQL Injection Proof** - All queries use Drizzle's parameterized SQL  
+🛡️ **Type Safe** - Full TypeScript inference from your database schema  
+⚡ **Performance** - Prepared statements and query optimization  
+🧩 **Cube.js Compatible** - Works with existing Cube.js React components  
+🎯 **Zero Config** - Infer cube definitions from your Drizzle schema
 
 
-### Advanced Security with Row-Level Security
+## Supported Features
 
-```typescript
-import { and, sql } from 'drizzle-orm'
-
-const secureCube = defineCube('SecureEmployees', {
-  title: 'Secure Employee Data',
-  
-  sql: (ctx) => ({
-    from: schema.employees,
-    where: and(
-      eq(schema.employees.organisationId, ctx.securityContext.organisationId),
-      // Only show employees user has permission to see
-      ctx.securityContext.role === 'admin' 
-        ? sql`true`
-        : eq(schema.employees.managerId, ctx.securityContext.userId)
-    )
-  }),
-  
-  dimensions: {
-    name: {
-      name: 'name',
-      title: 'Employee Name',
-      sql: schema.employees.name,
-      type: 'string'
-    }
-  },
-  
-  measures: {
-    count: {
-      name: 'count',
-      title: 'Employee Count',
-      sql: schema.employees.id,
-      type: 'count'
-    }
-  }
-})
-```
-
-
-## API Reference
-
-### Core Functions
-
-- `defineCube(name, definition)` - Create type-safe cube with name and configuration
-- `SemanticLayerCompiler({ drizzle, schema, engineType })` - Setup semantic layer compiler
-- `createCubeApp(options)` - Create Cube.js-compatible API server
-
-### Supported Drizzle Features
-
-- ✅ **All Database Types** - PostgreSQL, MySQL, SQLite
-- ✅ **Query Builder** - Full Drizzle query builder support
-- ✅ **Schema References** - Direct column references
-- ✅ **SQL Templates** - Raw SQL with parameterization
-- ✅ **Aggregations** - count, sum, avg, min, max, countDistinct
-- ✅ **Joins** - Inner, left, right, full outer joins
-- ✅ **CTEs** - Common table expressions
-- ✅ **Subqueries** - Nested query support
-- ✅ **Window Functions** - Advanced analytics
-- ✅ **JSON Operations** - PostgreSQL JSON/JSONB support
-
-### Filter Operators
-
-Supports all Cube.js filter operators with Drizzle safety:
-
-- `equals`, `notEquals` → `eq()`, `ne()`
-- `contains`, `notContains` → `ilike()`, `notIlike()`  
-- `gt`, `gte`, `lt`, `lte` → `gt()`, `gte()`, `lt()`, `lte()`
-- `set`, `notSet` → `isNotNull()`, `isNull()`
-- `inDateRange` → `and(gte(), lte())`
+✅ **Multiple Database Types** - PostgreSQL, MySQL  
+✅ **Framework Adapters** - Hono, Express, Fastify, Next.js  
+✅ **Full Type Safety** - Complete TypeScript inference  
+✅ **All SQL Features** - Joins, CTEs, subqueries, window functions  
+✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
 
 ## Documentation
 
-📚 **[Full Documentation](https://www.drizzle-cube.dev/)** - Complete guides and API reference
- 🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)** - Working example version to experiment with
+ - 📚 **[Full Documentation](https://www.drizzle-cube.dev/)** - Complete guides and API reference
+ - 🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)** - Working example version to experiment with
 
 ### Local Development
 ```bash
-# Run documentation site locally
-npm run dev:help
-
-# Build documentation site
-npm run build:help
+npm run dev
 ```
 
 ## Examples
 
-- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured dashboard with Cloudflare Workers
+- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured dashboard with Cloudflare Workers support
+- **[Express Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/express)** - Simple Express.js server with React dashboard
+- **[Fastify Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/fastify)** - High-performance Fastify server with React client
+- **[Next.js Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/nextjs)** - Full-stack Next.js app with API routes
 
 ## Contributing
 
@@ -339,9 +177,6 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ## Roadmap
 
-- 🔄 **Express Adapter** - Express.js integration
-- 🔄 **Fastify Adapter** - Fastify integration  
-- 🔄 **Next.js Adapter** - Next.js API routes
 - 🔄 **Pre-aggregations** - Materialized view support
 - 🔄 **Real-time Updates** - WebSocket support
 - 🔄 **Query Caching** - Redis integration

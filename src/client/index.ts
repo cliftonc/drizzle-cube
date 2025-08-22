@@ -38,7 +38,7 @@ export { default as Modal } from './components/Modal'
 export { default as QueryBuilder } from './components/QueryBuilder'
 
 // Data provider and hooks
-export { CubeProvider } from './providers/CubeProvider'
+export { CubeProvider, useCubeContext } from './providers/CubeProvider'
 export { useCubeQuery } from './hooks/useCubeQuery'
 export { createCubeClient } from './client/CubeClient'
 
@@ -50,6 +50,7 @@ export type {
   ChartDisplayConfig,
   CubeQuery,
   CubeQueryOptions,
+  CubeApiOptions,
   DashboardConfig
 } from './types'
 

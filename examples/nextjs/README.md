@@ -2,6 +2,12 @@
 
 A full-stack Next.js 15 application demonstrating drizzle-cube integration with App Router and a complete analytics dashboard.
 
+## 🚀 Live Demo
+
+**[View Live Demo →](https://nextjs.drizzle-cube.dev/)**
+
+See this example running live with the full dashboard and query builder functionality.
+
 ## Features
 
 - **Next.js 15 App Router**: Modern React patterns with server components and API routes

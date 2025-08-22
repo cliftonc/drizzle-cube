@@ -1,6 +1,80 @@
 # Quick Start
 
-Build your first semantic layer with Drizzle Cube in under 10 minutes.
+Get started with Drizzle Cube by exploring our complete examples, or build your first semantic layer from scratch in under 10 minutes.
+
+## 🚀 Try a Complete Example
+
+The fastest way to get started is with one of our ready-to-run examples. Each includes a full-stack application with database, API, and React dashboard:
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-center mb-3">
+      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/express.svg" alt="Express.js" class="w-8 h-8 align-middle" />
+      <h3 class="ml-3 font-semibold text-gray-900">Express</h3>
+    </div>
+    <p class="text-sm text-gray-600 mb-3">Express.js server with React client and TypeScript</p>
+    <a href="/help/examples/express" class="text-drizzle-600 hover:text-drizzle-700 text-sm font-medium">
+      View Example →
+    </a>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-center mb-3">
+      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/fastify.svg" alt="Fastify" class="w-8 h-8 align-middle" />
+      <h3 class="ml-3 font-semibold text-gray-900">Fastify</h3>
+    </div>
+    <p class="text-sm text-gray-600 mb-3">High-performance Fastify server with React client</p>
+    <a href="/help/examples/fastify" class="text-drizzle-600 hover:text-drizzle-700 text-sm font-medium">
+      View Example →
+    </a>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-center mb-3">
+      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/hono.svg" alt="Hono" class="w-8 h-8 align-middle" />
+      <h3 class="ml-3 font-semibold text-gray-900">Hono</h3>
+    </div>
+    <p class="text-sm text-gray-600 mb-3">Cloudflare Workers compatible with dashboard management</p>
+    <div class="flex flex-col space-y-2">
+      <a href="/help/examples/hono" class="text-drizzle-600 hover:text-drizzle-700 text-sm font-medium">
+        View Example →
+      </a>
+      <a href="https://try.drizzle-cube.dev/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        🚀 Live Demo →
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div class="flex items-center mb-3">
+      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/nextdotjs.svg" alt="Next.js" class="w-8 h-8 align-middle" />
+      <h3 class="ml-3 font-semibold text-gray-900">Next.js</h3>
+    </div>
+    <p class="text-sm text-gray-600 mb-3">Next.js 15 full-stack application with App Router</p>
+    <div class="flex flex-col space-y-2">
+      <a href="/help/examples/nextjs" class="text-drizzle-600 hover:text-drizzle-700 text-sm font-medium">
+        View Example →
+      </a>
+      <a href="https://nextjs.drizzle-cube.dev/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        🚀 Live Demo →
+      </a>
+    </div>
+  </div>
+</div>
+
+Each example includes:
+- Complete database schema and seed data
+- Semantic layer with cubes, dimensions, and measures  
+- Interactive dashboard with 4 working charts
+- Query builder for exploring your data
+- Multi-tenant security setup
+- Docker Compose for local development
+
+---
+
+## 📖 Build From Scratch
+
+Prefer to build your own semantic layer? Follow these steps to create one from scratch:
 
 ## Step 1: Database Schema
 
@@ -284,12 +358,6 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardId, setDashboardId] = useState<number | null>(null);
 
-  const cubeApi = {
-    url: '/api/cube',
-    headers: {
-      'X-Organisation-ID': '1'
-    }
-  };
 
   // Load dashboard from database
   useEffect(() => {
@@ -381,7 +449,14 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <CubeProvider cubeApi={cubeApi}>
+    <CubeProvider 
+      apiOptions={{
+        apiUrl: '/api/cube',
+        headers: {
+          'X-Organisation-ID': '1'
+        }
+      }}
+    >
       <div className="p-6">
         <h1 className="text-3xl font-bold mb-6">Sales Dashboard</h1>
         
@@ -505,7 +580,9 @@ Congratulations! You've created your first semantic layer with Drizzle Cube. Her
 
 Check out complete example implementations:
 
-- **[Basic Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/basic)** - Simple analytics setup
-- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured application
+- **[Express Example](/help/examples/express)** - Express.js server with React client
+- **[Fastify Example](/help/examples/fastify)** - High-performance Fastify server  
+- **[Hono Example](/help/examples/hono)** - Cloudflare Workers compatible
+- **[Next.js Example](/help/examples/nextjs)** - Full-stack Next.js 15 application
 
 Need help? [Join our community](https://github.com/cliftonc/drizzle-cube/discussions) or [report issues](https://github.com/cliftonc/drizzle-cube/issues)!
