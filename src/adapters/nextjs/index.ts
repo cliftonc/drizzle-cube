@@ -148,9 +148,6 @@ function createSemanticLayer<TSchema extends Record<string, any>>(
     semanticLayer.registerCube(cube)
   })
 
-  // Log helpful info
-  console.log(`🚀 Drizzle Cube: Registered ${cubes.length} cube(s) with ${engineType || 'auto-detected'} engine`)
-
   return semanticLayer
 }
 

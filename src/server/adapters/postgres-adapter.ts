@@ -112,4 +112,35 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     return value ? sql`TRUE` : sql`FALSE`
   }
 
+  /**
+   * Convert filter values - PostgreSQL uses native types
+   * No conversion needed for PostgreSQL
+   */
+  convertFilterValue(value: any): any {
+    return value
+  }
+
+  /**
+   * Prepare date value for PostgreSQL
+   * PostgreSQL accepts Date objects directly
+   */
+  prepareDateValue(date: Date): any {
+    return date
+  }
+
+  /**
+   * PostgreSQL stores timestamps as native timestamp types
+   */
+  isTimestampInteger(): boolean {
+    return false
+  }
+
+  /**
+   * PostgreSQL time dimensions already return proper values
+   * No conversion needed
+   */
+  convertTimeDimensionResult(value: any): any {        
+    return value
+  }
+
 }

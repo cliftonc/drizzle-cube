@@ -4,11 +4,11 @@ import request from 'supertest'
 import { createCubeRouter } from '../../src/adapters/express'
 import { 
   createTestSemanticLayer,
-  testSchema,
+  getTestSchema,
   getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
-import { testEmployeesCube, createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
 describe('Express Adapter', () => {
   let app: Express
@@ -16,9 +16,20 @@ describe('Express Adapter', () => {
   let semanticLayerFn
   let drizzleDb
   let dynamicEmployeesCube
+  let currentSchema
 
   // Mock security context extractor
   const mockGetSecurityContext = async (req: any, res: any) => testSecurityContexts.org1
+  
+  // Helper function to create router options with correct schema and engine type
+  const createRouterOptions = (customOptions = {}) => ({
+    cubes: [dynamicEmployeesCube],
+    drizzle: drizzleDb,
+    schema: currentSchema,
+    extractSecurityContext: mockGetSecurityContext,
+    engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
+    ...customOptions
+  })
 
   beforeAll(async () => {
     const { semanticLayer, db, close } = await createTestSemanticLayer()
@@ -26,21 +37,17 @@ describe('Express Adapter', () => {
     semanticLayerFn = semanticLayer
     drizzleDb = db
     
+    // Get the correct schema for the current database type
+    const { schema } = await getTestSchema()
+    currentSchema = schema
+    
     // Use dynamic cube creation to ensure correct schema for current database type
     const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
     dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
-    // Also register the static test cube for additional measures
-    semanticLayerFn.registerCube(testEmployeesCube)
-    
     app = express()
-    const cubeRouter = createCubeRouter({
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      schema: testSchema,
-      extractSecurityContext: mockGetSecurityContext
-    })
+    const cubeRouter = createCubeRouter(createRouterOptions())
     app.use('/', cubeRouter)
   })
 
@@ -139,7 +146,7 @@ describe('Express Adapter', () => {
   it('should support custom base path', async () => {
     const customApp = express()
     const customRouter = createCubeRouter({
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
       extractSecurityContext: mockGetSecurityContext,
       basePath: '/api/analytics'
@@ -281,7 +288,7 @@ describe('Express Adapter', () => {
   it('should handle CORS configuration', async () => {
     const corsApp = express()
     const corsRouter = createCubeRouter({
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
       extractSecurityContext: mockGetSecurityContext,
       cors: {
@@ -303,7 +310,7 @@ describe('Express Adapter', () => {
   it('should handle custom JSON limit', async () => {
     const customApp = express()
     const customRouter = createCubeRouter({
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
       extractSecurityContext: mockGetSecurityContext,
       jsonLimit: '1mb'

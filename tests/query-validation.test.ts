@@ -4,12 +4,8 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { eq } from 'drizzle-orm'
 import { 
-  createTestDatabaseExecutor,   
-  testSchema,
-  employees,
-  departments
+  createTestDatabaseExecutor
 } from './helpers/test-database'
 import type { TestSchema } from './helpers/test-database'
 
@@ -17,55 +13,16 @@ import {
   SemanticLayerCompiler
 } from '../src/server'
 
-import { defineCube } from '../src/server/types-drizzle'
 import type { 
   Cube, 
-  QueryContext,
-  BaseQueryDefinition,
   SemanticQuery
 } from '../src/server/types-drizzle'
 
-// Create test cubes
-const employeesCube: Cube<TestSchema> = defineCube('Employees', {
-  title: 'Employees Cube',
-  description: 'Test cube for validation',
-  
-  sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
-    from: employees,
-    where: eq(employees.organisationId, ctx.securityContext.organisationId)
-  }),
-  
-  dimensions: {
-    id: { sql: employees.id, type: 'number' },
-    name: { sql: employees.name, type: 'string' },
-    email: { sql: employees.email, type: 'string' },
-    startDate: { sql: employees.startDate, type: 'time' }
-  },
-  
-  measures: {
-    count: { sql: employees.id, type: 'count' },
-    avgSalary: { sql: employees.salary, type: 'avg' }
-  }
-})
+import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 
-const departmentsCube: Cube<TestSchema> = defineCube('Departments', {
-  title: 'Departments Cube',
-  description: 'Test cube for validation',
-  
-  sql: (ctx: QueryContext<TestSchema>): BaseQueryDefinition => ({
-    from: departments,
-    where: eq(departments.organisationId, ctx.securityContext.organisationId)
-  }),
-  
-  dimensions: {
-    id: { sql: departments.id, type: 'number' },
-    name: { sql: departments.name, type: 'string' }
-  },
-  
-  measures: {
-    count: { sql: departments.id, type: 'count' }
-  }
-})
+// Cubes will be created using the standard test helper
+let employeesCube: Cube<TestSchema>
+let departmentsCube: Cube<TestSchema>
 
 describe('Query Validation', () => {
   let compiler: SemanticLayerCompiler<TestSchema>
@@ -73,6 +30,11 @@ describe('Query Validation', () => {
   beforeAll(async () => {
     // Create database and executor using the unified database utilities
     const { executor, close } = await createTestDatabaseExecutor()
+    
+    // Use the standard test cubes
+    const { testEmployeesCube, testDepartmentsCube } = await createTestCubesForCurrentDatabase()
+    employeesCube = testEmployeesCube
+    departmentsCube = testDepartmentsCube
     
     // Create compiler and register cubes
     compiler = new SemanticLayerCompiler({ databaseExecutor: executor })
@@ -151,7 +113,7 @@ describe('Query Validation', () => {
       const query: SemanticQuery = {
         measures: ['Employees.count'],
         timeDimensions: [{
-          dimension: 'Employees.startDate',
+          dimension: 'Employees.createdAt',
           granularity: 'month'
         }]
       }

@@ -34,7 +34,7 @@ describe('Comprehensive Multi-Cube Queries', () => {
     // Setup test executor with all cube definitions
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
-    cubes = getTestCubes() // Get all cubes for multi-cube testing
+    cubes = await getTestCubes() // Get all cubes for multi-cube testing
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
   })

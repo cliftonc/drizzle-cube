@@ -41,7 +41,7 @@ describe('Time Dimension Auto-Sorting', () => {
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
     
-    cubes = getTestCubes(['Productivity', 'Employees'])
+    cubes = await getTestCubes(['Productivity', 'Employees'])
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
   })
   

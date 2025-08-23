@@ -6,6 +6,7 @@
 import { getTestDatabaseType, getDatabaseUtilities, getAllDatabaseUtilities } from '../helpers/test-database'
 import { setupPostgresDatabase } from '../helpers/databases/postgres/setup'
 import { setupMySQLDatabase } from '../helpers/databases/mysql/setup'
+import { setupSQLiteDatabase } from '../helpers/databases/sqlite/setup'
 
 export default async function globalSetup() {
   console.log('Setting up test databases...')
@@ -25,6 +26,12 @@ export default async function globalSetup() {
       const { close } = await setupMySQLDatabase()
       cleanupFunctions.push(close)
       console.log('MySQL test database setup complete')
+      
+    } else if (dbType === 'sqlite') {
+      console.log('Setting up SQLite test database...')
+      const { close } = await setupSQLiteDatabase()
+      cleanupFunctions.push(close)
+      console.log('SQLite test database setup complete')
       
     } else if (dbType === 'both') {
       console.log('Setting up both PostgreSQL and MySQL test databases...')

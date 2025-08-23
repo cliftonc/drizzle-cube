@@ -3,11 +3,11 @@ import { Hono } from 'hono'
 import { createCubeRoutes } from '../../src/adapters/hono'
 import { 
   createTestSemanticLayer,
-  testSchema,
+  getTestSchema,
   getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
-import { testEmployeesCube, createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
 describe('Hono Adapter', () => {
   let app: Hono
@@ -15,9 +15,20 @@ describe('Hono Adapter', () => {
   let semanticLayerFn
   let drizzleDb
   let dynamicEmployeesCube
+  let currentSchema
 
   // Mock security context extractor
   const mockGetSecurityContext = async (_c: any) => testSecurityContexts.org1
+  
+  // Helper function to create routes options with correct schema and engine type
+  const createRoutesOptions = (customOptions = {}) => ({
+    cubes: [dynamicEmployeesCube],
+    drizzle: drizzleDb,
+    schema: currentSchema,
+    extractSecurityContext: mockGetSecurityContext,
+    engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
+    ...customOptions
+  })
 
   beforeAll(async () => {
     const { semanticLayer, db, close } = await createTestSemanticLayer()
@@ -25,17 +36,16 @@ describe('Hono Adapter', () => {
     semanticLayerFn = semanticLayer
     drizzleDb = db
     
+    // Get the correct schema for the current database type
+    const { schema } = await getTestSchema()
+    currentSchema = schema
+    
     // Use dynamic cube creation to ensure correct schema for current database type
     const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
     dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
-    app = createCubeRoutes({
-      cubes: [dynamicEmployeesCube],
-      drizzle: drizzleDb,
-      schema: testSchema,
-      extractSecurityContext: mockGetSecurityContext
-    })
+    app = createCubeRoutes(createRoutesOptions())
   })
 
   afterAll(() => {
@@ -149,7 +159,7 @@ describe('Hono Adapter', () => {
   })
 
   it('should support custom base path', async () => {
-    semanticLayerFn.registerCube(testEmployeesCube)
+    // Cube already registered in beforeAll
     
     const customApp = createCubeRoutes({
       cubes: [dynamicEmployeesCube],

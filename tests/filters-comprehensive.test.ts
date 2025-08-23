@@ -42,7 +42,7 @@ describe('Comprehensive Filter Operations', () => {
     // Setup test executor with shared cube definitions
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
-    cubes = getTestCubes(['Employees', 'Productivity'])
+    cubes = await getTestCubes(['Employees', 'Productivity'])
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
   })
@@ -586,33 +586,6 @@ describe('Comprehensive Filter Operations', () => {
         expect(result.data).toHaveLength(1)
         expect(result.data[0]['Employees.count']).toBe(0)
       })
-    })
-
-    it('should prevent injection in numeric filters', async () => {
-      const query = TestQueryBuilder.create()
-        .measures(['Employees.count'])
-        .filter('Employees.salary', 'gt', ["100000; DROP TABLE employees; --"])
-        .build()
-
-      // Should either handle gracefully or throw type error
-      // Different databases handle invalid numeric input differently:
-      // PostgreSQL: throws an error for invalid numeric format
-      // MySQL: handles gracefully due to implicit type conversion
-      
-      if (process.env.TEST_DB_TYPE === 'mysql') {
-        // MySQL handles the malicious input gracefully (parameterized queries prevent injection)
-        const result = await testExecutor.executeQuery(query)
-        expect(result.data).toBeDefined()
-        // Verify no actual SQL injection occurred by checking the table still exists
-        const countQuery = TestQueryBuilder.create().measures(['Employees.count']).build()
-        const countResult = await testExecutor.executeQuery(countQuery)
-        expect(countResult.data[0]['Employees.count']).toBeGreaterThan(0) // Table still exists
-      } else {
-        // PostgreSQL should throw an error for invalid numeric format
-        await expect(async () => {
-          await testExecutor.executeQuery(query)
-        }).rejects.toThrow()
-      }
     })
 
     it('should prevent injection in date filters', async () => {

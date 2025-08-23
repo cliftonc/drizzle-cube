@@ -117,4 +117,35 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
     return value ? sql`TRUE` : sql`FALSE`
   }
 
+  /**
+   * Convert filter values - MySQL uses native types
+   * No conversion needed for MySQL
+   */
+  convertFilterValue(value: any): any {
+    return value
+  }
+
+  /**
+   * Prepare date value for MySQL
+   * MySQL accepts Date objects directly
+   */
+  prepareDateValue(date: Date): any {
+    return date
+  }
+
+  /**
+   * MySQL stores timestamps as native timestamp types
+   */
+  isTimestampInteger(): boolean {
+    return false
+  }
+
+  /**
+   * MySQL time dimensions already return proper values
+   * No conversion needed
+   */
+  convertTimeDimensionResult(value: any): any {
+    return value
+  }
+
 }

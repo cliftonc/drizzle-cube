@@ -9,6 +9,7 @@ import type { DatabaseExecutor } from '../../src/server'
 import type { DatabaseConfig } from './databases/types'
 import { setupPostgresDatabase } from './databases/postgres/setup'
 import { setupMySQLDatabase } from './databases/mysql/setup'
+import { setupSQLiteDatabase } from './databases/sqlite/setup'
 
 // Dynamic schema imports based on database type
 function getSchema() {
@@ -16,29 +17,93 @@ function getSchema() {
   if (dbType === 'mysql') {
     return import('./databases/mysql/schema')
   }
+  if (dbType === 'sqlite') {
+    return import('./databases/sqlite/schema')
+  }
   return import('./databases/postgres/schema')
 }
 
-// Re-export schema based on environment - default to PostgreSQL for backward compatibility
-// NOTE: When TEST_DB_TYPE=mysql, tests should use createTestDatabaseExecutor() which handles schema dynamically
-export { testSchema, employees, departments, productivity, analyticsPages } from './databases/postgres/schema'
-export type { TestSchema } from './databases/postgres/schema'
+// Remove static schema exports - use dynamic functions instead
+// Tests should use createTestDatabaseExecutor() which handles schema dynamically
+export { enhancedDepartments as sampleDepartments, enhancedEmployees as sampleEmployees } from './enhanced-test-data'
 
-// Also export MySQL schema with different names for dynamic usage
-export { 
-  mysqlTestSchema, 
-  employees as mysqlEmployees, 
-  departments as mysqlDepartments, 
-  productivity as mysqlProductivity,
-  analyticsPages as mysqlAnalyticsPages 
-} from './databases/mysql/schema'
-export type { MySQLTestSchema } from './databases/mysql/schema'
-export { sampleDepartments, sampleEmployees } from './enhanced-test-data'
+/**
+ * Get schema and tables for the current test database type
+ * This replaces static imports and provides database-specific schemas
+ */
+export async function getTestSchema() {
+  const dbType = getTestDatabaseType()
+  
+  if (dbType === 'mysql') {
+    const { 
+      mysqlTestSchema, 
+      employees, 
+      departments, 
+      productivity, 
+      analyticsPages 
+    } = await import('./databases/mysql/schema')
+    
+    return {
+      schema: mysqlTestSchema,
+      employees,
+      departments,
+      productivity,
+      analyticsPages,
+      type: 'MySQLTestSchema' as const,
+      // Database-specific value helpers
+      dbTrue: true,
+      dbFalse: false,
+      dbDate: (date: Date) => date
+    }
+  } else if (dbType === 'sqlite') {
+    const { 
+      sqliteTestSchema, 
+      employees, 
+      departments, 
+      productivity, 
+      analyticsPages 
+    } = await import('./databases/sqlite/schema')
+    
+    return {
+      schema: sqliteTestSchema,
+      employees,
+      departments,
+      productivity,
+      analyticsPages,
+      type: 'SQLiteTestSchema' as const,
+      // Database-specific value helpers for SQLite
+      dbTrue: 1,
+      dbFalse: 0,
+      dbDate: (date: Date) => date.getTime() // Convert to milliseconds for SQLite
+    }
+  } else {
+    const { 
+      testSchema, 
+      employees, 
+      departments, 
+      productivity, 
+      analyticsPages 
+    } = await import('./databases/postgres/schema')
+    
+    return {
+      schema: testSchema,
+      employees,
+      departments,
+      productivity,
+      analyticsPages,
+      type: 'TestSchema' as const,
+      // Database-specific value helpers
+      dbTrue: true,
+      dbFalse: false,
+      dbDate: (date: Date) => date
+    }
+  }
+}
 
 /**
  * Database type for testing - can be set via environment variable
  */
-export type TestDatabaseType = 'postgres' | 'mysql' | 'both'
+export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'both'
 
 /**
  * Get the database type to use for testing
@@ -47,6 +112,7 @@ export function getTestDatabaseType(): TestDatabaseType {
   const dbType = process.env.TEST_DB_TYPE?.toLowerCase()
   
   if (dbType === 'mysql') return 'mysql'
+  if (dbType === 'sqlite') return 'sqlite'
   if (dbType === 'both') return 'both'
   return 'postgres' // Default to postgres
 }
@@ -54,12 +120,14 @@ export function getTestDatabaseType(): TestDatabaseType {
 /**
  * Get database setup function for a specific database type
  */
-export function getDatabaseSetup(type: 'postgres' | 'mysql') {
+export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite') {
   switch (type) {
     case 'postgres':
       return setupPostgresDatabase
     case 'mysql':
       return setupMySQLDatabase
+    case 'sqlite':
+      return setupSQLiteDatabase
     default:
       throw new Error(`Unsupported database type: ${type}`)
   }
@@ -122,6 +190,18 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
     schema = mysqlTestSchema
     executor = createMySQLExecutor(db, schema)
     
+  } else if (dbType === 'sqlite') {
+    // Create fresh connection for each test
+    const { createSQLiteConnection } = await import('./databases/sqlite/setup')
+    const connection = createSQLiteConnection()
+    db = connection.db
+    close = connection.close
+    
+    const { createSQLiteExecutor } = await import('../../src/server')
+    const { sqliteTestSchema } = await import('./databases/sqlite/schema')
+    schema = sqliteTestSchema
+    executor = createSQLiteExecutor(db, schema)
+    
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -159,6 +239,12 @@ export async function createTestSemanticLayer(): Promise<{
     db = connection.db
     const { mysqlTestSchema } = await import('./databases/mysql/schema')
     schema = mysqlTestSchema
+  } else if (dbType === 'sqlite') {
+    const { createSQLiteConnection } = await import('./databases/sqlite/setup')
+    const connection = createSQLiteConnection()
+    db = connection.db
+    const { sqliteTestSchema } = await import('./databases/sqlite/schema')
+    schema = sqliteTestSchema
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }

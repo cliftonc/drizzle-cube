@@ -24,7 +24,7 @@ describe('Time Dimension Filters', () => {
     const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     executor = new QueryExecutor(dbExecutor)
     close = cleanup
-    cubes = getTestCubes(['Employees', 'Productivity'])
+    cubes = await getTestCubes(['Employees', 'Productivity'])
   })
   
   afterAll(() => {

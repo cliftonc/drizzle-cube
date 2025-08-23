@@ -128,9 +128,6 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
     semanticLayer.registerCube(cube)
   })
 
-  // Log helpful info
-  console.log(`🚀 Drizzle Cube: Registered ${cubes.length} cube(s) with ${engineType || 'auto-detected'} engine`)
-
   /**
    * POST /cubejs-api/v1/load - Execute queries
    */

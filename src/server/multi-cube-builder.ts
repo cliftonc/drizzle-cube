@@ -432,8 +432,9 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
     const fieldExpr = resolveSqlExpression(field.sql, ctx)
     const values = filter.values || []
     
-    // Filter out null/undefined values but keep empty strings and zeros
+    // Filter out null/undefined values but keep empty strings and zeros, then convert using adapter
     const filteredValues = values.filter((v: any) => v !== null && v !== undefined)
+      .map((v: any) => this.databaseAdapter!.convertFilterValue(v))
     
     if (filteredValues.length === 0 && !['set', 'notSet'].includes(filter.operator)) {
       return null
@@ -575,12 +576,12 @@ export class MultiCubeBuilder<TSchema extends Record<string, any> = Record<strin
 
   /**
    * Normalize date values to handle both string and Date objects
-   * For PostgreSQL timestamp fields, Drizzle expects Date objects
+   * Keep as Date objects, conversion to database format happens in convertFilterValue
    */
-  private normalizeDate(value: any): Date | null {
+  private normalizeDate(value: any): any {
     if (!value) return null
     
-    // If it's already a Date object, validate and return it
+    // If it's already a Date object, validate it
     if (value instanceof Date) {
       if (!isNaN(value.getTime())) {
         return value

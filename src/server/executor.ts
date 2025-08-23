@@ -23,7 +23,9 @@ import {
   min, 
   max, 
   countDistinct,
-  type SQL,
+  asc,
+  desc,
+  SQL,
   type AnyColumn
 } from 'drizzle-orm'
 
@@ -179,14 +181,15 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       // Add base WHERE conditions from cube
       if (baseQuery.where) {
         drizzleQuery = drizzleQuery.where(baseQuery.where)
-      }
-
+      } 
+      
       // Add query-specific WHERE conditions
       const whereConditions = this.buildWhereConditions(cube, query, context)
+      
       if (whereConditions.length > 0) {
         const combinedWhere = whereConditions.length === 1 
           ? whereConditions[0] 
-          : and(...whereConditions) as SQL
+          : and(...whereConditions) as SQL          
         drizzleQuery = drizzleQuery.where(combinedWhere)
       }
 
@@ -206,27 +209,28 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       drizzleQuery = this.applyLimitAndOffset(drizzleQuery, query)
 
       // Execute query - pass numeric field names for selective conversion
-      const numericFields = this.collectNumericFields(cube, query)
+      const numericFields = this.collectNumericFields(cube, query)      
       const data = await this.dbExecutor.execute(drizzleQuery, numericFields)
-      
-      // TODO: Move timestamp formatting to database level using PostgreSQL timezone functions
-      // Format timestamps in the result data
+
+      // Process time dimension results
       const mappedData = Array.isArray(data) ? data.map(row => {
         const mappedRow = { ...row }
         if (query.timeDimensions) {
           for (const timeDim of query.timeDimensions) {
             if (timeDim.dimension in mappedRow) {
-              let dateValue = mappedRow[timeDim.dimension]
-              
-              // Convert PostgreSQL timestamp format to ISO format for consistency
+              let dateValue = mappedRow[timeDim.dimension]  
+
+              // If we have a date that is not 'T' in the center and Z at the end, we need to fix it
               if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
-                dateValue = dateValue.replace(' ', 'T')
-                // Add 'Z' to indicate UTC timezone if not already present
-                if (!dateValue.endsWith('Z') && !dateValue.includes('+')) {
-                  dateValue = dateValue + 'Z'
-                }
+                const isoString = dateValue.replace(' ', 'T')
+                const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+') 
+                  ? isoString + 'Z' 
+                  : isoString
+                dateValue = new Date(finalIsoString)
               }
-              
+
+              // Convert time dimension result using database adapter if required
+              dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)           
               mappedRow[timeDim.dimension] = dateValue
             }
           }
@@ -242,6 +246,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         annotation
       }
     } catch (error) {
+      console.log(error)
       throw new Error(`Cube query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -674,10 +679,16 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     if (measure.filters && measure.filters.length > 0) {
       const filterConditions = measure.filters.map((filter: (ctx: QueryContext<TSchema>) => SQL) => {
         return filter(context)
-      })
+      }).filter(Boolean) // Remove any undefined conditions
       
-      // Use CASE WHEN for conditional aggregation
-      baseExpr = sql`CASE WHEN ${and(...filterConditions)} THEN ${baseExpr} END`
+      if (filterConditions.length > 0) {
+        // Use CASE WHEN for conditional aggregation via adapter
+        const andCondition = filterConditions.length === 1 ? filterConditions[0] : and(...filterConditions)
+        const caseExpr = this.databaseAdapter.buildCaseWhen([
+          { when: andCondition!, then: baseExpr }
+        ])
+        baseExpr = caseExpr
+      }
     }
     
     // Apply aggregation function based on measure type
@@ -712,7 +723,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     const baseExpr = resolveSqlExpression(dimensionSql, context)
     
     if (!granularity) {
-      return sql`${baseExpr}`
+      // Ensure we return SQL even when no granularity is applied
+      return baseExpr instanceof SQL ? baseExpr : sql`${baseExpr}`
     }
     
     // Use database adapter for database-specific time dimension building
@@ -737,7 +749,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           conditions.push(condition)
         }
       }
-    }
+    }    
 
     // Process time dimension date range filters
     if (query.timeDimensions) {
@@ -748,13 +760,13 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           // Use the raw field expression for date filtering (not the truncated version)
           // This ensures we filter on the actual timestamp values before aggregation
           const fieldExpr = resolveSqlExpression(dimension.sql, context)
-          const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+          const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)         
           if (dateCondition) {
             conditions.push(dateCondition)
           }
         }
       }
-    }
+    }    
     
     return conditions
   }
@@ -791,7 +803,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     const filterCondition = filter as FilterCondition
     const [cubeName, fieldKey] = filterCondition.member.split('.')
     if (cubeName !== cube.name) return null
-    
+        
     // Find the field in dimensions or measures
     const field = cube.dimensions[fieldKey] || cube.measures[fieldKey]
     if (!field) return null
@@ -813,24 +825,25 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     if (!values || values.length === 0) {
       // For empty equals filter, return condition that matches nothing
       if (operator === 'equals') {
-        return sql`FALSE`
+        return this.databaseAdapter.buildBooleanLiteral(false)
       }
       return null
     }
 
     // Filter out empty/null values and values containing null bytes for security
+    // For date operators, don't convert values yet - we'll normalize to Date first    
     const filteredValues = values.filter(v => {
       if (v === null || v === undefined || v === '') return false
       // Reject values containing null bytes for security
       if (typeof v === 'string' && v.includes('\x00')) return false
       return true
-    })
-    
+    }).map(this.databaseAdapter.convertFilterValue)
+        
     // For certain operators, we need at least one non-empty value
     if (filteredValues.length === 0 && !['set', 'notSet'].includes(operator)) {
       // For empty equals filter, return condition that matches nothing
       if (operator === 'equals') {
-        return sql`FALSE`
+        return this.databaseAdapter.buildBooleanLiteral(false)
       }
       return null
     }
@@ -844,7 +857,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         } else if (filteredValues.length === 1) {
           return eq(fieldExpr as AnyColumn, value)
         }
-        return sql`FALSE`
+        return this.databaseAdapter.buildBooleanLiteral(false)
       case 'notEquals':
         if (filteredValues.length > 1) {
           return notInArray(fieldExpr as AnyColumn, filteredValues)
@@ -872,11 +885,11 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         return isNotNull(fieldExpr as AnyColumn)
       case 'notSet':
         return isNull(fieldExpr as AnyColumn)
-      case 'inDateRange':
+      case 'inDateRange':        
         if (filteredValues.length >= 2) {
           const startDate = this.normalizeDate(filteredValues[0])
           const endDate = this.normalizeDate(filteredValues[1])
-          if (startDate && endDate) {
+          if (startDate && endDate) {            
             return and(
               gte(fieldExpr as AnyColumn, startDate), 
               lte(fieldExpr as AnyColumn, endDate)
@@ -886,14 +899,14 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         return null
       case 'beforeDate': {
         const beforeValue = this.normalizeDate(value)
-        if (beforeValue) {
+        if (beforeValue) {          
           return lt(fieldExpr as AnyColumn, beforeValue)
         }
         return null
       }
       case 'afterDate': {
         const afterValue = this.normalizeDate(value)
-        if (afterValue) {
+        if (afterValue) {          
           return gt(fieldExpr as AnyColumn, afterValue)
         }
         return null
@@ -917,7 +930,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       const startDate = this.normalizeDate(dateRange[0])
       const endDate = this.normalizeDate(dateRange[1])
       
-      if (!startDate || !endDate) return null
+      if (!startDate || !endDate) return null      
       
       return and(
         gte(fieldExpr as AnyColumn, startDate),
@@ -929,7 +942,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
     if (typeof dateRange === 'string') {
       // Handle relative date expressions
       const relativeDates = this.parseRelativeDateRange(dateRange)
-      if (relativeDates) {
+      if (relativeDates) {        
         return and(
           gte(fieldExpr as AnyColumn, relativeDates.start),
           lte(fieldExpr as AnyColumn, relativeDates.end)
@@ -944,7 +957,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       const startOfDay = new Date(normalizedDate)
       startOfDay.setUTCHours(0, 0, 0, 0)  // Ensure we start at midnight UTC
       const endOfDay = new Date(normalizedDate)
-      endOfDay.setUTCHours(23, 59, 59, 999)  // Ensure we end at 11:59:59.999 UTC
+      endOfDay.setUTCHours(23, 59, 59, 999)  // Ensure we end at 11:59:59.999 UTC      
       
       return and(
         gte(fieldExpr as AnyColumn, startOfDay),
@@ -1012,37 +1025,36 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   }
 
   /**
-   * Normalize date values to handle both string and Date objects
-   * For PostgreSQL timestamp fields, Drizzle expects Date objects
+   * Normalize date values to handle strings, numbers, and Date objects
+   * Always returns a JavaScript Date object or null
+   * Database-agnostic - just ensures we have a valid Date
    */
   private normalizeDate(value: any): Date | null {
     if (!value) return null
     
-    // If it's already a Date object, validate and return it
+    // If it's already a Date object, validate it
     if (value instanceof Date) {
-      if (!isNaN(value.getTime())) {
-        return value
-      }
-      return null
+      return !isNaN(value.getTime()) ? value : null
+    }
+    
+    // If it's a number, assume it's a timestamp
+    if (typeof value === 'number') {
+      // If it's a reasonable Unix timestamp in seconds (10 digits), convert to milliseconds
+      // Otherwise assume it's already in milliseconds
+      const timestamp = value < 10000000000 ? value * 1000 : value
+      const date = new Date(timestamp)
+      return !isNaN(date.getTime()) ? date : null
     }
     
     // If it's a string, try to parse it as a Date
     if (typeof value === 'string') {
       const parsed = new Date(value)
-      if (!isNaN(parsed.getTime())) {
-        return parsed
-      }
-      return null
+      return !isNaN(parsed.getTime()) ? parsed : null
     }
     
     // Try to parse any other type as date
     const parsed = new Date(value)
-    if (!isNaN(parsed.getTime())) {
-      return parsed
-    }
-    
-    // Invalid date value
-    return null
+    return !isNaN(parsed.getTime()) ? parsed : null
   }
 
   /**
@@ -1108,9 +1120,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           throw new Error(`Cannot order by '${field}': field is not selected in the query`)
         }
         
-        const directionSQL = direction === 'desc' ? sql`DESC` : sql`ASC`
-        // Use quoted identifier for proper alias reference
-        orderClauses.push(sql`${sql.identifier(field)} ${directionSQL}`)
+        // Use Drizzle's built-in asc/desc functions for proper ordering
+        const orderClause = direction === 'desc' ? desc(sql.identifier(field)) : asc(sql.identifier(field))
+        orderClauses.push(orderClause)
       }
     }
     
@@ -1126,7 +1138,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       for (const timeDim of sortedTimeDimensions) {
         if (!explicitlyOrderedFields.has(timeDim.dimension)) {
           // Automatically sort time dimensions in ascending order (earliest to latest)
-          orderClauses.push(sql`${sql.identifier(timeDim.dimension)} ASC`)
+          orderClauses.push(asc(sql.identifier(timeDim.dimension)))
         }
       }
     }

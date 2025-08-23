@@ -7,6 +7,7 @@
 import type { DatabaseAdapter } from './adapters/base-adapter'
 import { PostgresAdapter } from './adapters/postgres-adapter'
 import { MySQLAdapter } from './adapters/mysql-adapter'
+import { SQLiteAdapter } from './adapters/sqlite-adapter'
 
 /**
  * Create a database adapter for the specified engine type
@@ -20,8 +21,7 @@ export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite
     case 'mysql':
       return new MySQLAdapter()
     case 'sqlite':
-      // TODO: Implement SQLiteAdapter when adding SQLite support
-      throw new Error('SQLite adapter not yet implemented')
+      return new SQLiteAdapter()
     default:
       throw new Error(`Unsupported database engine: ${engineType}`)
   }
@@ -32,7 +32,7 @@ export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite
  * @returns Array of supported engine types
  */
 export function getSupportedEngines(): ('postgres' | 'mysql' | 'sqlite')[] {
-  return ['postgres', 'mysql'] // SQLite will be added later
+  return ['postgres', 'mysql', 'sqlite']
 }
 
 /**
@@ -41,5 +41,5 @@ export function getSupportedEngines(): ('postgres' | 'mysql' | 'sqlite')[] {
  * @returns True if supported, false otherwise
  */
 export function isEngineSupported(engineType: string): engineType is 'postgres' | 'mysql' | 'sqlite' {
-  return ['postgres', 'mysql'].includes(engineType)
+  return ['postgres', 'mysql', 'sqlite'].includes(engineType)
 }

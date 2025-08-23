@@ -38,11 +38,11 @@ import {
 } from '../../src/adapters/nextjs'
 import { 
   createTestSemanticLayer,
-  testSchema,
+  getTestSchema,
   getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
-import { testEmployeesCube, createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
 // Mock Next.js environment
 const mockNextUrl = {
@@ -74,7 +74,8 @@ describe('Next.js Adapter', () => {
   let semanticLayer: any
   let drizzleDb: any
   let closeFn: (() => void) | null = null
-  let adapterOptions: NextAdapterOptions<typeof testSchema>
+  let adapterOptions: NextAdapterOptions<any>
+  let currentSchema: any
 
   beforeEach(async () => {
     const testSetup = await createTestSemanticLayer()
@@ -82,16 +83,20 @@ describe('Next.js Adapter', () => {
     drizzleDb = testSetup.db
     closeFn = testSetup.close
     
+    // Get the correct schema for the current database type
+    const { schema } = await getTestSchema()
+    currentSchema = schema
+    
     // Register test cubes
     const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
     semanticLayer.registerCube(dynamicEmployeesCube)
-    semanticLayer.registerCube(testEmployeesCube)
     
     adapterOptions = {
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
+      cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
-      schema: testSchema,
+      schema: currentSchema,
       extractSecurityContext: async () => testSecurityContexts.org1,
+      engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
       cors: {
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS'],
@@ -466,7 +471,7 @@ describe('Next.js Adapter', () => {
       const customOptions: NextAdapterOptions<typeof testSchema> = {
         ...adapterOptions,
         extractSecurityContext: async (request) => {
-          capturedContext = { organisationId: 'custom-org-456' }
+          capturedContext = { organisationId: 1 }
           return capturedContext
         }
       }
@@ -480,7 +485,7 @@ describe('Next.js Adapter', () => {
       await handler(request)
       
       expect(capturedContext).not.toBeNull()
-      expect(capturedContext.organisationId).toBe('custom-org-456')
+      expect(capturedContext.organisationId).toBe(1)
     })
 
     it('should pass route context to extractSecurityContext', async () => {
@@ -490,7 +495,7 @@ describe('Next.js Adapter', () => {
         ...adapterOptions,
         extractSecurityContext: async (request, context) => {
           capturedRouteContext = context
-          return { organisationId: 'test-org-123' }
+          return { organisationId: 1 }
         }
       }
       

@@ -34,7 +34,7 @@ describe('Comprehensive Aggregations', () => {
     // Setup test executor with all cube definitions
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
-    cubes = getTestCubes() // Get all cubes
+    cubes = await getTestCubes() // Get all cubes (now async)
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
   })

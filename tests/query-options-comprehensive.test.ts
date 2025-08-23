@@ -34,7 +34,7 @@ describe('Comprehensive Query Options', () => {
     // Setup test executor with shared cube definitions
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
-    cubes = getTestCubes()
+    cubes = await getTestCubes()
     testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
     performanceMeasurer = new PerformanceMeasurer()
   })
@@ -289,6 +289,8 @@ describe('Comprehensive Query Options', () => {
         .build()
 
       const result = await testExecutor.executeQuery(query)
+
+      console.log(result)
 
       expect(result.data.length).toBeGreaterThan(1)
 

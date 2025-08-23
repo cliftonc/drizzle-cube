@@ -59,6 +59,33 @@ export interface DatabaseAdapter {
    * @returns SQL expression for boolean literal (TRUE/FALSE/1/0 depending on database)
    */
   buildBooleanLiteral(value: boolean): SQL
+
+  /**
+   * Convert filter values to database-compatible types
+   * @param value - The filter value to convert
+   * @returns Converted value for database queries
+   */
+  convertFilterValue(value: any): any
+
+  /**
+   * Prepare date value for database-specific storage format
+   * @param date - Date value to prepare
+   * @returns Database-compatible date representation
+   */
+  prepareDateValue(date: Date): any
+
+  /**
+   * Check if this database stores timestamps as integers
+   * @returns True if timestamps are stored as integers (milliseconds), false for native timestamps
+   */
+  isTimestampInteger(): boolean
+
+  /**
+   * Convert time dimension result values back to Date objects for consistency
+   * @param value - The time dimension value from query results
+   * @returns Date object or original value if not a time dimension
+   */
+  convertTimeDimensionResult(value: any): any
 }
 
 /**
@@ -73,6 +100,10 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract buildAvg(fieldExpr: AnyColumn | SQL): SQL
   abstract buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL
   abstract buildBooleanLiteral(value: boolean): SQL
+  abstract convertFilterValue(value: any): any
+  abstract prepareDateValue(date: Date): any
+  abstract isTimestampInteger(): boolean
+  abstract convertTimeDimensionResult(value: any): any
 
   /**
    * Helper method to build pattern for string matching

@@ -3,11 +3,11 @@ import { FastifyInstance } from 'fastify'
 import { cubePlugin, createCubeApp } from '../../src/adapters/fastify'
 import { 
   createTestSemanticLayer,
-  testSchema,
+  getTestSchema,
   getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
-import { testEmployeesCube, createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 
 describe('Fastify Adapter', () => {
   let app: FastifyInstance
@@ -15,9 +15,20 @@ describe('Fastify Adapter', () => {
   let semanticLayerFn
   let drizzleDb
   let dynamicEmployeesCube
+  let currentSchema
 
   // Mock security context extractor
   const mockGetSecurityContext = async (request: any) => testSecurityContexts.org1
+  
+  // Helper function to create plugin options with correct schema and engine type
+  const createPluginOptions = (customOptions = {}) => ({
+    cubes: [dynamicEmployeesCube],
+    drizzle: drizzleDb,
+    schema: currentSchema,
+    extractSecurityContext: mockGetSecurityContext,
+    engineType: getTestDatabaseType() as 'postgres' | 'mysql' | 'sqlite',
+    ...customOptions
+  })
 
   beforeAll(async () => {
     const { semanticLayer, db, close } = await createTestSemanticLayer()
@@ -25,22 +36,18 @@ describe('Fastify Adapter', () => {
     semanticLayerFn = semanticLayer
     drizzleDb = db
     
+    // Get the correct schema for the current database type
+    const { schema } = await getTestSchema()
+    currentSchema = schema
+    
     // Use dynamic cube creation to ensure correct schema for current database type
     const { testEmployeesCube: dynamicCube } = await createTestCubesForCurrentDatabase()
     dynamicEmployeesCube = dynamicCube
     semanticLayerFn.registerCube(dynamicEmployeesCube)
     
-    // Also register the static test cube for additional measures
-    semanticLayerFn.registerCube(testEmployeesCube)
-    
     // Create Fastify app with cube plugin
     app = require('fastify')({ logger: false }) // Disable logging for tests
-    await app.register(cubePlugin as any, {
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      schema: testSchema,
-      extractSecurityContext: mockGetSecurityContext
-    })
+    await app.register(cubePlugin as any, createPluginOptions())
     
     await app.ready()
   })
@@ -154,12 +161,9 @@ describe('Fastify Adapter', () => {
 
   it('should support custom base path', async () => {
     const customApp = require('fastify')({ logger: false })
-    await customApp.register(cubePlugin as any, {
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      extractSecurityContext: mockGetSecurityContext,
+    await customApp.register(cubePlugin as any, createPluginOptions({
       basePath: '/api/analytics'
-    })
+    }))
     await customApp.ready()
 
     const response = await customApp.inject({
@@ -314,15 +318,12 @@ describe('Fastify Adapter', () => {
 
   it('should handle CORS configuration', async () => {
     const corsApp = require('fastify')({ logger: false })
-    await corsApp.register(cubePlugin as any, {
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      extractSecurityContext: mockGetSecurityContext,
+    await corsApp.register(cubePlugin as any, createPluginOptions({
       cors: {
         origin: 'http://localhost:3000',
         credentials: true
       }
-    })
+    }))
     await corsApp.ready()
 
     const response = await corsApp.inject({
@@ -345,12 +346,9 @@ describe('Fastify Adapter', () => {
 
   it('should handle custom body limit', async () => {
     const customApp = require('fastify')({ logger: false })
-    await customApp.register(cubePlugin as any, {
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      extractSecurityContext: mockGetSecurityContext,
+    await customApp.register(cubePlugin as any, createPluginOptions({
       bodyLimit: 1024 * 1024 // 1MB
-    })
+    }))
     await customApp.ready()
 
     // Should still work with normal queries
@@ -370,11 +368,7 @@ describe('Fastify Adapter', () => {
   })
 
   it('should work with createCubeApp helper', async () => {
-    const standaloneApp = createCubeApp({
-      cubes: [dynamicEmployeesCube, testEmployeesCube],
-      drizzle: drizzleDb,
-      extractSecurityContext: mockGetSecurityContext
-    })
+    const standaloneApp = createCubeApp(createPluginOptions())
 
     await standaloneApp.ready()
 

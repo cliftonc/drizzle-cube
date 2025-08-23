@@ -17,43 +17,47 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    * Build SQLite time dimension using date/datetime functions with modifiers
    * For integer timestamp columns (milliseconds), first convert to datetime
    * SQLite doesn't have DATE_TRUNC like PostgreSQL, so we use strftime and date modifiers
+   * Returns datetime strings for consistency with other databases
    */
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL {
-    // Convert integer timestamp (milliseconds) to datetime
-    // The SQLite schema uses integer timestamps in milliseconds
-    const dateExpr = sql`datetime(${fieldExpr} / 1000, 'unixepoch')`
+    // For SQLite, we need to apply modifiers directly in the datetime conversion
+    // to avoid nested datetime() calls which don't work properly
     
     switch (granularity) {
       case 'year':
         // Start of year: 2023-01-01 00:00:00
-        return sql`datetime(${dateExpr}, 'start of year')`
+        return sql`datetime(${fieldExpr}, 'unixepoch', 'start of year')`
       case 'quarter':
-        // Calculate quarter start date using complex SQLite logic
-        // Get year, calculate quarter number, then create start date
-        return sql`datetime(${dateExpr}, 'start of year', 
-          '+' || ((CAST((strftime('%m', ${dateExpr}) - 1) AS INTEGER) / 3) * 3) || ' months')`
+        // Calculate quarter start date using SQLite's date arithmetic
+        // First convert to datetime, then calculate quarter
+        const dateForQuarter = sql`datetime(${fieldExpr}, 'unixepoch')`
+        return sql`datetime(${dateForQuarter}, 'start of year', 
+          '+' || (((CAST(strftime('%m', ${dateForQuarter}) AS INTEGER) - 1) / 3) * 3) || ' months')`
       case 'month':
         // Start of month: 2023-05-01 00:00:00
-        return sql`datetime(${dateExpr}, 'start of month')`
+        return sql`datetime(${fieldExpr}, 'unixepoch', 'start of month')`
       case 'week':
-        // Start of week (Monday): SQLite considers Sunday as 0, Monday as 1
-        // We want Monday-based weeks, so we adjust accordingly
-        return sql`date(${dateExpr}, 'weekday 1', '-6 days')`
+        // Start of week (Monday): Use SQLite's weekday modifier
+        // weekday 1 = Monday, so go to Monday then back 6 days to get start of week
+        return sql`date(datetime(${fieldExpr}, 'unixepoch'), 'weekday 1', '-6 days')`
       case 'day':
         // Start of day: 2023-05-15 00:00:00
-        return sql`datetime(${dateExpr}, 'start of day')`
+        return sql`datetime(${fieldExpr}, 'unixepoch', 'start of day')`
       case 'hour':
         // Truncate to hour: 2023-05-15 14:00:00
-        return sql`datetime(strftime('%Y-%m-%d %H:00:00', ${dateExpr}))`
+        const dateForHour = sql`datetime(${fieldExpr}, 'unixepoch')`
+        return sql`datetime(strftime('%Y-%m-%d %H:00:00', ${dateForHour}))`
       case 'minute':
         // Truncate to minute: 2023-05-15 14:30:00
-        return sql`datetime(strftime('%Y-%m-%d %H:%M:00', ${dateExpr}))`
+        const dateForMinute = sql`datetime(${fieldExpr}, 'unixepoch')`
+        return sql`datetime(strftime('%Y-%m-%d %H:%M:00', ${dateForMinute}))`
       case 'second':
         // Already at second precision: 2023-05-15 14:30:25
-        return sql`datetime(strftime('%Y-%m-%d %H:%M:%S', ${dateExpr}))`
+        const dateForSecond = sql`datetime(${fieldExpr}, 'unixepoch')`
+        return sql`datetime(strftime('%Y-%m-%d %H:%M:%S', ${dateForSecond}))`
       default:
-        // Fallback to the original expression if granularity is not recognized
-        return fieldExpr as SQL
+        // Fallback to converting the timestamp to datetime without truncation
+        return sql`datetime(${fieldExpr}, 'unixepoch')`
     }
   }
 
@@ -112,10 +116,30 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    * Build SQLite CASE WHEN conditional expression
    */
   buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
-    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
+    // Check if 'then' values are SQL objects (they have queryChunks property)
+    // If so, we need to treat them as SQL expressions, not bound parameters
+    const cases = conditions.map(c => {
+      // Check if it's a SQL object by checking for SQL-like properties
+      const isSqlObject = c.then && typeof c.then === 'object' && 
+                         (c.then.queryChunks || c.then._ || c.then.sql);
+      
+      if (isSqlObject) {
+        // It's a SQL expression, embed it directly without parameterization
+        return sql`WHEN ${c.when} THEN ${sql.raw('(') }${c.then}${sql.raw(')')}`
+      } else {
+        // It's a regular value, parameterize it
+        return sql`WHEN ${c.when} THEN ${c.then}`
+      }
+    }).reduce((acc, curr) => sql`${acc} ${curr}`)
     
     if (elseValue !== undefined) {
-      return sql`CASE ${cases} ELSE ${elseValue} END`
+      const isElseSqlObject = elseValue && typeof elseValue === 'object' && 
+                              (elseValue.queryChunks || elseValue._ || elseValue.sql);
+      if (isElseSqlObject) {
+        return sql`CASE ${cases} ELSE ${sql.raw('(')}${elseValue}${sql.raw(')')} END`
+      } else {
+        return sql`CASE ${cases} ELSE ${elseValue} END`
+      }
     }
     return sql`CASE ${cases} END`
   }
@@ -132,12 +156,52 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   /**
    * Convert filter values to SQLite-compatible types
    * SQLite doesn't support boolean types - convert boolean to integer (1/0)
-   * Leave Date objects as-is - Drizzle ORM handles timestamp conversion automatically
+   * Convert Date objects to milliseconds for integer timestamp columns
    */
   convertFilterValue(value: any): any {
     if (typeof value === 'boolean') {
       return value ? 1 : 0
     }
+    if (value instanceof Date) {
+      return value.getTime()
+    }
+    if (Array.isArray(value)) {
+      return value.map(v => this.convertFilterValue(v))
+    }
+    // If it's already a number (likely already converted timestamp), return as-is
+    if (typeof value === 'number') {
+      return value
+    }    
+    return value
+  }
+
+  /**
+   * Prepare date value for SQLite integer timestamp storage
+   * Convert Date objects to milliseconds (Unix timestamp * 1000)
+   */
+  prepareDateValue(date: Date): any {
+    if (!(date instanceof Date)) {
+      console.error('prepareDateValue called with non-Date value:', date, typeof date)
+      // Try to handle it gracefully
+      if (typeof date === 'number') return date
+      if (typeof date === 'string') return new Date(date).getTime()
+      throw new Error(`prepareDateValue expects a Date object, got ${typeof date}`)
+    }
+    return date.getTime()
+  }
+
+  /**
+   * SQLite stores timestamps as integers (milliseconds)
+   */
+  isTimestampInteger(): boolean {
+    return true
+  }
+
+  /**
+   * Convert SQLite time dimension results back to Date objects
+   * SQLite time dimensions return datetime strings, but clients expect Date objects
+   */
+  convertTimeDimensionResult(value: any): any {    
     return value
   }
 }
