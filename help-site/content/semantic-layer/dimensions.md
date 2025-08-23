@@ -130,20 +130,12 @@ dimensions: {
 }
 ```
 
-**Time Dimension Usage:**
-Time dimensions are used in `timeDimensions` queries with granularity:
+**Time dimensions have special usage patterns** and are used in the `timeDimensions` array with granularity and date range support. See the comprehensive [Time Dimensions](/help/semantic-layer/time-dimensions) guide for:
 
-```typescript
-const query = {
-  measures: ['Employees.count'],
-  dimensions: [],
-  timeDimensions: [{
-    dimension: 'Employees.createdAt',
-    granularity: 'month', // year, quarter, month, week, day, hour
-    dateRange: ['2023-01-01', '2023-12-31']
-  }]
-}
-```
+- Granularity options (year, quarter, month, week, day, hour)
+- Flexible date ranges (relative like "last 30 days" and absolute)
+- Time zone handling and performance optimization
+- Advanced time-based analytics patterns
 
 ## Computed Dimensions
 
@@ -253,31 +245,6 @@ dimensions: {
 }
 ```
 
-## Date and Time Granularity
-
-Time dimensions support various granularity levels:
-
-| Granularity | Description | Format Example |
-|-------------|-------------|----------------|
-| `year` | Annual grouping | 2023 |
-| `quarter` | Quarterly grouping | 2023-Q1 |
-| `month` | Monthly grouping | 2023-01 |
-| `week` | Weekly grouping | 2023-W01 |
-| `day` | Daily grouping | 2023-01-15 |
-| `hour` | Hourly grouping | 2023-01-15 14:00 |
-
-```typescript
-// Query with time dimensions
-const timeSeriesQuery = {
-  measures: ['Productivity.totalLinesOfCode'],
-  dimensions: ['Productivity.departmentName'],
-  timeDimensions: [{
-    dimension: 'Productivity.date',
-    granularity: 'week',
-    dateRange: ['2023-01-01', '2023-03-31']
-  }]
-}
-```
 
 ## Dimension Formatting and Display
 
@@ -448,6 +415,7 @@ category: {
 
 ## Next Steps
 
+- Explore [Time Dimensions](/help/semantic-layer/time-dimensions) for comprehensive date range and time-series analytics
 - Learn about [Measures](/help/semantic-layer/measures) for metrics and aggregations
 - Explore [Joins](/help/semantic-layer/joins) for multi-cube relationships  
 - Review [Security](/help/semantic-layer/security) patterns

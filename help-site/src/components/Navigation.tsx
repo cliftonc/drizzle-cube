@@ -31,6 +31,7 @@ const navigationSections: NavSection[] = [
       { title: 'Overview', slug: 'semantic-layer', description: 'Semantic layer concepts' },
       { title: 'Cubes', slug: 'semantic-layer/cubes', description: 'Define data cubes' },
       { title: 'Dimensions', slug: 'semantic-layer/dimensions', description: 'Categorical data' },
+      { title: 'Time Dimensions', slug: 'semantic-layer/time-dimensions', description: 'Date ranges and time-series analytics' },
       { title: 'Measures', slug: 'semantic-layer/measures', description: 'Metrics and aggregations' },
       { title: 'Joins', slug: 'semantic-layer/joins', description: 'Joining multiple cubes' },
       { title: 'Security', slug: 'semantic-layer/security', description: 'Multi-tenant security' },
