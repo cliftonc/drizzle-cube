@@ -283,55 +283,53 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   return (
     <div className="flex flex-col bg-white border border-gray-200 rounded-lg">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <h3 className="text-lg font-semibold text-gray-900">Query Builder</h3>
+      <div className="p-3 sm:p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">Query Builder</h3>
             {onAIAssistantClick && (
               <button
                 onClick={onAIAssistantClick}
-                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 flex-shrink-0"
                 title="AI Assistant - Generate queries with AI"
               >
-                <SparklesIcon className="w-4 h-4" />
+                <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>AI Assistant</span>
               </button>
             )}
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-1 flex-shrink-0">
             {hasContent && (
               <>
-                <span className="hidden md:inline text-sm text-gray-500">
+                <span className="hidden lg:inline text-xs text-gray-500 mr-1">
                   {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
                 </span>
-                <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleCopyQuery}
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  title="Copy query to clipboard"
+                >
+                  <ClipboardDocumentIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Copy Query</span>
+                </button>
+                {onClearQuery && (
                   <button
-                    onClick={handleCopyQuery}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    title="Copy query to clipboard"
+                    onClick={onClearQuery}
+                    className="text-gray-400 hover:text-red-600 focus:outline-none p-2"
+                    title="Clear all fields"
                   >
-                    <ClipboardDocumentIcon className="w-3 h-3" />
-                    <span>Copy Query</span>
+                    <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
-                  {onClearQuery && (
-                    <button
-                      onClick={onClearQuery}
-                      className="text-gray-400 hover:text-red-600 focus:outline-none"
-                      title="Clear all fields"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
+                )}
               </>
             )}
             {showSettings && onSettingsClick && (
               <button
                 onClick={onSettingsClick}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                className="text-gray-400 hover:text-gray-600 focus:outline-none p-2"
                 title="API Configuration"
               >
-                <CogIcon className="w-4 h-4" />
+                <CogIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
             <ValidationStatusIcon />
