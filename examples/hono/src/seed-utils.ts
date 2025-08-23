@@ -1,34 +1,10 @@
 /**
- * Database seeding script with sample data
+ * Seed utilities for Cloudflare Workers
+ * This file contains the core seeding logic that can be used both in CLI and scheduled contexts
  */
 
-import { drizzle } from 'drizzle-orm/postgres-js'
-import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
-import postgres from 'postgres'
-import { neon } from '@neondatabase/serverless'
-import { employees, departments, productivity, analyticsPages, schema } from '../schema'
-import { productivityDashboardConfig } from '../src/dashboard-config'
-
-// Default connection string for CLI usage
-const defaultConnectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54921/drizzle_cube_db'
-
-// Auto-detect Neon vs local PostgreSQL based on connection string
-function isNeonUrl(url: string): boolean {
-  return url.includes('.neon.tech') || url.includes('neon.database')
-}
-
-// Create database connection factory
-function createDatabase(databaseUrl: string) {
-  if (isNeonUrl(databaseUrl)) {
-    console.log('🚀 Connecting to Neon serverless database')
-    const sql = neon(databaseUrl)
-    return drizzleNeon(sql, { schema })
-  } else {
-    console.log('🐘 Connecting to local PostgreSQL database')
-    const client = postgres(databaseUrl)
-    return drizzle(client, { schema })
-  }
-}
+import { employees, departments, productivity, analyticsPages } from '../schema'
+import { productivityDashboardConfig } from './dashboard-config'
 
 // Sample data
 const sampleDepartments = [
@@ -282,30 +258,20 @@ const sampleAnalyticsPage = {
   organisationId: 1
 }
 
-export async function executeSeed(db?: any, connectionString?: string) {
+export async function executeSeed(db: any) {
   console.log('🌱 Seeding database with sample data...')
-  
-  // Use provided db or create one from connection string
-  const finalConnectionString = connectionString || defaultConnectionString
-  const database = db || createDatabase(finalConnectionString)
-  let client: any = null
-  
-  // For cleanup, we need to handle both connection types (only when creating our own connection)
-  if (!db && !isNeonUrl(finalConnectionString)) {
-    client = postgres(finalConnectionString)
-  }
   
   try {
     // Clear existing data
     console.log('🧹 Clearing existing data...')
-    await database.delete(productivity)
-    await database.delete(employees)
-    await database.delete(departments)
-    await database.delete(analyticsPages)
+    await db.delete(productivity)
+    await db.delete(employees)
+    await db.delete(departments)
+    await db.delete(analyticsPages)
     
     // Insert departments first (referenced by employees)
     console.log('🏢 Inserting departments...')
-    const insertedDepartments = await database.insert(departments)
+    const insertedDepartments = await db.insert(departments)
       .values(sampleDepartments)
       .returning()
     
@@ -319,7 +285,7 @@ export async function executeSeed(db?: any, connectionString?: string) {
     
     // Insert employees
     console.log('👥 Inserting employees...')
-    const insertedEmployees = await database.insert(employees)
+    const insertedEmployees = await db.insert(employees)
       .values(updatedEmployees)
       .returning()
     
@@ -336,7 +302,7 @@ export async function executeSeed(db?: any, connectionString?: string) {
     
     for (let i = 0; i < productivityData.length; i += batchSize) {
       const batch = productivityData.slice(i, i + batchSize)
-      await database.insert(productivity).values(batch)
+      await db.insert(productivity).values(batch)
       insertedProductivityCount += batch.length
       console.log(`📊 Inserted productivity batch: ${insertedProductivityCount}/${productivityData.length}`)
     }
@@ -345,45 +311,18 @@ export async function executeSeed(db?: any, connectionString?: string) {
     
     // Insert sample analytics page
     console.log('📊 Inserting sample analytics page...')
-    const insertedPage = await database.insert(analyticsPages)
+    const insertedPage = await db.insert(analyticsPages)
       .values(sampleAnalyticsPage)
       .returning()
     
     console.log(`✅ Inserted analytics page: ${insertedPage[0].name}`)
     
     console.log('🎉 Database seeded successfully!')
-    console.log('\n📊 What you can do now:')
-    console.log('- Visit http://localhost:3000 to see the React dashboard')
-    console.log('- View the sample "Executive Dashboard" with employee analytics')
-    console.log('- Create new dashboards with custom charts')
-    console.log('- Query the API at http://localhost:3001/cubejs-api/v1/meta')
-    console.log('\n🔍 Sample queries you can try (using cube joins):')
-    console.log('- Employee count by department: measures: ["Employees.count"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
-    console.log('- Salary analytics: measures: ["Employees.avgSalary", "Employees.totalSalary"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
-    console.log('- Active employees: measures: ["Employees.activeCount"], dimensions: ["Departments.name"], cubes: ["Employees", "Departments"]')
     
     return { success: true, message: 'Database seeded successfully' }
     
   } catch (error) {
     console.error('❌ Seeding failed:', error)
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
-  } finally {
-    // Only close client for non-Neon connections and when we created the connection
-    if (client) {
-      await client.end()
-    }
   }
 }
-
-async function seedDatabase() {
-  const result = await executeSeed()
-  
-  if (result.success) {
-    process.exit(0)
-  } else {
-    console.error('❌ Seeding failed:', result.error)
-    process.exit(1)
-  }
-}
-
-seedDatabase()

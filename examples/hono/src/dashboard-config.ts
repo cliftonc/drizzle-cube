@@ -46,12 +46,13 @@ export const productivityDashboardConfig = {
       // Second Row - Executive Overview
       {
         id: 'productivity-trends',
-        title: 'Team Productivity Trends (Last 90 Days)',
+        title: 'Team Productivity Trends (Last 12 Months)',
         query: JSON.stringify({
           measures: ['Productivity.avgLinesOfCode'],
           timeDimensions: [{
             dimension: 'Productivity.date',
-            granularity: 'week'
+            granularity: 'week',
+            dateRange: 'last 12 months'
           }],
           filters: [{
             member: 'Productivity.isDayOff',
@@ -186,11 +187,15 @@ export const productivityDashboardConfig = {
       // Fifth Row - Individual Performance
       {
         id: 'top-performers',
-        title: 'Top Performers (Last 30 Days)',
+        title: 'Top Performers (This Year)',
         query: JSON.stringify({
           measures: ['Productivity.recordCount', 'Productivity.avgHappinessIndex'],
           dimensions: ['Employees.name', 'Departments.name'],
           cubes: ['Productivity', 'Employees', 'Departments'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            dateRange: 'this year'
+          }],
           order: {
             'Productivity.avgHappinessIndex': 'desc'
           },

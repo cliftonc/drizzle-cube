@@ -16,6 +16,10 @@ export default function DashboardListPage() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
 
   const handleCreateExample = async () => {
+    if (pages.length >= 10) {
+      alert('I think 10 is enough dashboards for now, just delete one if you want to test that feature!')
+      return
+    }
     try {
       await createExample.mutateAsync()
     } catch (error) {
@@ -34,6 +38,10 @@ export default function DashboardListPage() {
   }
 
   const handleCreateDashboard = async (data: { name: string; description?: string }) => {
+    if (pages.length >= 10) {
+      alert('I think 10 is enough dashboards for now, just delete one if you want to test that feature!')
+      return
+    }
     try {
       await createPage.mutateAsync({
         name: data.name,
@@ -77,20 +85,35 @@ export default function DashboardListPage() {
             Manage your analytics dashboards and visualizations
           </p>
         </div>
-        <div className="mt-4 flex flex-col sm:flex-row gap-3 sm:gap-2">
-          <button
-            onClick={handleCreateExample}
-            disabled={createExample.isPending}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
-          >
-            {createExample.isPending ? 'Creating...' : 'Create Example'}
-          </button>
-          <button
-            onClick={() => setIsNewModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
-          >
-            New Dashboard
-          </button>
+        
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+            <button
+              onClick={handleCreateExample}
+              disabled={createExample.isPending || pages.length >= 10}
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
+            >
+              {createExample.isPending ? 'Creating...' : 'Create Example'}
+            </button>
+            <button
+              onClick={() => setIsNewModalOpen(true)}
+              disabled={pages.length >= 10}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
+            >
+              New Dashboard
+            </button>
+          </div>
+          
+          {pages.length >= 10 && (
+            <div className="px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-lg mr-2">😊</span>
+                <p className="text-sm text-amber-800 font-medium">
+                  I think we have enough dashboards for now
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -118,14 +141,15 @@ export default function DashboardListPage() {
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center max-w-xs mx-auto sm:max-w-none">
             <button
               onClick={handleCreateExample}
-              disabled={createExample.isPending}
+              disabled={createExample.isPending || pages.length >= 10}
               className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto"
             >
               Create Example Dashboard
             </button>
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 w-full sm:w-auto"
+              disabled={pages.length >= 10}
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
             >
               Create New Dashboard
             </button>

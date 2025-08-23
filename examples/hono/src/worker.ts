@@ -14,6 +14,7 @@ import { schema } from '../schema.js'
 import { allCubes } from '../cubes.js'
 import type { Schema } from '../schema.js'
 import analyticsApp from './analytics-routes'
+import { executeSeed } from './seed-utils.js'
 
 // Configure Neon for Cloudflare Workers
 neonConfig.poolQueryViaFetch = true
@@ -175,5 +176,32 @@ app.get('*', async (c) => {
   return await c.env.ASSETS.fetch(c.req.raw)
 })
 
-export default app
+// Scheduled event handler for cron triggers
+async function scheduled(_event: any, env: CloudflareEnv, _ctx: any): Promise<void> {
+  console.log('🕒 Scheduled event triggered at:', new Date().toISOString())
+  
+  try {
+    // Configure Neon for scheduled execution
+    const sql = neon(env.DATABASE_URL)
+    const db = drizzleNeon(sql, { schema })
+    
+    console.log('🌱 Starting scheduled database seeding...')
+    const result = await executeSeed(db)
+    
+    if (result.success) {
+      console.log('✅ Scheduled database seeding completed successfully')
+    } else {
+      console.error('❌ Scheduled database seeding failed:', result.error)
+      throw new Error(`Seeding failed: ${result.error}`)
+    }
+  } catch (error) {
+    console.error('❌ Scheduled event error:', error)
+    throw error
+  }
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled
+}
 

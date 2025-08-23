@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "drizzle-cube-hono-example"
-main = "dist/worker.js"
+main = "dist/src/worker.js"
 compatibility_date = "2024-08-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -39,3 +39,7 @@ NODE_ENV = "production"
 # [[r2_buckets]]
 # binding = "BUCKET"
 # bucket_name = "drizzle-cube-assets"
+
+# Cron triggers for scheduled tasks
+[triggers]
+crons = ["0 0 * * *"]  # Run daily at midnight UTC

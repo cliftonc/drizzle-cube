@@ -92,6 +92,23 @@ analyticsApp.post('/', async (c) => {
   const organisationId = c.get('organisationId')
 
   try {
+    // Check dashboard count limit
+    const existingPages = await db
+      .select({ id: analyticsPages.id })
+      .from(analyticsPages)
+      .where(
+        and(
+          eq(analyticsPages.organisationId, organisationId),
+          eq(analyticsPages.isActive, true)
+        )
+      )
+
+    if (existingPages.length >= 10) {
+      return c.json({ 
+        error: 'Maximum number of dashboards reached (10). Please delete a dashboard first.' 
+      }, 400)
+    }
+
     const body = await c.req.json()
     const { name, description, config, order = 0 } = body
 
@@ -103,6 +120,11 @@ analyticsApp.post('/', async (c) => {
 
     if (!Array.isArray(config.portlets)) {
       return c.json({ error: 'Config portlets must be an array' }, 400)
+    }
+
+    // Limit portlets to maximum of 20
+    if (config.portlets.length > 20) {
+      config.portlets = config.portlets.slice(0, 20)
     }
 
     const newPage = await db
@@ -129,6 +151,22 @@ analyticsApp.post('/create-example', async (c) => {
   const organisationId = c.get('organisationId')
 
   try {
+    // Check dashboard count limit
+    const existingPages = await db
+      .select({ id: analyticsPages.id })
+      .from(analyticsPages)
+      .where(
+        and(
+          eq(analyticsPages.organisationId, organisationId),
+          eq(analyticsPages.isActive, true)
+        )
+      )
+
+    if (existingPages.length >= 10) {
+      return c.json({ 
+        error: 'Maximum number of dashboards reached (10). Please delete a dashboard first.' 
+      }, 400)
+    }
     const newPage = await db
       .insert(analyticsPages)
       .values({
@@ -175,6 +213,10 @@ analyticsApp.put('/:id', async (c) => {
     if (config !== undefined) {
       if (!config.portlets || !Array.isArray(config.portlets)) {
         return c.json({ error: 'Config portlets must be an array' }, 400)
+      }
+      // Limit portlets to maximum of 20
+      if (config.portlets.length > 20) {
+        config.portlets = config.portlets.slice(0, 20)
       }
       updateData.config = config
     }
