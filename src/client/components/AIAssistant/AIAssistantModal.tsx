@@ -164,7 +164,6 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   const handleClose = () => {
     setState(prev => ({
       ...prev,
-      userPrompt: '',
       response: null,
       responseError: null,
       validationResult: null,
