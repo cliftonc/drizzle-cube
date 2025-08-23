@@ -76,7 +76,10 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       ...prev, 
       isSubmitting: true, 
       response: null, 
-      responseError: null 
+      responseError: null,
+      validationResult: null,
+      validationError: null,
+      isValidating: false
     }))
 
     try {
@@ -95,8 +98,8 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       
       // Automatically validate after successful generation
       setTimeout(() => {
-        handleValidate()
-      }, 100)
+        validateResponse(responseText)
+      }, 500)
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -106,9 +109,15 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }
   }
 
-  const handleValidate = async () => {
-    if (!state.response) return
+  // Validate a specific response text (used for auto-validation)
+  const validateResponse = async (responseText: string) => {
+    if (!responseText) {
+      console.log('AI Modal: No response text to validate')
+      return
+    }
 
+    console.log('AI Modal: Starting validation with response:', responseText.substring(0, 100) + '...')
+    
     setState(prev => ({
       ...prev,
       isValidating: true,
@@ -117,7 +126,8 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }))
 
     try {
-      const query = JSON.parse(state.response)
+      const query = JSON.parse(responseText)
+      console.log('AI Modal: Parsed query:', query)
       
       const response = await fetch('/cubejs-api/v1/load', {
         method: 'POST',
@@ -127,7 +137,10 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         body: JSON.stringify(query)
       })
 
+      console.log('AI Modal: Validation response status:', response.status)
+
       if (response.ok) {
+        console.log('AI Modal: Validation SUCCESS')
         setState(prev => ({
           ...prev,
           isValidating: false,
@@ -135,6 +148,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         }))
       } else {
         const errorData = await response.text()
+        console.log('AI Modal: Validation FAILED:', errorData)
         setState(prev => ({
           ...prev,
           isValidating: false,
@@ -143,6 +157,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         }))
       }
     } catch (error) {
+      console.log('AI Modal: Validation ERROR:', error)
       setState(prev => ({
         ...prev,
         isValidating: false,
@@ -150,6 +165,11 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         validationError: error instanceof Error ? error.message : 'Failed to validate query'
       }))
     }
+  }
+
+  const handleValidate = async () => {
+    if (!state.response) return
+    await validateResponse(state.response)
   }
 
   const handleUseQuery = () => {
@@ -281,9 +301,9 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       </div>
       
       {/* Middle: Input/Output Row - Takes remaining space */}
-      <div className="flex gap-6 flex-1 min-h-0" style={{minWidth: '800px', minHeight: '400px'}}>
+      <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
         {/* Left: Query Input */}
-        <div className="w-1/2 flex flex-col">
+        <div className="w-full md:w-1/2 flex flex-col">
           <label htmlFor="user-prompt" className="block text-sm font-medium text-gray-700 mb-2">
             Describe your query in natural language
           </label>
@@ -299,15 +319,27 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         </div>
         
         {/* Right: Output Query */}
-        <div className="w-1/2 flex flex-col">
-          <div className="flex items-center space-x-2 mb-2">
-            {state.response ? (
-              <>
-                <CheckCircleIcon className="w-5 h-5 text-green-500" />
-                <span className="text-sm font-medium text-green-700">AI Generated Query</span>
-              </>
-            ) : (
-              <span className="text-sm font-medium text-gray-500">Generated Query</span>
+        <div className="w-full md:w-1/2 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              {state.response ? (
+                <>
+                  <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                  <span className="text-sm font-medium text-green-700">AI Generated Query</span>
+                </>
+              ) : (
+                <span className="text-sm font-medium text-gray-500">Generated Query</span>
+              )}
+            </div>
+            {state.response && (
+              <button
+                onClick={handleValidate}
+                disabled={state.isValidating}
+                className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                title="Click to re-validate query"
+              >
+                {state.isValidating ? 'Validating...' : 'Re-validate'}
+              </button>
             )}
           </div>
           
@@ -336,14 +368,21 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
         )}
         
-        {state.validationResult === 'valid' && (
+        {state.isValidating && (
+          <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mt-0.5 flex-shrink-0"></div>
+            <div className="text-sm text-blue-700">Validating query...</div>
+          </div>
+        )}
+        
+        {state.validationResult === 'valid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-green-50 border border-green-200 rounded-md">
             <CheckCircleIcon className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-green-700">Query is valid and ready to use!</div>
           </div>
         )}
         
-        {state.validationResult === 'invalid' && (
+        {state.validationResult === 'invalid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
             <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-red-700">
@@ -405,7 +444,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={getTitle()}
-      size="xl"
+      size="fullscreen-mobile"
     >
       {state.step === 'api-key' && renderApiKeyStep()}
       {state.step === 'query' && renderQueryStep()}

@@ -301,7 +301,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           <div className="flex items-center space-x-2">
             {hasContent && (
               <>
-                <span className="text-sm text-gray-500">
+                <span className="hidden md:inline text-sm text-gray-500">
                   {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
                 </span>
                 <div className="flex items-center space-x-2">

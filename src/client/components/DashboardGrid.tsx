@@ -39,6 +39,12 @@ export default function DashboardGrid({
   // Track if component has been initialized to prevent saves during initial load
   const [isInitialized, setIsInitialized] = useState(false)
   const [lastKnownLayout, setLastKnownLayout] = useState<any[]>([])
+  
+  // Edit mode state - dashboard is readonly by default
+  const [isEditMode, setIsEditMode] = useState(false)
+  
+  // Track current breakpoint to handle mobile vs desktop saves differently
+  const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg')
 
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
@@ -89,53 +95,47 @@ export default function DashboardGrid({
     return false
   }, [isInitialized, lastKnownLayout])
 
-  const handleLayoutChange = useCallback((currentLayout: any[], allLayouts: any) => {
-    if (!editable || !onConfigChange) return
-
-    // Only update portlet positions based on the large (desktop) layout to preserve original sizing
-    // This prevents mobile responsive changes from permanently affecting the desktop layout
-    const lgLayout = allLayouts.lg || currentLayout
-    const updatedPortlets = config.portlets.map(portlet => {
-      const layoutItem = lgLayout.find((item: any) => item.i === portlet.id)
-      if (layoutItem) {
-        return {
-          ...portlet,
-          x: layoutItem.x,
-          y: layoutItem.y,
-          w: layoutItem.w,
-          h: layoutItem.h
-        }
-      }
-      return portlet
-    })
-
-    const updatedConfig = {
-      portlets: updatedPortlets,
-      layouts: allLayouts
-    }
+  const handleLayoutChange = useCallback((_currentLayout: any[], _allLayouts: any) => {
+    // This function is called for ALL layout changes including responsive breakpoints
+    // We should NOT save here - only update internal state if needed
+    // Actual saving only happens in handleDragStop and handleResizeStop for explicit user actions
     
-    onConfigChange(updatedConfig)
-  }, [config.portlets, editable, onConfigChange])
+    // Note: We don't call onConfigChange here to prevent saving responsive layout changes
+    // The layout changes are handled by react-grid-layout internally
+  }, [])  // No dependencies since we're not doing anything
 
   // Handle drag stop - save when user finishes dragging (only if layout actually changed)
   const handleDragStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
-    if (!editable || !onSave || !isInitialized) return
+    if (!editable || !isEditMode || !onSave || !isInitialized) return
 
     // Only save if the layout actually changed from user interaction
     if (!hasLayoutActuallyChanged(layout)) {
       return // No actual change, don't save
     }
 
-    // Get the current updated config from the layout change (only update from lg layout)
+    // Get the current updated config - on mobile only update position, preserve desktop sizing
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
-        return {
-          ...portlet,
-          x: layoutItem.x,
-          y: layoutItem.y,
-          w: layoutItem.w,
-          h: layoutItem.h
+        if (currentBreakpoint === 'lg') {
+          // Desktop: update everything (position and size)
+          return {
+            ...portlet,
+            x: layoutItem.x,
+            y: layoutItem.y,
+            w: layoutItem.w,
+            h: layoutItem.h
+          }
+        } else {
+          // Mobile/tablet: only update position, preserve original size
+          return {
+            ...portlet,
+            x: layoutItem.x,
+            y: layoutItem.y,
+            // Keep original desktop w and h
+            w: portlet.w,
+            h: portlet.h
+          }
         }
       }
       return portlet
@@ -153,33 +153,49 @@ export default function DashboardGrid({
     // Update our tracking of the last known layout
     setLastKnownLayout(layout)
 
+    // Update config state first
+    onConfigChange?.(updatedConfig)
+
     // Auto-save after drag operation
     try {
       await onSave(updatedConfig)
     } catch (error) {
       console.error('Auto-save failed after drag:', error)
     }
-  }, [config.portlets, config.layouts, editable, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config.portlets, config.layouts, editable, isEditMode, currentBreakpoint, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle resize stop - update config and save (resize is user interaction)
   const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
-    if (!editable || !onConfigChange || !isInitialized) return
+    if (!editable || !isEditMode || !onConfigChange || !isInitialized) return
 
     // Only proceed if the layout actually changed from user interaction
     if (!hasLayoutActuallyChanged(layout)) {
       return // No actual change, don't save
     }
 
-    // Get the current updated config from the layout change (only update from lg layout)
+    // Get the current updated config - on mobile only update position, preserve desktop sizing
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
-        return {
-          ...portlet,
-          x: layoutItem.x,
-          y: layoutItem.y,
-          w: layoutItem.w,
-          h: layoutItem.h
+        if (currentBreakpoint === 'lg') {
+          // Desktop: update everything (position and size)
+          return {
+            ...portlet,
+            x: layoutItem.x,
+            y: layoutItem.y,
+            w: layoutItem.w,
+            h: layoutItem.h
+          }
+        } else {
+          // Mobile/tablet: only update position, preserve original size
+          return {
+            ...portlet,
+            x: layoutItem.x,
+            y: layoutItem.y,
+            // Keep original desktop w and h
+            w: portlet.w,
+            h: portlet.h
+          }
         }
       }
       return portlet
@@ -208,7 +224,7 @@ export default function DashboardGrid({
         console.error('Auto-save failed after resize:', error)
       }
     }
-  }, [config.portlets, config.layouts, editable, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config.portlets, config.layouts, editable, isEditMode, currentBreakpoint, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
@@ -370,10 +386,34 @@ export default function DashboardGrid({
   return (
     <>
       {editable && (
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                isEditMode
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
+                  : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-50'
+              }`}
+            >
+              <PencilIcon className="w-4 h-4 mr-1.5" />
+              {isEditMode ? 'Finished Editing' : 'Edit'}
+            </button>
+            {isEditMode && (
+              <p className="hidden md:block text-sm text-gray-500">
+                Drag to rearrange • Resize from corners • Changes save automatically
+              </p>
+            )}
+          </div>
+          
           <button
             onClick={handleAddPortlet}
-            className="inline-flex items-center px-4 py-2 border border-blue-300 text-blue-700 bg-white rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={!isEditMode}
+            className={`inline-flex items-center px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              isEditMode
+                ? 'border-blue-300 text-blue-700 bg-white hover:bg-blue-50'
+                : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+            }`}
           >
             <PlusIcon className="w-5 h-5 mr-2" />
             Add Portlet
@@ -387,10 +427,11 @@ export default function DashboardGrid({
         onLayoutChange={handleLayoutChange}
         onDragStop={handleDragStop}
         onResizeStop={handleResizeStop}
+        onBreakpointChange={(newBreakpoint) => setCurrentBreakpoint(newBreakpoint)}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        isDraggable={editable}
-        isResizable={editable}
+        isDraggable={editable && isEditMode}
+        isResizable={editable && isEditMode}
         draggableHandle=".portlet-drag-handle"
         margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
         containerPadding={[0, 0]}
@@ -406,12 +447,17 @@ export default function DashboardGrid({
             className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
           {/* Portlet Header */}
-          <div className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg cursor-move portlet-drag-handle">
+          <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
               {/* Debug button - right next to title, outside drag area */}
               {debugData[portlet.id] && (
-                <div onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <div 
+                  onMouseDown={(e) => e.stopPropagation()} 
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                >
                   <DebugModal 
                     chartConfig={debugData[portlet.id].chartConfig}
                     displayConfig={debugData[portlet.id].displayConfig}
@@ -422,11 +468,22 @@ export default function DashboardGrid({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <div 
+              className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2" 
+              onMouseDown={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
               
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  handlePortletRefresh(portlet.id)
+                }}
+                onTouchEnd={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
                   handlePortletRefresh(portlet.id)
                 }}
                 className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
@@ -434,11 +491,16 @@ export default function DashboardGrid({
               >
                 <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
               </button>
-              {editable && (
+              {editable && isEditMode && (
                 <>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
+                      handleEditPortlet(portlet)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
                       handleEditPortlet(portlet)
                     }}
                     className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
@@ -449,6 +511,11 @@ export default function DashboardGrid({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
+                      handleDeletePortlet(portlet.id)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
                       handleDeletePortlet(portlet.id)
                     }}
                     className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
