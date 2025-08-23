@@ -109,7 +109,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         data: mappedData,
         annotation
       }
-    } catch (error) {
+    } catch (error) {      
       throw new Error(`Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }

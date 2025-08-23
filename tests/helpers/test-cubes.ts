@@ -279,15 +279,6 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         condition: (ctx) => eq(productivity.employeeId, employees.id),
         type: 'left',
         relationship: 'belongsTo'
-      },
-      'Departments': {
-        targetCube: 'Departments',
-        condition: (ctx) => and(
-          eq(productivity.employeeId, employees.id),
-          eq(employees.departmentId, departments.id)
-        ),
-        type: 'left',
-        relationship: 'belongsTo'
       }
     },
     

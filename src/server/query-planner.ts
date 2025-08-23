@@ -48,7 +48,36 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
       }
     }
     
+    // Extract cube names from filters
+    if (query.filters) {
+      for (const filter of query.filters) {
+        this.extractCubeNamesFromFilter(filter, cubesUsed)
+      }
+    }
+    
     return cubesUsed
+  }
+
+  /**
+   * Recursively extract cube names from filters (handles logical filters)
+   */
+  private extractCubeNamesFromFilter(filter: any, cubesUsed: Set<string>): void {
+    // Handle logical filters (AND/OR)
+    if ('and' in filter || 'or' in filter) {
+      const logicalFilters = filter.and || filter.or || []
+      for (const subFilter of logicalFilters) {
+        this.extractCubeNamesFromFilter(subFilter, cubesUsed)
+      }
+      return
+    }
+
+    // Handle simple filter condition
+    if ('member' in filter) {
+      const [cubeName] = filter.member.split('.')
+      if (cubeName) {
+        cubesUsed.add(cubeName)
+      }
+    }
   }
 
   /**
@@ -117,6 +146,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
 
   /**
    * Build join plan for multi-cube query
+   * Supports both direct joins and transitive joins through intermediate cubes
    */
   private buildJoinPlan(
     cubes: Map<string, Cube<TSchema>>,
@@ -125,39 +155,106 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
     ctx: QueryContext<TSchema>
   ): QueryPlan<TSchema>['joinCubes'] {
     const joinCubes: QueryPlan<TSchema>['joinCubes'] = []
+    const processedCubes = new Set([primaryCube.name])
     
     // Find cubes to join (all except primary)
     const cubesToJoin = cubeNames.filter(name => name !== primaryCube.name)
     
     for (const cubeName of cubesToJoin) {
-      const cube = cubes.get(cubeName)
-      if (!cube) {
-        throw new Error(`Cube '${cubeName}' not found`)
+      if (processedCubes.has(cubeName)) {
+        continue // Already processed
       }
       
-      // Find join definition in primary cube
-      const joinDef = primaryCube.joins?.[cubeName]
-      if (!joinDef) {
-        throw new Error(`No join definition found from '${primaryCube.name}' to '${cubeName}'`)
+      const joinPath = this.findJoinPath(cubes, primaryCube.name, cubeName, processedCubes)
+      if (!joinPath || joinPath.length === 0) {
+        throw new Error(`No join path found from '${primaryCube.name}' to '${cubeName}'`)
       }
       
-      // Create multi-cube context for join condition
-      const context = createMultiCubeContext(
-        ctx,
-        cubes,
-        cube
-      )
-      
-      const joinCondition = joinDef.condition(context)
-      
-      joinCubes.push({
-        cube,
-        alias: `${cubeName.toLowerCase()}_cube`,
-        joinType: joinDef.type || 'left',
-        joinCondition
-      })
+      // Add all cubes in the join path
+      for (const { fromCube, toCube, joinDef } of joinPath) {
+        if (processedCubes.has(toCube)) {
+          continue // Skip if already processed
+        }
+        
+        const cube = cubes.get(toCube)
+        if (!cube) {
+          throw new Error(`Cube '${toCube}' not found`)
+        }
+        
+        // Create multi-cube context for join condition
+        const context = createMultiCubeContext(
+          ctx,
+          cubes,
+          cube
+        )
+        
+        const joinCondition = joinDef.condition(context)
+        
+        joinCubes.push({
+          cube,
+          alias: `${toCube.toLowerCase()}_cube`,
+          joinType: joinDef.type || 'left',
+          joinCondition
+        })
+        
+        processedCubes.add(toCube)
+      }
     }
     
     return joinCubes
+  }
+
+  /**
+   * Find join path from source cube to target cube
+   * Returns array of join steps to reach target
+   */
+  private findJoinPath(
+    cubes: Map<string, Cube<TSchema>>,
+    fromCube: string,
+    toCube: string,
+    alreadyProcessed: Set<string>
+  ): Array<{ fromCube: string, toCube: string, joinDef: any }> | null {
+    if (fromCube === toCube) {
+      return []
+    }
+
+    // BFS to find shortest path
+    const queue: Array<{ cube: string, path: Array<{ fromCube: string, toCube: string, joinDef: any }> }> = [
+      { cube: fromCube, path: [] }
+    ]
+    const visited = new Set([fromCube, ...alreadyProcessed])
+
+    while (queue.length > 0) {
+      const { cube: currentCube, path } = queue.shift()!
+      const cubeDefinition = cubes.get(currentCube)
+
+      if (!cubeDefinition?.joins) {
+        continue
+      }
+
+      // Check all joins from current cube
+      for (const [joinTargetCube, joinDef] of Object.entries(cubeDefinition.joins)) {
+        if (visited.has(joinTargetCube)) {
+          continue
+        }
+
+        const newPath = [...path, {
+          fromCube: currentCube,
+          toCube: joinTargetCube,
+          joinDef
+        }]
+
+        if (joinTargetCube === toCube) {
+          return newPath
+        }
+
+        visited.add(joinTargetCube)
+        queue.push({ cube: joinTargetCube, path: newPath })
+      }
+    }
+
+    // If no direct path found, try looking for reverse joins
+    // (where other cubes join to the current cube chain)
+    return null
   }
 }

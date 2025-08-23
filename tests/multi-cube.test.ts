@@ -331,7 +331,7 @@ describe('Simplified Multi-Cube Dynamic Query Building', () => {
       expect(true).toBe(false)
     } catch (error) {
       expect(error).toBeInstanceOf(Error)
-      expect((error as Error).message).toContain('No join definition found')
+      expect((error as Error).message).toContain('No join path')
     }
   })
 })

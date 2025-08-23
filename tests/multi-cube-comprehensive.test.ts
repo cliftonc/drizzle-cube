@@ -440,9 +440,9 @@ describe('Comprehensive Multi-Cube Queries', () => {
         .measures(['Employees.count'])
         .andFilter([
           { member: 'Employees.name', operator: 'equals', values: ['NonExistentEmployee'] },
-          { member: 'Productivity.employeeId', operator: 'equals', values: ['AnotherNonExistentEmployee'] }
+          { member: 'Productivity.employeeId', operator: 'equals', values: [0] }
         ])
-        .build()
+        .build()        
 
       const result = await testExecutor.executeQuery(query)
       
