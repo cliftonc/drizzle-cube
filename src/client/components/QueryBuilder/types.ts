@@ -330,6 +330,11 @@ export type DateRangeType =
   | 'last_quarter'
   | 'last_year'
   | 'last_12_months'
+  | 'last_n_days'
+  | 'last_n_weeks'
+  | 'last_n_months'
+  | 'last_n_quarters'
+  | 'last_n_years'
 
 export interface DateRangeOption {
   value: DateRangeType
@@ -346,11 +351,16 @@ export const DATE_RANGE_OPTIONS: DateRangeOption[] = [
   { value: 'this_year', label: 'This year' },
   { value: 'last_7_days', label: 'Last 7 days' },
   { value: 'last_30_days', label: 'Last 30 days' },
+  { value: 'last_n_days', label: 'Last N days' },
   { value: 'last_week', label: 'Last week' },
-  { value: 'last_month', label: 'Last month' },
+  { value: 'last_n_weeks', label: 'Last N weeks' },
+  { value: 'last_month', label: 'Last month' },  
+  { value: 'last_12_months', label: 'Last 12 months' },
+  { value: 'last_n_months', label: 'Last N months' },
   { value: 'last_quarter', label: 'Last quarter' },
+  { value: 'last_n_quarters', label: 'Last N quarters' },
   { value: 'last_year', label: 'Last year' },
-  { value: 'last_12_months', label: 'Last 12 months' }
+  { value: 'last_n_years', label: 'Last N years' }
 ] as const
 
 export interface DateRangeFilter {

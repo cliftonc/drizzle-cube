@@ -474,7 +474,7 @@ export function transformFiltersForServer(filters: Filter[]): any[] {
 /**
  * Convert DateRangeType to Cube.js compatible date range format
  */
-export function convertDateRangeTypeToValue(rangeType: string): string {
+export function convertDateRangeTypeToValue(rangeType: string, number?: number): string {
   const typeMap: Record<string, string> = {
     'today': 'today',
     'yesterday': 'yesterday',
@@ -491,7 +491,21 @@ export function convertDateRangeTypeToValue(rangeType: string): string {
     'last_12_months': 'last 12 months'
   }
   
+  // Handle dynamic ranges with number input
+  if (rangeType.startsWith('last_n_') && number !== undefined && number > 0) {
+    const unit = rangeType.replace('last_n_', '')
+    const unitSingular = unit.slice(0, -1) // Remove 's' for singular form
+    return number === 1 ? `last ${unitSingular}` : `last ${number} ${unit}`
+  }
+  
   return typeMap[rangeType] || rangeType
+}
+
+/**
+ * Check if a date range type requires a number input
+ */
+export function requiresNumberInput(rangeType: string): boolean {
+  return rangeType.startsWith('last_n_')
 }
 
 /**

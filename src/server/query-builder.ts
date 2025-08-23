@@ -432,55 +432,148 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   }
 
   /**
-   * Parse relative date range expressions like "last 7 days", "this month"
+   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", etc.
+   * Handles all 14 DATE_RANGE_OPTIONS from the client
    */
   private parseRelativeDateRange(dateRange: string): { start: Date; end: Date } | null {
     const now = new Date()
     const lowerRange = dateRange.toLowerCase().trim()
+    
+    // Extract UTC date components for consistent calculations
+    const utcYear = now.getUTCFullYear()
+    const utcMonth = now.getUTCMonth()
+    const utcDate = now.getUTCDate()
+    const utcDay = now.getUTCDay()
+
+    // Handle "today"
+    if (lowerRange === 'today') {
+      const start = new Date(now)
+      start.setUTCHours(0, 0, 0, 0)
+      const end = new Date(now)
+      end.setUTCHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "yesterday"
+    if (lowerRange === 'yesterday') {
+      const start = new Date(now)
+      start.setUTCDate(utcDate - 1)
+      start.setUTCHours(0, 0, 0, 0)
+      const end = new Date(now)
+      end.setUTCDate(utcDate - 1)
+      end.setUTCHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "this week" (Monday to Sunday)
+    if (lowerRange === 'this week') {
+      const mondayOffset = utcDay === 0 ? -6 : 1 - utcDay // If Sunday, go back 6 days, otherwise go to Monday
+      const start = new Date(now)
+      start.setUTCDate(utcDate + mondayOffset)
+      start.setUTCHours(0, 0, 0, 0)
+      
+      const end = new Date(start)
+      end.setUTCDate(start.getUTCDate() + 6) // Sunday
+      end.setUTCHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "this month"
+    if (lowerRange === 'this month') {
+      const start = new Date(Date.UTC(utcYear, utcMonth, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(utcYear, utcMonth + 1, 0, 23, 59, 59, 999))
+      return { start, end }
+    }
+
+    // Handle "this quarter"
+    if (lowerRange === 'this quarter') {
+      const quarter = Math.floor(utcMonth / 3)
+      const start = new Date(Date.UTC(utcYear, quarter * 3, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(utcYear, quarter * 3 + 3, 0, 23, 59, 59, 999))
+      return { start, end }
+    }
+
+    // Handle "this year"
+    if (lowerRange === 'this year') {
+      const start = new Date(Date.UTC(utcYear, 0, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(utcYear, 11, 31, 23, 59, 59, 999))
+      return { start, end }
+    }
 
     // Handle "last N days" pattern
     const lastDaysMatch = lowerRange.match(/^last\s+(\d+)\s+days?$/)
     if (lastDaysMatch) {
       const days = parseInt(lastDaysMatch[1], 10)
       const start = new Date(now)
-      start.setDate(now.getDate() - days)
-      start.setHours(0, 0, 0, 0)
+      start.setUTCDate(utcDate - days + 1) // Include today in the count
+      start.setUTCHours(0, 0, 0, 0)
       const end = new Date(now)
-      end.setHours(23, 59, 59, 999)
+      end.setUTCHours(23, 59, 59, 999)
       return { start, end }
     }
 
-    // Handle "this month" pattern
-    if (lowerRange === 'this month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    // Handle "last week" (previous Monday to Sunday)
+    if (lowerRange === 'last week') {
+      const lastMondayOffset = utcDay === 0 ? -13 : -6 - utcDay // Go to previous Monday
+      const start = new Date(now)
+      start.setUTCDate(utcDate + lastMondayOffset)
+      start.setUTCHours(0, 0, 0, 0)
+      
+      const end = new Date(start)
+      end.setUTCDate(start.getUTCDate() + 6) // Previous Sunday
+      end.setUTCHours(23, 59, 59, 999)
       return { start, end }
     }
 
-    // Handle "last N months" pattern
+    // Handle "last month"
+    if (lowerRange === 'last month') {
+      const start = new Date(Date.UTC(utcYear, utcMonth - 1, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(utcYear, utcMonth, 0, 23, 59, 59, 999))
+      return { start, end }
+    }
+
+    // Handle "last quarter"
+    if (lowerRange === 'last quarter') {
+      const currentQuarter = Math.floor(utcMonth / 3)
+      const lastQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1
+      const year = currentQuarter === 0 ? utcYear - 1 : utcYear
+      const start = new Date(Date.UTC(year, lastQuarter * 3, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(year, lastQuarter * 3 + 3, 0, 23, 59, 59, 999))
+      return { start, end }
+    }
+
+    // Handle "last year"
+    if (lowerRange === 'last year') {
+      const start = new Date(Date.UTC(utcYear - 1, 0, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(utcYear - 1, 11, 31, 23, 59, 59, 999))
+      return { start, end }
+    }
+
+    // Handle "last 12 months" (rolling 12 months)
+    if (lowerRange === 'last 12 months') {
+      const start = new Date(Date.UTC(utcYear, utcMonth - 11, 1, 0, 0, 0, 0))
+      const end = new Date(now)
+      end.setUTCHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "last N months" pattern (legacy support)
     const lastMonthsMatch = lowerRange.match(/^last\s+(\d+)\s+months?$/)
     if (lastMonthsMatch) {
       const months = parseInt(lastMonthsMatch[1], 10)
-      const start = new Date(now.getFullYear(), now.getMonth() - months, 1, 0, 0, 0, 0)
+      const start = new Date(Date.UTC(utcYear, utcMonth - months + 1, 1, 0, 0, 0, 0))
       const end = new Date(now)
-      end.setHours(23, 59, 59, 999)
+      end.setUTCHours(23, 59, 59, 999)
       return { start, end }
     }
 
-    // Handle "this year" pattern
-    if (lowerRange === 'this year') {
-      const start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
-      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last N years" pattern
+    // Handle "last N years" pattern (legacy support)
     const lastYearsMatch = lowerRange.match(/^last\s+(\d+)\s+years?$/)
     if (lastYearsMatch) {
       const years = parseInt(lastYearsMatch[1], 10)
-      const start = new Date(now.getFullYear() - years, 0, 1, 0, 0, 0, 0)
+      const start = new Date(Date.UTC(utcYear - years, 0, 1, 0, 0, 0, 0))
       const end = new Date(now)
-      end.setHours(23, 59, 59, 999)
+      end.setUTCHours(23, 59, 59, 999)
       return { start, end }
     }
 

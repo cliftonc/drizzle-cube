@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { XMarkIcon, FunnelIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
-import { convertDateRangeTypeToValue, formatDateForCube } from './utils'
+import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 
 interface DateRangeSelectorProps {
   timeDimension: string
@@ -35,9 +35,17 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       return 'custom'
     }
     
+    // Check if it's a flexible range with number (e.g., "last 9 weeks")
+    const flexibleRangeMatch = currentDateRange.match(/^last (\d+) (days|weeks|months|quarters|years)$/)
+    if (flexibleRangeMatch) {
+      const [, , unit] = flexibleRangeMatch
+      const unitPlural = unit === 'days' ? 'days' : unit === 'weeks' ? 'weeks' : unit === 'months' ? 'months' : unit === 'quarters' ? 'quarters' : 'years'
+      return `last_n_${unitPlural}` as DateRangeType
+    }
+    
     // Find matching predefined range
     for (const option of DATE_RANGE_OPTIONS) {
-      if (option.value !== 'custom' && convertDateRangeTypeToValue(option.value) === currentDateRange) {
+      if (option.value !== 'custom' && !requiresNumberInput(option.value) && convertDateRangeTypeToValue(option.value) === currentDateRange) {
         return option.value
       }
     }
@@ -58,8 +66,21 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
     return { startDate: today, endDate: today }
   }
 
+  const getCurrentNumber = (): number => {
+    if (!currentDateRange || Array.isArray(currentDateRange)) return 1
+    
+    // Check if it's a flexible range with number (e.g., "last 9 weeks")
+    const flexibleRangeMatch = currentDateRange.match(/^last (\d+) (days|weeks|months|quarters|years)$/)
+    if (flexibleRangeMatch) {
+      return parseInt(flexibleRangeMatch[1]) || 1
+    }
+    
+    return 1
+  }
+
   const [rangeType, setRangeType] = useState<DateRangeType>(getCurrentRangeType())
   const [customDates, setCustomDates] = useState(getCurrentDates())
+  const [numberValue, setNumberValue] = useState<number>(getCurrentNumber())
   const [isRangeDropdownOpen, setIsRangeDropdownOpen] = useState(false)
   const [isTimeDimensionDropdownOpen, setIsTimeDimensionDropdownOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -100,6 +121,10 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           : [customDates.startDate, customDates.endDate]
         onDateRangeChange(timeDimension, dateRange)
       }
+    } else if (requiresNumberInput(newRangeType)) {
+      // For number-based ranges, use the number value
+      const cubeRangeValue = convertDateRangeTypeToValue(newRangeType, numberValue)
+      onDateRangeChange(timeDimension, cubeRangeValue)
     } else {
       // For predefined ranges, use the converted value
       const cubeRangeValue = convertDateRangeTypeToValue(newRangeType)
@@ -116,6 +141,15 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
         ? newCustomDates.startDate
         : [newCustomDates.startDate, newCustomDates.endDate]
       onDateRangeChange(timeDimension, dateRange)
+    }
+  }
+
+  const handleNumberChange = (value: number) => {
+    setNumberValue(value)
+    
+    if (requiresNumberInput(rangeType)) {
+      const cubeRangeValue = convertDateRangeTypeToValue(rangeType, value)
+      onDateRangeChange(timeDimension, cubeRangeValue)
     }
   }
 
@@ -196,7 +230,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           </div>
         </div>
 
-        {/* Row 3: Custom date inputs or remove button */}
+        {/* Row 3: Custom date inputs, number input, or remove button */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {rangeType === 'custom' ? (
             <>
@@ -220,6 +254,26 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   placeholder="dd/mm/yyyy"
                   className="w-full text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+              </div>
+            </>
+          ) : requiresNumberInput(rangeType) ? (
+            <>
+              {/* Number input for flexible ranges */}
+              <div className="flex-1 min-w-0">
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={numberValue}
+                  onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
+                  placeholder="Number"
+                  className="w-full text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              
+              {/* Unit display */}
+              <div className="flex-shrink-0 text-sm text-gray-600">
+                {rangeType.replace('last_n_', '').replace('_', ' ')}
               </div>
             </>
           ) : (
