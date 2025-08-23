@@ -62,18 +62,12 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(employees)
   await db.delete(departments)
   await db.delete(analyticsPages)
-
-  console.log('Inserting test departments into PostgreSQL...')
-  
+    
   // Insert departments first (dependencies)
   const insertedDepartments = await db.insert(departments)
     .values(enhancedDepartments)
     .returning({ id: departments.id, name: departments.name })
 
-  console.log(`Inserted ${insertedDepartments.length} departments`)
-
-  console.log('Inserting test employees into PostgreSQL...')
-  
   // Update employee department IDs to match actual inserted department IDs
   const updatedEmployees = enhancedEmployees.map(emp => ({
     ...emp,
@@ -85,13 +79,8 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     .values(updatedEmployees)
     .returning({ id: employees.id, name: employees.name, organisationId: employees.organisationId, active: employees.active })
 
-  console.log(`Inserted ${insertedEmployees.length} employees`)
-
   // Insert comprehensive productivity data
-  console.log('Generating comprehensive productivity data for PostgreSQL...')
   const productivityData = generateComprehensiveProductivityData(insertedEmployees)
-  
-  console.log('Inserting comprehensive productivity data into PostgreSQL...')
   
   // Insert in batches to avoid overwhelming the database
   const batchSize = 100
@@ -99,8 +88,6 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     const batch = productivityData.slice(i, i + batchSize)
     await db.insert(productivity).values(batch)
   }
-
-  console.log(`Total productivity records inserted into PostgreSQL: ${productivityData.length}`)
   
   // Insert analytics pages data
   const analyticsData = [
@@ -134,10 +121,7 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     }
   ]
   
-  await db.insert(analyticsPages).values(analyticsData)
-  console.log(`Inserted ${analyticsData.length} analytics pages into PostgreSQL`)
-
-  console.log('PostgreSQL test database setup complete')
+  await db.insert(analyticsPages).values(analyticsData)  
 }
 
 /**

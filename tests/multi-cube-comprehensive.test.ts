@@ -486,21 +486,4 @@ describe('Comprehensive Multi-Cube Queries', () => {
       expect(result.annotation.dimensions['Employees.departmentId']).toBeDefined()
     })
   })
-
-  afterAll(() => {
-    // Output performance statistics
-    const allStats = performanceMeasurer.getStats()
-    console.log(`Total measurements: ${allStats.count}`)
-    console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
-    console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)
-    console.log(`Max duration: ${allStats.maxDuration.toFixed(2)}ms`)
-    console.log(`Total duration: ${allStats.totalDuration.toFixed(2)}ms`)
-    
-    // Multi-cube specific stats
-    const multiCubeStats = performanceMeasurer.getStats('multi-cube')
-    if (multiCubeStats.count > 0) {
-      console.log(`Multi-cube tests: ${multiCubeStats.count}`)
-      console.log(`Average multi-cube duration: ${multiCubeStats.avgDuration.toFixed(2)}ms`)
-    }
-  })
 })

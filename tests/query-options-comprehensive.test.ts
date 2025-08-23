@@ -289,9 +289,6 @@ describe('Comprehensive Query Options', () => {
         .build()
 
       const result = await testExecutor.executeQuery(query)
-
-      console.log(result)
-
       expect(result.data.length).toBeGreaterThan(1)
 
       // Validate ascending time order
@@ -673,30 +670,5 @@ describe('Comprehensive Query Options', () => {
         expect(prev).toBeGreaterThanOrEqual(current)
       }
     })
-  })
-
-  afterAll(() => {
-    // Output performance statistics
-    const allStats = performanceMeasurer.getStats()
-    console.log(`Total measurements: ${allStats.count}`)
-    console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
-    console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)
-    console.log(`Max duration: ${allStats.maxDuration.toFixed(2)}ms`)
-    console.log(`Total duration: ${allStats.totalDuration.toFixed(2)}ms`)
-
-    // Query option specific stats
-    const limitStats = performanceMeasurer.getStats('limit')
-    const orderStats = performanceMeasurer.getStats('ordering')
-    const paginationStats = performanceMeasurer.getStats('pagination')
-
-    if (limitStats.count > 0) {
-      console.log(`\nLimit operations: ${limitStats.count}, avg: ${limitStats.avgDuration.toFixed(2)}ms`)
-    }
-    if (orderStats.count > 0) {
-      console.log(`Ordering operations: ${orderStats.count}, avg: ${orderStats.avgDuration.toFixed(2)}ms`)
-    }
-    if (paginationStats.count > 0) {
-      console.log(`Pagination operations: ${paginationStats.count}, avg: ${paginationStats.avgDuration.toFixed(2)}ms`)
-    }
   })
 })

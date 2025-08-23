@@ -5,8 +5,8 @@
 import type { Config } from 'drizzle-kit'
 
 export default {
-  schema: './tests/helpers/databases/mysql/schema.ts',
-  out: './tests/helpers/databases/mysql/migrations',
+  schema: './schema.ts',
+  out: './migrations',
   dialect: 'mysql',
   dbCredentials: {
     host: 'localhost',

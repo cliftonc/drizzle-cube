@@ -7,8 +7,9 @@
 export { SemanticLayerCompiler, semanticLayer, createSemanticLayer } from './compiler'
 export { QueryExecutor } from './executor'
 
-// Export multi-cube query building
-export { MultiCubeBuilder } from './multi-cube-builder'
+// Export unified query building
+export { QueryPlanner } from './query-planner'
+export { QueryBuilder } from './query-builder'
 
 // Export utility functions from types
 export { 
@@ -100,7 +101,8 @@ export type {
   MultiCubeQueryContext,
   CompiledCube,
   BaseQueryDefinition,
-  MultiCubeQueryPlan,
+  QueryPlan,
+  MultiCubeQueryPlan, // For backwards compatibility
   CubeJoin
 } from './types-drizzle'
 

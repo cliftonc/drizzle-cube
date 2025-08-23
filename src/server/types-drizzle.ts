@@ -138,25 +138,31 @@ export interface MultiCubeQueryContext<TSchema extends Record<string, any> = Rec
 }
 
 /**
- * Multi-cube query plan - describes how to execute a cross-cube query
+ * Unified Query Plan for both single and multi-cube queries
+ * - For single-cube queries: joinCubes array is empty
+ * - For multi-cube queries: joinCubes contains the additional cubes to join
+ * - selections, whereConditions, and groupByFields are populated by QueryBuilder
  */
-export interface MultiCubeQueryPlan<TSchema extends Record<string, any> = Record<string, any>> {
+export interface QueryPlan<TSchema extends Record<string, any> = Record<string, any>> {
   /** Primary cube that drives the query */
   primaryCube: Cube<TSchema>
-  /** Additional cubes to join */
+  /** Additional cubes to join (empty for single-cube queries) */
   joinCubes: Array<{
     cube: Cube<TSchema>
     alias: string
     joinType: 'inner' | 'left' | 'right' | 'full'
     joinCondition: SQL
   }>
-  /** Combined field selections across all cubes */
+  /** Combined field selections across all cubes (built by QueryBuilder) */
   selections: Record<string, SQL | AnyColumn>
-  /** WHERE conditions for the entire query */
+  /** WHERE conditions for the entire query (built by QueryBuilder) */
   whereConditions: SQL[]
-  /** GROUP BY fields if aggregations are present */
+  /** GROUP BY fields if aggregations are present (built by QueryBuilder) */
   groupByFields: (SQL | AnyColumn)[]
 }
+
+// Keep the old name for backwards compatibility
+export type MultiCubeQueryPlan<TSchema extends Record<string, any> = Record<string, any>> = QueryPlan<TSchema>
 
 /**
  * Cube join definition for multi-cube queries

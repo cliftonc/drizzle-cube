@@ -61,82 +61,16 @@ export async function runSQLiteMigrations(db: ReturnType<typeof drizzle>, client
   console.log('Running SQLite migrations...')
   
   try {
-    // Use Drizzle's migration system - try to run migrations, but don't fail if none exist
-    try {
-      await migrate(db, { 
-        migrationsFolder: './tests/helpers/databases/sqlite/migrations' 
-      })
-      console.log('SQLite migrations completed successfully')
-    } catch (migrationError) {
-      // If no migrations folder exists, create tables from schema directly
-      console.log('No SQLite migrations found, creating tables directly...')
-      createTablesDirectly(client)
-      console.log('SQLite tables created successfully')
-    }
+    // Use Drizzle's migration system - try to run migrations, but don't fail if none exist    
+    await migrate(db, { 
+      migrationsFolder: './tests/helpers/databases/sqlite/migrations' 
+    })
+    console.log('SQLite migrations completed successfully')
+    
   } catch (error) {
     console.log('SQLite migrations error:', (error as Error).message)
     throw error
   }
-}
-
-/**
- * Create tables directly using better-sqlite3 client
- */
-function createTablesDirectly(client: Database) {
-  // Create departments table
-  client.exec(`
-    CREATE TABLE IF NOT EXISTS departments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      organisation_id INTEGER NOT NULL,
-      budget REAL
-    )
-  `)
-
-  // Create employees table  
-  client.exec(`
-    CREATE TABLE IF NOT EXISTS employees (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT,
-      active INTEGER DEFAULT 1,
-      department_id INTEGER,
-      organisation_id INTEGER NOT NULL,
-      salary REAL,
-      created_at INTEGER
-    )
-  `)
-
-  // Create productivity table
-  client.exec(`
-    CREATE TABLE IF NOT EXISTS productivity (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      employee_id INTEGER NOT NULL,
-      date INTEGER NOT NULL,
-      lines_of_code INTEGER DEFAULT 0,
-      pull_requests INTEGER DEFAULT 0,
-      live_deployments INTEGER DEFAULT 0,
-      days_off INTEGER DEFAULT 0,
-      happiness_index INTEGER,
-      organisation_id INTEGER NOT NULL,
-      created_at INTEGER
-    )
-  `)
-
-  // Create analytics_pages table
-  client.exec(`
-    CREATE TABLE IF NOT EXISTS analytics_pages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      organisation_id INTEGER NOT NULL,
-      config TEXT NOT NULL,
-      'order' INTEGER DEFAULT 0,
-      is_active INTEGER DEFAULT 1,
-      created_at INTEGER,
-      updated_at INTEGER
-    )
-  `)
 }
 
 /**
@@ -150,19 +84,13 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(employees) 
   await db.delete(departments)
   await db.delete(analyticsPages)
-
-  console.log('Inserting test departments into SQLite...')
-  
+ 
   // Insert departments first (dependencies)
   const insertedDepartments = await db.insert(departments)
     .values(enhancedDepartments)
     .returning({ id: departments.id, name: departments.name })
 
-  console.log(`Inserted ${insertedDepartments.length} departments`)
-
-  console.log('Inserting test employees into SQLite...')
-  
-  // Update employee department IDs to match actual inserted department IDs
+    // Update employee department IDs to match actual inserted department IDs
   const updatedEmployees = enhancedEmployees.map(emp => ({
     ...emp,
     departmentId: emp.departmentId ? insertedDepartments[emp.departmentId - 1]?.id || null : null
@@ -173,13 +101,8 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
     .values(updatedEmployees)
     .returning({ id: employees.id, name: employees.name, organisationId: employees.organisationId, active: employees.active })
 
-  console.log(`Inserted ${insertedEmployees.length} employees`)
-
   // Insert comprehensive productivity data
-  console.log('Generating comprehensive productivity data for SQLite...')
   const productivityData = generateComprehensiveProductivityData(insertedEmployees)
-  
-  console.log('Inserting comprehensive productivity data into SQLite...')
   
   // Insert in batches to avoid overwhelming the database
   const batchSize = 100
@@ -187,8 +110,6 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
     const batch = productivityData.slice(i, i + batchSize)
     await db.insert(productivity).values(batch)
   }
-
-  console.log(`Total productivity records inserted into SQLite: ${productivityData.length}`)
   
   // Insert analytics pages data
   const analyticsData = [
@@ -222,10 +143,7 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
     }
   ]
   
-  await db.insert(analyticsPages).values(analyticsData)
-  console.log(`Inserted ${analyticsData.length} analytics pages into SQLite`)
-
-  console.log('SQLite test database setup complete')
+  await db.insert(analyticsPages).values(analyticsData)  
 }
 
 /**

@@ -427,7 +427,7 @@ describe('Comprehensive Filter Operations', () => {
           'Productivity.recordCount': 'number', 
           'Employees.name': 'string', 
           'Productivity.happinessIndex': 'number',
-          'Productivity.date': 'string' 
+          'Productivity.date': 'date' 
         }
       )
 
@@ -678,15 +678,5 @@ describe('Comprehensive Filter Operations', () => {
         }
       })
     })
-  })
-
-  afterAll(() => {
-    // Output performance statistics
-    const allStats = performanceMeasurer.getStats()
-    console.log(`Total measurements: ${allStats.count}`)
-    console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
-    console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)
-    console.log(`Max duration: ${allStats.maxDuration.toFixed(2)}ms`)
-    console.log(`Total duration: ${allStats.totalDuration.toFixed(2)}ms`)
-  })
+  }) 
 })

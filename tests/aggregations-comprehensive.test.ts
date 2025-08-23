@@ -291,10 +291,8 @@ describe('Comprehensive Aggregations', () => {
       // Each department should have positive count and salary
       for (const row of result.data) {
         expect(row['Employees.count']).toBeGreaterThan(0)
-        // Some departments might have null avgSalary if all employees have null salary
-        if (row['Employees.avgSalary'] !== null) {
-          expect(row['Employees.avgSalary']).toBeGreaterThan(0)
-        }
+        // avgSalary should be >= 0 (0 when all employees have null salary, positive otherwise)
+        expect(row['Employees.avgSalary']).toBeGreaterThanOrEqual(0)
         expect(['number', 'object'].includes(typeof row['Employees.departmentId']) && (typeof row['Employees.departmentId'] !== 'object' || row['Employees.departmentId'] === null)).toBe(true)
       }
     })
@@ -613,15 +611,5 @@ describe('Comprehensive Aggregations', () => {
       expect(result.annotation.measures['Productivity.workingDaysCount'].type).toBe('count')
       expect(result.annotation.measures['Productivity.workingDaysCount'].title).toBe('Working Days')
     })
-  })
-
-  afterAll(() => {
-    // Output performance statistics
-    const allStats = performanceMeasurer.getStats()
-    console.log(`Total measurements: ${allStats.count}`)
-    console.log(`Average duration: ${allStats.avgDuration.toFixed(2)}ms`)
-    console.log(`Min duration: ${allStats.minDuration.toFixed(2)}ms`)
-    console.log(`Max duration: ${allStats.maxDuration.toFixed(2)}ms`)
-    console.log(`Total duration: ${allStats.totalDuration.toFixed(2)}ms`)
-  })
+  })  
 })

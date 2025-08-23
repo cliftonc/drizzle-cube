@@ -244,11 +244,11 @@ describe('Simplified Multi-Cube Dynamic Query Building', () => {
   })
 
   it('should analyze cube usage correctly', async () => {
-    // Test the analyzer directly
-    const analyzer = (executor as any).multiCubeBuilder
+    // Test the planner directly
+    const planner = (executor as any).queryPlanner
     
     // Single cube query
-    const singleCubeUsage = analyzer.analyzeCubeUsage({
+    const singleCubeUsage = planner.analyzeCubeUsage({
       measures: ['Employees.count'],
       dimensions: ['Employees.name']
     })
@@ -256,7 +256,7 @@ describe('Simplified Multi-Cube Dynamic Query Building', () => {
     expect(singleCubeUsage.has('Employees')).toBe(true)
     
     // Multi-cube query
-    const multiCubeUsage = analyzer.analyzeCubeUsage({
+    const multiCubeUsage = planner.analyzeCubeUsage({
       measures: ['Employees.count', 'Departments.totalBudget'],
       dimensions: ['Employees.name', 'Departments.name']
     })
@@ -295,16 +295,16 @@ describe('Simplified Multi-Cube Dynamic Query Building', () => {
   })
 
   it('should choose primary cube correctly', async () => {
-    const analyzer = (executor as any).multiCubeBuilder
+    const planner = (executor as any).queryPlanner
     
     // Test primary cube selection logic
-    const primaryCube1 = analyzer.choosePrimaryCube(['Employees', 'Departments'], {
+    const primaryCube1 = planner.choosePrimaryCube(['Employees', 'Departments'], {
       measures: ['Employees.count'],
       dimensions: ['Departments.name']
     })
     expect(primaryCube1).toBe('Employees') // First measure cube
     
-    const primaryCube2 = analyzer.choosePrimaryCube(['Employees', 'Departments'], {
+    const primaryCube2 = planner.choosePrimaryCube(['Employees', 'Departments'], {
       dimensions: ['Departments.name', 'Employees.name']
     })
     expect(primaryCube2).toBe('Departments') // First dimension cube when no measures
