@@ -6,13 +6,13 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
-import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions } from './utils'
+import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection } from './utils'
 
 const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
@@ -27,6 +27,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onFiltersChange,
   onDateRangeChange,
   onDateRangeRemove,
+  onOrderChange,
   onClearQuery,
   showSettings,
   onSettingsClick,
@@ -142,14 +143,53 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       }
     }
   }
-  
+
+  // Sorting helper functions
+  const getSortIcon = (direction: 'asc' | 'desc' | null) => {
+    switch (direction) {
+      case 'asc':
+        return <ChevronUpIcon className={`w-4 h-4 ${direction ? 'stroke-[3]' : ''}`} />
+      case 'desc':
+        return <ChevronDownIcon className={`w-4 h-4 ${direction ? 'stroke-[3]' : ''}`} />
+      default:
+        return <ChevronUpDownIcon className="w-4 h-4" />
+    }
+  }
+
+  const handleToggleSort = (fieldName: string) => {
+    const current = getSortDirection(fieldName, query.order)
+    const next = getNextSortDirection(current)
+    onOrderChange(fieldName, next)
+  }
+
+  const getSortButtonClasses = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
+    const sortDirection = getSortDirection(fieldName, query.order)
+    const baseClasses = 'focus:outline-none flex-shrink-0 p-1 transition-colors'
+    
+    if (sortDirection) {
+      // Active sort - use field type colors
+      switch (fieldType) {
+        case 'measures':
+          return `${baseClasses} text-amber-800 hover:text-amber-900`
+        case 'dimensions':
+          return `${baseClasses} text-green-800 hover:text-green-900`
+        case 'timeDimensions':
+          return `${baseClasses} text-blue-800 hover:text-blue-900`
+        default:
+          return `${baseClasses} text-blue-800 hover:text-blue-900`
+      }
+    } else {
+      // No sort - gray
+      return `${baseClasses} text-gray-400 hover:text-gray-600`
+    }
+  }
 
   const RemovableChip: React.FC<{ 
     label: string
     fieldName: string
     fieldType: 'measures' | 'dimensions' | 'timeDimensions'
     icon: React.ReactNode
-  }> = ({ label, fieldName, fieldType, icon }) => {
+  }> = ({ fieldName, fieldType, icon }) => {
     const getChipClasses = () => {
       switch (fieldType) {
         case 'measures':
@@ -164,41 +204,59 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     }
 
     return (
-      <div className={`inline-flex items-center text-sm px-3 py-1 rounded-lg border w-full ${getChipClasses()}`}>
+      <div className={`inline-flex items-center text-sm px-3 py-2 rounded-lg border w-full ${getChipClasses()}`}>
         <div className="mr-2 flex-shrink-0">
           {icon}
         </div>
-        <span className="mr-2 flex-1 text-xs break-all">{label}</span>
-        <div className="flex items-center gap-1">
-          {(() => {
-            const hasFilters = hasFiltersApplied(fieldName, fieldType)
-            const getActiveColorClasses = () => {
-              switch (fieldType) {
-                case 'measures':
-                  return 'text-amber-800 hover:text-amber-900'
-                case 'dimensions':
-                  return 'text-green-800 hover:text-green-900'
-                case 'timeDimensions':
-                  return 'text-blue-800 hover:text-blue-900'
-                default:
-                  return 'text-blue-800 hover:text-blue-900'
+        <span className="flex-1 flex flex-col min-w-0">
+          <span className="text-xs font-medium truncate">{getFieldTitle(fieldName, schema)}</span>
+          <span className="text-[10px] text-gray-500 truncate">{fieldName}</span>
+        </span>
+        <div className="flex items-center gap-2 ml-2">
+          {/* Filter and Sort buttons - stacked vertically */}
+          <div className="flex flex-col items-center">
+            {/* Filter button */}
+            {(() => {
+              const hasFilters = hasFiltersApplied(fieldName, fieldType)
+              const getActiveColorClasses = () => {
+                switch (fieldType) {
+                  case 'measures':
+                    return 'text-amber-800 hover:text-amber-900'
+                  case 'dimensions':
+                    return 'text-green-800 hover:text-green-900'
+                  case 'timeDimensions':
+                    return 'text-blue-800 hover:text-blue-900'
+                  default:
+                    return 'text-blue-800 hover:text-blue-900'
+                }
               }
-            }
+              
+              return (
+                <button
+                  onClick={() => handleAddFilterFromField(fieldName, fieldType)}
+                  className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${
+                    hasFilters 
+                      ? getActiveColorClasses()
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                  title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
+                >
+                  <FunnelIcon className={`w-4 h-4 ${hasFilters ? 'stroke-[3]' : ''}`} />
+                </button>
+              )
+            })()}
             
-            return (
-              <button
-                onClick={() => handleAddFilterFromField(fieldName, fieldType)}
-                className={`focus:outline-none flex-shrink-0 p-1 transition-colors ${
-                  hasFilters 
-                    ? getActiveColorClasses()
-                    : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
-              >
-                <FunnelIcon className={`w-3 h-3 ${hasFilters ? 'stroke-[3]' : ''}`} />
-              </button>
-            )
-          })()}
+            {/* Sort button */}
+            <button
+              onClick={() => handleToggleSort(fieldName)}
+              className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${getSortButtonClasses(fieldName, fieldType).replace('p-1', 'p-0.5')}`}
+              title={getSortTooltip(getSortDirection(fieldName, query.order))}
+            >
+              {getSortIcon(getSortDirection(fieldName, query.order))}
+            </button>
+          </div>
+          
+          {/* Remove button */}
           <button
             onClick={() => onRemoveField(fieldName, fieldType)}
             className="text-gray-600 hover:text-red-600 focus:outline-none flex-shrink-0"
@@ -213,31 +271,49 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   const TimeDimensionChip: React.FC<{ 
     timeDimension: { dimension: string; granularity?: string }
     label: string
-  }> = ({ timeDimension, label }) => (
+  }> = ({ timeDimension }) => (
     <div className="bg-blue-100 text-blue-800 text-sm px-3 py-2 rounded-lg border border-blue-200 w-full">
-      {/* Top row with icon, label, filter button, and remove button */}
+      {/* Top row with icon, label, filter button, sort button, and remove button */}
       <div className="flex items-center mb-1">
         <div className="mr-2">
           <CalendarIcon className="w-4 h-4" />
         </div>
-        <span className="flex-1 text-xs break-all">{label}</span>
-        <div className="flex items-center gap-1 ml-2">
-          {(() => {
-            const hasDateRange = hasFiltersApplied(timeDimension.dimension, 'timeDimensions')
-            return (
-              <button
-                onClick={() => handleAddFilterFromField(timeDimension.dimension, 'timeDimensions')}
-                className={`focus:outline-none flex-shrink-0 p-1 transition-colors ${
-                  hasDateRange 
-                    ? 'text-blue-800 hover:text-blue-900' 
-                    : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title="Add date range"
-              >
-                <FunnelIcon className={`w-3 h-3 ${hasDateRange ? 'stroke-[3]' : ''}`} />
-              </button>
-            )
-          })()}
+        <span className="flex-1 flex flex-col min-w-0">
+          <span className="text-xs font-medium truncate">{getFieldTitle(timeDimension.dimension, schema)}</span>
+          <span className="text-[10px] text-gray-500 truncate">{timeDimension.dimension}</span>
+        </span>
+        <div className="flex items-center gap-2 ml-2">
+          {/* Filter and Sort buttons - stacked vertically */}
+          <div className="flex flex-col items-center">
+            {/* Filter button */}
+            {(() => {
+              const hasDateRange = hasFiltersApplied(timeDimension.dimension, 'timeDimensions')
+              return (
+                <button
+                  onClick={() => handleAddFilterFromField(timeDimension.dimension, 'timeDimensions')}
+                  className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${
+                    hasDateRange 
+                      ? 'text-blue-800 hover:text-blue-900' 
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                  title="Add date range"
+                >
+                  <FunnelIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-[3]' : ''}`} />
+                </button>
+              )
+            })()}
+            
+            {/* Sort button */}
+            <button
+              onClick={() => handleToggleSort(timeDimension.dimension)}
+              className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${getSortButtonClasses(timeDimension.dimension, 'timeDimensions').replace('p-1', 'p-0.5')}`}
+              title={getSortTooltip(getSortDirection(timeDimension.dimension, query.order))}
+            >
+              {getSortIcon(getSortDirection(timeDimension.dimension, query.order))}
+            </button>
+          </div>
+          
+          {/* Remove button */}
           <button
             onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
             className="text-gray-600 hover:text-red-600 focus:outline-none"
@@ -353,7 +429,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Dimensions Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center">
                   <TagIcon className="w-4 h-4 mr-2" />
                   Dimensions ({(query.dimensions || []).length})
                 </h4>
@@ -372,7 +448,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
               {/* Time Dimensions Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   Time Dimensions ({(query.timeDimensions || []).length})
                 </h4>
@@ -389,7 +465,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
               {/* Measures Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-amber-800 mb-3 flex items-center">
                   <ChartBarIcon className="w-4 h-4 mr-2" />
                   Measures ({(query.measures || []).length})
                 </h4>

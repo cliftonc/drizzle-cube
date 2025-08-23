@@ -114,6 +114,7 @@ export interface QueryPanelProps {
   onFiltersChange: (filters: Filter[]) => void
   onDateRangeChange: (timeDimension: string, dateRange: string | string[]) => void
   onDateRangeRemove: (timeDimension: string) => void
+  onOrderChange: (fieldName: string, direction: 'asc' | 'desc' | null) => void
   onClearQuery?: () => void
   showSettings?: boolean           // Show the settings/configuration button
   onSettingsClick?: () => void     // Handler for settings button click

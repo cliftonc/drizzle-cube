@@ -37,9 +37,9 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   
   // Style based on depth for visual nesting
   const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 16)}` : ''
-  const borderColor = isAndGroup ? 'border-blue-200' : 'border-orange-200'
-  const bgColor = isAndGroup ? 'bg-blue-50' : 'bg-orange-50'
-  const textColor = isAndGroup ? 'text-blue-800' : 'text-orange-800'
+  const borderColor = 'border-slate-200'
+  const bgColor = 'bg-slate-50'
+  const textColor = 'text-slate-700'
   
   const handleGroupTypeToggle = () => {
     if (isAndGroup) {

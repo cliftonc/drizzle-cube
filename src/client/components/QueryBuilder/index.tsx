@@ -238,6 +238,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }
   }, [displayLimit]) // Only trigger on displayLimit change
 
+
   const updateQuery = useCallback((updater: (prev: typeof state.query) => typeof state.query) => {
     setState(prev => {
       const newQuery = updater(prev.query)
@@ -305,6 +306,13 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           break
       }
       
+      // Clean up order if field was sorted
+      if (newQuery.order && newQuery.order[fieldName]) {
+        const newOrder = { ...newQuery.order }
+        delete newOrder[fieldName]
+        newQuery.order = Object.keys(newOrder).length > 0 ? newOrder : undefined
+      }
+      
       return cleanQuery(newQuery)
     })
   }, [updateQuery])
@@ -357,6 +365,25 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             : td
         )
       }
+      return cleanQuery(newQuery)
+    })
+  }, [updateQuery])
+
+  const handleOrderChange = useCallback((fieldName: string, direction: 'asc' | 'desc' | null) => {
+    updateQuery(prev => {
+      const newOrder = { ...(prev.order || {}) }
+      
+      if (direction === null) {
+        delete newOrder[fieldName]
+      } else {
+        newOrder[fieldName] = direction
+      }
+      
+      const newQuery = {
+        ...prev,
+        order: Object.keys(newOrder).length > 0 ? newOrder : undefined
+      }
+      
       return cleanQuery(newQuery)
     })
   }, [updateQuery])
@@ -417,6 +444,20 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       }))
     }
   }, [state.query, cubeApi])
+
+  // Auto re-validate query when query changes (with 1s debounce)
+  useEffect(() => {
+    // Only auto-validate if query has content and validation was previously cleared
+    if (!hasQueryContent(state.query) || state.validationStatus !== 'idle') {
+      return
+    }
+
+    const debounceTimer = setTimeout(() => {
+      handleValidateQuery()
+    }, 200) // 200ms debounce - fast but prevents excessive API calls
+
+    return () => clearTimeout(debounceTimer)
+  }, [state.query, state.validationStatus, handleValidateQuery]) // Trigger when query changes and validation status is idle
 
   const handleExecuteQuery = useCallback(async () => {
     if (!hasQueryContent(state.query) || state.validationStatus !== 'valid') return
@@ -643,6 +684,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onFiltersChange={handleFiltersChange}
               onDateRangeChange={handleDateRangeChange}
               onDateRangeRemove={handleDateRangeRemove}
+              onOrderChange={handleOrderChange}
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}

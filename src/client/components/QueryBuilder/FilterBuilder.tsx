@@ -117,7 +117,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   }
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-gray-50 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">

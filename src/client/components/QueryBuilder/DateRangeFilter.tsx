@@ -47,7 +47,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-gray-50 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
@@ -74,7 +74,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             disabled={availableTimeDimensions.length === 0}
             className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-none focus:ring-2 ${
               availableTimeDimensions.length > 0
-                ? 'text-blue-700 bg-blue-100 border border-blue-200 hover:bg-blue-200 focus:ring-blue-500'
+                ? 'text-purple-700 bg-purple-100 border border-purple-200 hover:bg-purple-200 focus:ring-purple-500'
                 : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
             }`}
             title={availableTimeDimensions.length === 0 ? 'All time dimensions already have date ranges' : 'Add date range'}

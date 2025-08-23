@@ -605,3 +605,85 @@ function transformFiltersFromServer(filters: any[]): Filter[] {
     return filter as SimpleFilter
   }).filter(Boolean) // Remove any null/undefined values
 }
+
+/**
+ * Sorting utility functions
+ */
+
+/**
+ * Get field title from schema metadata, falling back to field name
+ */
+export function getFieldTitle(fieldName: string, schema: MetaResponse | null): string {
+  if (!schema) return fieldName
+  
+  for (const cube of schema.cubes) {
+    // Check measures
+    const measure = cube.measures.find(m => m.name === fieldName)
+    if (measure) return measure.title || measure.shortTitle || fieldName
+    
+    // Check dimensions
+    const dimension = cube.dimensions.find(d => d.name === fieldName)
+    if (dimension) return dimension.title || dimension.shortTitle || fieldName
+  }
+  
+  return fieldName // Fallback to field name if not found
+}
+
+/**
+ * Clean up order object by removing fields that are no longer in the query
+ */
+export function cleanupOrder(order: Record<string, 'asc' | 'desc'> | undefined, query: CubeQuery): Record<string, 'asc' | 'desc'> | undefined {
+  if (!order) return undefined
+  
+  const allFields = [
+    ...(query.measures || []),
+    ...(query.dimensions || []),
+    ...(query.timeDimensions || []).map(td => td.dimension)
+  ]
+  
+  const cleanedOrder: Record<string, 'asc' | 'desc'> = {}
+  for (const [field, direction] of Object.entries(order)) {
+    if (allFields.includes(field)) {
+      cleanedOrder[field] = direction
+    }
+  }
+  
+  return Object.keys(cleanedOrder).length > 0 ? cleanedOrder : undefined
+}
+
+/**
+ * Get sort direction for a field from the order object
+ */
+export function getSortDirection(fieldName: string, order: Record<string, 'asc' | 'desc'> | undefined): 'asc' | 'desc' | null {
+  return order?.[fieldName] || null
+}
+
+/**
+ * Get tooltip text for sort button based on current direction
+ */
+export function getSortTooltip(direction: 'asc' | 'desc' | null): string {
+  switch (direction) {
+    case 'asc':
+      return 'Sorted ascending (click for descending)'
+    case 'desc':
+      return 'Sorted descending (click to remove)'
+    default:
+      return 'Click to sort ascending'
+  }
+}
+
+/**
+ * Get next sort direction in the cycle: null -> asc -> desc -> null
+ */
+export function getNextSortDirection(current: 'asc' | 'desc' | null): 'asc' | 'desc' | null {
+  switch (current) {
+    case null:
+      return 'asc'
+    case 'asc':
+      return 'desc'
+    case 'desc':
+      return null
+    default:
+      return 'asc'
+  }
+}

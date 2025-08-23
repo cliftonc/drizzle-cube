@@ -20,7 +20,7 @@ name = "drizzle-cube-hono-example-staging"
 # Variables that will be available at runtime
 [vars]
 NODE_ENV = "production"
-MAX_GEMINI_CALLS = 1000
+MAX_GEMINI_CALLS = 100
 
 # Secret variables (set via: wrangler secret put <KEY>)
 # DATABASE_URL = "..." # Set via: wrangler secret put DATABASE_URL
