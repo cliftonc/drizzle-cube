@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { XMarkIcon, FunnelIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CalendarIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
 import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 
@@ -166,7 +166,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
         {/* Row 1: Filter icon and time dimension field */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FunnelIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          <CalendarIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
           
           {/* Time dimension field selector */}
           <div className="relative flex-1 min-w-0">

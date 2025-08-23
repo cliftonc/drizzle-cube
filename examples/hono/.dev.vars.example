@@ -9,3 +9,6 @@ DATABASE_URL="postgresql://username:password@ep-example-123.eu-central-1.aws.neo
 
 # Optional: Set NODE_ENV
 NODE_ENV="development"
+
+MAX_GEMINI_CALLS=5
+GEMINI_API_KEY=AI....

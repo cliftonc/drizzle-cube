@@ -2,6 +2,7 @@
  * Server entry point for Hono drizzle-cube example
  */
 
+import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import app from '../app'
 

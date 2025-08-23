@@ -4,11 +4,11 @@
   "description": "Complete Hono app example with drizzle-cube integration",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "dev": "concurrently \"npm:dev:worker\" \"npm:dev:client\"",
     "dev:server": "tsx watch src/index.ts",
+    "dev:worker": "wrangler dev --test-scheduled --port 3001 --live-reload",
     "dev:client": "cd client && npm run dev",
-    "dev:full": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:worker": "wrangler dev --test-scheduled",
+    "dev:full": "concurrently \"npm:dev:worker\" \"npm:dev:client\"",
     "build": "npm run build:client && npm run build:worker",
     "build:client": "cd client && npm run build",
     "build:worker": "tsc --project tsconfig.worker.json",
@@ -33,6 +33,7 @@
   "dependencies": {
     "@hono/node-server": "^1.8.0",
     "@neondatabase/serverless": "^1.0.1",
+    "dotenv": "^17.2.1",
     "drizzle-cube": "file:../..",
     "drizzle-orm": "^0.44.4",
     "hono": "^4.0.0",

@@ -74,6 +74,15 @@ export const analyticsPages = pgTable('analytics_pages', {
   updatedAt: timestamp('updated_at').defaultNow()
 })
 
+// Settings table - for storing application configuration and counters
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
@@ -100,6 +109,7 @@ export const schema = {
   departments,
   productivity,
   analyticsPages,
+  settings,
   employeesRelations,
   departmentsRelations,
   productivityRelations

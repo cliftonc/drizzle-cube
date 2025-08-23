@@ -234,7 +234,11 @@ app.use('/api/analytics-pages/*', async (c, next) => {
 })
 app.route('/api/analytics-pages', analyticsApp)
 
-// Mount AI proxy routes
+// Mount AI proxy routes with database access
+app.use('/api/ai/*', async (c, next) => {
+  c.set('db', db)
+  await next()
+})
 app.route('/api/ai', aiApp)
 
 // Example protected endpoint showing how to use the same security context

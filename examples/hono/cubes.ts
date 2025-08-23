@@ -28,6 +28,12 @@ export const employeesCube: Cube<Schema> = defineCube('Employees', {
       condition: () => eq(employees.departmentId, departments.id),
       type: 'left',
       relationship: 'belongsTo'
+    },
+    'Productivity': {
+      targetCube: 'Productivity',
+      condition: () => eq(employees.id, productivity.employeeId),
+      type: 'left',
+      relationship: 'hasMany'
     }
   },
   

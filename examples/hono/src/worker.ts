@@ -6,7 +6,9 @@
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
+import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
+import postgres from 'postgres'
 import { neon, neonConfig } from '@neondatabase/serverless'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
 import type { SecurityContext, DrizzleDatabase } from 'drizzle-cube/server'
@@ -19,6 +21,24 @@ import { executeSeed } from './seed-utils.js'
 
 // Configure Neon for Cloudflare Workers
 neonConfig.poolQueryViaFetch = true
+
+// Auto-detect Neon vs local PostgreSQL based on connection string
+function isNeonUrl(url: string): boolean {
+  return url.includes('.neon.tech') || url.includes('neon.database')
+}
+
+// Create database connection factory
+function createDatabase(databaseUrl: string) {
+  if (isNeonUrl(databaseUrl)) {
+    console.log('🚀 Connecting to Neon serverless database')
+    const sql = neon(databaseUrl)
+    return drizzleNeon(sql, { schema })
+  } else {
+    console.log('🐘 Connecting to local PostgreSQL database')
+    const client = postgres(databaseUrl)
+    return drizzle(client, { schema })
+  }
+}
 
 // Define environment interface for Cloudflare Workers
 interface CloudflareEnv {
@@ -74,9 +94,8 @@ app.use('*', cors({
 
 // Initialize database and semantic layer per request
 app.use('*', async (c, next) => {
-  // Configure Neon for this request
-  const sql = neon(c.env.DATABASE_URL)
-  const db = drizzleNeon(sql, { schema })
+  // Create database connection based on URL type
+  const db = createDatabase(c.env.DATABASE_URL)
   c.set('db', db)
   
   await next()
@@ -157,7 +176,11 @@ app.use('/api/analytics-pages/*', async (c, next) => {
 })
 app.route('/api/analytics-pages', analyticsApp)
 
-// Mount AI proxy routes
+// Mount AI proxy routes with database access
+app.use('/api/ai/*', async (c, next) => {
+  c.set('db', c.get('db'))
+  await next()
+})
 app.route('/api/ai', aiApp)
 
 // Example protected endpoint showing how to use the same security context
@@ -188,9 +211,8 @@ async function scheduled(_event: any, env: CloudflareEnv, _ctx: any): Promise<vo
   console.log('🕒 Scheduled event triggered at:', new Date().toISOString())
   
   try {
-    // Configure Neon for scheduled execution
-    const sql = neon(env.DATABASE_URL)
-    const db = drizzleNeon(sql, { schema })
+    // Create database connection based on URL type
+    const db = createDatabase(env.DATABASE_URL)
     
     console.log('🌱 Starting scheduled database seeding...')
     const result = await executeSeed(db)

@@ -538,3 +538,70 @@ export function getTimeDimensionsWithDateRanges(query: CubeQuery): Record<string
 export function hasTimeDimensions(query: CubeQuery): boolean {
   return Boolean(query.timeDimensions && query.timeDimensions.length > 0)
 }
+
+/**
+ * Transform a Cube.js query from external format to UI internal format
+ * This handles format differences between server/API queries and QueryBuilder state
+ */
+export function transformQueryForUI(query: any): CubeQuery {
+  if (!query || typeof query !== 'object') {
+    return {}
+  }
+  
+  const transformed: CubeQuery = {}
+  
+  // Copy simple fields if they exist
+  if (query.measures) transformed.measures = Array.isArray(query.measures) ? query.measures : []
+  if (query.dimensions) transformed.dimensions = Array.isArray(query.dimensions) ? query.dimensions : []
+  if (query.timeDimensions) transformed.timeDimensions = Array.isArray(query.timeDimensions) ? query.timeDimensions : []
+  if (query.order) transformed.order = query.order
+  if (query.limit) transformed.limit = query.limit
+  if (query.offset) transformed.offset = query.offset
+  if (query.segments) transformed.segments = Array.isArray(query.segments) ? query.segments : []
+  
+  // Transform filters from server format to UI format
+  if (query.filters && Array.isArray(query.filters)) {
+    transformed.filters = transformFiltersFromServer(query.filters)
+  }
+  
+  return cleanQuery(transformed)
+}
+
+/**
+ * Transform filters from server/API format to UI format
+ * Converts {and: [...]} and {or: [...]} to {type: 'and', filters: [...]} format
+ */
+function transformFiltersFromServer(filters: any[]): Filter[] {
+  return filters.map(filter => {
+    if (!filter || typeof filter !== 'object') {
+      return filter
+    }
+    
+    // Handle legacy {and: [...]} format
+    if ('and' in filter && Array.isArray(filter.and)) {
+      return {
+        type: 'and',
+        filters: transformFiltersFromServer(filter.and)
+      } as GroupFilter
+    }
+    
+    // Handle legacy {or: [...]} format
+    if ('or' in filter && Array.isArray(filter.or)) {
+      return {
+        type: 'or',
+        filters: transformFiltersFromServer(filter.or)
+      } as GroupFilter
+    }
+    
+    // Handle new format {type: 'and', filters: [...]} - process recursively
+    if ('type' in filter && 'filters' in filter && Array.isArray(filter.filters)) {
+      return {
+        type: filter.type,
+        filters: transformFiltersFromServer(filter.filters)
+      } as GroupFilter
+    }
+    
+    // Simple filter - pass through
+    return filter as SimpleFilter
+  }).filter(Boolean) // Remove any null/undefined values
+}

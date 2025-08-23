@@ -5,7 +5,6 @@
 import type { 
   GeminiMessageRequest,
   GeminiMessageResponse,
-  SystemPromptVariables,
   AIConfig
 } from './types'
 import { 
@@ -15,25 +14,29 @@ import {
 } from './constants'
 
 /**
- * Send a message to Gemini API via proxy
+ * Send a user prompt to AI proxy (server builds system prompt)
  */
 export async function sendGeminiMessage(
   apiKey: string,
-  message: string
+  userPrompt: string
 ): Promise<GeminiMessageResponse> {
   const requestBody: GeminiMessageRequest = {
-    text: message
+    text: userPrompt // Send only the user's prompt, server handles system prompt
   }
 
-  const headers = {
-    'X-API-Key': apiKey,
+  // Only add API key header if provided (allow empty string for server key)
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   }
+  
+  if (apiKey && apiKey.trim()) {
+    headers['X-API-Key'] = apiKey
+  }
 
-  console.log('🤖 Client: Sending message to Gemini via proxy')
+  console.log('🤖 Client: Sending user prompt to AI proxy')
   console.log('  URL:', `${AI_PROXY_BASE_URL}/generate`)
   console.log('  Headers:', headers)
-  console.log('  Body:', requestBody)
+  console.log('  User prompt length:', userPrompt.length)
 
   const response = await fetch(`${AI_PROXY_BASE_URL}/generate`, {
     method: 'POST',
@@ -46,9 +49,39 @@ export async function sendGeminiMessage(
   console.log('  Status Text:', response.statusText)
 
   if (!response.ok) {
-    const errorText = await response.text()
-    console.error('❌ Client: Proxy error:', errorText)
-    throw new Error(`Failed to generate content: ${response.status} ${response.statusText} - ${errorText}`)
+    let errorMessage = `Failed to generate content: ${response.status} ${response.statusText}`
+    
+    try {
+      // Try to parse JSON error response first
+      const errorData = await response.json()
+      console.error('❌ Client: Proxy error:', errorData)
+      
+      // Handle rate limit errors specially
+      if (response.status === 429 && errorData.error === 'Daily quota exceeded') {
+        throw new Error(
+          `${errorData.message}\n\n${errorData.suggestion || 'Add your own Gemini API key for unlimited access.'}`
+        )
+      }
+      
+      // Handle other structured errors
+      if (errorData.error) {
+        errorMessage = errorData.message || errorData.error
+        if (errorData.suggestion) {
+          errorMessage += `\n\n💡 ${errorData.suggestion}`
+        }
+      }
+    } catch (parseError) {
+      // Fallback to text if JSON parsing fails
+      try {
+        const errorText = await response.text()
+        console.error('❌ Client: Proxy text error:', errorText)
+        errorMessage = errorText || errorMessage
+      } catch (textError) {
+        console.error('❌ Client: Could not parse error response')
+      }
+    }
+    
+    throw new Error(errorMessage)
   }
 
   const data = await response.json()
@@ -56,33 +89,8 @@ export async function sendGeminiMessage(
   return data
 }
 
-/**
- * Replace placeholders in system prompt template
- */
-export function buildSystemPrompt(
-  template: string, 
-  variables: SystemPromptVariables
-): string {
-  let result = template
-  
-  Object.entries(variables).forEach(([key, value]) => {
-    const placeholder = `{${key}}`
-    result = result.replace(new RegExp(placeholder, 'g'), value)
-  })
-  
-  return result
-}
-
-/**
- * Format cube schema for AI prompt
- */
-export function formatCubeSchemaForPrompt(schema: any): string {
-  if (!schema || !schema.cubes) {
-    return 'No cube schema available'
-  }
-
-  return JSON.stringify(schema, null, 2)
-}
+// Removed: buildSystemPrompt and formatCubeSchemaForPrompt 
+// These functions are now handled server-side for better security
 
 /**
  * Save AI configuration to localStorage

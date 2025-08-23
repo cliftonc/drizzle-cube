@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
-import { employees, departments, productivity, analyticsPages, schema } from '../schema'
+import { employees, departments, productivity, analyticsPages, settings, schema } from '../schema'
 import { productivityDashboardConfig } from '../src/dashboard-config'
 
 // Default connection string for CLI usage
@@ -302,6 +302,7 @@ export async function executeSeed(db?: any, connectionString?: string) {
     await database.delete(employees)
     await database.delete(departments)
     await database.delete(analyticsPages)
+    await database.delete(settings)
     
     // Insert departments first (referenced by employees)
     console.log('🏢 Inserting departments...')
@@ -350,6 +351,22 @@ export async function executeSeed(db?: any, connectionString?: string) {
       .returning()
     
     console.log(`✅ Inserted analytics page: ${insertedPage[0].name}`)
+    
+    // Insert initial settings (including Gemini AI call counter)
+    console.log('⚙️ Inserting initial settings...')
+    const initialSettings = [
+      {
+        key: 'gemini-ai-calls',
+        value: '0',
+        organisationId: 1
+      }
+    ]
+    
+    const insertedSettings = await database.insert(settings)
+      .values(initialSettings)
+      .returning()
+    
+    console.log(`✅ Inserted ${insertedSettings.length} settings`)
     
     console.log('🎉 Database seeded successfully!')
     console.log('\n📊 What you can do now:')

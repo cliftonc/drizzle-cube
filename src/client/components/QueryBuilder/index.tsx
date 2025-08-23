@@ -22,7 +22,7 @@ import type {
   ApiConfig
 } from './types'
 import type { Filter } from '../../types'
-import { createEmptyQuery, hasQueryContent, cleanQuery, cleanQueryForServer, cleanupFilters } from './utils'
+import { createEmptyQuery, hasQueryContent, cleanQuery, cleanQueryForServer, cleanupFilters, transformQueryForUI } from './utils'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
 const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
@@ -59,7 +59,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     // If initialQuery is provided, use it instead of localStorage
     if (initialQuery) {
       return {
-        query: initialQuery,
+        query: transformQueryForUI(initialQuery),
         schema: null,
         schemaStatus: 'idle',
         schemaError: null,
@@ -81,7 +81,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         if (saved) {
           const parsedState = JSON.parse(saved)
           return {
-            query: parsedState.query || createEmptyQuery(),
+            query: transformQueryForUI(parsedState.query) || createEmptyQuery(),
             schema: null, // Schema is always loaded fresh
             schemaStatus: 'idle', // Reset schema status
             schemaError: null,
@@ -134,7 +134,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     if (initialQuery && JSON.stringify(initialQuery) !== JSON.stringify(state.query)) {
       setState(prev => ({
         ...prev,
-        query: initialQuery,
+        query: transformQueryForUI(initialQuery),
         schemaStatus: 'idle',
         schemaError: null,
         validationStatus: 'idle',
@@ -675,7 +675,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             // Update the query in the builder
             setState(prev => ({
               ...prev,
-              query: cleanQuery(query),
+              query: transformQueryForUI(query),
               validationStatus: 'idle',
               validationError: null,
               validationSql: null,
@@ -685,6 +685,36 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               totalRowCount: null,
               totalRowCountStatus: 'idle'
             }))
+            
+            // Auto-validate the loaded query after a short delay
+            setTimeout(async () => {
+              // We need to access handleValidateQuery through a ref or recreate the validation logic
+              // For now, let's trigger validation by updating the state to force a validation
+              const queryToValidate = cleanQueryForServer(transformQueryForUI(query))
+              
+              try {
+                const result = await cubeApi.dryRun(queryToValidate)
+                const isValid = !result.error && result.queryType && (result.valid !== false)
+                
+                setState(prev => ({
+                  ...prev,
+                  validationStatus: isValid ? 'valid' : 'invalid',
+                  validationError: result.error || null,
+                  validationSql: result.sql || null
+                }))
+                
+                setFullValidationResult(result)
+              } catch (error) {
+                console.error('Auto-validation error:', error)
+                setState(prev => ({
+                  ...prev,
+                  validationStatus: 'invalid',
+                  validationError: error instanceof Error ? error.message : 'Validation failed',
+                  validationSql: null
+                }))
+                setFullValidationResult(null)
+              }
+            }, 200)
           }}
         />
       </div>

@@ -290,8 +290,8 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {onAIAssistantClick && (
               <button
                 onClick={onAIAssistantClick}
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-white border border-purple-300 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                title="AI Assistant"
+                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
+                title="AI Assistant - Generate queries with AI"
               >
                 <SparklesIcon className="w-4 h-4" />
                 <span>AI Assistant</span>

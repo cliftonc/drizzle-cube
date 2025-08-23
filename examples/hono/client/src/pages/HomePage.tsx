@@ -4,7 +4,8 @@ import {
   ChartBarIcon, 
   MagnifyingGlassIcon, 
   BookOpenIcon, 
-  CodeBracketIcon 
+  CodeBracketIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 export default function HomePage() {
@@ -60,8 +61,12 @@ export default function HomePage() {
           
           <Link
             to="/query-builder"
-            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation"
+            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation relative"
           >
+            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 shadow-md z-10">
+              <SparklesIcon className="w-3 h-3" />
+              <span>AI Enabled</span>
+            </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-green-100 group-hover:bg-green-200 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">
                 <MagnifyingGlassIcon className="w-6 h-6 text-green-600" />
