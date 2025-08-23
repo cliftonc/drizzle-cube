@@ -20,7 +20,7 @@ import {
   createAndFilter, 
   createOrFilter,
   countFilters,
-  getFilterableFields
+  getAllFilterableFields
 } from './utils'
 
 const FilterBuilder: React.FC<FilterBuilderProps> = ({
@@ -33,15 +33,15 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   
   const totalFilterCount = countFilters(filters)
   
-  // Get filterable fields from currently selected query fields
-  const filterableFields = schema ? getFilterableFields(schema, query) : []
-  const hasFilterableFields = filterableFields.length > 0
+  // Get all filterable fields from schema
+  const allFilterableFields = schema ? getAllFilterableFields(schema) : []
+  const hasFilterableFields = allFilterableFields.length > 0
   
   const handleAddSimpleFilter = () => {
     if (!hasFilterableFields) return
     
     // Use the first available field as default
-    const defaultField = filterableFields[0]?.name || ''
+    const defaultField = allFilterableFields[0]?.name || ''
     const newFilter = createSimpleFilter(defaultField, 'equals', [])
     
     // Smart filter grouping logic:

@@ -240,6 +240,21 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       drizzleQuery = drizzleQuery.groupBy(...groupByFields)
     }
 
+    // Add HAVING conditions using QueryBuilder (after GROUP BY)
+    const havingConditions = this.queryBuilder.buildHavingConditions(
+      queryPlan.joinCubes.length > 0 
+        ? this.getCubesFromPlan(queryPlan) // Multi-cube
+        : queryPlan.primaryCube, // Single cube
+      query,
+      context
+    )
+    if (havingConditions.length > 0) {
+      const combinedHaving = havingConditions.length === 1 
+        ? havingConditions[0] 
+        : and(...havingConditions) as SQL
+      drizzleQuery = drizzleQuery.having(combinedHaving)
+    }
+
     // Add ORDER BY using QueryBuilder
     const orderByFields = this.queryBuilder.buildOrderBy(query)
     if (orderByFields.length > 0) {

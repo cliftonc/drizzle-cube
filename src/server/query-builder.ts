@@ -183,7 +183,7 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   }
 
   /**
-   * Build WHERE conditions from semantic query filters
+   * Build WHERE conditions from semantic query filters (dimensions only)
    * Works for both single and multi-cube queries
    */
   buildWhereConditions(
@@ -196,10 +196,10 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     // Convert single cube to map for consistent handling
     const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
     
-    // Process regular filters
+    // Process regular filters (dimensions only for WHERE clause)
     if (query.filters && query.filters.length > 0) {
       for (const filter of query.filters) {
-        const condition = this.processFilter(filter, cubeMap, context)
+        const condition = this.processFilter(filter, cubeMap, context, 'where')
         if (condition) {
           conditions.push(condition)
         }
@@ -228,12 +228,41 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   }
 
   /**
+   * Build HAVING conditions from semantic query filters (measures only)
+   * Works for both single and multi-cube queries
+   */
+  buildHavingConditions(
+    cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
+    query: SemanticQuery, 
+    context: QueryContext<TSchema>
+  ): SQL[] {
+    const conditions: SQL[] = []
+    
+    // Convert single cube to map for consistent handling
+    const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
+    
+    // Process regular filters (measures only for HAVING clause)
+    if (query.filters && query.filters.length > 0) {
+      for (const filter of query.filters) {
+        const condition = this.processFilter(filter, cubeMap, context, 'having')
+        if (condition) {
+          conditions.push(condition)
+        }
+      }
+    }    
+    
+    return conditions
+  }
+
+  /**
    * Process a single filter (basic or logical)
+   * @param filterType - 'where' for dimension filters, 'having' for measure filters
    */
   private processFilter(
     filter: Filter,
     cubes: Map<string, Cube<TSchema>>,
-    context: QueryContext<TSchema>
+    context: QueryContext<TSchema>,
+    filterType: 'where' | 'having'
   ): SQL | null {
     // Handle logical filters (AND/OR)
     if ('and' in filter || 'or' in filter) {
@@ -241,14 +270,14 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
       
       if (logicalFilter.and) {
         const conditions = logicalFilter.and
-          .map(f => this.processFilter(f, cubes, context))
+          .map(f => this.processFilter(f, cubes, context, filterType))
           .filter((condition): condition is SQL => condition !== null)
         return conditions.length > 0 ? and(...conditions) as SQL : null
       }
       
       if (logicalFilter.or) {
         const conditions = logicalFilter.or
-          .map(f => this.processFilter(f, cubes, context))
+          .map(f => this.processFilter(f, cubes, context, filterType))
           .filter((condition): condition is SQL => condition !== null)
         return conditions.length > 0 ? or(...conditions) as SQL : null
       }
@@ -261,11 +290,24 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     if (!cube) return null
         
     // Find the field in dimensions or measures
-    const field = cube.dimensions[fieldKey] || cube.measures[fieldKey]
+    const dimension = cube.dimensions[fieldKey]
+    const measure = cube.measures[fieldKey]
+    const field = dimension || measure
     if (!field) return null
     
-    const fieldExpr = resolveSqlExpression(field.sql, context)
-    return this.buildFilterCondition(fieldExpr, filterCondition.operator, filterCondition.values, field)
+    // Apply filter based on type and what we're looking for
+    if (filterType === 'where' && dimension) {
+      // WHERE clause: use raw dimension expression
+      const fieldExpr = resolveSqlExpression(dimension.sql, context)
+      return this.buildFilterCondition(fieldExpr, filterCondition.operator, filterCondition.values, field)
+    } else if (filterType === 'having' && measure) {
+      // HAVING clause: use aggregated measure expression
+      const measureExpr = this.buildMeasureExpression(measure, context)
+      return this.buildFilterCondition(measureExpr, filterCondition.operator, filterCondition.values, field)
+    }
+    
+    // Skip if this filter doesn't match the type we're processing
+    return null
   }
 
   /**

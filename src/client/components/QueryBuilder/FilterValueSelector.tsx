@@ -129,9 +129,11 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     const value = e.target.value
     if (operatorMeta.valueType === 'number') {
       const numValue = parseFloat(value)
+      // Accept valid numbers including zero
       if (!isNaN(numValue)) {
         onValuesChange([numValue])
-      } else if (value === '') {
+      } else if (value === '' || value === '-') {
+        // Allow empty string or just a minus sign for negative numbers being typed
         onValuesChange([])
       }
     } else {
@@ -206,7 +208,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     return (
       <input
         type="number"
-        value={values[0] || ''}
+        value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
         className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -377,7 +379,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   return (
     <input
       type="text"
-      value={values[0] || ''}
+      value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
       onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
       className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

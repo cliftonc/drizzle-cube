@@ -233,6 +233,7 @@ export function flattenFilters(filters: Filter[]): SimpleFilter[] {
 
 /**
  * Get all filterable fields from schema (measures, dimensions, and time dimensions)
+ * Returns ALL fields if no query provided, or only query fields if query provided
  */
 export function getFilterableFields(schema: MetaResponse, query?: CubeQuery): MetaField[] {
   const allFields: MetaField[] = []
@@ -269,6 +270,63 @@ export function getFilterableFields(schema: MetaResponse, query?: CubeQuery): Me
   const filterableFields = allFields.filter(field => selectedFields.has(field.name))
   
   return filterableFields.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * Get ALL filterable fields from schema, regardless of query selection
+ */
+export function getAllFilterableFields(schema: MetaResponse): MetaField[] {
+  const allFields: MetaField[] = []
+  
+  schema.cubes.forEach(cube => {
+    allFields.push(...cube.measures)
+    allFields.push(...cube.dimensions)
+  })
+  
+  return allFields.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * Get organized filter field options with query fields prioritized at top
+ */
+export function getOrganizedFilterFields(schema: MetaResponse, query?: CubeQuery): {
+  queryFields: MetaField[]
+  allFields: MetaField[]
+} {
+  const allFields = getAllFilterableFields(schema)
+  
+  if (!query) {
+    return {
+      queryFields: [],
+      allFields
+    }
+  }
+  
+  // Get currently selected fields from the query
+  const selectedFields = new Set<string>()
+  
+  // Add measures
+  if (query.measures) {
+    query.measures.forEach(measure => selectedFields.add(measure))
+  }
+  
+  // Add dimensions
+  if (query.dimensions) {
+    query.dimensions.forEach(dimension => selectedFields.add(dimension))
+  }
+  
+  // Add time dimensions
+  if (query.timeDimensions) {
+    query.timeDimensions.forEach(td => selectedFields.add(td.dimension))
+  }
+  
+  // Split fields into query fields and other fields
+  const queryFields = allFields.filter(field => selectedFields.has(field.name))
+  
+  return {
+    queryFields,
+    allFields
+  }
 }
 
 /**
@@ -401,8 +459,18 @@ export function createOrFilter(filters: Filter[] = []): GroupFilter {
 
 /**
  * Clean up filters by removing any that reference fields not in the current query
+ * @deprecated This function is no longer used as we now support filtering on any schema field
  */
-export function cleanupFilters(filters: Filter[], query: CubeQuery): Filter[] {
+export function cleanupFilters(filters: Filter[], _query?: CubeQuery): Filter[] {
+  // Return filters unchanged - we now support filtering on any field
+  return filters || []
+}
+
+/**
+ * Clean up filters by removing any that reference fields not in the current query (legacy)
+ * Only used for backward compatibility - filters on non-query fields are now supported
+ */
+export function cleanupFiltersLegacy(filters: Filter[], query: CubeQuery): Filter[] {
   if (!filters || filters.length === 0) {
     return []
   }
