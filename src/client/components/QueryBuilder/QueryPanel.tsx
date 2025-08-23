@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
@@ -29,7 +29,8 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onDateRangeRemove,
   onClearQuery,
   showSettings,
-  onSettingsClick
+  onSettingsClick,
+  onAIAssistantClick
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
@@ -284,7 +285,19 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Query Builder</h3>
+          <div className="flex items-center space-x-3">
+            <h3 className="text-lg font-semibold text-gray-900">Query Builder</h3>
+            {onAIAssistantClick && (
+              <button
+                onClick={onAIAssistantClick}
+                className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-purple-700 bg-white border border-purple-300 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                title="AI Assistant"
+              >
+                <SparklesIcon className="w-4 h-4" />
+                <span>AI Assistant</span>
+              </button>
+            )}
+          </div>
           <div className="flex items-center space-x-2">
             {hasContent && (
               <>

@@ -5,9 +5,10 @@ import dts from 'vite-plugin-dts'
 export default defineConfig({
   plugins: [
     dts({
-      insertTypesEntry: true,
+      insertTypesEntry: false,
       rollupTypes: false,
       include: ['src/adapters/**/*.ts'],
+      exclude: ['src/adapters/index.ts'],
       outDir: 'dist'
     })
   ],

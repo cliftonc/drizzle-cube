@@ -2,6 +2,26 @@
 
 Drizzle Cube provides React hooks for seamless data fetching and state management. The hooks are designed to be Cube.js-compatible while leveraging Drizzle ORM's type safety and security features.
 
+## Installation
+
+```bash
+# Full client (includes all hooks)
+npm install drizzle-cube react react-dom
+
+# Hooks only (optimized bundle - ~3.2KB)
+npm install drizzle-cube react react-dom
+```
+
+## Import Options
+
+```tsx
+// Full client import
+import { useCubeQuery, useCubeMeta } from 'drizzle-cube/client';
+
+// Hooks-only import (smaller bundle)
+import { useCubeQuery, useCubeMeta } from 'drizzle-cube/client/hooks';
+```
+
 ## Overview
 
 The hook system consists of `useCubeQuery` for data fetching and `useCubeContext` for accessing the Cube API client. These hooks provide automatic loading states, error handling, and query optimization.

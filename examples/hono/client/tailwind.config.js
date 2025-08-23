@@ -3,7 +3,8 @@ export default {
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
-    '../../../dist/**/*.js', // Include the built drizzle-cube components
+    // Include drizzle-cube source files to scan for Tailwind classes
+    '../../../src/client/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {},

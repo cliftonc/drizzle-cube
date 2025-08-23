@@ -12,6 +12,7 @@ import CubeMetaExplorer from './CubeMetaExplorer'
 import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
 import SetupPanel from './SetupPanel'
+import AIAssistantModal from '../AIAssistant/AIAssistantModal'
 import type { 
   QueryBuilderProps, 
   QueryBuilderRef,
@@ -124,6 +125,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
   const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [showSchemaMobile, setShowSchemaMobile] = useState(false)
+  
+  // AI Assistant modal state
+  const [showAIAssistant, setShowAIAssistant] = useState(false)
 
   // Update query when initialQuery prop changes (for modal usage)
   useEffect(() => {
@@ -642,6 +646,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
+              onAIAssistantClick={() => setShowAIAssistant(true)}
             />
           </div>
 
@@ -660,6 +665,28 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           </div>
         </div>
         </div>
+      
+        {/* AI Assistant Modal */}
+        <AIAssistantModal
+          isOpen={showAIAssistant}
+          onClose={() => setShowAIAssistant(false)}
+          schema={state.schema}
+          onQueryLoad={(query) => {
+            // Update the query in the builder
+            setState(prev => ({
+              ...prev,
+              query: cleanQuery(query),
+              validationStatus: 'idle',
+              validationError: null,
+              validationSql: null,
+              executionStatus: 'idle',
+              executionResults: null,
+              executionError: null,
+              totalRowCount: null,
+              totalRowCountStatus: 'idle'
+            }))
+          }}
+        />
       </div>
   )
 })

@@ -2,9 +2,55 @@
 
 Drizzle Cube provides a comprehensive set of chart components built on Recharts with Tailwind CSS styling. These components are designed to work seamlessly with Cube.js-compatible data and provide interactive, responsive visualizations for your analytics dashboards.
 
+## Installation
+
+```bash
+# Full client (includes all charts)
+npm install drizzle-cube react react-dom recharts
+
+# Charts only (optimized bundle - ~550 bytes + chunks)
+npm install drizzle-cube react react-dom recharts
+```
+
+## Import Options
+
+```tsx
+// Full client import
+import { RechartsBarChart, RechartsLineChart } from 'drizzle-cube/client';
+
+// Charts-only import (smaller bundle)
+import { 
+  RechartsBarChart, 
+  RechartsLineChart, 
+  RechartsAreaChart,
+  RechartsPieChart,
+  RechartsScatterChart,
+  RechartsRadarChart,
+  RechartsRadialBarChart,
+  RechartsTreeMapChart,
+  DataTable
+} from 'drizzle-cube/client/charts';
+
+// Chart utilities
+import { 
+  formatChartData, 
+  CHART_COLORS, 
+  POSITIVE_COLOR, 
+  NEGATIVE_COLOR 
+} from 'drizzle-cube/client/charts';
+```
+
 ## Overview
 
 The chart components are React-based visualization tools that automatically handle data transformation, formatting, and responsive design. They support various chart types, interactive features like legends and tooltips, and flexible configuration options.
+
+### Bundle Size Optimization
+
+When using charts-only imports, you get:
+- **Minimal footprint**: ~550 bytes main bundle + shared chunks
+- **On-demand loading**: Heavy dependencies (Recharts, icons) loaded as separate chunks
+- **Tree shaking**: Unused chart types are eliminated from the bundle
+- **Shared dependencies**: Common utilities shared across chart components
 
 ## Available Chart Types
 

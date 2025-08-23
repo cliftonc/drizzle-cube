@@ -2,9 +2,52 @@
 
 Drizzle Cube provides flexible dashboard components for creating interactive analytics interfaces. Built with React and `react-grid-layout`, the dashboard system supports drag-and-drop layouts, responsive design, and configurable analytics portlets.
 
+## Installation
+
+```bash
+# Full client (includes dashboards)
+npm install drizzle-cube react react-dom recharts react-grid-layout
+
+# Components only (dashboards without charts - ~218KB)
+npm install drizzle-cube react react-dom react-grid-layout
+
+# With charts (modular approach)
+npm install drizzle-cube react react-dom recharts react-grid-layout
+```
+
+## Import Options
+
+```tsx
+// Full client import
+import { AnalyticsDashboard, DashboardGrid, AnalyticsPortlet } from 'drizzle-cube/client';
+
+// Components-only import (dashboard without built-in charts)
+import { 
+  AnalyticsDashboard, 
+  DashboardGrid, 
+  AnalyticsPortlet,
+  QueryBuilder,
+  Modal,
+  PortletEditModal,
+  DashboardEditModal 
+} from 'drizzle-cube/client/components';
+
+// Combined modular approach
+import { AnalyticsDashboard, DashboardGrid } from 'drizzle-cube/client/components';
+import { RechartsBarChart, RechartsLineChart } from 'drizzle-cube/client/charts';
+import { useCubeQuery } from 'drizzle-cube/client/hooks';
+import { CubeProvider } from 'drizzle-cube/client/providers';
+```
+
 ## Overview
 
 The dashboard system consists of three main components: `DashboardGrid` for layout management, `AnalyticsPortlet` for individual visualizations, and various configuration interfaces for customization. All components are designed to work seamlessly with Cube.js-compatible data and the `useCubeQuery` hook.
+
+### Bundle Size Considerations
+
+- **Full client**: Complete dashboard functionality with all chart types
+- **Components-only**: Dashboard UI without built-in charts (~218KB) - bring your own charts
+- **Modular approach**: Mix and match components, charts, hooks as needed for optimal bundle size
 
 ## Core Components
 

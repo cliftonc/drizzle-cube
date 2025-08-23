@@ -3,6 +3,13 @@
  * 
  * React components for building analytics dashboards with minimal dependencies.
  * Designed to be embedded in existing applications with their own auth/navigation.
+ * 
+ * For modular imports, consider using:
+ * - 'drizzle-cube/client/charts' - Chart components only
+ * - 'drizzle-cube/client/hooks' - React hooks only
+ * - 'drizzle-cube/client/providers' - Context providers only
+ * - 'drizzle-cube/client/components' - UI components (no charts)
+ * - 'drizzle-cube/client/utils' - Utility functions only
  */
 
 // Import styles to include in build
@@ -55,4 +62,4 @@ export type {
 } from './types'
 
 // Utilities
-export { createDashboardLayout, formatChartData } from './utils'
+export { createDashboardLayout, formatChartData } from './utils/index'

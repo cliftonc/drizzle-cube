@@ -5,10 +5,23 @@ Drizzle Cube is designed for high-performance analytics with multiple optimizati
 ## Overview
 
 Performance in Drizzle Cube is achieved through:
+- **Bundle Size Optimization**: Modular imports and tree shaking (see [Bundle Optimization](/help/advanced/bundle-optimization))
 - **Drizzle ORM Query Optimization**: Prepared statements and efficient SQL generation
 - **Database-Level Optimization**: Proper indexing and query planning
 - **Application-Level Caching**: Result set caching and query memoization
 - **Smart Query Execution**: Query path resolution and join optimization
+
+## Client Performance
+
+### Bundle Optimization
+
+For detailed information on optimizing client-side bundle sizes, see the dedicated [Bundle Optimization Guide](/help/advanced/bundle-optimization).
+
+**Quick Overview:**
+- Use modular imports for smaller bundles
+- Import only what you need: `drizzle-cube/client/charts`, `drizzle-cube/client/hooks`, etc.
+- Achieve up to 91% bundle size reduction with targeted imports
+- Automatic code splitting with optimized chunks
 
 ## Database Performance
 

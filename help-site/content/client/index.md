@@ -44,14 +44,115 @@ export default {
 }
 ```
 
+## Modular Imports
+
+The drizzle-cube client is built with modular architecture allowing you to import only what you need:
+
+| Import Path | Size | Contents | Use Case |
+|-------------|------|----------|----------|
+| `drizzle-cube/client` | Full bundle | All components, hooks, charts | Complete dashboard apps |
+| `drizzle-cube/client/charts` | ~550 bytes + chunks | Chart components only | Custom UI with charts |
+| `drizzle-cube/client/hooks` | ~3.2KB | React hooks only | Headless data fetching |
+| `drizzle-cube/client/providers` | ~190 bytes + chunks | Context providers only | Custom implementations |
+| `drizzle-cube/client/components` | ~218KB | UI components (no charts) | Dashboard without charts |
+| `drizzle-cube/client/utils` | ~40 bytes | Utility functions only | Helper functions |
+
+### Chart-Only Import
+Perfect for apps that need charts but want to build custom dashboards:
+
+```tsx
+import { RechartsBarChart, RechartsLineChart, RechartsAreaChart } from 'drizzle-cube/client/charts';
+import { useCubeQuery } from 'drizzle-cube/client/hooks';
+import { CubeProvider } from 'drizzle-cube/client/providers';
+
+function CustomDashboard() {
+  return (
+    <CubeProvider apiOptions={{ apiUrl: '/api/cube' }}>
+      <div className="grid grid-cols-2 gap-4">
+        <RechartsBarChart 
+          data={data} 
+          chartConfig={{ x: 'category', y: ['revenue'] }}
+        />
+        <RechartsLineChart 
+          data={timeData}
+          chartConfig={{ x: 'date', y: ['sales'] }}
+        />
+      </div>
+    </CubeProvider>
+  );
+}
+```
+
+### Hooks-Only Import
+For completely custom UI implementations:
+
+```tsx
+import { useCubeQuery, useCubeMeta } from 'drizzle-cube/client/hooks';
+
+function CustomAnalytics() {
+  const { data, isLoading } = useCubeQuery({
+    measures: ['Sales.revenue'],
+    dimensions: ['Sales.category']
+  });
+
+  // Build your own UI with the data
+  return (
+    <div>
+      {data?.map(row => (
+        <div key={row.category}>
+          {row.category}: ${row.revenue}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Dependency Optimization
+When using modular imports, you only need the dependencies for what you import:
+
+```bash
+# Full client - requires all dependencies
+npm install drizzle-cube react react-dom recharts react-grid-layout
+
+# Charts only - no grid layout needed
+npm install drizzle-cube react react-dom recharts
+
+# Hooks only - minimal dependencies
+npm install drizzle-cube react react-dom
+
+# Providers only - core functionality
+npm install drizzle-cube react react-dom
+```
+
 ### Usage Options
 
-**Option 1: Import Components (Recommended)**
+**Option 1: Full Import (All Features)**
 ```tsx
 import { AnalyticsDashboard, CubeProvider } from 'drizzle-cube/client';
 ```
 
-**Option 2: Copy-Paste for Customization**
+**Option 2: Modular Imports (Optimized Bundle Size)**
+Import only what you need for smaller bundle sizes:
+
+```tsx
+// Charts only (~550 bytes + shared chunks)
+import { RechartsBarChart, RechartsLineChart } from 'drizzle-cube/client/charts';
+
+// Hooks only (~3.2KB)
+import { useCubeQuery, useCubeMeta } from 'drizzle-cube/client/hooks';
+
+// Providers only (~190 bytes + shared chunks)
+import { CubeProvider, createCubeClient } from 'drizzle-cube/client/providers';
+
+// UI Components without charts (~218KB)
+import { QueryBuilder, AnalyticsDashboard } from 'drizzle-cube/client/components';
+
+// Utilities only (~40 bytes)
+import { formatChartData, validateCubeQuery } from 'drizzle-cube/client/utils';
+```
+
+**Option 3: Copy-Paste for Customization**
 For more control over styling and behavior, you can copy component code from the complete example at `/examples/hono/client` in the repository or view the live version at [try.drizzle-cube.dev](https://try.drizzle-cube.dev).
 
 ## Quick Start

@@ -14,6 +14,7 @@ A complete full-stack analytics application with [Hono](https://hono.dev/) backe
 - 🎯 **Type safety** - Full TypeScript support from database to frontend
 - ☁️ **Cloudflare Workers** - Deploy to edge locations globally with Wrangler
 - 🌐 **Neon Integration** - Auto-detects Neon URLs for serverless PostgreSQL
+- 🤖 **AI Assistant** - Natural language query generation with Google Gemini
 
 ## Quick Start
 
@@ -323,6 +324,67 @@ This API is compatible with Cube.js frontends:
 - **drizzle-cube React components** (included in this example)
 
 Simply point your frontend to `http://localhost:3001/cubejs-api/v1` as the API URL.
+
+## AI Assistant
+
+The Hono example includes an AI Assistant that can generate queries from natural language descriptions using Google Gemini.
+
+### Setup
+
+1. **Get a Google Gemini API key** from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+2. **Configure the API key** (choose one method):
+   
+   **Option A: Environment variable (recommended)**
+   ```bash
+   export GEMINI_API_KEY="AIza..."
+   npm run dev
+   ```
+
+   **Option B: Pass in request headers**
+   ```bash
+   # The client will store the API key and pass it in headers
+   # No server configuration needed
+   ```
+
+### Usage
+
+1. **Open the Query Builder** - Navigate to the Query Builder tab
+2. **Click the sparkles icon** (✨) - Opens the AI Assistant modal
+3. **Enter your API key** - If not set via environment variable
+4. **Describe your query** - Use natural language like:
+   - "Show me total employees by department"
+   - "Revenue by month for the last year"
+   - "Top performing products with sales count"
+5. **Get the query** - Gemini generates a Cube.js query JSON
+
+### API Endpoints
+
+The AI features are available via proxy endpoints to avoid CORS issues:
+
+- **GET** `/api/ai/health` - Check AI service status
+- **POST** `/api/ai/generate` - Generate content with Gemini
+
+**Example:**
+```bash
+# Check if AI is configured
+curl http://localhost:3001/api/ai/health
+
+# Generate query
+curl -X POST http://localhost:3001/api/ai/generate \
+  -H "X-API-Key: AIza..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Show me employees by department"
+  }'
+```
+
+### Security
+
+- API keys are **never** stored on the client permanently
+- All AI API calls are proxied through the server
+- Rate limiting and API key validation on the server side
+- Client sends API key in request headers only
 
 ## Docker Management
 

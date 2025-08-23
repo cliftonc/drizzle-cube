@@ -16,6 +16,7 @@ import { schema } from './schema'
 import { allCubes } from './cubes'
 import type { Schema } from './schema'
 import analyticsApp from './src/analytics-routes'
+import aiApp from './src/ai-routes'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -134,7 +135,9 @@ app.get('/', (c) => {
       'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
       'GET /api/analytics-pages': 'List all dashboards',
       'POST /api/analytics-pages': 'Create new dashboard',
-      'POST /api/analytics-pages/create-example': 'Create example dashboard'
+      'POST /api/analytics-pages/create-example': 'Create example dashboard',
+      'POST /api/ai/generate': 'Generate content with Gemini AI (proxy)',
+      'GET /api/ai/health': 'AI service health check'
     },
     frontend: {
       'React Dashboard': 'http://localhost:3000',
@@ -230,6 +233,9 @@ app.use('/api/analytics-pages/*', async (c, next) => {
   await next()
 })
 app.route('/api/analytics-pages', analyticsApp)
+
+// Mount AI proxy routes
+app.route('/api/ai', aiApp)
 
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {

@@ -117,6 +117,7 @@ export interface QueryPanelProps {
   onClearQuery?: () => void
   showSettings?: boolean           // Show the settings/configuration button
   onSettingsClick?: () => void     // Handler for settings button click
+  onAIAssistantClick?: () => void  // Handler for AI Assistant button click
 }
 
 export interface ResultsPanelProps {
