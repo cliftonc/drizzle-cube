@@ -93,7 +93,7 @@ aiApp.post('/generate', async (c) => {
       return c.json({
         error: `Failed to generate content: ${response.status} ${response.statusText}`,
         details: errorText
-      }, response.status)
+      }, response.status as any)
     }
 
     const data: GeminiMessageResponse = await response.json()
