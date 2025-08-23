@@ -14,6 +14,7 @@ import { schema } from '../schema.js'
 import { allCubes } from '../cubes.js'
 import type { Schema } from '../schema.js'
 import analyticsApp from './analytics-routes'
+import aiApp from './ai-routes'
 import { executeSeed } from './seed-utils.js'
 
 // Configure Neon for Cloudflare Workers
@@ -26,6 +27,7 @@ interface CloudflareEnv {
   }
   DATABASE_URL: string
   NODE_ENV?: string
+  GEMINI_API_KEY?: string
 }
 
 interface Variables {
@@ -141,7 +143,9 @@ app.get('/api', (c) => {
       'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
       'GET /api/analytics-pages': 'List all dashboards',
       'POST /api/analytics-pages': 'Create new dashboard',
-      'POST /api/analytics-pages/create-example': 'Create example dashboard'
+      'POST /api/analytics-pages/create-example': 'Create example dashboard',
+      'POST /api/ai/generate': 'Generate content with Gemini AI (proxy)',
+      'GET /api/ai/health': 'AI service health check'
     }
   })
 })
@@ -152,6 +156,9 @@ app.use('/api/analytics-pages/*', async (c, next) => {
   await next()
 })
 app.route('/api/analytics-pages', analyticsApp)
+
+// Mount AI proxy routes
+app.route('/api/ai', aiApp)
 
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {

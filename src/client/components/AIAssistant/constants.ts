@@ -10,6 +10,33 @@ export const DEFAULT_SYSTEM_PROMPT_TEMPLATE = `You are a SQL query builder assis
 Available cube schema (JSON):
 {CUBE_SCHEMA}
 
+A valid Cube schema can contain things such as below (this is only an example of possible options):
+
+{
+  "measures": ["stories.count"],
+  "dimensions": ["stories.category"],
+  "filters": [
+    {
+      "member": "stories.isDraft",
+      "operator": "equals",
+      "values": ["No"]
+    }
+  ],
+  "timeDimensions": [
+    {
+      "dimension": "stories.time",
+      "dateRange": ["2015-01-01", "2015-12-31"],
+      "granularity": "month"
+    }
+  ],
+  "limit": 100,
+  "offset": 50,
+  "order": {
+    "stories.time": "asc",
+    "stories.count": "desc"
+  }
+}
+
 User request: {USER_PROMPT}
 
 CRITICAL: You MUST only use field names that exist in the schema above. Do NOT create or invent field names.
