@@ -466,3 +466,61 @@ export function transformFiltersForServer(filters: Filter[]): any[] {
   
   return filters.map(transformFilter)
 }
+
+/**
+ * Date range utility functions
+ */
+
+/**
+ * Convert DateRangeType to Cube.js compatible date range format
+ */
+export function convertDateRangeTypeToValue(rangeType: string): string {
+  const typeMap: Record<string, string> = {
+    'today': 'today',
+    'yesterday': 'yesterday',
+    'this_week': 'this week',
+    'this_month': 'this month',
+    'this_quarter': 'this quarter',
+    'this_year': 'this year',
+    'last_7_days': 'last 7 days',
+    'last_30_days': 'last 30 days',
+    'last_week': 'last week',
+    'last_month': 'last month',
+    'last_quarter': 'last quarter',
+    'last_year': 'last year',
+    'last_12_months': 'last 12 months'
+  }
+  
+  return typeMap[rangeType] || rangeType
+}
+
+/**
+ * Format date for Cube.js (YYYY-MM-DD)
+ */
+export function formatDateForCube(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+/**
+ * Get the time dimensions that have date ranges applied
+ */
+export function getTimeDimensionsWithDateRanges(query: CubeQuery): Record<string, string | string[]> {
+  const dateRanges: Record<string, string | string[]> = {}
+  
+  if (query.timeDimensions) {
+    query.timeDimensions.forEach(td => {
+      if (td.dateRange) {
+        dateRanges[td.dimension] = td.dateRange
+      }
+    })
+  }
+  
+  return dateRanges
+}
+
+/**
+ * Check if a query has any time dimensions
+ */
+export function hasTimeDimensions(query: CubeQuery): boolean {
+  return Boolean(query.timeDimensions && query.timeDimensions.length > 0)
+}

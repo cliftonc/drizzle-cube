@@ -112,6 +112,8 @@ export interface QueryPanelProps {
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onTimeDimensionGranularityChange: (dimensionName: string, granularity: string) => void
   onFiltersChange: (filters: Filter[]) => void
+  onDateRangeChange: (timeDimension: string, dateRange: string | string[]) => void
+  onDateRangeRemove: (timeDimension: string) => void
   onClearQuery?: () => void
   showSettings?: boolean           // Show the settings/configuration button
   onSettingsClick?: () => void     // Handler for settings button click
@@ -310,4 +312,65 @@ export interface FilterValueSelectorProps {
   values: any[]
   onValuesChange: (values: any[]) => void
   schema: MetaResponse | null
+}
+
+// Date range types
+export type DateRangeType = 
+  | 'custom'
+  | 'today'
+  | 'yesterday' 
+  | 'this_week'
+  | 'this_month'
+  | 'this_quarter'
+  | 'this_year'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'last_week'
+  | 'last_month'
+  | 'last_quarter'
+  | 'last_year'
+  | 'last_12_months'
+
+export interface DateRangeOption {
+  value: DateRangeType
+  label: string
+}
+
+export const DATE_RANGE_OPTIONS: DateRangeOption[] = [
+  { value: 'custom', label: 'Custom' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'this_week', label: 'This week' },
+  { value: 'this_month', label: 'This month' },
+  { value: 'this_quarter', label: 'This quarter' },
+  { value: 'this_year', label: 'This year' },
+  { value: 'last_7_days', label: 'Last 7 days' },
+  { value: 'last_30_days', label: 'Last 30 days' },
+  { value: 'last_week', label: 'Last week' },
+  { value: 'last_month', label: 'Last month' },
+  { value: 'last_quarter', label: 'Last quarter' },
+  { value: 'last_year', label: 'Last year' },
+  { value: 'last_12_months', label: 'Last 12 months' }
+] as const
+
+export interface DateRangeFilter {
+  id: string
+  timeDimension: string
+  rangeType: DateRangeType
+  startDate?: string
+  endDate?: string
+}
+
+// Date range component props
+export interface DateRangeSelectorProps {
+  timeDimensions: string[]
+  onDateRangeChange: (timeDimension: string, dateRange: string | string[]) => void
+  onDateRangeRemove: (timeDimension: string) => void
+  currentDateRanges: Record<string, string | string[]>
+}
+
+export interface DateRangeFilterProps {
+  timeDimensions: Array<{ dimension: string; granularity?: string; dateRange?: string | string[] }>
+  onDateRangeChange: (timeDimension: string, dateRange: string | string[]) => void
+  onDateRangeRemove: (timeDimension: string) => void
 }

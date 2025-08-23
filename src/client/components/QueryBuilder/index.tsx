@@ -329,6 +329,34 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     })
   }, [updateQuery])
 
+  const handleDateRangeChange = useCallback((timeDimension: string, dateRange: string | string[]) => {
+    updateQuery(prev => {
+      const newQuery = {
+        ...prev,
+        timeDimensions: (prev.timeDimensions || []).map(td => 
+          td.dimension === timeDimension 
+            ? { ...td, dateRange }
+            : td
+        )
+      }
+      return cleanQuery(newQuery)
+    })
+  }, [updateQuery])
+
+  const handleDateRangeRemove = useCallback((timeDimension: string) => {
+    updateQuery(prev => {
+      const newQuery = {
+        ...prev,
+        timeDimensions: (prev.timeDimensions || []).map(td => 
+          td.dimension === timeDimension 
+            ? { ...td, dateRange: undefined }
+            : td
+        )
+      }
+      return cleanQuery(newQuery)
+    })
+  }, [updateQuery])
+
   const handleValidateQuery = useCallback(async () => {
     if (!hasQueryContent(state.query)) return
 
@@ -609,6 +637,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onRemoveField={handleFieldDeselect}
               onTimeDimensionGranularityChange={handleTimeDimensionGranularityChange}
               onFiltersChange={handleFiltersChange}
+              onDateRangeChange={handleDateRangeChange}
+              onDateRangeRemove={handleDateRangeRemove}
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
