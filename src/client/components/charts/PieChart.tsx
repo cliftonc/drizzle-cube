@@ -44,7 +44,7 @@ export default function PieChart({
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
       xAxisField = chartConfig.xAxis[0]
-      yAxisFields = chartConfig.yAxis
+      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {
       // Legacy format
@@ -116,15 +116,26 @@ export default function PieChart({
       })
     }
 
-    // Filter out zero/null values
-    pieData = pieData.filter(item => item.value != null && item.value !== 0)
+    // Filter out invalid values (null, undefined, NaN, or zero)
+    const originalLength = pieData.length
+    pieData = pieData.filter(item => 
+      item.value != null && 
+      !isNaN(item.value) && 
+      item.value !== 0 && 
+      item.value > 0
+    )
     
     if (pieData.length === 0) {
       return (
         <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs">No valid data points for pie chart after transformation</div>
+            <div className="text-xs">
+              {originalLength > 0 
+                ? `Filtered out ${originalLength} data points (zero or invalid values)`
+                : 'No data points to display in pie chart'
+              }
+            </div>
           </div>
         </div>
       )

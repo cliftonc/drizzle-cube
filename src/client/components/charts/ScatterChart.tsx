@@ -43,7 +43,7 @@ export default function ScatterChart({
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
       xAxisField = chartConfig.xAxis[0]
-      yAxisField = chartConfig.yAxis[0]
+      yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {
       // Legacy format (adapt for scatter chart)

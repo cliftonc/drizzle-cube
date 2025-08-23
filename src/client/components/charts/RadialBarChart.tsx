@@ -37,7 +37,7 @@ export default function RadialBarChart({
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format - use chart config
       const xAxisField = chartConfig.xAxis[0] // Name/category field
-      const yAxisField = chartConfig.yAxis[0] // Value field
+      const yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis // Value field
 
       const granularity = getFieldGranularity(queryObject, xAxisField)
       radialData = data.map((item, index) => ({

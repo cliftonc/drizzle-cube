@@ -115,7 +115,7 @@ export default function AxisDropZone({
       </div>
       
       <div
-        className={`min-h-[32px] border-2 border-dashed rounded-lg p-1.5 transition-colors flex items-center ${
+        className={`min-h-[40px] sm:min-h-[32px] border-2 border-dashed rounded-lg p-3 sm:p-1.5 transition-colors flex items-center ${
           isFull 
             ? 'border-gray-200 bg-gray-50' 
             : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
@@ -177,16 +177,16 @@ export default function AxisDropZone({
                     onDragOver={(e) => handleReorderDragOver(e, index)}
                     onDragLeave={handleReorderDragLeave}
                     onDrop={(e) => handleReorderDrop(e, index)}
-                    className={`rounded text-xs cursor-move px-2 py-1 flex items-center transition-transform ${baseClasses} ${hoverClasses} ${
+                    className={`rounded text-xs cursor-move px-3 py-0.5 sm:px-2 sm:py-1 flex items-center transition-transform h-[28px] sm:h-auto ${baseClasses} ${hoverClasses} ${
                       isDragOver ? 'bg-opacity-75' : ''
                     } ${draggedFromIndex === index ? 'opacity-50' : ''}`}
                   >
                     <FieldIcon className="w-3 h-3 mr-1 flex-shrink-0" />
-                    <span>{field}</span>
+                    <span className="leading-none">{field}</span>
                     <button
                       type="button"
                       onClick={() => onRemove(field, key)}
-                      className="text-gray-600 hover:text-red-600 ml-1.5"
+                      className="text-gray-600 hover:text-red-600 ml-1.5 leading-none"
                       title={`Remove from ${label}`}
                     >
                       <XMarkIcon className="w-3 h-3" />

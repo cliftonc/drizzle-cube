@@ -43,7 +43,7 @@ export default function LineChart({
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
       xAxisField = chartConfig.xAxis[0]
-      yAxisFields = chartConfig.yAxis
+      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {
       // Legacy format

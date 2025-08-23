@@ -45,6 +45,9 @@ export default function DashboardGrid({
   
   // Track current breakpoint to handle mobile vs desktop saves differently
   const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg')
+  
+  // Track scroll state for sticky header
+  const [isScrolled, setIsScrolled] = useState(false)
 
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
@@ -77,6 +80,23 @@ export default function DashboardGrid({
 
     return () => clearTimeout(timer)
   }, [config.portlets])
+
+  // Set up scroll listener for sticky header
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      setIsScrolled(scrollTop > 20) // Add sticky styling after scrolling 20px
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    // Check initial scroll position
+    handleScroll()
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   // Helper function to check if layout actually changed (not just reordered due to responsive changes)
   const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
@@ -386,11 +406,13 @@ export default function DashboardGrid({
   return (
     <>
       {editable && (
-        <div className="mb-4 flex justify-between items-center">
+        <div className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-blue-100 border border-gray-200 rounded-lg shadow-sm transition-all duration-200 ${
+          isScrolled ? 'border-b border-gray-200 shadow-md' : ''
+        }`}>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsEditMode(!isEditMode)}
-              className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
                 isEditMode
                   ? 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
                   : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-50'
@@ -409,7 +431,7 @@ export default function DashboardGrid({
           <button
             onClick={handleAddPortlet}
             disabled={!isEditMode}
-            className={`inline-flex items-center px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
               isEditMode
                 ? 'border-blue-300 text-blue-700 bg-white hover:bg-blue-50'
                 : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'

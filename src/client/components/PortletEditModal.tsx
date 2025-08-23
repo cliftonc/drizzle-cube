@@ -485,8 +485,7 @@ export default function PortletEditModal({
                 onChange={(e) => setFormTitle(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter portlet title..."
-                required
-                autoFocus
+                required                
               />
             </div>
 
@@ -512,7 +511,7 @@ export default function PortletEditModal({
                   <button
                     type="button"
                     onClick={handleOpenQueryBuilder}
-                    className="text-xs px-2 py-1 text-white bg-blue-600 hover:bg-blue-700 rounded border border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="text-xs px-2 py-1 text-purple-600 bg-white hover:bg-purple-50 rounded border border-purple-600 hover:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   >
                     Edit in Query Builder
                   </button>

@@ -220,10 +220,10 @@ export default function ChartConfigPanel({
             {(unassignedFields.dimensions.length > 0 || 
               unassignedFields.timeDimensions.length > 0 || 
               unassignedFields.measures.length > 0) ? (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2 gap-y-4 sm:gap-y-2">
                 {/* Dimensions Column */}
-                <div>
-                  <div className="text-xs text-gray-600 mb-1 flex items-center">
+                <div className="pb-2 sm:pb-0">
+                  <div className="text-xs text-gray-600 mb-2 sm:mb-1 flex items-center">
                     <TagIcon className="w-3 h-3 mr-1" />
                     Dimensions
                   </div>
@@ -233,7 +233,7 @@ export default function ChartConfigPanel({
                         key={dim}
                         draggable
                         onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                        className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded text-xs cursor-move px-2 py-1 truncate"
+                        className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
                         title={dim}
                       >
                         {dim}
@@ -246,8 +246,8 @@ export default function ChartConfigPanel({
                 </div>
                 
                 {/* Time Dimensions Column */}
-                <div>
-                  <div className="text-xs text-gray-600 mb-1 flex items-center">
+                <div className="pb-2 sm:pb-0">
+                  <div className="text-xs text-gray-600 mb-2 sm:mb-1 flex items-center">
                     <CalendarIcon className="w-3 h-3 mr-1" />
                     Time Dimensions
                   </div>
@@ -257,7 +257,7 @@ export default function ChartConfigPanel({
                         key={dim}
                         draggable
                         onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                        className="bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded text-xs cursor-move px-2 py-1 truncate"
+                        className="bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
                         title={dim}
                       >
                         {dim}
@@ -270,8 +270,8 @@ export default function ChartConfigPanel({
                 </div>
                 
                 {/* Measures Column */}
-                <div>
-                  <div className="text-xs text-gray-600 mb-1 flex items-center">
+                <div className="pb-2 sm:pb-0">
+                  <div className="text-xs text-gray-600 mb-2 sm:mb-1 flex items-center">
                     <ChartBarIcon className="w-3 h-3 mr-1" />
                     Measures
                   </div>
@@ -281,7 +281,7 @@ export default function ChartConfigPanel({
                         key={measure}
                         draggable
                         onDragStart={(e) => handleDragStart(e, measure, 'available')}
-                        className="bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded text-xs cursor-move px-2 py-1 truncate"
+                        className="bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
                         title={measure}
                       >
                         {measure}

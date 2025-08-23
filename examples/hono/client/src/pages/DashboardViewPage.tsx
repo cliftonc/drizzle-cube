@@ -3,6 +3,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { AnalyticsDashboard, DashboardEditModal } from 'drizzle-cube/client'
 import { useAnalyticsPage, useUpdateAnalyticsPage, useResetAnalyticsPage } from '../hooks/useAnalyticsPages'
 import type { DashboardConfig } from '../types'
+import { ArrowPathIcon, PencilIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 
 export default function DashboardViewPage() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +14,7 @@ export default function DashboardViewPage() {
   const [, setLastSaved] = useState<Date | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false)
 
   // Update config when page data loads
   useEffect(() => {
@@ -21,6 +23,21 @@ export default function DashboardViewPage() {
       setLastSaved(new Date(page.updatedAt))
     }
   }, [page])
+
+  // Close options menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showOptionsMenu) {
+        const target = event.target as HTMLElement
+        if (!target.closest('[data-options-menu]')) {
+          setShowOptionsMenu(false)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showOptionsMenu])
 
   // Handle config changes (for local state)
   const handleConfigChange = useCallback((newConfig: DashboardConfig) => {
@@ -137,28 +154,50 @@ export default function DashboardViewPage() {
             </ol>
           </nav>
           
-          <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
+          <div className="mt-2 flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{page.name}</h1>
               {page.description && (
                 <p className="mt-1 text-sm text-gray-700 leading-relaxed">{page.description}</p>
               )}
             </div>
             
-            {/* Reset/Edit buttons aligned with title */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+            {/* Options menu */}
+            <div className="relative flex-shrink-0" data-options-menu>
               <button
-                onClick={() => setShowResetConfirm(true)}
-                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
+                onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                className="p-2 border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-md"
+                title="More options"
               >
-                Reset Dashboard
+                <EllipsisHorizontalIcon className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 w-full sm:w-auto"
-              >
-                Edit Dashboard
-              </button>
+              
+              {showOptionsMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setIsEditModalOpen(true)
+                        setShowOptionsMenu(false)
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      Edit Dashboard
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowResetConfirm(true)
+                        setShowOptionsMenu(false)
+                      }}
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      Reset Dashboard
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           

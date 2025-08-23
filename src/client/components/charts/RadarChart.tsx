@@ -39,7 +39,7 @@ export default function RadarChart({
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format - use chart config
       const xAxisField = chartConfig.xAxis[0] // Subject/category field
-      const yAxisFields = chartConfig.yAxis   // Value fields
+      const yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]   // Value fields
       const seriesFields = chartConfig.series || []
 
       // Use shared function to transform data and handle series
