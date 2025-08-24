@@ -181,7 +181,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    */
   prepareDateValue(date: Date): any {
     if (!(date instanceof Date)) {
-      console.error('prepareDateValue called with non-Date value:', date, typeof date)
+      // prepareDateValue called with non-Date value
       // Try to handle it gracefully
       if (typeof date === 'number') return date
       if (typeof date === 'string') return new Date(date).getTime()

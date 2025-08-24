@@ -192,7 +192,7 @@ export class JoinPathResolver {
       }
 
       if (!bestPath) {
-        console.warn(`No join path found to ${targetCube} from any resolved cube`)
+        // No join path found to target cube
         continue
       }
 
@@ -242,7 +242,7 @@ export class JoinPathResolver {
     result = result.replace(cubeRefPattern, (match, cubeName, fieldName) => {
       const resolvedCube = resolvedCubes.find(r => r.cube.name === cubeName)
       if (!resolvedCube) {
-        console.warn(`Referenced cube ${cubeName} not found in resolved cubes`)
+        // Referenced cube not found in resolved cubes
         return match
       }
 

@@ -80,11 +80,6 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       // Build the query using unified approach
       const builtQuery = this.buildUnifiedQuery(queryPlan, query, context)
       
-      // Log SQL for debugging
-      const sqlObj = builtQuery.toSQL()
-      console.log('Generated SQL:', sqlObj.sql)
-      console.log('Parameters:', sqlObj.params)
-            
       // Execute query - pass numeric field names for selective conversion
       const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
       const data = await this.dbExecutor.execute(builtQuery, numericFields)
@@ -123,8 +118,6 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
         annotation
       }
     } catch (error) {      
-      console.error('Query execution error details:', error)
-      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack')
       throw new Error(`Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -173,7 +166,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           }
         }
       } else {
-        console.warn(`No target column object stored for CTE join key: ${joinKey.targetColumn}`)
+        // No target column object stored for CTE join key
       }
     }
 
@@ -219,7 +212,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
 
     // Ensure we have at least one selection
     if (Object.keys(cteSelections).length === 0) {
-      console.warn(`No selections found for CTE ${cteInfo.cteAlias}`)
+      // No selections found for CTE
       return null
     }
 
@@ -387,7 +380,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           ctes.push(cte)
           cteAliasMap.set(cteInfo.cube.name, cteInfo.cteAlias)
         } else {
-          console.warn(`Failed to build CTE for ${cteInfo.cube.name}`)
+          // Failed to build CTE
         }
       }
     }
@@ -562,7 +555,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
           }
         } catch (error) {
           // If join fails (e.g., duplicate alias), log and continue
-          console.warn(`Multi-cube join failed for ${joinCube.cube.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          // Multi-cube join failed, continuing
         }
       }
     }

@@ -63,11 +63,22 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(analyticsPages)
   
   // Insert departments first (dependencies)
-  const insertedDepartments = await db.insert(departments)
-    .values(enhancedDepartments)
+  await db.insert(departments).values(enhancedDepartments)
+  
+  // Fetch the inserted departments to get their actual IDs
+  const insertedDepartments = await db.select({
+    id: departments.id,
+    name: departments.name
+  }).from(departments).orderBy(departments.id)
+
+  // Update employee department IDs to match actual inserted department IDs
+  const updatedEmployees = enhancedEmployees.map(emp => ({
+    ...emp,
+    departmentId: emp.departmentId ? insertedDepartments[emp.departmentId - 1]?.id || null : null
+  }))
   
   // Insert employees
-  await db.insert(employees).values(enhancedEmployees)
+  await db.insert(employees).values(updatedEmployees)
 
   // For MySQL, we need to fetch the inserted employees to get their IDs
   const insertedEmployees = await db.select({ 
