@@ -108,6 +108,19 @@ export const sales = pgTable('sales', {
   orderDate: timestamp('order_date').defaultNow(),
   customerName: text('customer_name'),
 });
+
+// Export schema type for use in cubes
+export type Schema = {
+  organisations: typeof organisations;
+  products: typeof products;
+  sales: typeof sales;
+};
+
+export const schema = {
+  organisations,
+  products,
+  sales
+};
 ```
 
 ## Step 2: Define Cubes
@@ -116,96 +129,131 @@ Create your semantic layer by defining cubes:
 
 ```typescript
 // src/cubes.ts
-import { defineCube } from 'drizzle-cube/server';
-import { eq } from 'drizzle-orm';
-import * as schema from './schema';
+import { defineCube } from 'drizzle-cube/server'
+import type { QueryContext, BaseQueryDefinition } from 'drizzle-cube/server'
+import { eq } from 'drizzle-orm'
+import { sales, products } from './schema'
+import type { Schema } from './schema'
 
-export const salesCube = defineCube(schema, {
-  name: 'Sales',
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.sales)
-      .innerJoin(schema.products, eq(schema.sales.productId, schema.products.id))
-      .where(eq(schema.sales.organisationId, securityContext.organisationId)),
+export const salesCube = defineCube('Sales', {
+  title: 'Sales Analytics',
+  description: 'Sales data and metrics',
+  
+  sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
+    from: sales,
+    joins: [
+      {
+        table: products,
+        on: eq(sales.productId, products.id),
+        type: 'inner'
+      }
+    ],
+    where: eq(sales.organisationId, ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
-    customerName: { 
-      sql: schema.sales.customerName, 
+    customerName: {
+      name: 'customerName',
+      title: 'Customer Name', 
+      sql: sales.customerName, 
       type: 'string' 
     },
-    productName: { 
-      sql: schema.products.name, 
+    productName: {
+      name: 'productName',
+      title: 'Product Name', 
+      sql: products.name, 
       type: 'string' 
     },
-    productCategory: { 
-      sql: schema.products.category, 
+    productCategory: {
+      name: 'productCategory',
+      title: 'Product Category', 
+      sql: products.category, 
       type: 'string' 
     },
-    orderDate: { 
-      sql: schema.sales.orderDate, 
+    orderDate: {
+      name: 'orderDate',
+      title: 'Order Date', 
+      sql: sales.orderDate, 
       type: 'time' 
     },
   },
   
   measures: {
-    totalSales: { 
-      sql: schema.sales.amount, 
-      type: 'sum',
-      title: 'Total Sales'
+    totalSales: {
+      name: 'totalSales', 
+      title: 'Total Sales',
+      sql: sales.amount, 
+      type: 'sum'
     },
-    orderCount: { 
-      sql: schema.sales.id, 
-      type: 'count',
-      title: 'Number of Orders'
+    orderCount: {
+      name: 'orderCount', 
+      title: 'Number of Orders',
+      sql: sales.id, 
+      type: 'count'
     },
-    averageOrderValue: { 
-      sql: schema.sales.amount, 
-      type: 'avg',
-      title: 'Average Order Value'
+    averageOrderValue: {
+      name: 'averageOrderValue', 
+      title: 'Average Order Value',
+      sql: sales.amount, 
+      type: 'avg'
     },
-    totalQuantity: { 
-      sql: schema.sales.quantity, 
-      type: 'sum',
-      title: 'Total Quantity Sold'
+    totalQuantity: {
+      name: 'totalQuantity', 
+      title: 'Total Quantity Sold',
+      sql: sales.quantity, 
+      type: 'sum'
     },
   }
-});
+})
 
-export const productsCube = defineCube(schema, {
-  name: 'Products',
-  sql: ({ db, securityContext }) => 
-    db.select()
-      .from(schema.products)
-      .where(eq(schema.products.organisationId, securityContext.organisationId)),
+export const productsCube = defineCube('Products', {
+  title: 'Product Analytics',
+  description: 'Product data and metrics',
+  
+  sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
+    from: products,
+    where: eq(products.organisationId, ctx.securityContext.organisationId)
+  }),
   
   dimensions: {
-    name: { 
-      sql: schema.products.name, 
+    name: {
+      name: 'name',
+      title: 'Product Name', 
+      sql: products.name, 
       type: 'string' 
     },
-    category: { 
-      sql: schema.products.category, 
+    category: {
+      name: 'category',
+      title: 'Category', 
+      sql: products.category, 
       type: 'string' 
     },
-    createdAt: { 
-      sql: schema.products.createdAt, 
+    createdAt: {
+      name: 'createdAt',
+      title: 'Created At', 
+      sql: products.createdAt, 
       type: 'time' 
     },
   },
   
   measures: {
-    count: { 
-      sql: schema.products.id, 
-      type: 'count',
-      title: 'Product Count'
+    count: {
+      name: 'count', 
+      title: 'Product Count',
+      sql: products.id, 
+      type: 'count'
     },
-    averagePrice: { 
-      sql: schema.products.price, 
-      type: 'avg',
-      title: 'Average Price'
+    averagePrice: {
+      name: 'averagePrice', 
+      title: 'Average Price',
+      sql: products.price, 
+      type: 'avg'
     },
   }
-});
+})
+
+// Export all cubes for easy registration
+export const allCubes = [salesCube, productsCube]
 ```
 
 ## Step 3: Server Setup
@@ -214,55 +262,46 @@ Set up your server with the Hono adapter:
 
 ```typescript
 // src/server.ts
-import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { createCubeApp } from 'drizzle-cube/adapters/hono';
-import { SemanticLayerCompiler, createDatabaseExecutor } from 'drizzle-cube/server';
-import * as schema from './schema';
-import { salesCube, productsCube } from './cubes';
+import { Hono } from 'hono'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
+import { createCubeRouter } from 'drizzle-cube/adapters/hono'
+import * as schema from './schema'
+import { allCubes } from './cubes'
 
 // Database connection
-const client = postgres(process.env.DATABASE_URL!);
-const db = drizzle(client, { schema });
-
-// Create semantic layer
-const databaseExecutor = createDatabaseExecutor(db, schema, 'postgres');
-const semanticLayer = new SemanticLayerCompiler({ 
-  databaseExecutor 
-});
-
-// Register cubes
-semanticLayer.registerCube(salesCube);
-semanticLayer.registerCube(productsCube);
+const client = postgres(process.env.DATABASE_URL!)
+const db = drizzle(client, { schema })
 
 // Create Hono app
-const app = new Hono();
+const app = new Hono()
 
-// Add authentication middleware (example)
-app.use('/api/cube/*', async (c, next) => {
-  // In a real app, validate JWT token, session, etc.
-  const orgId = c.req.header('X-Organisation-ID');
-  if (!orgId) {
-    return c.json({ error: 'Organisation ID required' }, 401);
-  }
-  c.set('organisationId', parseInt(orgId));
-  await next();
-});
+// Simple security context for demo
+const extractSecurityContext = async (c: any) => ({
+  organisationId: 1, // In real app: extract from JWT, session, etc.
+  userId: 1
+})
 
-// Mount Cube API
-const cubeApp = createCubeApp({
-  semanticLayer,
+// Create and mount cube routes
+const cubeRouter = createCubeRouter({
+  cubes: allCubes,
   drizzle: db,
   schema,
-  getSecurityContext: async (c) => ({
-    organisationId: c.get('organisationId')
-  })
-});
+  extractSecurityContext,
+  engineType: 'postgres'
+})
 
-app.route('/api/cube', cubeApp);
+// Mount at root - adapter handles basePath internally
+app.route('/', cubeRouter)
 
-export default app;
+// Start server
+const port = parseInt(process.env.PORT || '8080')
+console.log(`🚀 Server running on http://localhost:${port}`)
+
+export default {
+  port,
+  fetch: app.fetch
+}
 ```
 
 ## Step 4: Query Your Data
@@ -286,12 +325,12 @@ const query = {
 };
 
 // Make request to your API
-const queryParam = encodeURIComponent(JSON.stringify(query));
-const response = await fetch(`/api/cube/load?query=${queryParam}`, {
-  method: 'GET',
+const response = await fetch('/cubejs-api/v1/load', {
+  method: 'POST',
   headers: {
-    'X-Organisation-ID': '1'
-  }
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(query)
 });
 
 const data = await response.json();
@@ -314,249 +353,157 @@ console.log(data);
 
 ## Step 5: React Dashboard (Optional)
 
-Add a React dashboard with persistent configurations stored in your database:
-
-### Add Dashboard Schema
-
-First, add a dashboard table to your schema:
-
-```typescript
-// src/schema.ts (add to existing schema)
-export const dashboards = pgTable('dashboards', {
-  id: serial('id').primaryKey(),
-  organisationId: integer('organisation_id').references(() => organisations.id),
-  name: text('name').notNull(),
-  description: text('description'),
-  layout: text('layout'), // JSON string of dashboard configuration
-  isDefault: boolean('is_default').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-```
-
-### Create Dashboard Component with Persistence
+Add a React dashboard with the drizzle-cube client components:
 
 ```tsx
-// src/Dashboard.tsx
-import React, { useState, useEffect } from 'react';
-import { CubeProvider } from 'drizzle-cube/client';
-import { AnalyticsDashboard } from 'drizzle-cube/client';
+// src/App.tsx
+import { useState, useEffect } from 'react'
+import { CubeProvider, AnalyticsDashboard, QueryBuilder } from 'drizzle-cube/client'
 
-interface DashboardLayout {
-  id: string;
-  title: string;
-  chartType: string;
-  query: any;
-  w?: number;
-  h?: number;
-  x?: number;
-  y?: number;
+// Default dashboard configuration
+const defaultDashboardConfig = {
+  portlets: [
+    {
+      id: 'sales-by-category',
+      title: 'Sales by Category',
+      chartType: 'bar',
+      query: {
+        measures: ['Sales.totalSales'],
+        dimensions: ['Sales.productCategory']
+      },
+      layout: { w: 6, h: 6, x: 0, y: 0 }
+    },
+    {
+      id: 'sales-over-time',
+      title: 'Sales Over Time', 
+      chartType: 'line',
+      query: {
+        measures: ['Sales.totalSales'],
+        timeDimensions: [{
+          dimension: 'Sales.orderDate',
+          granularity: 'month'
+        }]
+      },
+      layout: { w: 6, h: 6, x: 6, y: 0 }
+    }
+  ]
 }
 
-const Dashboard: React.FC = () => {
-  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayout[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dashboardId, setDashboardId] = useState<number | null>(null);
+export default function App() {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'query'>('dashboard')
+  const [dashboardConfig, setDashboardConfig] = useState(defaultDashboardConfig)
 
-
-  // Load dashboard from database
+  // Load dashboard config from localStorage on mount
   useEffect(() => {
-    const loadDashboard = async () => {
+    const savedConfig = localStorage.getItem('sales-dashboard-config')
+    if (savedConfig) {
       try {
-        const response = await fetch('/api/dashboards/default', {
-          headers: {
-            'X-Organisation-ID': '1'
-          }
-        });
-        
-        if (response.ok) {
-          const dashboard = await response.json();
-          setDashboardId(dashboard.id);
-          setDashboardLayout(JSON.parse(dashboard.layout || '[]'));
-        } else {
-          // Use default layout if no saved dashboard exists
-          setDashboardLayout([
-            {
-              id: 'sales-by-category',
-              title: 'Sales by Category',
-              chartType: 'bar',
-              query: {
-                measures: ['Sales.totalSales'],
-                dimensions: ['Sales.productCategory']
-              },
-              w: 6, h: 6, x: 0, y: 0
-            },
-            {
-              id: 'sales-over-time',
-              title: 'Sales Over Time',
-              chartType: 'line',
-              query: {
-                measures: ['Sales.totalSales'],
-                timeDimensions: [{
-                  dimension: 'Sales.orderDate',
-                  granularity: 'month'
-                }]
-              },
-              w: 6, h: 6, x: 6, y: 0
-            }
-          ]);
-        }
+        setDashboardConfig(JSON.parse(savedConfig))
       } catch (error) {
-        console.error('Failed to load dashboard:', error);
-      } finally {
-        setLoading(false);
+        console.error('Failed to load dashboard config:', error)
       }
-    };
-
-    loadDashboard();
-  }, []);
-
-  // Save dashboard changes to database
-  const handleLayoutChange = async (newLayout: DashboardLayout[]) => {
-    setDashboardLayout(newLayout);
-    
-    try {
-      const method = dashboardId ? 'PUT' : 'POST';
-      const url = dashboardId 
-        ? `/api/dashboards/${dashboardId}` 
-        : '/api/dashboards';
-        
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Organisation-ID': '1'
-        },
-        body: JSON.stringify({
-          name: 'Default Dashboard',
-          description: 'Auto-saved dashboard configuration',
-          layout: JSON.stringify(newLayout),
-          isDefault: true
-        })
-      });
-
-      if (response.ok && !dashboardId) {
-        const savedDashboard = await response.json();
-        setDashboardId(savedDashboard.id);
-      }
-    } catch (error) {
-      console.error('Failed to save dashboard:', error);
     }
-  };
+  }, [])
 
-  if (loading) {
-    return <div className="p-6">Loading dashboard...</div>;
+  // Save dashboard config to localStorage
+  const saveDashboardConfig = (newConfig: any) => {
+    setDashboardConfig(newConfig)
+    localStorage.setItem('sales-dashboard-config', JSON.stringify(newConfig))
+  }
+
+  // Reset to default configuration
+  const resetDashboard = () => {
+    setDashboardConfig(defaultDashboardConfig)
+    localStorage.removeItem('sales-dashboard-config')
   }
 
   return (
-    <CubeProvider 
-      apiOptions={{
-        apiUrl: '/api/cube',
-        headers: {
-          'X-Organisation-ID': '1'
-        }
-      }}
-    >
-      <div className="p-6">
-        <h1 className="text-3xl font-bold mb-6">Sales Dashboard</h1>
-        
-        <AnalyticsDashboard
-          initialLayout={dashboardLayout}
-          onLayoutChange={handleLayoutChange}
-          enableEditing={true}
-        />
+    <CubeProvider apiOptions={{ apiUrl: '/cubejs-api/v1' }}>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Sales Dashboard
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Analytics dashboard with drizzle-cube
+                </p>
+              </div>
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    activeTab === 'dashboard'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveTab('query')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    activeTab === 'query'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Query Builder
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {activeTab === 'dashboard' ? (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Analytics Dashboard
+                </h2>
+                <button
+                  onClick={resetDashboard}
+                  className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-800 border border-gray-200 rounded hover:bg-gray-50"
+                  title="Reset to default"
+                >
+                  Reset
+                </button>
+              </div>
+              <AnalyticsDashboard 
+                config={dashboardConfig}
+                editable={true}
+                onConfigChange={saveDashboardConfig}
+              />
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-lg font-medium text-gray-900 mb-6">
+                Query Builder
+              </h2>
+              <div className="bg-white rounded-lg shadow-sm border">
+                <QueryBuilder />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </CubeProvider>
-  );
-};
-
-export default Dashboard;
+  )
+}
 ```
 
-### Add Dashboard API Endpoints
+### Key Features
 
-Create API endpoints to handle dashboard persistence:
-
-```typescript
-// src/dashboardRoutes.ts
-import { Hono } from 'hono';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { eq, and } from 'drizzle-orm';
-import { dashboards } from './schema';
-
-const app = new Hono();
-
-// Get default dashboard for organization
-app.get('/api/dashboards/default', async (c) => {
-  const orgId = c.req.header('X-Organisation-ID');
-  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
-
-  const dashboard = await db.select()
-    .from(dashboards)
-    .where(and(
-      eq(dashboards.organisationId, parseInt(orgId)),
-      eq(dashboards.isDefault, true)
-    ))
-    .limit(1);
-
-  if (dashboard.length === 0) {
-    return c.json({ error: 'No default dashboard found' }, 404);
-  }
-
-  return c.json(dashboard[0]);
-});
-
-// Save/update dashboard
-app.post('/api/dashboards', async (c) => {
-  const orgId = c.req.header('X-Organisation-ID');
-  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
-
-  const body = await c.req.json();
-  
-  const [newDashboard] = await db.insert(dashboards)
-    .values({
-      organisationId: parseInt(orgId),
-      name: body.name,
-      description: body.description,
-      layout: body.layout,
-      isDefault: body.isDefault || false
-    })
-    .returning();
-
-  return c.json(newDashboard);
-});
-
-app.put('/api/dashboards/:id', async (c) => {
-  const id = parseInt(c.req.param('id'));
-  const orgId = c.req.header('X-Organisation-ID');
-  if (!orgId) return c.json({ error: 'Organisation ID required' }, 400);
-
-  const body = await c.req.json();
-  
-  const [updatedDashboard] = await db.update(dashboards)
-    .set({
-      layout: body.layout,
-      updatedAt: new Date()
-    })
-    .where(and(
-      eq(dashboards.id, id),
-      eq(dashboards.organisationId, parseInt(orgId))
-    ))
-    .returning();
-
-  return c.json(updatedDashboard);
-});
-
-export default app;
-```
-
-### Key Benefits of Database Persistence
-
-- **🔒 Multi-tenant security** - Each organization has their own dashboards
-- **💾 Automatic saving** - Layout changes are saved immediately
-- **👥 Shared dashboards** - Multiple users can see the same configuration  
-- **🔄 State restoration** - Dashboard layout persists across browser sessions
-- **📊 Multiple dashboards** - Support for different dashboard types (sales, marketing, etc.)
+- **🎯 Interactive Dashboard** - Drag-and-drop layout with resizable charts
+- **💾 Local Storage** - Dashboard configuration persists across browser sessions  
+- **📊 Multiple Chart Types** - Bar, line, pie, area charts and more
+- **🔍 Query Builder** - Interactive tool for building custom queries
+- **🎨 Customizable** - Easy to theme and extend with your own components
 
 ## What's Next?
 

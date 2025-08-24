@@ -158,63 +158,156 @@ Cube-level joins define relationships between different cubes, enabling multi-cu
 ```typescript
 // In the Employees cube
 joins: {
-  'Departments': {
-    targetCube: 'Departments',
-    condition: () => eq(employees.departmentId, departments.id),
-    type: 'left',
-    relationship: 'belongsTo'
+  Departments: {
+    targetCube: () => departmentsCube,
+    relationship: 'belongsTo',
+    on: [
+      { source: employees.departmentId, target: departments.id }
+    ]
   }
 }
 
 // In the Productivity cube  
 joins: {
-  'Employees': {
-    targetCube: 'Employees',
-    condition: () => eq(productivity.employeeId, employees.id),
-    type: 'left',
-    relationship: 'belongsTo'
+  Employees: {
+    targetCube: () => employeesCube,
+    relationship: 'belongsTo',
+    on: [
+      { source: productivity.employeeId, target: employees.id }
+    ]
   },
-  'Departments': {
-    targetCube: 'Departments',
-    condition: () => and(
-      eq(productivity.employeeId, employees.id),
-      eq(employees.departmentId, departments.id)
-    ),
-    type: 'left',
-    relationship: 'belongsTo'
+  Departments: {
+    targetCube: () => departmentsCube,
+    relationship: 'belongsTo',
+    on: [
+      { source: productivity.employeeId, target: employees.id },
+      { source: employees.departmentId, target: departments.id }
+    ]
   }
 }
 ```
+
+### Lazy Reference Pattern
+
+Cube-level joins use **lazy references** with arrow functions `() => cubeName` to avoid circular dependency issues:
+
+```typescript
+// Forward declarations prevent circular imports
+let employeesCube: Cube<Schema>
+let departmentsCube: Cube<Schema>
+
+// Cubes can reference each other bidirectionally
+employeesCube = defineCube('Employees', {
+  // ... cube definition
+  joins: {
+    Departments: {
+      targetCube: () => departmentsCube,  // Lazy reference
+      relationship: 'belongsTo',
+      on: [{ source: employees.departmentId, target: departments.id }]
+    }
+  }
+})
+
+departmentsCube = defineCube('Departments', {
+  // ... cube definition  
+  joins: {
+    Employees: {
+      targetCube: () => employeesCube,  // Bidirectional reference
+      relationship: 'hasMany',
+      on: [{ source: departments.id, target: employees.departmentId }]
+    }
+  }
+})
+```
+
+**Key Benefits:**
+- **Type Safety**: Full compile-time validation of cube references
+- **No Circular Dependencies**: Arrow functions delay resolution until runtime
+- **Bidirectional Joins**: Cubes can reference each other in both directions
 
 ### Relationship Types
 
 **belongsTo** - Many-to-one relationship:
 ```typescript
 // Employee belongs to Department
-'Departments': {
-  targetCube: 'Departments',
-  condition: () => eq(employees.departmentId, departments.id),
-  relationship: 'belongsTo'
+Departments: {
+  targetCube: () => departmentsCube,
+  relationship: 'belongsTo',
+  on: [
+    { source: employees.departmentId, target: departments.id }
+  ]
 }
 ```
 
 **hasMany** - One-to-many relationship:
 ```typescript
 // Department has many Employees
-'Employees': {
-  targetCube: 'Employees',
-  condition: () => eq(departments.id, employees.departmentId),
-  relationship: 'hasMany'
+Employees: {
+  targetCube: () => employeesCube,
+  relationship: 'hasMany',
+  on: [
+    { source: departments.id, target: employees.departmentId }
+  ]
 }
 ```
 
 **hasOne** - One-to-one relationship:
 ```typescript
 // Employee has one Profile
-'UserProfiles': {
-  targetCube: 'UserProfiles', 
-  condition: () => eq(employees.id, userProfiles.employeeId),
-  relationship: 'hasOne'
+UserProfiles: {
+  targetCube: () => userProfilesCube,
+  relationship: 'hasOne',
+  on: [
+    { source: employees.id, target: userProfiles.employeeId }
+  ]
+}
+```
+
+### Advanced Cube Join Features
+
+**Multi-Column Joins** - Join on multiple columns:
+```typescript
+joins: {
+  ProjectTasks: {
+    targetCube: () => projectTasksCube,
+    relationship: 'hasMany',
+    on: [
+      { source: projects.id, target: tasks.projectId },
+      { source: projects.version, target: tasks.projectVersion }
+    ]
+  }
+}
+```
+
+**Custom Comparators** - Use different comparison operators:
+```typescript
+joins: {
+  Activities: {
+    targetCube: () => activitiesCube,
+    relationship: 'hasMany',
+    on: [
+      { source: users.id, target: activities.userId },
+      { 
+        source: users.createdAt, 
+        target: activities.timestamp,
+        as: (source, target) => gte(target, source) // timestamp >= user.createdAt
+      }
+    ]
+  }
+}
+```
+
+**Override SQL Join Type** - Force specific SQL join behavior:
+```typescript
+joins: {
+  Departments: {
+    targetCube: () => departmentsCube,
+    relationship: 'belongsTo',
+    on: [
+      { source: employees.departmentId, target: departments.id }
+    ],
+    sqlJoinType: 'inner' // Override default 'inner' with 'left', 'right', etc.
+  }
 }
 ```
 
@@ -340,19 +433,18 @@ const query = {
 Control join resolution explicitly:
 
 ```typescript
-// Force specific join path
+// Force specific join path with multi-column conditions
 joins: {
-  'Departments': {
-    targetCube: 'Departments',
-    condition: () => and(
-      // Explicit multi-step join path
-      eq(productivity.employeeId, employees.id),
-      eq(employees.departmentId, departments.id)
-    ),
-    type: 'left',
+  Departments: {
+    targetCube: () => departmentsCube,
     relationship: 'belongsTo',
-    // Optional: specify intermediate cubes
-    path: ['Employees']
+    on: [
+      // Multi-step join conditions
+      { source: productivity.employeeId, target: employees.id },
+      { source: employees.departmentId, target: departments.id }
+    ],
+    // Optional: override SQL join type
+    sqlJoinType: 'left'
   }
 }
 ```
@@ -474,10 +566,12 @@ joins: [
 ### Cube-Level Relationship
 ```typescript
 joins: {
-  'Departments': {
-    targetCube: 'Departments',
-    condition: () => eq(employees.departmentId, departments.id),
-    relationship: 'belongsTo'
+  Departments: {
+    targetCube: () => departmentsCube,
+    relationship: 'belongsTo',
+    on: [
+      { source: employees.departmentId, target: departments.id }
+    ]
   }
 }
 ```

@@ -287,10 +287,11 @@ const employeesCube: SimpleCubeWithJoins<Schema> = {
   // Explicit join definitions
   joins: {
     Departments: {
-      targetCube: 'Departments',
-      condition: (ctx) => eq(employees.departmentId, departments.id),
-      type: 'left',
-      relationship: 'belongsTo'
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: employees.departmentId, target: departments.id }
+      ]
     }
   }
 }

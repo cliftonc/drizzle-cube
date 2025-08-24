@@ -99,11 +99,12 @@ export const productivityCube: Cube<Schema> = defineCube('Productivity', {
 
   // Cross-cube joins for multi-cube queries
   joins: {
-    'Employees': {
-      targetCube: 'Employees',
-      condition: () => eq(productivity.employeeId, employees.id),
-      type: 'left',
-      relationship: 'belongsTo'
+    Employees: {
+      targetCube: () => employeesCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: productivity.employeeId, target: employees.id }
+      ]
     }
   },
   
