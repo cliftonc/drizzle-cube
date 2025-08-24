@@ -101,6 +101,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.drizzle-cube.dev/help/getting-started/ai-query-generation</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.drizzle-cube.dev/help/getting-started/how-it-works</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

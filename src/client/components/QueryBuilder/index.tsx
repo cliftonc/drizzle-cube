@@ -33,8 +33,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   disableLocalStorage = false,
   hideSettings = false
 }, ref) => {
-  // Get cube client and update function from context
-  const { cubeApi, updateApiConfig } = useCubeContext()
+  // Get cube client, update function, and features from context
+  const { cubeApi, updateApiConfig, features } = useCubeContext()
   
   // Load initial API configuration from localStorage
   const getInitialApiConfig = (): ApiConfig => {
@@ -688,7 +688,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
-              onAIAssistantClick={() => setShowAIAssistant(true)}
+              onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
             />
           </div>
 
@@ -708,12 +708,14 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         </div>
         </div>
       
-        {/* AI Assistant Modal */}
-        <AIAssistantModal
-          isOpen={showAIAssistant}
-          onClose={() => setShowAIAssistant(false)}
-          schema={state.schema}
-          onQueryLoad={(query) => {
+        {/* AI Assistant Modal - only render if AI is enabled */}
+        {features?.enableAI !== false && (
+          <AIAssistantModal
+            isOpen={showAIAssistant}
+            onClose={() => setShowAIAssistant(false)}
+            schema={state.schema}
+            aiEndpoint={features?.aiEndpoint}
+            onQueryLoad={(query) => {
             // Update the query in the builder
             setState(prev => ({
               ...prev,
@@ -758,7 +760,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               }
             }, 200)
           }}
-        />
+          />
+        )}
       </div>
   )
 })

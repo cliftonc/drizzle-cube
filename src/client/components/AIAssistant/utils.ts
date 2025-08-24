@@ -3,12 +3,11 @@
  */
 
 import type { 
-  GeminiMessageRequest,
-  GeminiMessageResponse,
+  AIQueryRequest,
+  AIQueryResponse,
   AIConfig
 } from './types'
 import { 
-  AI_PROXY_BASE_URL, 
   AI_STORAGE_KEY,
   DEFAULT_AI_CONFIG
 } from './constants'
@@ -18,9 +17,10 @@ import {
  */
 export async function sendGeminiMessage(
   apiKey: string,
-  userPrompt: string
-): Promise<GeminiMessageResponse> {
-  const requestBody: GeminiMessageRequest = {
+  userPrompt: string,
+  endpoint: string = '/api/ai/generate'
+): Promise<AIQueryResponse> {
+  const requestBody: AIQueryRequest = {
     text: userPrompt // Send only the user's prompt, server handles system prompt
   }
 
@@ -34,11 +34,11 @@ export async function sendGeminiMessage(
   }
 
   console.log('🤖 Client: Sending user prompt to AI proxy')
-  console.log('  URL:', `${AI_PROXY_BASE_URL}/generate`)
+  console.log('  URL:', endpoint)
   console.log('  Headers:', headers)
   console.log('  User prompt length:', userPrompt.length)
 
-  const response = await fetch(`${AI_PROXY_BASE_URL}/generate`, {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers,
     body: JSON.stringify(requestBody)
@@ -120,13 +120,10 @@ export function loadAIConfig(): AIConfig {
 }
 
 /**
- * Extract text from Gemini message response and clean up formatting
+ * Extract query text from simplified AI response and clean up formatting
  */
-export function extractTextFromResponse(response: GeminiMessageResponse): string {
-  const rawText = response.candidates?.[0]?.content?.parts
-    ?.filter(part => part.text)
-    ?.map(part => part.text)
-    ?.join('') || ''
+export function extractTextFromResponse(response: AIQueryResponse): string {
+  const rawText = response.query || ''
 
   // Clean up common markdown formatting that might appear
   return rawText

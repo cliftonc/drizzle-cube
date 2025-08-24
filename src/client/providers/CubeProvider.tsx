@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useMemo, useState } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
-import type { CubeQueryOptions, CubeApiOptions } from '../types'
+import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig } from '../types'
 import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
 
 interface CubeContextValue {
@@ -18,6 +18,7 @@ interface CubeContextValue {
   getFieldLabel: (fieldName: string) => string
   refetchMeta: () => void
   updateApiConfig: (apiOptions: CubeApiOptions, token?: string) => void
+  features: FeaturesConfig
 }
 
 const CubeContext = createContext<CubeContextValue | null>(null)
@@ -27,6 +28,7 @@ interface CubeProviderProps {
   apiOptions?: CubeApiOptions
   token?: string
   options?: CubeQueryOptions
+  features?: FeaturesConfig
   children: React.ReactNode
 }
 
@@ -34,7 +36,8 @@ export function CubeProvider({
   cubeApi: initialCubeApi, 
   apiOptions: initialApiOptions,
   token: initialToken,
-  options = {}, 
+  options = {},
+  features = { enableAI: true, aiEndpoint: '/api/ai/generate' }, // Default to AI enabled for backward compatibility
   children 
 }: CubeProviderProps) {
   // State for dynamic API configuration
@@ -72,7 +75,8 @@ export function CubeProvider({
     metaError, 
     getFieldLabel, 
     refetchMeta,
-    updateApiConfig
+    updateApiConfig,
+    features
   }
   
   return (

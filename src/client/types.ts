@@ -162,6 +162,12 @@ export interface ChartProps {
   height?: string | number
 }
 
+// Features configuration
+export interface FeaturesConfig {
+  enableAI?: boolean // Default: true for backward compatibility
+  aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
+}
+
 // Grid layout types (simplified)
 export interface GridLayout {
   i: string

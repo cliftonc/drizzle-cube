@@ -2,13 +2,9 @@
  * Types for AI Assistant functionality
  */
 
-export interface GeminiMessageRequest {
-  text?: string
-  contents?: Array<{
-    parts: Array<{
-      text: string
-    }>
-  }>
+// Generic request format for AI query generation
+export interface AIQueryRequest {
+  text: string
 }
 
 export interface GeminiMessageResponse {
@@ -25,6 +21,15 @@ export interface GeminiMessageResponse {
     promptTokenCount: number
     candidatesTokenCount: number
     totalTokenCount: number
+  }
+}
+
+// Simplified response format returned by our API
+export interface AIQueryResponse {
+  query: string
+  rateLimit?: {
+    usingServerKey: boolean
+    dailyLimit: number
   }
 }
 

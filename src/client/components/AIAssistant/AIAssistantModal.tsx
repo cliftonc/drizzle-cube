@@ -13,7 +13,6 @@ import Modal from '../Modal'
 import type { AIAssistantState } from './types'
 import {
   sendGeminiMessage,
-  saveAIConfig,
   loadAIConfig,
   extractTextFromResponse
 } from './utils'
@@ -24,17 +23,19 @@ interface AIAssistantModalProps {
   onClose: () => void
   schema?: any
   onQueryLoad?: (query: any) => void
+  aiEndpoint?: string
 }
 
 const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   isOpen,
   onClose,
-  onQueryLoad
+  onQueryLoad,
+  aiEndpoint = '/api/ai'
 }) => {
   const [state, setState] = useState<AIAssistantState>(() => {
     const savedConfig = loadAIConfig()
     return {
-      step: 'api-key', // Always start with API key step to show rate limit info
+      step: 'query', // Skip API key step and go straight to query
       apiKey: savedConfig.apiKey || '',
       systemPromptTemplate: DEFAULT_SYSTEM_PROMPT_TEMPLATE,
       userPrompt: '',
@@ -47,26 +48,6 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }
   })
 
-  const handleApiKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Save the API key (can be empty for rate-limited server key)
-    saveAIConfig({
-      provider: 'gemini',
-      apiKey: state.apiKey.trim()
-    })
-    
-    setState(prev => ({ ...prev, step: 'query' }))
-  }
-
-  const handleSkipApiKey = () => {
-    // Use rate-limited server key
-    setState(prev => ({ ...prev, apiKey: '', step: 'query' }))
-    saveAIConfig({
-      provider: 'gemini',
-      apiKey: ''
-    })
-  }
 
   const handleQuerySubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -86,7 +67,8 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       // Send only the user prompt - server will handle system prompt building
       const response = await sendGeminiMessage(
         state.apiKey,
-        state.userPrompt
+        state.userPrompt,
+        aiEndpoint
       )
 
       const responseText = extractTextFromResponse(response)
@@ -205,99 +187,18 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
     }
   }
 
-  const renderApiKeyStep = () => (
-    <div className="max-w-4xl mx-auto py-12 px-8">
-      <div className="text-center mb-8">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Choose Your AI Option</h3>
-        <p className="text-gray-600">Use our rate-limited service or provide your own API key</p>
-      </div>
-      
-      {/* Rate-limited option */}
-      <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-        <h4 className="text-md font-medium text-blue-900 mb-2">Option 1: Use Our Rate-Limited Service</h4>        
-        <button
-          onClick={handleSkipApiKey}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          Use Rate-Limited Service
-        </button>
-      </div>
-
-      {/* Own API key option */}
-      <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-        <h4 className="text-md font-medium text-green-900 mb-2">Option 2: Use Your Own API Key</h4>
-        <p className="text-green-700 mb-4">
-          Unlimited requests with your own Google Gemini API key. Your key is not stored on our servers.
-        </p>
-        
-        <form onSubmit={handleApiKeySubmit} className="space-y-4">
-          <div>
-            <label htmlFor="api-key" className="block text-sm font-medium text-green-700 mb-2">
-              Google Gemini API Key (Optional)
-            </label>
-            <input
-              id="api-key"
-              type="password"
-              value={state.apiKey}
-              onChange={(e) => setState(prev => ({ ...prev, apiKey: e.target.value }))}
-              placeholder="AIza... (optional)"
-              className="w-full px-4 py-3 text-lg border border-green-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-            />
-            <div className="mt-2 space-y-1">
-              <p className="text-sm text-green-600">
-                Get your free API key from{' '}
-                <a 
-                  href="https://aistudio.google.com/app/apikey" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-green-700 hover:text-green-800 underline font-medium"
-                >
-                  Google AI Studio
-                </a>
-              </p>
-              <p className="text-xs text-green-500">
-                Your key is proxied securely and never stored on our servers.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={!state.apiKey.trim()}
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Use My API Key
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 
 
   const renderQueryStep = () => (
     <div className="flex flex-col space-y-4">
       {/* Top: Config Panel - Full Width */}
-      <div className="flex-shrink-0 flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md">
+      <div className="flex-shrink-0 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <div className="text-sm text-gray-600">
-          Using: <span className="font-medium">Google Gemini 2.0 Flash</span>
-          {state.apiKey ? (
-            <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
-              Your API Key (Unlimited)
-            </span>
-          ) : (
-            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-              Our Gemini Key (Rate Limited)
-            </span>
-          )}
+          Using: <span className="font-medium">AI Query Generation</span>
+          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+            Server-provided AI (Rate Limited)
+          </span>
         </div>
-        <button
-          onClick={() => setState(prev => ({ ...prev, step: 'api-key' }))}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          Change Option
-        </button>
       </div>
       
       {/* Middle: Input/Output Row - Takes remaining space */}
@@ -429,14 +330,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   )
 
   const getTitle = () => {
-    switch (state.step) {
-      case 'api-key':
-        return 'AI Assistant - Setup'
-      case 'query':
-        return 'AI Assistant - Generate Query'
-      default:
-        return 'AI Assistant'
-    }
+    return 'AI Assistant - Generate Query'
   }
 
   return (
@@ -446,8 +340,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       title={getTitle()}
       size="fullscreen-mobile"
     >
-      {state.step === 'api-key' && renderApiKeyStep()}
-      {state.step === 'query' && renderQueryStep()}
+      {renderQueryStep()}
     </Modal>
   )
 }

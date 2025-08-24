@@ -23,6 +23,7 @@ const navigationSections: NavSection[] = [
       { title: 'Quick Start', slug: 'getting-started/quick-start', description: 'Build your first semantic layer' },
       { title: 'Installation', slug: 'getting-started/installation', description: 'Install and setup' },
       { title: 'How It Works', slug: 'getting-started/how-it-works', description: 'Deep dive into query architecture' },
+      { title: 'AI Query Generation', slug: 'getting-started/ai-query-generation', description: 'Natural language to analytics queries' },
       { title: 'Scaling Your SaaS', slug: 'getting-started/scaling', description: 'How Drizzle Cube grows with your business' },
     ]
   },
@@ -79,7 +80,7 @@ const navigationSections: NavSection[] = [
 const Navigation: React.FC<NavigationProps> = ({ onNavigate }) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Getting Started': true,
-    'Semantic Layer': true
+    'Semantic Layer': false
   });
   const location = useLocation();
 

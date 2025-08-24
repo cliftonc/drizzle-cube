@@ -9,7 +9,10 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'query'>('dashboard')
 
   return (
-    <CubeProvider apiOptions={{ apiUrl: '/api/cubejs-api/v1' }}>
+    <CubeProvider 
+      apiOptions={{ apiUrl: '/api/cubejs-api/v1' }}
+      features={{ enableAI: false }}
+    >
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
