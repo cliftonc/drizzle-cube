@@ -3,6 +3,7 @@
  * Common functions used across Express, Fastify, Next.js, and Hono adapters
  */
 
+import { format } from 'sql-formatter'
 import type { 
   SemanticLayerCompiler, 
   SemanticQuery, 
@@ -203,6 +204,31 @@ export function formatCubeResponse(
       queryType: "regularQuery"
     },
     slowQuery: false
+  }
+}
+
+/**
+ * Format SQL string using sql-formatter with appropriate dialect
+ */
+export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite'): string {
+  try {
+    // Map drizzle-cube engine types to sql-formatter language options
+    const dialectMap = {
+      postgres: 'postgresql',
+      mysql: 'mysql',
+      sqlite: 'sqlite'
+    } as const
+    
+    return format(sqlString, {
+      language: dialectMap[engineType],
+      tabWidth: 2,
+      keywordCase: 'upper',
+      indentStyle: 'standard'
+    })
+  } catch (error) {
+    // If formatting fails, return original SQL
+    console.warn('SQL formatting failed:', error)
+    return sqlString
   }
 }
 

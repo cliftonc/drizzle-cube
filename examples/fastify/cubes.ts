@@ -1,5 +1,5 @@
 /**
- * Example cube definitions for Express drizzle-cube demo
+ * Example cube definitions for Hono drizzle-cube demo
  * This demonstrates how to define type-safe analytics cubes using Drizzle ORM
  */
 
@@ -9,10 +9,15 @@ import type { QueryContext, BaseQueryDefinition, Cube } from 'drizzle-cube/serve
 import { employees, departments, productivity } from './schema'
 import type { Schema } from './schema'
 
+// Forward declarations for circular dependency resolution
+let employeesCube: Cube<Schema>
+let departmentsCube: Cube<Schema>
+let productivityCube: Cube<Schema>
+
 /**
  * Employees cube - employee analytics (single table)
  */
-export const employeesCube: Cube<Schema> = defineCube('Employees', {
+employeesCube = defineCube('Employees', {
   title: 'Employee Analytics',
   description: 'Employee data and metrics',
   
@@ -23,11 +28,19 @@ export const employeesCube: Cube<Schema> = defineCube('Employees', {
 
   // Cube-level joins for cross-cube queries
   joins: {
-    'Departments': {
-      targetCube: 'Departments',
-      condition: () => eq(employees.departmentId, departments.id),
-      type: 'left',
-      relationship: 'belongsTo'
+    Departments: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: employees.departmentId, target: departments.id }
+      ]
+    },
+    Productivity: {
+      targetCube: () => productivityCube,
+      relationship: 'hasMany',
+      on: [
+        { source: employees.id, target: productivity.employeeId }
+      ]
     }
   },
   
@@ -106,7 +119,7 @@ export const employeesCube: Cube<Schema> = defineCube('Employees', {
 /**
  * Departments cube - department-level analytics (single table)
  */
-export const departmentsCube: Cube<Schema> = defineCube('Departments', {
+departmentsCube = defineCube('Departments', {
   title: 'Department Analytics',
   description: 'Department-level metrics and budget analysis',
   
@@ -117,11 +130,12 @@ export const departmentsCube: Cube<Schema> = defineCube('Departments', {
 
   // Cube-level joins for cross-cube queries
   joins: {
-    'Employees': {
-      targetCube: 'Employees',
-      condition: () => eq(departments.id, employees.departmentId),
-      type: 'left',
-      relationship: 'hasMany'
+    Employees: {
+      targetCube: () => employeesCube,
+      relationship: 'hasMany',
+      on: [
+        { source: departments.id, target: employees.departmentId }
+      ]
     }
   },
   
@@ -166,7 +180,7 @@ export const departmentsCube: Cube<Schema> = defineCube('Departments', {
 /**
  * Productivity cube - productivity metrics with time dimensions
  */
-export const productivityCube: Cube<Schema> = defineCube('Productivity', {
+productivityCube = defineCube('Productivity', {
   title: 'Productivity Analytics',
   description: 'Daily productivity metrics including code output and deployments',
   
@@ -177,17 +191,19 @@ export const productivityCube: Cube<Schema> = defineCube('Productivity', {
 
   // Cube-level joins for multi-cube queries
   joins: {
-    'Employees': {
-      targetCube: 'Employees',
-      condition: () => eq(productivity.employeeId, employees.id),
-      type: 'left',
-      relationship: 'belongsTo'
+    Employees: {
+      targetCube: () => employeesCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: productivity.employeeId, target: employees.id }
+      ]
     },
-    'Departments': {
-      targetCube: 'Departments', 
-      condition: () => eq(productivity.departmentId, departments.id),
-      type: 'left',
-      relationship: 'belongsTo'
+    Departments: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: productivity.departmentId, target: departments.id }
+      ]
     }
   },
   
@@ -325,6 +341,11 @@ export const productivityCube: Cube<Schema> = defineCube('Productivity', {
     }
   }
 }) as Cube<Schema>
+
+/**
+ * Export cubes for use in other modules
+ */
+export { employeesCube, departmentsCube, productivityCube }
 
 /**
  * All cubes for registration

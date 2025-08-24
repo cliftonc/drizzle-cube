@@ -15,6 +15,7 @@ import type {
 import { createDatabaseExecutor } from './types'
 import { QueryExecutor } from './executor'
 import type { Cube } from './types-drizzle'
+import { formatSqlString } from '../adapters/utils'
 
 export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<string, any>> {
   private cubes: Map<string, Cube<TSchema>> = new Map()
@@ -46,6 +47,13 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    */
   setDatabaseExecutor(executor: DatabaseExecutor<TSchema>): void {
     this.dbExecutor = executor
+  }
+
+  /**
+   * Get the database engine type for SQL formatting
+   */
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | undefined {
+    return this.dbExecutor?.getEngineType()
   }
 
   /**
@@ -226,7 +234,14 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
     }
 
     const executor = new QueryExecutor<TSchema>(this.dbExecutor)
-    return executor.generateSQL(cube, query, securityContext)
+    const result = await executor.generateSQL(cube, query, securityContext)
+    
+    // Format the SQL using the appropriate dialect
+    const engineType = this.dbExecutor.getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
   }
 
   /**
@@ -241,7 +256,14 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
     }
 
     const executor = new QueryExecutor<TSchema>(this.dbExecutor)
-    return executor.generateMultiCubeSQL(this.cubes, query, securityContext)
+    const result = await executor.generateMultiCubeSQL(this.cubes, query, securityContext)
+    
+    // Format the SQL using the appropriate dialect
+    const engineType = this.dbExecutor.getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
   }
 
   /**

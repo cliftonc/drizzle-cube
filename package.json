@@ -192,6 +192,7 @@
     "react-grid-layout": "^1.4.0",
     "react-hook-form": "^7.47.0",
     "recharts": "^2.8.0",
+    "sql-formatter": "^15.6.6",
     "yaml": "^2.8.1",
     "zod": "^3.22.0"
   }

@@ -159,25 +159,71 @@ export interface QueryPlan<TSchema extends Record<string, any> = Record<string, 
   whereConditions: SQL[]
   /** GROUP BY fields if aggregations are present (built by QueryBuilder) */
   groupByFields: (SQL | AnyColumn)[]
+  /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
+  preAggregationCTEs?: Array<{
+    cube: Cube<TSchema>
+    alias: string
+    cteAlias: string
+    joinKeys: Array<{
+      sourceColumn: string
+      targetColumn: string
+      sourceColumnObj?: AnyColumn
+      targetColumnObj?: AnyColumn
+    }>
+    measures: string[]
+  }>
 }
 
 // Keep the old name for backwards compatibility
 export type MultiCubeQueryPlan<TSchema extends Record<string, any> = Record<string, any>> = QueryPlan<TSchema>
 
 /**
- * Cube join definition for multi-cube queries
+ * Type-safe cube join definition with lazy loading support
  */
 export interface CubeJoin<TSchema extends Record<string, any> = Record<string, any>> {
-  /** Target cube name to join with */
-  targetCube: string
-  /** Join condition */
-  condition: (ctx: MultiCubeQueryContext<TSchema>) => SQL
-  /** Join type */
-  type?: 'inner' | 'left' | 'right' | 'full'
-  /** Relationship type for metadata */
+  /** Target cube reference - lazy loaded to avoid circular dependencies */
+  targetCube: Cube<TSchema> | (() => Cube<TSchema>)
+  
+  /** Semantic relationship - determines join behavior */
   relationship: 'belongsTo' | 'hasOne' | 'hasMany'
+  
+  /** Array of join conditions - supports multi-column joins */
+  on: Array<{
+    /** Column from source cube */
+    source: AnyColumn
+    /** Column from target cube */  
+    target: AnyColumn
+    /** Comparison operator - defaults to eq */
+    as?: (source: AnyColumn, target: AnyColumn) => SQL
+  }>
+  
+  /** Override default SQL join type (derived from relationship) */
+  sqlJoinType?: 'inner' | 'left' | 'right' | 'full'
 }
 
+
+/**
+ * Resolve cube reference (handles both direct and lazy references)
+ */
+export function resolveCubeReference<TSchema extends Record<string, any>>(
+  ref: Cube<TSchema> | (() => Cube<TSchema>)
+): Cube<TSchema> {
+  return typeof ref === 'function' ? ref() : ref
+}
+
+/**
+ * Derive SQL join type from semantic relationship
+ */
+export function getJoinType(relationship: string, override?: string): string {
+  if (override) return override
+  
+  switch (relationship) {
+    case 'belongsTo': return 'inner'  // FK should exist
+    case 'hasOne':    return 'left'   // Parent may have no child
+    case 'hasMany':   return 'left'   // Parent may have no children
+    default:          return 'left'   // Safe default
+  }
+}
 
 /**
  * Helper to resolve SQL expressions

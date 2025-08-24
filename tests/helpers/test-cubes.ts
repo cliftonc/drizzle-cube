@@ -61,8 +61,13 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
 }> {
   const { employees, departments, productivity, schema, dbTrue, dbFalse, dbDate } = await getTestSchema()
   
+  // Declare cube variables first to handle forward references
+  let testEmployeesCube: Cube<any>
+  let testDepartmentsCube: Cube<any>
+  let testProductivityCube: Cube<any>
+  
   // Create employees cube with correct schema
-  const testEmployeesCube = defineCube('Employees', {
+  testEmployeesCube = defineCube('Employees', {
     title: 'Employees Analytics',
     description: 'Comprehensive employee data with department information and all field types',
     
@@ -72,23 +77,19 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     }),
 
     joins: {
-      'Productivity': {
-        targetCube: 'Productivity',
+      Productivity: {
+        targetCube: () => testProductivityCube,
         relationship: 'hasMany',
-        condition: (ctx) => and(
-          eq(productivity.employeeId, employees.id),
-          eq(productivity.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
+        on: [
+          { source: employees.id, target: productivity.employeeId }
+        ]
       },
-      'Departments': {
-        targetCube: 'Departments',
+      Departments: {
+        targetCube: () => testDepartmentsCube,
         relationship: 'belongsTo',
-        condition: (ctx) => and(
-          eq(employees.departmentId, departments.id),
-          eq(departments.organisationId, ctx.securityContext.organisationId)
-        ),
-        type: 'left'
+        on: [
+          { source: employees.departmentId, target: departments.id }
+        ]
       }
     },
     
@@ -203,7 +204,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   })
 
   // Create departments cube with correct schema  
-  const testDepartmentsCube = defineCube('Departments', {
+  testDepartmentsCube = defineCube('Departments', {
     title: 'Departments Analytics',
     description: 'Department information and metrics',
     
@@ -263,7 +264,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   })
 
   // Create productivity cube with correct schema
-  const testProductivityCube = defineCube('Productivity', {
+  testProductivityCube = defineCube('Productivity', {
     title: 'Productivity Analytics',
     description: 'Daily productivity metrics including code output, deployments, and happiness tracking',
     
@@ -274,11 +275,12 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
 
     // Cube-level joins for multi-cube queries
     joins: {
-      'Employees': {
-        targetCube: 'Employees',
-        condition: (ctx) => eq(productivity.employeeId, employees.id),
-        type: 'left',
-        relationship: 'belongsTo'
+      Employees: {
+        targetCube: () => testEmployeesCube,
+        relationship: 'belongsTo',
+        on: [
+          { source: productivity.employeeId, target: employees.id }
+        ]
       }
     },
     

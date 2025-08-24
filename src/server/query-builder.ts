@@ -40,7 +40,8 @@ import type {
 
 import type { 
   Cube,
-  QueryContext
+  QueryContext,
+  QueryPlan
 } from './types-drizzle'
 
 import { resolveSqlExpression } from './types-drizzle'
@@ -118,6 +119,50 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   }
 
   /**
+   * Build measure expression for HAVING clause, handling CTE references correctly
+   */
+  private buildHavingMeasureExpression(
+    cubeName: string,
+    fieldKey: string,
+    measure: any,
+    context: QueryContext<TSchema>,
+    queryPlan?: QueryPlan<TSchema>
+  ): SQL {
+    // Check if this measure is from a CTE cube
+    if (queryPlan && queryPlan.preAggregationCTEs) {
+      const cteInfo = queryPlan.preAggregationCTEs.find(cte => cte.cube.name === cubeName)
+      if (cteInfo && cteInfo.measures.includes(`${cubeName}.${fieldKey}`)) {
+        // This measure is from a CTE - reference the CTE alias instead of the original table
+        const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldKey)}`
+        
+        // Apply aggregation function based on measure type
+        // Since CTE is already pre-aggregated, we need to aggregate the pre-aggregated values
+        switch (measure.type) {
+          case 'count':
+          case 'countDistinct':
+          case 'sum':
+            return sum(cteColumn)
+          case 'avg':
+            // For average of averages, we should use a weighted average, but for now use simple avg
+            return this.databaseAdapter.buildAvg(cteColumn)
+          case 'min':
+            return min(cteColumn)
+          case 'max':
+            return max(cteColumn)
+          case 'number':
+            // For number type, use sum to combine values
+            return sum(cteColumn)
+          default:
+            return sum(cteColumn)
+        }
+      }
+    }
+    
+    // Not from CTE - use regular measure expression
+    return this.buildMeasureExpression(measure, context)
+  }
+
+  /**
    * Build measure expression with aggregation and filters
    */
   buildMeasureExpression(
@@ -189,7 +234,8 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   buildWhereConditions(
     cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>
+    context: QueryContext<TSchema>,
+    queryPlan?: QueryPlan<TSchema>
   ): SQL[] {
     const conditions: SQL[] = []
     
@@ -199,7 +245,7 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     // Process regular filters (dimensions only for WHERE clause)
     if (query.filters && query.filters.length > 0) {
       for (const filter of query.filters) {
-        const condition = this.processFilter(filter, cubeMap, context, 'where')
+        const condition = this.processFilter(filter, cubeMap, context, 'where', queryPlan)
         if (condition) {
           conditions.push(condition)
         }
@@ -212,6 +258,15 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
         const [cubeName, fieldName] = timeDim.dimension.split('.')
         const cube = cubeMap.get(cubeName)
         if (cube && cube.dimensions[fieldName] && timeDim.dateRange) {
+          // Check if this cube is in a pre-aggregation CTE - if so, skip this filter in WHERE clause
+          // The time dimension filter will be applied within the CTE itself during pre-aggregation
+          if (queryPlan?.preAggregationCTEs) {
+            const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
+            if (isInCTE) {
+              continue // Skip this filter - it's handled in the CTE
+            }
+          }
+          
           const dimension = cube.dimensions[fieldName]
           // Use the raw field expression for date filtering (not the truncated version)
           // This ensures we filter on the actual timestamp values before aggregation
@@ -234,7 +289,8 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   buildHavingConditions(
     cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>
+    context: QueryContext<TSchema>,
+    queryPlan?: QueryPlan<TSchema>
   ): SQL[] {
     const conditions: SQL[] = []
     
@@ -244,7 +300,7 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     // Process regular filters (measures only for HAVING clause)
     if (query.filters && query.filters.length > 0) {
       for (const filter of query.filters) {
-        const condition = this.processFilter(filter, cubeMap, context, 'having')
+        const condition = this.processFilter(filter, cubeMap, context, 'having', queryPlan)
         if (condition) {
           conditions.push(condition)
         }
@@ -262,7 +318,8 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     filter: Filter,
     cubes: Map<string, Cube<TSchema>>,
     context: QueryContext<TSchema>,
-    filterType: 'where' | 'having'
+    filterType: 'where' | 'having',
+    queryPlan?: QueryPlan<TSchema>
   ): SQL | null {
     // Handle logical filters (AND/OR)
     if ('and' in filter || 'or' in filter) {
@@ -270,14 +327,14 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
       
       if (logicalFilter.and) {
         const conditions = logicalFilter.and
-          .map(f => this.processFilter(f, cubes, context, filterType))
+          .map(f => this.processFilter(f, cubes, context, filterType, queryPlan))
           .filter((condition): condition is SQL => condition !== null)
         return conditions.length > 0 ? and(...conditions) as SQL : null
       }
       
       if (logicalFilter.or) {
         const conditions = logicalFilter.or
-          .map(f => this.processFilter(f, cubes, context, filterType))
+          .map(f => this.processFilter(f, cubes, context, filterType, queryPlan))
           .filter((condition): condition is SQL => condition !== null)
         return conditions.length > 0 ? or(...conditions) as SQL : null
       }
@@ -297,12 +354,26 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     
     // Apply filter based on type and what we're looking for
     if (filterType === 'where' && dimension) {
+      // Check if this cube is in a pre-aggregation CTE - if so, skip this filter in WHERE clause
+      // The filter will be applied within the CTE itself
+      if (queryPlan?.preAggregationCTEs) {
+        const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
+        if (isInCTE) {
+          return null // Skip this filter - it's handled in the CTE
+        }
+      }
+      
       // WHERE clause: use raw dimension expression
       const fieldExpr = resolveSqlExpression(dimension.sql, context)
       return this.buildFilterCondition(fieldExpr, filterCondition.operator, filterCondition.values, field)
+    } else if (filterType === 'where' && measure) {
+      // NEVER apply measure filters in WHERE clause - they should only be in HAVING
+      // This prevents incorrect behavior where measure filters are applied before aggregation
+      return null
     } else if (filterType === 'having' && measure) {
       // HAVING clause: use aggregated measure expression
-      const measureExpr = this.buildMeasureExpression(measure, context)
+      // Check if this measure is from a CTE cube
+      const measureExpr = this.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
       return this.buildFilterCondition(measureExpr, filterCondition.operator, filterCondition.values, field)
     }
     
@@ -662,7 +733,8 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   buildGroupByFields(
     cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>
+    context: QueryContext<TSchema>,
+    queryPlan?: any // Optional QueryPlan for CTE handling
   ): (SQL | AnyColumn)[] {
     const groupFields: (SQL | AnyColumn)[] = []
     
@@ -681,9 +753,30 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
         const [cubeName, fieldName] = dimensionName.split('.')
         const cube = cubeMap.get(cubeName)
         if (cube && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const dimensionExpr = resolveSqlExpression(dimension.sql, context)
-          groupFields.push(dimensionExpr)
+          
+          // Check if this dimension is from a CTE cube
+          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
+          
+          if (isFromCTE) {
+            // For dimensions from CTE cubes, check if this is a join key that maps to the main table
+            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
+            const matchingJoinKey = cteInfo.joinKeys.find((jk: any) => jk.targetColumn === fieldName)
+            
+            if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {
+              // Use the source column from the main table for GROUP BY instead of the CTE dimension
+              groupFields.push(matchingJoinKey.sourceColumnObj)
+            } else {
+              // This dimension from CTE cube is not a join key - we need to reference it from the CTE
+              // But only if it was included in the CTE selections
+              const cteDimensionExpr = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
+              groupFields.push(cteDimensionExpr)
+            }
+          } else {
+            // Regular dimension from non-CTE cube
+            const dimension = cube.dimensions[fieldName]
+            const dimensionExpr = resolveSqlExpression(dimension.sql, context)
+            groupFields.push(dimensionExpr)
+          }
         }
       }
     }
@@ -694,16 +787,47 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
         const [cubeName, fieldName] = timeDim.dimension.split('.')
         const cube = cubeMap.get(cubeName)
         if (cube && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const timeExpr = this.buildTimeDimensionExpression(
-            dimension.sql, 
-            timeDim.granularity, 
-            context
-          )
-          groupFields.push(timeExpr)
+          
+          // Check if this time dimension is from a CTE cube
+          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
+          
+          if (isFromCTE) {
+            // For time dimensions from CTE cubes, check if this is a join key that maps to the main table
+            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
+            const matchingJoinKey = cteInfo.joinKeys.find((jk: any) => jk.targetColumn === fieldName)
+            
+            if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {
+              // Use the source column from the main table for GROUP BY with time granularity
+              // const dimension = cube.dimensions[fieldName] // Unused
+              const timeExpr = this.buildTimeDimensionExpression(
+                matchingJoinKey.sourceColumnObj, 
+                timeDim.granularity, 
+                context
+              )
+              groupFields.push(timeExpr)
+            } else {
+              // This time dimension from CTE cube is not a join key - reference it from the CTE
+              // The CTE already has the time dimension expression applied, so just reference the column
+              const cteDimensionExpr = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
+              groupFields.push(cteDimensionExpr)
+            }
+          } else {
+            // Regular time dimension from non-CTE cube
+            const dimension = cube.dimensions[fieldName]
+            const timeExpr = this.buildTimeDimensionExpression(
+              dimension.sql, 
+              timeDim.granularity, 
+              context
+            )
+            groupFields.push(timeExpr)
+          }
         }
       }
     }
+    
+    // Note: We used to add join keys from CTEs to GROUP BY, but this is unnecessary
+    // Join keys are only needed for the JOIN condition, not for grouping
+    // The GROUP BY should only contain columns that are actually selected or used for aggregation
     
     return groupFields
   }

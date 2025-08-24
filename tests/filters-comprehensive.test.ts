@@ -398,7 +398,7 @@ describe('Comprehensive Filter Operations', () => {
                 member: "Productivity.happinessIndex",
                 operator: "equals",
                 values: [
-                  5
+                  7
                 ]
               },
               {
@@ -413,13 +413,6 @@ describe('Comprehensive Filter Operations', () => {
         ]
       }
 
-      // Generate SQL to debug the issue
-      try {
-        const generatedSQL = await testExecutor.executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-      } catch (error) {
-        console.log('Error generating SQL:', error)
-      }
-
       const { result, validation } = await testExecutor.validateQuery(
         query,
         ['Productivity.recordCount', 'Employees.name', 'Productivity.happinessIndex', 'Productivity.date'],
@@ -431,14 +424,13 @@ describe('Comprehensive Filter Operations', () => {
         }
       )
 
-
       expect(validation.isValid).toBe(true)
       expect(validation.errors).toEqual([])
       
       // Verify results are properly filtered if any data is returned
       if (result.data.length > 0) {
         for (const row of result.data) {
-          expect(row['Productivity.happinessIndex']).toBe(5)
+          expect(row['Productivity.happinessIndex']).toBe(7)
           expect(row['Employees.name']).toBe('Alex Chen')
         }
       }

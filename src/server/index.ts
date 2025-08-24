@@ -28,7 +28,9 @@ export {
 export { 
   defineCube,
   resolveSqlExpression,
-  createMultiCubeContext
+  createMultiCubeContext,
+  resolveCubeReference,
+  getJoinType
 } from './types-drizzle'
 
 // Import types for use in utility functions
@@ -109,27 +111,6 @@ export type {
 // Re-export Drizzle SQL type for convenience
 export type { SQL } from 'drizzle-orm'
 
-// Export YAML types
-export type {
-  YamlSchema,
-  YamlCube,
-  YamlDimension,
-  YamlMeasure,
-  YamlJoin,
-  YamlPreAggregation,
-  YamlView,
-  YamlValidationResult
-} from './yaml-types'
-
-// Export YAML utilities
-export { 
-  parseYamlCubes, 
-  loadYamlCubesFromFile, 
-  loadYamlCubes,
-  semanticCubeToYaml, 
-  yamlCubeToSemanticCube,
-  convertCubeReferences 
-} from './yaml-loader'
 
 // Re-export examples for documentation (optional - uncomment if examples exist)
 // export * from '../../examples/example-schema'
