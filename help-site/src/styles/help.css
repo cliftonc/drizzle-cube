@@ -225,3 +225,39 @@ pre[class*="language-"] {
 	background: none !important;
 	background-color: transparent !important;
 }
+
+/* Mermaid diagram styling */
+.mermaid-wrapper {
+  overflow-x: auto;
+}
+
+.mermaid-wrapper svg {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* Mermaid theme customization */
+.mermaid-wrapper .node rect,
+.mermaid-wrapper .node circle,
+.mermaid-wrapper .node polygon {
+  stroke-width: 2px;
+}
+
+.mermaid-wrapper .edgeLabel {
+  background-color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* Responsive mermaid diagrams */
+@media (max-width: 768px) {
+  .mermaid-wrapper {
+    padding: 8px;
+    margin: 16px 0;
+  }
+  
+  .mermaid-wrapper svg {
+    font-size: 12px;
+  }
+}

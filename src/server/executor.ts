@@ -568,6 +568,23 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       allWhereConditions.push(primaryCubeBase.where)
     }
 
+    // Add WHERE conditions from all joined cubes (including their security context filters)
+    if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
+      for (const joinCube of queryPlan.joinCubes) {
+        // Skip if this cube is handled by a CTE (WHERE conditions are applied within the CTE)
+        const cteAlias = cteAliasMap.get(joinCube.cube.name)
+        if (cteAlias) {
+          continue
+        }
+        
+        // Get the base query definition for this joined cube to access its WHERE conditions
+        const joinCubeBase = joinCube.cube.sql(context)
+        if (joinCubeBase.where) {
+          allWhereConditions.push(joinCubeBase.where)
+        }
+      }
+    }
+
     // Add query-specific WHERE conditions using QueryBuilder
     const queryWhereConditions = this.queryBuilder.buildWhereConditions(
       queryPlan.joinCubes.length > 0 

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import mermaid from 'mermaid';
 import TableOfContents from './TableOfContents';
 
 interface TopicRendererProps {
@@ -15,10 +16,55 @@ const TopicRenderer: React.FC<TopicRendererProps> = ({ content, title, showToc =
   useEffect(() => {
     if (!contentRef.current) return;
 
-    // Trigger Prism.js syntax highlighting
+    // Initialize mermaid
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      fontSize: 14,
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+      },
+    });
+
+    // Render mermaid diagrams
+    const renderMermaidDiagrams = async () => {
+      const mermaidElements = contentRef.current?.querySelectorAll('.language-mermaid code');
+      if (mermaidElements) {
+        for (let i = 0; i < mermaidElements.length; i++) {
+          const element = mermaidElements[i] as HTMLElement;
+          const mermaidCode = element.textContent;
+          if (mermaidCode) {
+            try {
+              const id = `mermaid-diagram-${Date.now()}-${i}`;
+              const { svg } = await mermaid.render(id, mermaidCode);
+              
+              // Replace the code block with the rendered SVG
+              const preElement = element.closest('pre');
+              if (preElement) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mermaid-wrapper flex justify-center my-8 p-4 bg-gray-50 rounded-lg border';
+                wrapper.innerHTML = svg;
+                preElement.parentNode?.replaceChild(wrapper, preElement);
+              }
+            } catch (error) {
+              console.warn('Failed to render mermaid diagram:', error);
+              // Keep the original code block if rendering fails
+            }
+          }
+        }
+      }
+    };
+
+    // Trigger Prism.js syntax highlighting first
     if (window.Prism) {
       window.Prism.highlightAllUnder(contentRef.current);
     }
+
+    // Then render mermaid diagrams
+    renderMermaidDiagrams();
 
     // Handle internal help links
     const handleHelpLinkClick = (e: Event) => {
