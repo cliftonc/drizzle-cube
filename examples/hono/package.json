@@ -46,7 +46,7 @@
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.20.4",
     "typescript": "^5.0.0",
-    "wrangler": "^3.78.12"
+    "wrangler": "^4.32.0"
   },
   "keywords": [
     "analytics",
