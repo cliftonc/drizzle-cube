@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Enhanced typography and rendering */
+:root {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Full viewport layout for dashboard */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent; /* Let our gradient background show through */
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}

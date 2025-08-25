@@ -58,17 +58,17 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:examples\" \"npm run dev:help\"",
-    "dev:server": "vite build src/server --watch --mode development",
-    "dev:client": "vite build src/client --watch --mode development",
-    "dev:examples": "cd examples/hono-app && npm run dev",
-    "dev:help": "cd help-site && npm run dev",
-    "build": "npm run build:server && npm run build:client && npm run build:adapters && npm run build:help",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch dev/server/index.ts",
+    "dev:client": "cd dev/client && vite",
+    "dev:build": "concurrently \"npm run dev:build-server\" \"npm run dev:build-client\"",
+    "dev:build-server": "vite build src/server --watch --mode development",
+    "dev:build-client": "vite build src/client --watch --mode development",
+    "build": "npm run build:server && npm run build:client && npm run build:adapters",
     "build:server": "vite build --config vite.config.server.ts",
     "build:client": "vite build --config vite.config.client.ts",
     "analyze:client": "vite build --config vite.config.client.ts && open dist/client-bundle-stats.html",
     "build:adapters": "vite build --config vite.config.adapters.ts",
-    "build:help": "cd help-site && npm run build",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:postgres": "vitest run",
@@ -80,7 +80,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "prepublishOnly": "npm run build && npm run test && npm run typecheck"
+    "prepublishOnly": "npm run build && npm run test && npm run typecheck",
+    "dev:db:up": "cd dev && docker-compose up -d",
+    "dev:db:down": "cd dev && docker-compose down",
+    "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
+    "dev:db:seed": "cd dev && tsx scripts/seed.ts",
+    "dev:setup": "npm run dev:db:up && sleep 5 && npm run dev:db:migrate && npm run dev:db:seed"
   },
   "keywords": [
     "drizzle-orm",
@@ -112,22 +117,28 @@
   "peerDependencies": {
     "@neondatabase/serverless": "^1.0.1",
     "cors": "^2.8.5",
+    "d3": "^7.9.0",
     "drizzle-orm": "^0.44.4",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
     "hono": "^4.0.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "react-grid-layout": "^1.4.0",
+    "recharts": "^2.8.0"
   },
   "peerDependenciesMeta": {
     "react": {
-      "optional": false
+      "optional": true
     },
     "react-dom": {
-      "optional": false
+      "optional": true
+    },
+    "react-grid-layout": {
+      "optional": true
     },
     "drizzle-orm": {
-      "optional": false
+      "optional": true
     },
     "hono": {
       "optional": true
@@ -150,8 +161,13 @@
   },
   "devDependencies": {
     "@fastify/cors": "^11.1.0",
+    "@heroicons/react": "^2.2.0",
+    "@hono/node-server": "^1.19.0",
+    "@iconify-icons/tabler": "^1.2.95",
+    "@iconify/react": "^6.0.0",
     "@types/better-sqlite3": "^7.6.0",
     "@types/cors": "^2.8.17",
+    "@types/d3": "^7.4.3",
     "@types/express": "^5.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
@@ -175,25 +191,20 @@
     "next": "^15.0.0",
     "postcss": "^8.5.6",
     "postgres": "^3.4.7",
+    "react-hook-form": "^7.47.0",
     "rollup-plugin-visualizer": "^6.0.3",
+    "sql-formatter": "^15.6.6",
     "supertest": "^7.0.0",
     "tailwindcss": "^3.4.15",
+    "tsx": "^4.20.5",
     "typescript": "^5.0.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.0.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "zod": "^3.22.0"
   },
   "dependencies": {
-    "@heroicons/react": "^2.2.0",
-    "@iconify-icons/tabler": "^1.2.95",
-    "@iconify/react": "^6.0.0",
-    "@types/d3": "^7.4.3",
-    "d3": "^7.9.0",
-    "react-grid-layout": "^1.4.0",
-    "react-hook-form": "^7.47.0",
-    "recharts": "^2.8.0",
-    "sql-formatter": "^15.6.6",
-    "yaml": "^2.8.1",
-    "zod": "^3.22.0"
+    "@tanstack/react-query": "^5.85.5",
+    "react-router-dom": "^7.8.2"
   }
 }
