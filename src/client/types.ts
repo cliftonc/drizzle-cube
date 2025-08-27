@@ -18,6 +18,8 @@ export type ChartType =
   | 'treemap'
   | 'bubble'
   | 'activityGrid'
+  | 'kpiNumber'
+  | 'kpiText'
 
 // Chart configuration
 export interface ChartAxisConfig {
@@ -55,6 +57,12 @@ export interface ChartDisplayConfig {
   // Activity grid specific display options
   showLabels?: boolean
   colorIntensity?: 'low' | 'medium' | 'high'
+  
+  // KPI specific display options
+  template?: string // JavaScript template string for KPI Text
+  prefix?: string   // Text prefix for KPI Number
+  suffix?: string   // Text suffix for KPI Number  
+  decimals?: number // Number of decimal places
 }
 
 // Portlet configuration

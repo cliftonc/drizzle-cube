@@ -9,6 +9,8 @@ import { radialBarChartConfig } from '../components/charts/RadialBarChart.config
 import { treemapChartConfig } from '../components/charts/TreeMapChart.config'
 import { dataTableConfig } from '../components/charts/DataTable.config'
 import { activityGridChartConfig } from '../components/charts/ActivityGridChart.config'
+import { kpiNumberConfig } from '../components/charts/KpiNumber.config'
+import { kpiTextConfig } from '../components/charts/KpiText.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -25,5 +27,7 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   radialBar: radialBarChartConfig,
   treemap: treemapChartConfig,
   table: dataTableConfig,
-  activityGrid: activityGridChartConfig
+  activityGrid: activityGridChartConfig,
+  kpiNumber: kpiNumberConfig,
+  kpiText: kpiTextConfig
 }

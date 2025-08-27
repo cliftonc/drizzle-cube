@@ -28,7 +28,9 @@ export default function ChartTypeSelector({
     radialBar: 'Radial Bar Chart',
     treemap: 'TreeMap',
     table: 'Data Table',
-    activityGrid: 'Activity Grid'
+    activityGrid: 'Activity Grid',
+    kpiNumber: 'KPI Number',
+    kpiText: 'KPI Text'
   }
 
   const selectedConfig = chartConfigRegistry[selectedType]

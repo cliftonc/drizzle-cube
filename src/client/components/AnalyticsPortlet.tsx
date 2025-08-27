@@ -17,7 +17,9 @@ import {
   RechartsTreeMapChart, 
   BubbleChart,
   DataTable,
-  ActivityGridChart
+  ActivityGridChart,
+  KpiNumber,
+  KpiText
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
 
@@ -295,6 +297,26 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
         case 'activityGrid':
           return (
             <ActivityGridChart
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+            />
+          )
+        case 'kpiNumber':
+          return (
+            <KpiNumber
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+            />
+          )
+        case 'kpiText':
+          return (
+            <KpiText
               data={data}
               chartConfig={chartConfig}
               displayConfig={displayConfig}
