@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build server
+        run: npm run build:server
+
+      - name: Build client
+        run: npm run build:client
+
+      - name: Build adapters
+        run: npm run build:adapters
+
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: dist/
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db-type: [postgres, mysql, sqlite]
+      fail-fast: false
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: drizzle_cube_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: drizzle_cube_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+          --default-authentication-plugin=mysql_native_password
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for databases (non-SQLite)
+        if: matrix.db-type != 'sqlite'
+        run: |
+          if [ "${{ matrix.db-type }}" = "postgres" ]; then
+            timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
+          elif [ "${{ matrix.db-type }}" = "mysql" ]; then
+            timeout 60 bash -c 'until nc -z localhost 3307; do echo "Waiting for MySQL..."; sleep 1; done'
+          fi
+
+      - name: Run tests (${{ matrix.db-type }})
+        run: npm test
+        env:
+          TEST_DB_TYPE: ${{ matrix.db-type }}
+          TEST_DATABASE_URL: ${{ matrix.db-type == 'postgres' && 'postgres://test:test@localhost:5433/drizzle_cube_test' || '' }}
+          MYSQL_TEST_DATABASE_URL: ${{ matrix.db-type == 'mysql' && 'mysql://test:test@localhost:3307/drizzle_cube_test' || '' }}
