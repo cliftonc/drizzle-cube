@@ -41,6 +41,20 @@ export const productivity = sqliteTable('productivity', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+// Time Entries table - for tracking employee time allocation with fan-out scenarios
+export const timeEntries = sqliteTable('time_entries', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  employeeId: integer('employee_id').notNull(),
+  departmentId: integer('department_id').notNull(),
+  date: integer('date', { mode: 'timestamp' }).notNull(),
+  allocationType: text('allocation_type').notNull(), // 'development', 'maintenance', 'meetings', 'research'
+  hours: real('hours').notNull(),
+  description: text('description'),
+  billableHours: real('billable_hours').default(0),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
 // Analytics Pages table - for storing dashboard configurations
 // SQLite doesn't have native JSON, so we use TEXT and parse it in application
 export const analyticsPages = sqliteTable('analytics_pages', {
@@ -81,11 +95,13 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.departmentId],
     references: [departments.id]
   }),
-  productivityMetrics: many(productivity)
+  productivityMetrics: many(productivity),
+  timeEntries: many(timeEntries)
 }))
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
-  employees: many(employees)
+  employees: many(employees),
+  timeEntries: many(timeEntries)
 }))
 
 export const productivityRelations = relations(productivity, ({ one }) => ({
@@ -95,14 +111,27 @@ export const productivityRelations = relations(productivity, ({ one }) => ({
   })
 }))
 
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  employee: one(employees, {
+    fields: [timeEntries.employeeId],
+    references: [employees.id]
+  }),
+  department: one(departments, {
+    fields: [timeEntries.departmentId],
+    references: [departments.id]
+  })
+}))
+
 // Export schema for use with Drizzle
 export const sqliteTestSchema = { 
   employees, 
   departments,
   productivity,
+  timeEntries,
   analyticsPages,
   employeesRelations,
   departmentsRelations,
-  productivityRelations
+  productivityRelations,
+  timeEntriesRelations
 }
 export type SQLiteTestSchema = typeof sqliteTestSchema

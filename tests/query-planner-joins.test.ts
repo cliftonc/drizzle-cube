@@ -227,10 +227,6 @@ describe('QueryPlanner - New Join System', () => {
       expect(typeof schema.productivity.employeeId.name).toBe('string')
       expect(typeof schema.employees.id.name).toBe('string')
       
-      console.log('Column names:', {
-        productivityEmployeeId: schema.productivity.employeeId.name,
-        employeesId: schema.employees.id.name
-      })
     })
   })
 
@@ -262,10 +258,6 @@ describe('QueryPlanner - New Join System', () => {
       const plan1HasCTEs = plan1.preAggregationCTEs && plan1.preAggregationCTEs.length > 0
       const plan2HasCTEs = plan2.preAggregationCTEs && plan2.preAggregationCTEs.length > 0
 
-      console.log('Plan 1 primary cube:', plan1.primaryCube.name)
-      console.log('Plan 1 CTEs:', plan1HasCTEs ? plan1.preAggregationCTEs!.length : 0)
-      console.log('Plan 2 primary cube:', plan2.primaryCube.name) 
-      console.log('Plan 2 CTEs:', plan2HasCTEs ? plan2.preAggregationCTEs!.length : 0)
 
       // Both should detect the same need for pre-aggregation
       expect(plan1HasCTEs).toBe(plan2HasCTEs)
@@ -294,8 +286,6 @@ describe('QueryPlanner - New Join System', () => {
       const plan1 = queryPlanner.createQueryPlan(cubes, queryNoMessages, context)
       const plan2 = queryPlanner.createQueryPlan(cubes, queryNoDimensions, context)
 
-      console.log('No-dim Plan 1 primary:', plan1.primaryCube.name)
-      console.log('No-dim Plan 2 primary:', plan2.primaryCube.name)
 
       // Both should choose the same primary cube (alphabetical fallback: Employees)
       expect(plan1.primaryCube.name).toBe(plan2.primaryCube.name)

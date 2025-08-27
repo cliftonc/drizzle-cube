@@ -20,27 +20,6 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
         return result as T
       }
       
-      // Try to execute through the database instance if it's a query builder
-      if (this.db && typeof this.db.execute === 'function') {
-        try {
-          const result = await this.db.execute(query)
-          if (Array.isArray(result)) {
-            return result.map(row => this.convertNumericFields(row, numericFields)) as T
-          }
-          return result as T
-        } catch (error) {
-          // If that fails, try to get SQL and execute it
-          if (typeof query.getSQL === 'function') {
-            const sqlResult = query.getSQL()
-            const result = await this.db.execute(sqlResult)
-            if (Array.isArray(result)) {
-              return result.map(row => this.convertNumericFields(row, numericFields)) as T
-            }
-            return result as T
-          }
-          throw error
-        }
-      }
     }
     
     // Handle raw SQL objects

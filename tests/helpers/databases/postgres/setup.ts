@@ -6,8 +6,8 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { sql } from 'drizzle-orm'
 import postgres from 'postgres'
-import { testSchema, employees, departments, productivity, analyticsPages } from './schema'
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData } from '../../enhanced-test-data'
+import { testSchema, employees, departments, productivity, timeEntries, analyticsPages } from './schema'
+import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
 
 /**
  * Create PostgreSQL connection for testing
@@ -66,7 +66,7 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   // Insert departments first (dependencies)
   const insertedDepartments = await db.insert(departments)
     .values(enhancedDepartments)
-    .returning({ id: departments.id, name: departments.name })
+    .returning({ id: departments.id, name: departments.name, organisationId: departments.organisationId })
 
   // Update employee department IDs to match actual inserted department IDs
   const updatedEmployees = enhancedEmployees.map(emp => ({
@@ -77,7 +77,7 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   // Insert employees
   const insertedEmployees = await db.insert(employees)
     .values(updatedEmployees)
-    .returning({ id: employees.id, name: employees.name, organisationId: employees.organisationId, active: employees.active })
+    .returning({ id: employees.id, name: employees.name, organisationId: employees.organisationId, active: employees.active, departmentId: employees.departmentId })
 
   // Insert comprehensive productivity data
   const productivityData = generateComprehensiveProductivityData(insertedEmployees)
@@ -87,6 +87,16 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   for (let i = 0; i < productivityData.length; i += batchSize) {
     const batch = productivityData.slice(i, i + batchSize)
     await db.insert(productivity).values(batch)
+  }
+  
+  // Insert comprehensive time entries data for fan-out testing
+  const timeEntriesData = generateComprehensiveTimeEntriesData(insertedEmployees, insertedDepartments)
+  
+  // Insert time entries in batches (large dataset)
+  const timeEntriesBatchSize = 200
+  for (let i = 0; i < timeEntriesData.length; i += timeEntriesBatchSize) {
+    const batch = timeEntriesData.slice(i, i + timeEntriesBatchSize)
+    await db.insert(timeEntries).values(batch)
   }
   
   // Insert analytics pages data

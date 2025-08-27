@@ -5,8 +5,8 @@
 import { drizzle } from 'drizzle-orm/mysql2'
 import { migrate } from 'drizzle-orm/mysql2/migrator'
 import mysql from 'mysql2/promise'
-import { mysqlTestSchema as testSchema, employees, departments, productivity, analyticsPages } from './schema'
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData } from '../../enhanced-test-data'
+import { mysqlTestSchema as testSchema, employees, departments, productivity, timeEntries, analyticsPages } from './schema'
+import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
 
 /**
  * Create MySQL connection for testing
@@ -68,7 +68,8 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   // Fetch the inserted departments to get their actual IDs
   const insertedDepartments = await db.select({
     id: departments.id,
-    name: departments.name
+    name: departments.name,
+    organisationId: departments.organisationId
   }).from(departments).orderBy(departments.id)
 
   // Update employee department IDs to match actual inserted department IDs
@@ -85,7 +86,8 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
     id: employees.id, 
     name: employees.name,
     organisationId: employees.organisationId,
-    active: employees.active
+    active: employees.active,
+    departmentId: employees.departmentId
   }).from(employees)
   // Insert comprehensive productivity data  
   const productivityData = generateComprehensiveProductivityData(insertedEmployees)
@@ -95,6 +97,16 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   for (let i = 0; i < productivityData.length; i += batchSize) {
     const batch = productivityData.slice(i, i + batchSize)
     await db.insert(productivity).values(batch)
+  }
+  
+  // Insert comprehensive time entries data for fan-out testing
+  const timeEntriesData = generateComprehensiveTimeEntriesData(insertedEmployees, insertedDepartments)
+  
+  // Insert time entries in smaller batches for MySQL (large dataset)
+  const timeEntriesBatchSize = 100
+  for (let i = 0; i < timeEntriesData.length; i += timeEntriesBatchSize) {
+    const batch = timeEntriesData.slice(i, i + timeEntriesBatchSize)
+    await db.insert(timeEntries).values(batch)
   }
   
   // Insert analytics pages data

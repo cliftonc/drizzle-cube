@@ -39,7 +39,8 @@ export async function getTestSchema() {
       mysqlTestSchema, 
       employees, 
       departments, 
-      productivity, 
+      productivity,
+      timeEntries, 
       analyticsPages 
     } = await import('./databases/mysql/schema')
     
@@ -48,6 +49,7 @@ export async function getTestSchema() {
       employees,
       departments,
       productivity,
+      timeEntries,
       analyticsPages,
       type: 'MySQLTestSchema' as const,
       // Database-specific value helpers
@@ -60,7 +62,8 @@ export async function getTestSchema() {
       sqliteTestSchema, 
       employees, 
       departments, 
-      productivity, 
+      productivity,
+      timeEntries, 
       analyticsPages 
     } = await import('./databases/sqlite/schema')
     
@@ -69,6 +72,7 @@ export async function getTestSchema() {
       employees,
       departments,
       productivity,
+      timeEntries,
       analyticsPages,
       type: 'SQLiteTestSchema' as const,
       // Database-specific value helpers for SQLite
@@ -81,7 +85,8 @@ export async function getTestSchema() {
       testSchema, 
       employees, 
       departments, 
-      productivity, 
+      productivity,
+      timeEntries, 
       analyticsPages 
     } = await import('./databases/postgres/schema')
     
@@ -90,6 +95,7 @@ export async function getTestSchema() {
       employees,
       departments,
       productivity,
+      timeEntries,
       analyticsPages,
       type: 'TestSchema' as const,
       // Database-specific value helpers

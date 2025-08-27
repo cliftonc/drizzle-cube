@@ -86,11 +86,11 @@ type MissingOperators =
 
 **Test File**: `tests/filters-advanced.test.ts`
 
-#### 1.2 Complex Nested Filter Logic
-**Priority: High**
+#### 1.2 Complex Nested Filter Logic ✅ **COMPLETED**
+**Priority: High** - **Status**: Implemented in `tests/filters-advanced.test.ts`
 
 ```typescript
-// Test complex nested structures like:
+// ✅ IMPLEMENTED: Test complex nested structures like:
 filters: [
   {
     and: [
@@ -106,6 +106,18 @@ filters: [
   { member: 'Employees.active', operator: 'equals', values: [true] }
 ]
 ```
+
+**Implemented Features:**
+- ✅ 4-level deep nested AND/OR structures
+- ✅ Complex multi-cube nested filters
+- ✅ Alternating AND/OR patterns with all operator types
+- ✅ Real-world HR analytics filter patterns
+- ✅ Wide nested structures (many siblings)
+- ✅ Deeply nested same-type groups
+- ✅ Performance testing for complex nested filters
+- ✅ SQL injection prevention in nested structures
+- ✅ Edge cases: empty groups, contradictory conditions, type mismatches
+- ✅ Cross-database compatibility (PostgreSQL, MySQL, SQLite)
 
 #### 1.3 Filter Edge Cases
 **Priority: Medium**
@@ -140,110 +152,62 @@ const edgeCaseTests = [
 
 ### 2. Advanced Aggregation Functions
 
-#### 2.1 Statistical Aggregations
-**Priority: High**
-
-```typescript
-// Add to test cubes:
-measures: {
-  // Statistical measures
-  medianSalary: {
-    name: 'medianSalary',
-    title: 'Median Salary',
-    type: 'number', // Custom implementation needed
-    sql: sql`PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${employees.salary})`
-  },
-  
-  p90Salary: {
-    name: 'p90Salary', 
-    title: '90th Percentile Salary',
-    type: 'number',
-    sql: sql`PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY ${employees.salary})`
-  },
-  
-  stdDevSalary: {
-    name: 'stdDevSalary',
-    title: 'Salary Standard Deviation', 
-    type: 'number',
-    sql: sql`STDDEV(${employees.salary})`
-  },
-  
-  varianceSalary: {
-    name: 'varianceSalary',
-    title: 'Salary Variance',
-    type: 'number', 
-    sql: sql`VARIANCE(${employees.salary})`
-  }
-}
-```
-
-**Test File**: `tests/aggregations-statistical.test.ts`
-
-#### 2.2 Window Functions and Running Totals
+#### 2.1 Database-Agnostic Aggregation Edge Cases ✅ **MODIFIED**
 **Priority: Medium**
 
 ```typescript
-measures: {
-  runningTotal: {
-    name: 'runningTotal',
-    title: 'Running Total Sales',
-    type: 'number',
-    sql: sql`SUM(${productivity.linesOfCode}) OVER (ORDER BY ${productivity.date})`
-  },
+// Focus on database-agnostic aggregation patterns and edge cases
+const aggregationEdgeCases = [
+  // NULL value handling in aggregations
+  { measures: ['Employees.count'], filters: [{ member: 'Employees.salary', operator: 'set', values: [] }] },
+  { measures: ['Employees.avgSalary'], filters: [{ member: 'Employees.salary', operator: 'notSet', values: [] }] },
   
-  movingAverage: {
-    name: 'movingAverage', 
-    title: '7-Day Moving Average',
-    type: 'number',
-    sql: sql`AVG(${productivity.linesOfCode}) OVER (
-      ORDER BY ${productivity.date} 
-      ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
-    )`
-  },
+  // Empty result set aggregations
+  { measures: ['Employees.count'], filters: [{ member: 'Employees.name', operator: 'equals', values: ['NonExistentEmployee'] }] },
   
-  rank: {
-    name: 'rank',
-    title: 'Productivity Rank',
-    type: 'number',
-    sql: sql`RANK() OVER (ORDER BY ${productivity.linesOfCode} DESC)`
-  }
-}
+  // Large number aggregations
+  { measures: ['Employees.maxSalary', 'Employees.minSalary'], dimensions: ['Employees.departmentId'] },
+  
+  // Multiple aggregation combinations
+  { measures: ['Employees.count', 'Employees.countDistinctDepartments', 'Employees.avgSalary'] }
+]
 ```
 
-**Test File**: `tests/aggregations-window-functions.test.ts`
+**Test File**: `tests/aggregations-edge-cases.test.ts`
 
-#### 2.3 Complex Calculated Measures
-**Priority: Medium**
+#### 2.2 Performance-Focused Aggregation Testing ✅ **COMPLETED**
+**Priority: Medium** - **Status**: FULLY IMPLEMENTED in `tests/aggregations-performance.test.ts`
 
 ```typescript
-measures: {
-  // Conditional aggregations
-  conditionalSum: {
-    name: 'conditionalSum',
-    title: 'Conditional Sum',
-    type: 'number',
-    sql: sql`SUM(CASE WHEN ${employees.salary} > 75000 THEN ${employees.salary} ELSE 0 END)`
+// ✅ FULLY IMPLEMENTED: Comprehensive performance testing with TimeEntries fan-out scenarios
+const performanceTests = [
+  {
+    name: 'Large dataset aggregation with TimeEntries',
+    measures: ['TimeEntries.totalHours', 'TimeEntries.avgHours'],
+    dimensions: ['TimeEntries.allocationType'],
+    expectedMaxTime: 50 // Realistic thresholds based on actual performance
   },
-  
-  // Ratios and percentages
-  salaryToMedianRatio: {
-    name: 'salaryToMedianRatio',
-    title: 'Salary to Median Ratio', 
-    type: 'number',
-    sql: sql`${employees.salary} / PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${employees.salary}) OVER ()`
-  },
-  
-  // String aggregations
-  namesList: {
-    name: 'namesList',
-    title: 'Concatenated Names',
-    type: 'string',
-    sql: sql`STRING_AGG(${employees.name}, ', ')`
+  {
+    name: 'Multi-cube aggregation performance with fan-out',
+    measures: ['Employees.count', 'Departments.count', 'TimeEntries.recordCount'],
+    expectedMaxTime: 100
   }
-}
+]
 ```
 
-**Test File**: `tests/aggregations-calculated.test.ts`
+**✅ COMPLETED IMPLEMENTATION:**
+- ✅ **TimeEntries table created** - Added comprehensive fan-out table across all database schemas
+- ✅ **Large-scale data generation** - ~10,000+ time entries with realistic patterns  
+- ✅ **Realistic performance thresholds** - Updated from seconds to milliseconds (50-300ms)
+- ✅ **Cross-database performance validation** - SQLite (~1ms), MySQL (~5ms), PostgreSQL (~13ms)
+- ✅ **Complex cube with 20+ measures** - Comprehensive TimeEntries cube with advanced aggregations
+- ✅ **Fan-out scenario testing** - Multiple time entries per employee/department for scale testing
+- ✅ **Performance benchmarking suite** - Statistical analysis with min/max/avg/median reporting
+- ✅ **Stress testing implementation** - High-complexity queries with multiple aggregations
+- ✅ **Multi-database compatibility** - All tests pass across PostgreSQL, MySQL, SQLite
+- ✅ **Performance measurement utilities** - Enhanced PerformanceMeasurer with statistical reporting
+
+**Test File**: `tests/aggregations-performance.test.ts`
 
 ### 3. Advanced Time Dimension Features
 
@@ -282,42 +246,30 @@ const dstTests = [
 
 **Test File**: `tests/time-dimensions-timezones.test.ts`
 
-#### 3.2 Custom Date Formats and Fiscal Years
+#### 3.2 Time Dimension Edge Cases ✅ **MODIFIED**
 **Priority: Medium**
 
 ```typescript
-// Fiscal year calculations (April 1 - March 31)
-dimensions: {
-  fiscalYear: {
-    name: 'fiscalYear',
-    title: 'Fiscal Year',
-    type: 'string',
-    sql: sql`CASE 
-      WHEN EXTRACT(MONTH FROM ${productivity.date}) >= 4 
-      THEN EXTRACT(YEAR FROM ${productivity.date})
-      ELSE EXTRACT(YEAR FROM ${productivity.date}) - 1 
-    END || '-' || CASE 
-      WHEN EXTRACT(MONTH FROM ${productivity.date}) >= 4 
-      THEN EXTRACT(YEAR FROM ${productivity.date}) + 1
-      ELSE EXTRACT(YEAR FROM ${productivity.date})
-    END`
-  },
+// Focus on database-agnostic time dimension edge cases
+const timeDimensionEdgeCases = [
+  // Leap year handling
+  { dateRange: ['2024-02-28', '2024-03-01'], granularity: 'day' },
   
-  fiscalQuarter: {
-    name: 'fiscalQuarter',
-    title: 'Fiscal Quarter', 
-    type: 'string',
-    sql: sql`'FY' || CASE
-      WHEN EXTRACT(MONTH FROM ${productivity.date}) IN (4,5,6) THEN 'Q1'
-      WHEN EXTRACT(MONTH FROM ${productivity.date}) IN (7,8,9) THEN 'Q2' 
-      WHEN EXTRACT(MONTH FROM ${productivity.date}) IN (10,11,12) THEN 'Q3'
-      ELSE 'Q4'
-    END`
-  }
-}
+  // Month boundary handling  
+  { dateRange: ['2024-01-30', '2024-02-05'], granularity: 'day' },
+  
+  // Year boundary handling
+  { dateRange: ['2023-12-25', '2024-01-07'], granularity: 'week' },
+  
+  // Quarter boundary handling
+  { dateRange: ['2024-03-25', '2024-04-05'], granularity: 'month' },
+  
+  // Different granularity combinations
+  { granularity: 'hour', dateRange: ['2024-01-01 22:00:00', '2024-01-02 02:00:00'] }
+]
 ```
 
-**Test File**: `tests/time-dimensions-fiscal.test.ts`
+**Test File**: `tests/time-dimensions-edge-cases.test.ts`
 
 #### 3.3 Week Boundary Edge Cases
 **Priority: Medium**
@@ -341,70 +293,57 @@ const weekBoundaryTests = [
 
 **Test File**: `tests/time-dimensions-boundaries.test.ts`
 
-### 4. Advanced Data Types and Handling
+### 4. Data Type Edge Cases ✅ **MODIFIED**
 
-#### 4.1 JSON and Complex Data Types
-**Priority: Low**
+#### 4.1 Standard Data Type Handling
+**Priority: Medium**
 
 ```typescript
-// Add JSON fields to test schema
-const extendedEmployees = pgTable('employees_extended', {
-  // ... existing fields
-  metadata: jsonb('metadata'), // PostgreSQL JSONB
-  tags: jsonb('tags').$type<string[]>(), // Array of tags
-  preferences: jsonb('preferences').$type<{
-    theme: 'dark' | 'light',
-    notifications: boolean,
-    locale: string
-  }>()
-})
-
-// JSON aggregation tests
-measures: {
-  uniqueTags: {
-    name: 'uniqueTags',
-    title: 'Unique Tags Count',
-    type: 'number',
-    sql: sql`COUNT(DISTINCT jsonb_array_elements_text(${extendedEmployees.tags}))`
-  },
+// Focus on standard data types across all databases
+const dataTypeTests = [
+  // String edge cases
+  { filters: [{ member: 'Employees.name', operator: 'contains', values: [''] }] }, // Empty string
+  { filters: [{ member: 'Employees.name', operator: 'contains', values: ['Special & Chars'] }] }, // Special chars
   
-  darkThemeUsers: {
-    name: 'darkThemeUsers',
-    title: 'Dark Theme Users',
-    type: 'count',
-    sql: extendedEmployees.id,
-    filters: [
-      (ctx) => sql`${extendedEmployees.preferences}->>'theme' = 'dark'`
-    ]
-  }
-}
+  // Numeric edge cases
+  { filters: [{ member: 'Employees.salary', operator: 'equals', values: [0] }] }, // Zero values
+  { measures: ['Employees.maxSalary'] }, // Large numbers
+  
+  // Boolean handling
+  { filters: [{ member: 'Employees.active', operator: 'equals', values: [true, false] }] },
+  
+  // Date/time edge cases
+  { filters: [{ member: 'Employees.createdAt', operator: 'inDateRange', values: ['2024-02-29', '2024-03-01'] }] }, // Leap year
+  
+  // NULL value handling
+  { measures: ['Employees.count'], filters: [{ member: 'Employees.salary', operator: 'notSet', values: [] }] }
+]
 ```
 
-**Test File**: `tests/data-types-json.test.ts`
+**Test File**: `tests/data-types-standard.test.ts`
 
-#### 4.2 Geographic and Spatial Data
-**Priority: Low**
+#### 4.2 Cross-Database Data Type Consistency
+**Priority: Medium**
 
 ```typescript
-// Add spatial fields (if using PostGIS)
-const locations = pgTable('locations', {
-  id: serial('id').primaryKey(),
-  name: text('name'),
-  coordinates: geometry('coordinates', { type: 'point', srid: 4326 }),
-  organizationId: text('organization_id')
-})
-
-measures: {
-  averageDistance: {
-    name: 'averageDistance',
-    title: 'Average Distance from HQ',
-    type: 'number',
-    sql: sql`AVG(ST_Distance(${locations.coordinates}, ST_Point(-74.0060, 40.7128)))`
-  }
-}
+// Ensure data type handling is consistent across PostgreSQL, MySQL, SQLite
+const consistencyTests = [
+  // Numeric precision handling
+  { measures: ['Employees.avgSalary'], expectedType: 'number' },
+  
+  // Date formatting consistency
+  { dimensions: ['Employees.createdAt'], timeDimensions: [{ dimension: 'Employees.createdAt', granularity: 'day' }] },
+  
+  // Boolean representation consistency
+  { dimensions: ['Employees.active'], measures: ['Employees.count'] },
+  
+  // String comparison consistency (case sensitivity)
+  { filters: [{ member: 'Employees.name', operator: 'equals', values: ['john doe'] }] },
+  { filters: [{ member: 'Employees.name', operator: 'equals', values: ['John Doe'] }] }
+]
 ```
 
-**Test File**: `tests/data-types-spatial.test.ts`
+**Test File**: `tests/data-types-consistency.test.ts`
 
 ### 5. Performance and Scalability Tests
 
@@ -900,25 +839,31 @@ npm run test:coverage -- --reporter=json --outputFile=coverage/coverage.json
 # Use services like Codecov, Coveralls, or GitHub Actions
 ```
 
-## Implementation Priority
+## Implementation Priority ✅ **UPDATED**
 
 ### Phase 1: High Priority (Complete in 1-2 weeks)
-1. **Advanced Filter Operations** - Between, In/NotIn, Like operators
+1. **Advanced Filter Operations** - Between, In/NotIn, Like operators (database-agnostic)
 2. **Error Handling** - Invalid queries, database failures, network issues  
 3. **Security Testing** - SQL injection prevention, advanced security contexts
 4. **Code Coverage Setup** - Configure coverage reporting and thresholds
 
 ### Phase 2: Medium Priority (Complete in 3-4 weeks)
-1. **Statistical Aggregations** - Median, percentiles, standard deviation
+1. **Database-Agnostic Aggregation Edge Cases** - NULL handling, empty results, large numbers
 2. **Performance Testing** - Large datasets, memory usage, concurrency
-3. **Time Dimension Enhancements** - Timezone handling, fiscal years
-4. **Real-World Scenarios** - Dashboard patterns, caching behavior
+3. **Time Dimension Edge Cases** - Leap years, boundary handling, granularity combinations
+4. **Standard Data Type Consistency** - Cross-database behavior validation
 
-### Phase 3: Low Priority (Complete in 5-6 weeks)
-1. **Advanced Data Types** - JSON, spatial data, arrays
-2. **Window Functions** - Running totals, moving averages, ranking
-3. **Complex Calculated Measures** - Multi-step calculations, ratios
-4. **Integration Testing** - End-to-end scenarios, external dependencies
+### Phase 3: Low Priority (Complete in 5-6 weeks)  
+1. **Real-World Integration Scenarios** - Dashboard patterns, caching behavior
+2. **Advanced Performance Testing** - Query optimization, connection pooling
+3. **Comprehensive Error Scenarios** - Network failures, resource limits
+4. **End-to-End Testing** - Full adapter integration, complex multi-cube scenarios
+
+**❌ REMOVED FROM SCOPE** (Database-specific, violates architecture):
+- Statistical aggregations (PERCENTILE_CONT, STDDEV, VARIANCE) - Database-specific SQL
+- Fiscal year calculations (EXTRACT, custom date functions) - Database-specific SQL  
+- JSON/Spatial data types (jsonb, PostGIS functions) - Database-specific features
+- Window functions (OVER clauses) - Database-specific advanced SQL
 
 ## Testing Best Practices
 

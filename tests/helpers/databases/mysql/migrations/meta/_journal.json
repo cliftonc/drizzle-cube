@@ -8,6 +8,13 @@
       "when": 1755687087456,
       "tag": "0001_updated_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1756301189200,
+      "tag": "0001_fast_loners",
+      "breakpoints": true
     }
   ]
 }

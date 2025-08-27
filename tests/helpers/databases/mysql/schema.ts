@@ -3,7 +3,7 @@
  * Converted from PostgreSQL schema to MySQL equivalents
  */
 
-import { mysqlTable, int, varchar, decimal, boolean, timestamp, json } from 'drizzle-orm/mysql-core'
+import { mysqlTable, int, varchar, decimal, boolean, timestamp, json, text } from 'drizzle-orm/mysql-core'
 import { relations } from 'drizzle-orm'
 
 // Employee table - MySQL version
@@ -40,6 +40,20 @@ export const productivity = mysqlTable('productivity', {
   createdAt: timestamp('created_at').defaultNow()
 })
 
+// Time Entries table - MySQL version with fan-out scenarios
+export const timeEntries = mysqlTable('time_entries', {
+  id: int('id').primaryKey().autoincrement(),
+  employeeId: int('employee_id').notNull(),
+  departmentId: int('department_id').notNull(),
+  date: timestamp('date').notNull(),
+  allocationType: varchar('allocation_type', { length: 50 }).notNull(), // 'development', 'maintenance', 'meetings', 'research'
+  hours: decimal('hours', { precision: 4, scale: 2 }).notNull(),
+  description: text('description'),
+  billableHours: decimal('billable_hours', { precision: 4, scale: 2 }).default('0.00'),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
 // Analytics pages table - MySQL version
 export const analyticsPages = mysqlTable('analytics_pages', {
   id: int('id').primaryKey().autoincrement(),
@@ -59,11 +73,13 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.departmentId],
     references: [departments.id],
   }),
-  productivity: many(productivity)
+  productivity: many(productivity),
+  timeEntries: many(timeEntries)
 }))
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
-  employees: many(employees)
+  employees: many(employees),
+  timeEntries: many(timeEntries)
 }))
 
 export const productivityRelations = relations(productivity, ({ one }) => ({
@@ -73,15 +89,28 @@ export const productivityRelations = relations(productivity, ({ one }) => ({
   })
 }))
 
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  employee: one(employees, {
+    fields: [timeEntries.employeeId],
+    references: [employees.id]
+  }),
+  department: one(departments, {
+    fields: [timeEntries.departmentId],
+    references: [departments.id]
+  })
+}))
+
 // Create combined schema object for MySQL
 export const mysqlTestSchema = {
   employees,
   departments, 
   productivity,
+  timeEntries,
   analyticsPages,
   employeesRelations,
   departmentsRelations,
-  productivityRelations
+  productivityRelations,
+  timeEntriesRelations
 }
 
 // Type export

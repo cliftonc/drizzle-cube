@@ -41,6 +41,20 @@ export const productivity = pgTable('productivity', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
 })
 
+// Time Entries table - for tracking employee time allocation with fan-out scenarios
+export const timeEntries = pgTable('time_entries', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  employeeId: integer('employee_id').notNull(),
+  departmentId: integer('department_id').notNull(),
+  date: timestamp('date', { mode: 'date' }).notNull(),
+  allocationType: text('allocation_type').notNull(), // 'development', 'maintenance', 'meetings', 'research'
+  hours: real('hours').notNull(),
+  description: text('description'),
+  billableHours: real('billable_hours').default(0),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
 // Analytics Pages table - for storing dashboard configurations
 export const analyticsPages = pgTable('analytics_pages', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -80,11 +94,13 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.departmentId],
     references: [departments.id]
   }),
-  productivityMetrics: many(productivity)
+  productivityMetrics: many(productivity),
+  timeEntries: many(timeEntries)
 }))
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
-  employees: many(employees)
+  employees: many(employees),
+  timeEntries: many(timeEntries)
 }))
 
 export const productivityRelations = relations(productivity, ({ one }) => ({
@@ -94,14 +110,27 @@ export const productivityRelations = relations(productivity, ({ one }) => ({
   })
 }))
 
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  employee: one(employees, {
+    fields: [timeEntries.employeeId],
+    references: [employees.id]
+  }),
+  department: one(departments, {
+    fields: [timeEntries.departmentId],
+    references: [departments.id]
+  })
+}))
+
 // Export schema for use with Drizzle
 export const testSchema = { 
   employees, 
   departments,
   productivity,
+  timeEntries,
   analyticsPages,
   employeesRelations,
   departmentsRelations,
-  productivityRelations
+  productivityRelations,
+  timeEntriesRelations
 }
 export type TestSchema = typeof testSchema

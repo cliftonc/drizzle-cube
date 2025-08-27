@@ -263,7 +263,9 @@ export function createLoadHandler(
       })
       
     } catch (error) {
-      console.error('Next.js load handler error:', error)
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js load handler error:', error)
+      }
       return NextResponse.json(
         formatErrorResponse(
           error instanceof Error ? error.message : 'Query execution failed',
@@ -300,7 +302,9 @@ export function createMetaHandler(
       })
       
     } catch (error) {
-      console.error('Next.js meta handler error:', error)
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js meta handler error:', error)
+      }
       return NextResponse.json(
         formatErrorResponse(
           error instanceof Error ? error.message : 'Failed to fetch metadata',
@@ -384,7 +388,9 @@ export function createSqlHandler(
       })
       
     } catch (error) {
-      console.error('Next.js SQL handler error:', error)
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js SQL handler error:', error)
+      }
       return NextResponse.json(
         formatErrorResponse(
           error instanceof Error ? error.message : 'SQL generation failed',
@@ -448,7 +454,9 @@ export function createDryRunHandler(
       })
       
     } catch (error) {
-      console.error('Next.js dry-run handler error:', error)
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js dry-run handler error:', error)
+      }
       return NextResponse.json(
         {
           error: error instanceof Error ? error.message : 'Dry-run validation failed',

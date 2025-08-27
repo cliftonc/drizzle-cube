@@ -28,12 +28,13 @@ import { getTestSchema } from './test-database'
  * This allows existing tests to work while we transition to fully dynamic approach
  */
 export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cube<any>>> {
-  const { testEmployeesCube, testDepartmentsCube, testProductivityCube } = await createTestCubesForCurrentDatabase()
+  const { testEmployeesCube, testDepartmentsCube, testProductivityCube, testTimeEntriesCube } = await createTestCubesForCurrentDatabase()
   
   const allCubes = new Map([
     ['Employees', testEmployeesCube],
     ['Departments', testDepartmentsCube], 
-    ['Productivity', testProductivityCube]
+    ['Productivity', testProductivityCube],
+    ['TimeEntries', testTimeEntriesCube]
   ])
 
   if (!cubeNames) {
@@ -58,13 +59,15 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   testEmployeesCube: Cube<any>
   testDepartmentsCube: Cube<any> 
   testProductivityCube: Cube<any>
+  testTimeEntriesCube: Cube<any>
 }> {
-  const { employees, departments, productivity, schema, dbTrue, dbFalse, dbDate } = await getTestSchema()
+  const { employees, departments, productivity, timeEntries, schema, dbTrue, dbFalse, dbDate } = await getTestSchema()
   
   // Declare cube variables first to handle forward references
   let testEmployeesCube: Cube<any>
   let testDepartmentsCube: Cube<any>
   let testProductivityCube: Cube<any>
+  let testTimeEntriesCube: Cube<any>
   
   // Create employees cube with correct schema
   testEmployeesCube = defineCube('Employees', {
@@ -500,9 +503,232 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     }
   })
 
+  // Create time entries cube with comprehensive fan-out scenarios and aggregations
+  testTimeEntriesCube = defineCube('TimeEntries', {
+    title: 'Time Entries Analytics', 
+    description: 'Employee time tracking with allocation types, departments, and billable hours',
+    
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: timeEntries,    
+      where: eq(timeEntries.organisationId, ctx.securityContext.organisationId)
+    }),
+
+    joins: {
+      Employees: {
+        targetCube: () => testEmployeesCube,
+        relationship: 'belongsTo',
+        on: [
+          { source: timeEntries.employeeId, target: employees.id }
+        ]
+      },
+      Departments: {
+        targetCube: () => testDepartmentsCube,
+        relationship: 'belongsTo', 
+        on: [
+          { source: timeEntries.departmentId, target: departments.id }
+        ]
+      }
+    },
+
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Time Entry ID',
+        type: 'number',
+        sql: timeEntries.id,
+        primaryKey: true
+      },
+      employeeId: {
+        name: 'employeeId',
+        title: 'Employee ID',
+        type: 'number',
+        sql: timeEntries.employeeId
+      },
+      departmentId: {
+        name: 'departmentId', 
+        title: 'Department ID',
+        type: 'number',
+        sql: timeEntries.departmentId
+      },
+      allocationType: {
+        name: 'allocationType',
+        title: 'Allocation Type',
+        type: 'string',
+        sql: timeEntries.allocationType
+      },
+      description: {
+        name: 'description',
+        title: 'Task Description',
+        type: 'string',
+        sql: timeEntries.description
+      },
+      date: {
+        name: 'date',
+        title: 'Date',
+        type: 'time',
+        sql: timeEntries.date
+      },
+      createdAt: {
+        name: 'createdAt',
+        title: 'Created At',
+        type: 'time',
+        sql: timeEntries.createdAt
+      }
+    },
+
+    measures: {
+      // Basic count measures
+      count: {
+        name: 'count',
+        title: 'Total Time Entries',
+        type: 'count',
+        sql: timeEntries.id,
+        description: 'Total number of time entries'
+      },
+      
+      // Hours-based measures
+      totalHours: {
+        name: 'totalHours',
+        title: 'Total Hours',
+        type: 'sum',
+        sql: timeEntries.hours,
+        description: 'Sum of all logged hours'
+      },
+      avgHours: {
+        name: 'avgHours',
+        title: 'Average Hours per Entry',
+        type: 'avg',
+        sql: timeEntries.hours,
+        description: 'Average hours per time entry'
+      },
+      minHours: {
+        name: 'minHours',
+        title: 'Minimum Hours',
+        type: 'min',
+        sql: timeEntries.hours
+      },
+      maxHours: {
+        name: 'maxHours',
+        title: 'Maximum Hours',
+        type: 'max',
+        sql: timeEntries.hours
+      },
+      
+      // Billable hours measures
+      totalBillableHours: {
+        name: 'totalBillableHours',
+        title: 'Total Billable Hours',
+        type: 'sum',
+        sql: timeEntries.billableHours,
+        description: 'Sum of all billable hours'
+      },
+      avgBillableHours: {
+        name: 'avgBillableHours',
+        title: 'Average Billable Hours',
+        type: 'avg',
+        sql: timeEntries.billableHours
+      },
+      
+      // Allocation-specific measures with filters
+      developmentHours: {
+        name: 'developmentHours',
+        title: 'Development Hours',
+        type: 'sum',
+        sql: timeEntries.hours,
+        filters: [
+          { member: timeEntries.allocationType, operator: 'equals', values: ['development'] }
+        ],
+        description: 'Total hours spent on development tasks'
+      },
+      meetingHours: {
+        name: 'meetingHours',
+        title: 'Meeting Hours',
+        type: 'sum',
+        sql: timeEntries.hours,
+        filters: [
+          { member: timeEntries.allocationType, operator: 'equals', values: ['meetings'] }
+        ],
+        description: 'Total hours spent in meetings'
+      },
+      maintenanceHours: {
+        name: 'maintenanceHours',
+        title: 'Maintenance Hours',
+        type: 'sum',
+        sql: timeEntries.hours,
+        filters: [
+          { member: timeEntries.allocationType, operator: 'equals', values: ['maintenance'] }
+        ]
+      },
+      
+      // Distinct count measures
+      distinctEmployees: {
+        name: 'distinctEmployees',
+        title: 'Unique Employees',
+        type: 'countDistinct',
+        sql: timeEntries.employeeId,
+        description: 'Number of unique employees with time entries'
+      },
+      distinctDepartments: {
+        name: 'distinctDepartments',
+        title: 'Unique Departments',
+        type: 'countDistinct', 
+        sql: timeEntries.departmentId
+      },
+      distinctAllocations: {
+        name: 'distinctAllocations',
+        title: 'Unique Allocation Types',
+        type: 'countDistinct',
+        sql: timeEntries.allocationType
+      },
+      
+      // Complex calculated measures
+      utilizationRate: {
+        name: 'utilizationRate',
+        title: 'Utilization Rate (%)',
+        type: 'avg',
+        sql: sql`(${timeEntries.billableHours} / NULLIF(${timeEntries.hours}, 0) * 100)`,
+        description: 'Percentage of billable vs total hours'
+      },
+      avgDailyHours: {
+        name: 'avgDailyHours',  
+        title: 'Average Daily Hours',
+        type: 'avg',
+        sql: sql`${timeEntries.hours}`, // This will be grouped by date in queries
+        description: 'Average hours logged per day'
+      },
+      productiveDays: {
+        name: 'productiveDays',
+        title: 'Productive Days',
+        type: 'countDistinct',
+        sql: timeEntries.date,
+        filters: [
+          { member: timeEntries.hours, operator: 'gt', values: [6] }
+        ],
+        description: 'Days with more than 6 hours logged'
+      },
+      
+      // Fan-out testing measures (multiple entries per employee per day)
+      entriesPerDay: {
+        name: 'entriesPerDay',
+        title: 'Entries per Day',
+        type: 'avg',
+        sql: sql`COUNT(*)`, // This creates fan-out when grouped by employee+date
+        description: 'Average number of time entries per day'
+      },
+      maxDailyHours: {
+        name: 'maxDailyHours',
+        title: 'Maximum Daily Hours',
+        type: 'max', 
+        sql: sql`SUM(${timeEntries.hours})`, // Aggregated per day
+        description: 'Maximum hours logged in a single day'
+      }
+    }
+  })
+
   return {
     testEmployeesCube,
     testDepartmentsCube, 
-    testProductivityCube
+    testProductivityCube,
+    testTimeEntriesCube
   }
 }

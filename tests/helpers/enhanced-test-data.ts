@@ -424,6 +424,226 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
   return productivityData
 }
 
+/**
+ * Generate comprehensive time entries data for performance testing
+ * Creates realistic time tracking scenarios with fan-out relationships
+ */
+export function generateComprehensiveTimeEntriesData(
+  insertedEmployees: any[], 
+  insertedDepartments: any[]
+): any[] {
+  const timeEntriesData: any[] = []
+  
+  // Create department map for easy lookup
+  const departmentMap: Record<number, any> = {}
+  insertedDepartments.forEach(dept => {
+    departmentMap[dept.id] = dept
+  })
+  
+  // Allocation types with realistic distributions
+  const allocationTypes = [
+    { type: 'development', probability: 0.4, avgHours: 6 },
+    { type: 'maintenance', probability: 0.15, avgHours: 2 },
+    { type: 'meetings', probability: 0.2, avgHours: 1.5 },
+    { type: 'research', probability: 0.1, avgHours: 3 },
+    { type: 'documentation', probability: 0.1, avgHours: 2 },
+    { type: 'testing', probability: 0.05, avgHours: 4 }
+  ]
+  
+  // Time entry descriptions for realism
+  const descriptions = {
+    development: [
+      'Feature implementation',
+      'Bug fixes',
+      'Code refactoring',
+      'API development',
+      'Frontend components',
+      'Backend services'
+    ],
+    maintenance: [
+      'Server maintenance',
+      'Database optimization',
+      'Security patches',
+      'Performance tuning',
+      'Legacy system updates'
+    ],
+    meetings: [
+      'Daily standup',
+      'Sprint planning',
+      'Code review',
+      'Architecture discussion',
+      'Client meeting',
+      'Team retrospective'
+    ],
+    research: [
+      'Technology evaluation',
+      'Proof of concept',
+      'Performance analysis',
+      'Market research',
+      'Competitor analysis'
+    ],
+    documentation: [
+      'API documentation',
+      'User manual updates',
+      'Technical specifications',
+      'Process documentation',
+      'Knowledge base updates'
+    ],
+    testing: [
+      'Unit testing',
+      'Integration testing',
+      'Performance testing',
+      'User acceptance testing',
+      'Automated test development'
+    ]
+  }
+  
+  // Generate time entries for full year 2024
+  const startDate = new Date('2024-01-01')
+  const endDate = new Date('2024-12-31')
+  
+  // Process each employee
+  insertedEmployees.forEach((employee, employeeIndex) => {
+    // Get employee's department
+    const employeeDepartment = departmentMap[employee.departmentId]
+    if (!employeeDepartment) return
+    
+    // Determine employee work pattern based on role
+    const isEngineer = employee.name.includes('Alex') || 
+                     employee.name.includes('Sarah') || 
+                     employee.name.includes('Emily') || 
+                     employee.name.includes('Jean-Luc') || 
+                     employee.name.includes('Mike') ||
+                     employee.name.includes('James')
+                     
+    const isManager = employee.name.includes('Lisa') || 
+                     employee.name.includes('David')
+                     
+    const isSales = employee.name.includes('Tom') || 
+                   employee.name.includes('Nina')
+                   
+    // Adjust allocation probabilities based on role
+    let roleAllocationTypes = [...allocationTypes]
+    if (isEngineer) {
+      roleAllocationTypes[0].probability = 0.6  // More development
+      roleAllocationTypes[1].probability = 0.2  // More maintenance
+      roleAllocationTypes[2].probability = 0.15 // Fewer meetings
+    } else if (isManager) {
+      roleAllocationTypes[0].probability = 0.1  // Less development
+      roleAllocationTypes[2].probability = 0.5  // More meetings
+      roleAllocationTypes[3].probability = 0.2  // More research
+    } else if (isSales) {
+      roleAllocationTypes[0].probability = 0.05 // Minimal development
+      roleAllocationTypes[2].probability = 0.7  // Lots of meetings
+      roleAllocationTypes[3].probability = 0.2  // Sales research
+    }
+    
+    // Generate entries for each work day
+    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+      const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      const isHoliday = isApproximateHoliday(date)
+      
+      // Skip weekends and major holidays (most of the time)
+      if (isWeekend || isHoliday) {
+        // 10% chance of weekend/holiday work for engineers
+        if (!isEngineer || Math.random() > 0.1) continue
+      }
+      
+      // Determine how many time entries for this day (1-4 entries per day)
+      const entriesPerDay = isEngineer 
+        ? Math.floor(Math.random() * 3) + 2 // 2-4 entries 
+        : Math.floor(Math.random() * 2) + 1 // 1-2 entries
+        
+      let totalDayHours = 0
+      const maxDayHours = 8 + (Math.random() * 2) // 8-10 hours max per day
+      
+      for (let entryIndex = 0; entryIndex < entriesPerDay; entryIndex++) {
+        if (totalDayHours >= maxDayHours) break
+        
+        // Select allocation type based on probabilities
+        let selectedType = 'development'
+        const rand = Math.random()
+        let cumulativeProbability = 0
+        
+        for (const allocType of roleAllocationTypes) {
+          cumulativeProbability += allocType.probability
+          if (rand <= cumulativeProbability) {
+            selectedType = allocType.type
+            break
+          }
+        }
+        
+        const typeConfig = roleAllocationTypes.find(t => t.type === selectedType)!
+        
+        // Generate realistic hours with variation
+        const baseHours = typeConfig.avgHours
+        const variation = (Math.random() - 0.5) * baseHours * 0.4 // ±20% variation
+        let hours = Math.max(0.25, Math.min(baseHours + variation, maxDayHours - totalDayHours))
+        hours = Math.round(hours * 4) / 4 // Round to nearest 0.25 hours
+        
+        if (hours < 0.25) continue
+        
+        // Calculate billable hours (some types are more billable than others)
+        const billableRates = {
+          development: 0.9,
+          maintenance: 0.7,
+          meetings: 0.3,
+          research: 0.5,
+          documentation: 0.6,
+          testing: 0.8
+        }
+        
+        const billableRate = billableRates[selectedType as keyof typeof billableRates] || 0.5
+        const billableHours = Math.round(hours * billableRate * 4) / 4
+        
+        // Select random description
+        const typeDescriptions = descriptions[selectedType as keyof typeof descriptions] || ['General work']
+        const description = typeDescriptions[Math.floor(Math.random() * typeDescriptions.length)]
+        
+        // Some cross-department collaboration (5% chance)
+        let workDepartmentId = employee.departmentId
+        if (Math.random() < 0.05 && selectedType === 'meetings') {
+          const otherDepts = insertedDepartments.filter(d => d.id !== employee.departmentId && d.organisationId === employee.organisationId)
+          if (otherDepts.length > 0) {
+            workDepartmentId = otherDepts[Math.floor(Math.random() * otherDepts.length)].id
+          }
+        }
+        
+        timeEntriesData.push({
+          employeeId: employee.id,
+          departmentId: workDepartmentId,
+          date: new Date(date),
+          allocationType: selectedType,
+          hours,
+          description,
+          billableHours,
+          organisationId: employee.organisationId
+        })
+        
+        totalDayHours += hours
+      }
+    }
+  })
+  
+  console.log(`Generated ${timeEntriesData.length} time entries for comprehensive testing`)
+  return timeEntriesData
+}
+
+// Helper function to detect approximate holidays
+function isApproximateHoliday(date: Date): boolean {
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  
+  // Major US holidays
+  return (
+    (month === 1 && day === 1) || // New Year's Day
+    (month === 7 && day === 4) || // Independence Day  
+    (month === 12 && day === 25) || // Christmas
+    (month === 11 && day >= 22 && day <= 28 && date.getDay() === 4) // Thanksgiving (4th Thursday)
+  )
+}
+
 // Enhanced holiday detection for comprehensive time testing
 function isHolidayDate(date: Date): boolean {
   const month = date.getMonth() + 1

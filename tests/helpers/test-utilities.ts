@@ -167,6 +167,14 @@ export class PerformanceMeasurer {
   clear(): void {
     this.measurements = []
   }
+
+  getLatestMeasurement(): typeof this.measurements[0] | undefined {
+    return this.measurements[this.measurements.length - 1]
+  }
+
+  getAllMeasurements(): typeof this.measurements {
+    return [...this.measurements]
+  }
 }
 
 /**

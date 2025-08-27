@@ -56,8 +56,6 @@ describe('Table Prefix Security', () => {
       testSecurityContexts.org1
     )
     
-    console.log('Generated SQL:', sqlResult.sql)
-    console.log('Parameters:', sqlResult.params)
     
     // The SQL should include table prefixes in WHERE clauses
     // Look for patterns like "employees"."organisation_id" rather than just "organisation_id"
@@ -94,8 +92,6 @@ describe('Table Prefix Security', () => {
       testSecurityContexts.org1
     )
     
-    console.log('Multi-cube SQL:', sqlResult.sql)
-    console.log('Parameters:', sqlResult.params)
     
     // Both tables should have properly prefixed security filters
     const hasEmployeesPrefix = (
@@ -146,7 +142,6 @@ describe('Table Prefix Security', () => {
       testSecurityContexts.org1
     )
     
-    console.log('Filtered query SQL:', sqlResult.sql)
     
     // Security filtering should still have proper table prefixes
     const hasSecurityPrefix = (
