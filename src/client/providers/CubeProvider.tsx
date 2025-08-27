@@ -3,7 +3,7 @@
  * Replaces @cubejs-client/react provider
  */
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useContext, useMemo, useState } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
 import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig } from '../types'
 import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
