@@ -8,6 +8,13 @@ export default defineConfig({
     },
     globalSetup: './tests/setup/globalSetup.ts',
     globalTeardown: './tests/setup/globalTeardown.ts',
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      'tests/client/**'  // Exclude client tests from server test runner
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

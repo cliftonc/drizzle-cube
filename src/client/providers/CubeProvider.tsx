@@ -3,7 +3,7 @@
  * Replaces @cubejs-client/react provider
  */
 
-import React, { createContext, useContext, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
 import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig } from '../types'
 import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
@@ -40,11 +40,14 @@ export function CubeProvider({
   features = { enableAI: true, aiEndpoint: '/api/ai/generate' }, // Default to AI enabled for backward compatibility
   children 
 }: CubeProviderProps) {
-  // State for dynamic API configuration
-  const [apiConfig, setApiConfig] = useState<{ apiOptions: CubeApiOptions; token?: string }>({
+  // State for dynamic API configuration (only for updates via updateApiConfig)
+  const [dynamicConfig, setDynamicConfig] = useState<{ apiOptions: CubeApiOptions; token?: string } | null>(null)
+
+  // Determine current config: dynamic config takes precedence over props
+  const currentConfig = dynamicConfig || {
     apiOptions: initialApiOptions || { apiUrl: '/cubejs-api/v1' },
     token: initialToken
-  })
+  }
 
   // Create or use the provided CubeClient, recreating when config changes
   const cubeApi = useMemo(() => {
@@ -54,13 +57,13 @@ export function CubeProvider({
     }
     
     // Create client with current config
-    return createCubeClient(apiConfig.token, apiConfig.apiOptions)
-  }, [initialCubeApi, initialApiOptions, initialToken, apiConfig.apiOptions, apiConfig.token])
+    return createCubeClient(currentConfig.token, currentConfig.apiOptions)
+  }, [initialCubeApi, initialApiOptions, initialToken, currentConfig.apiOptions, currentConfig.token])
 
   const { meta, labelMap, loading: metaLoading, error: metaError, getFieldLabel, refetch: refetchMeta } = useCubeMeta(cubeApi)
   
   const updateApiConfig = (newApiOptions: CubeApiOptions, newToken?: string) => {
-    setApiConfig({
+    setDynamicConfig({
       apiOptions: newApiOptions,
       token: newToken
     })
