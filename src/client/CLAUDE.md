@@ -2,54 +2,7 @@
 
 This file provides guidance for working with the drizzle-cube client components, specifically focusing on recent fixes and improvements.
 
-## BarChart Component Restoration
-
-The BarChart component was completely rewritten to restore functionality that was lost during migration from the original fintune-react implementation. Here are the key changes made:
-
-### 1. Time Dimension Display Names
-
-**Problem**: Time dimensions were showing raw timestamps like `"2023-02-01 00:00:00+00"` instead of readable labels.
-
-**Solution**: Fixed `formatTimeValue()` function in `/src/client/utils/chartUtils.ts`:
-- Updated regex pattern to handle PostgreSQL timestamp format (`YYYY-MM-DD HH:MM:SS+TZ`)
-- Added timestamp normalization to convert PostgreSQL format to ISO format
-- Enhanced granularity detection to properly format based on query timeDimensions
-
-**Result**: Time dimensions now display properly formatted labels:
-- `"2023-01-01 00:00:00+00"` with `granularity: "month"` → `"2023-01"`
-- `"2023-02-01 00:00:00+00"` with `granularity: "month"` → `"2023-02"`
-
-### 2. Series Support and Data Transformation
-
-**Problem**: The chart couldn't handle multiple series from dimensions, and stacking wasn't working.
-
-**Solution**: Implemented `transformChartDataWithSeries()` function:
-- Handles both measure-based and dimension-based series
-- Proper data aggregation and grouping by X-axis values
-- Dynamic series key generation from dimension values
-- Support for complex multi-dimensional data with series fields
-
-**Key Features**:
-- **Series Fields**: Use `chartConfig.series` to specify which dimensions create separate series
-- **Stacking**: Control with `displayConfig.stackedBarChart: true`
-- **Data Aggregation**: Automatically groups and sums measure values by dimension series
-
-### 3. Interactive Legend System
-
-**Problem**: Legend was not showing at all due to component rendering issues.
-
-**Solution**: Fixed legend rendering and interaction:
-- Removed problematic custom `ChartLegend` wrapper that wasn't rendering
-- Used direct Recharts `Legend` component with proper conditional rendering
-- Added hover state management with opacity changes
-- Fixed React re-render loop caused by `console.log` inside JSX
-
-**Features**:
-- Shows when `displayConfig.showLegend: true` and multiple series exist
-- Interactive hover effects that highlight/fade chart bars
-- Proper positioning and styling
-
-### 4. Chart Infrastructure Components
+### Chart Infrastructure Components
 
 **Created supporting components**:
 - **`ChartContainer.tsx`**: Responsive container with error handling
@@ -59,15 +12,7 @@ The BarChart component was completely rewritten to restore functionality that wa
 
 ### 5. Configuration Support
 
-**Supports both legacy and new configuration formats**:
-```typescript
-// Legacy format
-{
-  x: 'Employees.createdAt',
-  y: ['Employees.count']
-}
-
-// New format  
+```
 {
   xAxis: ['Employees.createdAt'],
   yAxis: ['Employees.count'],
@@ -84,29 +29,6 @@ The BarChart component was completely rewritten to restore functionality that wa
   showTooltip: true
 }
 ```
-
-### 6. Advanced Features Restored
-
-- **Positive/Negative Value Coloring**: Automatically uses green/red for single series with mixed values
-- **Rotated X-axis Labels**: Proper spacing and rotation for time dimension labels  
-- **Interactive Hover Effects**: Legend hover changes bar opacity
-- **Error Boundaries**: Robust error handling with user-friendly messages
-- **Type Safety**: Full TypeScript support throughout
-
-## Key Technical Fixes
-
-### React Re-render Loop Issue
-**Problem**: Chart was re-rendering 4 times on each load due to `console.log` inside JSX return statement.
-**Solution**: Moved all debugging outside JSX to prevent infinite re-render loops.
-
-### Timestamp Format Compatibility  
-**Problem**: `formatTimeValue()` only handled ISO format, but database returns PostgreSQL format.
-**Solution**: Enhanced regex and normalization to handle both formats.
-
-### Legend Component Architecture
-**Problem**: Custom wrapper component had rendering issues.
-**Solution**: Use direct Recharts components with proper conditional rendering patterns.
-
 ## Usage Examples
 
 ### Time Series Chart with Multiple Departments
@@ -150,13 +72,36 @@ const displayConfig = {
 5. **Test both stacked and unstacked** configurations
 6. **Avoid console.log inside JSX** to prevent re-render loops
 
-## Files Modified/Created
+## Key Files Reference
 
-- `/src/client/components/charts/BarChart.tsx` - Complete rewrite
-- `/src/client/utils/chartUtils.ts` - New utility functions
-- `/src/client/utils/chartConstants.ts` - New constants  
-- `/src/client/components/charts/ChartContainer.tsx` - New container
-- `/src/client/components/charts/ChartTooltip.tsx` - New tooltip
-- `/src/client/components/charts/ChartLegend.tsx` - New legend (not used in final solution)
+### Core Components
+- @src/client/providers/CubeProvider.tsx - Main provider for API integration
+- @src/client/hooks/useCubeQuery.ts - Query execution hook
+- @src/client/hooks/useCubeMeta.ts - Metadata access hook
+- @src/client/components/AnalyticsDashboard.tsx - Main dashboard component
 
-The BarChart now has full feature parity with the original fintune-react implementation and properly handles time dimensions, series, stacking, and interactive legends.
+### Chart System
+- @src/client/components/charts/*.tsx - Individual chart implementations
+- @src/client/utils/chartUtils.ts - Data transformation utilities
+- @src/client/utils/chartConstants.ts - Shared styling and configuration
+
+### Query Building
+- @src/client/components/QueryBuilder/ - Complete query building interface
+- @src/client/components/QueryBuilder/FilterBuilder.tsx - Dynamic filter system
+
+## Entry Points
+
+The client provides modular entry points for different use cases:
+- `drizzle-cube/client` - Complete client suite
+- `drizzle-cube/client/charts` - Chart components only
+- `drizzle-cube/client/hooks` - Hooks only
+- `drizzle-cube/client/providers` - Provider components only
+- `drizzle-cube/client/components` - UI components only
+
+## Guard Rails
+
+1. **Always use CubeProvider** - Required for API integration
+2. **Include queryObject for time formatting** - Enables proper time dimension display
+3. **Follow chart config patterns** - Maintain consistency across chart types
+4. **Use error boundaries** - Wrap charts in ChartContainer for error handling
+5. **Maintain responsive design** - All components must work on mobile and desktop
