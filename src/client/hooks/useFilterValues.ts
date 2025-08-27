@@ -96,6 +96,16 @@ export function useFilterValues(
     }
   }, [resultSet, isLoading, queryError, queryId, extractValuesFromResultSet])
   
+  // Reset values when fieldName becomes null or enabled changes
+  useEffect(() => {
+    if (!fieldName || !enabled) {
+      setValues([])
+      setCurrentQuery(null)
+      lastProcessedQueryId.current = null
+      lastSearchTerm.current = ''
+    }
+  }, [fieldName, enabled])
+  
   // Refetch function
   const refetch = useCallback(() => {
     if (!fieldName) return

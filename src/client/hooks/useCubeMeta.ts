@@ -73,6 +73,11 @@ function isCacheValid(): boolean {
   return (now - cachedMeta.timestamp) < CACHE_DURATION
 }
 
+// Export cache clearing function for tests
+export function clearMetaCache() {
+  cachedMeta = null
+}
+
 export function useCubeMeta(cubeApi: CubeClient): UseCubeMetaResult {
   const [meta, setMeta] = useState<CubeMeta | null>(null)
   const [labelMap, setLabelMap] = useState<FieldLabelMap>({})
