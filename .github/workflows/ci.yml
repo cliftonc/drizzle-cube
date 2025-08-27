@@ -60,12 +60,8 @@ jobs:
           path: dist/
           key: ${{ runner.os }}-build-${{ github.sha }}
 
-  test:
+  test-postgres:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        db-type: [postgres, mysql, sqlite]
-      fail-fast: false
     
     services:
       postgres:
@@ -82,6 +78,32 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
+
+      - name: Run tests (PostgreSQL)
+        run: npm test
+        env:
+          TEST_DB_TYPE: postgres
+          TEST_DATABASE_URL: postgres://test:test@localhost:5433/drizzle_cube_test
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    
+    services:
       mysql:
         image: mysql:8.0
         env:
@@ -96,7 +118,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-          --default-authentication-plugin=mysql_native_password
 
     steps:
       - name: Checkout code
@@ -111,18 +132,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for databases (non-SQLite)
-        if: matrix.db-type != 'sqlite'
-        run: |
-          if [ "${{ matrix.db-type }}" = "postgres" ]; then
-            timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
-          elif [ "${{ matrix.db-type }}" = "mysql" ]; then
-            timeout 60 bash -c 'until nc -z localhost 3307; do echo "Waiting for MySQL..."; sleep 1; done'
-          fi
+      - name: Wait for MySQL
+        run: timeout 60 bash -c 'until nc -z localhost 3307; do echo "Waiting for MySQL..."; sleep 1; done'
 
-      - name: Run tests (${{ matrix.db-type }})
+      - name: Run tests (MySQL)
         run: npm test
         env:
-          TEST_DB_TYPE: ${{ matrix.db-type }}
-          TEST_DATABASE_URL: ${{ matrix.db-type == 'postgres' && 'postgres://test:test@localhost:5433/drizzle_cube_test' || '' }}
-          MYSQL_TEST_DATABASE_URL: ${{ matrix.db-type == 'mysql' && 'mysql://test:test@localhost:3307/drizzle_cube_test' || '' }}
+          TEST_DB_TYPE: mysql
+          MYSQL_TEST_DATABASE_URL: mysql://test:test@localhost:3307/drizzle_cube_test
+
+  test-sqlite:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (SQLite)
+        run: npm test
+        env:
+          TEST_DB_TYPE: sqlite
