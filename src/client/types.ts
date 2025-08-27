@@ -71,13 +71,19 @@ export interface DashboardConfig {
 // Filter types - hierarchical structure supporting AND/OR logic
 export type FilterOperator = 
   // String operators
-  | 'equals' | 'notEquals' | 'contains' | 'notContains' | 'startsWith' | 'endsWith'
+  | 'equals' | 'notEquals' | 'contains' | 'notContains' 
+  | 'startsWith' | 'notStartsWith' | 'endsWith' | 'notEndsWith'
+  | 'like' | 'notLike' | 'ilike'
   // Numeric operators  
-  | 'gt' | 'gte' | 'lt' | 'lte'
-  // Null operators
-  | 'set' | 'notSet'
+  | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'notBetween'
+  // Array operators
+  | 'in' | 'notIn'
+  // Null/Empty operators
+  | 'set' | 'notSet' | 'isEmpty' | 'isNotEmpty'
   // Date operators
   | 'inDateRange' | 'beforeDate' | 'afterDate'
+  // Regex operators
+  | 'regex' | 'notRegex'
 
 export interface SimpleFilter {
   member: string

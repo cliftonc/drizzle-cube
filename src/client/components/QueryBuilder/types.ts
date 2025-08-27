@@ -195,9 +195,49 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     valueType: 'string',
     fieldTypes: ['string']
   },
+  notStartsWith: {
+    label: 'not starts with',
+    description: 'Does not start with text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
   endsWith: {
     label: 'ends with',
     description: 'Ends with text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  notEndsWith: {
+    label: 'not ends with',
+    description: 'Does not end with text',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  like: {
+    label: 'like',
+    description: 'SQL LIKE pattern matching (case sensitive)',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  notLike: {
+    label: 'not like',
+    description: 'SQL NOT LIKE pattern matching (case sensitive)',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  ilike: {
+    label: 'ilike',
+    description: 'SQL ILIKE pattern matching (case insensitive)',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
@@ -236,7 +276,40 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
-  // Null operators
+  between: {
+    label: 'between',
+    description: 'Between two values (inclusive)',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max', 'time']
+  },
+  notBetween: {
+    label: 'not between',
+    description: 'Not between two values',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'number',
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max', 'time']
+  },
+  // Array operators
+  in: {
+    label: 'in',
+    description: 'Matches any of the provided values',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'boolean']
+  },
+  notIn: {
+    label: 'not in',
+    description: 'Does not match any of the provided values',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'any',
+    fieldTypes: ['string', 'number', 'boolean']
+  },
+  // Null/Empty operators
   set: {
     label: 'is set',
     description: 'Is not null/empty',
@@ -252,6 +325,22 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     supportsMultipleValues: false,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'time', 'boolean']
+  },
+  isEmpty: {
+    label: 'is empty',
+    description: 'Is empty string or null',
+    requiresValues: false,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  isNotEmpty: {
+    label: 'is not empty',
+    description: 'Is not empty string and not null',
+    requiresValues: false,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
   },
   // Date operators
   inDateRange: {
@@ -277,6 +366,23 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     supportsMultipleValues: false,
     valueType: 'date',
     fieldTypes: ['time']
+  },
+  // Regex operators
+  regex: {
+    label: 'matches regex',
+    description: 'Matches regular expression pattern',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  notRegex: {
+    label: 'not matches regex',
+    description: 'Does not match regular expression pattern',
+    requiresValues: true,
+    supportsMultipleValues: false,
+    valueType: 'string',
+    fieldTypes: ['string']
   }
 }
 

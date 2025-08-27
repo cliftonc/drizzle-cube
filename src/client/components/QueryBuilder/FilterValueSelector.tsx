@@ -42,9 +42,9 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     cube.dimensions.some(dim => dim.name === fieldName && dim.type === 'time')
   ) : false, [schema, fieldName])
   
-  // Fetch distinct values for combo box (only for equals/notEquals on non-time dimensions)
+  // Fetch distinct values for combo box (only for equals/notEquals/in/notIn on non-time dimensions)
   const shouldFetchValues = useMemo(() => 
-    (operator === 'equals' || operator === 'notEquals') && isDimension && !isTimeDimension,
+    (['equals', 'notEquals', 'in', 'notIn'].includes(operator)) && isDimension && !isTimeDimension,
     [operator, isDimension, isTimeDimension]
   )
   const shouldShowComboBox = shouldFetchValues
@@ -191,6 +191,43 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     )
   }
   
+  if (operator === 'between' || operator === 'notBetween') {
+    // Between range picker (for numbers)
+    const handleBetweenStartInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value)
+      const currentValues = values.length >= 2 ? values : ['', '']
+      const newValues = [!isNaN(value) ? value : e.target.value === '' ? '' : currentValues[0], currentValues[1]]
+      onValuesChange(newValues.filter(v => v !== ''))
+    }, [values, onValuesChange])
+    
+    const handleBetweenEndInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseFloat(e.target.value)
+      const currentValues = values.length >= 2 ? values : ['', '']
+      const newValues = [currentValues[0], !isNaN(value) ? value : e.target.value === '' ? '' : currentValues[1]]
+      onValuesChange(newValues.filter(v => v !== ''))
+    }, [values, onValuesChange])
+    
+    return (
+      <div className="flex items-center space-x-2">
+        <input
+          type="number"
+          value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
+          onChange={handleBetweenStartInput}
+          placeholder="Min"
+          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        <span className="text-sm text-gray-500">to</span>
+        <input
+          type="number"
+          value={values[1] !== undefined && values[1] !== null ? values[1] : ''}
+          onChange={handleBetweenEndInput}
+          placeholder="Max"
+          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+    )
+  }
+  
   if (operatorMeta.valueType === 'date') {
     // Single date picker
     return (
@@ -216,8 +253,8 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     )
   }
   
-  // Time dimension with equals/notEquals - use date picker
-  if (isTimeDimension && (operator === 'equals' || operator === 'notEquals')) {
+  // Time dimension with equals/notEquals/in/notIn - use date picker
+  if (isTimeDimension && (['equals', 'notEquals', 'in', 'notIn'].includes(operator))) {
     if (operatorMeta.supportsMultipleValues) {
       // Multi-select date picker (for notEquals that supports multiple values)
       return (
