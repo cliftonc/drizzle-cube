@@ -7,7 +7,8 @@ import type { SQL, AnyColumn } from 'drizzle-orm'
 import type { 
   Cube, 
   QueryContext, 
-  MultiCubeQueryContext 
+  MultiCubeQueryContext,
+  SqlExpression 
 } from './types'
 
 /**
@@ -59,6 +60,15 @@ export function createMultiCubeContext(
     cubes,
     currentCube
   }
+}
+
+/**
+ * Type guard to check if value is a function-based SQL expression
+ */
+export function isFunctionSqlExpression(
+  expr: SqlExpression
+): expr is (ctx: QueryContext) => AnyColumn | SQL {
+  return typeof expr === 'function'
 }
 
 /**

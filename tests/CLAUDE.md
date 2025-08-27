@@ -136,6 +136,31 @@ export async function createTestCubesForCurrentDatabase() {
 }
 ```
 
+### Test Cube Structure Reference
+
+The testing infrastructure provides three comprehensive test cubes covering different data patterns and relationships:
+
+#### **Employees Cube** (`testEmployeesCube`)
+- **Relationships**: hasMany → Productivity, belongsTo → Departments
+- **Dimensions**: `id` (number, primaryKey), `name` (string), `email` (string), `departmentId` (number), `isActive` (boolean), `active` (boolean), `createdAt` (time), `salary` (number)
+- **Measures**: `count`, `activeCount`, `inactiveCount`, `totalSalary`, `avgSalary`, `minSalary`, `maxSalary`, `countDistinctDepartments`
+
+#### **Departments Cube** (`testDepartmentsCube`)  
+- **Dimensions**: `id` (number, primaryKey), `name` (string)
+- **Measures**: `count`, `totalBudget`, `avgBudget`, `minBudget`, `maxBudget`
+
+#### **Productivity Cube** (`testProductivityCube`)
+- **Relationships**: belongsTo → Employees
+- **Dimensions**: `id` (number, primaryKey), `employeeId` (number), `date` (time), `createdAt` (time), `isWorkDay` (boolean), `isDayOff` (boolean), `happinessIndex` (number), `happinessLevel` (string), `linesOfCode` (number), `pullRequests` (number), `deployments` (number)
+- **Measures**: `recordCount`, `workingDaysCount`, `daysOffCount`, `totalLinesOfCode`, `totalPullRequests`, `totalDeployments`, `avgLinesOfCode`, `avgPullRequests`, `avgDeployments`, `avgHappinessIndex`, `minHappinessIndex`, `maxHappinessIndex`, `minLinesOfCode`, `maxLinesOfCode`, `countDistinctEmployees`, `highProductivityDays`, `happyWorkDays`, `productivityScore`
+
+**Key Testing Patterns**:
+- **Multi-cube queries**: Cross-cube aggregations and joins
+- **Time dimensions**: Date-based filtering and grouping
+- **Complex measures**: Calculated fields with filters and business logic
+- **Relationship testing**: hasMany/belongsTo relationship validation
+- **Security isolation**: OrganisationId-based tenant separation
+
 ## Test Categories and Patterns
 
 ### Aggregation Tests (`aggregations-comprehensive.test.ts`)

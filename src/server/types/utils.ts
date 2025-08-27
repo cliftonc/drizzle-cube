@@ -20,11 +20,3 @@ export type SqlExpression =
   | SQL 
   | ((ctx: QueryContext) => AnyColumn | SQL)
 
-/**
- * Type guard to check if value is a function-based SQL expression
- */
-export function isFunctionSqlExpression(
-  expr: SqlExpression
-): expr is (ctx: QueryContext) => AnyColumn | SQL {
-  return typeof expr === 'function'
-}

@@ -47,18 +47,26 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
    * Build PostgreSQL string matching conditions using ILIKE (case-insensitive)
    * Extracted from executor.ts:807-813 and multi-cube-builder.ts:468-474
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith', value: string): SQL {
-    const pattern = this.buildPattern(operator, value)
-
+  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
     switch (operator) {
       case 'contains':
-        return sql`${fieldExpr} ILIKE ${pattern}`
+        return sql`${fieldExpr} ILIKE ${`%${value}%`}`
       case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${pattern}`
+        return sql`${fieldExpr} NOT ILIKE ${`%${value}%`}`
       case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${pattern}`
+        return sql`${fieldExpr} ILIKE ${`${value}%`}`
       case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${pattern}`
+        return sql`${fieldExpr} ILIKE ${`%${value}`}`
+      case 'like':
+        return sql`${fieldExpr} LIKE ${value}`
+      case 'notLike':
+        return sql`${fieldExpr} NOT LIKE ${value}`
+      case 'ilike':
+        return sql`${fieldExpr} ILIKE ${value}`
+      case 'regex':
+        return sql`${fieldExpr} ~* ${value}`
+      case 'notRegex':
+        return sql`${fieldExpr} !~* ${value}`
       default:
         throw new Error(`Unsupported string operator: ${operator}`)
     }

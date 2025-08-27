@@ -484,6 +484,52 @@ export class QueryBuilder {
         }
         return null
       }
+      case 'between':
+        if (filteredValues.length >= 2) {
+          return and(
+            gte(fieldExpr as AnyColumn, filteredValues[0]),
+            lte(fieldExpr as AnyColumn, filteredValues[1])
+          ) as SQL
+        }
+        return null
+      case 'notBetween':
+        if (filteredValues.length >= 2) {
+          return or(
+            lt(fieldExpr as AnyColumn, filteredValues[0]),
+            gt(fieldExpr as AnyColumn, filteredValues[1])
+          ) as SQL
+        }
+        return null
+      case 'in':
+        if (filteredValues.length > 0) {
+          return inArray(fieldExpr as AnyColumn, filteredValues)
+        }
+        return null
+      case 'notIn':
+        if (filteredValues.length > 0) {
+          return notInArray(fieldExpr as AnyColumn, filteredValues)
+        }
+        return null
+      case 'like':
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'like', value)
+      case 'notLike':
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notLike', value)
+      case 'ilike':
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'ilike', value)
+      case 'regex':
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'regex', value)
+      case 'notRegex':
+        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notRegex', value)
+      case 'isEmpty':
+        return or(
+          isNull(fieldExpr as AnyColumn),
+          eq(fieldExpr as AnyColumn, '')
+        ) as SQL
+      case 'isNotEmpty':
+        return and(
+          isNotNull(fieldExpr as AnyColumn),
+          ne(fieldExpr as AnyColumn, '')
+        ) as SQL
       default:
         return null
     }

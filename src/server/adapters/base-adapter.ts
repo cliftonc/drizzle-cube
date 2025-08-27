@@ -22,13 +22,13 @@ export interface DatabaseAdapter {
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
 
   /**
-   * Build case-insensitive string matching condition
+   * Build string matching condition
    * @param fieldExpr - The field to search in
    * @param operator - The string matching operator
    * @param value - The value to match
    * @returns SQL expression for string matching
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith', value: string): SQL
+  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
 
   /**
    * Cast expression to specific database type
@@ -95,7 +95,7 @@ export interface DatabaseAdapter {
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite'
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
-  abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith', value: string): SQL
+  abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
   abstract buildAvg(fieldExpr: AnyColumn | SQL): SQL
   abstract buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL

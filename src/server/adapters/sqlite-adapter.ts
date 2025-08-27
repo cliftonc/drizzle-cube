@@ -65,18 +65,29 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    * Build SQLite string matching conditions using LOWER() + LIKE for case-insensitive matching
    * SQLite LIKE is case-insensitive by default, but LOWER() ensures consistency
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith', value: string): SQL {
-    const pattern = this.buildPattern(operator, value.toLowerCase())
-
+  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
     switch (operator) {
       case 'contains':
-        return sql`LOWER(${fieldExpr}) LIKE ${pattern}`
+        return sql`LOWER(${fieldExpr}) LIKE ${`%${value.toLowerCase()}%`}`
       case 'notContains':
-        return sql`LOWER(${fieldExpr}) NOT LIKE ${pattern}`
+        return sql`LOWER(${fieldExpr}) NOT LIKE ${`%${value.toLowerCase()}%`}`
       case 'startsWith':
-        return sql`LOWER(${fieldExpr}) LIKE ${pattern}`
+        return sql`LOWER(${fieldExpr}) LIKE ${`${value.toLowerCase()}%`}`
       case 'endsWith':
-        return sql`LOWER(${fieldExpr}) LIKE ${pattern}`
+        return sql`LOWER(${fieldExpr}) LIKE ${`%${value.toLowerCase()}`}`
+      case 'like':
+        return sql`${fieldExpr} LIKE ${value}`
+      case 'notLike':
+        return sql`${fieldExpr} NOT LIKE ${value}`
+      case 'ilike':
+        // SQLite doesn't have ILIKE, use LOWER() + LIKE for case-insensitive
+        return sql`LOWER(${fieldExpr}) LIKE ${value.toLowerCase()}`
+      case 'regex':
+        // SQLite regex requires loading extension, use GLOB as fallback
+        return sql`${fieldExpr} GLOB ${value}`
+      case 'notRegex':
+        // SQLite regex requires loading extension, use NOT GLOB as fallback
+        return sql`${fieldExpr} NOT GLOB ${value}`
       default:
         throw new Error(`Unsupported string operator: ${operator}`)
     }

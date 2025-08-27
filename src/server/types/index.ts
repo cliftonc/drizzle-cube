@@ -1,7 +1,5 @@
-/**
- * Re-exports all types for the Drizzle Cube semantic layer
- * Maintains backward compatibility while providing a clean organization
- */
+// Re-exports all types for the Drizzle Cube semantic layer
+// Maintains backward compatibility while providing a clean organization
 
 // Core types
 export * from './core'
