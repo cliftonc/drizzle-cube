@@ -25,24 +25,24 @@ import {
   formatErrorResponse
 } from '../utils'
 
-export interface ExpressAdapterOptions<TSchema extends Record<string, any> = Record<string, any>> {
+export interface ExpressAdapterOptions {
   /**
    * Array of cube definitions to register
    */
-  cubes: Cube<TSchema>[]
+  cubes: Cube[]
   
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
-  drizzle: PostgresJsDatabase<TSchema> | MySql2Database<TSchema> | BetterSQLite3Database<TSchema> | DrizzleDatabase<TSchema>
+  drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
   
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
-  schema?: TSchema
+  schema?: any
   
   /**
    * Extract security context from incoming HTTP request.
@@ -94,8 +94,8 @@ export interface ExpressAdapterOptions<TSchema extends Record<string, any> = Rec
 /**
  * Create Express router for Cube.js-compatible API
  */
-export function createCubeRouter<TSchema extends Record<string, any> = Record<string, any>>(
-  options: ExpressAdapterOptions<TSchema>
+export function createCubeRouter(
+  options: ExpressAdapterOptions
 ): Router {
   const { 
     cubes,
@@ -127,7 +127,7 @@ export function createCubeRouter<TSchema extends Record<string, any> = Record<st
   router.use(express.urlencoded({ extended: true, limit: jsonLimit }))
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler<TSchema>({
+  const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType
@@ -410,9 +410,9 @@ export function createCubeRouter<TSchema extends Record<string, any> = Record<st
 /**
  * Convenience function to mount Cube routes on an existing Express app
  */
-export function mountCubeRoutes<TSchema extends Record<string, any> = Record<string, any>>(
+export function mountCubeRoutes(
   app: Express, 
-  options: ExpressAdapterOptions<TSchema>
+  options: ExpressAdapterOptions
 ): Express {
   const cubeRouter = createCubeRouter(options)
   app.use('/', cubeRouter)
@@ -434,8 +434,8 @@ export function mountCubeRoutes<TSchema extends Record<string, any> = Record<str
  *   }
  * })
  */
-export function createCubeApp<TSchema extends Record<string, any> = Record<string, any>>(
-  options: ExpressAdapterOptions<TSchema>
+export function createCubeApp(
+  options: ExpressAdapterOptions
 ): Express {
   const app = express()
   return mountCubeRoutes(app, options)

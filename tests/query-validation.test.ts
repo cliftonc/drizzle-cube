@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/test-database'
+
 
 import { 
   SemanticLayerCompiler
@@ -16,7 +16,7 @@ import {
 import type { 
   Cube, 
   SemanticQuery
-} from '../src/server/types-drizzle'
+} from '../../src/server/types'
 
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 

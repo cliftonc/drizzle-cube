@@ -45,24 +45,24 @@ export interface NextCorsOptions {
   credentials?: boolean
 }
 
-export interface NextAdapterOptions<TSchema extends Record<string, any> = Record<string, any>> {
+export interface NextAdapterOptions {
   /**
    * Array of cube definitions to register
    */
-  cubes: Cube<TSchema>[]
+  cubes: Cube[]
   
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
-  drizzle: PostgresJsDatabase<TSchema> | MySql2Database<TSchema> | BetterSQLite3Database<TSchema> | DrizzleDatabase<TSchema>
+  drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
   
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
-  schema?: TSchema
+  schema?: any
   
   /**
    * Extract security context from incoming HTTP request.
@@ -126,9 +126,9 @@ export interface CubeHandlers {
 /**
  * Helper function to create and configure semantic layer from options
  */
-function createSemanticLayer<TSchema extends Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
-): SemanticLayerCompiler<TSchema> {
+function createSemanticLayer(
+  options: NextAdapterOptions
+): SemanticLayerCompiler {
   const { cubes, drizzle, schema, engineType } = options
 
   // Validate required options
@@ -137,7 +137,7 @@ function createSemanticLayer<TSchema extends Record<string, any>>(
   }
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler<TSchema>({
+  const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType
@@ -207,8 +207,8 @@ export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler
 /**
  * Create load handler - Execute queries
  */
-export function createLoadHandler<TSchema extends Record<string, any> = Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
+export function createLoadHandler(
+  options: NextAdapterOptions
 ): RouteHandler {
   const { extractSecurityContext, cors } = options
 
@@ -278,8 +278,8 @@ export function createLoadHandler<TSchema extends Record<string, any> = Record<s
 /**
  * Create meta handler - Get cube metadata
  */
-export function createMetaHandler<TSchema extends Record<string, any> = Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
+export function createMetaHandler(
+  options: NextAdapterOptions
 ): RouteHandler {
   const { cors } = options
 
@@ -315,8 +315,8 @@ export function createMetaHandler<TSchema extends Record<string, any> = Record<s
 /**
  * Create SQL handler - Generate SQL without execution
  */
-export function createSqlHandler<TSchema extends Record<string, any> = Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
+export function createSqlHandler(
+  options: NextAdapterOptions
 ): RouteHandler {
   const { extractSecurityContext, cors } = options
 
@@ -399,8 +399,8 @@ export function createSqlHandler<TSchema extends Record<string, any> = Record<st
 /**
  * Create dry-run handler - Validate queries without execution
  */
-export function createDryRunHandler<TSchema extends Record<string, any> = Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
+export function createDryRunHandler(
+  options: NextAdapterOptions
 ): RouteHandler {
   const { extractSecurityContext, cors } = options
 
@@ -479,8 +479,8 @@ export function createDryRunHandler<TSchema extends Record<string, any> = Record
  * export const GET = handlers.load
  * export const POST = handlers.load
  */
-export function createCubeHandlers<TSchema extends Record<string, any> = Record<string, any>>(
-  options: NextAdapterOptions<TSchema>
+export function createCubeHandlers(
+  options: NextAdapterOptions
 ): CubeHandlers {
   return {
     load: createLoadHandler(options),

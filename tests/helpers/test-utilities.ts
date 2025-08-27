@@ -11,8 +11,7 @@ import type {
   TimeGranularity
 } from '../../src/server/types'
 import type { QueryExecutor } from '../../src/server/executor'
-import type { TestSchema } from './schema'
-import type { Cube } from '../../src/server/types-drizzle'
+import type { Cube } from '../../src/server/types'
 
 /**
  * Query builder helper for comprehensive testing
@@ -634,8 +633,8 @@ export class TestDataGenerator {
  */
 export class TestExecutor {
   constructor(
-    private executor: QueryExecutor<TestSchema>,
-    private cubes: Map<string, Cube<TestSchema>>,
+    private executor: QueryExecutor,
+    private cubes: Map<string, Cube>,
     private securityContext: SecurityContext
   ) {}
 

@@ -24,24 +24,24 @@ import {
   formatErrorResponse
 } from '../utils'
 
-export interface FastifyAdapterOptions<TSchema extends Record<string, any> = Record<string, any>> {
+export interface FastifyAdapterOptions {
   /**
    * Array of cube definitions to register
    */
-  cubes: Cube<TSchema>[]
+  cubes: Cube[]
   
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
-  drizzle: PostgresJsDatabase<TSchema> | MySql2Database<TSchema> | BetterSQLite3Database<TSchema> | DrizzleDatabase<TSchema>
+  drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
   
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
-  schema?: TSchema
+  schema?: any
   
   /**
    * Extract security context from incoming HTTP request.
@@ -126,7 +126,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   })
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler<any>({
+  const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType
@@ -450,9 +450,9 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
 /**
  * Helper function to register cube routes on an existing Fastify instance
  */
-export async function registerCubeRoutes<TSchema extends Record<string, any> = Record<string, any>>(
+export async function registerCubeRoutes(
   fastify: FastifyInstance,
-  options: FastifyAdapterOptions<TSchema>
+  options: FastifyAdapterOptions
 ): Promise<void> {
   await fastify.register(cubePlugin as any, options)
 }
@@ -472,8 +472,8 @@ export async function registerCubeRoutes<TSchema extends Record<string, any> = R
  *   }
  * })
  */
-export function createCubeApp<TSchema extends Record<string, any> = Record<string, any>>(
-  options: FastifyAdapterOptions<TSchema>
+export function createCubeApp(
+  options: FastifyAdapterOptions
 ): FastifyInstance {
   const fastify = require('fastify')({
     logger: true

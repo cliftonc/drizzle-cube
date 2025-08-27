@@ -8,27 +8,23 @@ import type {
   Cube,
   QueryContext,
   QueryPlan,
-  CubeJoin
-} from './types-drizzle'
-
-import type { 
+  CubeJoin,
   SemanticQuery
 } from './types'
 
 import { 
   resolveCubeReference, 
   getJoinType 
-} from './types-drizzle'
+} from './cube-utils'
 
 import { eq, and, sql, type SQL } from 'drizzle-orm'
 
-// import { createMultiCubeContext } from './types-drizzle' // Unused
 
 /**
  * Pre-aggregation plan for handling hasMany relationships
  */
-// interface PreAggregationPlan<TSchema extends Record<string, any> = Record<string, any>> {
-//   cube: Cube<TSchema>
+// interface PreAggregationPlan {
+//   cube: Cube
 //   alias: string
 //   joinKeys: Array<{
 //     sourceColumn: string
@@ -38,7 +34,7 @@ import { eq, and, sql, type SQL } from 'drizzle-orm'
 //   measures: string[]
 // }
 
-export class QueryPlanner<TSchema extends Record<string, any> = Record<string, any>> {
+export class QueryPlanner {
   
   /**
    * Analyze a semantic query to determine which cubes are involved
@@ -148,10 +144,10 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Create a unified query plan that works for both single and multi-cube queries
    */
   createQueryPlan(
-    cubes: Map<string, Cube<TSchema>>,
+    cubes: Map<string, Cube>,
     query: SemanticQuery,
-    ctx: QueryContext<TSchema>
-  ): QueryPlan<TSchema> {
+    _ctx: QueryContext
+  ): QueryPlan {
     const cubesUsed = this.analyzeCubeUsage(query)
     const cubeNames = Array.from(cubesUsed)
     
@@ -179,7 +175,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
     }
     
     // For multi-cube queries, build join plan
-    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx)
+    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames)
     
     // Detect hasMany relationships and plan pre-aggregation CTEs
     const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query)
@@ -198,7 +194,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Choose the primary cube based on query analysis
    * Uses a consistent strategy to avoid measure order dependencies
    */
-  choosePrimaryCube(cubeNames: string[], query: SemanticQuery, cubes?: Map<string, Cube<TSchema>>): string {
+  choosePrimaryCube(cubeNames: string[], query: SemanticQuery, cubes?: Map<string, Cube>): string {
     // Strategy: Prefer the cube that has dimensions in the query
     // This represents the "grain" of the analysis
     if (query.dimensions && query.dimensions.length > 0 && cubes) {
@@ -214,8 +210,8 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
         // Return the cube with the most dimensions, but verify connectivity first
         const maxDimensions = Math.max(...cubeDimensionCount.values())
         const primaryCandidates = [...cubeDimensionCount.entries()]
-          .filter(([_, count]) => count === maxDimensions)
-          .map(([name, _]) => name)
+          .filter(([, count]) => count === maxDimensions)
+          .map(([name]) => name)
           .sort()
           
         // Check if the primary candidate can reach all other required cubes
@@ -243,8 +239,8 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
         // Find cube with highest connectivity, break ties alphabetically
         const maxConnectivity = Math.max(...connectivityScores.values())
         const mostConnectedCubes = [...connectivityScores.entries()]
-          .filter(([_, count]) => count === maxConnectivity)
-          .map(([name, _]) => name)
+          .filter(([, count]) => count === maxConnectivity)
+          .map(([name]) => name)
           .sort()
           
         return mostConnectedCubes[0]
@@ -258,7 +254,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
   /**
    * Check if a cube can reach all other cubes in the list via joins
    */
-  private canReachAllCubes(fromCube: string, allCubes: string[], cubes: Map<string, Cube<TSchema>>): boolean {
+  private canReachAllCubes(fromCube: string, allCubes: string[], cubes: Map<string, Cube>): boolean {
     const otherCubes = allCubes.filter(name => name !== fromCube)
     
     for (const targetCube of otherCubes) {
@@ -276,12 +272,11 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Supports both direct joins and transitive joins through intermediate cubes
    */
   private buildJoinPlan(
-    cubes: Map<string, Cube<TSchema>>,
-    primaryCube: Cube<TSchema>,
-    cubeNames: string[],
-    ctx: QueryContext<TSchema>
-  ): QueryPlan<TSchema>['joinCubes'] {
-    const joinCubes: QueryPlan<TSchema>['joinCubes'] = []
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    cubeNames: string[]
+  ): QueryPlan['joinCubes'] {
+    const joinCubes: QueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
     
     // Find cubes to join (all except primary)
@@ -298,7 +293,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
       }
       
       // Add all cubes in the join path
-      for (const { fromCube: _fromCube, toCube, joinDef } of joinPath) {
+      for (const { toCube, joinDef } of joinPath) {
         if (processedCubes.has(toCube)) {
           continue // Skip if already processed
         }
@@ -311,10 +306,9 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
         // Build join condition using new array-based format
         // For regular table joins, we don't use artificial aliases - use actual table references
         const joinCondition = this.buildJoinCondition(
-          joinDef as CubeJoin<TSchema>,
+          joinDef as CubeJoin,
           null, // No source alias needed - use the actual column
-          null, // No target alias needed - use the actual column 
-          ctx
+          null // No target alias needed - use the actual column 
         )
         
         // Derive join type from relationship
@@ -338,10 +332,9 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Build join condition from new array-based join definition
    */
   private buildJoinCondition(
-    joinDef: CubeJoin<TSchema>,
+    joinDef: CubeJoin,
     sourceAlias: string | null,
-    targetAlias: string | null,
-    _context: QueryContext<TSchema>
+    targetAlias: string | null
   ): SQL {
     const conditions: SQL[] = []
     
@@ -369,7 +362,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Returns array of join steps to reach target
    */
   private findJoinPath(
-    cubes: Map<string, Cube<TSchema>>,
+    cubes: Map<string, Cube>,
     fromCube: string,
     toCube: string,
     alreadyProcessed: Set<string>
@@ -393,7 +386,7 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
       }
 
       // Check all joins from current cube - resolve lazy references
-      for (const [_joinTargetCube, joinDef] of Object.entries(cubeDefinition.joins)) {
+      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
         // Resolve cube reference to get actual cube name
         const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
         const actualTargetName = resolvedTargetCube.name
@@ -426,12 +419,12 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Plan pre-aggregation CTEs for hasMany relationships to prevent fan-out
    */
   private planPreAggregationCTEs(
-    _cubes: Map<string, Cube<TSchema>>,
-    primaryCube: Cube<TSchema>,
-    joinCubes: QueryPlan<TSchema>['joinCubes'],
+    _cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    joinCubes: QueryPlan['joinCubes'],
     query: SemanticQuery
-  ): QueryPlan<TSchema>['preAggregationCTEs'] {
-    const preAggCTEs: QueryPlan<TSchema>['preAggregationCTEs'] = []
+  ): QueryPlan['preAggregationCTEs'] {
+    const preAggCTEs: QueryPlan['preAggregationCTEs'] = []
     
     if (!query.measures || query.measures.length === 0) {
       return preAggCTEs // No measures, no fan-out risk
@@ -483,18 +476,18 @@ export class QueryPlanner<TSchema extends Record<string, any> = Record<string, a
    * Find hasMany join definition from primary cube to target cube
    */
   private findHasManyJoinDef(
-    primaryCube: Cube<TSchema>,
+    primaryCube: Cube,
     targetCubeName: string
-  ): CubeJoin<TSchema> | null {
+  ): CubeJoin | null {
     if (!primaryCube.joins) {
       return null
     }
     
     // Look through all joins from primary cube
-    for (const [_joinName, joinDef] of Object.entries(primaryCube.joins)) {
+    for (const [, joinDef] of Object.entries(primaryCube.joins)) {
       const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
       if (resolvedTargetCube.name === targetCubeName && joinDef.relationship === 'hasMany') {
-        return joinDef as CubeJoin<TSchema>
+        return joinDef as CubeJoin
       }
     }
     

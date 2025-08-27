@@ -69,7 +69,7 @@ export function buildTransformedQuery(query: SemanticQuery): any {
 /**
  * Get database type from semantic layer
  */
-export function getDatabaseType(semanticLayer: SemanticLayerCompiler<any>): string {
+export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
   // Extract from the semantic layer's database executor
   if (semanticLayer.hasExecutor()) {
     const executor = (semanticLayer as any).databaseExecutor
@@ -86,7 +86,7 @@ export function getDatabaseType(semanticLayer: SemanticLayerCompiler<any>): stri
 export async function handleDryRun(
   query: SemanticQuery, 
   securityContext: SecurityContext,
-  semanticLayer: SemanticLayerCompiler<any>
+  semanticLayer: SemanticLayerCompiler
 ) {
   // Validate query structure and field existence
   const validation = semanticLayer.validateQuery(query)
@@ -176,7 +176,7 @@ export async function handleDryRun(
 export function formatCubeResponse(
   query: SemanticQuery,
   result: { data: any[]; annotation?: any },
-  semanticLayer: SemanticLayerCompiler<any>
+  semanticLayer: SemanticLayerCompiler
 ) {
   const dbType = getDatabaseType(semanticLayer)
   const requestId = generateRequestId()

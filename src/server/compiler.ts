@@ -10,24 +10,24 @@ import type {
   DatabaseExecutor,
   CubeMetadata,
   MeasureMetadata,
-  DimensionMetadata
+  DimensionMetadata,
+  Cube
 } from './types'
-import { createDatabaseExecutor } from './types'
+import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
-import type { Cube } from './types-drizzle'
 import { formatSqlString } from '../adapters/utils'
 
-export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<string, any>> {
-  private cubes: Map<string, Cube<TSchema>> = new Map()
-  private dbExecutor?: DatabaseExecutor<TSchema>
+export class SemanticLayerCompiler {
+  private cubes: Map<string, Cube> = new Map()
+  private dbExecutor?: DatabaseExecutor
   private metadataCache?: CubeMetadata[]
   private metadataCacheTimestamp?: number
   private readonly METADATA_CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
 
   constructor(options?: {
-    drizzle?: DatabaseExecutor<TSchema>['db']
-    schema?: TSchema
-    databaseExecutor?: DatabaseExecutor<TSchema>
+    drizzle?: DatabaseExecutor['db']
+    schema?: any
+    databaseExecutor?: DatabaseExecutor
     engineType?: 'postgres' | 'mysql' | 'sqlite'
   }) {
     if (options?.databaseExecutor) {
@@ -45,7 +45,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Set or update the database executor
    */
-  setDatabaseExecutor(executor: DatabaseExecutor<TSchema>): void {
+  setDatabaseExecutor(executor: DatabaseExecutor): void {
     this.dbExecutor = executor
   }
 
@@ -59,7 +59,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Set Drizzle instance and schema directly
    */
-  setDrizzle(db: DatabaseExecutor<TSchema>['db'], schema?: TSchema, engineType?: 'postgres' | 'mysql' | 'sqlite'): void {
+  setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite'): void {
     this.dbExecutor = createDatabaseExecutor(db, schema, engineType)
   }
 
@@ -73,7 +73,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Register a simplified cube with dynamic query building
    */
-  registerCube(cube: Cube<TSchema>): void {
+  registerCube(cube: Cube): void {
     this.cubes.set(cube.name, cube)
     // Invalidate metadata cache when cubes change
     this.invalidateMetadataCache()
@@ -82,21 +82,21 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
   /**
    * Get a cube by name
    */
-  getCube(name: string): Cube<TSchema> | undefined {
+  getCube(name: string): Cube | undefined {
     return this.cubes.get(name)
   }
 
   /**
    * Get all registered cubes
    */
-  getAllCubes(): Cube<TSchema>[] {
+  getAllCubes(): Cube[] {
     return Array.from(this.cubes.values())
   }
 
   /**
    * Get all cubes as a Map for multi-cube queries
    */
-  getAllCubesMap(): Map<string, Cube<TSchema>> {
+  getAllCubesMap(): Map<string, Cube> {
     return this.cubes
   }
 
@@ -111,7 +111,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       throw new Error('Database executor not configured')
     }
 
-    const executor = new QueryExecutor<TSchema>(this.dbExecutor)
+    const executor = new QueryExecutor(this.dbExecutor)
     return executor.execute(this.cubes, query, securityContext)
   }
 
@@ -170,7 +170,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
    * Generate cube metadata for API responses from cubes
    * Optimized version that minimizes object iterations
    */
-  private generateCubeMetadata(cube: Cube<TSchema>): CubeMetadata {
+  private generateCubeMetadata(cube: Cube): CubeMetadata {
     // Pre-allocate arrays for better performance
     const measureKeys = Object.keys(cube.measures)
     const dimensionKeys = Object.keys(cube.dimensions)
@@ -233,7 +233,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       throw new Error('Database executor not configured')
     }
 
-    const executor = new QueryExecutor<TSchema>(this.dbExecutor)
+    const executor = new QueryExecutor(this.dbExecutor)
     const result = await executor.generateSQL(cube, query, securityContext)
     
     // Format the SQL using the appropriate dialect
@@ -255,7 +255,7 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
       throw new Error('Database executor not configured')
     }
 
-    const executor = new QueryExecutor<TSchema>(this.dbExecutor)
+    const executor = new QueryExecutor(this.dbExecutor)
     const result = await executor.generateMultiCubeSQL(this.cubes, query, securityContext)
     
     // Format the SQL using the appropriate dialect
@@ -321,8 +321,8 @@ export class SemanticLayerCompiler<TSchema extends Record<string, any> = Record<
  * Validate a query against a cubes map
  * Standalone function that can be used by both compiler and executor
  */
-export function validateQueryAgainstCubes<TSchema extends Record<string, any>>(
-  cubes: Map<string, Cube<TSchema>>,
+export function validateQueryAgainstCubes(
+  cubes: Map<string, Cube>,
   query: SemanticQuery
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
@@ -429,9 +429,9 @@ export function validateQueryAgainstCubes<TSchema extends Record<string, any>>(
 /**
  * Validate a single filter (recursive for logical filters)
  */
-function validateFilter<TSchema extends Record<string, any>>(
+function validateFilter(
   filter: any,
-  cubes: Map<string, Cube<TSchema>>,
+  cubes: Map<string, Cube>,
   errors: string[],
   referencedCubes: Set<string>
 ): void {
@@ -475,13 +475,13 @@ function validateFilter<TSchema extends Record<string, any>>(
 /**
  * Create a new semantic layer compiler with type inference
  */
-export function createSemanticLayer<TSchema extends Record<string, any>>(options?: {
-  drizzle?: DatabaseExecutor<TSchema>['db']
-  schema?: TSchema
-  databaseExecutor?: DatabaseExecutor<TSchema>
+export function createSemanticLayer(options?: {
+  drizzle?: DatabaseExecutor['db']
+  schema?: any
+  databaseExecutor?: DatabaseExecutor
   engineType?: 'postgres' | 'mysql' | 'sqlite'
-}): SemanticLayerCompiler<TSchema> {
-  return new SemanticLayerCompiler<TSchema>(options)
+}): SemanticLayerCompiler {
+  return new SemanticLayerCompiler(options)
 }
 
 // Export singleton instance (for backward compatibility)

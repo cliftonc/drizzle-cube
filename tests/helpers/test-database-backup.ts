@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { sql, eq, and } from 'drizzle-orm'
 import { SemanticLayerCompiler, createPostgresExecutor } from '../../src/server'
-import { defineCube } from '../../src/server/types-drizzle'
+import { defineCube } from '../../src/server/cube-utils'
 import type { DatabaseExecutor } from '../../src/server'
 
 // Import schema from dedicated schema file
@@ -19,10 +19,7 @@ import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivi
 // Re-export for backward compatibility
 export { testSchema, employees, departments, productivity, analyticsPages }
 export type { TestSchema }
-
-// Import cube utilities
-import { defineCube } from '../../src/server/types-drizzle'
-import type { Cube, QueryContext, BaseQueryDefinition } from '../../src/server/types-drizzle'
+import type { Cube, QueryContext, BaseQueryDefinition } from '../../src/server/types'
 
 // Sample data - realistic company structure
 export const sampleDepartments = [

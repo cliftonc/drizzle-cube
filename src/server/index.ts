@@ -11,9 +11,8 @@ export { QueryExecutor } from './executor'
 export { QueryPlanner } from './query-planner'
 export { QueryBuilder } from './query-builder'
 
-// Export utility functions from types
+// Export database executors
 export { 
-  defineCube as defineLegacyCube, 
   createDatabaseExecutor,
   createPostgresExecutor,
   createSQLiteExecutor,
@@ -21,92 +20,26 @@ export {
   BaseDatabaseExecutor,
   PostgresExecutor,
   SQLiteExecutor,
-  MySQLExecutor,
-} from './types'
+  MySQLExecutor
+} from './executors'
 
-// Export drizzle approach utilities
+// Export cube utilities
 export { 
-  defineCube,
   resolveSqlExpression,
   createMultiCubeContext,
   resolveCubeReference,
   getJoinType
-} from './types-drizzle'
+} from './cube-utils'
+
+// Export cube definitions
+export { defineCube } from './cube-utils'
 
 // Import types for use in utility functions
 import type { TimeGranularity, DrizzleDatabase } from './types'
 import { SemanticLayerCompiler, semanticLayer } from './compiler'
 
-// Export all types with Drizzle integration
-export type {
-  // Legacy types (for backwards compatibility)
-  SemanticCube,
-  SemanticDimension,
-  SemanticMeasure,
-  SemanticJoin,
-  
-  
-  // Common types
-  SemanticQuery,
-  SecurityContext,
-  DatabaseExecutor,
-  DrizzleDatabase,
-  DrizzleColumn,
-  
-  // Query types
-  QueryContext as LegacyQueryContext,
-  QueryResult,
-  SqlResult,
-  
-  // Filter types
-  Filter,
-  FilterCondition,
-  LogicalFilter,
-  TimeDimension,
-  
-  // Metadata types  
-  CubeMetadata,
-  MeasureMetadata,
-  DimensionMetadata,
-  
-  // Annotation types
-  MeasureAnnotation,
-  DimensionAnnotation,
-  TimeDimensionAnnotation,
-  
-  // Enum types
-  MeasureType,
-  MeasureFormat,
-  DimensionFormat,
-  DimensionType,
-  JoinType,
-  TimeGranularity,
-  FilterOperator,
-  
-  // Compiled types
-  CompiledCube as LegacyCompiledCube,
-  
-  // Pre-aggregation types
-  SemanticPreAggregation,
-  
-  // Utility types
-  CubeDefinition,
-  CubeDefiner
-} from './types'
-
-// Export drizzle types
-export type {
-  Cube,
-  Dimension,
-  Measure,
-  QueryContext,
-  MultiCubeQueryContext,
-  CompiledCube,
-  BaseQueryDefinition,
-  QueryPlan,
-  MultiCubeQueryPlan, // For backwards compatibility
-  CubeJoin
-} from './types-drizzle'
+// Export all types
+export type * from './types'
 
 // Re-export Drizzle SQL type for convenience
 export type { SQL } from 'drizzle-orm'
@@ -125,11 +58,11 @@ export const defaultSemanticLayer = semanticLayer
  * Create a new semantic layer instance with Drizzle integration
  * Use this when you need multiple isolated instances
  */
-export function createDrizzleSemanticLayer<TSchema extends Record<string, any>>(options: {
-  drizzle: DrizzleDatabase<TSchema>
-  schema?: TSchema
-}): SemanticLayerCompiler<TSchema> {
-  return new SemanticLayerCompiler<TSchema>({
+export function createDrizzleSemanticLayer(options: {
+  drizzle: DrizzleDatabase
+  schema?: any
+}): SemanticLayerCompiler {
+  return new SemanticLayerCompiler({
     drizzle: options.drizzle,
     schema: options.schema
   })

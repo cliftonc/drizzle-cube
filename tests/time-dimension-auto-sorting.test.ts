@@ -8,16 +8,16 @@ import { eq, and } from 'drizzle-orm'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/databases/types'
+
 import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import { defineCube } from '../src/server/types-drizzle'
+import { defineCube } from '../src/server/cube-utils'
 import type { 
   Cube, 
   QueryContext,
   BaseQueryDefinition 
-} from '../src/server/types-drizzle'
+} from '../../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -30,7 +30,7 @@ import { getTestCubes } from './helpers/test-cubes'
 
 describe('Time Dimension Auto-Sorting', () => {
   let testExecutor: TestExecutor
-  let cubes: Map<string, Cube<TestSchema>>
+  let cubes: Map<string, Cube>
   let close: () => void
 
   beforeAll(async () => {

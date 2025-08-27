@@ -21,42 +21,39 @@ import type {
   MeasureAnnotation,
   DimensionAnnotation,
   TimeDimensionAnnotation,
-  DatabaseExecutor
-} from './types'
-
-import type { 
+  DatabaseExecutor,
   Cube,
   QueryContext,
   QueryPlan
-} from './types-drizzle'
+} from './types'
 
-import { resolveSqlExpression } from './types-drizzle'
+import { resolveSqlExpression } from './cube-utils'
 
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { validateQueryAgainstCubes } from './compiler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 
-export class QueryExecutor<TSchema extends Record<string, any> = Record<string, any>> {
-  private queryBuilder: QueryBuilder<TSchema>
-  private queryPlanner: QueryPlanner<TSchema>
+export class QueryExecutor {
+  private queryBuilder: QueryBuilder
+  private queryPlanner: QueryPlanner
   private databaseAdapter: DatabaseAdapter
 
-  constructor(private dbExecutor: DatabaseExecutor<TSchema>) {
+  constructor(private dbExecutor: DatabaseExecutor) {
     // Get the database adapter from the executor
     this.databaseAdapter = (dbExecutor as any).databaseAdapter
     if (!this.databaseAdapter) {
       throw new Error('DatabaseExecutor must have a databaseAdapter property')
     }
-    this.queryBuilder = new QueryBuilder<TSchema>(this.databaseAdapter)
-    this.queryPlanner = new QueryPlanner<TSchema>()
+    this.queryBuilder = new QueryBuilder(this.databaseAdapter)
+    this.queryPlanner = new QueryPlanner()
   }
 
   /**
    * Unified query execution method that handles both single and multi-cube queries
    */
   async execute(
-    cubes: Map<string, Cube<TSchema>>,
+    cubes: Map<string, Cube>,
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
@@ -68,9 +65,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
       }
 
       // Create query context
-      const context: QueryContext<TSchema> = {
+      const context: QueryContext = {
         db: this.dbExecutor.db,
-        schema: this.dbExecutor.schema!,
+        schema: this.dbExecutor.schema,
         securityContext
       }
 
@@ -126,12 +123,12 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Legacy interface for single cube queries
    */
   async executeQuery(
-    cube: Cube<TSchema>, 
+    cube: Cube, 
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<QueryResult> {
     // Convert single cube to map for unified execution
-    const cubes = new Map<string, Cube<TSchema>>()
+    const cubes = new Map<string, Cube>()
     cubes.set(cube.name, cube)
     return this.execute(cubes, query, securityContext)
   }
@@ -140,10 +137,10 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Build pre-aggregation CTE for hasMany relationships
    */
   private buildPreAggregationCTE(
-    cteInfo: NonNullable<QueryPlan<TSchema>['preAggregationCTEs']>[0],
+    cteInfo: NonNullable<QueryPlan['preAggregationCTEs']>[0],
     query: SemanticQuery,
-    context: QueryContext<TSchema>,
-    queryPlan: QueryPlan<TSchema>
+    context: QueryContext,
+    queryPlan: QueryPlan
   ): any {
     const cube = cteInfo.cube
     const cubeBase = cube.sql(context) // Gets security filtering!
@@ -338,9 +335,9 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Build join condition for CTE
    */
   private buildCTEJoinCondition(
-    joinCube: QueryPlan<TSchema>['joinCubes'][0],
+    joinCube: QueryPlan['joinCubes'][0],
     cteAlias: string,
-    queryPlan: QueryPlan<TSchema>
+    queryPlan: QueryPlan
   ): SQL {
     // Find the pre-aggregation info for this join cube
     const cteInfo = queryPlan.preAggregationCTEs?.find((cte: any) => cte.cube.name === joinCube.cube.name)
@@ -367,7 +364,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   private buildUnifiedQuery(
     queryPlan: any,
     query: SemanticQuery,
-    context: QueryContext<TSchema>
+    context: QueryContext
   ) {
     // Build pre-aggregation CTEs if needed
     const ctes: any[] = []
@@ -650,8 +647,8 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
   /**
    * Convert query plan to cube map for QueryBuilder methods
    */
-  private getCubesFromPlan(queryPlan: any): Map<string, Cube<TSchema>> {
-    const cubes = new Map<string, Cube<TSchema>>()
+  private getCubesFromPlan(queryPlan: any): Map<string, Cube> {
+    const cubes = new Map<string, Cube>()
     cubes.set(queryPlan.primaryCube.name, queryPlan.primaryCube)
     
     if (queryPlan.joinCubes) {
@@ -671,11 +668,11 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Generate raw SQL for debugging (without execution) - unified approach
    */
   async generateSQL(
-    cube: Cube<TSchema>, 
+    cube: Cube, 
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    const cubes = new Map<string, Cube<TSchema>>()
+    const cubes = new Map<string, Cube>()
     cubes.set(cube.name, cube)
     return this.generateUnifiedSQL(cubes, query, securityContext)
   }
@@ -684,7 +681,7 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Generate raw SQL for multi-cube queries without execution - unified approach
    */
   async generateMultiCubeSQL(
-    cubes: Map<string, Cube<TSchema>>,
+    cubes: Map<string, Cube>,
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
@@ -695,11 +692,11 @@ export class QueryExecutor<TSchema extends Record<string, any> = Record<string, 
    * Generate SQL using unified approach (works for both single and multi-cube)
    */
   private async generateUnifiedSQL(
-    cubes: Map<string, Cube<TSchema>>,
+    cubes: Map<string, Cube>,
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    const context: QueryContext<TSchema> = {
+    const context: QueryContext = {
       db: this.dbExecutor.db,
       schema: this.dbExecutor.schema!,
       securityContext

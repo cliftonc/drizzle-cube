@@ -23,24 +23,24 @@ import {
   formatMetaResponse
 } from '../utils'
 
-export interface HonoAdapterOptions<TSchema extends Record<string, any> = Record<string, any>> {
+export interface HonoAdapterOptions {
   /**
    * Array of cube definitions to register
    */
-  cubes: Cube<TSchema>[]
+  cubes: Cube[]
   
   /**
    * Drizzle database instance (REQUIRED)
    * This is the core of drizzle-cube - Drizzle ORM integration
    * Accepts PostgreSQL, MySQL, or SQLite database instances
    */
-  drizzle: PostgresJsDatabase<TSchema> | MySql2Database<TSchema> | BetterSQLite3Database<TSchema> | DrizzleDatabase<TSchema>
+  drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
   
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
-  schema?: TSchema
+  schema?: any
   
   /**
    * Extract security context from incoming HTTP request.
@@ -91,8 +91,8 @@ export interface HonoAdapterOptions<TSchema extends Record<string, any> = Record
 /**
  * Create Hono routes for Cube.js-compatible API
  */
-export function createCubeRoutes<TSchema extends Record<string, any> = Record<string, any>>(
-  options: HonoAdapterOptions<TSchema>
+export function createCubeRoutes(
+  options: HonoAdapterOptions
 ) {
   const { 
     cubes,
@@ -117,7 +117,7 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
   }
 
   // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler<TSchema>({
+  const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType
@@ -383,9 +383,9 @@ export function createCubeRoutes<TSchema extends Record<string, any> = Record<st
 /**
  * Convenience function to create routes and mount them on an existing Hono app
  */
-export function mountCubeRoutes<TSchema extends Record<string, any> = Record<string, any>>(
+export function mountCubeRoutes(
   app: Hono, 
-  options: HonoAdapterOptions<TSchema>
+  options: HonoAdapterOptions
 ) {
   const cubeRoutes = createCubeRoutes(options)
   app.route('/', cubeRoutes)
@@ -407,8 +407,8 @@ export function mountCubeRoutes<TSchema extends Record<string, any> = Record<str
  *   }
  * })
  */
-export function createCubeApp<TSchema extends Record<string, any> = Record<string, any>>(
-  options: HonoAdapterOptions<TSchema>
+export function createCubeApp(
+  options: HonoAdapterOptions
 ) {
   const app = new Hono()
   return mountCubeRoutes(app, options)

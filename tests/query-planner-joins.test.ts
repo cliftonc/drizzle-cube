@@ -6,7 +6,7 @@ import { eq, gte, sql } from 'drizzle-orm'
 import { QueryPlanner } from '../src/server/query-planner'
 import { getTestSchema } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
-import type { QueryContext, CubeJoin } from '../src/server/types-drizzle'
+import type { QueryContext, CubeJoin } from '../../src/server/types'
 
 describe('QueryPlanner - New Join System', () => {
   let schema: any
@@ -160,7 +160,7 @@ describe('QueryPlanner - New Join System', () => {
 
   describe('join type derivation', () => {
     it('should derive correct join types from relationships', async () => {
-      const { getJoinType } = await import('../src/server/types-drizzle')
+      const { getJoinType } = await import('../src/server/cube-utils')
       
       expect(getJoinType('belongsTo')).toBe('inner')
       expect(getJoinType('hasOne')).toBe('left') 

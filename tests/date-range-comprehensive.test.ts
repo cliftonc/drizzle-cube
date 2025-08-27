@@ -8,14 +8,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/databases/types'
+
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
 import type { 
   Cube, 
   QueryContext
-} from '../src/server/types-drizzle'
+} from '../../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -25,7 +25,7 @@ import { getTestCubes } from './helpers/test-cubes'
 
 describe('Comprehensive Date Range Tests', () => {
   let testExecutor: TestExecutor
-  let cubes: Map<string, Cube<TestSchema>>
+  let cubes: Map<string, Cube>
   let close: () => void
 
   beforeAll(async () => {

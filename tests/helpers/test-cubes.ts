@@ -4,12 +4,12 @@
  */
 
 import { eq, and, sql } from 'drizzle-orm'
-import { defineCube } from '../../src/server/types-drizzle'
+import { defineCube } from '../../src/server/cube-utils'
 import type { 
   Cube, 
   QueryContext,
   BaseQueryDefinition 
-} from '../../src/server/types-drizzle'
+} from '../../src/server/types'
 import { getTestSchema } from './test-database'
 
 // Dynamic cube creation only - remove static imports

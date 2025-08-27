@@ -35,19 +35,16 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter,
-  TimeGranularity
-} from './types'
-
-import type { 
+  TimeGranularity,
   Cube,
   QueryContext,
   QueryPlan
-} from './types-drizzle'
+} from './types'
 
-import { resolveSqlExpression } from './types-drizzle'
+import { resolveSqlExpression } from './cube-utils'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 
-export class QueryBuilder<TSchema extends Record<string, any> = Record<string, any>> {
+export class QueryBuilder {
   constructor(private databaseAdapter: DatabaseAdapter) {}
 
   /**
@@ -55,9 +52,9 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    * Works for both single and multi-cube queries
    */
   buildSelections(
-    cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
+    cubes: Map<string, Cube> | Cube, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>
+    context: QueryContext
   ): Record<string, SQL | AnyColumn> {
     const selections: Record<string, SQL | AnyColumn> = {}
     
@@ -125,8 +122,8 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
     cubeName: string,
     fieldKey: string,
     measure: any,
-    context: QueryContext<TSchema>,
-    queryPlan?: QueryPlan<TSchema>
+    context: QueryContext,
+    queryPlan?: QueryPlan
   ): SQL {
     // Check if this measure is from a CTE cube
     if (queryPlan && queryPlan.preAggregationCTEs) {
@@ -167,13 +164,13 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    */
   buildMeasureExpression(
     measure: any, 
-    context: QueryContext<TSchema>
+    context: QueryContext
   ): SQL {
     let baseExpr = resolveSqlExpression(measure.sql, context)
     
     // Apply measure filters if they exist
     if (measure.filters && measure.filters.length > 0) {
-      const filterConditions = measure.filters.map((filter: (ctx: QueryContext<TSchema>) => SQL) => {
+      const filterConditions = measure.filters.map((filter: (ctx: QueryContext) => SQL) => {
         return filter(context)
       }).filter(Boolean) // Remove any undefined conditions
       
@@ -214,7 +211,7 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
   buildTimeDimensionExpression(
     dimensionSql: any,
     granularity: string | undefined,
-    context: QueryContext<TSchema>
+    context: QueryContext
   ): SQL {
     const baseExpr = resolveSqlExpression(dimensionSql, context)
     
@@ -232,10 +229,10 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    * Works for both single and multi-cube queries
    */
   buildWhereConditions(
-    cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
+    cubes: Map<string, Cube> | Cube, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>,
-    queryPlan?: QueryPlan<TSchema>
+    context: QueryContext,
+    queryPlan?: QueryPlan
   ): SQL[] {
     const conditions: SQL[] = []
     
@@ -287,10 +284,10 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    * Works for both single and multi-cube queries
    */
   buildHavingConditions(
-    cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
+    cubes: Map<string, Cube> | Cube, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>,
-    queryPlan?: QueryPlan<TSchema>
+    context: QueryContext,
+    queryPlan?: QueryPlan
   ): SQL[] {
     const conditions: SQL[] = []
     
@@ -316,10 +313,10 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    */
   private processFilter(
     filter: Filter,
-    cubes: Map<string, Cube<TSchema>>,
-    context: QueryContext<TSchema>,
+    cubes: Map<string, Cube>,
+    context: QueryContext,
     filterType: 'where' | 'having',
-    queryPlan?: QueryPlan<TSchema>
+    queryPlan?: QueryPlan
   ): SQL | null {
     // Handle logical filters (AND/OR)
     if ('and' in filter || 'or' in filter) {
@@ -731,9 +728,9 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    * Works for both single and multi-cube queries
    */
   buildGroupByFields(
-    cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, 
+    cubes: Map<string, Cube> | Cube, 
     query: SemanticQuery, 
-    context: QueryContext<TSchema>,
+    context: QueryContext,
     queryPlan?: any // Optional QueryPlan for CTE handling
   ): (SQL | AnyColumn)[] {
     const groupFields: (SQL | AnyColumn)[] = []
@@ -883,7 +880,7 @@ export class QueryBuilder<TSchema extends Record<string, any> = Record<string, a
    * Collect numeric field names (measures + numeric dimensions) for type conversion
    * Works for both single and multi-cube queries
    */
-  collectNumericFields(cubes: Map<string, Cube<TSchema>> | Cube<TSchema>, query: SemanticQuery): string[] {
+  collectNumericFields(cubes: Map<string, Cube> | Cube, query: SemanticQuery): string[] {
     const numericFields: string[] = []
     
     // Convert single cube to map for consistent handling

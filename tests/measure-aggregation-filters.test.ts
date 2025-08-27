@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import type { TestSchema } from './helpers/databases/types'
+
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
