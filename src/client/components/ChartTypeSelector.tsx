@@ -27,7 +27,8 @@ export default function ChartTypeSelector({
     radar: 'Radar Chart',
     radialBar: 'Radial Bar Chart',
     treemap: 'TreeMap',
-    table: 'Data Table'
+    table: 'Data Table',
+    activityGrid: 'Activity Grid'
   }
 
   const selectedConfig = chartConfigRegistry[selectedType]

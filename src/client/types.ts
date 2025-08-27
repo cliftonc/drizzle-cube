@@ -17,6 +17,7 @@ export type ChartType =
   | 'radialBar' 
   | 'treemap'
   | 'bubble'
+  | 'activityGrid'
 
 // Chart configuration
 export interface ChartAxisConfig {
@@ -28,6 +29,10 @@ export interface ChartAxisConfig {
   // Bubble chart specific fields
   sizeField?: string // Field for bubble size
   colorField?: string // Field for bubble color
+  
+  // Activity grid chart specific fields
+  dateField?: string[] // Time dimension field for activity grid
+  valueField?: string[] // Measure field for activity intensity
   
   // Legacy format (for backward compatibility)
   x?: string // Single dimension field for X axis
@@ -46,6 +51,10 @@ export interface ChartDisplayConfig {
   minBubbleSize?: number
   maxBubbleSize?: number
   bubbleOpacity?: number
+  
+  // Activity grid specific display options
+  showLabels?: boolean
+  colorIntensity?: 'low' | 'medium' | 'high'
 }
 
 // Portlet configuration

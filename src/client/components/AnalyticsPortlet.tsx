@@ -16,7 +16,8 @@ import {
   RechartsRadialBarChart, 
   RechartsTreeMapChart, 
   BubbleChart,
-  DataTable 
+  DataTable,
+  ActivityGridChart
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
 
@@ -284,6 +285,16 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
         case 'table':
           return (
             <DataTable
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+            />
+          )
+        case 'activityGrid':
+          return (
+            <ActivityGridChart
               data={data}
               chartConfig={chartConfig}
               displayConfig={displayConfig}

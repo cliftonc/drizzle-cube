@@ -8,6 +8,7 @@ import { radarChartConfig } from '../components/charts/RadarChart.config'
 import { radialBarChartConfig } from '../components/charts/RadialBarChart.config'
 import { treemapChartConfig } from '../components/charts/TreeMapChart.config'
 import { dataTableConfig } from '../components/charts/DataTable.config'
+import { activityGridChartConfig } from '../components/charts/ActivityGridChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -23,5 +24,6 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   radar: radarChartConfig,
   radialBar: radialBarChartConfig,
   treemap: treemapChartConfig,
-  table: dataTableConfig
+  table: dataTableConfig,
+  activityGrid: activityGridChartConfig
 }
