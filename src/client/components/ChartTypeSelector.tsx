@@ -30,6 +30,7 @@ export default function ChartTypeSelector({
     table: 'Data Table',
     activityGrid: 'Activity Grid',
     kpiNumber: 'KPI Number',
+    kpiDelta: 'KPI Delta',
     kpiText: 'KPI Text',
     markdown: 'Markdown'
   }

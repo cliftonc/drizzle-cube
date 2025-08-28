@@ -24,6 +24,7 @@ export type ChartType =
   | 'bubble'
   | 'activityGrid'
   | 'kpiNumber'
+  | 'kpiDelta'
   | 'kpiText'
   | 'markdown'
 
@@ -71,6 +72,11 @@ export interface ChartDisplayConfig {
   decimals?: number // Number of decimal places
   valueColor?: string // Color for the KPI value (legacy)
   valueColorIndex?: number // Index of color from dashboard palette for KPI value
+  
+  // KPI Delta specific display options
+  positiveColorIndex?: number // Index of color from dashboard palette for positive changes
+  negativeColorIndex?: number // Index of color from dashboard palette for negative changes
+  showHistogram?: boolean // Whether to show variance histogram
   
   // Markdown specific display options
   content?: string // Markdown content text

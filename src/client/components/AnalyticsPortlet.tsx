@@ -21,6 +21,7 @@ import {
   DataTable,
   ActivityGridChart,
   KpiNumber,
+  KpiDelta,
   KpiText,
   MarkdownChart
 } from './charts'
@@ -349,6 +350,17 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
         case 'kpiNumber':
           return (
             <KpiNumber
+              data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+              colorPalette={colorPalette}
+            />
+          )
+        case 'kpiDelta':
+          return (
+            <KpiDelta
               data={data}
               chartConfig={chartConfig}
               displayConfig={displayConfig}
