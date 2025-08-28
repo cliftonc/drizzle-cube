@@ -11,7 +11,7 @@ export default function KpiNumber({
   colorPalette
 }: ChartProps) {
   const [fontSize, setFontSize] = useState(32)
-  const [textWidth, setTextWidth] = useState(0)
+  const [textWidth, setTextWidth] = useState(250)
   const containerRef = useRef<HTMLDivElement>(null)
   const valueRef = useRef<HTMLDivElement>(null)
   const { getFieldLabel } = useCubeContext()
@@ -34,23 +34,27 @@ export default function KpiNumber({
           const baseFontSize = Math.min(widthBasedSize, heightBasedSize)
           const clampedFontSize = Math.max(24, Math.min(baseFontSize, 120)) // Lower max to ensure label fits
           setFontSize(clampedFontSize)
+          
+          // Use a timeout to measure text width after font size is applied
+          setTimeout(() => {
+            if (valueRef.current) {
+              const textRect = valueRef.current.getBoundingClientRect()
+              const measuredWidth = textRect.width
+              // Ensure we have a minimum width and use container width as fallback
+              const effectiveWidth = Math.max(measuredWidth, Math.min(containerWidth * 0.6, 300))
+              setTextWidth(effectiveWidth)
+            }
+          }, 10)
         }
-      }
-      
-      // Measure the text width after font size is set
-      if (valueRef.current) {
-        const textRect = valueRef.current.getBoundingClientRect()
-        setTextWidth(textRect.width)
       }
     }
 
-    // Initial calculation after a short delay to ensure the container is fully rendered
-    const timer = setTimeout(updateDimensions, 100)
+    // Initial calculation - reduce delay for faster initial render
+    const timer = setTimeout(updateDimensions, 50)
     
     const resizeObserver = new ResizeObserver(() => {
       // Debounce the resize updates
-      clearTimeout(timer)
-      setTimeout(updateDimensions, 50)
+      setTimeout(updateDimensions, 10)
     })
     
     if (containerRef.current) {
@@ -205,7 +209,7 @@ export default function KpiNumber({
   const mainValue = values.length === 1 ? values[0] : avg
   const showStats = values.length > 1
 
-  // Get color from palette by index, fall back to legacy valueColor, then default
+  // Get color from palette by index, default to first color in palette
   const getValueColor = (): string => {
     if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
       const colorIndex = displayConfig.valueColorIndex
@@ -213,8 +217,8 @@ export default function KpiNumber({
         return colorPalette.colors[colorIndex]
       }
     }
-    // Fall back to legacy valueColor or default
-    return displayConfig.valueColor || '#1f2937'
+    // Default to first color in palette if available, otherwise fallback to dark gray
+    return colorPalette?.colors?.[0] || '#1f2937'
   }
 
   const valueColor = getValueColor()
@@ -288,7 +292,7 @@ export default function KpiNumber({
               color={valueColor}
               formatValue={formatNumber}
               height={24}
-              width={textWidth || 200}
+              width={textWidth}
             />
           </div>
         )}

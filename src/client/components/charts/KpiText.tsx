@@ -235,7 +235,7 @@ export default function KpiText({
   const template = displayConfig.template || '${fieldLabel}: ${value}'
   const displayText = processTemplate(template, mainValue)
 
-  // Get color from palette by index, fall back to legacy valueColor, then default
+  // Get color from palette by index, default to first color in palette
   const getValueColor = (): string => {
     if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
       const colorIndex = displayConfig.valueColorIndex
@@ -243,8 +243,8 @@ export default function KpiText({
         return colorPalette.colors[colorIndex]
       }
     }
-    // Fall back to legacy valueColor or default
-    return displayConfig.valueColor || '#1f2937'
+    // Default to first color in palette if available, otherwise fallback to dark gray
+    return colorPalette?.colors?.[0] || '#1f2937'
   }
 
   const valueColor = getValueColor()
