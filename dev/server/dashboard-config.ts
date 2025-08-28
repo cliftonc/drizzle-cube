@@ -9,7 +9,121 @@ export const productivityDashboardConfig = {
   order: 0,
   config: {
     portlets: [
-      // New Top Row - Bubble Chart
+      // Top Row - KPI Numbers
+      {
+        id: 'total-lines-kpi',
+        title: 'Total Lines of Code',
+        query: JSON.stringify({
+          measures: ['Productivity.totalLinesOfCode'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'month',
+            dateRange: 'last year'
+          }],
+          filters: [{
+            member: 'Productivity.isDayOff',
+            operator: 'equals',
+            values: [false]
+          }]
+        }, null, 2),
+        chartType: 'kpiNumber' as const,
+        chartConfig: {
+          yAxis: ['Productivity.totalLinesOfCode']
+        },
+        displayConfig: {
+          suffix: ' lines'
+        },
+        w: 4,
+        h: 4,
+        x: 0,
+        y: 0
+      },
+      {
+        id: 'total-deployments-kpi',
+        title: 'Total Deployments',
+        query: JSON.stringify({
+          measures: ['Productivity.totalDeployments'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'month',
+            dateRange: 'last year'
+          }]
+        }, null, 2),
+        chartType: 'kpiNumber' as const,
+        chartConfig: {
+          yAxis: ['Productivity.totalDeployments']
+        },
+        displayConfig: {
+          suffix: ' deployments'
+        },
+        w: 4,
+        h: 4,
+        x: 4,
+        y: 0
+      },
+      {
+        id: 'avg-happiness-kpi',
+        title: 'Average Happiness Score',
+        query: JSON.stringify({
+          measures: ['Productivity.avgHappinessIndex'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'month',
+            dateRange: 'last year'
+          }],
+          filters: [{
+            member: 'Productivity.isDayOff',
+            operator: 'equals',
+            values: [false]
+          }]
+        }, null, 2),
+        chartType: 'kpiNumber' as const,
+        chartConfig: {
+          yAxis: ['Productivity.avgHappinessIndex']
+        },
+        displayConfig: {
+          decimals: 1,
+          suffix: '/10'
+        },
+        w: 4,
+        h: 4,
+        x: 8,
+        y: 0
+      },
+      
+      // Second Row - Activity Grid
+      {
+        id: 'code-activity-grid',
+        title: 'Daily Code Output Activity (Last Year)',
+        query: JSON.stringify({
+          measures: ['Productivity.totalLinesOfCode'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'day',
+            dateRange: 'last year'
+          }],
+          filters: [{
+            member: 'Productivity.isDayOff',
+            operator: 'equals',
+            values: [false]
+          }]
+        }, null, 2),
+        chartType: 'activityGrid' as const,
+        chartConfig: {
+          dateField: ['Productivity.date'],
+          valueField: ['Productivity.totalLinesOfCode']
+        },
+        displayConfig: {
+          showLabels: true,
+          showTooltip: true
+        },
+        w: 12,
+        h: 4,
+        x: 0,
+        y: 4
+      },
+
+      // Third Row - Bubble Chart (moved from top)
       {
         id: 'productivity-bubble',
         title: 'Productivity Metrics Correlation',
@@ -40,10 +154,10 @@ export const productivityDashboardConfig = {
         w: 12,
         h: 8,
         x: 0,
-        y: 0
+        y: 10
       },
       
-      // Second Row - Executive Overview
+      // Fourth Row - Executive Overview
       {
         id: 'productivity-trends',
         title: 'Team Productivity Trends (Last 12 Months)',
@@ -73,7 +187,7 @@ export const productivityDashboardConfig = {
         w: 8,
         h: 6,
         x: 0,
-        y: 8
+        y: 18
       },
       {
         id: 'happiness-by-level',
@@ -100,10 +214,10 @@ export const productivityDashboardConfig = {
         w: 4,
         h: 6,
         x: 8,
-        y: 8
+        y: 18
       },
       
-      // Third Row - Department Comparison
+      // Fifth Row - Department Comparison
       {
         id: 'department-productivity',
         title: 'Productivity by Department',
@@ -125,7 +239,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 0,
-        y: 14
+        y: 24
       },
       {
         id: 'happiness-by-department',
@@ -148,10 +262,10 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 6,
-        y: 14
+        y: 24
       },
       
-      // Fourth Row - Treemap Visualization
+      // Sixth Row - Treemap Visualization
       {
         id: 'happiness-treemap',
         title: 'Employee Happiness by Department (Treemap)',
@@ -181,10 +295,10 @@ export const productivityDashboardConfig = {
         w: 12,
         h: 8,
         x: 0,
-        y: 20
+        y: 30
       },
       
-      // Fifth Row - Individual Performance
+      // Seventh Row - Individual Performance
       {
         id: 'top-performers',
         title: 'Top Performers (This Year)',
@@ -207,7 +321,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 8,
         x: 0,
-        y: 28
+        y: 38
       },
       {
         id: 'work-life-balance',
@@ -230,10 +344,10 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 8,
         x: 6,
-        y: 28
+        y: 38
       },
       
-      // Sixth Row - Detailed Analytics
+      // Eighth Row - Detailed Analytics
       {
         id: 'code-output-trends',
         title: 'Code Output Trends by Month',
@@ -262,7 +376,7 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 0,
-        y: 36
+        y: 46
       },
       {
         id: 'deployment-frequency',
@@ -294,10 +408,10 @@ export const productivityDashboardConfig = {
         w: 6,
         h: 6,
         x: 6,
-        y: 36
+        y: 46
       },
       
-      // Seventh Row - Summary Table
+      // Ninth Row - Summary Table
       {
         id: 'productivity-summary',
         title: 'Comprehensive Productivity Summary',
@@ -321,7 +435,7 @@ export const productivityDashboardConfig = {
         w: 12,
         h: 10,
         x: 0,
-        y: 42
+        y: 52
       }
     ]
   }

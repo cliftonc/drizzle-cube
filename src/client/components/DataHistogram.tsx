@@ -16,6 +16,8 @@ interface DataHistogramProps {
   formatValue?: (value: number) => string
   /** Width of the histogram to match text above */
   width?: number
+  /** Whether to show average indicator line (default: true) */
+  showAverageIndicator?: boolean
 }
 
 /**
@@ -29,7 +31,8 @@ export default function DataHistogram({
   bucketCount = 12,
   height = 32,
   formatValue = (val) => val.toString(),
-  width
+  width,
+  showAverageIndicator = true
 }: DataHistogramProps) {
   // Create histogram buckets from actual data
   const buckets = new Array(bucketCount).fill(0)
@@ -51,6 +54,12 @@ export default function DataHistogram({
   
   // Find max bucket count for normalization
   const maxBucketCount = Math.max(...buckets)
+  
+  // Calculate average for indicator positioning
+  const average = values.reduce((sum, val) => sum + val, 0) / values.length
+  
+  // Calculate average position as percentage of histogram width
+  const averagePosition = range === 0 ? 50 : ((average - min) / range) * 100
 
   return (
     <div className="flex flex-col items-center">
@@ -59,8 +68,8 @@ export default function DataHistogram({
         className="relative flex items-end justify-center space-x-0.5" 
         style={{ 
           height: `${height}px`,
-          width: width ? `${width}px` : 'auto',
-          minWidth: width ? `${width}px` : '200px'
+          width: width ? `${width}px` : '200px',
+          minWidth: '200px'
         }}
       >
         {buckets.map((count, i) => {
@@ -82,14 +91,44 @@ export default function DataHistogram({
             />
           )
         })}
+        
+        {/* Average indicator line */}
+        {showAverageIndicator && (
+          <div
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: `${averagePosition}%`,
+              transform: 'translateX(-50%)',
+              width: '2px',
+              backgroundColor: '#ef4444',
+              opacity: 0.8,
+              zIndex: 10
+            }}
+            title={`Average: ${formatValue(average)}`}
+          >
+            {/* Small triangle at top to indicate average */}
+            <div
+              className="absolute -top-1"
+              style={{
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '6px solid #ef4444'
+              }}
+            />
+          </div>
+        )}
       </div>
       
       {/* Min/Max values aligned with histogram width */}
       <div 
         className="flex justify-between mt-2 text-xs text-gray-500"
         style={{ 
-          width: width ? `${width}px` : 'auto',
-          minWidth: width ? `${width}px` : '200px'
+          width: width ? `${width}px` : '200px',
+          minWidth: '200px'
         }}
       >
         <span>{formatValue(min)}</span>
