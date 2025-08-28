@@ -338,9 +338,9 @@ export default function DashboardGrid({
       setTimeout(() => {
         const scrollToPortlet = () => {
           // Try both the ref and DOM query selector
-          let portletElement = portletRefs.current[newPortletId!]
+          let portletElement: HTMLElement | null = portletRefs.current[newPortletId!]
           if (!portletElement) {
-            portletElement = document.querySelector(`[data-portlet-id="${newPortletId}"]`) as HTMLElement
+            portletElement = document.querySelector(`[data-portlet-id="${newPortletId}"]`)
           }
           
           if (portletElement) {
@@ -439,9 +439,9 @@ export default function DashboardGrid({
     setTimeout(() => {
       const scrollToPortlet = () => {
         // Try both the ref and DOM query selector
-        let portletElement = portletRefs.current[duplicatedPortlet.id]
+        let portletElement: HTMLElement | null = portletRefs.current[duplicatedPortlet.id]
         if (!portletElement) {
-          portletElement = document.querySelector(`[data-portlet-id="${duplicatedPortlet.id}"]`) as HTMLElement
+          portletElement = document.querySelector(`[data-portlet-id="${duplicatedPortlet.id}"]`)
         }
         
         if (portletElement) {
