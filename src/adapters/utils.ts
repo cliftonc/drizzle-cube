@@ -210,13 +210,14 @@ export function formatCubeResponse(
 /**
  * Format SQL string using sql-formatter with appropriate dialect
  */
-export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite'): string {
+export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'): string {
   try {
     // Map drizzle-cube engine types to sql-formatter language options
     const dialectMap = {
       postgres: 'postgresql',
       mysql: 'mysql',
-      sqlite: 'sqlite'
+      sqlite: 'sqlite',
+      singlestore: 'mysql'  // SingleStore uses MySQL dialect for formatting
     } as const
     
     return format(sqlString, {

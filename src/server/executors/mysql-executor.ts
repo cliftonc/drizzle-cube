@@ -75,7 +75,7 @@ export class MySQLExecutor extends BaseDatabaseExecutor {
     return value
   }
 
-  getEngineType(): 'mysql' {
+  getEngineType(): 'mysql' | 'singlestore' {
     return 'mysql'
   }
 }

@@ -9,7 +9,7 @@ import type { TimeGranularity } from '../types'
 import { BaseDatabaseAdapter } from './base-adapter'
 
 export class MySQLAdapter extends BaseDatabaseAdapter {
-  getEngineType(): 'mysql' {
+  getEngineType(): 'mysql' | 'singlestore' {
     return 'mysql'
   }
 

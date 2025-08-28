@@ -21,5 +21,5 @@ export interface DatabaseExecutor {
   /** Execute a Drizzle SQL query or query object */
   execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
   /** Get the database engine type */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
 }

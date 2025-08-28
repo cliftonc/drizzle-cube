@@ -7,12 +7,14 @@ export { BaseDatabaseExecutor } from './base-executor'
 export { PostgresExecutor, createPostgresExecutor } from './postgres-executor'
 export { MySQLExecutor, createMySQLExecutor } from './mysql-executor'
 export { SQLiteExecutor, createSQLiteExecutor } from './sqlite-executor'
+export { SingleStoreExecutor, createSingleStoreExecutor } from './singlestore-executor'
 
 // Re-export factory function for auto-detection
 import type { DrizzleDatabase, DatabaseExecutor } from '../types'
 import { createPostgresExecutor } from './postgres-executor'
 import { createMySQLExecutor } from './mysql-executor'
 import { createSQLiteExecutor } from './sqlite-executor'
+import { createSingleStoreExecutor } from './singlestore-executor'
 
 /**
  * Auto-detect database type and create appropriate executor
@@ -24,7 +26,7 @@ import { createSQLiteExecutor } from './sqlite-executor'
 export function createDatabaseExecutor(
   db: DrizzleDatabase,
   schema?: any,
-  engineType?: 'postgres' | 'mysql' | 'sqlite'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
 ): DatabaseExecutor {
   // If engine type is explicitly provided, use it
   if (engineType) {
@@ -35,6 +37,8 @@ export function createDatabaseExecutor(
         return createMySQLExecutor(db, schema)
       case 'sqlite':
         return createSQLiteExecutor(db, schema)
+      case 'singlestore':
+        return createSingleStoreExecutor(db, schema)
     }
   }
 

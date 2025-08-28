@@ -11,7 +11,7 @@ export interface DatabaseAdapter {
   /**
    * Get the database engine type this adapter supports
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
 
   /**
    * Build time dimension expression with granularity truncation
@@ -93,7 +93,7 @@ export interface DatabaseAdapter {
  * Provides common functionality that can be shared across database implementations
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
-  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite'
+  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL

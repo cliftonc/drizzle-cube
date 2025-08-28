@@ -17,7 +17,7 @@ export abstract class BaseDatabaseExecutor implements DatabaseExecutor {
   constructor(
     public db: DrizzleDatabase,
     public schema?: any,
-    engineType?: 'postgres' | 'mysql' | 'sqlite'
+    engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
   ) {
     // Create database adapter based on engine type or auto-detect
     const actualEngineType = engineType || this.getEngineType()
@@ -25,5 +25,5 @@ export abstract class BaseDatabaseExecutor implements DatabaseExecutor {
   }
 
   abstract execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
-  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite'
+  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
 }
