@@ -52,5 +52,6 @@ export const kpiNumberConfig: ChartTypeConfig = {
       defaultValue: 0,
       description: 'Color from the dashboard palette for the KPI value text'
     }
-  ]
+  ],
+  displayOptions: ['hideHeader']
 }

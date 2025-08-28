@@ -28,5 +28,5 @@ export const radialBarChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure for values'
     }
   ],
-  displayOptions: ['showLegend', 'showTooltip']
+  displayOptions: ['showLegend', 'showTooltip', 'hideHeader']
 }

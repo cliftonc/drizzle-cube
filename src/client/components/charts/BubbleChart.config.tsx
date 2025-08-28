@@ -56,5 +56,5 @@ export const bubbleChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a field for bubble color (optional)'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'minBubbleSize', 'maxBubbleSize', 'bubbleOpacity']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'minBubbleSize', 'maxBubbleSize', 'bubbleOpacity', 'hideHeader']
 }

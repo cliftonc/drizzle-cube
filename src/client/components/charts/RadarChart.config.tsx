@@ -35,5 +35,5 @@ export const radarChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions for multiple shapes'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
 }

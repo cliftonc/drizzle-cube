@@ -76,6 +76,7 @@ export const kpiDeltaConfig: ChartTypeConfig = {
       description: 'Display historical variance chart below the delta'
     }
   ],
+  displayOptions: ['hideHeader'],
   validate: (config: any) => {
     if (!config.yAxis || (Array.isArray(config.yAxis) && config.yAxis.length === 0)) {
       return {

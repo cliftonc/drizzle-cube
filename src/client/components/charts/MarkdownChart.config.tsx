@@ -50,5 +50,6 @@ export const markdownConfig: ChartTypeConfig = {
       ],
       description: 'Horizontal alignment of the markdown content'
     }
-  ]
+  ],
+  displayOptions: ['hideHeader']
 }

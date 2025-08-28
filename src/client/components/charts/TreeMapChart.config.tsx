@@ -37,5 +37,5 @@ export const treemapChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a dimension for color grouping'
     }
   ],
-  displayOptions: ['showLegend', 'showTooltip']
+  displayOptions: ['showLegend', 'showTooltip', 'hideHeader']
 }

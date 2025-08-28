@@ -117,8 +117,11 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     }
   }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
 
-  // Validate that chartConfig is provided (not required for skipQuery charts)
-  if (!chartConfig && !shouldSkipQuery) {
+  // Validate that chartConfig is provided when required (not required for skipQuery charts)
+  // Check if any dropZones are mandatory for this chart type
+  const hasMandatoryFields = !shouldSkipQuery && chartTypeConfig.dropZones.some(zone => zone.mandatory === true)
+  
+  if (!chartConfig && hasMandatoryFields) {
     return (
       <div className="flex items-center justify-center w-full text-red-500" style={{ height }}>
         <div className="text-center">

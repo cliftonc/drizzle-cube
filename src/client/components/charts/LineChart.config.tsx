@@ -35,5 +35,5 @@ export const lineChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here for multiple lines'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
 }

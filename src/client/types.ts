@@ -55,6 +55,7 @@ export interface ChartDisplayConfig {
   colors?: string[]
   orientation?: 'horizontal' | 'vertical'
   stacked?: boolean
+  hideHeader?: boolean // Hide portlet header in non-edit mode
   
   // Bubble chart specific display options
   minBubbleSize?: number

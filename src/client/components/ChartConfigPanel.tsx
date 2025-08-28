@@ -439,6 +439,21 @@ export default function ChartConfigPanel({
                 <span className="text-sm">Stacked</span>
               </label>
             )}
+            
+            {chartTypeConfig.displayOptions?.includes('hideHeader') && (
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={displayConfig.hideHeader ?? false}
+                  onChange={(e) => onDisplayConfigChange({
+                    ...displayConfig,
+                    hideHeader: e.target.checked
+                  })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm">Hide Header</span>
+              </label>
+            )}
 
             {/* New structured display options */}
             {chartTypeConfig.displayOptionsConfig?.map((option) => (

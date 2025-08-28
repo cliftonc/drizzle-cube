@@ -38,5 +38,5 @@ export const scatterChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a dimension to color points'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
 }

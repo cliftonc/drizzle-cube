@@ -19,5 +19,5 @@ export const dataTableConfig: ChartTypeConfig = {
       emptyText: 'Drop fields to display as columns (or leave empty for all)'
     }
   ],
-  displayOptions: []
+  displayOptions: ['hideHeader']
 }

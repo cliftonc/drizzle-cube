@@ -35,5 +35,5 @@ export const barChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here to split data into series'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked', 'hideHeader']
 }

@@ -35,5 +35,5 @@ export const areaChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here for stacked areas'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked', 'hideHeader']
 }

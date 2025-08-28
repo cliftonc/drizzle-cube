@@ -622,102 +622,104 @@ export default function DashboardGrid({
             ref={el => { portletRefs.current[portlet.id] = el }}
             className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full"
           >
-          {/* Portlet Header */}
-          <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
-              {/* Debug button - right next to title, outside drag area */}
-              {debugData[portlet.id] && (
-                <div 
-                  onMouseDown={(e) => e.stopPropagation()} 
-                  onClick={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                >
-                  <DebugModal 
-                    chartConfig={debugData[portlet.id].chartConfig}
-                    displayConfig={debugData[portlet.id].displayConfig}
-                    queryObject={debugData[portlet.id].queryObject}
-                    data={debugData[portlet.id].data}
-                    chartType={debugData[portlet.id].chartType}
-                  />
-                </div>
-              )}
-            </div>
-            <div 
-              className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2" 
-              onMouseDown={(e) => e.stopPropagation()} 
-              onClick={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
-            >
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handlePortletRefresh(portlet.id)
-                }}
-                onTouchEnd={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  handlePortletRefresh(portlet.id)
-                }}
-                className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
-                title="Refresh portlet data"
+          {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
+          {(!portlet.displayConfig?.hideHeader || isEditMode) && (
+            <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
+                {/* Debug button - right next to title, outside drag area */}
+                {debugData[portlet.id] && (
+                  <div 
+                    onMouseDown={(e) => e.stopPropagation()} 
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                  >
+                    <DebugModal 
+                      chartConfig={debugData[portlet.id].chartConfig}
+                      displayConfig={debugData[portlet.id].displayConfig}
+                      queryObject={debugData[portlet.id].queryObject}
+                      data={debugData[portlet.id].data}
+                      chartType={debugData[portlet.id].chartType}
+                    />
+                  </div>
+                )}
+              </div>
+              <div 
+                className="flex items-center gap-3 flex-shrink-0 ml-4 -mr-2" 
+                onMouseDown={(e) => e.stopPropagation()} 
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
               >
-                <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-              </button>
-              {editable && isEditMode && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDuplicatePortlet(portlet.id)
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      handleDuplicatePortlet(portlet.id)
-                    }}
-                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
-                    title="Duplicate portlet"
-                  >
-                    <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleEditPortlet(portlet)
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      handleEditPortlet(portlet)
-                    }}
-                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
-                    title="Edit portlet"
-                  >
-                    <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeletePortlet(portlet.id)
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      handleDeletePortlet(portlet.id)
-                    }}
-                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
-                    title="Delete portlet"
-                  >
-                    <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                  </button>
-                </>
-              )}
+                
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePortletRefresh(portlet.id)
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    handlePortletRefresh(portlet.id)
+                  }}
+                  className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                  title="Refresh portlet data"
+                >
+                  <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                </button>
+                {editable && isEditMode && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDuplicatePortlet(portlet.id)
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleDuplicatePortlet(portlet.id)
+                      }}
+                      className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      title="Duplicate portlet"
+                    >
+                      <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditPortlet(portlet)
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleEditPortlet(portlet)
+                      }}
+                      className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      title="Edit portlet"
+                    >
+                      <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeletePortlet(portlet.id)
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleDeletePortlet(portlet.id)
+                      }}
+                      className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      title="Delete portlet"
+                    >
+                      <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Portlet Content */}
           <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">

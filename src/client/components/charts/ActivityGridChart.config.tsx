@@ -29,7 +29,7 @@ export const activityGridChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure for activity intensity'
     }
   ],
-  displayOptions: ['showLabels', 'showTooltip', 'colorIntensity'],
+  displayOptions: ['showLabels', 'showTooltip', 'colorIntensity', 'hideHeader'],
   validate: (config) => {
     const { dateField, valueField } = config
     
