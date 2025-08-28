@@ -1,3 +1,5 @@
+// Default color palette for charts - used as fallback when no dashboard palette is specified
+// These are now part of the 'default' palette in the unified color palette system
 export const CHART_COLORS = [
   '#3b82f6', // blue
   '#10b981', // green
@@ -9,7 +11,8 @@ export const CHART_COLORS = [
   '#84cc16', // lime
 ]
 
-// Gradient colors for continuous numeric scales using D3's Viridis scheme (good contrast for white text)
+// Default gradient colors for continuous numeric scales - used as fallback
+// These are now part of the 'default' palette in the unified color palette system
 export const CHART_COLORS_GRADIENT = [
   '#440154', // dark purple
   '#414487', // purple-blue

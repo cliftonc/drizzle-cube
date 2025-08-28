@@ -20,7 +20,8 @@ export default function BubbleChart({
   chartConfig,
   displayConfig = {},
   queryObject,
-  height = "100%"
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -256,13 +257,13 @@ export default function BubbleChart({
         // Create D3 quantize color scale - maps continuous data to discrete color bands
         colorScale = scaleQuantize<string>()
           .domain([minValue, maxValue])
-          .range(CHART_COLORS_GRADIENT)
+          .range(colorPalette?.gradient || CHART_COLORS_GRADIENT)
       } else {
-        // Categorical color field - use CHART_COLORS
+        // Categorical color field - use series colors
         uniqueColors = [...new Set(bubbleData.map(d => String(d.color)))]
         colorScale = scaleOrdinal<string>()
           .domain(uniqueColors)
-          .range(CHART_COLORS)
+          .range(colorPalette?.colors || CHART_COLORS)
       }
     } else {
       // Single color for all bubbles
@@ -425,9 +426,10 @@ export default function BubbleChart({
           .attr('y2', '0%')
 
         // Add color stops for the gradient
-        CHART_COLORS_GRADIENT.forEach((color, i) => {
+        const gradientColors = colorPalette?.gradient || CHART_COLORS_GRADIENT
+        gradientColors.forEach((color, i) => {
           gradient.append('stop')
-            .attr('offset', `${(i / (CHART_COLORS_GRADIENT.length - 1)) * 100}%`)
+            .attr('offset', `${(i / (gradientColors.length - 1)) * 100}%`)
             .attr('stop-color', color)
         })
 
@@ -525,7 +527,7 @@ export default function BubbleChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity, colorPalette])
 
   if (!data || data.length === 0) {
     return (

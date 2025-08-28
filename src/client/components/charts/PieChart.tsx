@@ -12,7 +12,8 @@ export default function PieChart({
   chartConfig,
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const { labelMap } = useCubeContext()
@@ -157,7 +158,7 @@ export default function PieChart({
             {pieData.map((_entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+                fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
                 fillOpacity={hoveredLegend ? (hoveredLegend === pieData[index].name ? 1 : 0.3) : 1}
               />
             ))}

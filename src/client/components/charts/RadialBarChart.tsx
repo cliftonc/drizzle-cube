@@ -11,7 +11,8 @@ export default function RadialBarChart({
   chartConfig,
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   
@@ -45,7 +46,7 @@ export default function RadialBarChart({
         value: typeof item[yAxisField] === 'string' 
           ? parseFloat(item[yAxisField]) 
           : (item[yAxisField] || 0),
-        fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+        fill: (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]
       }))
     } else {
       // Legacy format or auto-detection
@@ -92,7 +93,7 @@ export default function RadialBarChart({
           value: typeof item[valueField] === 'string' 
             ? parseFloat(item[valueField]) 
             : (item[valueField] || 0),
-          fill: displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]
+          fill: (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]
         }
       })
     }

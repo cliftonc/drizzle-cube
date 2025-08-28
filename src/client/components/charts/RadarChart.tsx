@@ -11,7 +11,8 @@ export default function RadarChart({
   chartConfig,
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   
@@ -161,8 +162,8 @@ export default function RadarChart({
               key={seriesKey}
               name={seriesKey}
               dataKey={seriesKey}
-              stroke={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
-              fill={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+              stroke={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
+              fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
               fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
               strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
               strokeWidth={2}

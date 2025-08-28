@@ -12,7 +12,8 @@ export default function LineChart({
   chartConfig, 
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const { labelMap, getFieldLabel } = useCubeContext()
@@ -139,7 +140,7 @@ export default function LineChart({
               key={seriesKey}
               type="monotone"
               dataKey={seriesKey}
-              stroke={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+              stroke={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
               strokeWidth={2}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}

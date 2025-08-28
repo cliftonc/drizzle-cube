@@ -12,7 +12,8 @@ export default function ScatterChart({
   chartConfig, 
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const { getFieldLabel } = useCubeContext()
@@ -182,7 +183,7 @@ export default function ScatterChart({
                 key={seriesKey}
                 name={seriesKey}
                 data={seriesGroups[seriesKey]}
-                fill={displayConfig.colors?.[index] || CHART_COLORS[index % CHART_COLORS.length]}
+                fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
                 fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
               />
             ))
@@ -191,7 +192,7 @@ export default function ScatterChart({
             <Scatter
               name="Data"
               data={scatterData}
-              fill={displayConfig.colors?.[0] || CHART_COLORS[0]}
+              fill={(colorPalette?.colors && colorPalette.colors[0]) || CHART_COLORS[0]}
             />
           )}
         </RechartsScatterChart>

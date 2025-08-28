@@ -35,6 +35,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   displayConfig, 
   height = 300, 
   title: _title,
+  colorPalette,
   onDebugDataReady
 }, ref) => {
   const [refreshCounter, setRefreshCounter] = useState(0)
@@ -73,6 +74,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     }
   }), [])
 
+
   // Send debug data to parent when ready (must be before any returns)
   useEffect(() => {
     if (onDebugDataReadyRef.current && chartConfig && queryObject && resultSet && !error) {
@@ -97,7 +99,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
         })
       }
     }
-  }, [chartConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
+  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided
   if (!chartConfig) {
@@ -154,7 +156,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               {JSON.stringify({
                 chartType,
                 chartConfig,
-                displayConfig
+                displayConfig: displayConfig
               }, null, 2)}
             </pre>
           </details>
@@ -202,6 +204,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'line':
@@ -212,6 +215,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'area':
@@ -222,6 +226,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'pie':
@@ -232,6 +237,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'scatter':
@@ -242,6 +248,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'radar':
@@ -252,6 +259,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'radialBar':
@@ -262,6 +270,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'treemap':
@@ -272,6 +281,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'bubble':
@@ -282,6 +292,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'table':
@@ -292,16 +303,19 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'activityGrid':
           return (
             <ActivityGridChart
+              key={`activityGrid-${colorPalette?.name || 'default'}`}
               data={data}
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'kpiNumber':
@@ -312,6 +326,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         case 'kpiText':
@@ -322,6 +337,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
               displayConfig={displayConfig}
               queryObject={queryObject}
               height={chartHeight}
+              colorPalette={colorPalette}
             />
           )
         default:

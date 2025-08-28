@@ -12,7 +12,8 @@ export default function BarChart({
   chartConfig, 
   displayConfig = {},
   queryObject,
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const { labelMap, getFieldLabel: contextGetFieldLabel } = useCubeContext()
@@ -151,7 +152,7 @@ export default function BarChart({
               key={seriesKey}
               dataKey={seriesKey}
               stackId={shouldStack ? "stack" : undefined}
-              fill={usePositiveNegativeColoring ? POSITIVE_COLOR : CHART_COLORS[index % CHART_COLORS.length]}
+              fill={usePositiveNegativeColoring ? POSITIVE_COLOR : ((colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length])}
               fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
             >
               {usePositiveNegativeColoring && chartData.map((entry, entryIndex) => {

@@ -4,8 +4,9 @@
  * Minimal dependencies, designed to be embedded in existing apps
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useMemo } from 'react'
 import DashboardGrid from './DashboardGrid'
+import { getColorPalette } from '../utils/colorPalettes'
 import type { AnalyticsDashboardProps, DashboardConfig } from '../types'
 
 export default function AnalyticsDashboard({
@@ -68,6 +69,12 @@ export default function AnalyticsDashboard({
     }
   }, [onConfigChange, onDirtyStateChange])
 
+  // Resolve complete palette object based on config
+  const colorPalette = useMemo(() => {
+    const paletteName = config.colorPalette
+    return getColorPalette(paletteName)
+  }, [config.colorPalette])
+
   return (
     <div className="w-full">
       <DashboardGrid 
@@ -75,6 +82,7 @@ export default function AnalyticsDashboard({
         editable={editable}
         onConfigChange={handleConfigChangeWithDirtyTracking}
         onSave={handleSaveWithDirtyTracking}
+        colorPalette={colorPalette}
       />
     </div>
   )

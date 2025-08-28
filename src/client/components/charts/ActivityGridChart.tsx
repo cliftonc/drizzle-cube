@@ -32,7 +32,8 @@ export default function ActivityGridChart({
   chartConfig,
   displayConfig = {},
   queryObject,
-  height = "100%"
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -483,7 +484,7 @@ export default function ActivityGridChart({
 
     const colorScale = scaleQuantize<string>()
       .domain([minValue, maxValue])
-      .range(CHART_COLORS_GRADIENT)
+      .range(colorPalette?.gradient || CHART_COLORS_GRADIENT)
 
     // Create grid data map for quick lookup
     const gridMap = new Map<string, GridCell>()
@@ -665,7 +666,7 @@ export default function ActivityGridChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showTooltip, safeDisplayConfig.showLabels])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showTooltip, safeDisplayConfig.showLabels, colorPalette])
 
   if (!data || data.length === 0) {
     return (
