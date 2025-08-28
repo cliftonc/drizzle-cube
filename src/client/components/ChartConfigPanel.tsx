@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
 import AxisDropZone from './AxisDropZone'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
@@ -29,6 +29,13 @@ export default function ChartConfigPanel({
   onDisplayConfigChange
 }: ChartConfigPanelProps) {
   
+  // Track currently dragging item for immediate state updates
+  const [draggedItem, setDraggedItem] = useState<{
+    field: string
+    fromAxis: string
+    fromIndex?: number
+  } | null>(null)
+  
   // Get configuration for current chart type
   const chartTypeConfig = useMemo(() => 
     getChartConfig(chartType, chartConfigRegistry),
@@ -41,9 +48,8 @@ export default function ChartConfigPanel({
   // Get fields for each drop zone
   const getFieldsForDropZone = (key: string): string[] => {
     const value = chartConfig[key as keyof ChartAxisConfig]
-    if (Array.isArray(value)) return value
-    if (typeof value === 'string') return [value]
-    return []
+    const result = Array.isArray(value) ? value : (typeof value === 'string' ? [value] : [])
+    return result
   }
 
   // Clean up chart config when available fields change
@@ -118,23 +124,26 @@ export default function ChartConfigPanel({
   }
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, field: string, fromAxis: string) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify({ field, fromAxis }))
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, field: string, fromAxis: string, fromIndex?: number) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ field, fromAxis, fromIndex }))
+    
+    // Just track the dragged item - don't remove it yet
+    setDraggedItem({ field, fromAxis, fromIndex })
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
   }
 
+  const handleDragEnd = () => {
+    // Just clear the dragged item tracking - no need to restore since we didn't remove it
+    setDraggedItem(null)
+  }
+
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, toAxis: string) => {
     e.preventDefault()
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-    const { field, fromAxis, isReorder } = data
-    
-    // Don't handle reorder drops here - let the AxisDropZone handle them
-    if (isReorder && fromAxis === toAxis) {
-      return
-    }
+    const { field, fromAxis } = data
     
     const newConfig = { ...chartConfig }
     
@@ -142,7 +151,12 @@ export default function ChartConfigPanel({
     if (fromAxis !== 'available' && fromAxis !== toAxis) {
       const fromValue = newConfig[fromAxis as keyof ChartAxisConfig]
       if (Array.isArray(fromValue)) {
-        newConfig[fromAxis as keyof ChartAxisConfig] = fromValue.filter(f => f !== field) as any
+        const filteredValue = fromValue.filter(f => f !== field)
+        if (filteredValue.length === 0) {
+          delete newConfig[fromAxis as keyof ChartAxisConfig]
+        } else {
+          newConfig[fromAxis as keyof ChartAxisConfig] = filteredValue as any
+        }
       } else if (fromValue === field) {
         delete newConfig[fromAxis as keyof ChartAxisConfig]
       }
@@ -166,6 +180,8 @@ export default function ChartConfigPanel({
       }
     }
     
+    // Clear the dragged item tracking
+    setDraggedItem(null)
     onChartConfigChange(newConfig)
   }
 
@@ -174,7 +190,12 @@ export default function ChartConfigPanel({
     const value = newConfig[fromAxis as keyof ChartAxisConfig]
     
     if (Array.isArray(value)) {
-      newConfig[fromAxis as keyof ChartAxisConfig] = value.filter(f => f !== field) as any
+      const filteredValue = value.filter(f => f !== field)
+      if (filteredValue.length === 0) {
+        delete newConfig[fromAxis as keyof ChartAxisConfig]
+      } else {
+        newConfig[fromAxis as keyof ChartAxisConfig] = filteredValue as any
+      }
     } else if (value === field) {
       delete newConfig[fromAxis as keyof ChartAxisConfig]
     }
@@ -192,6 +213,9 @@ export default function ChartConfigPanel({
       const [movedItem] = newArray.splice(fromIndex, 1)
       newArray.splice(toIndex, 0, movedItem)
       newConfig[axisKey as keyof ChartAxisConfig] = newArray as any
+      
+      // Clear the dragged item tracking
+      setDraggedItem(null)
       onChartConfigChange(newConfig)
     }
   }
@@ -204,6 +228,12 @@ export default function ChartConfigPanel({
     chartTypeConfig.dropZones.forEach(dz => {
       getFieldsForDropZone(dz.key).forEach(field => assignedFields.add(field))
     })
+    
+    // Exclude the currently dragged field only if it's being dragged FROM a configured axis
+    // (not from available fields, where it should remain visible)
+    if (draggedItem && draggedItem.fromAxis !== 'available') {
+      assignedFields.add(draggedItem.field)
+    }
     
     return {
       dimensions: availableFields.dimensions.filter(f => !assignedFields.has(f)),
@@ -233,17 +263,21 @@ export default function ChartConfigPanel({
                     Dimensions
                   </div>
                   <div className="space-y-1">
-                    {unassignedFields.dimensions.map(dim => (
-                      <div
-                        key={dim}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                        className="bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
-                        title={dim}
-                      >
-                        {dim}
-                      </div>
-                    ))}
+                    {unassignedFields.dimensions.map(dim => {
+                      const isBeingDragged = draggedItem && draggedItem.field === dim && draggedItem.fromAxis === 'available'
+                      return (
+                        <div
+                          key={dim}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, dim, 'available')}
+                          onDragEnd={handleDragEnd}
+                          className={`bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          title={dim}
+                        >
+                          {dim}
+                        </div>
+                      )
+                    })}
                     {unassignedFields.dimensions.length === 0 && (
                       <div className="text-xs text-gray-400 italic">None</div>
                     )}
@@ -257,17 +291,21 @@ export default function ChartConfigPanel({
                     Time Dimensions
                   </div>
                   <div className="space-y-1">
-                    {unassignedFields.timeDimensions.map(dim => (
-                      <div
-                        key={dim}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, dim, 'available')}
-                        className="bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
-                        title={dim}
-                      >
-                        {dim}
-                      </div>
-                    ))}
+                    {unassignedFields.timeDimensions.map(dim => {
+                      const isBeingDragged = draggedItem && draggedItem.field === dim && draggedItem.fromAxis === 'available'
+                      return (
+                        <div
+                          key={dim}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, dim, 'available')}
+                          onDragEnd={handleDragEnd}
+                          className={`bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          title={dim}
+                        >
+                          {dim}
+                        </div>
+                      )
+                    })}
                     {unassignedFields.timeDimensions.length === 0 && (
                       <div className="text-xs text-gray-400 italic">None</div>
                     )}
@@ -281,17 +319,21 @@ export default function ChartConfigPanel({
                     Measures
                   </div>
                   <div className="space-y-1">
-                    {unassignedFields.measures.map(measure => (
-                      <div
-                        key={measure}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, measure, 'available')}
-                        className="bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate"
-                        title={measure}
-                      >
-                        {measure}
-                      </div>
-                    ))}
+                    {unassignedFields.measures.map(measure => {
+                      const isBeingDragged = draggedItem && draggedItem.field === measure && draggedItem.fromAxis === 'available'
+                      return (
+                        <div
+                          key={measure}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, measure, 'available')}
+                          onDragEnd={handleDragEnd}
+                          className={`bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          title={measure}
+                        >
+                          {measure}
+                        </div>
+                      )
+                    })}
                     {unassignedFields.measures.length === 0 && (
                       <div className="text-xs text-gray-400 italic">None</div>
                     )}
@@ -320,9 +362,11 @@ export default function ChartConfigPanel({
               onDrop={handleDrop}
               onRemove={handleRemoveFromAxis}
               onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
               onDragOver={handleDragOver}
               getFieldStyling={getFieldStyling}
               onReorder={handleReorder}
+              draggedItem={draggedItem}
             />
           ))}
         </div>

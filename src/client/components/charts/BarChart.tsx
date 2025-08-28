@@ -172,7 +172,7 @@ export default function BarChart({
       </ChartContainer>
     )
   } catch (error) {
-    console.error('BarChart rendering error:', error)
+    // 'BarChart rendering error
     return (
       <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">

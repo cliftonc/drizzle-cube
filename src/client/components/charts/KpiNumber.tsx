@@ -95,11 +95,6 @@ export default function KpiNumber({
     }
   }
   
-  console.log('KPI Number yAxis handling:', {
-    originalYAxis: chartConfig?.yAxis,
-    processedValueFields: valueFields,
-    yAxisType: typeof chartConfig?.yAxis
-  })
   
   if (valueFields.length === 0) {
     return (
@@ -120,14 +115,6 @@ export default function KpiNumber({
 
   const valueField = valueFields[0] // Use first measure field
   
-  // Debug logging (remove in production)
-  console.log('KPI Number Debug:', {
-    data,
-    chartConfig,
-    valueFields,
-    valueField,
-    dataKeys: data.length > 0 ? Object.keys(data[0]) : []
-  })
   
   // Extract values for the selected field
   const rawValues = data.map(row => {
@@ -142,23 +129,16 @@ export default function KpiNumber({
     )
     
     if (numericFields.length > 0) {
-      console.warn(`KPI Number: Field '${valueField}' not found, using fallback field '${numericFields[0]}'`)
       return row[numericFields[0]]
     }
     
     return undefined
   })
-  console.log('Raw values extracted:', rawValues)
   
   const values = rawValues
-    .filter(val => {
-      const isValid = val !== null && val !== undefined && !isNaN(Number(val))
-      console.log(`Value ${val} is valid: ${isValid}`)
-      return isValid
-    })
+    .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
     .map(val => Number(val))
   
-  console.log('Final processed values:', values)
 
   if (values.length === 0) {
     const dataKeys = data.length > 0 ? Object.keys(data[0]).join(', ') : 'none'
@@ -242,14 +222,6 @@ export default function KpiNumber({
         >
           {(() => {
             const label = getFieldLabel(valueField)
-            console.log('Field label debug:', {
-              valueField,
-              label,
-              labelType: typeof label,
-              labelLength: label?.length,
-              labelAsString: String(label),
-              directFieldName: valueField
-            })
             // Temporary fix: if label seems wrong, use the field name directly
             const displayLabel = (label && label.length > 1) ? label : valueField
             return displayLabel

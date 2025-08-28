@@ -34,7 +34,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
       </div>
     )
   } catch (error) {
-    console.error('ChartContainer ResponsiveContainer error:', error)
+    // ChartContainer ResponsiveContainer error
     
     return (
       <div 

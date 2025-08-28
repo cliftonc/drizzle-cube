@@ -158,19 +158,16 @@ export default function PortletEditModal({
   }, [isOpen, portlet])
 
   const handleSubmit = (e: React.FormEvent) => {
-    console.log('handleSubmit called!')
     e.preventDefault()
     
     // For skipQuery charts, only validate title
     if (shouldSkipQuery) {
       if (!formTitle.trim()) {
-        console.log('handleSubmit: missing title, returning')
         return
       }
     } else {
       // For normal charts, validate both title and query
       if (!formTitle.trim() || !query.trim()) {
-        console.log('handleSubmit: missing title or query, returning')
         return
       }
 
@@ -359,16 +356,10 @@ export default function PortletEditModal({
     
     if (!queryBuilderRef.current) return
     
-    console.log('Apply Query clicked - starting...')
-    
     // Get current query and validation state from QueryBuilder
     const currentQuery = queryBuilderRef.current.getCurrentQuery()
     const validationState = queryBuilderRef.current.getValidationState()
     const validationResult = queryBuilderRef.current.getValidationResult()
-    
-    console.log('Current query:', currentQuery)
-    console.log('Validation state:', validationState)
-    console.log('Full validation result:', validationResult)
     
     // Apply the query to the form
     const formattedQuery = JSON.stringify(currentQuery, null, 2)
@@ -394,12 +385,8 @@ export default function PortletEditModal({
       setDryRunData(null)
     }
     
-    console.log('About to switch back to form mode...')
-    
     // Return to form view to continue editing
     setShowQueryBuilder(false)
-    
-    console.log('Switched back to form mode.')
   }
 
   const handleBackToForm = () => {

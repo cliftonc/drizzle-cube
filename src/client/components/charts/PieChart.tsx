@@ -182,7 +182,7 @@ export default function PieChart({
       </ChartContainer>
     )
   } catch (error) {
-    console.error('PieChart rendering error:', error)
+    // 'PieChart rendering error
     return (
       <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">

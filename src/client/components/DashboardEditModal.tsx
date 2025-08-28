@@ -48,7 +48,7 @@ export default function DashboardEditModal({
       })
       handleClose()
     } catch (error) {
-      console.error('Failed to save dashboard:', error)
+      // Failed to save dashboard
       // Don't close modal on error so user can retry
     } finally {
       setIsSaving(false)

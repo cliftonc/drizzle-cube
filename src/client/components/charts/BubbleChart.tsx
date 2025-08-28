@@ -49,12 +49,10 @@ export default function BubbleChart({
     const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect()
-        console.log('BubbleChart: Dimension measurement attempt', retryCount + 1, { width, height })
         
         if (width > 0 && height > 0) {
           setDimensions({ width, height })
           setDimensionsReady(true)
-          console.log('BubbleChart: Dimensions successfully measured:', { width, height })
           return true
         }
       }
@@ -98,7 +96,6 @@ export default function BubbleChart({
           setDimensions({ width, height })
           if (!dimensionsReady) {
             setDimensionsReady(true)
-            console.log('BubbleChart: Dimensions ready via ResizeObserver:', { width, height })
           }
         }
       }
@@ -113,8 +110,7 @@ export default function BubbleChart({
             setDimensions({ width, height })
             if (!dimensionsReady) {
               setDimensionsReady(true)
-              console.log('BubbleChart: Dimensions ready via ResizeObserver:', { width, height })
-            }
+              }
           }
         }
       })
@@ -138,26 +134,15 @@ export default function BubbleChart({
 
   useEffect(() => {
     if (!data || data.length === 0 || !svgRef.current || !dimensionsReady || dimensions.width === 0) {
-      console.log('BubbleChart: Skipping render - conditions not met:', {
-        hasData: data && data.length > 0,
-        hasSvgRef: !!svgRef.current,
-        dimensionsReady,
-        dimensions
-      })
       return
     }
 
     // Clear previous chart
     select(svgRef.current).selectAll('*').remove()
 
-    // Debug logging
-    console.log('BubbleChart: chartConfig:', chartConfig)
-    console.log('BubbleChart: data:', data)
-    console.log('BubbleChart: dimensions:', dimensions)
 
     // Validate chartConfig - only new format supported
     if (!chartConfig?.xAxis || !chartConfig?.yAxis || !chartConfig?.series) {
-      console.log('BubbleChart: Missing xAxis, yAxis, or series in chartConfig')
       return
     }
 
@@ -167,16 +152,8 @@ export default function BubbleChart({
     const sizeFieldName = Array.isArray(chartConfig.sizeField) ? chartConfig.sizeField[0] : chartConfig.sizeField || yAxisField
     const colorFieldName = Array.isArray(chartConfig.colorField) ? chartConfig.colorField[0] : chartConfig.colorField
 
-    console.log('BubbleChart: fields extracted:', {
-      xAxisField,
-      yAxisField,
-      seriesField,
-      sizeFieldName,
-      colorFieldName
-    })
 
     if (!xAxisField || !yAxisField || !seriesField || !sizeFieldName) {
-      console.log('BubbleChart: Missing required fields')
       return
     }
 

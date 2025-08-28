@@ -242,12 +242,6 @@ export default function ActivityGridChart({
 
   useEffect(() => {
     if (!data || data.length === 0 || !svgRef.current || !dimensionsReady || dimensions.width === 0) {
-      console.log('ActivityGridChart: Skipping render - conditions not met:', {
-        hasData: data && data.length > 0,
-        hasSvgRef: !!svgRef.current,
-        dimensionsReady,
-        dimensions
-      })
       return
     }
 
@@ -256,29 +250,20 @@ export default function ActivityGridChart({
 
     // Validate chartConfig
     if (!chartConfig?.dateField || !chartConfig?.valueField) {
-      console.log('ActivityGridChart: Missing dateField or valueField in chartConfig')
       return
     }
 
     const dateField = Array.isArray(chartConfig.dateField) ? chartConfig.dateField[0] : chartConfig.dateField
     const valueField = Array.isArray(chartConfig.valueField) ? chartConfig.valueField[0] : chartConfig.valueField
 
-    console.log('ActivityGridChart: Configuration:', {
-      dateField,
-      valueField,
-      dataLength: data.length,
-      sampleData: data.slice(0, 3)
-    })
 
     if (!dateField || !valueField) {
-      console.log('ActivityGridChart: Invalid dateField or valueField')
       return
     }
 
     // Get granularity directly from the query's time dimensions
     const getQueryGranularity = () => {
       if (!queryObject?.timeDimensions || queryObject.timeDimensions.length === 0) {
-        console.log('ActivityGridChart: No timeDimensions in query, defaulting to day')
         return 'day'
       }
       
@@ -288,18 +273,15 @@ export default function ActivityGridChart({
       )
       
       if (timeDim && timeDim.granularity) {
-        console.log('ActivityGridChart: Found matching time dimension:', timeDim)
         return timeDim.granularity
       }
       
       // Fallback to first time dimension's granularity
       const firstTimeDim = queryObject.timeDimensions[0]
       if (firstTimeDim && firstTimeDim.granularity) {
-        console.log('ActivityGridChart: Using first time dimension granularity:', firstTimeDim)
         return firstTimeDim.granularity
       }
       
-      console.log('ActivityGridChart: No granularity found, defaulting to day')
       return 'day'
     }
     
@@ -308,20 +290,9 @@ export default function ActivityGridChart({
     
     // Handle unsupported granularity
     if (!gridMapping) {
-      console.log('ActivityGridChart: Unsupported granularity:', queryGranularity)
       return
     }
     
-    console.log('ActivityGridChart: Query granularity analysis:', {
-      queryObject: queryObject?.timeDimensions,
-      dateField,
-      detectedGranularity: queryGranularity,
-      gridMapping: {
-        cellWidth: gridMapping.cellWidth,
-        cellHeight: gridMapping.cellHeight,
-        yLabels: gridMapping.yLabels
-      }
-    })
 
     // Transform data for grid
     const gridData: GridCell[] = data.map(item => {
@@ -348,7 +319,6 @@ export default function ActivityGridChart({
 
       // Skip invalid dates
       if (isNaN(date.getTime())) {
-        console.log('ActivityGridChart: Invalid date:', dateValue)
         return null
       }
 
@@ -364,12 +334,6 @@ export default function ActivityGridChart({
       }
     }).filter((cell): cell is GridCell => cell !== null)
 
-    console.log('ActivityGridChart: Transformed grid data:', {
-      totalCells: gridData.length,
-      sampleCells: gridData.slice(0, 5).map(cell => ({ x: cell.x, y: cell.y, value: cell.value, date: cell.date.toISOString() })),
-      uniqueXValues: [...new Set(gridData.map(cell => cell.x))].sort(),
-      xValueMeaning: queryGranularity === 'month' ? 'year*10 + quarter (should be like 20241, 20242, 20243, 20244)' : 'regular x values'
-    })
 
     if (gridData.length === 0) return
 
@@ -379,7 +343,6 @@ export default function ActivityGridChart({
     const minX = min(gridData, d => d.x) || 0
     const minY = min(gridData, d => d.y) || 0
 
-    console.log('ActivityGridChart: Grid bounds:', { minX, maxX, minY, maxY })
 
     // Generate complete X range first so we can calculate proper grid width
     const getCompleteXRange = (): number[] => {
@@ -456,19 +419,6 @@ export default function ActivityGridChart({
     const needsHorizontalScroll = actualGridWidth > availableWidth
     const svgWidth = needsHorizontalScroll ? actualGridWidth + margin.left + margin.right : dimensions.width
     
-    console.log('ActivityGridChart: Scaling calculations:', {
-      availableWidth,
-      availableHeight,
-      gridWidth,
-      gridHeight,
-      actualGridWidth,
-      actualGridHeight,
-      scale,
-      needsHorizontalScroll,
-      svgWidth,
-      originalCellSize: { width: gridMapping.cellWidth, height: gridMapping.cellHeight },
-      finalCellSize: { width: finalCellWidth, height: finalCellHeight }
-    })
 
     const svg = select(svgRef.current)
       .attr('width', svgWidth)
@@ -589,7 +539,6 @@ export default function ActivityGridChart({
           yearGroups.get(year)!.push(x)
         }
         
-        console.log('ActivityGridChart: Year groups:', Object.fromEntries(yearGroups))
         
         // Draw column labels (Q1-Q4 for months, Jan-Dec for weeks)
         for (const x of completeXRange) {

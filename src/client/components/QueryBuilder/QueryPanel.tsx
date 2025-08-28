@@ -45,7 +45,6 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           ;(window as any).Prism.highlightAll()
         } catch (error) {
           // Silently fail if Prism is not available or encounters an error
-          console.debug('Prism highlighting failed:', error)
         }
       }, 0)
     }
@@ -60,7 +59,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       await navigator.clipboard.writeText(JSON.stringify(cleanedQuery, null, 2))
       // You could add a toast notification here if desired
     } catch (error) {
-      console.error('Failed to copy query:', error)
+      // Failed to copy query
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = JSON.stringify(cleanedQuery, null, 2)

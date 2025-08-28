@@ -13,10 +13,12 @@ interface AxisDropZoneProps {
   fields: string[]
   onDrop: (e: React.DragEvent<HTMLDivElement>, toKey: string) => void
   onRemove: (field: string, fromKey: string) => void
-  onDragStart: (e: React.DragEvent<HTMLDivElement>, field: string, fromKey: string) => void
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, field: string, fromKey: string, fromIndex?: number) => void
+  onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void
   onDragOver: (e: React.DragEvent<HTMLDivElement>) => void
   getFieldStyling: (field: string) => FieldStyling
   onReorder?: (fromIndex: number, toIndex: number, axisKey: string) => void
+  draggedItem?: { field: string; fromAxis: string; fromIndex?: number } | null
 }
 
 export default function AxisDropZone({
@@ -25,73 +27,116 @@ export default function AxisDropZone({
   onDrop,
   onRemove,
   onDragStart,
+  onDragEnd,
   onDragOver,
   getFieldStyling,
-  onReorder
+  onReorder,
+  draggedItem
 }: AxisDropZoneProps) {
   const { key, label, description, mandatory, maxItems, emptyText, icon: IconComponent } = config
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const [draggedFromIndex, setDraggedFromIndex] = useState<number | null>(null)
-  const [isDraggingFromSameAxis, setIsDraggingFromSameAxis] = useState(false)
+  const [isDraggedOver, setIsDraggedOver] = useState(false)
+  const [isReorderDraggedOver, setIsReorderDraggedOver] = useState(false)
   
-  // Check if we can accept more items
-  const canAcceptMore = !maxItems || fields.length < maxItems
-  const isFull = maxItems && fields.length >= maxItems
-
-  // Helper to handle reordering within the same axis
-  const handleReorderDragStart = (e: React.DragEvent<HTMLDivElement>, field: string, index: number) => {
-    setDraggedFromIndex(index)
-    setIsDraggingFromSameAxis(true)
+  // Calculate acceptance considering what's being dragged
+  const getCanAcceptMore = () => {
+    let effectiveCount = fields.length
     
-    // Set both the regular drag data and the reorder data
-    e.dataTransfer.setData('text/plain', JSON.stringify({ 
-      field, 
-      fromAxis: key,
-      fromIndex: index,
-      isReorder: true
-    }))
+    // If we're dragging FROM this axis, we effectively have one less item
+    if (draggedItem && draggedItem.fromAxis === key) {
+      effectiveCount = Math.max(0, fields.length - 1)
+    }
+    
+    return !maxItems || effectiveCount < maxItems
   }
+  
+  const getIsFull = () => {
+    let effectiveCount = fields.length
+    
+    // If we're dragging FROM this axis, we effectively have one less item
+    if (draggedItem && draggedItem.fromAxis === key) {
+      effectiveCount = Math.max(0, fields.length - 1)
+    }
+    
+    return maxItems && effectiveCount >= maxItems
+  }
+  
+  const canAcceptMore = getCanAcceptMore()
+  const isFull = getIsFull()
+  
 
-  const handleReorderDragEnd = () => {
-    setDraggedFromIndex(null)
-    setIsDraggingFromSameAxis(false)
-    setDragOverIndex(null)
-  }
+  // Add a global drag end listener to reset visual state
+  React.useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      setDragOverIndex(null)
+      setIsDraggedOver(false)
+      setIsReorderDraggedOver(false)
+    }
+
+    document.addEventListener('dragend', handleGlobalDragEnd)
+    return () => {
+      document.removeEventListener('dragend', handleGlobalDragEnd)
+    }
+  }, [])
+
+  // Clear states when transitioning between different drag operations
+  React.useEffect(() => {
+    if (draggedItem) {
+      // If we have a dragged item but it's not from this axis, clear reorder state
+      if (draggedItem.fromAxis !== key) {
+        setIsReorderDraggedOver(false)
+        setDragOverIndex(null)
+      }
+      // If we have a dragged item from this axis, clear regular drag state
+      else if (draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
+        setIsDraggedOver(false)
+      }
+    } else {
+      // No dragged item, clear all states
+      setDragOverIndex(null)
+      setIsDraggedOver(false)
+      setIsReorderDraggedOver(false)
+    }
+  }, [draggedItem, key])
 
   const handleReorderDragOver = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
-    // Only prevent default and show indicator if we're dragging from the same axis
-    if (isDraggingFromSameAxis && draggedFromIndex !== null && draggedFromIndex !== targetIndex) {
+    // Check if this is a reorder operation (same axis) using the draggedItem prop
+    if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
       e.preventDefault()
       e.stopPropagation()
       setDragOverIndex(targetIndex)
+      setIsReorderDraggedOver(true)
     }
   }
 
   const handleReorderDragLeave = () => {
+    // Clear the individual item drag over index
     setDragOverIndex(null)
+    // Note: Don't clear isReorderDraggedOver here as it causes flickering
+    // Let the global drag end handler clear it when the drag is truly complete
   }
 
   const handleReorderDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
     e.preventDefault()
     e.stopPropagation()
     setDragOverIndex(null)
+    setIsReorderDraggedOver(false)
     
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-      if (data.isReorder && data.fromAxis === key && onReorder && draggedFromIndex !== null) {
-        // Only reorder if we're actually changing positions
-        if (draggedFromIndex !== targetIndex) {
-          onReorder(draggedFromIndex, targetIndex, key)
-        }
-      }
-    } catch {
-      // If we can't parse the data, try using the stored state
-      if (isDraggingFromSameAxis && draggedFromIndex !== null && draggedFromIndex !== targetIndex && onReorder) {
-        onReorder(draggedFromIndex, targetIndex, key)
-      }
+    // Handle reordering using either drag data or the draggedItem prop
+    if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined && onReorder) {
+      onReorder(draggedItem.fromIndex, targetIndex, key)
+      return
     }
     
-    handleReorderDragEnd()
+    // Fallback to parsing drag data
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+      if (data.fromAxis === key && onReorder && data.fromIndex !== undefined) {
+        onReorder(data.fromIndex, targetIndex, key)
+      }
+    } catch {
+      // If we can't parse the data, ignore
+    }
   }
   
   return (
@@ -115,35 +160,68 @@ export default function AxisDropZone({
       </div>
       
       <div
-        className={`min-h-[40px] sm:min-h-[32px] border-2 border-dashed rounded-lg p-3 sm:p-1.5 transition-colors flex items-center ${
-          isFull 
-            ? 'border-gray-200 bg-gray-50' 
-            : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+        data-axis-container={key}
+        className={`min-h-[40px] sm:min-h-[32px] border-2 border-dashed rounded-lg p-3 sm:p-1.5 transition-all duration-300 flex items-center ${
+          (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
+            ? 'border-blue-500 bg-blue-100 shadow-lg scale-110 border-solid animate-pulse'
+            : isFull 
+              ? 'border-gray-200 bg-gray-50' 
+              : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
         }`}
         onDragOver={(e) => {
-          // Don't interfere with internal reordering
-          if (isDraggingFromSameAxis) {
+          // Check if this is a reorder operation (same axis) - if so, don't interfere
+          if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
             return
           }
           
-          if (canAcceptMore) {
+          // Simple acceptance check - either we have space OR it's a single-item replacement
+          const canAccept = canAcceptMore || (maxItems === 1)
+          
+          if (canAccept) {
+            setIsDraggedOver(true)
             onDragOver(e)
           } else {
             e.preventDefault()
             e.dataTransfer.dropEffect = 'none'
           }
         }}
+        onDragLeave={(e) => {
+          // Check if we're truly leaving the container
+          const rect = e.currentTarget.getBoundingClientRect()
+          const isLeavingContainer = (
+            e.clientX < rect.left || 
+            e.clientX > rect.right || 
+            e.clientY < rect.top || 
+            e.clientY > rect.bottom
+          )
+          
+          // Also check if the related target is outside this container
+          const relatedTarget = e.relatedTarget as Element | null
+          const isRelatedTargetOutside = relatedTarget && !e.currentTarget.contains(relatedTarget)
+          
+          if (isLeavingContainer || isRelatedTargetOutside || e.currentTarget === e.target) {
+            setIsDraggedOver(false)
+            setIsReorderDraggedOver(false)
+          }
+        }}
         onDrop={(e) => {
-          // Don't interfere with internal reordering
-          if (isDraggingFromSameAxis) {
+          // Check if this is a reorder operation (same axis) - if so, don't interfere
+          if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
             return
           }
           
-          if (canAcceptMore) {
+          // Simple acceptance check - either we have space OR it's a single-item replacement
+          const shouldAcceptDrop = canAcceptMore || (maxItems === 1)
+          
+          if (shouldAcceptDrop) {
             onDrop(e, key)
           } else {
             e.preventDefault()
           }
+          
+          // Reset drag state on drop
+          setIsDraggedOver(false)
+          setIsReorderDraggedOver(false)
         }}
       >
         {fields.length === 0 ? (
@@ -155,6 +233,7 @@ export default function AxisDropZone({
             {fields.map((field, index) => {
               const { IconComponent: FieldIcon, baseClasses, hoverClasses } = getFieldStyling(field)
               const isDragOver = dragOverIndex === index
+              const isBeingDragged = draggedItem && draggedItem.field === field && draggedItem.fromAxis === key
               
               return (
                 <div
@@ -169,17 +248,16 @@ export default function AxisDropZone({
                   <div
                     draggable
                     onDragStart={(e) => {
-                      // Handle both regular drag (to other axes) and reorder drag (within same axis)
-                      onDragStart(e, field, key)
-                      handleReorderDragStart(e, field, index)
+                      // Let parent handle drag data with index
+                      onDragStart(e, field, key, index)
                     }}
-                    onDragEnd={handleReorderDragEnd}
+                    onDragEnd={onDragEnd}
                     onDragOver={(e) => handleReorderDragOver(e, index)}
                     onDragLeave={handleReorderDragLeave}
                     onDrop={(e) => handleReorderDrop(e, index)}
                     className={`rounded text-xs cursor-move px-3 py-0.5 sm:px-2 sm:py-1 flex items-center transition-transform h-[28px] sm:h-auto ${baseClasses} ${hoverClasses} ${
                       isDragOver ? 'bg-opacity-75' : ''
-                    } ${draggedFromIndex === index ? 'opacity-50' : ''}`}
+                    } ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                   >
                     <FieldIcon className="w-3 h-3 mr-1 flex-shrink-0" />
                     <span className="leading-none">{field}</span>

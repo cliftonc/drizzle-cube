@@ -152,7 +152,7 @@ export default function RadialBarChart({
       </ChartContainer>
     )
   } catch (error) {
-    console.error('RadialBarChart rendering error:', error)
+    // 'RadialBarChart rendering error
     return (
       <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">

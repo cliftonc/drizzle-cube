@@ -91,11 +91,6 @@ export default function KpiText({
     }
   }
   
-  console.log('KPI Text yAxis handling:', {
-    originalYAxis: chartConfig?.yAxis,
-    processedValueFields: valueFields,
-    yAxisType: typeof chartConfig?.yAxis
-  })
   
   if (valueFields.length === 0) {
     return (
@@ -117,13 +112,6 @@ export default function KpiText({
   const valueField = valueFields[0] // Use first measure field
   
   // Debug logging (remove in production)
-  console.log('KPI Text Debug:', {
-    data,
-    chartConfig,
-    valueFields,
-    valueField,
-    dataKeys: data.length > 0 ? Object.keys(data[0]) : []
-  })
   
   // Extract values for the selected field
   const values = data
@@ -136,7 +124,7 @@ export default function KpiText({
       // If not found, try finding the first available field as fallback
       const availableFields = Object.keys(row)
       if (availableFields.length > 0) {
-        console.warn(`KPI Text: Field '${valueField}' not found, using fallback field '${availableFields[0]}'`)
+        // Field not found, using fallback
         return row[availableFields[0]]
       }
       
@@ -144,7 +132,6 @@ export default function KpiText({
     })
     .filter(val => val !== null && val !== undefined)
   
-  console.log('KPI Text extracted values:', values)
 
   if (values.length === 0) {
     return (
@@ -227,7 +214,7 @@ export default function KpiText({
         return match
       })
     } catch (error) {
-      console.error('Error processing template:', error)
+      // Error processing template
       return String(value)
     }
   }

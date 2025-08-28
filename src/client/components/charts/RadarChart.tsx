@@ -173,7 +173,7 @@ export default function RadarChart({
       </ChartContainer>
     )
   } catch (error) {
-    console.error('RadarChart rendering error:', error)
+    // 'RadarChart rendering error
     return (
       <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">

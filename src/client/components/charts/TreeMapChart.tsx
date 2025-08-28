@@ -57,14 +57,6 @@ export default function TreeMapChart({
         
         isNumericSeries = seriesValues.length === data.length && seriesValues.every(val => typeof val === 'number')
         
-        // Debug logging
-        console.log('TreeMap Debug:', {
-          seriesField,
-          data,
-          seriesValues,
-          isNumericSeries,
-          rawValues: data.map(item => item[seriesField!])
-        })
         
         if (isNumericSeries) {
           // Use D3 quantize scale for better color distribution with small ranges
@@ -82,13 +74,6 @@ export default function TreeMapChart({
               : item[seriesField!]
             
             const color = colorScale(seriesValue)
-            console.log('TreeMap Color Assignment:', {
-              item: item[xAxisField],
-              seriesValue,
-              color,
-              minValue,
-              maxValue
-            })
             
             return {
               name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
@@ -277,13 +262,6 @@ export default function TreeMapChart({
     // For numeric series, create a legend showing the color scale
     let legendPayload: any[] = []
     if (safeDisplayConfig.showLegend && seriesField) {
-      console.log('TreeMap Legend Debug:', {
-        showLegend: safeDisplayConfig.showLegend,
-        seriesField,
-        isNumericSeries,
-        uniqueSeries,
-        data: data.slice(0, 2) // First 2 items for debugging
-      })
       
       if (isNumericSeries) {
         // Create color scale legend for numeric values
@@ -296,7 +274,6 @@ export default function TreeMapChart({
           return typeof value === 'string' ? parseFloat(value) : value
         }))
         
-        console.log('Creating numeric legend:', { minValue, maxValue })
         
         // Create legend entries showing color scale
         legendPayload = CHART_COLORS_GRADIENT.map((color, index) => {
@@ -309,7 +286,6 @@ export default function TreeMapChart({
           }
         })
       } else if (uniqueSeries.length > 1) {
-        console.log('Creating categorical legend:', uniqueSeries)
         // Use categorical legend for non-numeric series
         legendPayload = uniqueSeries.map((series, index) => ({
           value: series,
@@ -318,7 +294,6 @@ export default function TreeMapChart({
         }))
       }
       
-      console.log('Final legendPayload:', legendPayload)
     }
 
     // Calculate height adjustment for legend
@@ -399,7 +374,7 @@ export default function TreeMapChart({
       </div>
     )
   } catch (error) {
-    console.error('TreeMapChart rendering error:', error)
+    // 'TreeMapChart rendering error
     return (
       <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
         <div className="text-center">

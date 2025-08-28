@@ -45,7 +45,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           return JSON.parse(saved)
         }
       } catch (error) {
-        console.warn('Failed to load API config from localStorage:', error)
+        // Failed to load API config from localStorage
       }
     }
     return {
@@ -96,7 +96,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           }
         }
       } catch (error) {
-        console.warn('Failed to load query from localStorage:', error)
+        // Failed to load query from localStorage
       }
     }
     
@@ -192,7 +192,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           schemaError: null
         }))
       } catch (error) {
-        console.error('Failed to load schema:', error)
+        // Failed to load schema
         const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
         setState(prev => ({
           ...prev,
@@ -212,7 +212,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ query: state.query }))
       } catch (error) {
-        console.warn('Failed to save query to localStorage:', error)
+        // Failed to save query to localStorage
       }
     }
   }, [state.query, disableLocalStorage])
@@ -223,7 +223,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       try {
         localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig))
       } catch (error) {
-        console.warn('Failed to save API config to localStorage:', error)
+        // Failed to save API config to localStorage
       }
     }
   }, [apiConfig, disableLocalStorage])
@@ -395,7 +395,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     const queryToValidate = cleanQueryForServer(state.query)
     const queryStr = JSON.stringify(queryToValidate)
     
-    console.log('Starting validation with query:', queryToValidate)
 
     setState(prev => ({
       ...prev,
@@ -421,11 +420,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         lastValidatedQueryRef.current = queryStr
       }
       
-      console.log('Validation result:', isValid ? 'VALID' : 'INVALID', 'Query after validation:', state.query)
-      
       setState(prev => {
-        console.log('Setting validation status to:', isValid ? 'valid' : 'invalid')
-        console.log('Query in prev state:', prev.query)
         return {
           ...prev,
           validationStatus: isValid ? 'valid' : 'invalid',
@@ -434,7 +429,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         }
       })
     } catch (error) {
-      console.error('Validation error:', error)
+      // Validation error
       setFullValidationResult(null)
       setState(prev => ({
         ...prev,
@@ -491,7 +486,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         totalRowCountStatus: 'success'
       }))
     } catch (error) {
-      console.error('Query execution error:', error)
+      // Query execution error
       setState(prev => ({
         ...prev,
         executionStatus: 'error',
@@ -574,7 +569,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         schemaError: null
       }))
     } catch (error) {
-      console.error('Failed to retry schema:', error)
+      // Failed to retry schema
       const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
       setState(prev => ({
         ...prev,
@@ -749,7 +744,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
                 
                 setFullValidationResult(result)
               } catch (error) {
-                console.error('Auto-validation error:', error)
+                // Auto-validation error
                 setState(prev => ({
                   ...prev,
                   validationStatus: 'invalid',
