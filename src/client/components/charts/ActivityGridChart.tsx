@@ -338,9 +338,7 @@ export default function ActivityGridChart({
     if (gridData.length === 0) return
 
     // Calculate grid dimensions
-    const maxX = max(gridData, d => d.x) || 0
     const maxY = max(gridData, d => d.y) || 0
-    const minX = min(gridData, d => d.x) || 0
     const minY = min(gridData, d => d.y) || 0
 
 
@@ -413,7 +411,6 @@ export default function ActivityGridChart({
     
     // Calculate actual grid dimensions with the final cell sizes
     const actualGridWidth = completeXRange.length * finalCellWidth + (completeXRange.length - 1) * 4
-    const actualGridHeight = (maxY - minY + 1) * finalCellHeight + (maxY - minY) * 4
     
     // Determine if we need horizontal scrolling
     const needsHorizontalScroll = actualGridWidth > availableWidth
