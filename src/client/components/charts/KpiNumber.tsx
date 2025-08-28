@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
+import DataHistogram from '../DataHistogram'
 import type { ChartProps } from '../../types'
 
 export default function KpiNumber({ 
@@ -9,12 +10,14 @@ export default function KpiNumber({
   height = "100%" 
 }: ChartProps) {
   const [fontSize, setFontSize] = useState(32)
+  const [textWidth, setTextWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const valueRef = useRef<HTMLDivElement>(null)
   const { getFieldLabel } = useCubeContext()
 
-  // Calculate font size based on container dimensions
+  // Calculate font size and text width based on container dimensions
   useEffect(() => {
-    const updateFontSize = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const container = containerRef.current
         const rect = container.getBoundingClientRect()
@@ -32,15 +35,21 @@ export default function KpiNumber({
           setFontSize(clampedFontSize)
         }
       }
+      
+      // Measure the text width after font size is set
+      if (valueRef.current) {
+        const textRect = valueRef.current.getBoundingClientRect()
+        setTextWidth(textRect.width)
+      }
     }
 
     // Initial calculation after a short delay to ensure the container is fully rendered
-    const timer = setTimeout(updateFontSize, 100)
+    const timer = setTimeout(updateDimensions, 100)
     
     const resizeObserver = new ResizeObserver(() => {
       // Debounce the resize updates
       clearTimeout(timer)
-      setTimeout(updateFontSize, 50)
+      setTimeout(updateDimensions, 50)
     })
     
     if (containerRef.current) {
@@ -172,11 +181,10 @@ export default function KpiNumber({
   const min = Math.min(...values)
   const max = Math.max(...values)
 
-  // Format number with appropriate units and decimals
+  // Format number with appropriate units and decimals (no prefix/suffix here, handled separately)
   const formatNumber = (value: number): string => {
     const decimals = displayConfig.decimals ?? 0
     const prefix = displayConfig.prefix ?? ''
-    const suffix = displayConfig.suffix ?? ''
     
     let formattedValue: string
     
@@ -190,7 +198,7 @@ export default function KpiNumber({
       formattedValue = value.toFixed(decimals)
     }
     
-    return prefix + formattedValue + suffix
+    return prefix + formattedValue
   }
 
   const mainValue = values.length === 1 ? values[0] : avg
@@ -199,28 +207,17 @@ export default function KpiNumber({
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col items-center justify-center w-full h-full p-2"
+      className="flex flex-col items-center justify-center w-full h-full p-4"
       style={{ 
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined
       }}
     >
-        {/* Main KPI Value */}
+        {/* Field Label - Bolder and bigger */}
         <div 
-          className="font-bold text-gray-800 leading-none mb-1"
+          className="text-gray-700 font-bold text-center mb-3"
           style={{ 
-            fontSize: `${fontSize}px`,
-            color: displayConfig.colors?.[0] || '#1f2937' 
-          }}
-        >
-          {formatNumber(mainValue)}
-        </div>
-
-        {/* Field Label */}
-        <div 
-          className="text-gray-600 font-medium text-center mb-2"
-          style={{ 
-            fontSize: `${Math.max(14, fontSize * 0.35)}px`,
+            fontSize: '14px',
             lineHeight: '1.2'
           }}
         >
@@ -240,33 +237,44 @@ export default function KpiNumber({
           })()}
         </div>
 
-        {/* Statistics for multiple values */}
-        {showStats && (
-          <div className="flex gap-4 text-gray-500">
-            <div 
-              className="text-center"
-              style={{ fontSize: `${Math.max(12, fontSize * 0.25)}px` }}
-            >
-              <div className="font-medium">Min</div>
-              <div>{formatNumber(min)}</div>
-            </div>
-            <div 
-              className="text-center"
-              style={{ fontSize: `${Math.max(12, fontSize * 0.25)}px` }}
-            >
-              <div className="font-medium">Max</div>
-              <div>{formatNumber(max)}</div>
-            </div>
+        {/* Main KPI Value - Large, centered */}
+        <div 
+          ref={valueRef}
+          className="font-bold leading-none mb-3"
+          style={{ 
+            fontSize: `${fontSize}px`,
+            color: displayConfig.valueColor || '#1f2937'
+          }}
+        >
+          {formatNumber(mainValue)}
+        </div>
+
+        {/* Unit/Suffix - Larger, not bold */}
+        {displayConfig.suffix && (
+          <div 
+            className="text-gray-500 text-center"
+            style={{ 
+              fontSize: '14px',
+              lineHeight: '1.2',
+              opacity: 0.8
+            }}
+          >
+            {displayConfig.suffix}
           </div>
         )}
 
-        {/* Average indicator when showing stats */}
+        {/* Data Histogram for multiple values */}
         {showStats && (
-          <div 
-            className="text-gray-400 mt-1"
-            style={{ fontSize: `${Math.max(10, fontSize * 0.2)}px` }}
-          >
-            Average of {values.length} values
+          <div className="mt-4">
+            <DataHistogram
+              values={values}
+              min={min}
+              max={max}
+              color={displayConfig.valueColor || '#1f2937'}
+              formatValue={formatNumber}
+              height={24}
+              width={textWidth || 200}
+            />
           </div>
         )}
     </div>

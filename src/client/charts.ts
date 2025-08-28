@@ -33,3 +33,10 @@ export type {
   ChartAxisConfig,
   ChartDisplayConfig
 } from './types'
+
+// Chart configuration types
+export type {
+  ChartTypeConfig,
+  DisplayOptionConfig,
+  AxisDropZoneConfig
+} from './charts/chartConfigs'

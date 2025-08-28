@@ -20,5 +20,30 @@ export const kpiTextConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure here'
     }
   ],
-  displayOptions: ['template', 'decimals']
+  displayOptionsConfig: [
+    {
+      key: 'template',
+      label: 'Text Template',
+      type: 'string',
+      placeholder: 'e.g., Total Revenue: ${value}',
+      description: 'Template for displaying the text. Use ${value} to insert the measure value.'
+    },
+    {
+      key: 'decimals',
+      label: 'Decimal Places',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      max: 10,
+      step: 1,
+      description: 'Number of decimal places to display for numeric values'
+    },
+    {
+      key: 'valueColor',
+      label: 'Value Color',
+      type: 'color',
+      defaultValue: '#1f2937',
+      description: 'Color for the KPI value text'
+    }
+  ]
 }

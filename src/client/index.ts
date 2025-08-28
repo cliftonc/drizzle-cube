@@ -61,5 +61,12 @@ export type {
   DashboardConfig
 } from './types'
 
+// Chart configuration types
+export type {
+  ChartTypeConfig,
+  DisplayOptionConfig,
+  AxisDropZoneConfig
+} from './charts/chartConfigs'
+
 // Utilities
 export { createDashboardLayout, formatChartData } from './utils/index'

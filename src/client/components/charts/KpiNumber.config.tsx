@@ -20,5 +20,37 @@ export const kpiNumberConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure here'
     }
   ],
-  displayOptions: ['prefix', 'suffix', 'decimals']
+  displayOptionsConfig: [
+    {
+      key: 'prefix',
+      label: 'Prefix',
+      type: 'string',
+      placeholder: 'e.g., $, €, #',
+      description: 'Text to display before the number'
+    },
+    {
+      key: 'suffix',
+      label: 'Suffix',
+      type: 'string',
+      placeholder: 'e.g., %, units, items',
+      description: 'Text to display after the number'
+    },
+    {
+      key: 'decimals',
+      label: 'Decimal Places',
+      type: 'number',
+      defaultValue: 0,
+      min: 0,
+      max: 10,
+      step: 1,
+      description: 'Number of decimal places to display'
+    },
+    {
+      key: 'valueColor',
+      label: 'Value Color',
+      type: 'color',
+      defaultValue: '#1f2937',
+      description: 'Color for the KPI value text'
+    }
+  ]
 }

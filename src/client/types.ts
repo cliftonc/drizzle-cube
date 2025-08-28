@@ -63,6 +63,7 @@ export interface ChartDisplayConfig {
   prefix?: string   // Text prefix for KPI Number
   suffix?: string   // Text suffix for KPI Number  
   decimals?: number // Number of decimal places
+  valueColor?: string // Color for the KPI value
 }
 
 // Portlet configuration

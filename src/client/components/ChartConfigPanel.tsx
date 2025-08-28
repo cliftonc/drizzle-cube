@@ -323,11 +323,13 @@ export default function ChartConfigPanel({
       </div>
 
       {/* Display Options */}
-      {chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0 && (
+      {((chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0) || 
+        (chartTypeConfig.displayOptionsConfig && chartTypeConfig.displayOptionsConfig.length > 0)) && (
         <div className="mb-4">
           <h4 className="text-xs font-semibold mb-2">Display Options</h4>
-          <div className="space-y-1">
-            {chartTypeConfig.displayOptions.includes('showLegend') && (
+          <div className="space-y-2">
+            {/* Backward compatibility: Simple boolean display options */}
+            {chartTypeConfig.displayOptions?.includes('showLegend') && (
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -342,7 +344,7 @@ export default function ChartConfigPanel({
               </label>
             )}
             
-            {chartTypeConfig.displayOptions.includes('showGrid') && (
+            {chartTypeConfig.displayOptions?.includes('showGrid') && (
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -357,7 +359,7 @@ export default function ChartConfigPanel({
               </label>
             )}
             
-            {chartTypeConfig.displayOptions.includes('showTooltip') && (
+            {chartTypeConfig.displayOptions?.includes('showTooltip') && (
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -372,7 +374,7 @@ export default function ChartConfigPanel({
               </label>
             )}
             
-            {chartTypeConfig.displayOptions.includes('stacked') && (
+            {chartTypeConfig.displayOptions?.includes('stacked') && (
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -386,6 +388,120 @@ export default function ChartConfigPanel({
                 <span className="text-sm">Stacked</span>
               </label>
             )}
+
+            {/* New structured display options */}
+            {chartTypeConfig.displayOptionsConfig?.map((option) => (
+              <div key={option.key} className="space-y-1">
+                {option.type === 'boolean' && (
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? false}
+                      onChange={(e) => onDisplayConfigChange({
+                        ...displayConfig,
+                        [option.key]: e.target.checked
+                      })}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm">{option.label}</span>
+                  </label>
+                )}
+
+                {option.type === 'string' && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">{option.label}</label>
+                    <input
+                      type="text"
+                      value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
+                      onChange={(e) => onDisplayConfigChange({
+                        ...displayConfig,
+                        [option.key]: e.target.value
+                      })}
+                      placeholder={option.placeholder}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {option.description && (
+                      <p className="text-xs text-gray-500">{option.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {option.type === 'number' && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">{option.label}</label>
+                    <input
+                      type="number"
+                      value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? 0}
+                      onChange={(e) => onDisplayConfigChange({
+                        ...displayConfig,
+                        [option.key]: e.target.value === '' ? undefined : Number(e.target.value)
+                      })}
+                      placeholder={option.placeholder}
+                      min={option.min}
+                      max={option.max}
+                      step={option.step}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {option.description && (
+                      <p className="text-xs text-gray-500">{option.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {option.type === 'select' && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">{option.label}</label>
+                    <select
+                      value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
+                      onChange={(e) => onDisplayConfigChange({
+                        ...displayConfig,
+                        [option.key]: e.target.value
+                      })}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {option.options?.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {option.description && (
+                      <p className="text-xs text-gray-500">{option.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {option.type === 'color' && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">{option.label}</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? '#8884d8'}
+                        onChange={(e) => onDisplayConfigChange({
+                          ...displayConfig,
+                          [option.key]: e.target.value
+                        })}
+                        className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? '#8884d8'}
+                        onChange={(e) => onDisplayConfigChange({
+                          ...displayConfig,
+                          [option.key]: e.target.value
+                        })}
+                        placeholder={option.placeholder || '#8884d8'}
+                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    {option.description && (
+                      <p className="text-xs text-gray-500">{option.description}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -30,14 +30,52 @@ export interface AxisDropZoneConfig {
 }
 
 /**
+ * Configuration for a single display option
+ */
+export interface DisplayOptionConfig {
+  /** The key to store this field in displayConfig */
+  key: string
+  
+  /** Display label for the option */
+  label: string
+  
+  /** Type of input control to render */
+  type: 'boolean' | 'string' | 'number' | 'select' | 'color'
+  
+  /** Default value for the option */
+  defaultValue?: any
+  
+  /** Placeholder text for string/number inputs */
+  placeholder?: string
+  
+  /** Options for select type */
+  options?: Array<{ value: any; label: string }>
+  
+  /** Help text shown below the input */
+  description?: string
+  
+  /** Minimum value for number inputs */
+  min?: number
+  
+  /** Maximum value for number inputs */
+  max?: number
+  
+  /** Step value for number inputs */
+  step?: number
+}
+
+/**
  * Complete configuration for a chart type
  */
 export interface ChartTypeConfig {
   /** Configuration for each drop zone */
   dropZones: AxisDropZoneConfig[]
   
-  /** Which display options to show for this chart type */
+  /** Simple display options (backward compatibility) - rendered as boolean checkboxes */
   displayOptions?: string[]
+  
+  /** Structured display options with metadata for different input types */
+  displayOptionsConfig?: DisplayOptionConfig[]
   
   /** Optional custom validation function */
   validate?: (config: any) => { isValid: boolean; message?: string }

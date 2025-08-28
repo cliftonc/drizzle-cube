@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
+import DataHistogram from '../DataHistogram'
 import type { ChartProps } from '../../types'
 
 export default function KpiText({ 
@@ -9,12 +10,14 @@ export default function KpiText({
   height = "100%" 
 }: ChartProps) {
   const [fontSize, setFontSize] = useState(28)
+  const [textWidth, setTextWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLDivElement>(null)
   const { getFieldLabel } = useCubeContext()
 
-  // Calculate font size based on container dimensions
+  // Calculate font size and text width based on container dimensions
   useEffect(() => {
-    const updateFontSize = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const container = containerRef.current
         const rect = container.getBoundingClientRect()
@@ -32,15 +35,21 @@ export default function KpiText({
           setFontSize(clampedFontSize)
         }
       }
+      
+      // Measure the text width after font size is set
+      if (textRef.current) {
+        const textRect = textRef.current.getBoundingClientRect()
+        setTextWidth(textRect.width)
+      }
     }
 
     // Initial calculation after a short delay to ensure the container is fully rendered
-    const timer = setTimeout(updateFontSize, 100)
+    const timer = setTimeout(updateDimensions, 100)
     
     const resizeObserver = new ResizeObserver(() => {
       // Debounce the resize updates
       clearTimeout(timer)
-      setTimeout(updateFontSize, 50)
+      setTimeout(updateDimensions, 50)
     })
     
     if (containerRef.current) {
@@ -228,7 +237,7 @@ export default function KpiText({
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col items-center justify-center w-full h-full p-2"
+      className="flex flex-col items-center justify-center w-full h-full p-4"
       style={{ 
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined
@@ -236,42 +245,28 @@ export default function KpiText({
     >
         {/* Main KPI Text */}
         <div 
-          className="font-bold text-gray-800 leading-tight text-center mb-2"
+          ref={textRef}
+          className="font-bold leading-tight text-center"
           style={{ 
             fontSize: `${fontSize}px`,
-            color: displayConfig.colors?.[0] || '#1f2937' 
+            color: displayConfig.valueColor || '#1f2937' 
           }}
         >
           {displayText}
         </div>
 
-        {/* Statistics for multiple numeric values */}
+        {/* Data Histogram for multiple values */}
         {showStats && min !== null && max !== null && (
-          <div className="flex gap-4 text-gray-500">
-            <div 
-              className="text-center"
-              style={{ fontSize: `${fontSize * 0.25}px` }}
-            >
-              <div className="font-medium">Min</div>
-              <div>{formatNumber(min)}</div>
-            </div>
-            <div 
-              className="text-center"
-              style={{ fontSize: `${fontSize * 0.25}px` }}
-            >
-              <div className="font-medium">Max</div>
-              <div>{formatNumber(max)}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Average indicator when showing stats */}
-        {showStats && (
-          <div 
-            className="text-gray-400 mt-1"
-            style={{ fontSize: `${fontSize * 0.2}px` }}
-          >
-            Average of {values.length} values
+          <div className="mt-4">
+            <DataHistogram
+              values={values}
+              min={min}
+              max={max}
+              color={displayConfig.valueColor || '#1f2937'}
+              formatValue={formatNumber}
+              height={24}
+              width={textWidth || 200}
+            />
           </div>
         )}
     </div>
