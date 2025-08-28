@@ -83,10 +83,9 @@ function VarianceHistogram({
                 width: `${barWidth}px`,
                 height: `${barHeight}px`,
                 backgroundColor: color,
-                top: isPositive 
-                  ? `${50 - (normalizedHeight * 50)}%`
-                  : '50%',
-                transform: isPositive ? 'none' : `translateY(0)`,
+                ...(isPositive 
+                  ? { bottom: '50%' }
+                  : { top: '50%' }),
                 zIndex: 2
               }}
               title={`${formatValue(values[variances.length - 1 - index])}: ${variance.toFixed(1)}% from current`}
