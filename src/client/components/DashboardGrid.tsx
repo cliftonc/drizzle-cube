@@ -6,10 +6,12 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { Responsive, WidthProvider } from 'react-grid-layout'
-import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
 import DebugModal from './DebugModal'
+import ColorPaletteSelector from './ColorPaletteSelector'
+import type { ColorPalette } from '../utils/colorPalettes'
 import type { DashboardConfig, PortletConfig } from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
@@ -23,6 +25,7 @@ interface DashboardGridProps {
   onConfigChange?: (config: DashboardConfig) => void
   onPortletRefresh?: (portletId: string) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
+  colorPalette?: ColorPalette  // Complete palette with both colors and gradient
 }
 
 export default function DashboardGrid({ 
@@ -30,7 +33,8 @@ export default function DashboardGrid({
   editable = false, 
   onConfigChange,
   onPortletRefresh,
-  onSave
+  onSave,
+  colorPalette
 }: DashboardGridProps) {
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -163,6 +167,7 @@ export default function DashboardGrid({
 
     // Preserve existing responsive layouts, only update with new lg layout
     const updatedConfig = {
+      ...config,
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
@@ -223,6 +228,7 @@ export default function DashboardGrid({
 
     // Preserve existing responsive layouts, only update with new lg layout
     const updatedConfig = {
+      ...config,
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
@@ -274,6 +280,8 @@ export default function DashboardGrid({
     if (!onConfigChange) return
 
     let updatedPortlets = [...config.portlets]
+    let isNewPortlet = false
+    let newPortletId: string | null = null
 
     if (editingPortlet) {
       // Editing existing portlet
@@ -283,12 +291,15 @@ export default function DashboardGrid({
       }
     } else {
       // Adding new portlet
+      isNewPortlet = true
       const newPortlet: PortletConfig = {
         ...portletData,
         id: `portlet-${Date.now()}`,
         x: 0,
         y: 0
       } as PortletConfig
+
+      newPortletId = newPortlet.id
 
       // Find the best position for the new portlet
       const gridLayout = updatedPortlets.map(p => ({ i: p.id, x: p.x, y: p.y, w: p.w, h: p.h }))
@@ -321,6 +332,40 @@ export default function DashboardGrid({
 
     setIsPortletModalOpen(false)
     setEditingPortlet(null)
+
+    // Scroll to the new portlet after DOM update
+    if (isNewPortlet && newPortletId) {
+      setTimeout(() => {
+        const scrollToPortlet = () => {
+          // Try both the ref and DOM query selector
+          let portletElement = portletRefs.current[newPortletId!]
+          if (!portletElement) {
+            portletElement = document.querySelector(`[data-portlet-id="${newPortletId}"]`) as HTMLElement
+          }
+          
+          if (portletElement) {
+            portletElement.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            })
+            return true
+          }
+          return false
+        }
+        
+        // Try multiple times with increasing delays
+        if (!scrollToPortlet()) {
+          setTimeout(() => {
+            if (!scrollToPortlet()) {
+              setTimeout(() => {
+                scrollToPortlet()
+              }, 300)
+            }
+          }, 200)
+        }
+      }, 200)
+    }
   }, [config, editingPortlet, onConfigChange, onSave])
 
   // Handle deleting portlet
@@ -343,6 +388,103 @@ export default function DashboardGrid({
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
+      }
+    }
+  }, [config, onConfigChange, onSave])
+
+  // Handle duplicating portlet
+  const handleDuplicatePortlet = useCallback(async (portletId: string) => {
+    if (!onConfigChange) return
+    
+    const originalPortlet = config.portlets.find(p => p.id === portletId)
+    if (!originalPortlet) return
+
+    // Create duplicated portlet with new ID and updated title
+    const duplicatedPortlet: PortletConfig = {
+      ...originalPortlet,
+      id: `portlet-${Date.now()}`,
+      title: `${originalPortlet.title} Duplicated`,
+      x: 0,
+      y: 0
+    }
+
+    // Find the best position for the duplicated portlet
+    const gridLayout = config.portlets.map(p => ({ i: p.id, x: p.x, y: p.y, w: p.w, h: p.h }))
+    let maxY = 0
+    gridLayout.forEach(item => {
+      if (item.y + item.h > maxY) {
+        maxY = item.y + item.h
+      }
+    })
+    duplicatedPortlet.y = maxY
+
+    const updatedPortlets = [...config.portlets, duplicatedPortlet]
+    const updatedConfig = {
+      ...config,
+      portlets: updatedPortlets
+    }
+    
+    onConfigChange(updatedConfig)
+
+    // Auto-save if handler is provided
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    }
+
+    // Scroll to the duplicated portlet after DOM update
+    setTimeout(() => {
+      const scrollToPortlet = () => {
+        // Try both the ref and DOM query selector
+        let portletElement = portletRefs.current[duplicatedPortlet.id]
+        if (!portletElement) {
+          portletElement = document.querySelector(`[data-portlet-id="${duplicatedPortlet.id}"]`) as HTMLElement
+        }
+        
+        if (portletElement) {
+          portletElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          })
+          return true
+        }
+        return false
+      }
+      
+      // Try multiple times with increasing delays
+      if (!scrollToPortlet()) {
+        setTimeout(() => {
+          if (!scrollToPortlet()) {
+            setTimeout(() => {
+              scrollToPortlet()
+            }, 300)
+          }
+        }, 200)
+      }
+    }, 200)
+  }, [config, onConfigChange, onSave])
+
+  // Handle color palette changes
+  const handlePaletteChange = useCallback(async (paletteName: string) => {
+    if (!onConfigChange) return
+
+    const updatedConfig = {
+      ...config,
+      colorPalette: paletteName
+    }
+    
+    onConfigChange(updatedConfig)
+
+    // Auto-save if handler is provided
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
       }
     }
   }, [config, onConfigChange, onSave])
@@ -378,6 +520,7 @@ export default function DashboardGrid({
           portlet={editingPortlet}
           title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
           submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+          colorPalette={colorPalette}
         />
       </>
     )
@@ -427,11 +570,21 @@ export default function DashboardGrid({
               </p>
             )}
           </div>
-          
-          <button
-            onClick={handleAddPortlet}
-            disabled={!isEditMode}
-            className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+
+          {/* Color Palette Selector - Only show in edit mode */}
+          <div className="flex items-center gap-3">
+            {isEditMode && (
+              <ColorPaletteSelector
+                currentPalette={config.colorPalette}
+                onPaletteChange={handlePaletteChange}
+                className="shrink-0"
+              />
+            )}
+            
+            <button
+              onClick={handleAddPortlet}
+              disabled={!isEditMode}
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
               isEditMode
                 ? 'border-blue-300 text-blue-700 bg-white hover:bg-blue-50'
                 : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
@@ -440,6 +593,7 @@ export default function DashboardGrid({
             <PlusIcon className="w-5 h-5 mr-2" />
             Add Portlet
           </button>
+          </div>
         </div>
       )}
       
@@ -518,6 +672,21 @@ export default function DashboardGrid({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
+                      handleDuplicatePortlet(portlet.id)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      handleDuplicatePortlet(portlet.id)
+                    }}
+                    className="p-2 bg-transparent border-none rounded text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                    title="Duplicate portlet"
+                  >
+                    <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
                       handleEditPortlet(portlet)
                     }}
                     onTouchEnd={(e) => {
@@ -560,6 +729,7 @@ export default function DashboardGrid({
               displayConfig={portlet.displayConfig}
               title={portlet.title}
               height="100%"
+              colorPalette={colorPalette}
               onDebugDataReady={(data) => {
                 setDebugData(prev => ({
                   ...prev,
@@ -583,6 +753,7 @@ export default function DashboardGrid({
         portlet={editingPortlet}
         title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
         submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+        colorPalette={colorPalette}
       />
     </>
   )

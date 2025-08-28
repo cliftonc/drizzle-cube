@@ -3,7 +3,7 @@ import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline
 import AxisDropZone from './AxisDropZone'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { getChartConfig } from '../charts/chartConfigs'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig, ColorPalette } from '../types'
 
 interface ChartConfigPanelProps {
   chartType: ChartType
@@ -14,6 +14,7 @@ interface ChartConfigPanelProps {
     timeDimensions: string[]
     measures: string[]
   } | null
+  colorPalette?: ColorPalette
   onChartConfigChange: (config: ChartAxisConfig) => void
   onDisplayConfigChange: (config: ChartDisplayConfig) => void
 }
@@ -23,6 +24,7 @@ export default function ChartConfigPanel({
   chartConfig,
   displayConfig,
   availableFields,
+  colorPalette,
   onChartConfigChange,
   onDisplayConfigChange
 }: ChartConfigPanelProps) {
@@ -420,6 +422,50 @@ export default function ChartConfigPanel({
                       placeholder={option.placeholder}
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                     />
+                    {option.description && (
+                      <p className="text-xs text-gray-500">{option.description}</p>
+                    )}
+                  </div>
+                )}
+
+                {option.type === 'paletteColor' && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-gray-700">{option.label}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {colorPalette?.colors.map((color, index) => {
+                        const isSelected = (displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? 0) === index
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => onDisplayConfigChange({
+                              ...displayConfig,
+                              [option.key]: index
+                            })}
+                            className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+                              isSelected 
+                                ? 'border-blue-600 ring-2 ring-blue-600 ring-offset-1 scale-110' 
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: color }}
+                            title={`Color ${index + 1}: ${color}`}
+                          />
+                        )
+                      }) || [
+                        // Fallback if no palette available
+                        <button
+                          key={0}
+                          type="button"
+                          onClick={() => onDisplayConfigChange({
+                            ...displayConfig,
+                            [option.key]: 0
+                          })}
+                          className="w-8 h-8 rounded border-2 border-blue-600 ring-2 ring-blue-600 ring-offset-1"
+                          style={{ backgroundColor: '#8884d8' }}
+                          title="Default Color"
+                        />
+                      ]}
+                    </div>
                     {option.description && (
                       <p className="text-xs text-gray-500">{option.description}</p>
                     )}

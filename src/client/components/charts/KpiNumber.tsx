@@ -7,7 +7,8 @@ export default function KpiNumber({
   data, 
   chartConfig, 
   displayConfig = {},
-  height = "100%" 
+  height = "100%",
+  colorPalette
 }: ChartProps) {
   const [fontSize, setFontSize] = useState(32)
   const [textWidth, setTextWidth] = useState(0)
@@ -204,6 +205,20 @@ export default function KpiNumber({
   const mainValue = values.length === 1 ? values[0] : avg
   const showStats = values.length > 1
 
+  // Get color from palette by index, fall back to legacy valueColor, then default
+  const getValueColor = (): string => {
+    if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
+      const colorIndex = displayConfig.valueColorIndex
+      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
+        return colorPalette.colors[colorIndex]
+      }
+    }
+    // Fall back to legacy valueColor or default
+    return displayConfig.valueColor || '#1f2937'
+  }
+
+  const valueColor = getValueColor()
+
   return (
     <div 
       ref={containerRef}
@@ -243,7 +258,7 @@ export default function KpiNumber({
           className="font-bold leading-none mb-3"
           style={{ 
             fontSize: `${fontSize}px`,
-            color: displayConfig.valueColor || '#1f2937'
+            color: valueColor
           }}
         >
           {formatNumber(mainValue)}
@@ -270,7 +285,7 @@ export default function KpiNumber({
               values={values}
               min={min}
               max={max}
-              color={displayConfig.valueColor || '#1f2937'}
+              color={valueColor}
               formatValue={formatNumber}
               height={24}
               width={textWidth || 200}

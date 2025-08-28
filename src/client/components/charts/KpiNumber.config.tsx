@@ -46,11 +46,11 @@ export const kpiNumberConfig: ChartTypeConfig = {
       description: 'Number of decimal places to display'
     },
     {
-      key: 'valueColor',
+      key: 'valueColorIndex',
       label: 'Value Color',
-      type: 'color',
-      defaultValue: '#1f2937',
-      description: 'Color for the KPI value text'
+      type: 'paletteColor',
+      defaultValue: 0,
+      description: 'Color from the dashboard palette for the KPI value text'
     }
   ]
 }

@@ -2,8 +2,13 @@
  * Type definitions for drizzle-cube client components
  */
 
+import type { ColorPalette } from './utils/colorPalettes'
+
 // Re-export metadata types from useCubeMeta hook
 export type { CubeMeta, CubeMetaCube, CubeMetaField, FieldLabelMap } from './hooks/useCubeMeta'
+
+// Re-export color palette types
+export type { ColorPalette } from './utils/colorPalettes'
 
 // Chart types
 export type ChartType = 
@@ -63,7 +68,8 @@ export interface ChartDisplayConfig {
   prefix?: string   // Text prefix for KPI Number
   suffix?: string   // Text suffix for KPI Number  
   decimals?: number // Number of decimal places
-  valueColor?: string // Color for the KPI value
+  valueColor?: string // Color for the KPI value (legacy)
+  valueColorIndex?: number // Index of color from dashboard palette for KPI value
 }
 
 // Portlet configuration
@@ -84,6 +90,7 @@ export interface PortletConfig {
 export interface DashboardConfig {
   portlets: PortletConfig[]
   layouts?: { [key: string]: any } // react-grid-layout layouts
+  colorPalette?: string // Name of the color palette to use (defaults to 'default')
 }
 
 // Filter types - hierarchical structure supporting AND/OR logic
@@ -161,6 +168,7 @@ export interface AnalyticsPortletProps {
   displayConfig?: ChartDisplayConfig
   height?: string | number
   title?: string
+  colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   onDebugDataReady?: (debugData: {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
@@ -184,6 +192,7 @@ export interface ChartProps {
   displayConfig?: ChartDisplayConfig
   queryObject?: CubeQuery
   height?: string | number
+  colorPalette?: ColorPalette  // Complete palette with both colors and gradient
 }
 
 // Features configuration

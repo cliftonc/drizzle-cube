@@ -4,7 +4,7 @@ import QueryBuilder from './QueryBuilder'
 import ChartConfigPanel from './ChartConfigPanel'
 import ChartTypeSelector from './ChartTypeSelector'
 import { useCubeContext } from '../providers/CubeProvider'
-import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType } from '../types'
+import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType, ColorPalette } from '../types'
 
 interface PortletEditModalProps {
   isOpen: boolean
@@ -13,6 +13,7 @@ interface PortletEditModalProps {
   portlet?: PortletConfig | null
   title: string
   submitText: string
+  colorPalette?: ColorPalette
 }
 
 
@@ -79,7 +80,8 @@ export default function PortletEditModal({
   onSave,
   portlet,
   title,
-  submitText
+  submitText,
+  colorPalette
 }: PortletEditModalProps) {
   // Get cube client from context
   const { cubeApi } = useCubeContext()
@@ -552,6 +554,7 @@ export default function PortletEditModal({
                   chartConfig={chartConfig}
                   displayConfig={displayConfig}
                   availableFields={availableFields}
+                  colorPalette={colorPalette}
                   onChartConfigChange={setChartConfig}
                   onDisplayConfigChange={setDisplayConfig}
                 />
