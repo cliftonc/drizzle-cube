@@ -11,6 +11,7 @@ import { dataTableConfig } from '../components/charts/DataTable.config'
 import { activityGridChartConfig } from '../components/charts/ActivityGridChart.config'
 import { kpiNumberConfig } from '../components/charts/KpiNumber.config'
 import { kpiTextConfig } from '../components/charts/KpiText.config'
+import { markdownConfig } from '../components/charts/MarkdownChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -29,5 +30,6 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   table: dataTableConfig,
   activityGrid: activityGridChartConfig,
   kpiNumber: kpiNumberConfig,
-  kpiText: kpiTextConfig
+  kpiText: kpiTextConfig,
+  markdown: markdownConfig
 }

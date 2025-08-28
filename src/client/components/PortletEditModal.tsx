@@ -4,6 +4,8 @@ import QueryBuilder from './QueryBuilder'
 import ChartConfigPanel from './ChartConfigPanel'
 import ChartTypeSelector from './ChartTypeSelector'
 import { useCubeContext } from '../providers/CubeProvider'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import { getChartConfig } from '../charts/chartConfigs'
 import type { PortletConfig, ChartAxisConfig, ChartDisplayConfig, ChartType, ColorPalette } from '../types'
 
 interface PortletEditModalProps {
@@ -98,6 +100,10 @@ export default function PortletEditModal({
   const [queryBuilderInitialQuery, setQueryBuilderInitialQuery] = useState<any>(null)
   const queryBuilderRef = useRef<any>(null)
 
+  // Check if current chart type skips queries
+  const chartTypeConfig = getChartConfig(chartType, chartConfigRegistry)
+  const shouldSkipQuery = chartTypeConfig.skipQuery === true
+
   // Validation only - no automatic chart config changes
   const autoPopulateChartConfig = (_result: any) => {
     // Do nothing - let the chart configuration panel handle all axis assignments manually
@@ -130,10 +136,12 @@ export default function PortletEditModal({
         setValidationResult({ isValid: true, message: 'Loaded query (assumed valid)' })
         setDryRunData(null)
         
-        // Auto-run dry-run validation for edit mode to enable chart configuration
-        setTimeout(() => {
-          runDryRunValidation(formattedQuery, true, true)
-        }, 100)
+        // Auto-run dry-run validation for edit mode to enable chart configuration (skip for skipQuery charts)
+        if (!shouldSkipQuery) {
+          setTimeout(() => {
+            runDryRunValidation(formattedQuery, true, true)
+          }, 100)
+        }
       } else {
         // Create mode - clear form
         setFormTitle('')
@@ -153,31 +161,43 @@ export default function PortletEditModal({
     console.log('handleSubmit called!')
     e.preventDefault()
     
-    if (!formTitle.trim() || !query.trim()) {
-      console.log('handleSubmit: missing title or query, returning')
-      return
+    // For skipQuery charts, only validate title
+    if (shouldSkipQuery) {
+      if (!formTitle.trim()) {
+        console.log('handleSubmit: missing title, returning')
+        return
+      }
+    } else {
+      // For normal charts, validate both title and query
+      if (!formTitle.trim() || !query.trim()) {
+        console.log('handleSubmit: missing title or query, returning')
+        return
+      }
+
+      // Require validation before saving only if query has changed
+      if (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) {
+        alert('Please validate your query before saving.')
+        return
+      }
+
+      // Validate JSON
+      try {
+        JSON.parse(query)
+      } catch (e) {
+        alert('Invalid JSON in query. Please check your syntax.')
+        return
+      }
     }
 
-    // Require validation before saving only if query has changed
-    if (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) {
-      alert('Please validate your query before saving.')
-      return
-    }
-
-    // Validate JSON
-    try {
-      JSON.parse(query)
-    } catch (e) {
-      alert('Invalid JSON in query. Please check your syntax.')
-      return
-    }
+    // Prepare query - use minimal query for skipQuery charts
+    const queryToSave = shouldSkipQuery ? '{"measures":[]}' : query.trim()
 
     if (portlet) {
       // Edit mode - return full portlet config
       onSave({
         ...portlet,
         title: formTitle.trim(),
-        query: query.trim(),
+        query: queryToSave,
         chartType,
         chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
         displayConfig: displayConfig,
@@ -188,7 +208,7 @@ export default function PortletEditModal({
       // Create mode - return partial config
       onSave({
         title: formTitle.trim(),
-        query: query.trim(),
+        query: queryToSave,
         chartType,
         chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
         displayConfig: displayConfig,
@@ -445,8 +465,8 @@ export default function PortletEditModal({
         type="submit"
         form="portlet-form"
         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
-        disabled={!formTitle.trim() || !query.trim() || (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== ''))}
-        title={(hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) ? "Please validate your query before saving" : ""}
+        disabled={shouldSkipQuery ? !formTitle.trim() : (!formTitle.trim() || !query.trim() || (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')))}
+        title={!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) ? "Please validate your query before saving" : ""}
       >
         {submitText}
       </button>
@@ -503,42 +523,56 @@ export default function PortletEditModal({
             </div>
 
 
-            {/* Query Editor */}
-            <div className="flex-1 flex flex-col">
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Cube.js Query (JSON)
-                </label>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleOpenQueryBuilder}
-                    className="text-xs px-2 py-1 text-purple-600 bg-white hover:bg-purple-50 rounded border border-purple-600 hover:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    Edit in Query Builder
-                  </button>
+            {/* Query Editor - Hidden for skipQuery charts */}
+            {!shouldSkipQuery && (
+              <div className="flex-1 flex flex-col">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Cube.js Query (JSON)
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenQueryBuilder}
+                      className="text-xs px-2 py-1 text-purple-600 bg-white hover:bg-purple-50 rounded border border-purple-600 hover:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      Edit in Query Builder
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <textarea
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
-                className="flex-1 w-full min-h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs resize-y"
-                placeholder={`{
+                <textarea
+                  value={query}
+                  onChange={(e) => handleQueryChange(e.target.value)}
+                  className="flex-1 w-full min-h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs resize-y"
+                  placeholder={`{
   "measures": ["People.count"],
   "dimensions": ["People.active"]
 }`}
-                required
-              />
-            </div>
+                  required
+                />
+              </div>
+            )}
           </div>
 
           {/* Right side - Chart Configuration */}
           <div className="flex-1 flex flex-col">
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Chart Axis Configuration
+              {shouldSkipQuery ? 'Chart Configuration' : 'Chart Axis Configuration'}
             </label>
             
-            {!dryRunData || !isQueryValidAndCurrent ? (
+            {shouldSkipQuery ? (
+              <div className="rounded-lg bg-white p-3 border border-gray-200">
+                <ChartConfigPanel
+                  chartType={chartType}
+                  chartConfig={chartConfig}
+                  displayConfig={displayConfig}
+                  availableFields={null}
+                  colorPalette={colorPalette}
+                  onChartConfigChange={setChartConfig}
+                  onDisplayConfigChange={setDisplayConfig}
+                />
+              </div>
+            ) : (!dryRunData || !isQueryValidAndCurrent) ? (
               <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                 <div className="text-center text-gray-500">
                   <svg className="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -563,8 +597,8 @@ export default function PortletEditModal({
           </div>
         </div>
         
-        {/* Validation section */}
-        {(hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
+        {/* Validation section - Hidden for skipQuery charts */}
+        {!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
           <div className={`rounded-lg p-4 ${
             validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
               ? 'bg-green-50'

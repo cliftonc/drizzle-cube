@@ -6,6 +6,8 @@
 import { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useCubeQuery } from '../hooks/useCubeQuery'
 import ChartErrorBoundary from './ChartErrorBoundary'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import { getChartConfig } from '../charts/chartConfigs'
 import { 
   RechartsBarChart, 
   RechartsLineChart, 
@@ -19,7 +21,8 @@ import {
   DataTable,
   ActivityGridChart,
   KpiNumber,
-  KpiText
+  KpiText,
+  MarkdownChart
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
 
@@ -46,8 +49,20 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     onDebugDataReadyRef.current = onDebugDataReady
   }, [onDebugDataReady])
 
+  // Check if this chart type skips queries
+  const chartTypeConfig = useMemo(() => 
+    getChartConfig(chartType, chartConfigRegistry), 
+    [chartType]
+  )
+  const shouldSkipQuery = chartTypeConfig.skipQuery === true
+
   // Parse query from JSON string and include refresh counter to force re-query
   const queryObject = useMemo(() => {
+    // Skip query parsing for charts that don't need queries
+    if (shouldSkipQuery) {
+      return null
+    }
+    
     try {
       const parsed = JSON.parse(query)
       const result = {
@@ -59,11 +74,11 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return null
     }
-  }, [query, refreshCounter])
+  }, [query, refreshCounter, shouldSkipQuery])
 
-  // Use the cube React hook
+  // Use the cube React hook (skip for charts that don't need queries)
   const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
-    skip: !queryObject,
+    skip: !queryObject || shouldSkipQuery,
     resetResultSetOnChange: true
   })
 
@@ -101,8 +116,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     }
   }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
 
-  // Validate that chartConfig is provided
-  if (!chartConfig) {
+  // Validate that chartConfig is provided (not required for skipQuery charts)
+  if (!chartConfig && !shouldSkipQuery) {
     return (
       <div className="flex items-center justify-center w-full text-red-500" style={{ height }}>
         <div className="text-center">
@@ -113,71 +128,84 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     )
   }
 
-  if (isLoading || (queryObject && !resultSet && !error)) {
-    return (
-      <div className="flex items-center justify-center w-full" style={{ height }}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    )
-  }
+  // Skip loading and error handling for charts that don't need queries
+  if (!shouldSkipQuery) {
+    if (isLoading || (queryObject && !resultSet && !error)) {
+      return (
+        <div className="flex items-center justify-center w-full" style={{ height }}>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      )
+    }
 
-  if (error) {
-    return (
-      <div className="p-4 border border-red-300 bg-red-50 rounded" style={{ height }}>
-        <div className="mb-2">
-          <div className="flex items-center justify-between">
-            <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
-            <button
-              onClick={() => setRefreshCounter(prev => prev + 1)}
-              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
-            >
-              Retry
-            </button>
+    if (error) {
+      return (
+        <div className="p-4 border border-red-300 bg-red-50 rounded" style={{ height }}>
+          <div className="mb-2">
+            <div className="flex items-center justify-between">
+              <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
+              <button
+                onClick={() => setRefreshCounter(prev => prev + 1)}
+                className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+              >
+                Retry
+              </button>
+            </div>
           </div>
-        </div>
-        
-        <div className="mb-3">
-          <div className="text-xs text-red-700 bg-white p-2 rounded border">
-            {error.message || error.toString()}
-          </div>
-        </div>
-        
-        <div className="space-y-2 text-xs">
-          <details>
-            <summary className="cursor-pointer text-gray-700 font-medium">Original Query</summary>
-            <pre className="mt-1 bg-blue-50 p-2 rounded text-xs overflow-auto max-h-20">
-              {query}
-            </pre>
-          </details>
           
-          <details>
-            <summary className="cursor-pointer text-gray-700 font-medium">Chart Config</summary>
-            <pre className="mt-1 bg-purple-50 p-2 rounded text-xs overflow-auto max-h-20">
-              {JSON.stringify({
-                chartType,
-                chartConfig,
-                displayConfig: displayConfig
-              }, null, 2)}
-            </pre>
-          </details>
+          <div className="mb-3">
+            <div className="text-xs text-red-700 bg-white p-2 rounded border">
+              {error.message || error.toString()}
+            </div>
+          </div>
+          
+          <div className="space-y-2 text-xs">
+            <details>
+              <summary className="cursor-pointer text-gray-700 font-medium">Original Query</summary>
+              <pre className="mt-1 bg-blue-50 p-2 rounded text-xs overflow-auto max-h-20">
+                {query}
+              </pre>
+            </details>
+            
+            <details>
+              <summary className="cursor-pointer text-gray-700 font-medium">Chart Config</summary>
+              <pre className="mt-1 bg-purple-50 p-2 rounded text-xs overflow-auto max-h-20">
+                {JSON.stringify({
+                  chartType,
+                  chartConfig,
+                  displayConfig: displayConfig
+                }, null, 2)}
+              </pre>
+            </details>
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  if (!resultSet || !queryObject) {
-    return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
-        <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs">Invalid query or no results</div>
+    if (!resultSet || !queryObject) {
+      return (
+        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+          <div className="text-center">
+            <div className="text-sm font-semibold mb-1">No data available</div>
+            <div className="text-xs">Invalid query or no results</div>
+          </div>
         </div>
-      </div>
-    )
+      )
+    }
   }
 
   // Get data based on chart type needs
   const getData = () => {
+    // Return empty array for charts that don't use query data
+    if (shouldSkipQuery) {
+      return []
+    }
+    
+    // Return empty array if no resultSet
+    if (!resultSet) {
+      return []
+    }
+    
     switch (chartType) {
       case 'pie':
       case 'table':
@@ -333,6 +361,17 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
           return (
             <KpiText
               data={data}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              queryObject={queryObject}
+              height={chartHeight}
+              colorPalette={colorPalette}
+            />
+          )
+        case 'markdown':
+          return (
+            <MarkdownChart
+              data={[]} // Markdown chart doesn't use query data
               chartConfig={chartConfig}
               displayConfig={displayConfig}
               queryObject={queryObject}

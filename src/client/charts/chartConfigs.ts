@@ -88,6 +88,9 @@ export interface ChartTypeConfig {
   
   /** When to use this chart type */
   useCase?: string
+  
+  /** Whether this chart type skips query requirements (for content-based charts like markdown) */
+  skipQuery?: boolean
 }
 
 /**

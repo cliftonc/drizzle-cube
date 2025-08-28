@@ -30,7 +30,8 @@ export default function ChartTypeSelector({
     table: 'Data Table',
     activityGrid: 'Activity Grid',
     kpiNumber: 'KPI Number',
-    kpiText: 'KPI Text'
+    kpiText: 'KPI Text',
+    markdown: 'Markdown'
   }
 
   const selectedConfig = chartConfigRegistry[selectedType]

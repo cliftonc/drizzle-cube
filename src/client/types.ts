@@ -25,6 +25,7 @@ export type ChartType =
   | 'activityGrid'
   | 'kpiNumber'
   | 'kpiText'
+  | 'markdown'
 
 // Chart configuration
 export interface ChartAxisConfig {
@@ -70,6 +71,12 @@ export interface ChartDisplayConfig {
   decimals?: number // Number of decimal places
   valueColor?: string // Color for the KPI value (legacy)
   valueColorIndex?: number // Index of color from dashboard palette for KPI value
+  
+  // Markdown specific display options
+  content?: string // Markdown content text
+  accentColorIndex?: number // Index of color from dashboard palette for headers, bullets, links
+  fontSize?: 'small' | 'medium' | 'large' // Text size for markdown content
+  alignment?: 'left' | 'center' | 'right' // Text alignment for markdown content
 }
 
 // Portlet configuration

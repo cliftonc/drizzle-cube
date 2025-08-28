@@ -34,6 +34,9 @@ export default function ChartConfigPanel({
     getChartConfig(chartType, chartConfigRegistry),
     [chartType]
   )
+  
+  // Check if this chart type skips queries
+  const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
   // Get fields for each drop zone
   const getFieldsForDropZone = (key: string): string[] => {
@@ -214,8 +217,8 @@ export default function ChartConfigPanel({
 
   return (
     <div>
-      {/* Available Fields */}
-      {availableFields && (
+      {/* Available Fields - Hidden for skipQuery charts */}
+      {!shouldSkipQuery && availableFields && (
         <div className="mb-4">
           <h4 className="text-xs font-semibold mb-2">Available Fields</h4>
           <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
@@ -304,8 +307,9 @@ export default function ChartConfigPanel({
         </div>
       )}
 
-      {/* Chart Axis Configuration - Dynamic Drop Zones */}
-      <div className="mb-4">
+      {/* Chart Axis Configuration - Dynamic Drop Zones, Hidden for skipQuery charts */}
+      {!shouldSkipQuery && (
+        <div className="mb-4">
         <h4 className="text-xs font-semibold mb-2">Chart Configuration</h4>
         <div className="space-y-1">
           {chartTypeConfig.dropZones.map(dropZone => (
@@ -323,6 +327,7 @@ export default function ChartConfigPanel({
           ))}
         </div>
       </div>
+      )}
 
       {/* Display Options */}
       {((chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0) || 
@@ -411,17 +416,35 @@ export default function ChartConfigPanel({
 
                 {option.type === 'string' && (
                   <div className="space-y-1">
-                    <label className="text-sm text-gray-700">{option.label}</label>
-                    <input
-                      type="text"
-                      value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
-                      onChange={(e) => onDisplayConfigChange({
-                        ...displayConfig,
-                        [option.key]: e.target.value
-                      })}
-                      placeholder={option.placeholder}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <label className="text-sm text-gray-700">
+                      {option.label}
+                      {option.key === 'content' && (
+                        <span className="text-xs text-gray-500 ml-1">(only headers, lists and links)</span>
+                      )}
+                    </label>
+                    {option.key === 'content' ? (
+                      <textarea
+                        value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
+                        onChange={(e) => onDisplayConfigChange({
+                          ...displayConfig,
+                          [option.key]: e.target.value
+                        })}
+                        placeholder={option.placeholder}
+                        rows={8}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 font-mono resize-y"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
+                        onChange={(e) => onDisplayConfigChange({
+                          ...displayConfig,
+                          [option.key]: e.target.value
+                        })}
+                        placeholder={option.placeholder}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    )}
                     {option.description && (
                       <p className="text-xs text-gray-500">{option.description}</p>
                     )}
