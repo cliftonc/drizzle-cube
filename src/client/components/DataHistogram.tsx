@@ -18,6 +18,8 @@ interface DataHistogramProps {
   width?: number
   /** Whether to show average indicator line (default: true) */
   showAverageIndicator?: boolean
+  /** Target value to show as green line */
+  targetValue?: number
 }
 
 /**
@@ -32,7 +34,8 @@ export default function DataHistogram({
   height = 32,
   formatValue = (val) => val.toString(),
   width,
-  showAverageIndicator = true
+  showAverageIndicator = true,
+  targetValue
 }: DataHistogramProps) {
   // Create histogram buckets from actual data
   const buckets = new Array(bucketCount).fill(0)
@@ -60,6 +63,11 @@ export default function DataHistogram({
   
   // Calculate average position as percentage of histogram width
   const averagePosition = range === 0 ? 50 : ((average - min) / range) * 100
+  
+  // Calculate target position if target value is provided
+  const targetPosition = targetValue !== undefined && range > 0 
+    ? ((targetValue - min) / range) * 100 
+    : null
 
   return (
     <div className="flex flex-col items-center">
@@ -117,6 +125,36 @@ export default function DataHistogram({
                 borderLeft: '4px solid transparent',
                 borderRight: '4px solid transparent',
                 borderTop: '6px solid #ef4444'
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Target indicator line */}
+        {targetPosition !== null && targetValue !== undefined && (
+          <div
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: `${Math.max(0, Math.min(100, targetPosition))}%`,
+              transform: 'translateX(-50%)',
+              width: '2px',
+              backgroundColor: '#10b981',
+              opacity: 0.8,
+              zIndex: 11
+            }}
+            title={`Target: ${formatValue(targetValue)}`}
+          >
+            {/* Small triangle at top to indicate target */}
+            <div
+              className="absolute -top-1"
+              style={{
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '6px solid #10b981'
               }}
             />
           </div>

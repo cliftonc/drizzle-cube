@@ -66,6 +66,9 @@ export interface ChartDisplayConfig {
   showLabels?: boolean
   colorIntensity?: 'low' | 'medium' | 'high'
   
+  // Target functionality
+  target?: string // Target values as string (single value or comma-separated for spread)
+  
   // KPI specific display options
   template?: string // JavaScript template string for KPI Text
   prefix?: string   // Text prefix for KPI Number

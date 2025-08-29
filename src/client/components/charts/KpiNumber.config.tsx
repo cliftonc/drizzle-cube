@@ -22,6 +22,13 @@ export const kpiNumberConfig: ChartTypeConfig = {
   ],
   displayOptionsConfig: [
     {
+      key: 'target',
+      label: 'Target Value',
+      type: 'string',
+      placeholder: 'e.g., 100',
+      description: 'Target value to compare against (first value used if multiple provided)'
+    },
+    {
       key: 'prefix',
       label: 'Prefix',
       type: 'string',

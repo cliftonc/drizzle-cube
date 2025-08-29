@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries } from '../../utils/chartUtils'
+import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -103,6 +104,19 @@ export default function BarChart({
       left: 40 // Increased from 20 to 40 for Y-axis label space
     }
     
+    // Process target values and add to chart data
+    const targetValues = parseTargetValues(displayConfig?.target || '')
+    const spreadTargets = spreadTargetValues(targetValues, chartData.length)
+    
+    // Add target data to chart data if targets exist
+    let enhancedChartData = chartData
+    if (spreadTargets.length > 0) {
+      enhancedChartData = chartData.map((dataPoint, index) => ({
+        ...dataPoint,
+        __target: spreadTargets[index] || null
+      }))
+    }
+    
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
@@ -117,7 +131,7 @@ export default function BarChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsBarChart data={chartData} margin={chartMargins}>
+        <ComposedChart data={enhancedChartData} margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -133,7 +147,14 @@ export default function BarChart({
             label={{ value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip />
+            <ChartTooltip 
+              formatter={(value: any, name: any) => {
+                if (name === 'Target') {
+                  return [`${value}`, 'Target Value']
+                }
+                return [value, name]
+              }}
+            />
           )}
           {showLegend && (
             <Legend 
@@ -168,7 +189,33 @@ export default function BarChart({
               })}
             </Bar>
           ))}
-        </RechartsBarChart>
+          {spreadTargets.length > 0 && (
+            <>
+              {/* White background line */}
+              <Line
+                type="monotone"
+                dataKey="__target"
+                stroke="#ffffff"
+                strokeWidth={2}
+                dot={false}
+                activeDot={false}
+                connectNulls={false}
+              />
+              {/* Grey dashed line on top */}
+              <Line
+                type="monotone"
+                dataKey="__target"
+                name="Target"
+                stroke="#8B5CF6"
+                strokeWidth={2}
+                strokeDasharray="2 3"
+                dot={false}
+                activeDot={false}
+                connectNulls={false}
+              />
+            </>
+          )}
+        </ComposedChart>
       </ChartContainer>
     )
   } catch (error) {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
 import DataHistogram from '../DataHistogram'
+import { parseTargetValues, calculateVariance, formatVariance } from '../../utils/targetUtils'
 import type { ChartProps } from '../../types'
 
 export default function KpiNumber({ 
@@ -202,6 +203,26 @@ export default function KpiNumber({
   }
 
   const valueColor = getValueColor()
+  
+  // Process target values for variance calculation
+  const targetValues = parseTargetValues(displayConfig?.target || '')
+  const targetValue = targetValues.length > 0 ? targetValues[0] : null // Use first target value
+  const variance = targetValue !== null ? calculateVariance(mainValue, targetValue) : null
+  
+  // Get colors for variance display (similar to KpiDelta)
+  const getVarianceColor = (): string => {
+    if (variance === null) return '#6B7280' // Gray for no target
+    
+    if (variance >= 0) {
+      // Positive variance - use positive color from palette
+      const positiveIndex = displayConfig.positiveColorIndex ?? 1
+      return colorPalette?.colors?.[positiveIndex] || '#10B981' // Green fallback
+    } else {
+      // Negative variance - use negative color from palette  
+      const negativeIndex = displayConfig.negativeColorIndex ?? 7
+      return colorPalette?.colors?.[negativeIndex] || '#EF4444' // Red fallback
+    }
+  }
 
   return (
     <div 
@@ -228,16 +249,43 @@ export default function KpiNumber({
           })()}
         </div>
 
-        {/* Main KPI Value - Large, centered */}
-        <div 
-          ref={valueRef}
-          className="font-bold leading-none mb-3"
-          style={{ 
-            fontSize: `${fontSize}px`,
-            color: valueColor
-          }}
-        >
-          {formatNumber(mainValue)}
+        {/* Main KPI Value and Variance - Horizontal layout */}
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <div 
+            ref={valueRef}
+            className="font-bold leading-none"
+            style={{ 
+              fontSize: `${fontSize}px`,
+              color: valueColor
+            }}
+          >
+            {formatNumber(mainValue)}
+          </div>
+          
+          {/* Target Variance Display - To the right of main value */}
+          {targetValue !== null && variance !== null && (
+            <div className="flex flex-col items-start">
+              <div 
+                className="font-semibold"
+                style={{ 
+                  fontSize: `${Math.max(12, fontSize * 0.3)}px`,
+                  color: getVarianceColor(),
+                  lineHeight: '1.2'
+                }}
+              >
+                {formatVariance(variance, 1)}
+              </div>
+              <div 
+                className="text-gray-500 text-xs"
+                style={{ 
+                  opacity: 0.7,
+                  fontSize: `${Math.max(10, fontSize * 0.2)}px`
+                }}
+              >
+                vs {formatNumber(targetValue)}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Unit/Suffix - Larger, not bold */}
@@ -265,6 +313,7 @@ export default function KpiNumber({
               formatValue={formatNumber}
               height={24}
               width={textWidth}
+              targetValue={targetValue || undefined}
             />
           </div>
         )}

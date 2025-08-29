@@ -35,5 +35,14 @@ export const lineChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here for multiple lines'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'target',
+      label: 'Target Values',
+      type: 'string',
+      placeholder: 'e.g., 100 or 50,75 for spread',
+      description: 'Single value or comma-separated values to spread across X-axis'
+    }
+  ]
 }
