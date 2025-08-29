@@ -1,5 +1,4 @@
 import { useReactFlow } from 'reactflow'
-import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline'
 
 interface ERDControlsProps {
   onLayoutChange?: (layout: 'auto' | 'manual') => void
@@ -8,9 +7,7 @@ interface ERDControlsProps {
 }
 
 export function ERDControls({ 
-  onLayoutChange, 
-  onAutoLayout,
-  currentLayout = 'auto' 
+  onAutoLayout
 }: ERDControlsProps) {
   const { fitView, zoomIn, zoomOut } = useReactFlow()
 
@@ -18,12 +15,6 @@ export function ERDControls({
     fitView({ padding: 0.1, duration: 300 })
   }
 
-  const handleLayoutToggle = () => {
-    const newLayout = currentLayout === 'auto' ? 'manual' : 'auto'
-    if (onLayoutChange) {
-      onLayoutChange(newLayout)
-    }
-  }
 
   return (
     <div className="flex items-center gap-1 bg-white rounded-md shadow-sm border border-gray-200 px-2 py-1">

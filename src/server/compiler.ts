@@ -242,7 +242,7 @@ export class SemanticLayerCompiler {
     // Process relationships if they exist
     const relationships: CubeRelationshipMetadata[] = []
     if (cube.joins) {
-      for (const [joinName, join] of Object.entries(cube.joins)) {
+      for (const [, join] of Object.entries(cube.joins)) {
         const targetCube = typeof join.targetCube === 'function' ? join.targetCube() : join.targetCube
         
         relationships.push({

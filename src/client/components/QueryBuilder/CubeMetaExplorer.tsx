@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react'
-import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon, ArrowsPointingOutIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, RectangleGroupIcon, ListBulletIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
 import { CubeRelationshipDiagram } from '../CubeRelationshipDiagram'
@@ -22,7 +22,6 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   onFieldDeselect,
   onRetrySchema,
   onOpenSettings,
-  onExpandSchema,
   onViewTypeChange,
   isExpanded = false
 }) => {

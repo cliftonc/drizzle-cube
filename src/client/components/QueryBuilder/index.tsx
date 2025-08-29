@@ -13,7 +13,6 @@ import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
 import SetupPanel from './SetupPanel'
 import AIAssistantModal from '../AIAssistant/AIAssistantModal'
-import { CubeRelationshipDiagram } from '../CubeRelationshipDiagram'
 import type { 
   QueryBuilderProps, 
   QueryBuilderRef,
@@ -126,7 +125,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
   const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [showSchemaMobile, setShowSchemaMobile] = useState(false)
-  const [showSchemaExpanded, setShowSchemaExpanded] = useState(false)
   const [schemaViewType, setSchemaViewType] = useState<'tree' | 'diagram'>('tree')
   
   // AI Assistant modal state
@@ -653,7 +651,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
                   onRetrySchema={handleRetrySchema}
                   onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
                   onExpandSchema={(expanded) => {
-                    setShowSchemaExpanded(expanded)
                     if (expanded) setShowSchemaMobile(false)
                   }}
                 />
@@ -704,7 +701,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
               onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
-              onSchemaClick={() => setShowSchemaExpanded(true)}
+              onSchemaClick={() => {}}
             />
           </div>
 

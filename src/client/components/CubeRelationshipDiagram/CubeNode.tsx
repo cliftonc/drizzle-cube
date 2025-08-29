@@ -13,7 +13,7 @@ interface CubeNodeProps {
 }
 
 export function CubeNode({ data }: CubeNodeProps) {
-  const { cube, onCubeClick, onFieldClick, isHighlighted, highlightedFields, searchTerm } = data
+  const { cube, onFieldClick, isHighlighted, highlightedFields, searchTerm } = data
 
   const handleCubeHeaderClick = () => {
     // Do nothing - disable cube header clicks in ERD
