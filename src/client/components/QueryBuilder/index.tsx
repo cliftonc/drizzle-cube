@@ -13,6 +13,7 @@ import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
 import SetupPanel from './SetupPanel'
 import AIAssistantModal from '../AIAssistant/AIAssistantModal'
+import { CubeRelationshipDiagram } from '../CubeRelationshipDiagram'
 import type { 
   QueryBuilderProps, 
   QueryBuilderRef,
@@ -125,6 +126,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
   const [showSetupPanel, setShowSetupPanel] = useState(false)
   const [showSchemaMobile, setShowSchemaMobile] = useState(false)
+  const [showSchemaExpanded, setShowSchemaExpanded] = useState(false)
+  const [schemaViewType, setSchemaViewType] = useState<'tree' | 'diagram'>('tree')
   
   // AI Assistant modal state
   const [showAIAssistant, setShowAIAssistant] = useState(false)
@@ -273,16 +276,25 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       
       switch (fieldType) {
         case 'measures':
-          newQuery.measures = [...(prev.measures || []), fieldName]
+          // Only add if not already present
+          if (!(prev.measures || []).includes(fieldName)) {
+            newQuery.measures = [...(prev.measures || []), fieldName]
+          }
           break
         case 'dimensions':
-          newQuery.dimensions = [...(prev.dimensions || []), fieldName]
+          // Only add if not already present
+          if (!(prev.dimensions || []).includes(fieldName)) {
+            newQuery.dimensions = [...(prev.dimensions || []), fieldName]
+          }
           break
         case 'timeDimensions':
-          newQuery.timeDimensions = [...(prev.timeDimensions || []), { 
-            dimension: fieldName, 
-            granularity: 'month' 
-          }]
+          // Only add if not already present
+          if (!(prev.timeDimensions || []).some(td => td.dimension === fieldName)) {
+            newQuery.timeDimensions = [...(prev.timeDimensions || []), { 
+              dimension: fieldName, 
+              granularity: 'month' 
+            }]
+          }
           break
       }
       
@@ -640,6 +652,10 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
                   onFieldDeselect={handleFieldDeselect}
                   onRetrySchema={handleRetrySchema}
                   onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
+                  onExpandSchema={(expanded) => {
+                    setShowSchemaExpanded(expanded)
+                    if (expanded) setShowSchemaMobile(false)
+                  }}
                 />
               </div>
             </div>
@@ -648,8 +664,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         )}
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
-        {/* Schema Explorer - Left Column (Desktop only) */}
-        <div className="hidden md:flex md:w-1/3 min-w-0 flex-shrink-0 flex-col">
+        {/* Schema Explorer with dynamic width based on view type */}
+        <div className={`hidden md:flex flex-shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3'}`}>
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}
@@ -659,11 +675,15 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             onFieldDeselect={handleFieldDeselect}
             onRetrySchema={handleRetrySchema}
             onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
+            onExpandSchema={undefined} // No expand/collapse needed
+            onViewTypeChange={setSchemaViewType}
+            isExpanded={false} // Always false, handled by tab switching
           />
         </div>
 
-        {/* Main Content - Query Builder + Results */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
+        {/* Main Content - Query Builder + Results (hide when diagram is selected) */}
+        {schemaViewType === 'tree' && (
+          <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
           {/* Query Builder */}
           <div className="flex-shrink-0">
             <QueryPanel
@@ -684,6 +704,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
               onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
+              onSchemaClick={() => setShowSchemaExpanded(true)}
             />
           </div>
 
@@ -700,7 +721,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               totalRowCountStatus={state.totalRowCountStatus}
             />
           </div>
-        </div>
+          </div>
+        )}
         </div>
       
         {/* AI Assistant Modal - only render if AI is enabled */}
@@ -757,6 +779,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           }}
           />
         )}
+
       </div>
   )
 })

@@ -8,6 +8,15 @@ export interface CubeMetaField {
   type: string
 }
 
+export interface CubeMetaRelationship {
+  targetCube: string
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
+  joinFields: Array<{
+    sourceField: string
+    targetField: string
+  }>
+}
+
 export interface CubeMetaCube {
   name: string
   title: string
@@ -15,6 +24,7 @@ export interface CubeMetaCube {
   measures: CubeMetaField[]
   dimensions: CubeMetaField[]
   segments: CubeMetaField[]
+  relationships?: CubeMetaRelationship[]
 }
 
 export interface CubeMeta {

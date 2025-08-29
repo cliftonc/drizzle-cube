@@ -99,6 +99,9 @@ export interface CubeMetaExplorerProps {
   onFieldDeselect: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onRetrySchema?: () => void
   onOpenSettings?: () => void
+  onExpandSchema?: (expanded: boolean) => void
+  onViewTypeChange?: (viewType: 'tree' | 'diagram') => void
+  isExpanded?: boolean
 }
 
 export interface QueryPanelProps {
@@ -119,6 +122,7 @@ export interface QueryPanelProps {
   showSettings?: boolean           // Show the settings/configuration button
   onSettingsClick?: () => void     // Handler for settings button click
   onAIAssistantClick?: () => void  // Handler for AI Assistant button click
+  onSchemaClick?: () => void       // Handler for Schema button click
 }
 
 export interface ResultsPanelProps {

@@ -31,7 +31,8 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onClearQuery,
   showSettings,
   onSettingsClick,
-  onAIAssistantClick
+  onAIAssistantClick,
+  onSchemaClick
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
@@ -362,6 +363,18 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">Query Builder</h3>
+            {onSchemaClick && (
+              <button
+                onClick={onSchemaClick}
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 flex-shrink-0"
+                title="Schema Explorer - View cube relationships and fields"
+              >
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clipRule="evenodd" />
+                </svg>
+                <span>Schema</span>
+              </button>
+            )}
             {onAIAssistantClick && (
               <button
                 onClick={onAIAssistantClick}

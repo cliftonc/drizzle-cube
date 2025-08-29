@@ -6,6 +6,18 @@
 import type { MeasureType, MeasureFormat, DimensionFormat, TimeGranularity } from './core'
 
 /**
+ * Cube relationship metadata for ERD visualization
+ */
+export interface CubeRelationshipMetadata {
+  targetCube: string
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
+  joinFields: Array<{
+    sourceField: string
+    targetField: string
+  }>
+}
+
+/**
  * Cube metadata for API responses
  */
 export interface CubeMetadata {
@@ -15,6 +27,7 @@ export interface CubeMetadata {
   measures: MeasureMetadata[]
   dimensions: DimensionMetadata[]
   segments: any[]
+  relationships?: CubeRelationshipMetadata[]
 }
 
 /**

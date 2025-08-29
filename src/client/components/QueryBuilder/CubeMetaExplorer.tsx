@@ -6,9 +6,12 @@
  */
 
 import React, { useState } from 'react'
-import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline'
-import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
+import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon, ArrowsPointingOutIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, TagIcon, CalendarIcon, RectangleGroupIcon, ListBulletIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
+import { CubeRelationshipDiagram } from '../CubeRelationshipDiagram'
+
+type SchemaViewType = 'tree' | 'diagram'
 
 const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   schema,
@@ -18,15 +21,26 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   onFieldSelect,
   onFieldDeselect,
   onRetrySchema,
-  onOpenSettings
+  onOpenSettings,
+  onExpandSchema,
+  onViewTypeChange,
+  isExpanded = false
 }) => {
   const [expandedCubes, setExpandedCubes] = useState<Set<string>>(new Set())
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
+  const [viewType, setViewType] = useState<SchemaViewType>('tree')
   
   // Track the original expansion state before search
   const [preSearchExpandedCubes, setPreSearchExpandedCubes] = useState<Set<string> | null>(null)
   const [preSearchExpandedSections, setPreSearchExpandedSections] = useState<Set<string> | null>(null)
+
+  // Auto-switch to diagram view when expanded
+  React.useEffect(() => {
+    if (isExpanded) {
+      setViewType('diagram')
+    }
+  }, [isExpanded])
 
   // Auto-expand cubes and sections that contain search matches
   React.useEffect(() => {
@@ -445,142 +459,260 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   return (
     <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-lg min-h-0">
       {/* Header */}
-      <div className="p-3 border-b border-gray-200">
-        <h3 className="text-base font-semibold text-gray-900 mb-2">Schema Explorer</h3>
-        
-        {/* Search */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search fields..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+      <div className="border-b border-gray-200">
+        <div className="p-3 pb-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">
+                {viewType === 'diagram' ? 'Schema Diagram' : 'Schema Explorer'}
+              </h3>
+            </div>
+            <div className="flex items-center space-x-2">
+              {onOpenSettings && (
+                <button
+                  onClick={onOpenSettings}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Open settings"
+                >
+                  <CogIcon className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* View Type Tabs and Search */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex space-x-1 bg-gray-100 p-1 rounded-md">
+              <button
+                onClick={() => {
+                  setViewType('tree')
+                  onViewTypeChange?.('tree')
+                }}
+                className={`
+                  flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
+                  ${viewType === 'tree' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                <ListBulletIcon className="w-3 h-3 mr-1.5" />
+                Fields
+              </button>
+              <button
+                onClick={() => {
+                  setViewType('diagram')
+                  onViewTypeChange?.('diagram')
+                }}
+                className={`
+                  flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
+                  ${viewType === 'diagram' 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                <RectangleGroupIcon className="w-3 h-3 mr-1.5" />
+                Schema
+              </button>
+            </div>
+            
+            {/* Search input - visible for both views */}
+            <div className="flex-1 relative min-w-0">
+              <input
+                type="text"
+                placeholder="Search fields..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
+        
       </div>
 
-      {/* Cubes */}
-      <div className="flex-1 p-3 space-y-2 min-h-0 overflow-y-auto">
-        {(() => {
-          // Filter cubes to only show those with matches (when searching)
-          const filteredCubes = schema.cubes.filter(cubeHasMatches)
-          
-          // Show "No matches" message if searching but no cubes have matches
-          if (searchTerm.trim() && filteredCubes.length === 0) {
-            return <NoMatchesMessage />
-          }
-          
-          return filteredCubes.map((cube: MetaCube) => {
-            const isExpanded = expandedCubes.has(cube.name)
-            const timeDimensions = cube.dimensions.filter(d => d.type === 'time')
-            const regularDimensions = cube.dimensions.filter(d => d.type !== 'time')
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {viewType === 'diagram' ? (
+          /* Diagram View - schema relationship diagram */
+          <div className="h-full">
+            <CubeRelationshipDiagram
+              className="h-full"
+              onCubeClick={(cubeName) => {
+                if (!isExpanded) {
+                  // Auto-expand the clicked cube in tree view
+                  setExpandedCubes(prev => new Set([...prev, cubeName]))
+                  // Switch to tree view to show the expanded cube
+                  setViewType('tree')
+                }
+              }}
+              onFieldClick={(cubeName, fieldName, fieldType) => {
+                // Convert field type to QueryBuilder expected type and determine if time dimension
+                let qbFieldType: 'measures' | 'dimensions' | 'timeDimensions'
+                
+                if (fieldType === 'measure') {
+                  qbFieldType = 'measures'
+                } else {
+                  // For dimensions, check if it's a time dimension by looking at the schema
+                  const cube = schema?.cubes.find(c => c.name === cubeName)
+                  const dimension = cube?.dimensions.find(d => 
+                    d.name === `${cubeName}.${fieldName}` || d.name === fieldName
+                  )
+                  
+                  qbFieldType = dimension?.type === 'time' ? 'timeDimensions' : 'dimensions'
+                }
+                
+                const fullFieldName = `${cubeName}.${fieldName}`
+                
+                // Check if field is already selected
+                const isSelected = selectedFields[qbFieldType].includes(fullFieldName)
+                
+                if (isSelected) {
+                  // Remove the field from the query
+                  onFieldDeselect(fullFieldName, qbFieldType)
+                } else {
+                  // Add the field to the query
+                  onFieldSelect(fullFieldName, qbFieldType)
+                }
+              }}
+              highlightedCubes={[
+                ...selectedFields.measures.map(field => field.split('.')[0]),
+                ...selectedFields.dimensions.map(field => field.split('.')[0]),
+                ...selectedFields.timeDimensions.map(field => field.split('.')[0])
+              ].filter((cube, index, arr) => arr.indexOf(cube) === index)} // Remove duplicates
+              highlightedFields={[
+                ...selectedFields.measures,
+                ...selectedFields.dimensions,
+                ...selectedFields.timeDimensions
+              ]}
+              searchTerm={searchTerm}
+            />
+          </div>
+        ) : (
+          /* Tree View - existing field list */
+          <div className="h-full p-3 space-y-2 overflow-y-auto">
+            {(() => {
+              // Filter cubes to only show those with matches (when searching)
+              const filteredCubes = schema.cubes.filter(cubeHasMatches)
+              
+              // Show "No matches" message if searching but no cubes have matches
+              if (searchTerm.trim() && filteredCubes.length === 0) {
+                return <NoMatchesMessage />
+              }
+              
+              return filteredCubes.map((cube: MetaCube) => {
+                const isExpanded = expandedCubes.has(cube.name)
+                const timeDimensions = cube.dimensions.filter(d => d.type === 'time')
+                const regularDimensions = cube.dimensions.filter(d => d.type !== 'time')
 
-            return (
-              <div key={cube.name} className="border border-gray-200 rounded-lg">
-                {/* Cube Header */}
-                <div
-                  className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 rounded-t-lg"
-                  onClick={() => toggleCubeExpansion(cube.name)}
-                >
-                  <div className="mr-2">
-                    {isExpanded ? (
-                      <ChevronDownIcon className="w-4 h-4 text-gray-600" />
-                    ) : (
-                      <ChevronRightIcon className="w-4 h-4 text-gray-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-gray-900">{cube.title}</div>
-                    <div className="text-xs text-gray-500">{cube.description}</div>
-                  </div>
-                </div>
+                return (
+                  <div key={cube.name} className="border border-gray-200 rounded-lg">
+                    {/* Cube Header */}
+                    <div
+                      className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+                      onClick={() => toggleCubeExpansion(cube.name)}
+                    >
+                      <div className="mr-2">
+                        {isExpanded ? (
+                          <ChevronDownIcon className="w-4 h-4 text-gray-600" />
+                        ) : (
+                          <ChevronRightIcon className="w-4 h-4 text-gray-600" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-gray-900">{cube.title}</div>
+                        <div className="text-xs text-gray-500">{cube.description}</div>
+                      </div>
+                    </div>
 
-                {/* Cube Content */}
-                {isExpanded && (
-                  <div className="border-t border-gray-200 p-2 space-y-1">
-                    {/* Dimensions - First (matching QueryPanel order) */}
-                    {regularDimensions.length > 0 && filterFields(regularDimensions).length > 0 && (
-                      <div>
-                        <SectionHeader
-                          title="Dimensions"
-                          count={filterFields(regularDimensions).length}
-                          sectionKey={`${cube.name}-dimensions`}
-                          icon={<TagIcon className="w-4 h-4 text-green-600" />}
-                        />
-                        {expandedSections.has(`${cube.name}-dimensions`) && (
-                          <div className="ml-5 space-y-1 mt-1">
-                            {filterFields(regularDimensions).map(dimension => (
-                              <FieldItem
-                                key={dimension.name}
-                                field={dimension}
-                                fieldType="dimensions"
-                                icon={<TagIcon className="w-4 h-4" />}
-                              />
-                            ))}
+                    {/* Cube Content */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-200 p-2 space-y-1">
+                        {/* Dimensions - First (matching QueryPanel order) */}
+                        {regularDimensions.length > 0 && filterFields(regularDimensions).length > 0 && (
+                          <div>
+                            <SectionHeader
+                              title="Dimensions"
+                              count={filterFields(regularDimensions).length}
+                              sectionKey={`${cube.name}-dimensions`}
+                              icon={<TagIcon className="w-4 h-4 text-green-600" />}
+                            />
+                            {expandedSections.has(`${cube.name}-dimensions`) && (
+                              <div className="ml-5 space-y-1 mt-1">
+                                {filterFields(regularDimensions).map(dimension => (
+                                  <FieldItem
+                                    key={dimension.name}
+                                    field={dimension}
+                                    fieldType="dimensions"
+                                    icon={<TagIcon className="w-4 h-4" />}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Time Dimensions - Second (matching QueryPanel order) */}
+                        {timeDimensions.length > 0 && filterFields(timeDimensions).length > 0 && (
+                          <div>
+                            <SectionHeader
+                              title="Time Dimensions"
+                              count={filterFields(timeDimensions).length}
+                              sectionKey={`${cube.name}-timeDimensions`}
+                              icon={<CalendarIcon className="w-4 h-4 text-blue-600" />}
+                            />
+                            {expandedSections.has(`${cube.name}-timeDimensions`) && (
+                              <div className="ml-5 space-y-1 mt-1">
+                                {filterFields(timeDimensions).map(timeDimension => (
+                                  <FieldItem
+                                    key={timeDimension.name}
+                                    field={timeDimension}
+                                    fieldType="timeDimensions"
+                                    icon={<CalendarIcon className="w-4 h-4" />}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Measures - Third (matching QueryPanel order) */}
+                        {cube.measures.length > 0 && filterFields(cube.measures).length > 0 && (
+                          <div>
+                            <SectionHeader
+                              title="Measures"
+                              count={filterFields(cube.measures).length}
+                              sectionKey={`${cube.name}-measures`}
+                              icon={<ChartBarIcon className="w-4 h-4 text-amber-600" />}
+                            />
+                            {expandedSections.has(`${cube.name}-measures`) && (
+                              <div className="ml-5 space-y-1 mt-1">
+                                {filterFields(cube.measures).map(measure => (
+                                  <FieldItem
+                                    key={measure.name}
+                                    field={measure}
+                                    fieldType="measures"
+                                    icon={<ChartBarIcon className="w-4 h-4" />}
+                                  />
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
-
-                    {/* Time Dimensions - Second (matching QueryPanel order) */}
-                    {timeDimensions.length > 0 && filterFields(timeDimensions).length > 0 && (
-                      <div>
-                        <SectionHeader
-                          title="Time Dimensions"
-                          count={filterFields(timeDimensions).length}
-                          sectionKey={`${cube.name}-timeDimensions`}
-                          icon={<CalendarIcon className="w-4 h-4 text-blue-600" />}
-                        />
-                        {expandedSections.has(`${cube.name}-timeDimensions`) && (
-                          <div className="ml-5 space-y-1 mt-1">
-                            {filterFields(timeDimensions).map(timeDimension => (
-                              <FieldItem
-                                key={timeDimension.name}
-                                field={timeDimension}
-                                fieldType="timeDimensions"
-                                icon={<CalendarIcon className="w-4 h-4" />}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Measures - Third (matching QueryPanel order) */}
-                    {cube.measures.length > 0 && filterFields(cube.measures).length > 0 && (
-                      <div>
-                        <SectionHeader
-                          title="Measures"
-                          count={filterFields(cube.measures).length}
-                          sectionKey={`${cube.name}-measures`}
-                          icon={<ChartBarIcon className="w-4 h-4 text-amber-600" />}
-                        />
-                        {expandedSections.has(`${cube.name}-measures`) && (
-                          <div className="ml-5 space-y-1 mt-1">
-                            {filterFields(cube.measures).map(measure => (
-                              <FieldItem
-                                key={measure.name}
-                                field={measure}
-                                fieldType="measures"
-                                icon={<ChartBarIcon className="w-4 h-4" />}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            )
-          })
-        })()}
+                )
+              })
+            })()}
+          </div>
+        )}
       </div>
     </div>
   )

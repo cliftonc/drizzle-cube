@@ -226,6 +226,9 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.85.5",
-    "react-router-dom": "^7.8.2"
+    "@types/dagre": "^0.7.53",
+    "dagre": "^0.8.5",
+    "react-router-dom": "^7.8.2",
+    "reactflow": "^11.11.4"
   }
 }

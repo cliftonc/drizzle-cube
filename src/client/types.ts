@@ -5,7 +5,7 @@
 import type { ColorPalette } from './utils/colorPalettes'
 
 // Re-export metadata types from useCubeMeta hook
-export type { CubeMeta, CubeMetaCube, CubeMetaField, FieldLabelMap } from './hooks/useCubeMeta'
+export type { CubeMeta, CubeMetaCube, CubeMetaField, CubeMetaRelationship, FieldLabelMap } from './hooks/useCubeMeta'
 
 // Re-export color palette types
 export type { ColorPalette } from './utils/colorPalettes'

@@ -11,6 +11,7 @@ import type {
   CubeMetadata,
   MeasureMetadata,
   DimensionMetadata,
+  CubeRelationshipMetadata,
   Cube
 } from './types'
 import { createDatabaseExecutor } from './executors'
@@ -167,6 +168,38 @@ export class SemanticLayerCompiler {
   }
 
   /**
+   * Extract column name from Drizzle column reference
+   * Handles different column types and extracts the actual column name
+   */
+  private getColumnName(column: any): string {
+    // If it's a simple column object with name property
+    if (column && column.name) {
+      return column.name
+    }
+    
+    // If it's a column with columnType and name
+    if (column && column.columnType && column.name) {
+      return column.name
+    }
+    
+    // If it's a string, return as-is
+    if (typeof column === 'string') {
+      return column
+    }
+    
+    // Fallback: try to extract from object properties
+    if (column && typeof column === 'object') {
+      // Try common property names
+      if (column._.name) return column._.name
+      if (column.name) return column.name
+      if (column.columnName) return column.columnName
+    }
+    
+    // If we can't determine the column name, return a fallback
+    return 'unknown_column'
+  }
+
+  /**
    * Generate cube metadata for API responses from cubes
    * Optimized version that minimizes object iterations
    */
@@ -206,13 +239,31 @@ export class SemanticLayerCompiler {
       }
     }
 
+    // Process relationships if they exist
+    const relationships: CubeRelationshipMetadata[] = []
+    if (cube.joins) {
+      for (const [joinName, join] of Object.entries(cube.joins)) {
+        const targetCube = typeof join.targetCube === 'function' ? join.targetCube() : join.targetCube
+        
+        relationships.push({
+          targetCube: targetCube.name,
+          relationship: join.relationship,
+          joinFields: join.on.map(condition => ({
+            sourceField: this.getColumnName(condition.source),
+            targetField: this.getColumnName(condition.target)
+          }))
+        })
+      }
+    }
+
     return {
       name: cube.name,
       title: cube.title || cube.name,
       description: cube.description,
       measures,
       dimensions,
-      segments: [] // Add segments support later if needed
+      segments: [], // Add segments support later if needed
+      relationships: relationships.length > 0 ? relationships : undefined
     }
   }
 
