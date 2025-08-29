@@ -701,7 +701,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
               onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
-              onSchemaClick={() => {}}
             />
           </div>
 
