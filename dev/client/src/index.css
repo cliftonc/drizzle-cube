@@ -1,6 +1,24 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@config "../tailwind.config.js";
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  Apply border-color defaults only to elements that typically have borders,
+  avoiding interference with layout elements like flex containers.
+*/
+@layer base {
+  button,
+  input,
+  select,
+  textarea,
+  [class*="border"] {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 /* Enhanced typography and rendering */
 :root {

@@ -91,21 +91,21 @@ export default function DashboardListPage() {
             <button
               onClick={handleCreateExample}
               disabled={createExample.isPending || pages.length >= 10}
-              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-2xs hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
             >
               {createExample.isPending ? 'Creating...' : 'Create Example'}
             </button>
             <button
               onClick={() => setIsNewModalOpen(true)}
               disabled={pages.length >= 10}
-              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-2xs hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 w-full sm:w-auto"
             >
               New Dashboard
             </button>
           </div>
           
           {pages.length >= 10 && (
-            <div className="px-3 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+            <div className="px-3 py-2 bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
               <div className="flex items-center">
                 <span className="text-lg mr-2">😊</span>
                 <p className="text-sm text-amber-800 font-medium">
@@ -142,14 +142,14 @@ export default function DashboardListPage() {
             <button
               onClick={handleCreateExample}
               disabled={createExample.isPending || pages.length >= 10}
-              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-2xs hover:bg-gray-50 disabled:opacity-50 w-full sm:w-auto"
             >
               Create Example Dashboard
             </button>
             <button
               onClick={() => setIsNewModalOpen(true)}
               disabled={pages.length >= 10}
-              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
+              className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-2xs hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
             >
               Create New Dashboard
             </button>
@@ -160,7 +160,7 @@ export default function DashboardListPage() {
           {pages.map((page) => (
             <div
               key={page.id}
-              className="relative group bg-white rounded-lg shadow-xs hover:shadow-md transition-shadow touch-manipulation"
+              className="relative group bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow touch-manipulation"
             >
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-3">

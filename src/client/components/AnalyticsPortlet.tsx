@@ -144,13 +144,13 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (error) {
       return (
-        <div className="p-4 border border-red-300 bg-red-50 rounded" style={{ height }}>
+        <div className="p-4 border border-red-300 bg-red-50 rounded-sm" style={{ height }}>
           <div className="mb-2">
             <div className="flex items-center justify-between">
               <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
               <button
                 onClick={() => setRefreshCounter(prev => prev + 1)}
-                className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                className="px-2 py-1 bg-blue-500 text-white rounded-sm text-xs hover:bg-blue-600"
               >
                 Retry
               </button>
@@ -158,7 +158,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
           </div>
           
           <div className="mb-3">
-            <div className="text-xs text-red-700 bg-white p-2 rounded border">
+            <div className="text-xs text-red-700 bg-white p-2 rounded-sm border">
               {error.message || error.toString()}
             </div>
           </div>
@@ -166,14 +166,14 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
           <div className="space-y-2 text-xs">
             <details>
               <summary className="cursor-pointer text-gray-700 font-medium">Original Query</summary>
-              <pre className="mt-1 bg-blue-50 p-2 rounded text-xs overflow-auto max-h-20">
+              <pre className="mt-1 bg-blue-50 p-2 rounded-sm text-xs overflow-auto max-h-20">
                 {query}
               </pre>
             </details>
             
             <details>
               <summary className="cursor-pointer text-gray-700 font-medium">Chart Config</summary>
-              <pre className="mt-1 bg-purple-50 p-2 rounded text-xs overflow-auto max-h-20">
+              <pre className="mt-1 bg-purple-50 p-2 rounded-sm text-xs overflow-auto max-h-20">
                 {JSON.stringify({
                   chartType,
                   chartConfig,

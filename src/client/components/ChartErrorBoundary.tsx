@@ -87,7 +87,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               {this.props.portletConfig && (
                 <details className="text-xs font-mono text-gray-600 mb-2">
                   <summary className="cursor-pointer">Portlet Configuration</summary>
-                  <pre className="mt-2 whitespace-pre-wrap bg-blue-50 p-2 rounded overflow-auto max-h-32">
+                  <pre className="mt-2 whitespace-pre-wrap bg-blue-50 p-2 rounded-sm overflow-auto max-h-32">
                     {JSON.stringify(this.props.portletConfig, null, 2)}
                   </pre>
                 </details>
@@ -97,7 +97,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               {this.props.cubeQuery && (
                 <details className="text-xs font-mono text-gray-600 mb-2">
                   <summary className="cursor-pointer">Cube Query</summary>
-                  <pre className="mt-2 whitespace-pre-wrap bg-green-50 p-2 rounded overflow-auto max-h-32">
+                  <pre className="mt-2 whitespace-pre-wrap bg-green-50 p-2 rounded-sm overflow-auto max-h-32">
                     {typeof this.props.cubeQuery === 'string' 
                       ? JSON.stringify(JSON.parse(this.props.cubeQuery), null, 2)
                       : JSON.stringify(this.props.cubeQuery, null, 2)
@@ -118,7 +118,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
           {/* Reset button */}
           <button
             onClick={this.handleReset}
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+            className="px-3 py-1 bg-blue-500 text-white rounded-sm text-sm hover:bg-blue-600"
           >
             <ArrowPathIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
           </button>

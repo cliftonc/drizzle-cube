@@ -600,7 +600,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     <div className={`h-full flex flex-col ${className}`} style={{ minHeight: '100%' }}>
       {/* Setup Panel - only show when not in modal and not hidden */}
         {!hideSettings && (
-          <div className="flex-shrink-0 p-4 pb-0">
+          <div className="shrink-0 p-4 pb-0">
             <SetupPanel
               isOpen={showSetupPanel}
               onToggle={() => setShowSetupPanel(!showSetupPanel)}
@@ -612,7 +612,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         )}
         
         {/* Mobile Schema Toggle Button */}
-        <div className="md:hidden flex-shrink-0 px-4 pb-2">
+        <div className="md:hidden shrink-0 px-4 pb-2">
           <button
             onClick={() => setShowSchemaMobile(!showSchemaMobile)}
             className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
@@ -662,7 +662,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
         {/* Schema Explorer with dynamic width based on view type */}
-        <div className={`hidden md:flex flex-shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3'}`}>
+        <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3'}`}>
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}
@@ -682,7 +682,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         {schemaViewType === 'tree' && (
           <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
           {/* Query Builder */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <QueryPanel
               query={state.query}
               schema={state.schema}
@@ -705,7 +705,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           </div>
 
           {/* Results Panel */}
-          <div className={`${state.executionStatus === 'idle' ? 'flex-shrink-0 h-48' : 'flex-1 min-h-0'}`}>
+          <div className={`${state.executionStatus === 'idle' ? 'shrink-0 h-48' : 'flex-1 min-h-0'}`}>
             <ResultsPanel
               executionStatus={state.executionStatus}
               executionResults={state.executionResults}

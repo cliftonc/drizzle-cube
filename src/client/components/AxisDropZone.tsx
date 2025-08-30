@@ -259,7 +259,7 @@ export default function AxisDropZone({
                       isDragOver ? 'bg-opacity-75' : ''
                     } ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                   >
-                    <FieldIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <FieldIcon className="w-3 h-3 mr-1 shrink-0" />
                     <span className="leading-none">{field}</span>
                     <button
                       type="button"

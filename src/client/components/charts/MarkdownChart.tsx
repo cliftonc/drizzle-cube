@@ -287,7 +287,7 @@ export default function MarkdownChart({
               return (
                 <li key={key} className="mb-1 flex items-center justify-center">
                   <span 
-                    className={`inline-block mr-2 flex-shrink-0 ${numberSizeClass} font-medium`}
+                    className={`inline-block mr-2 shrink-0 ${numberSizeClass} font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
@@ -304,7 +304,7 @@ export default function MarkdownChart({
                     {node.children.map((child, i) => renderNode(child, i))}
                   </span>
                   <span 
-                    className={`inline-block ml-2 flex-shrink-0 ${numberSizeClass} font-medium`}
+                    className={`inline-block ml-2 shrink-0 ${numberSizeClass} font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
@@ -315,7 +315,7 @@ export default function MarkdownChart({
               return (
                 <li key={key} className="mb-1 flex items-start">
                   <span 
-                    className={`inline-block mr-3 flex-shrink-0 ${numberSizeClass} font-medium`}
+                    className={`inline-block mr-3 shrink-0 ${numberSizeClass} font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
@@ -333,7 +333,7 @@ export default function MarkdownChart({
             return (
               <li key={key} className="mb-1 flex items-center justify-center">
                 <span 
-                  className="inline-block w-2 h-2 rounded-full mr-2 flex-shrink-0"
+                  className="inline-block w-2 h-2 rounded-full mr-2 shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
                 <span className="text-center">
@@ -348,7 +348,7 @@ export default function MarkdownChart({
                   {node.children.map((child, i) => renderNode(child, i))}
                 </span>
                 <span 
-                  className="inline-block w-2 h-2 rounded-full ml-2 mt-2 flex-shrink-0"
+                  className="inline-block w-2 h-2 rounded-full ml-2 mt-2 shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
               </li>
@@ -357,7 +357,7 @@ export default function MarkdownChart({
             return (
               <li key={key} className="mb-1 flex items-start">
                 <span 
-                  className="inline-block w-2 h-2 rounded-full mr-3 mt-2 flex-shrink-0"
+                  className="inline-block w-2 h-2 rounded-full mr-3 mt-2 shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
                 <span className="flex-1">

@@ -55,13 +55,13 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 rounded-t-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 rounded-t-lg hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       >
         <div className="flex items-center space-x-2">
           <CogIcon className="w-5 h-5 text-gray-600" />
           <h3 className="text-sm font-semibold text-gray-900">API Configuration</h3>
           {!isUsingDefaults && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">
               Custom
             </span>
           )}
@@ -86,7 +86,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 type="text"
                 value={localConfig.baseApiUrl}
                 onChange={(e) => handleInputChange('baseApiUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 placeholder="/cubejs-api/v1"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -103,7 +103,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 type="password"
                 value={localConfig.apiToken}
                 onChange={(e) => handleInputChange('apiToken', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 placeholder="Leave empty for no authentication"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -130,7 +130,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 {!isUsingDefaults && (
                   <button
                     onClick={handleReset}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     title="Reset to defaults"
                   >
                     <ArrowPathIcon className="w-3 h-3" />
@@ -145,13 +145,13 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
               <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200">
                 <button
                   onClick={() => setLocalConfig(config)}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleApply}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   Apply Changes
                 </button>

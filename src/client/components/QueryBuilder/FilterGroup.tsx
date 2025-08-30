@@ -163,7 +163,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={handleGroupTypeToggle}
-            className={`px-3 py-1 rounded text-sm font-semibold ${textColor} border border-current hover:bg-white hover:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-current focus:ring-opacity-50`}
+            className={`px-3 py-1 rounded-sm text-sm font-semibold ${textColor} border border-current hover:bg-white hover:bg-opacity-20 focus:outline-hidden focus:ring-2 focus:ring-current focus:ring-opacity-50`}
           >
             {groupType}
           </button>
@@ -177,7 +177,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowAddMenu(!showAddMenu)}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              className="text-gray-500 hover:text-gray-700 focus:outline-hidden"
               title="Add condition"
             >
               <PlusIcon className="w-4 h-4" />
@@ -187,19 +187,19 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-300 rounded-md shadow-lg z-30">
                 <button
                   onClick={handleAddSimpleFilter}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100"
                 >
                   Add Filter
                 </button>
                 <button
                   onClick={handleAddAndGroup}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100"
                 >
                   Add AND Group
                 </button>
                 <button
                   onClick={handleAddOrGroup}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100"
                 >
                   Add OR Group
                 </button>
@@ -210,7 +210,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
           {/* Remove group button */}
           <button
             onClick={() => onGroupRemove(index)}
-            className="text-gray-400 hover:text-red-600 focus:outline-none"
+            className="text-gray-400 hover:text-red-600 focus:outline-hidden"
             title="Remove group"
           >
             <XMarkIcon className="w-4 h-4" />
@@ -256,7 +256,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
             No conditions in this group.
             <button
               onClick={handleAddSimpleFilter}
-              className="ml-2 text-purple-600 hover:text-purple-800 focus:outline-none underline"
+              className="ml-2 text-purple-600 hover:text-purple-800 focus:outline-hidden underline"
             >
               Add a filter
             </button>

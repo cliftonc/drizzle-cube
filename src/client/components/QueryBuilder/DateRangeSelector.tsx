@@ -166,16 +166,16 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
         {/* Row 1: Filter icon and time dimension field */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <CalendarIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          <CalendarIcon className="w-4 h-4 text-gray-500 shrink-0" />
           
           {/* Time dimension field selector */}
           <div className="relative flex-1 min-w-0">
             <button
               onClick={handleTimeDimensionDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
             >
               <span className="truncate">{timeDimension}</span>
-              <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${
+              <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${
                 isTimeDimensionDropdownOpen ? 'transform rotate-180' : ''
               }`} />
             </button>
@@ -186,7 +186,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   <button
                     key={td}
                     onClick={() => handleTimeDimensionChange(td)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                       td === timeDimension ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                     }`}
                   >
@@ -201,13 +201,13 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
         {/* Row 2: Date range selector */}
         <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
           {/* Range type selector with custom dropdown */}
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             <button
               onClick={handleRangeDropdownToggle}
-              className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <span className="truncate">{selectedRangeLabel}</span>
-              <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-1 transition-transform ${
+              <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 ml-1 transition-transform ${
                 isRangeDropdownOpen ? 'transform rotate-180' : ''
               }`} />
             </button>
@@ -218,7 +218,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   <button
                     key={option.value}
                     onClick={() => handleRangeTypeChange(option.value)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                       option.value === rangeType ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                     }`}
                   >
@@ -241,7 +241,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={customDates.startDate}
                   onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               
@@ -252,7 +252,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={customDates.endDate}
                   onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </>
@@ -267,12 +267,12 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={numberValue}
                   onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
                   placeholder="Number"
-                  className="w-full text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               
               {/* Unit display */}
-              <div className="flex-shrink-0 text-sm text-gray-600">
+              <div className="shrink-0 text-sm text-gray-600">
                 {rangeType.replace('last_n_', '').replace('_', ' ')}
               </div>
             </>
@@ -284,7 +284,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           {/* Remove button */}
           <button
             onClick={() => onRemove(timeDimension)}
-            className="text-gray-400 hover:text-red-600 focus:outline-none flex-shrink-0 p-1"
+            className="text-gray-400 hover:text-red-600 focus:outline-hidden shrink-0 p-1"
             title="Remove date range"
           >
             <XMarkIcon className="w-4 h-4" />

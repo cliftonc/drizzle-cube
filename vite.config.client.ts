@@ -64,7 +64,7 @@ export default defineConfig({
           recharts: 'Recharts'
         },
         assetFileNames: (assetInfo) => {
-          if (assetInfo.name === 'style.css') {
+          if (assetInfo.name === 'style.css' || assetInfo.name?.endsWith('.css')) {
             return 'styles.css'
           }
           return assetInfo.name

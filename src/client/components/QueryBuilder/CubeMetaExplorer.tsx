@@ -158,7 +158,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             {onRetrySchema && (
               <button
                 onClick={onRetrySchema}
-                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <ArrowPathIcon className="w-4 h-4" />
                 <span>Retry</span>
@@ -168,7 +168,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             {onOpenSettings && (
               <button
                 onClick={onOpenSettings}
-                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <CogIcon className="w-4 h-4" />
                 <span>Check API Settings</span>
@@ -447,7 +447,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
         </div>
         <button
           onClick={() => setSearchTerm('')}
-          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
         >
           Clear search
         </button>
@@ -490,7 +490,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 className={`
                   flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
                   ${viewType === 'tree' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
+                    ? 'bg-white text-gray-900 shadow-xs' 
                     : 'text-gray-600 hover:text-gray-900'
                   }
                 `}
@@ -506,7 +506,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 className={`
                   flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
                   ${viewType === 'diagram' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
+                    ? 'bg-white text-gray-900 shadow-xs' 
                     : 'text-gray-600 hover:text-gray-900'
                   }
                 `}
