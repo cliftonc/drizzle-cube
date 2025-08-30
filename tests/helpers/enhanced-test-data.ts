@@ -3,7 +3,7 @@
  * Covers edge cases, diverse data types, NULL values, and performance testing
  */
 
-import { sql } from 'drizzle-orm'
+// Enhanced test data for comprehensive testing scenarios
 
 // Enhanced departments with edge cases
 export const enhancedDepartments = [
@@ -291,7 +291,7 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
   }> = {}
   
   // Initialize profiles based on employee data
-  insertedEmployees.forEach((employee, index) => {
+  insertedEmployees.forEach((employee) => {
     const employeeId = employee.id
     let profile = { role: 'General', linesOfCodeBase: 50, pullRequestsBase: 2, deploymentsBase: 0, happinessVariability: 2 }
     
@@ -323,7 +323,6 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
   for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
     const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
     const month = date.getMonth() + 1
-    const dayOfMonth = date.getDate()
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
     const isHoliday = isHolidayDate(date)
     
@@ -503,7 +502,7 @@ export function generateComprehensiveTimeEntriesData(
   const endDate = new Date('2024-12-31')
   
   // Process each employee
-  insertedEmployees.forEach((employee, employeeIndex) => {
+  insertedEmployees.forEach((employee) => {
     // Get employee's department
     const employeeDepartment = departmentMap[employee.departmentId]
     if (!employeeDepartment) return

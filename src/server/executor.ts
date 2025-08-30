@@ -550,7 +550,7 @@ export class QueryExecutor {
               drizzleQuery = drizzleQuery.fullJoin(joinTarget, joinCondition)
               break
           }
-        } catch (error) {
+        } catch {
           // If join fails (e.g., duplicate alias), log and continue
           // Multi-cube join failed, continuing
         }

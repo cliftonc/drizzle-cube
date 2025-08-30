@@ -468,9 +468,9 @@ describe('Next.js Adapter', () => {
     it('should pass security context to semantic layer', async () => {
       let capturedContext: any = null
       
-      const customOptions: NextAdapterOptions<typeof testSchema> = {
+      const customOptions: NextAdapterOptions<typeof currentSchema> = {
         ...adapterOptions,
-        extractSecurityContext: async (request) => {
+        extractSecurityContext: async () => {
           capturedContext = { organisationId: 1 }
           return capturedContext
         }
@@ -491,7 +491,7 @@ describe('Next.js Adapter', () => {
     it('should pass route context to extractSecurityContext', async () => {
       let capturedRouteContext: any = null
       
-      const customOptions: NextAdapterOptions<typeof testSchema> = {
+      const customOptions: NextAdapterOptions<typeof currentSchema> = {
         ...adapterOptions,
         extractSecurityContext: async (request, context) => {
           capturedRouteContext = context
@@ -514,7 +514,7 @@ describe('Next.js Adapter', () => {
 
   describe('Error Handling', () => {
     it('should handle semantic layer errors gracefully', async () => {
-      const errorOptions: NextAdapterOptions<typeof testSchema> = {
+      const errorOptions: NextAdapterOptions<typeof currentSchema> = {
         ...adapterOptions,
         extractSecurityContext: async () => {
           throw new Error('Authentication failed')
@@ -554,7 +554,7 @@ describe('Next.js Adapter', () => {
 
   describe('Runtime Configuration', () => {
     it('should accept runtime configuration', () => {
-      const edgeOptions: NextAdapterOptions<typeof testSchema> = {
+      const edgeOptions: NextAdapterOptions<typeof currentSchema> = {
         ...adapterOptions,
         runtime: 'edge'
       }

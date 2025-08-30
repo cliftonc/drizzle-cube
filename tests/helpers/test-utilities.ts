@@ -724,7 +724,7 @@ export class SecurityTestUtils {
     ]
   }
 
-  static validateNoSQLInjection(result: QueryResult, originalQuery: SemanticQuery): {
+  static validateNoSQLInjection(result: QueryResult): {
     isValid: boolean
     errors: string[]
   } {
