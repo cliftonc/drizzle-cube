@@ -196,7 +196,7 @@ export default function PortletEditModal({
         title: formTitle.trim(),
         query: queryToSave,
         chartType,
-        chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
+        chartConfig: Object.keys(chartConfig).length > 0 ? chartConfig : undefined,
         displayConfig: displayConfig,
         w: portlet.w || defaultWidth,
         h: portlet.h || defaultHeight
@@ -207,7 +207,7 @@ export default function PortletEditModal({
         title: formTitle.trim(),
         query: queryToSave,
         chartType,
-        chartConfig: (chartConfig.xAxis?.length ?? 0) > 0 || (chartConfig.yAxis?.length ?? 0) > 0 || (chartConfig.series && chartConfig.series.length > 0) ? chartConfig : undefined,
+        chartConfig: Object.keys(chartConfig).length > 0 ? chartConfig : undefined,
         displayConfig: displayConfig,
         w: defaultWidth,
         h: defaultHeight
