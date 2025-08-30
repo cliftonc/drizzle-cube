@@ -148,9 +148,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   const getSortIcon = (direction: 'asc' | 'desc' | null) => {
     switch (direction) {
       case 'asc':
-        return <ChevronUpIcon className={`w-4 h-4 ${direction ? 'stroke-[3]' : ''}`} />
+        return <ChevronUpIcon className={`w-4 h-4 ${direction ? 'stroke-3' : ''}`} />
       case 'desc':
-        return <ChevronDownIcon className={`w-4 h-4 ${direction ? 'stroke-[3]' : ''}`} />
+        return <ChevronDownIcon className={`w-4 h-4 ${direction ? 'stroke-3' : ''}`} />
       default:
         return <ChevronUpDownIcon className="w-4 h-4" />
     }
@@ -164,7 +164,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
   const getSortButtonClasses = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
     const sortDirection = getSortDirection(fieldName, query.order)
-    const baseClasses = 'focus:outline-none flex-shrink-0 p-1 transition-colors'
+    const baseClasses = 'focus:outline-hidden shrink-0 p-1 transition-colors'
     
     if (sortDirection) {
       // Active sort - use field type colors
@@ -205,7 +205,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
     return (
       <div className={`inline-flex items-center text-sm px-3 py-2 rounded-lg border w-full ${getChipClasses()}`}>
-        <div className="mr-2 flex-shrink-0">
+        <div className="mr-2 shrink-0">
           {icon}
         </div>
         <span className="flex-1 flex flex-col min-w-0">
@@ -234,14 +234,14 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               return (
                 <button
                   onClick={() => handleAddFilterFromField(fieldName, fieldType)}
-                  className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${
+                  className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
                     hasFilters 
                       ? getActiveColorClasses()
                       : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
                 >
-                  <FunnelIcon className={`w-4 h-4 ${hasFilters ? 'stroke-[3]' : ''}`} />
+                  <FunnelIcon className={`w-4 h-4 ${hasFilters ? 'stroke-3' : ''}`} />
                 </button>
               )
             })()}
@@ -249,7 +249,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {/* Sort button */}
             <button
               onClick={() => handleToggleSort(fieldName)}
-              className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${getSortButtonClasses(fieldName, fieldType).replace('p-1', 'p-0.5')}`}
+              className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${getSortButtonClasses(fieldName, fieldType).replace('p-1', 'p-0.5')}`}
               title={getSortTooltip(getSortDirection(fieldName, query.order))}
             >
               {getSortIcon(getSortDirection(fieldName, query.order))}
@@ -259,7 +259,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(fieldName, fieldType)}
-            className="text-gray-600 hover:text-red-600 focus:outline-none flex-shrink-0"
+            className="text-gray-600 hover:text-red-600 focus:outline-hidden shrink-0"
           >
             <XMarkIcon className="w-4 h-4" />
           </button>
@@ -291,14 +291,14 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               return (
                 <button
                   onClick={() => handleAddFilterFromField(timeDimension.dimension, 'timeDimensions')}
-                  className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${
+                  className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
                     hasDateRange 
                       ? 'text-blue-800 hover:text-blue-900' 
                       : 'text-gray-400 hover:text-gray-600'
                   }`}
                   title="Add date range"
                 >
-                  <FunnelIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-[3]' : ''}`} />
+                  <FunnelIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-3' : ''}`} />
                 </button>
               )
             })()}
@@ -306,7 +306,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {/* Sort button */}
             <button
               onClick={() => handleToggleSort(timeDimension.dimension)}
-              className={`focus:outline-none flex-shrink-0 p-0.5 transition-colors ${getSortButtonClasses(timeDimension.dimension, 'timeDimensions').replace('p-1', 'p-0.5')}`}
+              className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${getSortButtonClasses(timeDimension.dimension, 'timeDimensions').replace('p-1', 'p-0.5')}`}
               title={getSortTooltip(getSortDirection(timeDimension.dimension, query.order))}
             >
               {getSortIcon(getSortDirection(timeDimension.dimension, query.order))}
@@ -316,7 +316,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-            className="text-gray-600 hover:text-red-600 focus:outline-none"
+            className="text-gray-600 hover:text-red-600 focus:outline-hidden"
           >
             <XMarkIcon className="w-4 h-4" />
           </button>
@@ -328,7 +328,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         <select
           value={timeDimension.granularity || 'month'}
           onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
-          className="bg-blue-100 border-none text-blue-800 text-xs rounded focus:ring-2 focus:ring-blue-500 flex-1"
+          className="bg-blue-100 border-none text-blue-800 text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
           onClick={(e) => e.stopPropagation()}
         >
           {TIME_GRANULARITIES.map(granularity => (
@@ -366,7 +366,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {onSchemaClick && (
               <button
                 onClick={onSchemaClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 flex-shrink-0"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
                 title="Schema Explorer - View cube relationships and fields"
               >
                 <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -378,7 +378,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {onAIAssistantClick && (
               <button
                 onClick={onAIAssistantClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200 flex-shrink-0"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
                 title="AI Assistant - Generate queries with AI"
               >
                 <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -386,7 +386,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               </button>
             )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {hasContent && (
               <>
                 <span className="hidden lg:inline text-xs text-gray-500 mr-1">
@@ -394,7 +394,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 </span>
                 <button
                   onClick={handleCopyQuery}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-sm hover:bg-purple-200 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                   title="Copy query to clipboard"
                 >
                   <ClipboardDocumentIcon className="w-3 h-3" />
@@ -403,7 +403,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 {onClearQuery && (
                   <button
                     onClick={onClearQuery}
-                    className="text-gray-400 hover:text-red-600 focus:outline-none p-2"
+                    className="text-gray-400 hover:text-red-600 focus:outline-hidden p-2"
                     title="Clear all fields"
                   >
                     <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -414,7 +414,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {showSettings && onSettingsClick && (
               <button
                 onClick={onSettingsClick}
-                className="text-gray-400 hover:text-gray-600 focus:outline-none p-2"
+                className="text-gray-400 hover:text-gray-600 focus:outline-hidden p-2"
                 title="API Configuration"
               >
                 <CogIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -538,7 +538,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     setShowJsonPreview(newJsonState)
                     if (newJsonState) setShowSqlPreview(false) // Hide SQL when showing JSON
                   }}
-                  className="text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
+                  className="text-sm text-gray-600 hover:text-gray-800 focus:outline-hidden focus:underline"
                 >
                   {showJsonPreview ? 'Hide' : 'Show'} JSON Query
                 </button>
@@ -549,7 +549,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                       setShowSqlPreview(newSqlState)
                       if (newSqlState) setShowJsonPreview(false) // Hide JSON when showing SQL
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800 focus:outline-none focus:underline"
+                    className="text-sm text-gray-600 hover:text-gray-800 focus:outline-hidden focus:underline"
                   >
                     {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
                   </button>

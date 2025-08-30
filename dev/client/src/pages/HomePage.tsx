@@ -33,7 +33,7 @@ export default function HomePage() {
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-12 sm:mb-16">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4 sm:mb-6">            
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4 sm:mb-6">            
             Drizzle Cube Dev Server
           </h1>          
           <p className="text-base sm:text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed px-2">
@@ -44,7 +44,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
           <Link
             to="/dashboards"
-            className="group bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation"
+            className="group bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">
@@ -57,9 +57,9 @@ export default function HomePage() {
           
           <Link
             to="/query-builder"
-            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation relative"
+            className="group bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation relative"
           >
-            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 shadow-md z-10">
+            <div className="absolute -top-2 -right-2 bg-linear-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 shadow-md z-10">
               <SparklesIcon className="w-3 h-3" />
               <span>AI Enabled</span>
             </div>
@@ -76,7 +76,7 @@ export default function HomePage() {
             href="https://www.drizzle-cube.dev"
             target="_blank"
             rel="noopener noreferrer"
-            className="group bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation"
+            className="group bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-purple-100 group-hover:bg-purple-200 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">
@@ -91,7 +91,7 @@ export default function HomePage() {
             href="https://github.com/cliftonc/drizzle-cube"
             target="_blank"
             rel="noopener noreferrer"
-            className="group bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs hover:shadow-md touch-manipulation"
+            className="group bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-gray-100 group-hover:bg-gray-200 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">

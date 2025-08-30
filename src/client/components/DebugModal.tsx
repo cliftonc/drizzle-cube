@@ -69,15 +69,15 @@ export default function DebugModal({
 
   return (
     <div 
-      className="absolute inset-0 bg-white border border-gray-200 rounded-lg z-[9999] overflow-auto"
+      className="absolute inset-0 bg-white border border-gray-200 rounded-lg z-9999 overflow-auto"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="p-4 h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <div className="flex justify-between items-center mb-4 shrink-0">
           <h2 className="text-lg font-semibold">Chart Debug Information</h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-sm"
           >
             <svg 
               width="16" 
@@ -96,14 +96,14 @@ export default function DebugModal({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-auto">
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-2">Chart Type</h3>
-            <div className="bg-gray-50 p-2 rounded text-sm font-mono border">
+            <div className="bg-gray-50 p-2 rounded-sm text-sm font-mono border">
               {chartType}
             </div>
           </div>
 
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-2">Field Analysis</h3>
-            <div className="bg-gray-50 p-2 rounded text-xs space-y-1 border">
+            <div className="bg-gray-50 p-2 rounded-sm text-xs space-y-1 border">
               <div>
                 <strong>xAxis:</strong> {Array.isArray(chartConfig?.xAxis) ? `Array: [${chartConfig.xAxis.join(', ')}]` : `String: "${chartConfig?.xAxis}"`}
               </div>
@@ -128,35 +128,35 @@ export default function DebugModal({
 
           <div className="lg:col-span-2">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Chart Config</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(chartConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Display Config</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(displayConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Query Object</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(queryObject, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Data Sample (first 3 rows)</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(data?.slice(0, 3) || [], null, 2)}</code>
             </pre>
           </div>
         </div>
 
-        <div className="mt-4 pt-2 border-t border-gray-200 text-xs text-gray-500 flex-shrink-0">
-          Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs">ESC</kbd> to close
+        <div className="mt-4 pt-2 border-t border-gray-200 text-xs text-gray-500 shrink-0">
+          Press <kbd className="px-1 py-0.5 bg-gray-100 rounded-sm text-xs">ESC</kbd> to close
         </div>
       </div>
     </div>

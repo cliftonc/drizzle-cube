@@ -35,7 +35,7 @@ function VarianceHistogram({
   if (range === 0 || variances.length === 0) {
     return (
       <div 
-        className="flex items-center justify-center bg-gray-50 rounded border"
+        className="flex items-center justify-center bg-gray-50 rounded-sm border"
         style={{ width: `${width}px`, height: `${height}px` }}
       >
         <span className="text-xs text-gray-500">No variance data</span>
@@ -77,7 +77,7 @@ function VarianceHistogram({
           return (
             <div
               key={index}
-              className="absolute rounded-sm opacity-70"
+              className="absolute rounded-xs opacity-70"
               style={{
                 left: `${(index / variances.length) * 100}%`,
                 width: `${barWidth}px`,

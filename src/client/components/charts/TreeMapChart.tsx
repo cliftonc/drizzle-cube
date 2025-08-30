@@ -339,7 +339,7 @@ export default function TreeMapChart({
                     })).toFixed(2)}
                   </span>
                   <div 
-                    className="h-4 rounded"
+                    className="h-4 rounded-sm"
                     style={{ 
                       width: '200px',
                       background: `linear-gradient(to right, ${CHART_COLORS_GRADIENT.join(', ')})`
@@ -359,7 +359,7 @@ export default function TreeMapChart({
                 {legendPayload.map((item, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <div 
-                      className="w-3 h-3 rounded-sm"
+                      className="w-3 h-3 rounded-xs"
                       style={{ backgroundColor: item.color }}
                     />
                     <span className="text-xs text-gray-600">

@@ -17,10 +17,10 @@ export function ERDControls({
 
 
   return (
-    <div className="flex items-center gap-1 bg-white rounded-md shadow-sm border border-gray-200 px-2 py-1">
+    <div className="flex items-center gap-1 bg-white rounded-md shadow-xs border border-gray-200 px-2 py-1">
       <button
         onClick={handleFitView}
-        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded-sm transition-colors"
         title="Fit to view"
       >
         Fit
@@ -28,7 +28,7 @@ export function ERDControls({
       
       <button
         onClick={() => zoomIn()}
-        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded-sm transition-colors"
         title="Zoom in"
       >
         Zoom+
@@ -36,7 +36,7 @@ export function ERDControls({
       
       <button
         onClick={() => zoomOut()}
-        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded-sm transition-colors"
         title="Zoom out"
       >
         Zoom-
@@ -50,7 +50,7 @@ export function ERDControls({
             onAutoLayout()
           }
         }}
-        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        className="px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 rounded-sm transition-colors"
         title="Apply automatic layout"
       >
         Auto Layout

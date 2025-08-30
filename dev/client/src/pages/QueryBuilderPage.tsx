@@ -16,7 +16,7 @@ export default function QueryBuilderPage() {
           Build and test queries against your cube schema. Select dimensions, measures, and time dimensions 
           from the schema explorer, then validate and run your queries to see results.
         </p>
-        <div className="mt-4 px-4 py-3 bg-gradient-to-br from-purple-50 via-violet-50 to-pink-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
+        <div className="mt-4 px-4 py-3 bg-linear-to-br from-purple-50 via-violet-50 to-pink-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
           <div className="flex items-start">
             <span className="text-2xl mr-3">💡</span>
             <div>
@@ -24,7 +24,7 @@ export default function QueryBuilderPage() {
                 Demo Note
               </p>
               <p className="text-sm text-purple-700 mt-1">
-                This page demonstrates the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/QueryBuilder/index.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">QueryBuilder</code></a> React component from drizzle-cube/client that you can embed in your own application.
+                This page demonstrates the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/QueryBuilder/index.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded-sm text-xs font-mono">QueryBuilder</code></a> React component from drizzle-cube/client that you can embed in your own application.
               </p>
             </div>
           </div>

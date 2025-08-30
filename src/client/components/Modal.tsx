@@ -82,7 +82,7 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] backdrop-blur-md ${size === 'fullscreen-mobile' ? 'flex md:flex md:items-center md:justify-center' : 'flex items-center justify-center'}`}
+      className={`fixed inset-0 z-9999 backdrop-blur-md ${size === 'fullscreen-mobile' ? 'flex md:flex md:items-center md:justify-center' : 'flex items-center justify-center'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
       onClick={closeOnBackdropClick ? onClose : undefined}
     >

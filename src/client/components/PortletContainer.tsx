@@ -32,9 +32,9 @@ export default function PortletContainer({
   } | null>(null)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col h-full">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-xs flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 flex-shrink-0 bg-gray-50 rounded-t-lg px-3 py-2 md:px-6 md:py-3">
+      <div className="flex items-center justify-between border-b border-gray-200 shrink-0 bg-gray-50 rounded-t-lg px-3 py-2 md:px-6 md:py-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <h3 className="font-semibold text-sm truncate">{portlet.title}</h3>
           {/* Debug button - right next to title */}
@@ -55,7 +55,7 @@ export default function PortletContainer({
             <>
               <button
                 onClick={() => onRefresh?.(portlet.id)}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-600"
+                className="p-1.5 hover:bg-gray-200 rounded-sm text-gray-600"
                 title="Refresh"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,7 +64,7 @@ export default function PortletContainer({
               </button>
               <button
                 onClick={() => onEdit?.(portlet)}
-                className="p-1.5 hover:bg-gray-200 rounded text-gray-600"
+                className="p-1.5 hover:bg-gray-200 rounded-sm text-gray-600"
                 title="Edit"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -73,7 +73,7 @@ export default function PortletContainer({
               </button>
               <button
                 onClick={() => onDelete?.(portlet.id)}
-                className="p-1.5 hover:bg-red-100 rounded text-red-600"
+                className="p-1.5 hover:bg-red-100 rounded-sm text-red-600"
                 title="Delete"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

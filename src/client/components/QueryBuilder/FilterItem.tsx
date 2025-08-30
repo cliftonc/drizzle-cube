@@ -100,11 +100,11 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Helper function to get field type badge
   const getFieldTypeBadge = (field: MetaField) => {
     if (field.type === 'time') {
-      return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">T</span>
+      return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-sm">T</span>
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'number'].includes(field.type)) {
-      return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">M</span>
+      return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-sm">M</span>
     } else {
-      return <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">D</span>
+      return <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-sm">D</span>
     }
   }
 
@@ -144,13 +144,13 @@ const FilterItem: React.FC<FilterItemProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
         {/* Row 1 on mobile: Filter icon and field selection */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FunnelIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          <FunnelIcon className="w-4 h-4 text-gray-500 shrink-0" />
           
           {/* Field selection */}
           <div className="relative flex-1 min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
             >
               <span className="truncate">
                 {selectedField ? (
@@ -159,7 +159,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                   <span className="text-gray-500">Select field...</span>
                 )}
               </span>
-              <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-1 transition-transform ${
+              <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 ml-1 transition-transform ${
                 isFieldDropdownOpen ? 'transform rotate-180' : ''
               }`} />
             </button>
@@ -176,7 +176,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       placeholder="Search fields..."
                       value={fieldSearchTerm}
                       onChange={(e) => setFieldSearchTerm(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -193,7 +193,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         <button
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                             field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
                         >
@@ -225,7 +225,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       <button
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                           field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                         }`}
                       >
@@ -261,15 +261,15 @@ const FilterItem: React.FC<FilterItemProps> = ({
         {selectedField && (
           <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
             {/* Operator selection */}
-            <div className="relative flex-shrink-0">
+            <div className="relative shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <span className="truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
                 </span>
-                <ChevronDownIcon className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-1 transition-transform ${
+                <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 ml-1 transition-transform ${
                   isOperatorDropdownOpen ? 'transform rotate-180' : ''
                 }`} />
               </button>
@@ -280,7 +280,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                     <button
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                         operator.operator === filter.operator ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                       }`}
                     >
@@ -308,7 +308,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
         <div className="flex justify-end sm:justify-start">
           <button
             onClick={() => onFilterRemove(index)}
-            className="text-gray-400 hover:text-red-600 focus:outline-none flex-shrink-0"
+            className="text-gray-400 hover:text-red-600 focus:outline-hidden shrink-0"
             title="Remove filter"
           >
             <XMarkIcon className="w-4 h-4" />

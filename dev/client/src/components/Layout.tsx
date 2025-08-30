@@ -41,7 +41,7 @@ const FloatingGitHubButton = () => {
         title="View this page in GitHub"
       >
         <GitHubIcon className="w-6 h-6" />
-        <span className="absolute right-14 bg-gray-900 text-white px-2 py-1 rounded text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <span className="absolute right-14 bg-gray-900 text-white px-2 py-1 rounded-sm text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           View source
         </span>
       </a>
@@ -66,9 +66,9 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50">
       <FloatingGitHubButton />
-      <nav className="bg-white shadow-xs border-b relative z-10">
+      <nav className="bg-white shadow-2xs border-b relative z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Desktop layout */}
@@ -140,7 +140,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="md:hidden flex items-center">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 aria-expanded="false"
               >
                 <span className="sr-only">Open main menu</span>

@@ -48,7 +48,7 @@ export default function ColorPaletteSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-xs text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
         {/* Current Palette Preview - Hidden on mobile */}
         <div className="hidden md:flex items-center gap-1.5">
@@ -56,7 +56,7 @@ export default function ColorPaletteSelector({
             {currentPaletteObj.colors.slice(0, 4).map((color, index) => (
               <div
                 key={index}
-                className="w-3 h-3 rounded-sm border border-gray-200"
+                className="w-3 h-3 rounded-xs border border-gray-200"
                 style={{ backgroundColor: color }}
                 title={`Series Color ${index + 1}`}
               />
@@ -89,7 +89,7 @@ export default function ColorPaletteSelector({
                 key={palette.name}
                 type="button"
                 onClick={() => handlePaletteSelect(palette.name)}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                   palette.name === currentPalette ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                 }`}
               >
@@ -101,7 +101,7 @@ export default function ColorPaletteSelector({
                       {palette.colors.slice(0, 6).map((color, index) => (
                         <div
                           key={`series-${index}`}
-                          className="w-3 h-3 rounded-sm border border-gray-200"
+                          className="w-3 h-3 rounded-xs border border-gray-200"
                           style={{ backgroundColor: color }}
                         />
                       ))}

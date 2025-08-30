@@ -178,14 +178,14 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         <span className="text-sm text-gray-500">to</span>
         <input
           type="date"
           value={values[1] || ''}
           onChange={handleDateRangeEndInput}
-          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     )
@@ -214,7 +214,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
           onChange={handleBetweenStartInput}
           placeholder="Min"
-          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
         <span className="text-sm text-gray-500">to</span>
         <input
@@ -222,7 +222,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           value={values[1] !== undefined && values[1] !== null ? values[1] : ''}
           onChange={handleBetweenEndInput}
           placeholder="Max"
-          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     )
@@ -235,7 +235,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         type="date"
         value={values[0] || ''}
         onChange={handleDateInput}
-        className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
   }
@@ -248,7 +248,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
-        className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
   }
@@ -265,12 +265,12 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
               {values.map((value, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200"
+                  className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200"
                 >
                   <span className="mr-1">{String(value)}</span>
                   <button
                     onClick={() => handleValueRemove(value)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
                   >
                     <XMarkIcon className="w-3 h-3" />
                   </button>
@@ -288,7 +288,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 e.target.value = '' // Clear the input
               }
             }}
-            className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Add date..."
           />
         </div>
@@ -300,7 +300,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       )
     }
@@ -316,12 +316,12 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
             {values.map((value, index) => (
               <div
                 key={index}
-                className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200"
+                className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200"
               >
                 <span className="mr-1">{String(value)}</span>
                 <button
                   onClick={() => handleValueRemove(value)}
-                  className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
                 >
                   <XMarkIcon className="w-3 h-3" />
                 </button>
@@ -333,11 +333,11 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Single value display (for single-select) */}
         {!operatorMeta.supportsMultipleValues && values.length > 0 && (
           <div className="mb-2">
-            <div className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200">
+            <div className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200">
               <span className="mr-1">{String(values[0])}</span>
               <button
                 onClick={() => onValuesChange([])}
-                className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
               >
                 <XMarkIcon className="w-3 h-3" />
               </button>
@@ -348,7 +348,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Dropdown trigger */}
         <button
           onClick={handleDropdownToggle}
-          className="w-full text-left text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
+          className="w-full text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
         >
           <span className="text-gray-500 truncate">
             {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
@@ -366,7 +366,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 value={searchText}
                 onChange={handleSearchChange}
                 placeholder="Search values..."
-                className="w-full text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
               />
             </div>
@@ -393,7 +393,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                     <button
                       key={`${value}-${index}`}
                       onClick={() => handleValueSelect(value)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
                         isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                       }`}
                     >
@@ -419,7 +419,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
       onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
-      className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
     />
   )
 }

@@ -163,10 +163,10 @@ export default function DashboardViewPage() {
             </div>
             
             {/* Options menu */}
-            <div className="relative flex-shrink-0" data-options-menu>
+            <div className="relative shrink-0" data-options-menu>
               <button
                 onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                className="p-2 border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-md"
+                className="p-2 border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-md"
                 title="More options"
               >
                 <EllipsisHorizontalIcon className="w-5 h-5" />
@@ -201,7 +201,7 @@ export default function DashboardViewPage() {
             </div>
           </div>
           
-          <div className="mt-4 px-4 py-3 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
+          <div className="mt-4 px-4 py-3 bg-linear-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
             <div className="flex items-start">
               <span className="text-2xl mr-3">💡</span>
               <div>
@@ -209,7 +209,7 @@ export default function DashboardViewPage() {
                   Demo Note
                 </p>
                 <p className="text-sm text-purple-700 mt-1">
-                  This dashboard uses the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/AnalyticsDashboard.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded text-xs font-mono">AnalyticsDashboard</code></a> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates. These dashboards are limited to 20 portlets, in your implementation this limit does not need to apply.
+                  This dashboard uses the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/AnalyticsDashboard.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded-sm text-xs font-mono">AnalyticsDashboard</code></a> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates. These dashboards are limited to 20 portlets, in your implementation this limit does not need to apply.
                 </p>
               </div>
             </div>
@@ -249,14 +249,14 @@ export default function DashboardViewPage() {
             <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-xs text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto order-2 sm:order-1"
+                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-2xs text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto order-2 sm:order-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetDashboard}
                 disabled={resetPage.isPending}
-                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 w-full sm:w-auto order-1 sm:order-2"
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-2xs text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 w-full sm:w-auto order-1 sm:order-2"
               >
                 {resetPage.isPending ? 'Resetting...' : 'Reset Dashboard'}
               </button>

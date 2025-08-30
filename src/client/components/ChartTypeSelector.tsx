@@ -45,7 +45,7 @@ export default function ChartTypeSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <div className="flex items-center space-x-2">
           {SelectedIcon && (
@@ -100,7 +100,7 @@ export default function ChartTypeSelector({
                       {/* Icon */}
                       {IconComponent && (
                         <IconComponent 
-                          className={`h-4 w-4 flex-shrink-0 ${
+                          className={`h-4 w-4 shrink-0 ${
                             isSelected ? 'text-blue-600' : 'text-gray-600 group-hover:text-gray-800'
                           }`} 
                         />

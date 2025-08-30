@@ -192,10 +192,10 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   const renderQueryStep = () => (
     <div className="flex flex-col space-y-4">
       {/* Top: Config Panel - Full Width */}
-      <div className="flex-shrink-0 p-3 bg-gray-50 border border-gray-200 rounded-md">
+      <div className="shrink-0 p-3 bg-gray-50 border border-gray-200 rounded-md">
         <div className="text-sm text-gray-600">
           Using: <span className="font-medium">AI Query Generation</span>
-          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-sm">
             Server-provided AI (Rate Limited)
           </span>
         </div>
@@ -214,7 +214,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             onChange={(e) => setState(prev => ({ ...prev, userPrompt: e.target.value }))}
             onKeyDown={handleKeyDown}
             placeholder="e.g., Show me the total revenue by month for the last year (Press Enter to generate, Shift+Enter for new line)"
-            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
+            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs focus:outline-hidden focus:ring-blue-500 focus:border-blue-500 resize-none"
             required
           />
         </div>
@@ -246,7 +246,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           
           {state.response ? (
             <div className="flex-1 bg-green-50 border border-green-200 rounded-md p-3">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto bg-white p-3 rounded border h-full">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto bg-white p-3 rounded-sm border h-full">
                 {state.response}
               </pre>
             </div>
@@ -261,31 +261,31 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       </div>
       
       {/* Status Messages - Fixed height */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {state.responseError && (
           <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div className="text-sm text-red-700">{state.responseError}</div>
           </div>
         )}
         
         {state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mt-0.5 flex-shrink-0"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mt-0.5 shrink-0"></div>
             <div className="text-sm text-blue-700">Validating query...</div>
           </div>
         )}
         
         {state.validationResult === 'valid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-green-50 border border-green-200 rounded-md">
-            <CheckCircleIcon className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+            <CheckCircleIcon className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
             <div className="text-sm text-green-700">Query is valid and ready to use!</div>
           </div>
         )}
         
         {state.validationResult === 'invalid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div className="text-sm text-red-700">
               <div className="font-medium mb-1">Query validation failed:</div>
               <div className="text-xs">{state.validationError}</div>
@@ -295,12 +295,12 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       </div>
       
       {/* Bottom: Action Buttons - Right Aligned */}
-      <div className="flex-shrink-0 flex justify-end space-x-3 pt-3">
+      <div className="shrink-0 flex justify-end space-x-3 pt-3">
         <button
           type="submit"
           disabled={!state.userPrompt.trim() || state.isSubmitting}
           onClick={handleQuerySubmit}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
         >
           {state.isSubmitting ? (
             <>
@@ -320,7 +320,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         <button
           onClick={handleUseQuery}
           disabled={!state.response || !onQueryLoad}
-          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-hidden focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
         >
           <CheckCircleIcon className="w-4 h-4 mr-2" />
           Use Query

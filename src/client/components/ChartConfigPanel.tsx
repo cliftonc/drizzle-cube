@@ -271,7 +271,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-green-100 text-green-800 border border-green-200 hover:bg-green-200 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                           title={dim}
                         >
                           {dim}
@@ -299,7 +299,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                           title={dim}
                         >
                           {dim}
@@ -327,7 +327,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, measure, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                           title={measure}
                         >
                           {measure}
@@ -490,7 +490,7 @@ export default function ChartConfigPanel({
                         })}
                         placeholder={option.placeholder}
                         rows={8}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 font-mono resize-y"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-sm focus:ring-blue-500 focus:border-blue-500 font-mono resize-y"
                       />
                     ) : (
                       <input
@@ -501,7 +501,7 @@ export default function ChartConfigPanel({
                           [option.key]: e.target.value
                         })}
                         placeholder={option.placeholder}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded-sm focus:ring-blue-500 focus:border-blue-500"
                       />
                     )}
                     {option.description && (
@@ -524,7 +524,7 @@ export default function ChartConfigPanel({
                               ...displayConfig,
                               [option.key]: index
                             })}
-                            className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
+                            className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
                               isSelected 
                                 ? 'border-blue-600 ring-2 ring-blue-600 ring-offset-1 scale-110' 
                                 : 'border-gray-300 hover:border-gray-400'
@@ -542,7 +542,7 @@ export default function ChartConfigPanel({
                             ...displayConfig,
                             [option.key]: 0
                           })}
-                          className="w-8 h-8 rounded border-2 border-blue-600 ring-2 ring-blue-600 ring-offset-1"
+                          className="w-8 h-8 rounded-sm border-2 border-blue-600 ring-2 ring-blue-600 ring-offset-1"
                           style={{ backgroundColor: '#8884d8' }}
                           title="Default Color"
                         />
@@ -568,7 +568,7 @@ export default function ChartConfigPanel({
                       min={option.min}
                       max={option.max}
                       step={option.step}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-sm focus:ring-blue-500 focus:border-blue-500"
                     />
                     {option.description && (
                       <p className="text-xs text-gray-500">{option.description}</p>
@@ -585,7 +585,7 @@ export default function ChartConfigPanel({
                         ...displayConfig,
                         [option.key]: e.target.value
                       })}
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-sm focus:ring-blue-500 focus:border-blue-500"
                     >
                       {option.options?.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -610,7 +610,7 @@ export default function ChartConfigPanel({
                           ...displayConfig,
                           [option.key]: e.target.value
                         })}
-                        className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                        className="w-12 h-8 border border-gray-300 rounded-sm cursor-pointer"
                       />
                       <input
                         type="text"
@@ -620,7 +620,7 @@ export default function ChartConfigPanel({
                           [option.key]: e.target.value
                         })}
                         placeholder={option.placeholder || '#8884d8'}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-sm focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     {option.description && (

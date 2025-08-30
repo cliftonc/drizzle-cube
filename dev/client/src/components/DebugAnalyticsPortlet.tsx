@@ -43,13 +43,13 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
   console.log('useCubeQuery result:', { resultSet, error, isLoading, parsedQuery })
 
   return (
-    <div className="border p-4 bg-white rounded-sm">
+    <div className="border p-4 bg-white rounded-xs">
       <h3 className="font-bold mb-2">{title}</h3>
       
       <div className="text-xs space-y-2">
         <div>
           <strong>Query:</strong>
-          <pre className="bg-gray-100 p-2 rounded-sm text-xs overflow-auto">
+          <pre className="bg-gray-100 p-2 rounded-xs text-xs overflow-auto">
             <code className="language-json">{JSON.stringify(parsedQuery, null, 2)}</code>
           </pre>
         </div>
@@ -61,7 +61,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
         {error && (
           <div>
             <strong>useCubeQuery Error:</strong>
-            <pre className="bg-red-100 p-2 rounded-sm text-xs text-red-700">
+            <pre className="bg-red-100 p-2 rounded-xs text-xs text-red-700">
               <code className="language-json">{JSON.stringify(error, null, 2)}</code>
             </pre>
           </div>
@@ -70,7 +70,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
         {resultSet && (
           <div>
             <strong>useCubeQuery Data:</strong>
-            <pre className="bg-green-100 p-2 rounded-sm text-xs max-h-40 overflow-auto">
+            <pre className="bg-green-100 p-2 rounded-xs text-xs max-h-40 overflow-auto">
               <code className="language-json">{JSON.stringify(resultSet, null, 2)}</code>
             </pre>
           </div>
@@ -86,11 +86,11 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
           <div>
             <strong>Direct API Test:</strong>
             {networkTest.success ? (
-              <pre className="bg-blue-100 p-2 rounded-sm text-xs max-h-40 overflow-auto">
+              <pre className="bg-blue-100 p-2 rounded-xs text-xs max-h-40 overflow-auto">
                 <code className="language-json">{JSON.stringify(networkTest.data, null, 2)}</code>
               </pre>
             ) : (
-              <pre className="bg-red-100 p-2 rounded-sm text-xs text-red-700">
+              <pre className="bg-red-100 p-2 rounded-xs text-xs text-red-700">
                 <code className="language-json">{JSON.stringify(networkTest.error, null, 2)}</code>
               </pre>
             )}

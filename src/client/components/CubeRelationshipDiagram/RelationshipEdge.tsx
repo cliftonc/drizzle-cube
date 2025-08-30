@@ -82,7 +82,7 @@ export function RelationshipEdge({
           className="nodrag nopan"
         >
           <div 
-            className="bg-white border-2 rounded-md px-2 py-1 shadow-sm"
+            className="bg-white border-2 rounded-md px-2 py-1 shadow-xs"
             style={{ borderColor: color }}
           >
             <div className="text-center">
