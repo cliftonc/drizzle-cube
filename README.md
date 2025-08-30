@@ -2,7 +2,7 @@
 
 **Drizzle ORM-first semantic layer with Cube.js compatibility**
 
-<img width="1262" height="976" alt="color_1" src="https://github.com/user-attachments/assets/653bd6b4-ba55-4a60-a8d1-cb14e47e6aa6" />
+<img width="824" height="832" alt="home" src="https://github.com/user-attachments/assets/205f73ff-d2d3-4f9c-9777-f936540d5a2a" />
 
 Transform your Drizzle schema into a powerful, type-safe analytics platform with SQL injection protection and full TypeScript support.
 
