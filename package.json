@@ -140,7 +140,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-grid-layout": "^1.4.0",
-    "recharts": "^2.8.0"
+    "recharts": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -180,6 +180,7 @@
     "@hono/node-server": "^1.19.0",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
+    "@neondatabase/serverless": "^1.0.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -217,7 +218,7 @@
     "react-grid-layout": "^1.4.0",
     "react-hook-form": "^7.47.0",
     "react-resizable": "^3.0.5",
-    "recharts": "^2.8.0",
+    "recharts": "^3.0.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "sql-formatter": "^15.6.6",
     "supertest": "^7.0.0",
