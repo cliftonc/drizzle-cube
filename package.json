@@ -119,9 +119,9 @@
     "mysql",
     "sqlite"
   ],
-  "author": "Clifton Cunningham <clifton@clifton.io>",
+  "author": "Clifton Cunningham <clifton.cunningham@gmail.com>",
   "license": "MIT",
-  "homepage": "https://drizzle-cube.dev",
+  "homepage": "https://try.drizzle-cube.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/cliftonc/drizzle-cube.git"
