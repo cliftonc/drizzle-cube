@@ -19,7 +19,7 @@ describe('Express Adapter', () => {
   let currentSchema
 
   // Mock security context extractor
-  const mockGetSecurityContext = async (req: any, res: any) => testSecurityContexts.org1
+  const mockGetSecurityContext = async () => testSecurityContexts.org1
   
   // Helper function to create router options with correct schema and engine type
   const createRouterOptions = (customOptions = {}) => ({
@@ -153,7 +153,7 @@ describe('Express Adapter', () => {
     })
     customApp.use('/', customRouter)
 
-    const response = await request(customApp)
+    await request(customApp)
       .get('/api/analytics/meta')
       .expect(200)
   })

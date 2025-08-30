@@ -3,7 +3,7 @@
  * Provides a single interface for testing against different database types
  */
 
-import { sql } from 'drizzle-orm'
+// Test database utilities for multi-database testing
 import { SemanticLayerCompiler } from '../../src/server'
 import type { DatabaseExecutor } from '../../src/server'
 import type { DatabaseConfig } from './databases/types'
@@ -11,17 +11,6 @@ import { setupPostgresDatabase } from './databases/postgres/setup'
 import { setupMySQLDatabase } from './databases/mysql/setup'
 import { setupSQLiteDatabase } from './databases/sqlite/setup'
 
-// Dynamic schema imports based on database type
-function getSchema() {
-  const dbType = getTestDatabaseType()
-  if (dbType === 'mysql') {
-    return import('./databases/mysql/schema')
-  }
-  if (dbType === 'sqlite') {
-    return import('./databases/sqlite/schema')
-  }
-  return import('./databases/postgres/schema')
-}
 
 // Remove static schema exports - use dynamic functions instead
 // Tests should use createTestDatabaseExecutor() which handles schema dynamically
@@ -227,7 +216,7 @@ export async function createTestSemanticLayer(): Promise<{
   db: any
   close: () => void
 }> {
-  const { executor, close } = await createTestDatabaseExecutor()
+  const { close } = await createTestDatabaseExecutor()
   const dbType = getTestDatabaseType()
   
   let db: any
@@ -268,7 +257,7 @@ export async function createTestSemanticLayer(): Promise<{
 
 // Legacy functions for backward compatibility
 export const createTestDatabase = createTestDatabaseWithData
-export async function setupTestDatabase(db: any): Promise<void> {
+export async function setupTestDatabase(): Promise<void> {
   // This is now handled by the setup functions automatically
   console.log('setupTestDatabase is deprecated - data is set up automatically by createTestDatabaseWithData')
 }

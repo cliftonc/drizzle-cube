@@ -18,7 +18,7 @@ describe('Fastify Adapter', () => {
   let currentSchema
 
   // Mock security context extractor
-  const mockGetSecurityContext = async (request: any) => testSecurityContexts.org1
+  const mockGetSecurityContext = async () => testSecurityContexts.org1
   
   // Helper function to create plugin options with correct schema and engine type
   const createPluginOptions = (customOptions = {}) => ({

@@ -61,7 +61,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   testProductivityCube: Cube<any>
   testTimeEntriesCube: Cube<any>
 }> {
-  const { employees, departments, productivity, timeEntries, schema, dbTrue, dbFalse, dbDate } = await getTestSchema()
+  const { employees, departments, productivity, timeEntries, dbTrue, dbFalse } = await getTestSchema()
   
   // Declare cube variables first to handle forward references
   let testEmployeesCube: Cube<any>
@@ -161,7 +161,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'countDistinct',
         sql: employees.id,
         filters: [
-          (ctx) => eq(employees.active, dbTrue)
+          () => eq(employees.active, dbTrue)
         ]
       },
       inactiveCount: {
@@ -170,7 +170,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'countDistinct',
         sql: employees.id,
         filters: [
-          (ctx) => eq(employees.active, dbFalse)
+          () => eq(employees.active, dbFalse)
         ]
       },
       totalSalary: {
@@ -376,7 +376,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'count',
         sql: productivity.id,
         filters: [
-          (ctx) => eq(productivity.daysOff, dbFalse)
+          () => eq(productivity.daysOff, dbFalse)
         ]
       },
       daysOffCount: {
@@ -385,7 +385,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'count',
         sql: productivity.id,
         filters: [
-          (ctx) => eq(productivity.daysOff, dbTrue)
+          () => eq(productivity.daysOff, dbTrue)
         ]
       },
       
@@ -476,7 +476,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'count',
         sql: productivity.id,
         filters: [
-          (ctx) => sql`${productivity.linesOfCode} > 200`
+          () => sql`${productivity.linesOfCode} > 200`
         ]
       },
       happyWorkDays: {
@@ -485,7 +485,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'count',
         sql: productivity.id,
         filters: [
-          (ctx) => and(
+          () => and(
             eq(productivity.daysOff, dbFalse),
             sql`${productivity.happinessIndex} >= 7`
           )
