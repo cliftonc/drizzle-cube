@@ -3,7 +3,7 @@
  * Core semantic layer building blocks
  */
 
-import type { SQL, AnyColumn } from 'drizzle-orm'
+import type { SQL, AnyColumn, Table, Subquery, View } from 'drizzle-orm'
 import type { 
   SecurityContext, 
   DrizzleDatabase, 
@@ -14,15 +14,21 @@ import type {
 import type { SemanticQuery } from './query'
 
 /**
+ * Any queryable relation that can be used in FROM/JOIN clauses
+ * Supports tables, views, subqueries, and raw SQL expressions
+ */
+export type QueryableRelation = Table | View | Subquery | SQL
+
+/**
  * Base query definition that can be extended dynamically
  * Returns just the FROM/JOIN/WHERE setup, not a complete SELECT
  */
 export interface BaseQueryDefinition {
   /** Main table to query from */
-  from: any
+  from: QueryableRelation
   /** Optional joins to other tables */
   joins?: Array<{
-    table: any
+    table: QueryableRelation
     on: SQL
     type?: 'left' | 'right' | 'inner' | 'full'
   }>
