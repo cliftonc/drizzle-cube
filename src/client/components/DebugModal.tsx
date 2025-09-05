@@ -69,7 +69,7 @@ export default function DebugModal({
 
   return (
     <div 
-      className="absolute inset-0 bg-white border border-gray-200 rounded-lg z-9999 overflow-auto"
+      className="absolute inset-0 bg-white border border-gray-200 rounded-lg z-50 overflow-auto"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="p-4 h-full flex flex-col">
