@@ -193,7 +193,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         <button
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
                             field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                           }`}
                         >
@@ -225,7 +225,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       <button
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
                           field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                         }`}
                       >
@@ -280,7 +280,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                     <button
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
                         operator.operator === filter.operator ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                       }`}
                     >
@@ -308,7 +308,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
         <div className="flex justify-end sm:justify-start">
           <button
             onClick={() => onFilterRemove(index)}
-            className="text-gray-400 hover:text-red-600 focus:outline-hidden shrink-0"
+            className="text-gray-400 hover:text-red-600 focus:outline-none shrink-0"
             title="Remove filter"
           >
             <XMarkIcon className="w-4 h-4" />

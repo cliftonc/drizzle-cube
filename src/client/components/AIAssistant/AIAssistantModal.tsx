@@ -214,7 +214,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             onChange={(e) => setState(prev => ({ ...prev, userPrompt: e.target.value }))}
             onKeyDown={handleKeyDown}
             placeholder="e.g., Show me the total revenue by month for the last year (Press Enter to generate, Shift+Enter for new line)"
-            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs focus:outline-hidden focus:ring-blue-500 focus:border-blue-500 resize-none"
+            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
             required
           />
         </div>
@@ -300,7 +300,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           type="submit"
           disabled={!state.userPrompt.trim() || state.isSubmitting}
           onClick={handleQuerySubmit}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
         >
           {state.isSubmitting ? (
             <>
@@ -320,7 +320,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         <button
           onClick={handleUseQuery}
           disabled={!state.response || !onQueryLoad}
-          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-hidden focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
         >
           <CheckCircleIcon className="w-4 h-4 mr-2" />
           Use Query
