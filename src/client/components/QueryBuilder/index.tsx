@@ -662,7 +662,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
         {/* Schema Explorer with dynamic width based on view type */}
-        <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full max-w-[600px]' : 'md:w-1/3 max-w-[500px]'}`}>
+        <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3 max-w-[500px]'}`}>
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}
