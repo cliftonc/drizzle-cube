@@ -117,27 +117,27 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   }
   
   return (
-    <div className="space-y-4 bg-gray-50 rounded-lg p-4">
+    <div className="space-y-4 bg-dc-surface-secondary rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <FunnelIcon className="w-4 h-4 text-gray-500 mr-2" />
-          <h4 className="text-sm font-semibold text-gray-700">
+          <FunnelIcon className="w-4 h-4 text-dc-text-muted mr-2" />
+          <h4 className="text-sm font-semibold text-dc-text-secondary">
             Filters ({totalFilterCount})
           </h4>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {/* Clear all button */}
           {filters.length > 0 && (
             <button
               onClick={handleClearAllFilters}
-              className="text-xs text-gray-500 hover:text-red-600 focus:outline-hidden underline"
+              className="text-xs text-dc-text-muted hover:text-red-600 focus:outline-hidden underline"
             >
               Clear all
             </button>
           )}
-          
+
           {/* Add Filter button */}
           <button
             onClick={handleAddSimpleFilter}
@@ -145,7 +145,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-hidden focus:ring-2 ${
               hasFilterableFields
                 ? 'text-purple-700 bg-purple-100 border border-purple-200 hover:bg-purple-200 focus:ring-purple-500'
-                : 'text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed'
+                : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
             }`}
           >
             <PlusIcon className="w-3 h-3" />

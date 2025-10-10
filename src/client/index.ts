@@ -70,3 +70,15 @@ export type {
 
 // Utilities
 export { createDashboardLayout, formatChartData } from './utils/index'
+
+// Theme utilities
+export {
+  getThemeVariable,
+  setThemeVariable,
+  applyTheme,
+  resetTheme,
+  isDarkMode,
+  watchThemeChanges,
+  THEME_PRESETS
+} from './theme'
+export type { ThemeColorTokens, ThemeConfig } from './theme'

@@ -1,0 +1,233 @@
+/**
+ * drizzle-cube Theme Variables
+ *
+ * Semantic CSS custom properties for theming support.
+ * Parent applications can override these variables to customize the appearance
+ * and support light/dark themes or custom branding.
+ *
+ * Usage:
+ * - These variables are automatically available to all drizzle-cube components
+ * - Override in your app's CSS to customize the theme
+ * - Use [data-theme] attributes or CSS classes to switch themes
+ */
+
+@import "tailwindcss";
+
+/* ============================================================================
+   Light Theme (Default)
+   ============================================================================ */
+:root {
+  /* Surface Colors - Backgrounds for cards, modals, panels */
+  --dc-surface: #ffffff;
+  --dc-surface-secondary: #f9fafb;
+  --dc-surface-tertiary: #f3f4f6;
+  --dc-surface-hover: #f3f4f6;
+
+  /* Text Colors - Content text in various emphasis levels */
+  --dc-text: #111827;
+  --dc-text-secondary: #374151;
+  --dc-text-muted: #6b7280;
+  --dc-text-disabled: #9ca3af;
+
+  /* Border Colors - Dividers, outlines, borders */
+  --dc-border: #e5e7eb;
+  --dc-border-secondary: #d1d5db;
+  --dc-border-hover: #d1d5db;
+
+  /* Primary Colors - Main interactive elements */
+  --dc-primary: #3b82f6;
+  --dc-primary-hover: #2563eb;
+  --dc-primary-content: #ffffff;
+
+  /* Semantic State Colors */
+  --dc-success: #10b981;
+  --dc-success-bg: #d1fae5;
+  --dc-success-border: #6ee7b7;
+
+  --dc-warning: #f59e0b;
+  --dc-warning-bg: #fef3c7;
+  --dc-warning-border: #fcd34d;
+
+  --dc-error: #ef4444;
+  --dc-error-bg: #fee2e2;
+  --dc-error-border: #fca5a5;
+
+  --dc-info: #3b82f6;
+  --dc-info-bg: #dbeafe;
+  --dc-info-border: #93c5fd;
+
+  /* Danger Colors - Destructive actions */
+  --dc-danger: #dc2626;
+  --dc-danger-hover: #b91c1c;
+  --dc-danger-bg: #fee2e2;
+
+  /* Field Type Colors - For semantic field type badges */
+  --dc-dimension-bg: #dcfce7;
+  --dc-dimension-text: #166534;
+  --dc-dimension-border: #bbf7d0;
+
+  --dc-time-dimension-bg: #dbeafe;
+  --dc-time-dimension-text: #1e40af;
+  --dc-time-dimension-border: #93c5fd;
+
+  --dc-measure-bg: #fef3c7;
+  --dc-measure-text: #92400e;
+  --dc-measure-border: #fde68a;
+
+  /* Overlay Colors - Modal backdrops, overlays */
+  --dc-overlay: rgba(0, 0, 0, 0.75);
+  --dc-overlay-light: rgba(0, 0, 0, 0.5);
+
+  /* Shadow Colors - Elevation, depth */
+  --dc-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --dc-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --dc-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --dc-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --dc-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --dc-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* ============================================================================
+   Dark Theme
+   ============================================================================ */
+[data-theme="dark"],
+.dark,
+html.dark {
+  /* Surface Colors */
+  --dc-surface: #1e293b;
+  --dc-surface-secondary: #334155;
+  --dc-surface-tertiary: #475569;
+  --dc-surface-hover: #475569;
+
+  /* Text Colors */
+  --dc-text: #f1f5f9;
+  --dc-text-secondary: #e2e8f0;
+  --dc-text-muted: #cbd5e1;
+  --dc-text-disabled: #94a3b8;
+
+  /* Border Colors */
+  --dc-border: #475569;
+  --dc-border-secondary: #64748b;
+  --dc-border-hover: #64748b;
+
+  /* Primary Colors */
+  --dc-primary: #60a5fa;
+  --dc-primary-hover: #3b82f6;
+  --dc-primary-content: #0c4a6e;
+
+  /* Semantic State Colors */
+  --dc-success: #34d399;
+  --dc-success-bg: #064e3b;
+  --dc-success-border: #059669;
+
+  --dc-warning: #fbbf24;
+  --dc-warning-bg: #78350f;
+  --dc-warning-border: #d97706;
+
+  --dc-error: #f87171;
+  --dc-error-bg: #7f1d1d;
+  --dc-error-border: #dc2626;
+
+  --dc-info: #60a5fa;
+  --dc-info-bg: #1e3a8a;
+  --dc-info-border: #2563eb;
+
+  /* Danger Colors */
+  --dc-danger: #ef4444;
+  --dc-danger-hover: #dc2626;
+  --dc-danger-bg: #7f1d1d;
+
+  /* Field Type Colors - Dark mode versions */
+  --dc-dimension-bg: rgba(34, 197, 94, 0.3);
+  --dc-dimension-text: #86efac;
+  --dc-dimension-border: #16a34a;
+
+  --dc-time-dimension-bg: rgba(59, 130, 246, 0.3);
+  --dc-time-dimension-text: #93c5fd;
+  --dc-time-dimension-border: #2563eb;
+
+  --dc-measure-bg: rgba(245, 158, 11, 0.3);
+  --dc-measure-text: #fcd34d;
+  --dc-measure-border: #d97706;
+
+  /* Overlay Colors */
+  --dc-overlay: rgba(0, 0, 0, 0.85);
+  --dc-overlay-light: rgba(0, 0, 0, 0.6);
+
+  /* Shadow Colors - More subtle in dark mode */
+  --dc-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --dc-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --dc-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --dc-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --dc-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  --dc-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+}
+
+/* ============================================================================
+   DaisyUI Integration (Optional)
+   ============================================================================
+   If your parent app uses DaisyUI, these mappings will automatically
+   integrate drizzle-cube with your DaisyUI theme.
+
+   Uncomment or include in your parent app's CSS to enable:
+*/
+/*
+:root {
+  --dc-surface: var(--color-base-100);
+  --dc-surface-secondary: var(--color-base-200);
+  --dc-surface-tertiary: var(--color-base-300);
+  --dc-text: var(--color-base-content);
+  --dc-text-secondary: var(--color-neutral);
+  --dc-text-muted: var(--color-neutral-content);
+  --dc-border: var(--color-base-300);
+  --dc-primary: var(--color-primary);
+  --dc-primary-hover: var(--color-primary-focus);
+  --dc-primary-content: var(--color-primary-content);
+  --dc-success: var(--color-success);
+  --dc-success-bg: var(--color-success-content);
+  --dc-warning: var(--color-warning);
+  --dc-warning-bg: var(--color-warning-content);
+  --dc-error: var(--color-error);
+  --dc-error-bg: var(--color-error-content);
+  --dc-info: var(--color-info);
+  --dc-info-bg: var(--color-info-content);
+}
+*/
+
+/* ============================================================================
+   Tailwind Utilities for Theme Variables
+   ============================================================================
+   These utility class definitions allow using theme variables with Tailwind
+*/
+@layer utilities {
+  /* Background utilities */
+  .bg-dc-surface { background-color: var(--dc-surface); }
+  .bg-dc-surface-secondary { background-color: var(--dc-surface-secondary); }
+  .bg-dc-surface-tertiary { background-color: var(--dc-surface-tertiary); }
+
+  /* Text utilities */
+  .text-dc-text { color: var(--dc-text); }
+  .text-dc-text-secondary { color: var(--dc-text-secondary); }
+  .text-dc-text-muted { color: var(--dc-text-muted); }
+
+  /* Border utilities */
+  .border-dc-border { border-color: var(--dc-border); }
+  .border-dc-border-secondary { border-color: var(--dc-border-secondary); }
+
+  /* Hover utilities */
+  .hover\:bg-dc-surface-hover:hover { background-color: var(--dc-surface-hover); }
+  .hover\:border-dc-border-hover:hover { border-color: var(--dc-border-hover); }
+
+  /* Field Type utilities */
+  .bg-dc-dimension { background-color: var(--dc-dimension-bg); }
+  .text-dc-dimension { color: var(--dc-dimension-text); }
+  .border-dc-dimension { border-color: var(--dc-dimension-border); }
+
+  .bg-dc-time-dimension { background-color: var(--dc-time-dimension-bg); }
+  .text-dc-time-dimension { color: var(--dc-time-dimension-text); }
+  .border-dc-time-dimension { border-color: var(--dc-time-dimension-border); }
+
+  .bg-dc-measure { background-color: var(--dc-measure-bg); }
+  .text-dc-measure { color: var(--dc-measure-text); }
+  .border-dc-measure { border-color: var(--dc-measure-border); }
+}

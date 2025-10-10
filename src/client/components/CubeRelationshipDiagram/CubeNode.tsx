@@ -56,8 +56,8 @@ export function CubeNode({ data }: CubeNodeProps) {
 
   const getFieldVisibilityClasses = (field: { name: string; title?: string; type?: string }, isHighlighted: boolean, fieldType: 'measure' | 'dimension') => {
     const isSearchMatch = isFieldSearchMatch(field)
-    const baseClasses = 'px-4 py-2 text-xs cursor-pointer transition-all border-b border-gray-100 last:border-b-0'
-    
+    const baseClasses = 'px-4 py-2 text-xs cursor-pointer transition-all border-b border-dc-border last:border-b-0'
+
     // If the whole cube has no matches, rely on cube-level fading
     if (!hasCubeMatches && searchTerm?.trim()) {
       // Still show selected field highlighting even in faded cubes
@@ -72,19 +72,19 @@ export function CubeNode({ data }: CubeNodeProps) {
           }
         }
       }
-      return `${baseClasses} hover:bg-gray-50 text-gray-700`
+      return `${baseClasses} hover:bg-dc-surface-hover text-dc-text-secondary`
     }
-    
+
     // If searching and this specific field doesn't match, make it faded
     if (searchTerm?.trim() && !isSearchMatch) {
-      return `${baseClasses} opacity-40 hover:opacity-60 text-gray-400`
+      return `${baseClasses} opacity-40 hover:opacity-60 text-dc-text-muted`
     }
-    
+
     // If searching and this field matches, make it prominent with bold purple text
     if (searchTerm?.trim() && isSearchMatch && !isHighlighted) {
-      return `${baseClasses} text-purple-700 font-bold hover:bg-purple-50`
+      return `${baseClasses} font-bold hover:bg-purple-50`
     }
-    
+
     // Normal highlighting behavior for selected fields (takes priority over search match styling)
     if (isHighlighted) {
       if (fieldType === 'measure') {
@@ -98,38 +98,41 @@ export function CubeNode({ data }: CubeNodeProps) {
         }
       }
     }
-    
-    return `${baseClasses} hover:bg-gray-50 text-gray-700`
+
+    return `${baseClasses} hover:bg-dc-surface-hover text-dc-text-secondary`
   }
 
   return (
-    <div 
+    <div
       className={`
-        bg-white border-2 rounded-lg shadow-lg min-w-[280px] overflow-hidden transition-all
+        border-2 rounded-lg shadow-lg min-w-[280px] overflow-hidden transition-all
         ${!hasCubeMatches && searchTerm?.trim() ? 'opacity-30 grayscale' : ''}
-        ${isHighlighted ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-300'}
+        ${isHighlighted ? 'border-purple-500 ring-2 ring-purple-200' : 'border-dc-border'}
       `}
+      style={{
+        backgroundColor: 'var(--dc-surface)'
+      }}
     >
       {/* Cube Header */}
-      <div 
+      <div
         className={`
           px-4 py-3 cursor-pointer transition-colors
-          ${isHighlighted ? 'bg-purple-100 hover:bg-purple-200' : 'bg-gray-50 hover:bg-gray-100'}
+          ${isHighlighted ? 'bg-purple-100 hover:bg-purple-200' : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'}
         `}
         onClick={handleCubeHeaderClick}
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900 text-sm">
+            <h3 className="font-semibold text-dc-text text-sm">
               {cube.title || cube.name}
             </h3>
             {cube.description && (
-              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+              <p className="text-xs text-dc-text-muted mt-1 line-clamp-2">
                 {cube.description}
               </p>
             )}
           </div>
-          <div className="text-xs text-gray-500 ml-2">
+          <div className="text-xs text-dc-text-muted ml-2">
             <div>{cube.measures.length}M</div>
             <div>{cube.dimensions.length}D</div>
           </div>
@@ -138,8 +141,8 @@ export function CubeNode({ data }: CubeNodeProps) {
 
       {/* Measures Section */}
       {cube.measures.length > 0 && (
-        <div className="border-t border-gray-200">
-          <div className="px-4 py-2 bg-amber-50 border-b border-gray-200">
+        <div className="border-t border-dc-border">
+          <div className="px-4 py-2 bg-amber-50 border-b border-dc-border">
             <h4 className="text-xs font-medium text-amber-800 flex items-center">
               <span className="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
               Measures ({cube.measures.length})
@@ -160,7 +163,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                     <span className="font-mono truncate">
                       {measure.shortTitle || measure.title || fieldName}
                     </span>
-                    <span className="text-gray-500 ml-2 text-[10px] uppercase">
+                    <span className="text-dc-text-muted ml-2 text-[10px] uppercase">
                       {measure.type}
                     </span>
                   </div>
@@ -173,8 +176,8 @@ export function CubeNode({ data }: CubeNodeProps) {
 
       {/* Time Dimensions Section */}
       {cube.dimensions.filter(d => d.type === 'time').length > 0 && (
-        <div className="border-t border-gray-200">
-          <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
+        <div className="border-t border-dc-border">
+          <div className="px-4 py-2 bg-blue-50 border-b border-dc-border">
             <h4 className="text-xs font-medium text-blue-800 flex items-center">
               <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
               Time Dimensions ({cube.dimensions.filter(d => d.type === 'time').length})
@@ -195,7 +198,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                     <span className="font-mono truncate">
                       {dimension.shortTitle || dimension.title || fieldName}
                     </span>
-                    <span className="text-gray-500 ml-2 text-[10px] uppercase">
+                    <span className="text-dc-text-muted ml-2 text-[10px] uppercase">
                       {dimension.type}
                     </span>
                   </div>
@@ -208,8 +211,8 @@ export function CubeNode({ data }: CubeNodeProps) {
 
       {/* Dimensions Section (non-time) */}
       {cube.dimensions.filter(d => d.type !== 'time').length > 0 && (
-        <div className="border-t border-gray-200">
-          <div className="px-4 py-2 bg-green-50 border-b border-gray-200">
+        <div className="border-t border-dc-border">
+          <div className="px-4 py-2 bg-green-50 border-b border-dc-border">
             <h4 className="text-xs font-medium text-green-800 flex items-center">
               <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
               Dimensions ({cube.dimensions.filter(d => d.type !== 'time').length})
@@ -230,13 +233,13 @@ export function CubeNode({ data }: CubeNodeProps) {
                     <span className="font-mono truncate">
                       {dimension.shortTitle || dimension.title || fieldName}
                     </span>
-                    <span className="text-gray-500 ml-2 text-[10px] uppercase">
+                    <span className="text-dc-text-muted ml-2 text-[10px] uppercase">
                       {dimension.type}
                     </span>
                   </div>
                 </div>
               )
-            })}  
+            })}
           </div>
         </div>
       )}

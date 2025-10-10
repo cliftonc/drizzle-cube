@@ -46,23 +46,24 @@ function VarianceHistogram({
   return (
     <div className="flex items-center space-x-2">
       {/* Histogram bars */}
-      <div 
-        className="relative flex items-center justify-center" 
-        style={{ 
-          width: `${width}px`, 
+      <div
+        className="relative flex items-center justify-center"
+        style={{
+          width: `${width}px`,
           height: `${height}px`
         }}
       >
         {/* Zero line indicator */}
         <div
-          className="absolute bg-gray-400"
+          className="absolute"
           style={{
             left: 0,
             right: 0,
             height: '1px',
             top: '50%',
             transform: 'translateY(-50%)',
-            zIndex: 1
+            zIndex: 1,
+            backgroundColor: 'var(--dc-border)'
           }}
         />
         
@@ -122,7 +123,7 @@ function VarianceHistogram({
       </div>
       
       {/* Variance labels on the right */}
-      <div className="flex flex-col justify-between text-xs text-gray-500" style={{ height: `${height}px` }}>
+      <div className="flex flex-col justify-between text-xs text-dc-text-muted" style={{ height: `${height}px` }}>
         <span>+{Math.abs(maxVariance).toFixed(0)}%</span>
         <span>-{Math.abs(minVariance).toFixed(0)}%</span>
       </div>
@@ -189,11 +190,14 @@ export default function KpiDelta({
 
   if (!data || data.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-gray-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">
@@ -218,11 +222,14 @@ export default function KpiDelta({
 
   if (valueFields.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-red-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-danger-bg)',
+          color: 'var(--dc-danger)',
+          borderColor: 'var(--dc-danger-border)'
         }}
       >
         <div className="text-center">
@@ -256,11 +263,14 @@ export default function KpiDelta({
 
   if (values.length < 2) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-orange-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">
@@ -337,9 +347,9 @@ export default function KpiDelta({
       }}
     >
       {/* Field Label */}
-      <div 
-        className="text-gray-700 font-bold text-center mb-2"
-        style={{ 
+      <div
+        className="text-dc-text-secondary font-bold text-center mb-2"
+        style={{
           fontSize: '14px',
           lineHeight: '1.2'
         }}
@@ -404,9 +414,9 @@ export default function KpiDelta({
 
       {/* Unit/Suffix */}
       {displayConfig.suffix && (
-        <div 
-          className="text-gray-500 text-center mb-3"
-          style={{ 
+        <div
+          className="text-dc-text-muted text-center mb-3"
+          style={{
             fontSize: '14px',
             lineHeight: '1.2',
             opacity: 0.8

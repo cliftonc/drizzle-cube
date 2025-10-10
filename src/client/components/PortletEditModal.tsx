@@ -426,15 +426,18 @@ export default function PortletEditModal({
       <button
         type="button"
         onClick={handleBackToForm}
-        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-none focus:ring-2 focus:ring-dc-primary"
       >
         Back to Form
       </button>
       <button
         type="button"
         onClick={handleApplyQueryBuilderQuery}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        style={{ backgroundColor: 'var(--dc-primary)', color: '#ffffff' }}
         title="Apply query to form"
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-primary-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-primary)'}
       >
         Apply Query
       </button>
@@ -444,16 +447,19 @@ export default function PortletEditModal({
       <button
         type="button"
         onClick={handleClose}
-        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-none focus:ring-2 focus:ring-dc-primary"
       >
         Cancel
       </button>
       <button
         type="submit"
         form="portlet-form"
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+        style={{ backgroundColor: 'var(--dc-primary)', color: '#ffffff' }}
         disabled={shouldSkipQuery ? !formTitle.trim() : (!formTitle.trim() || !query.trim() || (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')))}
         title={!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) ? "Please validate your query before saving" : ""}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-primary-hover)'}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-primary)'}
       >
         {submitText}
       </button>
@@ -485,22 +491,22 @@ export default function PortletEditModal({
           <div className="flex-1 flex flex-col gap-4">
             {/* Title */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-dc-text-secondary mb-1">
                 Title
               </label>
               <input
                 type="text"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-none focus:ring-2 focus:ring-dc-primary focus:border-dc-primary"
                 placeholder="Enter portlet title..."
-                required                
+                required
               />
             </div>
 
             {/* Chart Type */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-dc-text-secondary mb-3">
                 Chart Type
               </label>
               <ChartTypeSelector
@@ -514,14 +520,14 @@ export default function PortletEditModal({
             {!shouldSkipQuery && (
               <div className="flex-1 flex flex-col">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-semibold text-gray-700">
+                  <label className="block text-sm font-semibold text-dc-text-secondary">
                     Cube.js Query (JSON)
                   </label>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={handleOpenQueryBuilder}
-                      className="text-xs px-2 py-1 text-purple-600 bg-white hover:bg-purple-50 rounded-sm border border-purple-600 hover:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="text-xs px-2 py-1 text-purple-600 dark:text-purple-300 bg-dc-surface hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-sm border border-purple-600 dark:border-purple-700 hover:border-purple-700 dark:hover:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       Edit in Query Builder
                     </button>
@@ -530,7 +536,7 @@ export default function PortletEditModal({
                 <textarea
                   value={query}
                   onChange={(e) => handleQueryChange(e.target.value)}
-                  className="flex-1 w-full min-h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs resize-y"
+                  className="flex-1 w-full min-h-64 px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-none focus:ring-2 focus:ring-dc-primary focus:border-dc-primary font-mono text-xs resize-y"
                   placeholder={`{
   "measures": ["People.count"],
   "dimensions": ["People.active"]
@@ -543,12 +549,12 @@ export default function PortletEditModal({
 
           {/* Right side - Chart Configuration */}
           <div className="flex-1 flex flex-col">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-dc-text-secondary mb-1">
               {shouldSkipQuery ? 'Chart Configuration' : 'Chart Axis Configuration'}
             </label>
-            
+
             {shouldSkipQuery ? (
-              <div className="rounded-lg bg-white p-3 border border-gray-200">
+              <div className="rounded-lg bg-dc-surface p-3 border border-dc-border">
                 <ChartConfigPanel
                   chartType={chartType}
                   chartConfig={chartConfig}
@@ -560,8 +566,8 @@ export default function PortletEditModal({
                 />
               </div>
             ) : (!dryRunData || !isQueryValidAndCurrent) ? (
-              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-                <div className="text-center text-gray-500">
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-dc-border rounded-lg bg-dc-surface-secondary">
+                <div className="text-center text-dc-text-muted">
                   <svg className="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                   </svg>
@@ -569,7 +575,7 @@ export default function PortletEditModal({
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg bg-white p-3 border border-gray-200">
+              <div className="rounded-lg bg-dc-surface p-3 border border-dc-border">
                 <ChartConfigPanel
                   chartType={chartType}
                   chartConfig={chartConfig}
@@ -588,12 +594,12 @@ export default function PortletEditModal({
         {!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
           <div className={`rounded-lg p-4 ${
             validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-              ? 'bg-green-50'
+              ? 'bg-green-50 dark:bg-green-900/30'
               : validationResult && !validationResult.isValid
-              ? 'bg-red-50'
+              ? 'bg-red-50 dark:bg-red-900/30'
               : hasQueryChanged
-              ? 'bg-amber-50'
-              : 'bg-gray-50'
+              ? 'bg-amber-50 dark:bg-amber-900/30'
+              : 'bg-dc-surface-secondary'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -609,12 +615,12 @@ export default function PortletEditModal({
                 <div>
                   <h3 className={`text-sm font-medium ${
                     validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-                      ? 'text-green-800'
+                      ? 'text-green-800 dark:text-green-300'
                       : validationResult && !validationResult.isValid
-                      ? 'text-red-800'
+                      ? 'text-red-800 dark:text-red-300'
                       : hasQueryChanged
-                      ? 'text-amber-800'
-                      : 'text-gray-700'
+                      ? 'text-amber-800 dark:text-amber-300'
+                      : 'text-dc-text-secondary'
                   }`}>
                     {validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
                       ? 'Query validated successfully'
@@ -627,14 +633,14 @@ export default function PortletEditModal({
                   </h3>
                   {validationResult && (
                     <p className={`text-xs mt-1 ${
-                      validationResult.isValid ? 'text-green-600' : 'text-red-600'
+                      validationResult.isValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {validationResult.message}
                     </p>
                   )}
                 </div>
               </div>
-              
+
               <button
                 type="button"
                 onClick={handleValidateQuery}
@@ -644,8 +650,8 @@ export default function PortletEditModal({
                     ? 'bg-green-600 text-white hover:bg-green-700'
                     : validationResult && !validationResult.isValid
                     ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    : 'bg-dc-primary text-white hover:bg-dc-primary-hover'
+                } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-dc-primary`}
               >
                 {isValidating ? (
                   <>
@@ -678,14 +684,14 @@ export default function PortletEditModal({
         {/* Sample Queries - only show for create mode */}
         {!isEditMode && (
           <div>
-            <label className="block text-sm text-gray-600 mb-2">Sample Queries (click to use)</label>
+            <label className="block text-sm text-dc-text-muted mb-2">Sample Queries (click to use)</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {SAMPLE_QUERIES.map((sample, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => handleSampleQuery(sample.query)}
-                  className="px-2 py-1 text-xs text-gray-700 bg-gray-100 border border-gray-300 rounded-sm cursor-pointer transition-all duration-200 ease-in-out hover:bg-gray-200 hover:border-gray-400 m-0.5"
+                  className="px-2 py-1 text-xs text-dc-text-secondary bg-dc-surface-secondary border border-dc-border rounded-sm cursor-pointer transition-all duration-200 ease-in-out hover:bg-dc-surface-hover hover:border-dc-border m-0.5"
                 >
                   {sample.name}
                 </button>

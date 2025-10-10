@@ -4,6 +4,7 @@ import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
+import { isDarkMode, watchThemeChanges } from '../../theme'
 import type { ChartProps } from '../../types'
 
 interface BubbleData {
@@ -28,7 +29,17 @@ export default function BubbleChart({
   const [, setHoveredBubble] = useState<string | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [dimensionsReady, setDimensionsReady] = useState(false)
+  const [isDark, setIsDark] = useState(false)
   const { getFieldLabel } = useCubeContext()
+
+  // Watch for theme changes
+  useEffect(() => {
+    setIsDark(isDarkMode())
+    const unwatch = watchThemeChanges((darkMode) => {
+      setIsDark(darkMode)
+    })
+    return unwatch
+  }, [])
 
   const safeDisplayConfig = {
     showLegend: displayConfig?.showLegend ?? true,
@@ -249,50 +260,89 @@ export default function BubbleChart({
         .range([CHART_COLORS[0]])
     }
 
+    // Get theme colors from CSS variables
+    const getThemeColor = (varName: string, fallback: string) => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+      return value || fallback
+    }
+
+    const textColor = isDark
+      ? getThemeColor('--dc-text-muted', '#cbd5e1')  // Lighter text for dark mode
+      : getThemeColor('--dc-text-secondary', '#374151')  // Darker text for light mode
+    const gridColor = isDark
+      ? getThemeColor('--dc-border', '#475569')  // Lighter grid for dark mode
+      : '#9ca3af'  // Much darker gray for light mode visibility
+
     // Add grid
     if (safeDisplayConfig.showGrid) {
       // X-axis grid
-      g.append('g')
+      const xGrid = g.append('g')
         .attr('class', 'grid')
         .attr('transform', `translate(0,${chartHeight})`)
         .call(axisBottom(xScale)
           .tickSize(-chartHeight)
           .tickFormat(() => '')
         )
+
+      xGrid.selectAll('line')
+        .style('stroke', gridColor)
         .style('stroke-dasharray', '3,3')
         .style('opacity', 0.3)
 
+      xGrid.select('.domain')
+        .style('stroke', 'none')
+
       // Y-axis grid
-      g.append('g')
+      const yGrid = g.append('g')
         .attr('class', 'grid')
         .call(axisLeft(yScale)
           .tickSize(-width)
           .tickFormat(() => '')
         )
+
+      yGrid.selectAll('line')
+        .style('stroke', gridColor)
         .style('stroke-dasharray', '3,3')
         .style('opacity', 0.3)
+
+      yGrid.select('.domain')
+        .style('stroke', 'none')
     }
 
     // Add X axis
-    g.append('g')
+    const xAxis = g.append('g')
       .attr('transform', `translate(0,${chartHeight})`)
       .call(axisBottom(xScale))
-      .append('text')
+
+    xAxis.selectAll('text')
+      .style('fill', textColor)
+
+    xAxis.selectAll('line, path')
+      .style('stroke', gridColor)
+
+    xAxis.append('text')
       .attr('x', width / 2)
       .attr('y', 35)
-      .attr('fill', 'currentColor')
+      .attr('fill', textColor)
       .style('text-anchor', 'middle')
       .style('font-size', '12px')
       .text(getFieldLabel(xAxisField))
 
     // Add Y axis
-    g.append('g')
+    const yAxis = g.append('g')
       .call(axisLeft(yScale))
-      .append('text')
+
+    yAxis.selectAll('text')
+      .style('fill', textColor)
+
+    yAxis.selectAll('line, path')
+      .style('stroke', gridColor)
+
+    yAxis.append('text')
       .attr('transform', 'rotate(-90)')
       .attr('y', -35)
       .attr('x', -chartHeight / 2)
-      .attr('fill', 'currentColor')
+      .attr('fill', textColor)
       .style('text-anchor', 'middle')
       .style('font-size', '12px')
       .text(getFieldLabel(yAxisField))
@@ -424,7 +474,7 @@ export default function BubbleChart({
           .attr('y', legendHeight + 15)
           .attr('text-anchor', 'start')
           .style('font-size', '11px')
-          .style('fill', 'currentColor')
+          .style('fill', textColor)
           .text(minValue.toFixed(2))
 
         // Add max value label
@@ -433,7 +483,7 @@ export default function BubbleChart({
           .attr('y', legendHeight + 15)
           .attr('text-anchor', 'end')
           .style('font-size', '11px')
-          .style('fill', 'currentColor')
+          .style('fill', textColor)
           .text(maxValue.toFixed(2))
 
         // Add field name label
@@ -443,7 +493,7 @@ export default function BubbleChart({
           .attr('text-anchor', 'middle')
           .style('font-size', '12px')
           .style('font-weight', 'bold')
-          .style('fill', 'currentColor')
+          .style('fill', textColor)
           .text(getFieldLabel(colorFieldName))
 
       } else {
@@ -474,7 +524,7 @@ export default function BubbleChart({
             .attr('y', 5)
             .attr('dy', '.35em')
             .style('font-size', '11px')
-            .style('fill', 'currentColor')
+            .style('fill', textColor)
             .text(d => String(d))
 
           // Legend hover effects
@@ -504,14 +554,14 @@ export default function BubbleChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity, colorPalette])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity, colorPalette, isDark])
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs">No data points to display in bubble chart</div>
+          <div className="text-xs text-dc-text-secondary">No data points to display in bubble chart</div>
         </div>
       </div>
     )
@@ -537,7 +587,7 @@ export default function BubbleChart({
         <svg ref={svgRef} className="w-full h-full" />
         {!dimensionsReady && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-gray-400 text-sm">Measuring chart dimensions...</div>
+            <div className="text-dc-text-muted text-sm">Measuring chart dimensions...</div>
           </div>
         )}
       </div>

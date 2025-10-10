@@ -142,18 +142,18 @@ export default function AxisDropZone({
   return (
     <div className="mb-2">
       <div className="flex items-center gap-2 mb-1">
-        <h4 className="text-xs font-semibold flex items-center">
-          {IconComponent && <IconComponent className="w-3 h-3 mr-1" />}
+        <h4 className="text-xs font-semibold text-dc-text-secondary flex items-center">
+          {IconComponent && <IconComponent className="w-3 h-3 mr-1 text-dc-text-muted" />}
           {label}
           {mandatory && <span className="text-red-500 ml-1">*</span>}
           {maxItems && (
-            <span className="text-gray-500 ml-1 font-normal">
+            <span className="text-dc-text-muted ml-1 font-normal">
               ({fields.length}/{maxItems})
             </span>
           )}
         </h4>
         {description && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-dc-text-muted">
             {description}
           </span>
         )}
@@ -163,11 +163,19 @@ export default function AxisDropZone({
         data-axis-container={key}
         className={`min-h-[40px] sm:min-h-[32px] border-2 border-dashed rounded-lg p-3 sm:p-1.5 transition-all duration-300 flex items-center ${
           (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
-            ? 'border-blue-500 bg-blue-100 shadow-lg scale-110 border-solid animate-pulse'
-            : isFull 
-              ? 'border-gray-200 bg-gray-50' 
-              : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
+            ? 'shadow-lg scale-110 border-solid animate-pulse'
+            : isFull
+              ? 'bg-dc-surface-secondary'
+              : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'
         }`}
+        style={{
+          borderColor: (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
+            ? 'var(--dc-primary)'
+            : 'var(--dc-border)',
+          backgroundColor: (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
+            ? 'rgba(var(--dc-primary-rgb), 0.1)'
+            : undefined
+        }}
         onDragOver={(e) => {
           // Check if this is a reorder operation (same axis) - if so, don't interfere
           if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
@@ -225,7 +233,7 @@ export default function AxisDropZone({
         }}
       >
         {fields.length === 0 ? (
-          <div className="text-xs text-gray-500 text-center w-full">
+          <div className="text-xs text-dc-text-muted text-center w-full">
             {isFull ? 'Maximum items reached' : (emptyText || `Drop fields here`)}
           </div>
         ) : (
@@ -242,7 +250,7 @@ export default function AxisDropZone({
                 >
                   {/* Drop indicator line for reordering */}
                   {isDragOver && (
-                    <div className="absolute -left-1 top-0 bottom-0 w-1 bg-blue-500 rounded-full z-10" />
+                    <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-full z-10" style={{ backgroundColor: 'var(--dc-primary)' }} />
                   )}
                   
                   <div
@@ -264,7 +272,7 @@ export default function AxisDropZone({
                     <button
                       type="button"
                       onClick={() => onRemove(field, key)}
-                      className="text-gray-600 hover:text-red-600 ml-1.5 leading-none"
+                      className="text-dc-text-secondary hover:text-red-600 ml-1.5 leading-none"
                       title={`Remove from ${label}`}
                     >
                       <XMarkIcon className="w-3 h-3" />

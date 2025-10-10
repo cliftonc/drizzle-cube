@@ -494,13 +494,19 @@ export default function DashboardGrid({
       <>
         <div className="flex justify-center items-center min-h-[50vh]">
           <div className="text-center">
-            <ChartBarIcon style={{ width: '64px', height: '64px', color: '#9ca3af', margin: '0 auto 16px auto' }} />
-            <h3 className="text-lg font-semibold mb-2">No Portlets</h3>
-            <p className="text-sm text-gray-600 mb-4">Add your first portlet to start visualizing your data</p>
+            <ChartBarIcon style={{ width: '64px', height: '64px', color: 'var(--dc-text-muted)', margin: '0 auto 16px auto' }} />
+            <h3 className="text-lg font-semibold mb-2 text-dc-text">No Portlets</h3>
+            <p className="text-sm text-dc-text-secondary mb-4">Add your first portlet to start visualizing your data</p>
             {editable && (
               <button
                 onClick={handleAddPortlet}
-                className="inline-flex items-center px-4 py-2 border border-blue-300 text-blue-700 bg-white rounded-md hover:bg-blue-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center px-4 py-2 border border-dc-border bg-dc-surface rounded-md focus:outline-hidden focus:ring-2"
+                style={{
+                  color: 'var(--dc-primary)',
+                  borderColor: 'var(--dc-primary)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
               >
                 <PlusIcon className="w-5 h-5 mr-2" />
                 Add Portlet
@@ -549,23 +555,32 @@ export default function DashboardGrid({
   return (
     <>
       {editable && (
-        <div className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-blue-100 border border-gray-200 rounded-lg shadow-xs transition-all duration-200 ${
-          isScrolled ? 'border-b border-gray-200 shadow-md' : ''
-        }`}>
+        <div
+          className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-dc-surface-tertiary border border-dc-border rounded-lg transition-all duration-200 ${
+            isScrolled ? 'border-b' : ''
+          }`}
+          style={{
+            boxShadow: isScrolled ? 'var(--dc-shadow-md)' : 'var(--dc-shadow-sm)'
+          }}
+        >
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsEditMode(!isEditMode)}
-              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
                 isEditMode
-                  ? 'bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100'
-                  : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-50'
+                  ? 'bg-dc-surface-secondary border border-dc-border hover:bg-dc-surface-hover'
+                  : 'bg-dc-surface border border-dc-border hover:bg-dc-surface-hover'
               }`}
+              style={{
+                color: 'var(--dc-primary)',
+                borderColor: isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
+              }}
             >
               <PencilIcon className="w-4 h-4 mr-1.5" />
               {isEditMode ? 'Finished Editing' : 'Edit'}
             </button>
             {isEditMode && (
-              <p className="hidden md:block text-sm text-gray-500">
+              <p className="hidden md:block text-sm text-dc-text-secondary">
                 Drag to rearrange • Resize from corners • Changes save automatically
               </p>
             )}
@@ -584,11 +599,15 @@ export default function DashboardGrid({
             <button
               onClick={handleAddPortlet}
               disabled={!isEditMode}
-              className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
               isEditMode
-                ? 'border-blue-300 text-blue-700 bg-white hover:bg-blue-50'
-                : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+                ? 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover'
+                : 'border-dc-border bg-dc-surface-secondary cursor-not-allowed'
             }`}
+              style={{
+                color: isEditMode ? 'var(--dc-primary)' : 'var(--dc-text-muted)',
+                borderColor: isEditMode ? 'var(--dc-primary)' : 'var(--dc-border)'
+              }}
           >
             <PlusIcon className="w-5 h-5 mr-2" />
             Add Portlet
@@ -616,17 +635,18 @@ export default function DashboardGrid({
         preventCollision={false}
       >
         {config.portlets.map(portlet => (
-          <div 
+          <div
             key={portlet.id}
             data-portlet-id={portlet.id}
             ref={el => { portletRefs.current[portlet.id] = el }}
-            className="bg-white border border-gray-200 rounded-lg shadow-xs flex flex-col h-full"
+            className="bg-dc-surface border border-dc-border rounded-lg flex flex-col h-full"
+            style={{ boxShadow: 'var(--dc-shadow-sm)' }}
           >
           {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
           {(!portlet.displayConfig?.hideHeader || isEditMode) && (
-            <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-gray-200 shrink-0 bg-gray-50 rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
+            <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <h3 className="font-semibold text-sm text-gray-900 truncate">{portlet.title}</h3>
+                <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
                 {/* Debug button - right next to title, outside drag area */}
                 {debugData[portlet.id] && (
                   <div 
@@ -663,7 +683,7 @@ export default function DashboardGrid({
                     e.preventDefault()
                     handlePortletRefresh(portlet.id)
                   }}
-                  className="p-2 bg-transparent border-none rounded-sm text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                  className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                   title="Refresh portlet data"
                 >
                   <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -680,7 +700,7 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleDuplicatePortlet(portlet.id)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                       title="Duplicate portlet"
                     >
                       <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -695,7 +715,7 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleEditPortlet(portlet)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                       title="Edit portlet"
                     >
                       <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -710,7 +730,7 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleDeletePortlet(portlet.id)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-gray-600 cursor-pointer hover:bg-gray-200 transition-colors"
+                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                       title="Delete portlet"
                     >
                       <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />

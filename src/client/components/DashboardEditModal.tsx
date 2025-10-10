@@ -68,7 +68,7 @@ export default function DashboardEditModal({
         type="button"
         onClick={handleClose}
         disabled={isSaving}
-        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+        className="px-4 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover disabled:opacity-50"
       >
         Cancel
       </button>
@@ -76,7 +76,7 @@ export default function DashboardEditModal({
         type="submit"
         form="dashboard-form"
         disabled={isSaving || !name.trim()}
-        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-2 text-sm font-medium text-white bg-dc-primary border border-transparent rounded-md hover:bg-dc-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSaving ? 'Saving...' : submitText}
       </button>
@@ -93,7 +93,7 @@ export default function DashboardEditModal({
     >
       <form id="dashboard-form" onSubmit={handleSubmit} className="space-y-4 w-full">
         <div>
-          <label htmlFor="dashboard-name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="dashboard-name" className="block text-sm font-medium text-dc-text-secondary mb-1">
             Dashboard Name
           </label>
           <input
@@ -101,15 +101,15 @@ export default function DashboardEditModal({
             id="dashboard-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-none focus:ring-2 focus:ring-dc-primary focus:border-dc-primary"
             placeholder="Enter dashboard name..."
             required
             autoFocus
           />
         </div>
-        
+
         <div>
-          <label htmlFor="dashboard-description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="dashboard-description" className="block text-sm font-medium text-dc-text-secondary mb-1">
             Description (optional)
           </label>
           <textarea
@@ -117,7 +117,7 @@ export default function DashboardEditModal({
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-none focus:ring-2 focus:ring-dc-primary focus:border-dc-primary"
             placeholder="Enter description..."
           />
         </div>

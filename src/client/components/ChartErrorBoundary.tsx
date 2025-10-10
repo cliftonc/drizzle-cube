@@ -62,42 +62,45 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
       // Default error display
       return (
-        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center border-2 border-dashed border-red-300 rounded-lg bg-red-50">
+        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center border-2 border-dashed rounded-lg bg-red-50"
+          style={{ borderColor: '#fca5a5' }}>
           <div className="h-12 w-12 text-red-500 mb-4">⚠️</div>
           <h3 className="text-lg font-semibold text-red-600 mb-2">
             {this.props.portletTitle ? `Rendering Error in ${this.props.portletTitle}` : 'Chart Rendering Error'}
           </h3>
-          <p className="text-sm text-gray-600 mb-4 max-w-md">
+          <p className="text-sm text-dc-text-secondary mb-4 max-w-md">
             There was an error rendering this chart component. This is different from query errors. The error details are shown below.
           </p>
           
           {/* Error details */}
           <div className="w-full max-w-2xl mb-4">
-            <div className="bg-gray-100 rounded-lg p-3 text-left">
+            <div className="bg-dc-surface-secondary rounded-lg p-3 text-left">
               <div className="text-xs font-mono text-red-600 mb-2">
                 <strong>Error:</strong> {this.state.error?.message}
               </div>
               {this.state.error?.name && (
-                <div className="text-xs font-mono text-gray-600 mb-2">
+                <div className="text-xs font-mono text-dc-text-secondary mb-2">
                   <strong>Type:</strong> {this.state.error.name}
                 </div>
               )}
-              
+
               {/* Portlet Config Debug Info */}
               {this.props.portletConfig && (
-                <details className="text-xs font-mono text-gray-600 mb-2">
+                <details className="text-xs font-mono text-dc-text-secondary mb-2">
                   <summary className="cursor-pointer">Portlet Configuration</summary>
-                  <pre className="mt-2 whitespace-pre-wrap bg-blue-50 p-2 rounded-sm overflow-auto max-h-32">
+                  <pre className="mt-2 whitespace-pre-wrap p-2 rounded-sm overflow-auto max-h-32"
+                    style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                     {JSON.stringify(this.props.portletConfig, null, 2)}
                   </pre>
                 </details>
               )}
-              
+
               {/* Cube Query Debug Info */}
               {this.props.cubeQuery && (
-                <details className="text-xs font-mono text-gray-600 mb-2">
+                <details className="text-xs font-mono text-dc-text-secondary mb-2">
                   <summary className="cursor-pointer">Cube Query</summary>
-                  <pre className="mt-2 whitespace-pre-wrap bg-green-50 p-2 rounded-sm overflow-auto max-h-32">
+                  <pre className="mt-2 whitespace-pre-wrap p-2 rounded-sm overflow-auto max-h-32"
+                    style={{ backgroundColor: '#d1fae5' }}>
                     {typeof this.props.cubeQuery === 'string' 
                       ? JSON.stringify(JSON.parse(this.props.cubeQuery), null, 2)
                       : JSON.stringify(this.props.cubeQuery, null, 2)
@@ -105,9 +108,9 @@ export default class ChartErrorBoundary extends Component<Props, State> {
                   </pre>
                 </details>
               )}
-              
+
               {this.state.errorInfo && (
-                <details className="text-xs font-mono text-gray-600">
+                <details className="text-xs font-mono text-dc-text-secondary">
                   <summary className="cursor-pointer">Component Stack</summary>
                   <pre className="mt-2 whitespace-pre-wrap">{this.state.errorInfo}</pre>
                 </details>
@@ -118,7 +121,11 @@ export default class ChartErrorBoundary extends Component<Props, State> {
           {/* Reset button */}
           <button
             onClick={this.handleReset}
-            className="px-3 py-1 bg-blue-500 text-white rounded-sm text-sm hover:bg-blue-600"
+            className="px-3 py-1 text-white rounded-sm text-sm"
+            style={{
+              backgroundColor: 'var(--dc-primary)',
+              ':hover': { opacity: 0.9 }
+            }}
           >
             <ArrowPathIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
           </button>

@@ -134,13 +134,13 @@ export default function DashboardViewPage() {
           <nav className="flex" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-4">
               <li>
-                <Link to="/dashboards" className="text-gray-400 hover:text-gray-500 text-sm">
+                <Link to="/dashboards" className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 text-sm">
                   Dashboards
                 </Link>
               </li>
               <li>
                 <svg
-                  className="shrink-0 h-5 w-5 text-gray-300"
+                  className="shrink-0 h-5 w-5 text-gray-300 dark:text-gray-600"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                   aria-hidden="true"
@@ -149,38 +149,38 @@ export default function DashboardViewPage() {
                 </svg>
               </li>
               <li>
-                <span className="text-gray-500 text-sm truncate">{page.name}</span>
+                <span className="text-gray-500 dark:text-gray-400 text-sm truncate">{page.name}</span>
               </li>
             </ol>
           </nav>
           
           <div className="mt-2 flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{page.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">{page.name}</h1>
               {page.description && (
-                <p className="mt-1 text-sm text-gray-700 leading-relaxed">{page.description}</p>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{page.description}</p>
               )}
             </div>
-            
+
             {/* Options menu */}
             <div className="relative shrink-0" data-options-menu>
               <button
                 onClick={() => setShowOptionsMenu(!showOptionsMenu)}
-                className="p-2 border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-md"
+                className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 rounded-md"
                 title="More options"
               >
                 <EllipsisHorizontalIcon className="w-5 h-5" />
               </button>
-              
+
               {showOptionsMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50">
                   <div className="py-1">
                     <button
                       onClick={() => {
                         setIsEditModalOpen(true)
                         setShowOptionsMenu(false)
                       }}
-                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <PencilIcon className="w-4 h-4" />
                       Edit Dashboard
@@ -190,7 +190,7 @@ export default function DashboardViewPage() {
                         setShowResetConfirm(true)
                         setShowOptionsMenu(false)
                       }}
-                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <ArrowPathIcon className="w-4 h-4" />
                       Reset Dashboard
@@ -201,15 +201,15 @@ export default function DashboardViewPage() {
             </div>
           </div>
           
-          <div className="mt-4 px-4 py-3 bg-linear-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-purple-200/50 rounded-lg shadow-md shadow-purple-100/50">
+          <div className="mt-4 px-4 py-3 bg-linear-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-violet-900/20 dark:via-purple-900/20 dark:to-fuchsia-900/20 border border-purple-200/50 dark:border-purple-800/50 rounded-lg shadow-md shadow-purple-100/50 dark:shadow-purple-900/20">
             <div className="flex items-start">
               <span className="text-2xl mr-3">💡</span>
               <div>
-                <p className="text-sm font-semibold text-purple-900">
+                <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">
                   Demo Note
                 </p>
-                <p className="text-sm text-purple-700 mt-1">
-                  This dashboard uses the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/AnalyticsDashboard.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800"><code className="px-1 py-0.5 bg-purple-100 rounded-sm text-xs font-mono">AnalyticsDashboard</code></a> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates. These dashboards are limited to 20 portlets, in your implementation this limit does not need to apply.
+                <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+                  This dashboard uses the <a href="https://github.com/cliftonc/drizzle-cube/blob/main/src/client/components/AnalyticsDashboard.tsx" target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800 dark:hover:text-purple-200"><code className="px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 rounded-sm text-xs font-mono">AnalyticsDashboard</code></a> component from drizzle-cube/client. It includes drag-and-drop, auto-save, and real-time updates. These dashboards are limited to 20 portlets, in your implementation this limit does not need to apply.
                 </p>
               </div>
             </div>

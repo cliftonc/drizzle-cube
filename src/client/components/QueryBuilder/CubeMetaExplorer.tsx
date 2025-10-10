@@ -120,9 +120,9 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   // Loading state
   if (schemaStatus === 'loading') {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500">
+      <div className="h-full flex items-center justify-center text-dc-text-muted">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-3" style={{ borderBottomColor: 'var(--dc-primary)' }}></div>
           <div className="text-sm font-semibold mb-1">Loading Schema...</div>
           <div className="text-xs">Fetching cube metadata</div>
         </div>
@@ -139,10 +139,10 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-sm p-6">
           <ExclamationTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
-          <div className="text-sm font-semibold text-gray-900 mb-2">
+          <div className="text-sm font-semibold text-dc-text mb-2">
             Failed to Load Schema
           </div>
-          <div className="text-xs text-gray-600 mb-4">
+          <div className="text-xs text-dc-text-secondary mb-4">
             {isCorsError ? (
               <>
                 CORS error detected. The API endpoint may be incorrect or not accessible.
@@ -168,7 +168,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             {onOpenSettings && (
               <button
                 onClick={onOpenSettings}
-                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <CogIcon className="w-4 h-4" />
                 <span>Check API Settings</span>
@@ -196,7 +196,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   // No schema loaded yet
   if (!schema) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-500">
+      <div className="h-full flex items-center justify-center text-dc-text-muted">
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">No Schema</div>
           <div className="text-xs">Schema not loaded</div>
@@ -311,8 +311,8 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     })()
 
     const getSelectedStyles = () => {
-      if (!isSelected) return 'hover:bg-gray-100 text-gray-700'
-      
+      if (!isSelected) return 'hover:bg-dc-surface-hover text-dc-text-secondary'
+
       switch (fieldType) {
         case 'measures':
           return 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -326,7 +326,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     }
 
     const getIconColor = () => {
-      if (!isSelected) return 'text-gray-400'
+      if (!isSelected) return 'text-dc-text-muted'
       
       switch (fieldType) {
         case 'measures':
@@ -364,7 +364,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate text-xs">{field.shortTitle}</div>
-          <div className="text-xs text-gray-500 truncate">{field.name}</div>
+          <div className="text-xs text-dc-text-muted truncate">{field.name}</div>
         </div>
         {isSelected && (
           <div className={`ml-1.5 ${getCheckmarkColor()}`}>
@@ -412,7 +412,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     
     return (
       <div
-        className={`flex items-center px-2 py-1 text-sm font-semibold cursor-pointer hover:bg-gray-50 rounded-md ${getSectionColorClasses()}`}
+        className={`flex items-center px-2 py-1 text-sm font-semibold cursor-pointer hover:bg-dc-surface-hover rounded-md ${getSectionColorClasses()}`}
         onClick={() => toggleSectionExpansion(sectionKey)}
       >
         <div className="mr-1.5">
@@ -426,7 +426,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
           {icon}
         </div>
         <span className="flex-1">{title}</span>
-        <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full">
+        <span className="text-xs text-dc-text-muted bg-dc-surface-secondary px-1.5 py-0.5 rounded-full">
           {count}
         </span>
       </div>
@@ -436,13 +436,13 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   const NoMatchesMessage: React.FC = () => (
     <div className="flex items-center justify-center py-8 text-center">
       <div className="max-w-sm">
-        <div className="text-gray-400 mb-2">
+        <div className="text-dc-text-muted mb-2">
           <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <div className="text-sm font-medium text-gray-900 mb-1">No matches found</div>
-        <div className="text-xs text-gray-500 mb-3">
+        <div className="text-sm font-medium text-dc-text mb-1">No matches found</div>
+        <div className="text-xs text-dc-text-muted mb-3">
           No fields match your search term "{searchTerm}"
         </div>
         <button
@@ -456,13 +456,13 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   )
 
   return (
-    <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-lg min-h-0">
+    <div className="flex-1 flex flex-col bg-dc-surface border border-dc-border rounded-lg min-h-0">
       {/* Header */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-dc-border">
         <div className="p-3 pb-0">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-base font-semibold text-gray-900">
+              <h3 className="text-base font-semibold text-dc-text">
                 {viewType === 'diagram' ? 'Schema Diagram' : 'Schema Explorer'}
               </h3>
             </div>
@@ -470,7 +470,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
               {onOpenSettings && (
                 <button
                   onClick={onOpenSettings}
-                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="p-1 text-dc-text-muted hover:text-dc-text-secondary transition-colors"
                   title="Open settings"
                 >
                   <CogIcon className="w-4 h-4" />
@@ -478,10 +478,10 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* View Type Tabs and Search */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="flex space-x-1 bg-gray-100 p-1 rounded-md">
+            <div className="flex space-x-1 bg-dc-surface-secondary p-1 rounded-md">
               <button
                 onClick={() => {
                   setViewType('tree')
@@ -489,9 +489,9 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 }}
                 className={`
                   flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
-                  ${viewType === 'tree' 
-                    ? 'bg-white text-gray-900 shadow-xs' 
-                    : 'text-gray-600 hover:text-gray-900'
+                  ${viewType === 'tree'
+                    ? 'bg-dc-surface text-dc-text shadow-xs'
+                    : 'text-dc-text-secondary hover:text-dc-text'
                   }
                 `}
               >
@@ -505,9 +505,9 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 }}
                 className={`
                   flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
-                  ${viewType === 'diagram' 
-                    ? 'bg-white text-gray-900 shadow-xs' 
-                    : 'text-gray-600 hover:text-gray-900'
+                  ${viewType === 'diagram'
+                    ? 'bg-dc-surface text-dc-text shadow-xs'
+                    : 'text-dc-text-secondary hover:text-dc-text'
                   }
                 `}
               >
@@ -515,7 +515,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 Schema
               </button>
             </div>
-            
+
             {/* Search input - visible for both views */}
             <div className="flex-1 relative min-w-0">
               <input
@@ -523,17 +523,17 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 placeholder="Search fields..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-2 py-1.5 border border-dc-border rounded-md text-sm bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-dc-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
           </div>
         </div>
-        
+
       </div>
 
       {/* Content */}
@@ -611,28 +611,28 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 const regularDimensions = cube.dimensions.filter(d => d.type !== 'time')
 
                 return (
-                  <div key={cube.name} className="border border-gray-200 rounded-lg">
+                  <div key={cube.name} className="border border-dc-border rounded-lg">
                     {/* Cube Header */}
                     <div
-                      className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 rounded-t-lg"
+                      className="flex items-center px-3 py-2 cursor-pointer hover:bg-dc-surface-hover rounded-t-lg"
                       onClick={() => toggleCubeExpansion(cube.name)}
                     >
                       <div className="mr-2">
                         {isExpanded ? (
-                          <ChevronDownIcon className="w-4 h-4 text-gray-600" />
+                          <ChevronDownIcon className="w-4 h-4 text-dc-text-secondary" />
                         ) : (
-                          <ChevronRightIcon className="w-4 h-4 text-gray-600" />
+                          <ChevronRightIcon className="w-4 h-4 text-dc-text-secondary" />
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium text-sm text-gray-900">{cube.title}</div>
-                        <div className="text-xs text-gray-500">{cube.description}</div>
+                        <div className="font-medium text-sm text-dc-text">{cube.title}</div>
+                        <div className="text-xs text-dc-text-muted">{cube.description}</div>
                       </div>
                     </div>
 
                     {/* Cube Content */}
                     {isExpanded && (
-                      <div className="border-t border-gray-200 p-2 space-y-1">
+                      <div className="border-t border-dc-border p-2 space-y-1">
                         {/* Dimensions - First (matching QueryPanel order) */}
                         {regularDimensions.length > 0 && filterFields(regularDimensions).length > 0 && (
                           <div>

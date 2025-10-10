@@ -48,7 +48,7 @@ export default function ColorPaletteSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-xs text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="inline-flex items-center gap-2 px-3 py-1.5 bg-dc-surface border border-dc-border rounded-md shadow-xs text-sm font-medium text-dc-text-secondary hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
         {/* Current Palette Preview - Hidden on mobile */}
         <div className="hidden md:flex items-center gap-1.5">
@@ -56,19 +56,22 @@ export default function ColorPaletteSelector({
             {currentPaletteObj.colors.slice(0, 4).map((color, index) => (
               <div
                 key={index}
-                className="w-3 h-3 rounded-xs border border-gray-200"
+                className="w-3 h-3 rounded-xs border border-dc-border"
                 style={{ backgroundColor: color }}
                 title={`Series Color ${index + 1}`}
               />
             ))}
           </div>
-          <span className="text-xs text-gray-600">|</span>
+          <span className="text-xs text-dc-text-secondary">|</span>
           <div className="flex gap-0.5">
             {currentPaletteObj.gradient.slice(0, 3).map((color, index) => (
               <div
                 key={index}
-                className="w-2 h-3 border-r border-gray-200 first:rounded-l-sm last:rounded-r-sm last:border-r-0"
-                style={{ backgroundColor: color }}
+                className="w-2 h-3 border-r first:rounded-l-sm last:rounded-r-sm last:border-r-0"
+                style={{
+                  backgroundColor: color,
+                  borderColor: 'var(--dc-border)'
+                }}
                 title={`Gradient Color ${index + 1}`}
               />
             ))}
@@ -82,16 +85,17 @@ export default function ColorPaletteSelector({
 
       {/* Dropdown Menu - Responsive width */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-72 md:w-80 lg:w-96 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 mt-1 w-72 md:w-80 lg:w-96 bg-dc-surface border border-dc-border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
           <div className="py-1">
             {COLOR_PALETTES.slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
               <button
                 key={palette.name}
                 type="button"
                 onClick={() => handlePaletteSelect(palette.name)}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
-                  palette.name === currentPalette ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                  palette.name === currentPalette ? 'bg-dc-surface-secondary' : 'text-dc-text-secondary'
                 }`}
+                style={palette.name === currentPalette ? { color: 'var(--dc-primary)' } : undefined}
               >
                 <div className="flex items-center gap-3">
                   {/* Palette Preview - Hidden on mobile */}
@@ -101,14 +105,14 @@ export default function ColorPaletteSelector({
                       {palette.colors.slice(0, 6).map((color, index) => (
                         <div
                           key={`series-${index}`}
-                          className="w-3 h-3 rounded-xs border border-gray-200"
+                          className="w-3 h-3 rounded-xs border border-dc-border"
                           style={{ backgroundColor: color }}
                         />
                       ))}
                     </div>
-                    
+
                     {/* Separator */}
-                    <div className="w-px h-4 bg-gray-300" />
+                    <div className="w-px h-4 bg-dc-border" />
                     
                     {/* Gradient Colors */}
                     <div className="flex">
@@ -128,7 +132,7 @@ export default function ColorPaletteSelector({
                   {/* Current Indicator */}
                   {palette.name === currentPalette && (
                     <div className="ml-auto">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--dc-primary)' }}></div>
                     </div>
                   )}
                 </div>

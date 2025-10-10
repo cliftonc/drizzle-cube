@@ -4,6 +4,7 @@ import ChartContainer from './ChartContainer'
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
+import { isDarkMode, watchThemeChanges } from '../../theme'
 import type { ChartProps } from '../../types'
 
 interface GridCell {
@@ -39,7 +40,17 @@ export default function ActivityGridChart({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [dimensionsReady, setDimensionsReady] = useState(false)
+  const [isDark, setIsDark] = useState(false)
   const { getFieldLabel } = useCubeContext()
+
+  // Watch for theme changes
+  useEffect(() => {
+    setIsDark(isDarkMode())
+    const unwatch = watchThemeChanges((darkMode) => {
+      setIsDark(darkMode)
+    })
+    return unwatch
+  }, [])
 
   const safeDisplayConfig = {
     showTooltip: displayConfig?.showTooltip ?? true,
@@ -440,6 +451,19 @@ export default function ActivityGridChart({
       gridMap.set(key, cell)
     })
 
+    // Get theme colors from CSS variables
+    const getThemeColor = (varName: string, fallback: string) => {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+      return value || fallback
+    }
+
+    const textColor = isDark
+      ? getThemeColor('--dc-text-muted', '#cbd5e1')  // Lighter text for dark mode
+      : getThemeColor('--dc-text-secondary', '#374151')  // Darker text for light mode
+    const lineColor = getThemeColor('--dc-border', '#e5e7eb')
+    const emptyCellColor = isDark ? '#475569' : '#ebedf0'  // Darker empty cells in dark mode
+    const cellStrokeColor = isDark ? '#1e293b' : '#fff'  // Dark border in dark mode, white in light mode
+
     // Create tooltip
     const tooltip = select('body').append('div')
       .attr('class', 'activity-grid-tooltip')
@@ -473,8 +497,8 @@ export default function ActivityGridChart({
           .attr('height', finalCellHeight)
           .attr('rx', 2)
           .attr('ry', 2)
-          .style('fill', cell ? colorScale(cell.value) : '#ebedf0')
-          .style('stroke', '#fff')
+          .style('fill', cell ? colorScale(cell.value) : emptyCellColor)
+          .style('stroke', cellStrokeColor)
           .style('stroke-width', 1)
 
         // Add hover effects and tooltips
@@ -508,7 +532,7 @@ export default function ActivityGridChart({
             })
             .on('mouseout', function() {
               select(this)
-                .style('stroke', '#fff')
+                .style('stroke', cellStrokeColor)
                 .style('stroke-width', 1)
 
               tooltip
@@ -545,10 +569,10 @@ export default function ActivityGridChart({
             .attr('y', -8)
             .attr('text-anchor', 'middle')
             .style('font-size', '10px')
-            .style('fill', 'currentColor')
+            .style('fill', textColor)
             .text(gridMapping.xFormat(x))
         }
-        
+
         // Draw year group labels above quarters
         for (const [year, xValues] of yearGroups) {
           if (xValues.length > 0) {
@@ -556,7 +580,7 @@ export default function ActivityGridChart({
             const startIndex = Math.min(...xValues.map(x => xValueToIndex.get(x) || 0))
             const endIndex = Math.max(...xValues.map(x => xValueToIndex.get(x) || 0))
             const centerIndex = (startIndex + endIndex) / 2
-            
+
             // Year label
             g.append('text')
               .attr('x', centerIndex * (finalCellWidth + 4) + finalCellWidth / 2)
@@ -564,9 +588,9 @@ export default function ActivityGridChart({
               .attr('text-anchor', 'middle')
               .style('font-size', '12px')
               .style('font-weight', 'bold')
-              .style('fill', 'currentColor')
+              .style('fill', textColor)
               .text(`'${year.toString().slice(-2)}`)
-              
+
             // Optional: Add a subtle line to group quarters under the year
             if (xValues.length > 1) {
               g.append('line')
@@ -574,7 +598,7 @@ export default function ActivityGridChart({
                 .attr('x2', endIndex * (finalCellWidth + 4) + finalCellWidth)
                 .attr('y1', -20)
                 .attr('y2', -20)
-                .style('stroke', 'currentColor')
+                .style('stroke', lineColor)
                 .style('stroke-width', 1)
                 .style('opacity', 0.3)
             }
@@ -590,7 +614,7 @@ export default function ActivityGridChart({
             .attr('y', -8)
             .attr('text-anchor', 'middle')
             .style('font-size', '10px')
-            .style('fill', 'currentColor')
+            .style('fill', textColor)
             .text(gridMapping.xFormat(x))
         }
       }
@@ -603,7 +627,7 @@ export default function ActivityGridChart({
           .attr('text-anchor', 'end')
           .attr('dy', '.35em')
           .style('font-size', '10px')
-          .style('fill', 'currentColor')
+          .style('fill', textColor)
           .text(gridMapping.yFormat(y))
       }
     }
@@ -612,11 +636,19 @@ export default function ActivityGridChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showTooltip, safeDisplayConfig.showLabels, colorPalette])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showTooltip, safeDisplayConfig.showLabels, colorPalette, isDark])
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{
+          height,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
+        }}
+      >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">No data available</div>
           <div className="text-xs">No data points to display in activity grid</div>
@@ -629,7 +661,15 @@ export default function ActivityGridChart({
   const hasValidConfig = chartConfig?.dateField && chartConfig?.valueField
   if (!hasValidConfig) {
     return (
-      <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{
+          height,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
+        }}
+      >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Configuration Required</div>
           <div className="text-xs">Activity grid requires a time dimension and a measure</div>
@@ -646,7 +686,15 @@ export default function ActivityGridChart({
   
   if (granularityFromQuery?.toLowerCase() === 'year') {
     return (
-      <div className="flex items-center justify-center w-full text-amber-600" style={{ height }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{
+          height,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
+        }}
+      >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Granularity Too High</div>
           <div className="text-xs">Activity grids work best with quarter, month, week, or day granularity</div>
@@ -662,7 +710,7 @@ export default function ActivityGridChart({
         <svg ref={svgRef} className="h-full" />
         {!dimensionsReady && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-gray-400 text-sm">Measuring chart dimensions...</div>
+            <div className="text-dc-text-muted text-sm">Measuring chart dimensions...</div>
           </div>
         )}
       </div>

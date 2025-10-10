@@ -192,8 +192,8 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
   const renderQueryStep = () => (
     <div className="flex flex-col space-y-4">
       {/* Top: Config Panel - Full Width */}
-      <div className="shrink-0 p-3 bg-gray-50 border border-gray-200 rounded-md">
-        <div className="text-sm text-gray-600">
+      <div className="shrink-0 p-3 bg-dc-surface-secondary border border-dc-border rounded-md">
+        <div className="text-sm text-dc-text-muted">
           Using: <span className="font-medium">AI Query Generation</span>
           <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-sm">
             Server-provided AI (Rate Limited)
@@ -205,7 +205,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       <div className="flex flex-col md:flex-row gap-6 flex-1 min-h-0">
         {/* Left: Query Input */}
         <div className="w-full md:w-1/2 flex flex-col">
-          <label htmlFor="user-prompt" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="user-prompt" className="block text-sm font-medium text-dc-text-secondary mb-2">
             Describe your query in natural language
           </label>
           <textarea
@@ -214,7 +214,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             onChange={(e) => setState(prev => ({ ...prev, userPrompt: e.target.value }))}
             onKeyDown={handleKeyDown}
             placeholder="e.g., Show me the total revenue by month for the last year (Press Enter to generate, Shift+Enter for new line)"
-            className="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-xs focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none"
+            className="flex-1 w-full px-3 py-2 border border-dc-border rounded-md shadow-xs focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none bg-dc-surface text-dc-text"
             required
           />
         </div>
@@ -229,7 +229,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
                   <span className="text-sm font-medium text-green-700">AI Generated Query</span>
                 </>
               ) : (
-                <span className="text-sm font-medium text-gray-500">Generated Query</span>
+                <span className="text-sm font-medium text-dc-text-muted">Generated Query</span>
               )}
             </div>
             {state.response && (
@@ -243,17 +243,17 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               </button>
             )}
           </div>
-          
+
           {state.response ? (
             <div className="flex-1 bg-green-50 border border-green-200 rounded-md p-3">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap overflow-auto bg-white p-3 rounded-sm border h-full">
+              <pre className="text-sm text-dc-text whitespace-pre-wrap overflow-auto bg-dc-surface p-3 rounded-sm border h-full">
                 {state.response}
               </pre>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 rounded-md p-8 min-h-64">
+            <div className="flex-1 flex items-center justify-center text-dc-text-muted border-2 border-dashed border-dc-border rounded-md p-8 min-h-64">
               <div className="text-center">
-                <SparklesIcon className="w-12 h-12 mx-auto text-gray-400" />
+                <SparklesIcon className="w-12 h-12 mx-auto text-dc-text-muted" />
               </div>
             </div>
           )}
@@ -300,7 +300,10 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           type="submit"
           disabled={!state.userPrompt.trim() || state.isSubmitting}
           onClick={handleQuerySubmit}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 text-white text-sm rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          style={{
+            backgroundColor: 'var(--dc-primary)'
+          }}
         >
           {state.isSubmitting ? (
             <>
@@ -314,13 +317,13 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             </>
           )}
         </button>
-        
+
         {/* Validation happens automatically after generation */}
-        
+
         <button
           onClick={handleUseQuery}
           disabled={!state.response || !onQueryLoad}
-          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           <CheckCircleIcon className="w-4 h-4 mr-2" />
           Use Query

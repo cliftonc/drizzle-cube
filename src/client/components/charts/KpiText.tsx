@@ -65,11 +65,14 @@ export default function KpiText({
 
   if (!data || data.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-gray-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">
@@ -94,11 +97,14 @@ export default function KpiText({
   
   if (valueFields.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-red-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-danger-bg)',
+          color: 'var(--dc-danger)',
+          borderColor: 'var(--dc-danger-border)'
         }}
       >
         <div className="text-center">
@@ -135,11 +141,14 @@ export default function KpiText({
 
   if (values.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-gray-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">

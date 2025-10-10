@@ -197,13 +197,13 @@ export default function MarkdownChart({
   const renderNode = (node: MarkdownNode, key: number, listNumber?: number): React.ReactNode => {
     switch (node.type) {
       case 'text':
-        return <span key={key} className="text-gray-800">{node.content}</span>
+        return <span key={key} className="text-dc-text">{node.content}</span>
 
       case 'bold':
-        return <strong key={key} className="font-bold text-gray-800">{node.content}</strong>
+        return <strong key={key} className="font-bold text-dc-text">{node.content}</strong>
 
       case 'italic':
-        return <em key={key} className="italic text-gray-800">{node.content}</em>
+        return <em key={key} className="italic text-dc-text">{node.content}</em>
 
       case 'link':
         return (
@@ -379,11 +379,14 @@ export default function MarkdownChart({
 
   if (!content.trim()) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-gray-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">

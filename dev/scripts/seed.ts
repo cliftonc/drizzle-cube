@@ -7,7 +7,7 @@ import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
 import { employees, departments, productivity, analyticsPages, settings, schema } from '../server/schema'
-import { productivityDashboardConfig } from '../dashboard-config'
+import { productivityDashboardConfig } from '../server/dashboard-config'
 
 // Default connection string for CLI usage
 const defaultConnectionString = process.env.DATABASE_URL || 'postgresql://drizzle_user:drizzle_pass123@localhost:54821/drizzle_cube_db'

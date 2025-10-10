@@ -615,7 +615,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         <div className="md:hidden shrink-0 px-4 pb-2">
           <button
             onClick={() => setShowSchemaMobile(!showSchemaMobile)}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface-secondary hover:bg-dc-surface-hover rounded-md transition-colors"
           >
             {showSchemaMobile ? (
               <><XMarkIcon className="w-4 h-4" /> Hide Schema</>
@@ -628,11 +628,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         {/* Mobile Schema Panel Overlay */}
         {showSchemaMobile && (
           <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50 flex">
-            <div className="w-full max-w-md sm:max-w-lg bg-white h-full overflow-y-auto">
-              <div className="p-4 border-b">
+            <div className="w-full max-w-md sm:max-w-lg bg-dc-surface h-full overflow-y-auto">
+              <div className="p-4 border-b border-dc-border">
                 <button
                   onClick={() => setShowSchemaMobile(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface-secondary hover:bg-dc-surface-hover rounded-md transition-colors"
                 >
                   <XMarkIcon className="w-4 h-4" /> Close Schema
                 </button>
@@ -662,7 +662,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 p-4 min-h-0" style={{ paddingTop: hideSettings ? '1rem' : '0rem' }}>
         {/* Schema Explorer with dynamic width based on view type */}
-        <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3'}`}>
+        <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full max-w-[600px]' : 'md:w-1/3 max-w-[500px]'}`}>
           <CubeMetaExplorer
             schema={state.schema}
             schemaStatus={state.schemaStatus}

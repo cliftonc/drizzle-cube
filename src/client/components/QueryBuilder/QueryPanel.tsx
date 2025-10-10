@@ -165,22 +165,22 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   const getSortButtonClasses = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
     const sortDirection = getSortDirection(fieldName, query.order)
     const baseClasses = 'focus:outline-hidden shrink-0 p-1 transition-colors'
-    
+
     if (sortDirection) {
       // Active sort - use field type colors
       switch (fieldType) {
         case 'measures':
-          return `${baseClasses} text-amber-800 hover:text-amber-900`
+          return `${baseClasses} text-dc-measure hover:opacity-80`
         case 'dimensions':
-          return `${baseClasses} text-green-800 hover:text-green-900`
+          return `${baseClasses} text-dc-dimension hover:opacity-80`
         case 'timeDimensions':
-          return `${baseClasses} text-blue-800 hover:text-blue-900`
+          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
         default:
-          return `${baseClasses} text-blue-800 hover:text-blue-900`
+          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
       }
     } else {
       // No sort - gray
-      return `${baseClasses} text-gray-400 hover:text-gray-600`
+      return `${baseClasses} text-dc-text-muted hover:text-dc-text-secondary`
     }
   }
 
@@ -193,13 +193,13 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     const getChipClasses = () => {
       switch (fieldType) {
         case 'measures':
-          return 'bg-amber-100 text-amber-800 border-amber-200'
+          return 'bg-dc-measure text-dc-measure border-dc-measure'
         case 'dimensions':
-          return 'bg-green-100 text-green-800 border-green-200'
+          return 'bg-dc-dimension text-dc-dimension border-dc-dimension'
         case 'timeDimensions':
-          return 'bg-blue-100 text-blue-800 border-blue-200'
+          return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
         default:
-          return 'bg-blue-100 text-blue-800 border-blue-200'
+          return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
       }
     }
 
@@ -210,7 +210,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         </div>
         <span className="flex-1 flex flex-col min-w-0">
           <span className="text-xs font-medium truncate">{getFieldTitle(fieldName, schema)}</span>
-          <span className="text-[10px] text-gray-500 truncate">{fieldName}</span>
+          <span className="text-[10px] text-dc-text-muted truncate">{fieldName}</span>
         </span>
         <div className="flex items-center gap-2 ml-2">
           {/* Filter and Sort buttons - stacked vertically */}
@@ -221,23 +221,23 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               const getActiveColorClasses = () => {
                 switch (fieldType) {
                   case 'measures':
-                    return 'text-amber-800 hover:text-amber-900'
+                    return 'text-dc-measure hover:opacity-80'
                   case 'dimensions':
-                    return 'text-green-800 hover:text-green-900'
+                    return 'text-dc-dimension hover:opacity-80'
                   case 'timeDimensions':
-                    return 'text-blue-800 hover:text-blue-900'
+                    return 'text-dc-time-dimension hover:opacity-80'
                   default:
-                    return 'text-blue-800 hover:text-blue-900'
+                    return 'text-dc-time-dimension hover:opacity-80'
                 }
               }
-              
+
               return (
                 <button
                   onClick={() => handleAddFilterFromField(fieldName, fieldType)}
                   className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
-                    hasFilters 
+                    hasFilters
                       ? getActiveColorClasses()
-                      : 'text-gray-400 hover:text-gray-600'
+                      : 'text-dc-text-muted hover:text-dc-text-secondary'
                   }`}
                   title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
                 >
@@ -259,7 +259,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(fieldName, fieldType)}
-            className="text-gray-600 hover:text-red-600 focus:outline-hidden shrink-0"
+            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden shrink-0"
           >
             <XMarkIcon className="w-4 h-4" />
           </button>
@@ -268,11 +268,11 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     )
   }
 
-  const TimeDimensionChip: React.FC<{ 
+  const TimeDimensionChip: React.FC<{
     timeDimension: { dimension: string; granularity?: string }
     label: string
   }> = ({ timeDimension }) => (
-    <div className="bg-blue-100 text-blue-800 text-sm px-3 py-2 rounded-lg border border-blue-200 w-full">
+    <div className="bg-dc-time-dimension text-dc-time-dimension text-sm px-3 py-2 rounded-lg border border-dc-time-dimension w-full">
       {/* Top row with icon, label, filter button, sort button, and remove button */}
       <div className="flex items-center mb-1">
         <div className="mr-2">
@@ -280,7 +280,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         </div>
         <span className="flex-1 flex flex-col min-w-0">
           <span className="text-xs font-medium truncate">{getFieldTitle(timeDimension.dimension, schema)}</span>
-          <span className="text-[10px] text-gray-500 truncate">{timeDimension.dimension}</span>
+          <span className="text-[10px] text-dc-text-muted truncate">{timeDimension.dimension}</span>
         </span>
         <div className="flex items-center gap-2 ml-2">
           {/* Filter and Sort buttons - stacked vertically */}
@@ -292,9 +292,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 <button
                   onClick={() => handleAddFilterFromField(timeDimension.dimension, 'timeDimensions')}
                   className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
-                    hasDateRange 
-                      ? 'text-blue-800 hover:text-blue-900' 
-                      : 'text-gray-400 hover:text-gray-600'
+                    hasDateRange
+                      ? 'text-dc-time-dimension hover:opacity-80'
+                      : 'text-dc-text-muted hover:text-dc-text-secondary'
                   }`}
                   title="Add date range"
                 >
@@ -316,7 +316,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-            className="text-gray-600 hover:text-red-600 focus:outline-hidden"
+            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden"
           >
             <XMarkIcon className="w-4 h-4" />
           </button>
@@ -324,11 +324,11 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       </div>
       {/* Bottom row with granularity dropdown */}
       <div className="ml-6 flex items-center">
-        <span className="text-xs text-blue-700 mr-2">Granularity:</span>
+        <span className="text-xs text-dc-time-dimension mr-2">Granularity:</span>
         <select
           value={timeDimension.granularity || 'month'}
           onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
-          className="bg-blue-100 border-none text-blue-800 text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
+          className="bg-dc-time-dimension border-none text-dc-time-dimension text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
           onClick={(e) => e.stopPropagation()}
         >
           {TIME_GRANULARITIES.map(granularity => (
@@ -357,16 +357,16 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   }
 
   return (
-    <div className="flex flex-col bg-white border border-gray-200 rounded-lg">
+    <div className="flex flex-col bg-dc-surface border border-dc-border rounded-lg">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-gray-200">
+      <div className="p-3 sm:p-4 border-b border-dc-border">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-            <h3 className="text-sm sm:text-lg font-semibold text-gray-900 truncate">Query Builder</h3>
+            <h3 className="text-sm sm:text-lg font-semibold text-dc-text truncate">Query Builder</h3>
             {onSchemaClick && (
               <button
                 onClick={onSchemaClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
                 title="Schema Explorer - View cube relationships and fields"
               >
                 <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -378,7 +378,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {onAIAssistantClick && (
               <button
                 onClick={onAIAssistantClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
                 title="AI Assistant - Generate queries with AI"
               >
                 <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -389,12 +389,12 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           <div className="flex items-center gap-1 shrink-0">
             {hasContent && (
               <>
-                <span className="hidden lg:inline text-xs text-gray-500 mr-1">
+                <span className="hidden lg:inline text-xs text-dc-text-muted mr-1">
                   {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
                 </span>
                 <button
                   onClick={handleCopyQuery}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-sm hover:bg-purple-200 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-sm hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                   title="Copy query to clipboard"
                 >
                   <ClipboardDocumentIcon className="w-3 h-3" />
@@ -403,7 +403,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 {onClearQuery && (
                   <button
                     onClick={onClearQuery}
-                    className="text-gray-400 hover:text-red-600 focus:outline-hidden p-2"
+                    className="text-dc-text-muted hover:text-red-600 focus:outline-hidden p-2"
                     title="Clear all fields"
                   >
                     <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -414,7 +414,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {showSettings && onSettingsClick && (
               <button
                 onClick={onSettingsClick}
-                className="text-gray-400 hover:text-gray-600 focus:outline-hidden p-2"
+                className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden p-2"
                 title="API Configuration"
               >
                 <CogIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -428,9 +428,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       {/* Content */}
       <div className="p-4">
         {!hasContent ? (
-          <div className="py-8 flex items-center justify-center text-gray-500">
+          <div className="py-8 flex items-center justify-center text-dc-text-muted">
             <div className="text-center">
-              <ChartBarIcon className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+              <ChartBarIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
               <div className="text-sm font-semibold mb-1">No fields selected</div>
               <div className="text-xs">Select measures, dimensions, or time dimensions from the schema explorer</div>
             </div>
@@ -441,7 +441,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Dimensions Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-dc-dimension mb-3 flex items-center">
                   <TagIcon className="w-4 h-4 mr-2" />
                   Dimensions ({(query.dimensions || []).length})
                 </h4>
@@ -460,7 +460,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
               {/* Time Dimensions Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-dc-time-dimension mb-3 flex items-center">
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   Time Dimensions ({(query.timeDimensions || []).length})
                 </h4>
@@ -477,7 +477,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
               {/* Measures Column */}
               <div className="min-h-24">
-                <h4 className="text-sm font-semibold text-amber-800 mb-3 flex items-center">
+                <h4 className="text-sm font-semibold text-dc-measure mb-3 flex items-center">
                   <ChartBarIcon className="w-4 h-4 mr-2" />
                   Measures ({(query.measures || []).length})
                 </h4>
@@ -538,7 +538,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     setShowJsonPreview(newJsonState)
                     if (newJsonState) setShowSqlPreview(false) // Hide SQL when showing JSON
                   }}
-                  className="text-sm text-gray-600 hover:text-gray-800 focus:outline-hidden focus:underline"
+                  className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
                 >
                   {showJsonPreview ? 'Hide' : 'Show'} JSON Query
                 </button>
@@ -549,7 +549,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                       setShowSqlPreview(newSqlState)
                       if (newSqlState) setShowJsonPreview(false) // Hide JSON when showing SQL
                     }}
-                    className="text-sm text-gray-600 hover:text-gray-800 focus:outline-hidden focus:underline"
+                    className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
                   >
                     {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
                   </button>
@@ -557,24 +557,24 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               </div>
 
               {showJsonPreview && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">JSON Query:</div>
-                  <pre className="text-gray-700 overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded-lg p-4">
+                  <div className="text-xs font-semibold text-dc-text-secondary mb-2">JSON Query:</div>
+                  <pre className="text-dc-text-secondary overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                     <code className="language-json">{JSON.stringify(cleanQueryForServer(query), null, 2)}</code>
                   </pre>
                 </div>
               )}
 
               {showSqlPreview && validationSql && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Generated SQL:</div>
-                  <pre className="text-gray-700 overflow-x-auto whitespace-pre-wrap font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded-lg p-4">
+                  <div className="text-xs font-semibold text-dc-text-secondary mb-2">Generated SQL:</div>
+                  <pre className="text-dc-text-secondary overflow-x-auto whitespace-pre-wrap font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                     <code className="language-sql">{validationSql.sql.join(';\n\n')}</code>
                   </pre>
                   {validationSql.params && validationSql.params.length > 0 && (
                     <>
-                      <div className="text-xs font-semibold text-gray-700 mb-2 mt-4">Parameters:</div>
-                      <pre className="text-gray-700 overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                      <div className="text-xs font-semibold text-dc-text-secondary mb-2 mt-4">Parameters:</div>
+                      <pre className="text-dc-text-secondary overflow-x-auto font-mono" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                         <code className="language-json">{JSON.stringify(validationSql.params, null, 2)}</code>
                       </pre>
                     </>
@@ -588,19 +588,19 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
       {/* Actions */}
       {(hasContent || validationStatus === 'valid' || validationStatus === 'invalid') && (
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-dc-border p-4">
           <div className="flex space-x-3">
             <button
               onClick={onValidate}
               disabled={validationStatus === 'validating'}
               className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                 validationStatus === 'validating'
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ? 'bg-dc-surface-secondary text-dc-text-muted cursor-not-allowed'
                   : validationStatus === 'valid'
-                  ? 'bg-green-100 text-green-800 border border-green-200 hover:bg-green-200'
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/50'
                   : validationStatus === 'invalid'
-                  ? 'bg-red-100 text-red-800 border border-red-200 hover:bg-red-200'
-                  : 'bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-200'
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50'
+                  : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50'
               }`}
             >
               {validationStatus === 'validating' ? (
@@ -631,9 +631,10 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               disabled={validationStatus !== 'valid'}
               className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                 validationStatus !== 'valid'
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                  : 'bg-green-600 text-white hover:bg-green-700 focus:ring-2 focus:ring-green-500 border border-green-700'
+                  ? 'bg-dc-surface-secondary text-dc-text-muted cursor-not-allowed border border-dc-border'
+                  : 'text-white border border-green-700 hover:bg-green-700 focus:ring-2 focus:ring-green-500'
               }`}
+              style={validationStatus === 'valid' ? { backgroundColor: 'var(--dc-primary)' } : undefined}
             >
               <PlayIcon className="w-4 h-4 mr-2" />
               Run Query

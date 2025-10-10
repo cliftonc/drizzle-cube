@@ -144,36 +144,37 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (error) {
       return (
-        <div className="p-4 border border-red-300 bg-red-50 rounded-sm" style={{ height }}>
+        <div className="p-4 border bg-red-50 rounded-sm" style={{ height, borderColor: '#fca5a5' }}>
           <div className="mb-2">
             <div className="flex items-center justify-between">
               <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
               <button
                 onClick={() => setRefreshCounter(prev => prev + 1)}
-                className="px-2 py-1 bg-blue-500 text-white rounded-sm text-xs hover:bg-blue-600"
+                className="px-2 py-1 text-white rounded-sm text-xs"
+                style={{ backgroundColor: 'var(--dc-primary)' }}
               >
                 Retry
               </button>
             </div>
           </div>
-          
+
           <div className="mb-3">
-            <div className="text-xs text-red-700 bg-white p-2 rounded-sm border">
+            <div className="text-xs text-red-700 bg-dc-surface p-2 rounded-sm border" style={{ borderColor: '#fca5a5' }}>
               {error.message || error.toString()}
             </div>
           </div>
-          
+
           <div className="space-y-2 text-xs">
             <details>
-              <summary className="cursor-pointer text-gray-700 font-medium">Original Query</summary>
-              <pre className="mt-1 bg-blue-50 p-2 rounded-sm text-xs overflow-auto max-h-20">
+              <summary className="cursor-pointer text-dc-text-secondary font-medium">Original Query</summary>
+              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                 {query}
               </pre>
             </details>
-            
+
             <details>
-              <summary className="cursor-pointer text-gray-700 font-medium">Chart Config</summary>
-              <pre className="mt-1 bg-purple-50 p-2 rounded-sm text-xs overflow-auto max-h-20">
+              <summary className="cursor-pointer text-dc-text-secondary font-medium">Chart Config</summary>
+              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: '#f3e8ff' }}>
                 {JSON.stringify({
                   chartType,
                   chartConfig,
@@ -188,7 +189,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (!resultSet || !queryObject) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No data available</div>
             <div className="text-xs">Invalid query or no results</div>
@@ -397,7 +398,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
         default:
           return (
             <div className="flex items-center justify-center w-full" style={{ height }}>
-              <div className="text-center text-gray-500">
+              <div className="text-center text-dc-text-muted">
                 <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
                 <div className="text-xs">{chartType}</div>
               </div>

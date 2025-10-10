@@ -25,10 +25,10 @@ export default function RadarChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs">No data points to display in radar chart</div>
+            <div className="text-xs text-dc-text-secondary">No data points to display in radar chart</div>
           </div>
         </div>
       )
@@ -118,10 +118,10 @@ export default function RadarChart({
     // Validate transformed data
     if (!radarData || radarData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs">No valid data points for radar chart after transformation</div>
+            <div className="text-xs text-dc-text-secondary">No valid data points for radar chart after transformation</div>
           </div>
         </div>
       )
@@ -133,14 +133,14 @@ export default function RadarChart({
           {safeDisplayConfig.showGrid && (
             <PolarGrid />
           )}
-          <PolarAngleAxis 
+          <PolarAngleAxis
             dataKey="name"
             tick={{ fontSize: 12 }}
-            className="text-gray-600"
+            className="text-dc-text-muted"
           />
-          <PolarRadiusAxis 
+          <PolarRadiusAxis
             tick={{ fontSize: 10 }}
-            className="text-gray-600"
+            className="text-dc-text-muted"
           />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip />
@@ -179,7 +179,7 @@ export default function RadarChart({
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Radar Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-gray-600">Check the data and configuration</div>
+          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

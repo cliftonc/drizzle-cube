@@ -15,7 +15,15 @@ export default function DataTable({
   
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{
+          height,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
+        }}
+      >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">No data available</div>
           <div className="text-xs">No data to display in table</div>
@@ -32,7 +40,15 @@ export default function DataTable({
 
   if (columns.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+      <div
+        className="flex items-center justify-center w-full"
+        style={{
+          height,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
+        }}
+      >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">No columns available</div>
           <div className="text-xs">Data structure is invalid</div>
@@ -43,26 +59,26 @@ export default function DataTable({
 
   return (
     <div className="w-full overflow-auto" style={{ height }}>
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50 sticky top-0">
+      <table className="min-w-full divide-y border-dc-border">
+        <thead className="bg-dc-surface-secondary sticky top-0">
           <tr>
             {columns.map((column) => (
               <th
                 key={column}
-                className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider"
               >
                 {getFieldLabel(column)}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-dc-surface divide-y border-dc-border">
           {data.map((row, index) => (
-            <tr key={index} className="hover:bg-gray-50">
+            <tr key={index} className="hover:bg-dc-surface-secondary">
               {columns.map((column) => (
                 <td
                   key={column}
-                  className="px-3 py-2 whitespace-nowrap text-sm text-gray-900"
+                  className="px-3 py-2 whitespace-nowrap text-sm text-dc-text"
                 >
                   {formatCellValue(row[column])}
                 </td>

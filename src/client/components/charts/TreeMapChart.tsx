@@ -27,10 +27,10 @@ export default function TreeMapChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs">No data points to display in treemap chart</div>
+            <div className="text-xs text-dc-text-secondary">No data points to display in treemap chart</div>
           </div>
         </div>
       )
@@ -166,10 +166,10 @@ export default function TreeMapChart({
     
     if (treemapData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs">No valid data points for treemap chart after transformation</div>
+            <div className="text-xs text-dc-text-secondary">No valid data points for treemap chart after transformation</div>
           </div>
         </div>
       )
@@ -328,24 +328,24 @@ export default function TreeMapChart({
             {isNumericSeries ? (
               // Gradient legend for numeric series
               <div className="flex flex-col items-center">
-                <div className="text-xs font-semibold text-gray-700 mb-2">
+                <div className="text-xs font-semibold text-dc-text-primary mb-2">
                   {seriesField ? getFieldLabel(seriesField) : ''}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-dc-text-muted">
                     {Math.min(...data.map(item => {
                       const value = item[seriesField!]
                       return typeof value === 'string' ? parseFloat(value) : value
                     })).toFixed(2)}
                   </span>
-                  <div 
+                  <div
                     className="h-4 rounded-sm"
-                    style={{ 
+                    style={{
                       width: '200px',
                       background: `linear-gradient(to right, ${CHART_COLORS_GRADIENT.join(', ')})`
                     }}
                   />
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-dc-text-muted">
                     {Math.max(...data.map(item => {
                       const value = item[seriesField!]
                       return typeof value === 'string' ? parseFloat(value) : value
@@ -358,11 +358,11 @@ export default function TreeMapChart({
               <div className="flex flex-wrap justify-center gap-4">
                 {legendPayload.map((item, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <div 
+                    <div
                       className="w-3 h-3 rounded-xs"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-xs text-gray-600">
+                    <span className="text-xs text-dc-text-muted">
                       {item.value}
                     </span>
                   </div>
@@ -380,7 +380,7 @@ export default function TreeMapChart({
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">TreeMap Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-gray-600">Check the data and configuration</div>
+          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

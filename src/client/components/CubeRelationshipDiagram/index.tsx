@@ -238,7 +238,7 @@ export function CubeRelationshipDiagram({
       <div className={`flex items-center justify-center h-96 ${className}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-500">Loading cube schema...</p>
+          <p className="text-dc-text-muted">Loading cube schema...</p>
         </div>
       </div>
     )
@@ -260,7 +260,7 @@ export function CubeRelationshipDiagram({
   if (!meta || meta.cubes.length === 0) {
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-center text-gray-500">
+        <div className="text-center text-dc-text-muted">
           <p className="font-medium">No cubes found</p>
           <p className="text-sm mt-1">Register some cubes to see the relationship diagram</p>
         </div>
@@ -303,7 +303,7 @@ export function CubeRelationshipDiagram({
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[120px]"
+          className="fixed z-50 bg-dc-surface rounded-md shadow-lg border border-dc-border py-1 min-w-[120px]"
           style={{
             left: contextMenu.x,
             top: contextMenu.y,
@@ -311,7 +311,7 @@ export function CubeRelationshipDiagram({
         >
           <button
             onClick={handleAutoLayout}
-            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+            className="w-full px-3 py-2 text-sm text-dc-text-secondary hover:bg-dc-surface-hover text-left"
           >
             Auto Layout
           </button>

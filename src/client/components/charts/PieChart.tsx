@@ -26,10 +26,10 @@ export default function PieChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs">No data points to display in pie chart</div>
+            <div className="text-xs text-dc-text-secondary">No data points to display in pie chart</div>
           </div>
         </div>
       )
@@ -128,11 +128,11 @@ export default function PieChart({
     
     if (pieData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-gray-500" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs">
-              {originalLength > 0 
+            <div className="text-xs text-dc-text-secondary">
+              {originalLength > 0
                 ? `Filtered out ${originalLength} data points (zero or invalid values)`
                 : 'No data points to display in pie chart'
               }
@@ -188,7 +188,7 @@ export default function PieChart({
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Pie Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-gray-600">Check the data and configuration</div>
+          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

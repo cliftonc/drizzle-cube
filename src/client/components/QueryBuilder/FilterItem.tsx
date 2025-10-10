@@ -59,7 +59,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
   
   if (!schema) {
     return (
-      <div className="text-sm text-gray-500">
+      <div className="text-sm text-dc-text-muted">
         Schema not loaded
       </div>
     )
@@ -100,11 +100,11 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Helper function to get field type badge
   const getFieldTypeBadge = (field: MetaField) => {
     if (field.type === 'time') {
-      return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-sm">T</span>
+      return <span className="text-xs bg-dc-time-dimension text-dc-time-dimension px-1.5 py-0.5 rounded-sm">T</span>
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'number'].includes(field.type)) {
-      return <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-sm">M</span>
+      return <span className="text-xs bg-dc-measure text-dc-measure px-1.5 py-0.5 rounded-sm">M</span>
     } else {
-      return <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-sm">D</span>
+      return <span className="text-xs bg-dc-dimension text-dc-dimension px-1.5 py-0.5 rounded-sm">D</span>
     }
   }
 
@@ -139,62 +139,62 @@ const FilterItem: React.FC<FilterItemProps> = ({
   }
   
   return (
-    <div ref={containerRef} className="bg-white border border-gray-200 rounded-lg p-3">
+    <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
         {/* Row 1 on mobile: Filter icon and field selection */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FunnelIcon className="w-4 h-4 text-gray-500 shrink-0" />
-          
+          <FunnelIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+
           {/* Field selection */}
           <div className="relative flex-1 min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+              className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
             >
               <span className="truncate">
                 {selectedField ? (
                   <span className="font-medium">{selectedField.name}</span>
                 ) : (
-                  <span className="text-gray-500">Select field...</span>
+                  <span className="text-dc-text-muted">Select field...</span>
                 )}
               </span>
-              <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 ml-1 transition-transform ${
+              <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
                 isFieldDropdownOpen ? 'transform rotate-180' : ''
               }`} />
             </button>
-            
+
             {isFieldDropdownOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-hidden">
                 {/* Search input */}
-                <div className="p-2 border-b border-gray-200">
+                <div className="p-2 border-b border-dc-border">
                   <div className="relative">
-                    <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-dc-text-muted" />
                     <input
                       ref={searchInputRef}
                       type="text"
                       placeholder="Search fields..."
                       value={fieldSearchTerm}
                       onChange={(e) => setFieldSearchTerm(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
-                
+
                 {/* Fields list */}
                 <div className="max-h-60 overflow-y-auto">
                   {/* Query fields section */}
                   {filteredQueryFields.length > 0 && (
                     <div>
-                      <div className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border-b">
+                      <div className="px-3 py-1.5 text-xs font-medium text-dc-text-muted bg-dc-surface-secondary border-b border-dc-border">
                         Fields in Query ({filteredQueryFields.length})
                       </div>
                       {filteredQueryFields.map((field) => (
                         <button
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                            field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                            field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                                 {getFieldTypeBadge(field)}
                               </div>
                               {field.title !== field.name && (
-                                <div className="text-xs text-gray-500 truncate">{field.title}</div>
+                                <div className="text-xs text-dc-text-muted truncate">{field.title}</div>
                               )}
                             </div>
                           </div>
@@ -213,11 +213,11 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       ))}
                     </div>
                   )}
-                  
+
                   {/* All fields section */}
                   <div>
                     {filteredQueryFields.length > 0 && (
-                      <div className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-50 border-b">
+                      <div className="px-3 py-1.5 text-xs font-medium text-dc-text-muted bg-dc-surface-secondary border-b border-dc-border">
                         All Available Fields ({filteredAllFields.length})
                       </div>
                     )}
@@ -225,8 +225,8 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       <button
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                          field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                          field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -237,17 +237,17 @@ const FilterItem: React.FC<FilterItemProps> = ({
                               {getFieldTypeBadge(field)}
                             </div>
                             {field.title !== field.name && (
-                              <div className="text-xs text-gray-500 truncate">{field.title}</div>
+                              <div className="text-xs text-dc-text-muted truncate">{field.title}</div>
                             )}
                           </div>
                         </div>
                       </button>
                     ))}
                   </div>
-                  
+
                   {/* No results message */}
                   {filteredAllFields.length === 0 && (
-                    <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                    <div className="px-3 py-4 text-sm text-dc-text-muted text-center">
                       No fields found matching "{fieldSearchTerm}"
                     </div>
                   )}
@@ -264,24 +264,24 @@ const FilterItem: React.FC<FilterItemProps> = ({
             <div className="relative shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <span className="truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
                 </span>
-                <ChevronDownIcon className={`w-4 h-4 text-gray-400 shrink-0 ml-1 transition-transform ${
+                <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
                   isOperatorDropdownOpen ? 'transform rotate-180' : ''
                 }`} />
               </button>
-              
+
               {isOperatorDropdownOpen && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
                   {availableOperators.map((operator) => (
                     <button
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                        operator.operator === filter.operator ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                        operator.operator === filter.operator ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
                       }`}
                     >
                       {operator.label}
@@ -308,7 +308,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
         <div className="flex justify-end sm:justify-start">
           <button
             onClick={() => onFilterRemove(index)}
-            className="text-gray-400 hover:text-red-600 focus:outline-none shrink-0"
+            className="text-dc-text-muted hover:text-red-600 focus:outline-none shrink-0"
             title="Remove filter"
           >
             <XMarkIcon className="w-4 h-4" />

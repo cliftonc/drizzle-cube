@@ -51,86 +51,86 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
   const isUsingDefaults = config.baseApiUrl === '/cubejs-api/v1' && config.apiToken === ''
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg mb-4">
+    <div className="bg-dc-surface border border-dc-border rounded-lg mb-4">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between text-left bg-gray-50 rounded-t-lg hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 flex items-center justify-between text-left bg-dc-surface-secondary rounded-t-lg hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       >
         <div className="flex items-center space-x-2">
-          <CogIcon className="w-5 h-5 text-gray-600" />
-          <h3 className="text-sm font-semibold text-gray-900">API Configuration</h3>
+          <CogIcon className="w-5 h-5 text-dc-text-secondary" />
+          <h3 className="text-sm font-semibold text-dc-text">API Configuration</h3>
           {!isUsingDefaults && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-blue-100 text-blue-800">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-dc-info text-dc-text">
               Custom
             </span>
           )}
         </div>
         {isOpen ? (
-          <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+          <ChevronUpIcon className="w-4 h-4 text-dc-text-muted" />
         ) : (
-          <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+          <ChevronDownIcon className="w-4 h-4 text-dc-text-muted" />
         )}
       </button>
 
       {/* Expandable Content */}
       {isOpen && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-dc-border">
           <div className="space-y-4">
             {/* Base API URL */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-dc-text-secondary mb-1">
                 Base API URL
               </label>
               <input
                 type="text"
                 value={localConfig.baseApiUrl}
                 onChange={(e) => handleInputChange('baseApiUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 placeholder="/cubejs-api/v1"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-dc-text-muted mt-1">
                 The base URL for the Cube.js API endpoints
               </p>
             </div>
 
             {/* API Token */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-dc-text-secondary mb-1">
                 API Token
               </label>
               <input
                 type="password"
                 value={localConfig.apiToken}
                 onChange={(e) => handleInputChange('apiToken', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 placeholder="Leave empty for no authentication"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-dc-text-muted mt-1">
                 Optional bearer token for API authentication
               </p>
             </div>
 
             {/* Status Indicator */}
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+            <div className="bg-dc-surface-secondary border border-dc-border rounded-md p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-medium text-gray-700">Current Configuration</h4>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <h4 className="text-xs font-medium text-dc-text-secondary">Current Configuration</h4>
+                  <p className="text-xs text-dc-text-secondary mt-1">
                     URL: <span className="font-mono">{config.baseApiUrl}</span>
                   </p>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-dc-text-secondary">
                     Token: {config.apiToken ? (
                       <span className="text-green-600">Configured</span>
                     ) : (
-                      <span className="text-gray-500">Not set</span>
+                      <span className="text-dc-text-muted">Not set</span>
                     )}
                   </p>
                 </div>
                 {!isUsingDefaults && (
                   <button
                     onClick={handleReset}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-sm hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-sm hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     title="Reset to defaults"
                   >
                     <ArrowPathIcon className="w-3 h-3" />
@@ -142,16 +142,17 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
 
             {/* Action Buttons */}
             {hasChanges && (
-              <div className="flex justify-end space-x-2 pt-2 border-t border-gray-200">
+              <div className="flex justify-end space-x-2 pt-2 border-t border-dc-border">
                 <button
                   onClick={() => setLocalConfig(config)}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleApply}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-white border border-transparent rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  style={{ backgroundColor: 'var(--dc-primary)' }}
                 >
                   Apply Changes
                 </button>

@@ -1,6 +1,9 @@
 /* Drizzle Cube Client Styles */
 
-/* Import react-grid-layout and react-resizable styles first */
+/* Import theme variables first */
+@import './theme/variables.css';
+
+/* Import react-grid-layout and react-resizable styles */
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
 

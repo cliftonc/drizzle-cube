@@ -45,16 +45,16 @@ export default function ChartTypeSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full flex items-center justify-between px-3 py-2 border border-dc-border rounded-md bg-dc-surface hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <div className="flex items-center space-x-2">
           {SelectedIcon && (
-            <SelectedIcon className="h-5 w-5 text-gray-600" />
+            <SelectedIcon className="h-5 w-5 text-dc-text-secondary" />
           )}
-          <span className="text-sm font-medium text-gray-900">{selectedLabel}</span>
+          <span className="text-sm font-medium text-dc-text">{selectedLabel}</span>
         </div>
         <svg
-          className={`h-4 w-4 text-gray-400 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 text-dc-text-muted transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -65,7 +65,7 @@ export default function ChartTypeSelector({
 
       {/* Dropdown Menu - Grid Layout */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full min-w-max bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-auto">
+        <div className="absolute z-10 mt-1 w-full min-w-max bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-auto">
           <div className="p-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
               {chartTypes.map(([type, config]) => {
@@ -89,27 +89,30 @@ export default function ChartTypeSelector({
                     className={`
                       relative p-1.5 rounded border transition-colors duration-150
                       text-left group min-h-[30px] flex items-center justify-start
-                      ${isSelected 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                      ${isSelected
+                        ? 'bg-dc-surface-secondary'
+                        : 'bg-dc-surface hover:bg-dc-surface-hover'
                       }
                     `}
+                    style={{
+                      borderColor: isSelected ? 'var(--dc-primary)' : 'var(--dc-border)'
+                    }}
                     title={tooltipText}
                   >
                     <div className="flex items-center space-x-1.5">
                       {/* Icon */}
                       {IconComponent && (
-                        <IconComponent 
-                          className={`h-4 w-4 shrink-0 ${
-                            isSelected ? 'text-blue-600' : 'text-gray-600 group-hover:text-gray-800'
-                          }`} 
+                        <IconComponent
+                          className={`h-4 w-4 shrink-0 ${isSelected ? 'text-dc-text' : 'text-dc-text-secondary'}`}
+                          style={isSelected ? { color: 'var(--dc-primary)' } : undefined}
                         />
                       )}
-                      
+
                       {/* Chart name */}
                       <span className={`text-xs font-medium leading-tight truncate ${
-                        isSelected ? 'text-blue-900' : 'text-gray-900'
-                      }`}>
+                        isSelected ? '' : 'text-dc-text'
+                      }`}
+                      style={isSelected ? { color: 'var(--dc-primary)' } : undefined}>
                         {label}
                       </span>
                     </div>
@@ -117,7 +120,7 @@ export default function ChartTypeSelector({
                     {/* Selected indicator - smaller dot */}
                     {isSelected && (
                       <div className="absolute top-0.5 right-0.5">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--dc-primary)' }}></div>
                       </div>
                     )}
                   </button>

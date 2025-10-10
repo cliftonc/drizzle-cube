@@ -162,9 +162,9 @@ export default function DataHistogram({
       </div>
       
       {/* Min/Max values aligned with histogram width */}
-      <div 
-        className="flex justify-between mt-2 text-xs text-gray-500"
-        style={{ 
+      <div
+        className="flex justify-between mt-2 text-xs text-dc-text-muted"
+        style={{
           width: width ? `${width}px` : '200px',
           minWidth: '200px'
         }}
@@ -172,9 +172,9 @@ export default function DataHistogram({
         <span>{formatValue(min)}</span>
         <span>{formatValue(max)}</span>
       </div>
-      
+
       {/* Average indicator */}
-      <div className="text-center mt-1 text-xs text-gray-400">
+      <div className="text-center mt-1 text-xs text-dc-text-muted">
         Average of {values.length} values
       </div>
     </div>

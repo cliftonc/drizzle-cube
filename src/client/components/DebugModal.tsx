@@ -46,17 +46,17 @@ export default function DebugModal({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+        className="p-1 text-dc-text-muted hover:text-dc-text-secondary transition-colors"
         title="Debug chart configuration"
       >
-        <svg 
-          width="16" 
-          height="16" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
           strokeLinejoin="round"
         >
           <circle cx="12" cy="12" r="10"/>
@@ -68,23 +68,23 @@ export default function DebugModal({
   }
 
   return (
-    <div 
-      className="absolute inset-0 bg-white border border-gray-200 rounded-lg z-50 overflow-auto"
+    <div
+      className="absolute inset-0 bg-dc-surface border border-dc-border rounded-lg z-50 overflow-auto"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center mb-4 shrink-0">
-          <h2 className="text-lg font-semibold">Chart Debug Information</h2>
+          <h2 className="text-lg font-semibold text-dc-text">Chart Debug Information</h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-sm"
+            className="p-2 text-dc-text-muted hover:text-dc-text-secondary hover:bg-dc-surface-secondary rounded-sm"
           >
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
               strokeWidth="2"
             >
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -95,15 +95,15 @@ export default function DebugModal({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-auto">
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Chart Type</h3>
-            <div className="bg-gray-50 p-2 rounded-sm text-sm font-mono border">
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Chart Type</h3>
+            <div className="bg-dc-surface-secondary p-2 rounded-sm text-sm font-mono border border-dc-border">
               {chartType}
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Field Analysis</h3>
-            <div className="bg-gray-50 p-2 rounded-sm text-xs space-y-1 border">
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Field Analysis</h3>
+            <div className="bg-dc-surface-secondary p-2 rounded-sm text-xs space-y-1 border border-dc-border">
               <div>
                 <strong>xAxis:</strong> {Array.isArray(chartConfig?.xAxis) ? `Array: [${chartConfig.xAxis.join(', ')}]` : `String: "${chartConfig?.xAxis}"`}
               </div>
@@ -127,36 +127,36 @@ export default function DebugModal({
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Chart Config</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Chart Config</h3>
+            <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(chartConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Display Config</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Display Config</h3>
+            <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(displayConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Query Object</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Query Object</h3>
+            <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(queryObject, null, 2)}</code>
             </pre>
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Data Sample (first 3 rows)</h3>
-            <pre className="text-gray-700 overflow-x-auto font-mono p-2 rounded-sm border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Data Sample (first 3 rows)</h3>
+            <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(data?.slice(0, 3) || [], null, 2)}</code>
             </pre>
           </div>
         </div>
 
-        <div className="mt-4 pt-2 border-t border-gray-200 text-xs text-gray-500 shrink-0">
-          Press <kbd className="px-1 py-0.5 bg-gray-100 rounded-sm text-xs">ESC</kbd> to close
+        <div className="mt-4 pt-2 border-t border-dc-border text-xs text-dc-text-muted shrink-0">
+          Press <kbd className="px-1 py-0.5 bg-dc-surface-secondary rounded-sm text-xs">ESC</kbd> to close
         </div>
       </div>
     </div>

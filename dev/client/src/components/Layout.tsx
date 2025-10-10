@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { DocumentTextIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
+import ThemeToggle from './ThemeToggle'
 
 // GitHub icon component
 const GitHubIcon = ({ className }: { className?: string }) => (
@@ -37,11 +38,11 @@ const FloatingGitHubButton = () => {
         href={getSourcePath(location.pathname)}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-center w-12 h-12 bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+        className="flex items-center justify-center w-12 h-12 bg-gray-900 dark:bg-gray-700 hover:bg-gray-800 dark:hover:bg-gray-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
         title="View this page in GitHub"
       >
         <GitHubIcon className="w-6 h-6" />
-        <span className="absolute right-14 bg-gray-900 text-white px-2 py-1 rounded-sm text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <span className="absolute right-14 bg-gray-900 dark:bg-gray-700 text-white px-2 py-1 rounded-sm text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           View source
         </span>
       </a>
@@ -66,16 +67,16 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors">
       <FloatingGitHubButton />
-      <nav className="bg-white shadow-2xs border-b relative z-10">
+      <nav className="bg-white dark:bg-gray-800 shadow-2xs border-b dark:border-gray-700 relative z-10 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Desktop layout */}
             <div className="flex">
               <div className="shrink-0 flex items-center">
-                <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                  <DrizzleCubeIcon className="text-blue-600" size={28} />
+                <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <DrizzleCubeIcon className="text-blue-600 dark:text-blue-400" size={28} />
                   <span>Drizzle Cube</span>
                 </Link>
               </div>
@@ -83,30 +84,30 @@ export default function Layout({ children }: LayoutProps) {
               <div className="hidden md:ml-6 md:flex md:space-x-8">
                 <Link
                   to="/"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/')
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 dark:border-blue-400 text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Home
                 </Link>
                 <Link
                   to="/dashboards"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/dashboards')
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 dark:border-blue-400 text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Dashboards
                 </Link>
                 <Link
                   to="/query-builder"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/query-builder')
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 dark:border-blue-400 text-gray-900 dark:text-gray-100'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Query Builder
@@ -120,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
                 href="https://www.drizzle-cube.dev"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-gray-600 hover:text-gray-800 text-sm font-semibold"
+                className="inline-flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-semibold transition-colors"
               >
                 <DocumentTextIcon className="w-4 h-4 mr-1.5" />
                 Documentation
@@ -129,18 +130,20 @@ export default function Layout({ children }: LayoutProps) {
                 href="https://github.com/cliftonc/drizzle-cube"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-gray-600 hover:text-gray-800 text-sm font-semibold"
+                className="inline-flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 text-sm font-semibold transition-colors"
               >
                 <GitHubIcon className="w-4 h-4 mr-1.5" />
                 GitHub
               </a>
+              <ThemeToggle />
             </div>
 
             {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center space-x-2">
+              <ThemeToggle />
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
                 aria-expanded="false"
               >
                 <span className="sr-only">Open main menu</span>
@@ -157,14 +160,14 @@ export default function Layout({ children }: LayoutProps) {
         {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
               <Link
                 to="/"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive('/')
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 Home
@@ -172,10 +175,10 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 to="/dashboards"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive('/dashboards')
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 Dashboards
@@ -183,23 +186,23 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 to="/query-builder"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActive('/query-builder')
-                    ? 'text-blue-700 bg-blue-50 border-l-4 border-blue-500'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 Query Builder
               </Link>
-              
+
               {/* Mobile external links */}
-              <div className="border-t border-gray-200 pt-4 pb-3">
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-3">
                 <div className="space-y-1">
                   <a
                     href="https://www.drizzle-cube.dev"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <DocumentTextIcon className="w-5 h-5 inline mr-2" />
                     Documentation
@@ -208,7 +211,7 @@ export default function Layout({ children }: LayoutProps) {
                     href="https://github.com/cliftonc/drizzle-cube"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <GitHubIcon className="w-5 h-5 inline mr-2" />
                     GitHub

@@ -70,11 +70,14 @@ export default function KpiNumber({
 
   if (!data || data.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-gray-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-warning-bg)',
+          color: 'var(--dc-warning)',
+          borderColor: 'var(--dc-warning-border)'
         }}
       >
         <div className="text-center">
@@ -99,11 +102,14 @@ export default function KpiNumber({
   
   if (valueFields.length === 0) {
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-red-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-danger-bg)',
+          color: 'var(--dc-danger)',
+          borderColor: 'var(--dc-danger-border)'
         }}
       >
         <div className="text-center">
@@ -144,11 +150,14 @@ export default function KpiNumber({
   if (values.length === 0) {
     const dataKeys = data.length > 0 ? Object.keys(data[0]).join(', ') : 'none'
     return (
-      <div 
-        className="flex items-center justify-center w-full h-full text-red-500"
-        style={{ 
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-danger-bg)',
+          color: 'var(--dc-danger)',
+          borderColor: 'var(--dc-danger-border)'
         }}
       >
         <div className="text-center">
@@ -234,9 +243,9 @@ export default function KpiNumber({
       }}
     >
         {/* Field Label - Bolder and bigger */}
-        <div 
-          className="text-gray-700 font-bold text-center mb-3"
-          style={{ 
+        <div
+          className="text-dc-text-secondary font-bold text-center mb-3"
+          style={{
             fontSize: '14px',
             lineHeight: '1.2'
           }}
@@ -275,9 +284,9 @@ export default function KpiNumber({
               >
                 {formatVariance(variance, 1)}
               </div>
-              <div 
-                className="text-gray-500 text-xs"
-                style={{ 
+              <div
+                className="text-dc-text-muted text-xs"
+                style={{
                   opacity: 0.7,
                   fontSize: `${Math.max(10, fontSize * 0.2)}px`
                 }}
@@ -290,9 +299,9 @@ export default function KpiNumber({
 
         {/* Unit/Suffix - Larger, not bold */}
         {displayConfig.suffix && (
-          <div 
-            className="text-gray-500 text-center"
-            style={{ 
+          <div
+            className="text-dc-text-muted text-center"
+            style={{
               fontSize: '14px',
               lineHeight: '1.2',
               opacity: 0.8

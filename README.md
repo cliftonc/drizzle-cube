@@ -141,20 +141,63 @@ function App() {
 
 ## Key Features
 
-🔒 **SQL Injection Proof** - All queries use Drizzle's parameterized SQL  
-🛡️ **Type Safe** - Full TypeScript inference from your database schema  
-⚡ **Performance** - Prepared statements and query optimization  
-🧩 **Cube.js Compatible** - Works with existing Cube.js React components  
+🔒 **SQL Injection Proof** - All queries use Drizzle's parameterized SQL
+🛡️ **Type Safe** - Full TypeScript inference from your database schema
+⚡ **Performance** - Prepared statements and query optimization
+🧩 **Cube.js Compatible** - Works with existing Cube.js React components
 🎯 **Zero Config** - Infer cube definitions from your Drizzle schema
+🎨 **Themeable** - Built-in light/dark themes with CSS variables
 
 
 ## Supported Features
 
-✅ **Multiple Database Types** - PostgreSQL, MySQL  
-✅ **Framework Adapters** - Hono, Express, Fastify, Next.js  
-✅ **Full Type Safety** - Complete TypeScript inference  
-✅ **All SQL Features** - Joins, CTEs, subqueries, window functions  
+✅ **Multiple Database Types** - PostgreSQL, MySQL
+✅ **Framework Adapters** - Hono, Express, Fastify, Next.js
+✅ **Full Type Safety** - Complete TypeScript inference
+✅ **All SQL Features** - Joins, CTEs, subqueries, window functions
 ✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
+✅ **Light/Dark Themes** - Automatic theme support with CSS custom properties
+
+## Theming
+
+Drizzle Cube supports light and dark themes out of the box. All components automatically adapt to your app's theme using CSS custom properties.
+
+### Quick Start
+
+```typescript
+import { isDarkMode, watchThemeChanges } from 'drizzle-cube/client'
+
+// Toggle dark mode
+document.documentElement.classList.toggle('dark')
+
+// Or use data-theme attribute
+document.documentElement.setAttribute('data-theme', 'dark')
+
+// Watch for theme changes
+watchThemeChanges((isDark) => {
+  console.log('Theme changed:', isDark ? 'dark' : 'light')
+})
+```
+
+### Customization
+
+Override CSS variables in your app's stylesheet:
+
+```css
+:root {
+  --dc-primary: #3b82f6;        /* Primary color */
+  --dc-surface: #ffffff;         /* Background */
+  --dc-text: #111827;           /* Text color */
+}
+
+.dark {
+  --dc-primary: #60a5fa;
+  --dc-surface: #1e293b;
+  --dc-text: #f1f5f9;
+}
+```
+
+**[Complete Theming Guide →](./docs/THEMING.md)**
 
 ## Documentation
 

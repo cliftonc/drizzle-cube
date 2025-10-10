@@ -81,18 +81,21 @@ export function RelationshipEdge({
           }}
           className="nodrag nopan"
         >
-          <div 
-            className="bg-white border-2 rounded-md px-2 py-1 shadow-xs"
-            style={{ borderColor: color }}
+          <div
+            className="border-2 rounded-md px-2 py-1 shadow-xs"
+            style={{
+              backgroundColor: 'var(--dc-surface)',
+              borderColor: color
+            }}
           >
             <div className="text-center">
-              <div 
+              <div
                 className="font-bold text-xs mb-1"
                 style={{ color }}
               >
                 {symbol}
               </div>
-              <div className="text-[9px] text-gray-600 leading-tight">
+              <div className="text-[9px] text-dc-text-muted leading-tight">
                 {joinFields.map((field, index) => (
                   <div key={index} className="font-mono">
                     {field.sourceField} → {field.targetField}

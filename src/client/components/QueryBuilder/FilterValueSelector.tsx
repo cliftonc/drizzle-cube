@@ -164,7 +164,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (!operatorMeta.requiresValues) {
     // No input needed for set/notSet
     return (
-      <div className="text-sm text-gray-500 italic">
+      <div className="text-sm text-dc-text-muted italic">
         No value required
       </div>
     )
@@ -178,14 +178,14 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
-        <span className="text-sm text-gray-500">to</span>
+        <span className="text-sm text-dc-text-muted">to</span>
         <input
           type="date"
           value={values[1] || ''}
           onChange={handleDateRangeEndInput}
-          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     )
@@ -214,15 +214,15 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
           onChange={handleBetweenStartInput}
           placeholder="Min"
-          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
-        <span className="text-sm text-gray-500">to</span>
+        <span className="text-sm text-dc-text-muted">to</span>
         <input
           type="number"
           value={values[1] !== undefined && values[1] !== null ? values[1] : ''}
           onChange={handleBetweenEndInput}
           placeholder="Max"
-          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     )
@@ -235,7 +235,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         type="date"
         value={values[0] || ''}
         onChange={handleDateInput}
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
   }
@@ -248,7 +248,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
-        className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       />
     )
   }
@@ -265,7 +265,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
               {values.map((value, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200"
+                  className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension"
                 >
                   <span className="mr-1">{String(value)}</span>
                   <button
@@ -288,7 +288,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 e.target.value = '' // Clear the input
               }
             }}
-            className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Add date..."
           />
         </div>
@@ -300,7 +300,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       )
     }
@@ -316,7 +316,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
             {values.map((value, index) => (
               <div
                 key={index}
-                className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200"
+                className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension"
               >
                 <span className="mr-1">{String(value)}</span>
                 <button
@@ -333,7 +333,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Single value display (for single-select) */}
         {!operatorMeta.supportsMultipleValues && values.length > 0 && (
           <div className="mb-2">
-            <div className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-sm border border-blue-200">
+            <div className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension">
               <span className="mr-1">{String(values[0])}</span>
               <button
                 onClick={() => onValuesChange([])}
@@ -348,33 +348,33 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Dropdown trigger */}
         <button
           onClick={handleDropdownToggle}
-          className="w-full text-left text-sm border border-gray-300 rounded-sm px-2 py-1 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
+          className="w-full text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
         >
-          <span className="text-gray-500 truncate">
+          <span className="text-dc-text-muted truncate">
             {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
           </span>
-          <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+          <ChevronDownIcon className="w-4 h-4 text-dc-text-muted" />
         </button>
-        
+
         {/* Dropdown menu */}
         {isOpen && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-30 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
             {/* Search input */}
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-dc-border">
               <input
                 type="text"
                 value={searchText}
                 onChange={handleSearchChange}
                 placeholder="Search values..."
-                className="w-full text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
               />
             </div>
-            
+
             {/* Values list */}
             <div className="max-h-48 overflow-y-auto">
               {valuesLoading ? (
-                <div className="p-2 text-sm text-gray-500">
+                <div className="p-2 text-sm text-dc-text-muted">
                   {searchText ? 'Searching...' : 'Loading values...'}
                 </div>
               ) : valuesError ? (
@@ -382,19 +382,19 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                   Error loading values: {valuesError}
                 </div>
               ) : distinctValues.length === 0 ? (
-                <div className="p-2 text-sm text-gray-500">
+                <div className="p-2 text-sm text-dc-text-muted">
                   {searchText ? 'No matching values' : 'No values available'}
                 </div>
               ) : (
                 distinctValues.map((value, index) => {
                   const isSelected = values.includes(value)
-                  
+
                   return (
                     <button
                       key={`${value}-${index}`}
                       onClick={() => handleValueSelect(value)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 ${
-                        isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                        isSelected ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
                       }`}
                     >
                       {String(value)}
@@ -419,7 +419,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
       onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
-      className="text-sm border border-gray-300 rounded-sm px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
     />
   )
 }
