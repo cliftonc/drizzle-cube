@@ -77,8 +77,10 @@ export {
   setThemeVariable,
   applyTheme,
   resetTheme,
+  getTheme,
+  setTheme,
   isDarkMode,
   watchThemeChanges,
   THEME_PRESETS
 } from './theme'
-export type { ThemeColorTokens, ThemeConfig } from './theme'
+export type { ThemeColorTokens, ThemeConfig, Theme } from './theme'

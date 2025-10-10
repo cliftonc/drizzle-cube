@@ -85,6 +85,23 @@
   --dc-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --dc-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --dc-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Card/Component Colors - For feature cards, panels */
+  --dc-card-bg: #ffffff;
+  --dc-card-bg-hover: #f9fafb;
+  --dc-card-border: #e5e7eb;
+  --dc-card-border-hover: #d1d5db;
+
+  /* Semantic Accent Colors - Theme-aware highlights */
+  --dc-accent: #3b82f6;
+  --dc-accent-hover: #2563eb;
+  --dc-accent-bg: #eff6ff;
+  --dc-accent-border: #93c5fd;
+
+  /* Muted/Subtle Colors - For secondary elements */
+  --dc-muted: #6b7280;
+  --dc-muted-bg: #f3f4f6;
+  --dc-muted-border: #e5e7eb;
 }
 
 /* ============================================================================
@@ -161,6 +178,115 @@ html.dark {
   --dc-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
   --dc-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4);
   --dc-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+
+  /* Card/Component Colors - Dark mode versions */
+  --dc-card-bg: #1e293b;
+  --dc-card-bg-hover: #334155;
+  --dc-card-border: #475569;
+  --dc-card-border-hover: #64748b;
+
+  /* Semantic Accent Colors - Dark mode versions */
+  --dc-accent: #60a5fa;
+  --dc-accent-hover: #3b82f6;
+  --dc-accent-bg: #1e3a8a;
+  --dc-accent-border: #2563eb;
+
+  /* Muted/Subtle Colors - Dark mode versions */
+  --dc-muted: #94a3b8;
+  --dc-muted-bg: #334155;
+  --dc-muted-border: #475569;
+}
+
+/* ============================================================================
+   Neon Theme - Bold, modern with fluorescent colors
+   ============================================================================ */
+[data-theme="neon"],
+html.neon {
+  /* Surface Colors - Deep dark backgrounds with purple tint */
+  --dc-surface: #0a0118;
+  --dc-surface-secondary: #1a0f2e;
+  --dc-surface-tertiary: #2a1f3e;
+  --dc-surface-hover: #3a2f4e;
+
+  /* Text Colors - Bright white with neon highlights */
+  --dc-text: #ffffff;
+  --dc-text-secondary: #e0e0ff;
+  --dc-text-muted: #b0b0d0;
+  --dc-text-disabled: #808090;
+
+  /* Border Colors - Electric cyan and magenta */
+  --dc-border: #ff00ff;
+  --dc-border-secondary: #00ffff;
+  --dc-border-hover: #00ff00;
+
+  /* Primary Colors - Electric cyan */
+  --dc-primary: #00ffff;
+  --dc-primary-hover: #00cccc;
+  --dc-primary-content: #000000;
+
+  /* Semantic State Colors - Bright neon versions */
+  --dc-success: #00ff00;
+  --dc-success-bg: rgba(0, 255, 0, 0.15);
+  --dc-success-border: #00ff00;
+
+  --dc-warning: #ffff00;
+  --dc-warning-bg: rgba(255, 255, 0, 0.15);
+  --dc-warning-border: #ffff00;
+
+  --dc-error: #ff0066;
+  --dc-error-bg: rgba(255, 0, 102, 0.15);
+  --dc-error-border: #ff0066;
+
+  --dc-info: #00ffff;
+  --dc-info-bg: rgba(0, 255, 255, 0.15);
+  --dc-info-border: #00ffff;
+
+  /* Danger Colors - Hot pink */
+  --dc-danger: #ff1493;
+  --dc-danger-hover: #cc1077;
+  --dc-danger-bg: rgba(255, 20, 147, 0.15);
+
+  /* Field Type Colors - Neon versions */
+  --dc-dimension-bg: rgba(0, 255, 0, 0.2);
+  --dc-dimension-text: #00ff00;
+  --dc-dimension-border: #00ff00;
+
+  --dc-time-dimension-bg: rgba(0, 255, 255, 0.2);
+  --dc-time-dimension-text: #00ffff;
+  --dc-time-dimension-border: #00ffff;
+
+  --dc-measure-bg: rgba(255, 0, 255, 0.2);
+  --dc-measure-text: #ff00ff;
+  --dc-measure-border: #ff00ff;
+
+  /* Overlay Colors - Deep purple overlay */
+  --dc-overlay: rgba(10, 1, 24, 0.95);
+  --dc-overlay-light: rgba(10, 1, 24, 0.75);
+
+  /* Shadow Colors - Neon glow effects */
+  --dc-shadow-sm: 0 0 4px rgba(255, 0, 255, 0.3);
+  --dc-shadow: 0 0 8px rgba(255, 0, 255, 0.4), 0 0 12px rgba(0, 255, 255, 0.2);
+  --dc-shadow-md: 0 0 12px rgba(255, 0, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3);
+  --dc-shadow-lg: 0 0 20px rgba(255, 0, 255, 0.6), 0 0 30px rgba(0, 255, 255, 0.4);
+  --dc-shadow-xl: 0 0 30px rgba(255, 0, 255, 0.7), 0 0 50px rgba(0, 255, 255, 0.5);
+  --dc-shadow-2xl: 0 0 50px rgba(255, 0, 255, 0.8), 0 0 80px rgba(0, 255, 255, 0.6);
+
+  /* Card/Component Colors - Neon versions with glow */
+  --dc-card-bg: #1a0f2e;
+  --dc-card-bg-hover: #2a1f3e;
+  --dc-card-border: #ff00ff;
+  --dc-card-border-hover: #00ffff;
+
+  /* Semantic Accent Colors - Bright neon cyan */
+  --dc-accent: #00ffff;
+  --dc-accent-hover: #00cccc;
+  --dc-accent-bg: rgba(0, 255, 255, 0.15);
+  --dc-accent-border: #00ffff;
+
+  /* Muted/Subtle Colors - Neon versions */
+  --dc-muted: #b0b0d0;
+  --dc-muted-bg: #2a1f3e;
+  --dc-muted-border: #ff00ff;
 }
 
 /* ============================================================================

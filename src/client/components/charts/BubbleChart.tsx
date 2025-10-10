@@ -4,7 +4,7 @@ import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
-import { isDarkMode, watchThemeChanges } from '../../theme'
+import { getTheme, watchThemeChanges, type Theme } from '../../theme'
 import type { ChartProps } from '../../types'
 
 interface BubbleData {
@@ -29,14 +29,14 @@ export default function BubbleChart({
   const [, setHoveredBubble] = useState<string | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [dimensionsReady, setDimensionsReady] = useState(false)
-  const [isDark, setIsDark] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState<Theme>('light')
   const { getFieldLabel } = useCubeContext()
 
   // Watch for theme changes
   useEffect(() => {
-    setIsDark(isDarkMode())
-    const unwatch = watchThemeChanges((darkMode) => {
-      setIsDark(darkMode)
+    setCurrentTheme(getTheme())
+    const unwatch = watchThemeChanges((theme) => {
+      setCurrentTheme(theme)
     })
     return unwatch
   }, [])
@@ -266,6 +266,7 @@ export default function BubbleChart({
       return value || fallback
     }
 
+    const isDark = currentTheme !== 'light'
     const textColor = isDark
       ? getThemeColor('--dc-text-muted', '#cbd5e1')  // Lighter text for dark mode
       : getThemeColor('--dc-text-secondary', '#374151')  // Darker text for light mode
@@ -554,7 +555,7 @@ export default function BubbleChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity, colorPalette, isDark])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showLegend, safeDisplayConfig.showGrid, safeDisplayConfig.showTooltip, safeDisplayConfig.minBubbleSize, safeDisplayConfig.maxBubbleSize, safeDisplayConfig.bubbleOpacity, colorPalette, currentTheme])
 
   if (!data || data.length === 0) {
     return (

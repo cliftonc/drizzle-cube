@@ -115,36 +115,87 @@ export function resetTheme(): void {
 }
 
 /**
- * Detect if dark mode is currently active
+ * Theme type definition
  */
-export function isDarkMode(): boolean {
-  if (typeof window === 'undefined') return false
+export type Theme = 'light' | 'dark' | 'neon'
 
-  // Check for dark class on html or body
-  if (document.documentElement.classList.contains('dark') ||
-      document.body.classList.contains('dark')) {
-    return true
+/**
+ * Get the current theme
+ */
+export function getTheme(): Theme {
+  if (typeof window === 'undefined') return 'light'
+
+  // Check localStorage first
+  const stored = localStorage.getItem('theme')
+  if (stored === 'dark' || stored === 'neon' || stored === 'light') {
+    return stored
   }
 
   // Check for data-theme attribute
-  const theme = document.documentElement.getAttribute('data-theme')
-  if (theme && theme.toLowerCase().includes('dark')) {
-    return true
+  const dataTheme = document.documentElement.getAttribute('data-theme')
+  if (dataTheme === 'dark' || dataTheme === 'neon') {
+    return dataTheme
+  }
+
+  // Check for dark class
+  if (document.documentElement.classList.contains('dark') ||
+      document.body.classList.contains('dark')) {
+    return 'dark'
+  }
+
+  // Check for neon class
+  if (document.documentElement.classList.contains('neon') ||
+      document.body.classList.contains('neon')) {
+    return 'neon'
   }
 
   // Check system preference
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
+  }
+
+  return 'light'
+}
+
+/**
+ * Set the theme
+ */
+export function setTheme(theme: Theme): void {
+  if (typeof window === 'undefined') return
+
+  // Remove all theme classes
+  document.documentElement.classList.remove('dark', 'neon')
+
+  // Set data-theme attribute
+  document.documentElement.setAttribute('data-theme', theme)
+
+  // Add appropriate class for backwards compatibility
+  if (theme === 'dark' || theme === 'neon') {
+    document.documentElement.classList.add(theme)
+  }
+
+  // Persist to localStorage
+  localStorage.setItem('theme', theme)
+}
+
+/**
+ * Detect if dark mode is currently active (backwards compatibility)
+ * @deprecated Use getTheme() instead
+ */
+export function isDarkMode(): boolean {
+  const theme = getTheme()
+  return theme === 'dark' || theme === 'neon'
 }
 
 /**
  * Watch for theme changes
  */
-export function watchThemeChanges(callback: (isDark: boolean) => void): () => void {
+export function watchThemeChanges(callback: (theme: Theme) => void): () => void {
   if (typeof window === 'undefined') return () => {}
 
   // Watch for class changes on html element
   const observer = new MutationObserver(() => {
-    callback(isDarkMode())
+    callback(getTheme())
   })
 
   observer.observe(document.documentElement, {
@@ -154,7 +205,7 @@ export function watchThemeChanges(callback: (isDark: boolean) => void): () => vo
 
   // Watch for system preference changes
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  const mediaListener = (e: MediaQueryListEvent) => callback(e.matches)
+  const mediaListener = () => callback(getTheme())
   mediaQuery.addEventListener('change', mediaListener)
 
   // Return cleanup function
@@ -169,7 +220,7 @@ export function watchThemeChanges(callback: (isDark: boolean) => void): () => vo
  */
 export const THEME_PRESETS = {
   light: {
-    name: 'light',
+    name: 'light' as const,
     colors: {
       surface: '#ffffff',
       surfaceSecondary: '#f9fafb',
@@ -182,7 +233,7 @@ export const THEME_PRESETS = {
     }
   },
   dark: {
-    name: 'dark',
+    name: 'dark' as const,
     colors: {
       surface: '#1e293b',
       surfaceSecondary: '#334155',
@@ -192,6 +243,27 @@ export const THEME_PRESETS = {
       border: '#475569',
       primary: '#60a5fa',
       primaryHover: '#3b82f6',
+    }
+  },
+  neon: {
+    name: 'neon' as const,
+    colors: {
+      surface: '#0a0118',
+      surfaceSecondary: '#1a0f2e',
+      surfaceTertiary: '#2a1f3e',
+      text: '#ffffff',
+      textSecondary: '#e0e0ff',
+      textMuted: '#b0b0d0',
+      border: '#ff00ff',
+      borderSecondary: '#00ffff',
+      primary: '#00ffff',
+      primaryHover: '#00cccc',
+      primaryContent: '#000000',
+      success: '#00ff00',
+      warning: '#ffff00',
+      error: '#ff0066',
+      info: '#00ffff',
+      danger: '#ff1493',
     }
   }
 } as const

@@ -1,12 +1,18 @@
 # Theming Guide for drizzle-cube
 
-drizzle-cube provides a flexible CSS variable-based theming system that allows you to customize the appearance of all components and support light/dark themes seamlessly.
+drizzle-cube provides a **scalable semantic theming system** using CSS variables. Add unlimited custom themes without changing a single line of component code!
 
 ## Quick Start
 
-### Default Themes
+### Built-in Themes
 
-drizzle-cube includes **light** and **dark** themes out of the box. No configuration needed - the themes adapt automatically based on your app's theme class or attribute:
+drizzle-cube includes three themes out of the box:
+
+🌞 **Light** - Clean white backgrounds with blue accents
+🌙 **Dark** - Slate grays with lighter blue highlights
+⚡ **Neon** - Bold fluorescent colors with deep purple backgrounds
+
+No configuration needed - the themes adapt automatically based on your app's theme attribute:
 
 ```tsx
 import { CubeProvider, AnalyticsDashboard } from 'drizzle-cube/client'
@@ -23,48 +29,114 @@ function App() {
 
 ### Switching Themes
 
-**Method 1: CSS Class (Recommended)**
+**Method 1: Theme Utilities (Recommended)**
 ```tsx
-// Toggle dark mode by adding class to html element
-document.documentElement.classList.toggle('dark')
+import { setTheme, getTheme, watchThemeChanges } from 'drizzle-cube/client'
+
+// Set a theme programmatically
+setTheme('neon')  // 'light' | 'dark' | 'neon'
+
+// Get current theme
+const current = getTheme()  // Returns: 'light' | 'dark' | 'neon'
+
+// Watch for changes
+watchThemeChanges((theme) => {
+  console.log('Theme changed to:', theme)
+})
 ```
 
-**Method 2: Data Attribute**
+**Method 2: Data Attribute (Manual)**
 ```tsx
 // Set theme via data-theme attribute
-document.documentElement.setAttribute('data-theme', 'dark')
+document.documentElement.setAttribute('data-theme', 'neon')
 ```
 
-Both approaches work automatically with drizzle-cube components!
+**Method 3: CSS Class (Legacy)**
+```tsx
+// Toggle dark mode by adding class to html element
+document.documentElement.classList.add('dark')
+```
+
+All three approaches work automatically with drizzle-cube components!
 
 ## Theme Architecture
 
-### CSS Custom Properties
+### Semantic CSS Variables
 
-drizzle-cube uses semantic CSS variables prefixed with `--dc-` (drizzle-cube) for all colors and styles:
+drizzle-cube uses **semantic CSS variables** prefixed with `--dc-` (drizzle-cube). These variables change automatically when you switch themes:
 
-| Variable | Purpose | Light Default | Dark Default |
-|----------|---------|---------------|--------------|
-| `--dc-surface` | Primary background | `#ffffff` | `#1e293b` |
-| `--dc-surface-secondary` | Secondary background | `#f9fafb` | `#334155` |
-| `--dc-text` | Primary text | `#111827` | `#f1f5f9` |
-| `--dc-text-secondary` | Secondary text | `#374151` | `#e2e8f0` |
-| `--dc-text-muted` | Muted text | `#6b7280` | `#cbd5e1` |
-| `--dc-border` | Border color | `#e5e7eb` | `#475569` |
-| `--dc-primary` | Primary action color | `#3b82f6` | `#60a5fa` |
-| `--dc-primary-hover` | Primary hover state | `#2563eb` | `#3b82f6` |
-| `--dc-success` | Success state | `#10b981` | `#34d399` |
-| `--dc-warning` | Warning state | `#f59e0b` | `#fbbf24` |
-| `--dc-error` | Error state | `#ef4444` | `#f87171` |
-| `--dc-danger` | Destructive actions | `#dc2626` | `#ef4444` |
+| Variable | Purpose | Light | Dark | Neon |
+|----------|---------|-------|------|------|
+| `--dc-surface` | Primary background | `#ffffff` | `#1e293b` | `#0a0118` |
+| `--dc-surface-secondary` | Secondary background | `#f9fafb` | `#334155` | `#1a0f2e` |
+| `--dc-text` | Primary text | `#111827` | `#f1f5f9` | `#ffffff` |
+| `--dc-text-secondary` | Secondary text | `#374151` | `#e2e8f0` | `#e0e0ff` |
+| `--dc-text-muted` | Muted text | `#6b7280` | `#cbd5e1` | `#b0b0d0` |
+| `--dc-border` | Border color | `#e5e7eb` | `#475569` | `#ff00ff` |
+| `--dc-card-bg` | Card background | `#ffffff` | `#1e293b` | `#1a0f2e` |
+| `--dc-card-border` | Card border | `#e5e7eb` | `#475569` | `#ff00ff` |
+| `--dc-primary` | Primary action color | `#3b82f6` | `#60a5fa` | `#00ffff` |
+| `--dc-primary-hover` | Primary hover state | `#2563eb` | `#3b82f6` | `#00cccc` |
+| `--dc-accent` | Accent color | `#3b82f6` | `#60a5fa` | `#00ffff` |
+| `--dc-success` | Success state | `#10b981` | `#34d399` | `#00ff00` |
+| `--dc-warning` | Warning state | `#f59e0b` | `#fbbf24` | `#ffff00` |
+| `--dc-error` | Error state | `#ef4444` | `#f87171` | `#ff0066` |
+| `--dc-danger` | Destructive actions | `#dc2626` | `#ef4444` | `#ff1493` |
 
-See [variables.css](../src/client/theme/variables.css) for the complete list.
+See [variables.css](../src/client/theme/variables.css) for the complete list of 40+ semantic variables.
 
-## Customization
+## Creating Custom Themes
 
-### Option 1: Override CSS Variables (Recommended)
+### The Scalable Approach
 
-Create a custom theme by overriding CSS variables in your app's CSS:
+The beauty of semantic CSS variables is that adding a new theme requires **zero component changes**. Just define your color palette!
+
+**Example: Ocean Theme**
+
+```css
+/* my-themes.css */
+[data-theme="ocean"] {
+  /* Surface colors */
+  --dc-surface: #001f3f;
+  --dc-surface-secondary: #002b5c;
+  --dc-surface-tertiary: #003d7a;
+  --dc-surface-hover: #004d99;
+
+  /* Text colors */
+  --dc-text: #e6f7ff;
+  --dc-text-secondary: #b3d9ff;
+  --dc-text-muted: #80b3ff;
+
+  /* Card colors */
+  --dc-card-bg: #003366;
+  --dc-card-bg-hover: #004080;
+  --dc-card-border: #0059b3;
+
+  /* Primary/accent colors */
+  --dc-primary: #39cccc;
+  --dc-primary-hover: #2eb8b8;
+  --dc-accent: #66d9d9;
+  --dc-border: #004d66;
+
+  /* Semantic states */
+  --dc-success: #00e676;
+  --dc-warning: #ffab00;
+  --dc-error: #ff5252;
+  --dc-danger: #ff1744;
+  /* ... other variables */
+}
+```
+
+Then use it in your app:
+```tsx
+import { setTheme } from 'drizzle-cube/client'
+
+setTheme('ocean')  // All components update automatically! ✨
+```
+
+### Option 1: Full Custom Theme
+
+Create a complete custom theme by defining all semantic variables:
 
 ```css
 /* my-app-theme.css */
@@ -188,26 +260,69 @@ drizzle-cube will automatically inherit your DaisyUI theme colors!
 }
 ```
 
-### Theme Detection and Switching
+### Multi-Theme Switcher
+
+```tsx
+import { getTheme, setTheme, watchThemeChanges, type Theme } from 'drizzle-cube/client'
+import { useEffect, useState } from 'react'
+
+function ThemeToggle() {
+  const [currentTheme, setCurrentTheme] = useState<Theme>(getTheme())
+
+  useEffect(() => {
+    // Watch for theme changes from other sources
+    const unwatch = watchThemeChanges((theme) => {
+      setCurrentTheme(theme)
+    })
+    return unwatch
+  }, [])
+
+  const cycleTheme = () => {
+    // Cycle through: light → dark → neon → light
+    const nextTheme =
+      currentTheme === 'light' ? 'dark' :
+      currentTheme === 'dark' ? 'neon' : 'light'
+
+    setTheme(nextTheme)
+  }
+
+  const getIcon = () => {
+    switch (currentTheme) {
+      case 'light': return '☀️'
+      case 'dark': return '🌙'
+      case 'neon': return '⚡'
+      default: return '☀️'
+    }
+  }
+
+  return (
+    <button onClick={cycleTheme} title={`Switch to next theme`}>
+      {getIcon()} {currentTheme}
+    </button>
+  )
+}
+```
+
+### Two-State Toggle (Legacy)
+
+For a simple light/dark toggle:
 
 ```tsx
 import { isDarkMode, watchThemeChanges } from 'drizzle-cube/client'
 import { useEffect, useState } from 'react'
 
-function ThemeToggle() {
+function SimpleThemeToggle() {
   const [isDark, setIsDark] = useState(isDarkMode())
 
   useEffect(() => {
-    // Watch for theme changes from other sources
-    const unwatch = watchThemeChanges((isDarkMode) => {
-      setIsDark(isDarkMode)
+    const unwatch = watchThemeChanges((theme) => {
+      setIsDark(theme === 'dark' || theme === 'neon')
     })
     return unwatch
   }, [])
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark')
-    setIsDark(!isDark)
   }
 
   return (
@@ -291,27 +406,57 @@ import { setThemeVariable } from 'drizzle-cube/client'
 setThemeVariable('primary', '#7c3aed')
 ```
 
-### `isDarkMode(): boolean`
+### `getTheme(): Theme`
 
-Detect if dark mode is currently active:
+Get the current active theme:
+
+```tsx
+import { getTheme, type Theme } from 'drizzle-cube/client'
+
+const currentTheme: Theme = getTheme()
+// Returns: 'light' | 'dark' | 'neon'
+```
+
+### `setTheme(theme: Theme): void`
+
+Set the active theme programmatically:
+
+```tsx
+import { setTheme } from 'drizzle-cube/client'
+
+setTheme('neon')  // 'light' | 'dark' | 'neon'
+```
+
+This function:
+- Sets the `data-theme` attribute on `<html>`
+- Adds the appropriate CSS class for backwards compatibility
+- Persists the theme to localStorage
+- Updates all components automatically
+
+### `isDarkMode(): boolean` (Deprecated)
+
+Detect if a dark theme (dark or neon) is currently active:
 
 ```tsx
 import { isDarkMode } from 'drizzle-cube/client'
 
 if (isDarkMode()) {
-  console.log('Dark theme is active')
+  console.log('Dark or Neon theme is active')
 }
 ```
 
-### `watchThemeChanges(callback: (isDark: boolean) => void): () => void`
+**Note**: Use `getTheme()` for more precise theme detection.
+
+### `watchThemeChanges(callback: (theme: Theme) => void): () => void`
 
 Watch for theme changes:
 
 ```tsx
 import { watchThemeChanges } from 'drizzle-cube/client'
 
-const unwatch = watchThemeChanges((isDark) => {
-  console.log('Theme changed:', isDark ? 'dark' : 'light')
+const unwatch = watchThemeChanges((theme) => {
+  console.log('Theme changed to:', theme)
+  // theme is 'light' | 'dark' | 'neon'
 })
 
 // Clean up when done

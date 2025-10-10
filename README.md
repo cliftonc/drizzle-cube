@@ -156,45 +156,60 @@ function App() {
 ✅ **Full Type Safety** - Complete TypeScript inference
 ✅ **All SQL Features** - Joins, CTEs, subqueries, window functions
 ✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
-✅ **Light/Dark Themes** - Automatic theme support with CSS custom properties
+✅ **Scalable Theming** - Built-in themes (light/dark/neon) with semantic CSS variables
 
 ## Theming
 
-Drizzle Cube supports light and dark themes out of the box. All components automatically adapt to your app's theme using CSS custom properties.
+Drizzle Cube features a **scalable semantic theming system** with three built-in themes. All components automatically adapt using CSS variables - no component changes needed when adding new themes!
+
+### Built-in Themes
+
+🌞 **Light** - Clean white backgrounds with blue accents
+🌙 **Dark** - Slate grays with lighter blue highlights
+⚡ **Neon** - Bold fluorescent colors with deep purple backgrounds
 
 ### Quick Start
 
 ```typescript
-import { isDarkMode, watchThemeChanges } from 'drizzle-cube/client'
+import { getTheme, setTheme, watchThemeChanges } from 'drizzle-cube/client'
 
-// Toggle dark mode
-document.documentElement.classList.toggle('dark')
+// Set a theme programmatically
+setTheme('neon')  // 'light' | 'dark' | 'neon'
 
-// Or use data-theme attribute
-document.documentElement.setAttribute('data-theme', 'dark')
+// Get current theme
+const currentTheme = getTheme()
 
 // Watch for theme changes
-watchThemeChanges((isDark) => {
-  console.log('Theme changed:', isDark ? 'dark' : 'light')
+watchThemeChanges((theme) => {
+  console.log('Theme changed:', theme)
 })
 ```
 
-### Customization
+### Adding Custom Themes
 
-Override CSS variables in your app's stylesheet:
+Create your own theme by defining CSS variables - **zero component changes required**:
 
 ```css
-:root {
-  --dc-primary: #3b82f6;        /* Primary color */
-  --dc-surface: #ffffff;         /* Background */
-  --dc-text: #111827;           /* Text color */
-}
+[data-theme="ocean"] {
+  /* Surface colors */
+  --dc-surface: #001f3f;
+  --dc-surface-secondary: #002b5c;
+  --dc-card-bg: #003366;
 
-.dark {
-  --dc-primary: #60a5fa;
-  --dc-surface: #1e293b;
-  --dc-text: #f1f5f9;
+  /* Text colors */
+  --dc-text: #e6f7ff;
+  --dc-text-secondary: #b3d9ff;
+
+  /* Primary/accent colors */
+  --dc-primary: #39cccc;
+  --dc-border: #004d66;
+  /* ... other semantic variables */
 }
+```
+
+Then update your theme toggle to include the new theme:
+```typescript
+setTheme('ocean')  // It just works! ✨
 ```
 
 **[Complete Theming Guide →](./docs/THEMING.md)**
