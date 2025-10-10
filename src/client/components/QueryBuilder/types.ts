@@ -138,6 +138,7 @@ export interface ResultsPanelProps {
 
 // Time dimension granularity options
 export const TIME_GRANULARITIES = [
+  { value: 'hour', label: 'Hour' },
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },

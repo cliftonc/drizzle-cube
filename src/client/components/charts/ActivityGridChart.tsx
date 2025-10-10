@@ -234,7 +234,32 @@ export default function ActivityGridChart({
           hasHierarchicalLabels: true, // Add hierarchical labels
           getYearFromX: (value: number) => Math.floor(value / 100) // Helper to get year for grouping
         }
-      
+
+      case 'hour':
+        // Hour granularity: days × 3-hour blocks with hierarchical year/month labels
+        return {
+          extractX: (date: Date) => {
+            // Get day as YYYYMMDD number for unique day identification
+            const year = date.getFullYear()
+            const month = date.getMonth() + 1
+            const day = date.getDate()
+            return year * 10000 + month * 100 + day // e.g., 20240115
+          },
+          extractY: (date: Date) => Math.floor(date.getHours() / 3), // 0-7 for 8 three-hour blocks
+          xLabels: [], // Will be determined from data
+          yLabels: ['00-03', '03-06', '06-09', '09-12', '12-15', '15-18', '18-21', '21-00'],
+          xFormat: (value: number) => {
+            // Format YYYYMMDD as just the day number
+            const day = value % 100
+            return `${day}`
+          },
+          yFormat: (value: number) => ['00-03', '03-06', '06-09', '09-12', '12-15', '15-18', '18-21', '21-00'][value] || '',
+          cellWidth: 16,
+          cellHeight: 16,
+          hasHierarchicalLabels: true, // Show year/month grouping above
+          getYearFromX: (value: number) => Math.floor(value / 100) // Extract YYYYMM for month grouping
+        }
+
       default:
         return null
     }
@@ -462,8 +487,13 @@ export default function ActivityGridChart({
       ? getThemeColor('--dc-text-muted', '#cbd5e1')  // Lighter text for dark mode
       : getThemeColor('--dc-text-secondary', '#374151')  // Darker text for light mode
     const lineColor = getThemeColor('--dc-border', '#e5e7eb')
-    const emptyCellColor = isDark ? '#475569' : '#ebedf0'  // Darker empty cells in dark mode
-    const cellStrokeColor = isDark ? '#1e293b' : '#fff'  // Dark border in dark mode, white in light mode
+    // Use theme-aware colors for empty cells: light gray in light mode, slightly lighter than bg in dark mode
+    const emptyCellColor = isDark
+      ? getThemeColor('--dc-bg-secondary', '#1e293b')  // Slightly lighter than dark background
+      : getThemeColor('--dc-bg-secondary', '#f3f4f6')  // Very light gray in light mode
+    const cellStrokeColor = isDark
+      ? getThemeColor('--dc-border', '#334155')  // Subtle border in dark mode
+      : getThemeColor('--dc-bg', '#ffffff')  // White border in light mode
 
     // Create tooltip
     const tooltip = select('body').append('div')
@@ -582,7 +612,19 @@ export default function ActivityGridChart({
             const endIndex = Math.max(...xValues.map(x => xValueToIndex.get(x) || 0))
             const centerIndex = (startIndex + endIndex) / 2
 
-            // Year label
+            // Year label (or year/month for hour granularity)
+            let labelText = ''
+            if (year > 9999) {
+              // For hour granularity, year is encoded as YYYYMM
+              const actualYear = Math.floor(year / 100)
+              const month = year % 100
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              labelText = `${monthNames[month - 1]} '${actualYear.toString().slice(-2)}`
+            } else {
+              // For other granularities, just show the year
+              labelText = `'${year.toString().slice(-2)}`
+            }
+
             g.append('text')
               .attr('x', centerIndex * (finalCellWidth + 4) + finalCellWidth / 2)
               .attr('y', -25)
@@ -590,7 +632,7 @@ export default function ActivityGridChart({
               .style('font-size', '12px')
               .style('font-weight', 'bold')
               .style('fill', textColor)
-              .text(`'${year.toString().slice(-2)}`)
+              .text(labelText)
 
             // Optional: Add a subtle line to group quarters under the year
             if (xValues.length > 1) {
@@ -698,7 +740,7 @@ export default function ActivityGridChart({
       >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Granularity Too High</div>
-          <div className="text-xs">Activity grids work best with quarter, month, week, or day granularity</div>
+          <div className="text-xs">Activity grids work best with hour, day, week, month, or quarter granularity</div>
           <div className="text-xs mt-1">Please choose a lower granularity for your time dimension</div>
         </div>
       </div>

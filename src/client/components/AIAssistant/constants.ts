@@ -47,7 +47,7 @@ Generate a JSON query object with this structure:
   "dimensions": ["CubeName.dimensionName"], 
   "timeDimensions": [{
     "dimension": "CubeName.timeDimensionName",
-    "granularity": "day|week|month|quarter|year",
+    "granularity": "hour|day|week|month|quarter|year",
     "dateRange": "last 30 days"
   }],
   "filters": [{
