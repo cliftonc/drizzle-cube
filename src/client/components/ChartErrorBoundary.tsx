@@ -121,10 +121,9 @@ export default class ChartErrorBoundary extends Component<Props, State> {
           {/* Reset button */}
           <button
             onClick={this.handleReset}
-            className="px-3 py-1 text-white rounded-sm text-sm"
+            className="px-3 py-1 text-white rounded-sm text-sm hover:opacity-90 transition-opacity"
             style={{
-              backgroundColor: 'var(--dc-primary)',
-              ':hover': { opacity: 0.9 }
+              backgroundColor: 'var(--dc-primary)'
             }}
           >
             <ArrowPathIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again

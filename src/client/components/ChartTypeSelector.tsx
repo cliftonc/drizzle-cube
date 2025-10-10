@@ -104,7 +104,6 @@ export default function ChartTypeSelector({
                       {IconComponent && (
                         <IconComponent
                           className={`h-4 w-4 shrink-0 ${isSelected ? 'text-dc-text' : 'text-dc-text-secondary'}`}
-                          style={isSelected ? { color: 'var(--dc-primary)' } : undefined}
                         />
                       )}
 
