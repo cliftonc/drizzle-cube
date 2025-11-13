@@ -481,11 +481,14 @@ export class QueryExecutor {
       }
     }
     
+    // Collect all WHERE conditions (declared early for junction table security)
+    const allWhereConditions: SQL[] = []
+
     // Start building the query from the primary cube
     let drizzleQuery = context.db
       .select(modifiedSelections)
       .from(primaryCubeBase.from)
-    
+
     // Add CTEs to the query - Drizzle CTEs are added at the start
     if (ctes.length > 0) {
       drizzleQuery = context.db
@@ -598,9 +601,6 @@ export class QueryExecutor {
       }
     }
 
-    // Collect all WHERE conditions
-    const allWhereConditions: SQL[] = []
-    
     // Add base WHERE conditions from primary cube
     if (primaryCubeBase.where) {
       allWhereConditions.push(primaryCubeBase.where)

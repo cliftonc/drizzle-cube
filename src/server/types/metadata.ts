@@ -10,7 +10,7 @@ import type { MeasureType, MeasureFormat, DimensionFormat, TimeGranularity } fro
  */
 export interface CubeRelationshipMetadata {
   targetCube: string
-  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   joinFields: Array<{
     sourceField: string
     targetField: string
