@@ -5,8 +5,8 @@
 import { drizzle } from 'drizzle-orm/mysql2'
 import { migrate } from 'drizzle-orm/mysql2/migrator'
 import mysql from 'mysql2/promise'
-import { mysqlTestSchema as testSchema, employees, departments, productivity, timeEntries, analyticsPages } from './schema'
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
+import { mysqlTestSchema as testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams } from './schema'
+import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
 
 /**
  * Create MySQL connection for testing
@@ -58,7 +58,9 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   // Clear existing data to ensure clean test state
   // MySQL requires different order due to foreign key constraints
   await db.delete(productivity)
-  await db.delete(employees)  
+  await db.delete(employeeTeams)
+  await db.delete(employees)
+  await db.delete(teams)
   await db.delete(departments)
   await db.delete(analyticsPages)
   
@@ -108,7 +110,27 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
     const batch = timeEntriesData.slice(i, i + timeEntriesBatchSize)
     await db.insert(timeEntries).values(batch)
   }
-  
+
+  // Insert teams data
+  await db.insert(teams).values(enhancedTeams)
+
+  // Fetch inserted teams
+  const insertedTeams = await db.select({
+    id: teams.id,
+    name: teams.name,
+    organisationId: teams.organisationId
+  }).from(teams).orderBy(teams.id)
+
+  // Update employeeTeams to use actual inserted IDs
+  const updatedEmployeeTeams = enhancedEmployeeTeams.map(et => ({
+    ...et,
+    employeeId: insertedEmployees[et.employeeId - 1]?.id || et.employeeId,
+    teamId: insertedTeams[et.teamId - 1]?.id || et.teamId
+  }))
+
+  // Insert employee-team relationships
+  await db.insert(employeeTeams).values(updatedEmployeeTeams)
+
   // Insert analytics pages data
   const analyticsData = [
     { 

@@ -89,6 +89,26 @@ export const analyticsPages = sqliteTable('analytics_pages', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+// Teams table - for testing belongsToMany relationships with employees
+export const teams = sqliteTable('teams', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  description: text('description'),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
+// EmployeeTeams junction table - many-to-many relationship between employees and teams
+export const employeeTeams = sqliteTable('employee_teams', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  employeeId: integer('employee_id').notNull(),
+  teamId: integer('team_id').notNull(),
+  role: text('role'), // e.g., 'member', 'lead', 'contributor'
+  joinedAt: integer('joined_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {

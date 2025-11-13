@@ -15,6 +15,13 @@
       "when": 1756301189200,
       "tag": "0001_fast_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763012640994,
+      "tag": "0002_blushing_nighthawk",
+      "breakpoints": true
     }
   ]
 }

@@ -28,13 +28,14 @@ import { getTestSchema } from './test-database'
  * This allows existing tests to work while we transition to fully dynamic approach
  */
 export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cube<any>>> {
-  const { testEmployeesCube, testDepartmentsCube, testProductivityCube, testTimeEntriesCube } = await createTestCubesForCurrentDatabase()
-  
+  const { testEmployeesCube, testDepartmentsCube, testProductivityCube, testTimeEntriesCube, testTeamsCube } = await createTestCubesForCurrentDatabase()
+
   const allCubes = new Map([
     ['Employees', testEmployeesCube],
-    ['Departments', testDepartmentsCube], 
+    ['Departments', testDepartmentsCube],
     ['Productivity', testProductivityCube],
-    ['TimeEntries', testTimeEntriesCube]
+    ['TimeEntries', testTimeEntriesCube],
+    ['Teams', testTeamsCube]
   ])
 
   if (!cubeNames) {
@@ -57,17 +58,19 @@ export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cu
  */
 export async function createTestCubesForCurrentDatabase(): Promise<{
   testEmployeesCube: Cube<any>
-  testDepartmentsCube: Cube<any> 
+  testDepartmentsCube: Cube<any>
   testProductivityCube: Cube<any>
   testTimeEntriesCube: Cube<any>
+  testTeamsCube: Cube<any>
 }> {
-  const { employees, departments, productivity, timeEntries, dbTrue, dbFalse } = await getTestSchema()
-  
+  const { employees, departments, productivity, timeEntries, teams, employeeTeams, dbTrue, dbFalse } = await getTestSchema()
+
   // Declare cube variables first to handle forward references
   let testEmployeesCube: Cube<any>
   let testDepartmentsCube: Cube<any>
   let testProductivityCube: Cube<any>
   let testTimeEntriesCube: Cube<any>
+  let testTeamsCube: Cube<any>
   
   // Create employees cube with correct schema
   testEmployeesCube = defineCube('Employees', {
@@ -109,6 +112,23 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
           ],
           securitySql: (securityContext) =>
             eq(timeEntries.organisationId, securityContext.organisationId)
+        }
+      },
+      // Many-to-many relationship to Teams through employeeTeams junction table
+      Teams: {
+        targetCube: () => testTeamsCube,
+        relationship: 'belongsToMany',
+        on: [], // Not used for belongsToMany
+        through: {
+          table: employeeTeams,
+          sourceKey: [
+            { source: employees.id, target: employeeTeams.employeeId }
+          ],
+          targetKey: [
+            { source: employeeTeams.teamId, target: teams.id }
+          ],
+          securitySql: (securityContext) =>
+            eq(employeeTeams.organisationId, securityContext.organisationId)
         }
       }
     },
@@ -742,10 +762,60 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     }
   })
 
+  // Create teams cube with comprehensive measures and dimensions
+  testTeamsCube = defineCube('Teams', {
+    title: 'Teams Analytics',
+    description: 'Team information and metrics',
+
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: teams,
+      where: eq(teams.organisationId, ctx.securityContext.organisationId)
+    }),
+
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Team ID',
+        type: 'number',
+        sql: teams.id,
+        primaryKey: true
+      },
+      name: {
+        name: 'name',
+        title: 'Team Name',
+        type: 'string',
+        sql: teams.name
+      },
+      description: {
+        name: 'description',
+        title: 'Team Description',
+        type: 'string',
+        sql: teams.description
+      },
+      createdAt: {
+        name: 'createdAt',
+        title: 'Created Date',
+        type: 'time',
+        sql: teams.createdAt
+      }
+    },
+
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Total Teams',
+        type: 'count',
+        sql: teams.id,
+        description: 'Total number of teams'
+      }
+    }
+  })
+
   return {
     testEmployeesCube,
-    testDepartmentsCube, 
+    testDepartmentsCube,
     testProductivityCube,
-    testTimeEntriesCube
+    testTimeEntriesCube,
+    testTeamsCube
   }
 }

@@ -6,8 +6,8 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { sql } from 'drizzle-orm'
 import postgres from 'postgres'
-import { testSchema, employees, departments, productivity, timeEntries, analyticsPages } from './schema'
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
+import { testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams } from './schema'
+import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
 
 /**
  * Create PostgreSQL connection for testing
@@ -59,7 +59,9 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
 
   // Clear existing data to ensure clean test state
   await db.delete(productivity)
+  await db.delete(employeeTeams)
   await db.delete(employees)
+  await db.delete(teams)
   await db.delete(departments)
   await db.delete(analyticsPages)
     
@@ -98,7 +100,22 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     const batch = timeEntriesData.slice(i, i + timeEntriesBatchSize)
     await db.insert(timeEntries).values(batch)
   }
-  
+
+  // Insert teams data
+  const insertedTeams = await db.insert(teams)
+    .values(enhancedTeams)
+    .returning({ id: teams.id, name: teams.name, organisationId: teams.organisationId })
+
+  // Update employeeTeams to use actual inserted IDs
+  const updatedEmployeeTeams = enhancedEmployeeTeams.map(et => ({
+    ...et,
+    employeeId: insertedEmployees[et.employeeId - 1]?.id || et.employeeId,
+    teamId: insertedTeams[et.teamId - 1]?.id || et.teamId
+  }))
+
+  // Insert employee-team relationships
+  await db.insert(employeeTeams).values(updatedEmployeeTeams)
+
   // Insert analytics pages data
   const analyticsData = [
     { 

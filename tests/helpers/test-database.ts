@@ -24,15 +24,17 @@ export async function getTestSchema() {
   const dbType = getTestDatabaseType()
   
   if (dbType === 'mysql') {
-    const { 
-      mysqlTestSchema, 
-      employees, 
-      departments, 
+    const {
+      mysqlTestSchema,
+      employees,
+      departments,
       productivity,
-      timeEntries, 
-      analyticsPages 
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams
     } = await import('./databases/mysql/schema')
-    
+
     return {
       schema: mysqlTestSchema,
       employees,
@@ -40,6 +42,8 @@ export async function getTestSchema() {
       productivity,
       timeEntries,
       analyticsPages,
+      teams,
+      employeeTeams,
       type: 'MySQLTestSchema' as const,
       // Database-specific value helpers
       dbTrue: true,
@@ -47,15 +51,17 @@ export async function getTestSchema() {
       dbDate: (date: Date) => date
     }
   } else if (dbType === 'sqlite') {
-    const { 
-      sqliteTestSchema, 
-      employees, 
-      departments, 
+    const {
+      sqliteTestSchema,
+      employees,
+      departments,
       productivity,
-      timeEntries, 
-      analyticsPages 
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams
     } = await import('./databases/sqlite/schema')
-    
+
     return {
       schema: sqliteTestSchema,
       employees,
@@ -63,6 +69,8 @@ export async function getTestSchema() {
       productivity,
       timeEntries,
       analyticsPages,
+      teams,
+      employeeTeams,
       type: 'SQLiteTestSchema' as const,
       // Database-specific value helpers for SQLite
       dbTrue: 1,
@@ -70,15 +78,17 @@ export async function getTestSchema() {
       dbDate: (date: Date) => date.getTime() // Convert to milliseconds for SQLite
     }
   } else {
-    const { 
-      testSchema, 
-      employees, 
-      departments, 
+    const {
+      testSchema,
+      employees,
+      departments,
       productivity,
-      timeEntries, 
-      analyticsPages 
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams
     } = await import('./databases/postgres/schema')
-    
+
     return {
       schema: testSchema,
       employees,
@@ -86,6 +96,8 @@ export async function getTestSchema() {
       productivity,
       timeEntries,
       analyticsPages,
+      teams,
+      employeeTeams,
       type: 'TestSchema' as const,
       // Database-specific value helpers
       dbTrue: true,

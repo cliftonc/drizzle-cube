@@ -748,6 +748,66 @@ export const sampleAnalyticsPages = [
   }
 ]
 
+// Teams data for testing belongsToMany relationships
+export const enhancedTeams = [
+  // Organization 1 teams
+  { name: 'Frontend Team', description: 'UI/UX and frontend development', organisationId: 1, createdAt: new Date('2020-01-01') },
+  { name: 'Backend Team', description: 'API and server-side development', organisationId: 1, createdAt: new Date('2020-01-01') },
+  { name: 'DevOps Team', description: 'Infrastructure and deployment', organisationId: 1, createdAt: new Date('2020-02-01') },
+  { name: 'Data Team', description: 'Data engineering and analytics', organisationId: 1, createdAt: new Date('2020-03-01') },
+  { name: 'Mobile Team', description: 'iOS and Android development', organisationId: 1, createdAt: new Date('2020-04-01') },
+  { name: 'Security Team', description: 'Application and infrastructure security', organisationId: 1, createdAt: new Date('2020-05-01') },
+
+  // Organization 2 teams
+  { name: 'Product Team', description: 'Product development', organisationId: 2, createdAt: new Date('2020-01-01') },
+  { name: 'Platform Team', description: 'Platform engineering', organisationId: 2, createdAt: new Date('2020-01-01') },
+
+  // Organization 3 teams
+  { name: 'Research Team', description: 'R&D and innovation', organisationId: 3, createdAt: new Date('2020-01-01') }
+]
+
+// EmployeeTeams junction data - maps employees to teams (many-to-many)
+export const enhancedEmployeeTeams = [
+  // Alex Chen (employee 1) - Senior, on multiple teams
+  { employeeId: 1, teamId: 1, role: 'lead', organisationId: 1, joinedAt: new Date('2020-03-15') }, // Frontend lead
+  { employeeId: 1, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2020-06-01') }, // Also contributes to Backend
+
+  // Sarah Johnson (employee 2) - Frontend focused
+  { employeeId: 2, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2022-01-20') },
+
+  // Mike Rodriguez (employee 3) - Backend and DevOps
+  { employeeId: 3, teamId: 2, role: 'lead', organisationId: 1, joinedAt: new Date('2021-08-10') },
+  { employeeId: 3, teamId: 3, role: 'member', organisationId: 1, joinedAt: new Date('2021-09-01') },
+
+  // Emily Davis (employee 4) - Mobile team
+  { employeeId: 4, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-03-05') },
+
+  // James Wilson (employee 5) - Data team
+  { employeeId: 5, teamId: 4, role: 'lead', organisationId: 1, joinedAt: new Date('2019-11-10') },
+
+  // Linda Martinez (employee 6) - Security team
+  { employeeId: 6, teamId: 6, role: 'lead', organisationId: 1, joinedAt: new Date('2018-05-22') },
+
+  // Robert Lee (employee 7) - Backend team
+  { employeeId: 7, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2022-07-15') },
+
+  // Jennifer Taylor (employee 8) - Frontend and Mobile
+  { employeeId: 8, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2023-02-01') },
+  { employeeId: 8, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-05-01') },
+
+  // David Brown (employee 9) - DevOps team
+  { employeeId: 9, teamId: 3, role: 'lead', organisationId: 1, joinedAt: new Date('2020-09-03') },
+
+  // Org 2 employees on teams (employees 13-15)
+  { employeeId: 13, teamId: 7, role: 'lead', organisationId: 2, joinedAt: new Date('2019-06-01') }, // Product team
+  { employeeId: 14, teamId: 8, role: 'lead', organisationId: 2, joinedAt: new Date('2020-03-15') }, // Platform team
+  { employeeId: 15, teamId: 7, role: 'member', organisationId: 2, joinedAt: new Date('2021-01-10') },
+
+  // Org 3 employees on teams (employees 16-17)
+  { employeeId: 16, teamId: 9, role: 'lead', organisationId: 3, joinedAt: new Date('2019-01-15') },
+  { employeeId: 17, teamId: 9, role: 'member', organisationId: 3, joinedAt: new Date('2020-04-20') }
+]
+
 // Test security contexts for comprehensive testing
 export const testSecurityContexts = {
   org1: { organisationId: 1, userId: 1 },

@@ -67,6 +67,26 @@ export const analyticsPages = mysqlTable('analytics_pages', {
   updatedAt: timestamp('updated_at').defaultNow()
 })
 
+// Teams table - for testing belongsToMany relationships with employees
+export const teams = mysqlTable('teams', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
+// EmployeeTeams junction table - many-to-many relationship between employees and teams
+export const employeeTeams = mysqlTable('employee_teams', {
+  id: int('id').primaryKey().autoincrement(),
+  employeeId: int('employee_id').notNull(),
+  teamId: int('team_id').notNull(),
+  role: varchar('role', { length: 50 }), // e.g., 'member', 'lead', 'contributor'
+  joinedAt: timestamp('joined_at').defaultNow(),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
 // Relations (same as PostgreSQL schema)
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {

@@ -236,5 +236,84 @@ describe('Many-to-Many Joins (belongsToMany)', () => {
       // Verify the query executed successfully (proves SQL was generated correctly)
       expect(result.data.length).toBeGreaterThan(0)
     })
+
+    it('should handle queries with dimensions from junction table via belongsToMany', async () => {
+      // This test specifically validates the bug scenario:
+      // - Measure from Employees cube
+      // - Dimension from TimeEntries cube (the junction table itself)
+      // This forces the query to use the belongsToMany relationship path
+      const query = TestQueryBuilder.create()
+        .measures(['Employees.count'])
+        .dimensions(['TimeEntries.allocationType'])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      expect(result.data).toBeDefined()
+      expect(result.data.length).toBeGreaterThan(0)
+
+      // Verify we have the junction table dimension
+      result.data.forEach((row: any) => {
+        expect(row['Employees.count']).toBeDefined()
+        expect(typeof row['Employees.count']).toBe('number')
+        expect(row['TimeEntries.allocationType']).toBeDefined()
+        expect(typeof row['TimeEntries.allocationType']).toBe('string')
+      })
+    })
+
+    it('should handle complex belongsToMany with junction and target dimensions', async () => {
+      // Test with dimensions from both the junction table AND the target table
+      // This validates the full belongsToMany join path: Employees -> TimeEntries -> Departments
+      const query = TestQueryBuilder.create()
+        .measures(['Employees.count', 'TimeEntries.totalHours'])
+        .dimensions([
+          'TimeEntries.allocationType',  // From junction table
+          'Departments.name'              // From target table via junction
+        ])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      expect(result.data).toBeDefined()
+      expect(result.data.length).toBeGreaterThan(0)
+
+      // Verify all fields are present
+      result.data.forEach((row: any) => {
+        expect(row['Employees.count']).toBeDefined()
+        expect(typeof row['Employees.count']).toBe('number')
+        expect(row['TimeEntries.allocationType']).toBeDefined()
+        expect(typeof row['TimeEntries.allocationType']).toBe('string')
+        expect(row['Departments.name']).toBeDefined()
+        expect(typeof row['Departments.name']).toBe('string')
+        // totalHours might be string or number depending on database
+        const totalHours = Number(row['TimeEntries.totalHours'])
+        expect(typeof totalHours).toBe('number')
+      })
+    })
+
+    it('should handle belongsToMany with ONLY junction table access (Employees -> Teams)', async () => {
+      // CRITICAL TEST: This demonstrates the bug
+      // Teams is ONLY accessible from Employees via the belongsToMany relationship
+      // There is NO direct foreign key relationship between Employees and Teams
+      // This forces the query planner to use the belongsToMany join logic
+      const query = TestQueryBuilder.create()
+        .measures(['Employees.count'])
+        .dimensions(['Teams.name'])  // Teams is ONLY accessible via employeeTeams junction
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      expect(result.data).toBeDefined()
+      expect(result.data.length).toBeGreaterThan(0)
+
+      // Verify we have team data
+      result.data.forEach((row: any) => {
+        expect(row['Employees.count']).toBeDefined()
+        expect(typeof row['Employees.count']).toBe('number')
+        expect(row['Employees.count']).toBeGreaterThan(0)
+        expect(row['Teams.name']).toBeDefined()
+        expect(typeof row['Teams.name']).toBe('string')
+      })
+    })
   })
 })

@@ -15,6 +15,13 @@
       "when": 1756301165633,
       "tag": "0001_nifty_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1763012645738,
+      "tag": "0002_sparkling_fenris",
+      "breakpoints": true
     }
   ]
 }

@@ -12,9 +12,10 @@ import type {
   SemanticQuery
 } from './types'
 
-import { 
-  resolveCubeReference, 
-  getJoinType 
+import {
+  resolveCubeReference,
+  getJoinType,
+  expandBelongsToManyJoin
 } from './cube-utils'
 
 import { eq, and, sql, type SQL } from 'drizzle-orm'
@@ -146,7 +147,7 @@ export class QueryPlanner {
   createQueryPlan(
     cubes: Map<string, Cube>,
     query: SemanticQuery,
-    _ctx: QueryContext
+    ctx: QueryContext
   ): QueryPlan {
     const cubesUsed = this.analyzeCubeUsage(query)
     const cubeNames = Array.from(cubesUsed)
@@ -175,7 +176,7 @@ export class QueryPlanner {
     }
     
     // For multi-cube queries, build join plan
-    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames)
+    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx)
     
     // Detect hasMany relationships and plan pre-aggregation CTEs
     const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query)
@@ -274,57 +275,80 @@ export class QueryPlanner {
   private buildJoinPlan(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
-    cubeNames: string[]
+    cubeNames: string[],
+    ctx: QueryContext
   ): QueryPlan['joinCubes'] {
     const joinCubes: QueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
-    
+
     // Find cubes to join (all except primary)
     const cubesToJoin = cubeNames.filter(name => name !== primaryCube.name)
-    
+
     for (const cubeName of cubesToJoin) {
       if (processedCubes.has(cubeName)) {
         continue // Already processed
       }
-      
+
       const joinPath = this.findJoinPath(cubes, primaryCube.name, cubeName, processedCubes)
       if (!joinPath || joinPath.length === 0) {
         throw new Error(`No join path found from '${primaryCube.name}' to '${cubeName}'`)
       }
-      
+
       // Add all cubes in the join path
       for (const { toCube, joinDef } of joinPath) {
         if (processedCubes.has(toCube)) {
           continue // Skip if already processed
         }
-        
+
         const cube = cubes.get(toCube)
         if (!cube) {
           throw new Error(`Cube '${toCube}' not found`)
         }
-        
-        // Build join condition using new array-based format
-        // For regular table joins, we don't use artificial aliases - use actual table references
-        const joinCondition = this.buildJoinCondition(
-          joinDef as CubeJoin,
-          null, // No source alias needed - use the actual column
-          null // No target alias needed - use the actual column 
-        )
-        
-        // Derive join type from relationship
-        const joinType = getJoinType(joinDef.relationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
-        
-        joinCubes.push({
-          cube,
-          alias: `${toCube.toLowerCase()}_cube`,
-          joinType,
-          joinCondition
-        })
-        
+
+        // Check if this is a belongsToMany relationship
+        if (joinDef.relationship === 'belongsToMany' && joinDef.through) {
+          // Expand the belongsToMany join into junction table joins
+          const expanded = expandBelongsToManyJoin(joinDef, ctx.securityContext)
+
+          // Add the join with junction table information
+          joinCubes.push({
+            cube,
+            alias: `${toCube.toLowerCase()}_cube`,
+            joinType: expanded.junctionJoins[1].joinType, // Use the target join type
+            joinCondition: expanded.junctionJoins[1].condition, // Target join condition
+            junctionTable: {
+              table: joinDef.through.table,
+              alias: `junction_${toCube.toLowerCase()}`,
+              joinType: expanded.junctionJoins[0].joinType,
+              joinCondition: expanded.junctionJoins[0].condition,
+              securitySql: joinDef.through.securitySql
+            }
+          })
+        } else {
+          // Regular join (belongsTo, hasOne, hasMany)
+          // Build join condition using new array-based format
+          // For regular table joins, we don't use artificial aliases - use actual table references
+          const joinCondition = this.buildJoinCondition(
+            joinDef as CubeJoin,
+            null, // No source alias needed - use the actual column
+            null // No target alias needed - use the actual column
+          )
+
+          // Derive join type from relationship
+          const joinType = getJoinType(joinDef.relationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+          joinCubes.push({
+            cube,
+            alias: `${toCube.toLowerCase()}_cube`,
+            joinType,
+            joinCondition
+          })
+        }
+
         processedCubes.add(toCube)
       }
     }
-    
+
     return joinCubes
   }
 
@@ -417,6 +441,8 @@ export class QueryPlanner {
 
   /**
    * Plan pre-aggregation CTEs for hasMany relationships to prevent fan-out
+   * Note: belongsToMany relationships handle fan-out differently through their junction table structure
+   * and don't require CTEs - the two-hop join with the junction table provides natural grouping
    */
   private planPreAggregationCTEs(
     _cubes: Map<string, Cube>,
@@ -425,33 +451,33 @@ export class QueryPlanner {
     query: SemanticQuery
   ): QueryPlan['preAggregationCTEs'] {
     const preAggCTEs: QueryPlan['preAggregationCTEs'] = []
-    
+
     if (!query.measures || query.measures.length === 0) {
       return preAggCTEs // No measures, no fan-out risk
     }
-    
+
     // Check each join cube for hasMany relationships
     for (const joinCube of joinCubes) {
       const hasManyJoinDef = this.findHasManyJoinDef(primaryCube, joinCube.cube.name)
       if (!hasManyJoinDef) {
         continue // Not a hasMany relationship
       }
-      
+
       // Check if we have measures from this hasMany cube (from SELECT clause)
-      const measuresFromSelect = query.measures ? query.measures.filter(m => 
+      const measuresFromSelect = query.measures ? query.measures.filter(m =>
         m.startsWith(joinCube.cube.name + '.')
       ) : []
-      
+
       // Also check for measures referenced in filters (for HAVING clause)
       const measuresFromFilters = this.extractMeasuresFromFilters(query, joinCube.cube.name)
-      
+
       // Combine and deduplicate measures from both SELECT and filters
       const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
-      
+
       if (allMeasuresFromThisCube.length === 0) {
         continue // No measures from this cube, no fan-out risk
       }
-      
+
       // Extract join keys from the new array-based format
       const joinKeys = hasManyJoinDef.on.map(joinOn => ({
         sourceColumn: joinOn.source.name,
@@ -459,7 +485,7 @@ export class QueryPlanner {
         sourceColumnObj: joinOn.source,
         targetColumnObj: joinOn.target
       }))
-      
+
       preAggCTEs!.push({
         cube: joinCube.cube,
         alias: joinCube.alias,
@@ -468,7 +494,7 @@ export class QueryPlanner {
         measures: allMeasuresFromThisCube
       })
     }
-    
+
     return preAggCTEs
   }
 
@@ -482,7 +508,7 @@ export class QueryPlanner {
     if (!primaryCube.joins) {
       return null
     }
-    
+
     // Look through all joins from primary cube
     for (const [, joinDef] of Object.entries(primaryCube.joins)) {
       const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
@@ -490,7 +516,7 @@ export class QueryPlanner {
         return joinDef as CubeJoin
       }
     }
-    
+
     return null
   }
 }

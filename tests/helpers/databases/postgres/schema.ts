@@ -88,6 +88,26 @@ export const analyticsPages = pgTable('analytics_pages', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow()
 })
 
+// Teams table - for testing belongsToMany relationships with employees
+export const teams = pgTable('teams', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  description: text('description'),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
+// EmployeeTeams junction table - many-to-many relationship between employees and teams
+export const employeeTeams = pgTable('employee_teams', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  employeeId: integer('employee_id').notNull(),
+  teamId: integer('team_id').notNull(),
+  role: text('role'), // e.g., 'member', 'lead', 'contributor'
+  joinedAt: timestamp('joined_at', { mode: 'date' }).defaultNow(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
