@@ -4,11 +4,14 @@
  */
 
 import type { SQL, AnyColumn } from 'drizzle-orm'
-import type { 
-  Cube, 
-  QueryContext, 
+import { and, eq } from 'drizzle-orm'
+import type {
+  Cube,
+  CubeJoin,
+  QueryContext,
   MultiCubeQueryContext,
-  SqlExpression 
+  SqlExpression,
+  SecurityContext
 } from './types'
 
 /**
@@ -25,12 +28,13 @@ export function resolveCubeReference(
  */
 export function getJoinType(relationship: string, override?: string): string {
   if (override) return override
-  
+
   switch (relationship) {
-    case 'belongsTo': return 'inner'  // FK should exist
-    case 'hasOne':    return 'left'   // Parent may have no child
-    case 'hasMany':   return 'left'   // Parent may have no children
-    default:          return 'left'   // Safe default
+    case 'belongsTo':      return 'inner'  // FK should exist
+    case 'hasOne':         return 'left'   // Parent may have no child
+    case 'hasMany':        return 'left'   // Parent may have no children
+    case 'belongsToMany':  return 'left'   // Many-to-many through junction table
+    default:               return 'left'   // Safe default
   }
 }
 
@@ -81,5 +85,75 @@ export function defineCube(
   return {
     name,
     ...definition
+  }
+}
+
+/**
+ * Expanded join information for belongsToMany relationships
+ */
+export interface ExpandedBelongsToManyJoin {
+  /** Junction table joins */
+  junctionJoins: Array<{
+    joinType: 'inner' | 'left' | 'right' | 'full'
+    table: any
+    condition: SQL
+  }>
+  /** Security conditions for junction table (if any) */
+  junctionSecurityConditions?: SQL[]
+}
+
+/**
+ * Expand a belongsToMany join into junction table joins
+ * This converts a many-to-many relationship into two separate joins:
+ * 1. Source cube -> Junction table
+ * 2. Junction table -> Target cube
+ */
+export function expandBelongsToManyJoin(
+  joinDef: CubeJoin,
+  securityContext: SecurityContext
+): ExpandedBelongsToManyJoin {
+  if (joinDef.relationship !== 'belongsToMany' || !joinDef.through) {
+    throw new Error('expandBelongsToManyJoin can only be called on belongsToMany relationships with through configuration')
+  }
+
+  const { table, sourceKey, targetKey, securitySql } = joinDef.through
+
+  // Build join conditions
+  const sourceConditions: SQL[] = []
+  for (const joinOn of sourceKey) {
+    const comparator = joinOn.as || eq
+    sourceConditions.push(comparator(joinOn.source as any, joinOn.target as any))
+  }
+
+  const targetConditions: SQL[] = []
+  for (const joinOn of targetKey) {
+    const comparator = joinOn.as || eq
+    targetConditions.push(comparator(joinOn.source as any, joinOn.target as any))
+  }
+
+  // Get security conditions for junction table
+  let junctionSecurityConditions: SQL[] | undefined
+  if (securitySql) {
+    const securityResult = securitySql(securityContext)
+    junctionSecurityConditions = Array.isArray(securityResult) ? securityResult : [securityResult]
+  }
+
+  // Derive join type (belongsToMany uses LEFT joins)
+  const joinType = getJoinType('belongsToMany', joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+  return {
+    junctionJoins: [
+      {
+        joinType,
+        table,
+        condition: and(...sourceConditions)!
+      },
+      {
+        joinType,
+        table, // This will be replaced with target cube table in query planner
+        condition: and(...targetConditions)!
+      }
+    ],
+    junctionSecurityConditions
   }
 }

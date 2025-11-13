@@ -519,10 +519,51 @@ export class QueryExecutor {
       for (const joinCube of queryPlan.joinCubes) {
         // Check if this cube has been pre-aggregated into a CTE
         const cteAlias = cteAliasMap.get(joinCube.cube.name)
-        
+
+        // Handle belongsToMany junction table first if present
+        if (joinCube.junctionTable) {
+          const junctionTable = joinCube.junctionTable
+
+          // Collect all WHERE conditions for junction table including security context
+          const junctionWhereConditions: SQL[] = []
+          if (junctionTable.securitySql) {
+            const junctionSecurity = junctionTable.securitySql(context.securityContext)
+            if (Array.isArray(junctionSecurity)) {
+              junctionWhereConditions.push(...junctionSecurity)
+            } else {
+              junctionWhereConditions.push(junctionSecurity)
+            }
+          }
+
+          // Add junction table join (source -> junction)
+          try {
+            switch (junctionTable.joinType || 'left') {
+              case 'left':
+                drizzleQuery = drizzleQuery.leftJoin(junctionTable.table, junctionTable.joinCondition)
+                break
+              case 'inner':
+                drizzleQuery = drizzleQuery.innerJoin(junctionTable.table, junctionTable.joinCondition)
+                break
+              case 'right':
+                drizzleQuery = drizzleQuery.rightJoin(junctionTable.table, junctionTable.joinCondition)
+                break
+              case 'full':
+                drizzleQuery = drizzleQuery.fullJoin(junctionTable.table, junctionTable.joinCondition)
+                break
+            }
+
+            // Add junction table security conditions to WHERE clause
+            if (junctionWhereConditions.length > 0) {
+              allWhereConditions.push(...junctionWhereConditions)
+            }
+          } catch {
+            // Junction table join failed, continuing
+          }
+        }
+
         let joinTarget: any
         let joinCondition: any
-        
+
         if (cteAlias) {
           // Join to CTE instead of base table - use sql table reference
           joinTarget = sql`${sql.identifier(cteAlias)}`
@@ -534,7 +575,7 @@ export class QueryExecutor {
           joinTarget = joinCubeBase.from
           joinCondition = joinCube.joinCondition
         }
-        
+
         try {
           switch (joinCube.joinType || 'left') {
             case 'left':

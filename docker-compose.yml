@@ -19,5 +19,4 @@ services:
       MYSQL_PASSWORD: test
     ports:
       - "3307:3306"  # Use 3307 to avoid conflicts with local MySQL
-    command: --default-authentication-plugin=mysql_native_password
     

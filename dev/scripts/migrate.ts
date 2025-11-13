@@ -16,14 +16,35 @@ function isNeonUrl(url: string): boolean {
   return url.includes('.neon.tech') || url.includes('neon.database')
 }
 
+async function waitForDatabase(maxRetries = 30, retryDelay = 1000) {
+  console.log('⏳ Waiting for database to be ready...')
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const client = postgres(connectionString, { max: 1, connect_timeout: 5 })
+      await client`SELECT 1`
+      await client.end()
+      console.log('✅ Database is ready!')
+      return
+    } catch (error) {
+      if (i < maxRetries - 1) {
+        console.log(`⏳ Database not ready yet, retrying... (${i + 1}/${maxRetries})`)
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
+      } else {
+        throw new Error(`Database did not become ready after ${maxRetries} attempts`)
+      }
+    }
+  }
+}
+
 async function runMigration() {
   console.log('🔄 Running database migrations...')
-  
+
   if (isNeonUrl(connectionString)) {
     console.log('🚀 Using Neon serverless database for migrations')
     const sql = neon(connectionString)
     const db = drizzleNeon(sql)
-    
+
     try {
       await migrateNeon(db, { migrationsFolder: './drizzle' })
       console.log('✅ Migrations completed successfully')
@@ -33,9 +54,18 @@ async function runMigration() {
     }
   } else {
     console.log('🐘 Using local PostgreSQL database for migrations')
+
+    // Wait for database to be ready before attempting migration
+    try {
+      await waitForDatabase()
+    } catch (error) {
+      console.error('❌ Database connection failed:', error)
+      process.exit(1)
+    }
+
     const client = postgres(connectionString, { max: 1 })
     const db = drizzle(client)
-    
+
     try {
       await migrate(db, { migrationsFolder: './drizzle' })
       console.log('✅ Migrations completed successfully')

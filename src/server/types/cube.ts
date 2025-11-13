@@ -158,27 +158,55 @@ export interface Measure {
 }
 
 /**
+ * Relationship types supported by cube joins
+ */
+export type CubeRelationship = 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+
+/**
  * Type-safe cube join definition with lazy loading support
  */
 export interface CubeJoin {
   /** Target cube reference - lazy loaded to avoid circular dependencies */
   targetCube: Cube | (() => Cube)
-  
+
   /** Semantic relationship - determines join behavior */
-  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
-  
+  relationship: CubeRelationship
+
   /** Array of join conditions - supports multi-column joins */
   on: Array<{
     /** Column from source cube */
     source: AnyColumn
-    /** Column from target cube */  
+    /** Column from target cube */
     target: AnyColumn
     /** Comparison operator - defaults to eq */
     as?: (source: AnyColumn, target: AnyColumn) => SQL
   }>
-  
+
   /** Override default SQL join type (derived from relationship) */
   sqlJoinType?: 'inner' | 'left' | 'right' | 'full'
+
+  /**
+   * Many-to-many relationship configuration through a junction table
+   * Only used when relationship is 'belongsToMany'
+   */
+  through?: {
+    /** Junction/join table (Drizzle table reference) */
+    table: Table
+    /** Join conditions from source cube to junction table */
+    sourceKey: Array<{
+      source: AnyColumn
+      target: AnyColumn
+      as?: (source: AnyColumn, target: AnyColumn) => SQL
+    }>
+    /** Join conditions from junction table to target cube */
+    targetKey: Array<{
+      source: AnyColumn
+      target: AnyColumn
+      as?: (source: AnyColumn, target: AnyColumn) => SQL
+    }>
+    /** Optional security context SQL for junction table */
+    securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
+  }
 }
 
 /**
@@ -205,6 +233,15 @@ export interface QueryPlan {
     alias: string
     joinType: 'inner' | 'left' | 'right' | 'full'
     joinCondition: SQL
+    /** Junction table information for belongsToMany relationships */
+    junctionTable?: {
+      table: Table
+      alias: string
+      joinType: 'inner' | 'left' | 'right' | 'full'
+      joinCondition: SQL
+      /** Optional security SQL function to apply to junction table */
+      securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
+    }
   }>
   /** Combined field selections across all cubes (built by QueryBuilder) */
   selections: Record<string, SQL | AnyColumn>

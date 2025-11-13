@@ -9,7 +9,6 @@ services:
       POSTGRES_DB: drizzle_cube_db
       POSTGRES_USER: drizzle_user
       POSTGRES_PASSWORD: drizzle_pass123
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "54821:5432"  # High random port to avoid conflicts
     volumes:
@@ -17,10 +16,10 @@ services:
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U drizzle_user -d drizzle_cube_db"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - drizzle-cube-dev-network
 

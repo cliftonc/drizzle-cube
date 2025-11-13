@@ -93,6 +93,23 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         on: [
           { source: employees.departmentId, target: departments.id }
         ]
+      },
+      // Many-to-many relationship through timeEntries junction table
+      DepartmentsViaTimeEntries: {
+        targetCube: () => testDepartmentsCube,
+        relationship: 'belongsToMany',
+        on: [], // Not used for belongsToMany
+        through: {
+          table: timeEntries,
+          sourceKey: [
+            { source: employees.id, target: timeEntries.employeeId }
+          ],
+          targetKey: [
+            { source: timeEntries.departmentId, target: departments.id }
+          ],
+          securitySql: (securityContext) =>
+            eq(timeEntries.organisationId, securityContext.organisationId)
+        }
       }
     },
     

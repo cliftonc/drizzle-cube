@@ -231,6 +231,109 @@ export const employeesCube = defineCube({
 })
 ```
 
+### Cube Joins and Relationships
+
+Cubes can define relationships to other cubes using the `joins` property. Four relationship types are supported:
+
+**Relationship Types:**
+- `belongsTo` - Many-to-one (INNER JOIN)
+- `hasOne` - One-to-one (LEFT JOIN)
+- `hasMany` - One-to-many with pre-aggregation (LEFT JOIN)
+- `belongsToMany` - Many-to-many through junction table (LEFT JOIN)
+
+**Basic Join Example:**
+```typescript
+export const employeesCube = defineCube({
+  name: 'Employees',
+  sql: (ctx) => ({
+    from: employees,
+    where: eq(employees.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    Departments: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: employees.departmentId, target: departments.id }
+      ]
+    }
+  },
+
+  measures: { /* ... */ },
+  dimensions: { /* ... */ }
+})
+```
+
+**Many-to-Many (belongsToMany) Example:**
+
+Use `belongsToMany` when cubes have a many-to-many relationship through a junction table.
+
+**When to Use belongsToMany vs hasMany:**
+- Use `belongsToMany` when a record in cube A can relate to multiple records in cube B, AND a record in cube B can relate to multiple records in cube A (many-to-many)
+- Use `hasMany` when a record in cube A can relate to multiple records in cube B, but each record in cube B relates to only one record in cube A (one-to-many)
+- Example: An employee can work in multiple departments (via time entries), and each department has multiple employees = `belongsToMany`
+- Counter-example: A department has many employees, but each employee belongs to one primary department = `hasMany` from Department, `belongsTo` from Employee
+
+**Implementation:**
+
+```typescript
+export const employeesCube = defineCube({
+  name: 'Employees',
+  sql: (ctx) => ({
+    from: employees,
+    where: eq(employees.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    // Many-to-many relationship through timeEntries junction table
+    DepartmentsViaTimeEntries: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsToMany',
+      on: [], // Not used for belongsToMany
+      through: {
+        table: timeEntries, // Junction table
+        sourceKey: [
+          { source: employees.id, target: timeEntries.employeeId }
+        ],
+        targetKey: [
+          { source: timeEntries.departmentId, target: departments.id }
+        ],
+        // Optional: Security context for junction table
+        securitySql: (securityContext) =>
+          eq(timeEntries.organisationId, securityContext.organisationId)
+      }
+    }
+  },
+
+  measures: { /* ... */ },
+  dimensions: { /* ... */ }
+})
+
+// Query across many-to-many relationship
+const result = await semanticLayer.execute({
+  measures: ['Employees.count'],
+  dimensions: ['Departments.name'] // Uses the many-to-many join automatically
+}, securityContext)
+```
+
+**Key Features:**
+- **Automatic Security**: Security context is automatically applied to junction tables when specified
+- **Transparent Querying**: Query dimensions from the target cube normally - the system handles the junction table
+- **Multi-Column Joins**: Both `sourceKey` and `targetKey` support multiple columns for composite keys
+- **Custom Comparators**: Use the `as` property for non-equality joins
+
+**Performance Considerations:**
+- Junction tables add an additional JOIN to the query, which may impact performance on large datasets
+- Ensure junction tables have proper indexes on both foreign key columns
+- Consider adding indexes on frequently filtered columns in the junction table
+- Security filtering on junction tables is applied efficiently using parameterized queries
+- For optimal performance, ensure the junction table has a composite index on (sourceKey, targetKey)
+
+**Reference Implementation:**
+- See @tests/many-to-many-joins.test.ts for comprehensive test examples
+- Tests cover security isolation, multi-database compatibility, and edge cases
+
 ### Query Execution Pattern
 ```typescript
 // Create semantic layer with database
@@ -240,7 +343,7 @@ const semanticLayer = new SemanticLayerCompiler({ drizzle: db, schema })
 semanticLayer.registerCube(employeesCube)
 
 // Execute queries with security context
-const result = await semanticLayer.query({
+const result = await semanticLayer.execute({
   measures: ['Employees.count'],
   dimensions: ['Employees.name']
 }, securityContext)

@@ -100,7 +100,7 @@
     "dev:db:down": "cd dev && docker-compose down",
     "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
     "dev:db:seed": "cd dev && tsx scripts/seed.ts",
-    "dev:setup": "npm run dev:db:up && sleep 5 && npm run dev:db:migrate && npm run dev:db:seed"
+    "dev:setup": "npm run dev:db:up && npm run dev:db:migrate && npm run dev:db:seed"
   },
   "keywords": [
     "drizzle-orm",
