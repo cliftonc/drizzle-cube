@@ -448,20 +448,16 @@ export class QueryBuilder {
       )
     }
 
+    // resolveSqlExpression already applies isolation via isolateSqlExpression()
+    // This protects against Drizzle SQL object mutation during reuse
     let baseExpr = resolveSqlExpression(measure.sql, context)
-
-    // CRITICAL FIX: Force fresh SQL object to avoid Drizzle mutation issues
-    // Wrap in sql template to ensure independent queryChunks
-    if (baseExpr && typeof baseExpr === 'object') {
-      baseExpr = sql`${baseExpr}`
-    }
 
     // Apply measure filters if they exist
     if (measure.filters && measure.filters.length > 0) {
       const filterConditions = measure.filters.map((filter: (ctx: QueryContext) => SQL) => {
         const filterResult = filter(context)
-        // CRITICAL FIX: Wrap filter SQL in fresh template to avoid column reuse issues
-        // Filter functions may create SQL with column objects that get reused
+        // Single wrap is OK here - we're creating fresh SQL for grouping in parentheses
+        // The filter function itself should handle isolation if needed
         return filterResult ? sql`(${filterResult})` : undefined
       }).filter(Boolean) // Remove any undefined conditions
 

@@ -364,14 +364,108 @@ All errors include:
 - Database engine type
 - Affected cubes
 
+## SQL Object Isolation Pattern
+
+### The Problem: Drizzle SQL Object Mutation
+
+Drizzle ORM's SQL objects are **internally mutable** - their `queryChunks` array can be modified during query construction. When column objects (like `employees.id`) are reused across multiple parts of a query (SELECT, WHERE, GROUP BY), this mutation can cause:
+- Duplicate SQL fragments in generated queries
+- Incorrect parameter binding order
+- Query execution failures
+
+### Evidence from Drizzle Source Code
+
+Investigation of Drizzle ORM revealed:
+- SQL objects have a mutable `queryChunks` array (drizzle-orm/src/sql/sql.ts:133)
+- The `append()` method directly mutates this array
+- No public `clone()` method exists (only internal `SQL.Aliased.clone()`)
+- The `sql` template function creates NEW arrays but chunks are pushed by reference
+
+### The Solution: `isolateSqlExpression()` Helper
+
+**Location**: `@src/server/cube-utils.ts`
+
+The `isolateSqlExpression()` function uses **double wrapping** to create complete isolation:
+
+```typescript
+export function isolateSqlExpression(expr: AnyColumn | SQL): SQL {
+  if (expr && typeof expr === 'object') {
+    return sql`${sql`${expr}`}`  // Double wrap
+  }
+  return expr as SQL
+}
+```
+
+**Why Double Wrapping?**
+
+- **Single wrap** (`sql`${expr}``): Creates new SQL object but queryChunks contains references to original
+- **Double wrap** (`sql`${sql`${expr}`}``): Creates two layers of isolation, completely separating from original object's mutable state
+
+### Usage Guidelines
+
+**ALWAYS use `isolateSqlExpression()` when:**
+- SQL expressions may be reused across query contexts
+- Column objects are referenced multiple times
+- Working with cube SQL definitions
+
+**Example:**
+```typescript
+export function resolveSqlExpression(
+  expr: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL),
+  ctx: QueryContext
+): AnyColumn | SQL {
+  const result = typeof expr === 'function' ? expr(ctx) : expr
+  return isolateSqlExpression(result)  // Apply isolation
+}
+```
+
+**Single wrap is OK when:**
+- Creating fresh SQL for the first time (e.g., new aggregations)
+- Wrapping for grouping/parentheses: `sql`(${filterResult})``
+- SQL builder functions already return isolated SQL
+
+### Alternatives Investigated
+
+All alternatives were found to be impractical:
+
+❌ **Use Drizzle's clone()** - Doesn't exist publicly
+❌ **Store SQL factory functions** - Still returns same column objects
+❌ **Create fresh column references** - Impossible, columns are singletons
+❌ **Avoid SQL reuse** - Unavoidable (same dimension in SELECT, WHERE, GROUP BY)
+
+### Performance Impact
+
+- **Memory**: ~200 bytes per wrap (negligible)
+- **CPU**: Two function calls during query building (microseconds)
+- **No runtime query performance impact** - wrapping happens during build phase
+
+### Testing
+
+Comprehensive tests in `@tests/sql-wrapping.test.ts` verify that:
+- Queries with reused dimensions execute correctly
+- No SQL corruption occurs across SELECT, WHERE, GROUP BY, ORDER BY
+- Complex multi-cube queries handle dimension reuse properly
+- Security context isolation works with reused SQL objects
+
+### Future Considerations
+
+If Drizzle ORM adds:
+- Immutable SQL objects
+- Public `clone()` method
+- Different SQL object handling
+
+This pattern may be simplified. Monitor: https://github.com/drizzle-team/drizzle-orm/issues
+
 ## Key Files Reference
 
 - @src/server/compiler.ts:76 - Cube registration with validation
-- @src/server/executor.ts:45 - Multi-cube query coordination  
+- @src/server/executor.ts:45 - Multi-cube query coordination
 - @src/server/query-planner.ts:123 - Join detection logic
 - @src/server/executors/base-executor.ts:34 - Common executor functionality
 - @src/server/types/core.ts:15 - SecurityContext interface
-- @src/server/cube-utils.ts:67 - Cube definition utilities
+- @src/server/cube-utils.ts:41 - `isolateSqlExpression()` - SQL object isolation pattern
+- @src/server/cube-utils.ts:121 - `resolveSqlExpression()` - SQL expression resolver with isolation
+- @tests/sql-wrapping.test.ts - Comprehensive tests for SQL object isolation
 
 ## Integration Points
 

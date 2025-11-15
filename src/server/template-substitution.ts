@@ -77,8 +77,8 @@ export function substituteTemplate(
     }
 
     // Call the builder function to get a fresh SQL object
-    // CRITICAL FIX: Wrap in sql template to force fresh queryChunks
-    // This avoids mutation issues from shared references in Drizzle
+    // Single wrap is OK here - each builder() call creates fresh SQL that won't be reused
+    // The builder functions themselves handle isolation via resolveSqlExpression()
     const resolvedSql = resolvedBuilder()
     const wrappedSql = sql`${resolvedSql}`
 
