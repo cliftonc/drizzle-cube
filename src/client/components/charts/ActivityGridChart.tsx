@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { select, scaleQuantize, max, min } from 'd3'
-import ChartContainer from './ChartContainer'
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
@@ -763,7 +762,7 @@ export default function ActivityGridChart({
   }
 
   return (
-    <ChartContainer height={height}>
+    <div className="w-full flex-1 flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden' }}>
       <div ref={containerRef} className="w-full h-full relative overflow-x-auto">
         <svg ref={svgRef} className="h-full" />
         {!dimensionsReady && (
@@ -772,6 +771,6 @@ export default function ActivityGridChart({
           </div>
         )}
       </div>
-    </ChartContainer>
+    </div>
   )
 }

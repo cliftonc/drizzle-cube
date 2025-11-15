@@ -1,0 +1,13 @@
+{
+  "measures": [
+    "Employees.totalSalary",
+    "Employees.avgSalary",
+    "Employees.activePercentage",
+    "Employees.activeCount",
+    "Employees.count",
+    "Productivity.count"
+  ],
+  "dimensions": [
+    "Departments.name"
+  ]
+}

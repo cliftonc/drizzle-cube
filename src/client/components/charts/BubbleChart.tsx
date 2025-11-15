@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, type ScaleOrdinal, type ScaleQuantize } from 'd3'
-import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
@@ -583,7 +582,7 @@ export default function BubbleChart({
   }
 
   return (
-    <ChartContainer height={height}>
+    <div className="w-full flex-1 flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden' }}>
       <div ref={containerRef} className="w-full h-full relative">
         <svg ref={svgRef} className="w-full h-full" />
         {!dimensionsReady && (
@@ -592,6 +591,6 @@ export default function BubbleChart({
           </div>
         )}
       </div>
-    </ChartContainer>
+    </div>
   )
 }
