@@ -86,6 +86,14 @@ export interface DatabaseAdapter {
    * @returns Date object or original value if not a time dimension
    */
   convertTimeDimensionResult(value: any): any
+
+  /**
+   * Preprocess calculated measure template for database-specific transformations
+   * This allows each adapter to modify the template before substitution occurs
+   * @param calculatedSql - The template string with {member} references
+   * @returns Preprocessed template string
+   */
+  preprocessCalculatedTemplate(calculatedSql: string): string
 }
 
 /**
@@ -104,6 +112,14 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract prepareDateValue(date: Date): any
   abstract isTimestampInteger(): boolean
   abstract convertTimeDimensionResult(value: any): any
+
+  /**
+   * Default implementation returns template unchanged
+   * Override in specific adapters for database-specific preprocessing
+   */
+  preprocessCalculatedTemplate(calculatedSql: string): string {
+    return calculatedSql
+  }
 
   /**
    * Helper method to build pattern for string matching

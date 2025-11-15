@@ -29,7 +29,16 @@ export const activityGridChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure for activity intensity'
     }
   ],
-  displayOptions: ['showLabels', 'showTooltip', 'colorIntensity', 'hideHeader'],
+  displayOptions: ['showLabels', 'showTooltip', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'fitToWidth',
+      label: 'Fit to Width',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Automatically size blocks to fill portlet width and height while maintaining aspect ratio'
+    }
+  ],
   validate: (config) => {
     const { dateField, valueField } = config
     

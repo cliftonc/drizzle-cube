@@ -12,7 +12,8 @@ import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
-import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection } from './utils'
+import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection, getFieldType } from './utils'
+import { getMeasureIcon } from '../../utils/measureIcons'
 
 const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
@@ -482,15 +483,18 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   Measures ({(query.measures || []).length})
                 </h4>
                 <div className="flex flex-col gap-2">
-                  {(query.measures || []).map(measure => (
-                    <RemovableChip
-                      key={measure}
-                      label={measure}
-                      fieldName={measure}
-                      fieldType="measures"
-                      icon={<ChartBarIcon className="w-4 h-4" />}
-                    />
-                  ))}
+                  {(query.measures || []).map(measure => {
+                    const measureType = schema ? getFieldType(measure, schema) : undefined
+                    return (
+                      <RemovableChip
+                        key={measure}
+                        label={measure}
+                        fieldName={measure}
+                        fieldType="measures"
+                        icon={getMeasureIcon(measureType, 'w-4 h-4')}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             </div>

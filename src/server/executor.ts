@@ -28,6 +28,7 @@ import type {
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
+import { getMemberReferences } from './template-substitution'
 
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
@@ -76,7 +77,7 @@ export class QueryExecutor {
       
       // Build the query using unified approach
       const builtQuery = this.buildUnifiedQuery(queryPlan, query, context)
-      
+
       // Execute query - pass numeric field names for selective conversion
       const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
       const data = await this.dbExecutor.execute(builtQuery, numericFields)
@@ -114,7 +115,7 @@ export class QueryExecutor {
         data: mappedData,
         annotation
       }
-    } catch (error) {      
+    } catch (error) {
       throw new Error(`Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -167,23 +168,28 @@ export class QueryExecutor {
       }
     }
 
-    // Add measures with aggregation
+    // Add measures with aggregation using the centralized helper
+    const cubeName = cube.name
+    const cubeMap = new Map([[cubeName, cube]])
+
+    const resolvedMeasures = this.queryBuilder.buildResolvedMeasures(
+      cteInfo.measures,
+      cubeMap,
+      context
+    )
+
+    // Add all resolved measures to CTE selections
     for (const measureName of cteInfo.measures) {
       const [, fieldName] = measureName.split('.')
-      if (cube.measures && cube.measures[fieldName]) {
-        const measure = cube.measures[fieldName]
-        const aggregatedExpr = this.queryBuilder.buildMeasureExpression(measure, context)
+      const measureBuilder = resolvedMeasures.get(measureName)
+      if (measureBuilder) {
+        const measureExpr = measureBuilder()
         // Use just the field name as the column alias (SQL identifiers can't have dots)
-        // Explicitly alias the aggregated expression
-        cteSelections[fieldName] = sql`${aggregatedExpr}`.as(fieldName)
-      } else {
-        // This could be a dimension referenced in filters - skip it here
-        // as dimensions are handled separately        
+        cteSelections[fieldName] = sql`${measureExpr}`.as(fieldName)
       }
     }
-    
+
     // Add dimensions that are requested in the query from this cube
-    const cubeName = cube.name
     if (query.dimensions) {
       for (const dimensionName of query.dimensions) {
         const [dimCubeName, fieldName] = dimensionName.split('.')
@@ -407,35 +413,101 @@ export class QueryExecutor {
             const cube = this.getCubesFromPlan(queryPlan).get(cubeName)
             if (cube && cube.measures && cube.measures[fieldName]) {
               const measure = cube.measures[fieldName]
-              const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
-              
+
               // Use appropriate Drizzle aggregate function based on measure type
               // Since CTE is already pre-aggregated, we need to aggregate the pre-aggregated values
               let aggregatedExpr: SQL
-              switch (measure.type) {
-                case 'count':
-                case 'countDistinct':
-                case 'sum':
-                  aggregatedExpr = sum(cteColumn)
-                  break
-                case 'avg':
-                  // For average of averages, we should use a weighted average, but for now use simple avg
-                  aggregatedExpr = this.databaseAdapter.buildAvg(cteColumn)
-                  break
-                case 'min':
-                  aggregatedExpr = min(cteColumn)
-                  break
-                case 'max':
-                  aggregatedExpr = max(cteColumn)
-                  break
-                case 'number':
-                  // For number type, use sum to combine values
-                  aggregatedExpr = sum(cteColumn)
-                  break
-                default:
-                  aggregatedExpr = sum(cteColumn)
+
+              if (measure.type === 'calculated' && measure.calculatedSql) {
+                // CRITICAL FIX: For calculated measures, re-compute from CTE base measures
+                // We cannot sum/avg pre-computed ratios - we must recalculate from base measures
+
+                // Build a resolvedMeasures map with CTE column references
+                const cteResolvedMeasures = new Map<string, () => SQL>()
+                const allCubes = this.getCubesFromPlan(queryPlan)
+
+                // Get all dependencies for this calculated measure
+                const deps = getMemberReferences(measure.calculatedSql, cubeName)
+
+                for (const depMeasureName of deps) {
+                  const [depCubeName, depFieldName] = depMeasureName.split('.')
+                  const depCube = allCubes.get(depCubeName)
+
+                  if (depCube && depCube.measures[depFieldName]) {
+                    const depMeasure = depCube.measures[depFieldName]
+
+                    // Check if this dependency is also in the CTE
+                    if (cteInfo.measures.includes(depMeasureName)) {
+                      // Reference the CTE column and apply appropriate aggregation
+                      const cteDepColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(depFieldName)}`
+
+                      // Apply aggregation based on the dependency's type
+                      let aggregatedDep: SQL
+                      switch (depMeasure.type) {
+                        case 'count':
+                        case 'countDistinct':
+                        case 'sum':
+                          aggregatedDep = sum(cteDepColumn)
+                          break
+                        case 'avg':
+                          aggregatedDep = this.databaseAdapter.buildAvg(cteDepColumn)
+                          break
+                        case 'min':
+                          aggregatedDep = min(cteDepColumn)
+                          break
+                        case 'max':
+                          aggregatedDep = max(cteDepColumn)
+                          break
+                        case 'number':
+                          aggregatedDep = sum(cteDepColumn)
+                          break
+                        default:
+                          aggregatedDep = sum(cteDepColumn)
+                      }
+
+                      // Store the aggregated CTE column as a builder function
+                      cteResolvedMeasures.set(depMeasureName, () => aggregatedDep)
+                    }
+                  }
+                }
+
+                // Re-apply the calculated measure template with CTE-based dependencies
+                aggregatedExpr = this.queryBuilder.buildCalculatedMeasure(
+                  measure,
+                  cube,
+                  allCubes,
+                  cteResolvedMeasures,
+                  context
+                )
+              } else {
+                // For non-calculated measures, aggregate the CTE column directly
+                const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
+
+                switch (measure.type) {
+                  case 'count':
+                  case 'countDistinct':
+                  case 'sum':
+                    aggregatedExpr = sum(cteColumn)
+                    break
+                  case 'avg':
+                    // For average of averages, we should use a weighted average, but for now use simple avg
+                    aggregatedExpr = this.databaseAdapter.buildAvg(cteColumn)
+                    break
+                  case 'min':
+                    aggregatedExpr = min(cteColumn)
+                    break
+                  case 'max':
+                    aggregatedExpr = max(cteColumn)
+                    break
+                  case 'number':
+                    // For number type, use sum to combine values
+                    aggregatedExpr = sum(cteColumn)
+                    break
+                  default:
+                    aggregatedExpr = sum(cteColumn)
+                }
               }
-              
+
               modifiedSelections[measureName] = sql`${aggregatedExpr}`.as(measureName) as unknown as SQL
             }
           }

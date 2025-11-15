@@ -7,10 +7,11 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { XMarkIcon, FunnelIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
-import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
+import { TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import FilterValueSelector from './FilterValueSelector'
 import type { FilterItemProps, MetaField } from './types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators } from './utils'
+import { getMeasureIcon } from '../../utils/measureIcons'
 
 const FilterItem: React.FC<FilterItemProps> = ({
   filter,
@@ -90,8 +91,10 @@ const FilterItem: React.FC<FilterItemProps> = ({
   const getFieldTypeIcon = (field: MetaField) => {
     if (field.type === 'time') {
       return <CalendarIcon className="w-3 h-3 text-blue-500" />
-    } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'number'].includes(field.type)) {
-      return <ChartBarIcon className="w-3 h-3 text-amber-500" />
+    } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'countDistinctApprox', 'runningTotal', 'calculated', 'number'].includes(field.type)) {
+      // Use dynamic icon based on measure type, with amber color
+      const icon = getMeasureIcon(field.type, 'w-3 h-3 text-amber-500')
+      return icon
     } else {
       return <TagIcon className="w-3 h-3 text-green-500" />
     }

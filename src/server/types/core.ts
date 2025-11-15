@@ -95,16 +95,17 @@ export interface TimeDimensionAnnotation {
 /**
  * Type enums and constants
  */
-export type MeasureType = 
-  | 'count' 
-  | 'countDistinct' 
-  | 'countDistinctApprox' 
-  | 'sum' 
-  | 'avg' 
-  | 'min' 
+export type MeasureType =
+  | 'count'
+  | 'countDistinct'
+  | 'countDistinctApprox'
+  | 'sum'
+  | 'avg'
+  | 'min'
   | 'max'
   | 'runningTotal'
   | 'number'
+  | 'calculated'
 
 export type MeasureFormat = 'currency' | 'percent' | 'number' | 'integer'
 export type DimensionFormat = 'currency' | 'percent' | 'number' | 'date' | 'datetime' | 'id' | 'link'

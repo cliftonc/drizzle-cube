@@ -3,9 +3,9 @@
  * Drizzle ORM-first cube compilation and registration with type safety
  */
 
-import type { 
-  SemanticQuery, 
-  QueryResult, 
+import type {
+  SemanticQuery,
+  QueryResult,
   SecurityContext,
   DatabaseExecutor,
   CubeMetadata,
@@ -17,6 +17,8 @@ import type {
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
 import { formatSqlString } from '../adapters/utils'
+import { CalculatedMeasureResolver } from './calculated-measure-resolver'
+import { validateTemplateSyntax } from './template-substitution'
 
 export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
@@ -73,11 +75,84 @@ export class SemanticLayerCompiler {
 
   /**
    * Register a simplified cube with dynamic query building
+   * Validates calculated measures during registration
    */
   registerCube(cube: Cube): void {
+    // Validate calculated measures
+    this.validateCalculatedMeasures(cube)
+
+    // Auto-populate dependencies for calculated measures
+    const resolver = new CalculatedMeasureResolver(this.cubes)
+    resolver.populateDependencies(cube)
+
+    // Register the cube
     this.cubes.set(cube.name, cube)
+
     // Invalidate metadata cache when cubes change
     this.invalidateMetadataCache()
+  }
+
+  /**
+   * Validate calculated measures in a cube
+   * Checks template syntax, dependency existence, and circular dependencies
+   */
+  private validateCalculatedMeasures(cube: Cube): void {
+    const errors: string[] = []
+
+    // Check each measure
+    for (const [fieldName, measure] of Object.entries(cube.measures)) {
+      if (measure.type === 'calculated') {
+        // Validate calculatedSql exists
+        if (!measure.calculatedSql) {
+          errors.push(
+            `Calculated measure '${cube.name}.${fieldName}' must have calculatedSql property`
+          )
+          continue
+        }
+
+        // Validate template syntax
+        const syntaxValidation = validateTemplateSyntax(measure.calculatedSql)
+        if (!syntaxValidation.isValid) {
+          errors.push(
+            `Invalid calculatedSql syntax in '${cube.name}.${fieldName}': ${syntaxValidation.errors.join(', ')}`
+          )
+          continue
+        }
+
+        // Validate dependencies exist (using current cubes + this cube)
+        const tempCubes = new Map(this.cubes)
+        tempCubes.set(cube.name, cube)
+        const resolver = new CalculatedMeasureResolver(tempCubes)
+
+        try {
+          resolver.validateDependencies(cube)
+        } catch (err) {
+          errors.push(err instanceof Error ? err.message : String(err))
+        }
+      }
+    }
+
+    // Check for circular dependencies across all calculated measures in the cube
+    if (errors.length === 0) {
+      const tempCubes = new Map(this.cubes)
+      tempCubes.set(cube.name, cube)
+      const resolver = new CalculatedMeasureResolver(tempCubes)
+      resolver.buildGraph(cube)
+
+      const cycle = resolver.detectCycle()
+      if (cycle) {
+        errors.push(
+          `Circular dependency detected in calculated measures: ${cycle.join(' -> ')}`
+        )
+      }
+    }
+
+    // Throw if any validation errors
+    if (errors.length > 0) {
+      throw new Error(
+        `Calculated measure validation failed for cube '${cube.name}':\n${errors.join('\n')}`
+      )
+    }
   }
 
   /**

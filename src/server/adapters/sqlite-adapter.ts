@@ -20,9 +20,11 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    * Returns datetime strings for consistency with other databases
    */
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL {
+    // For SQLite with Drizzle's { mode: 'timestamp' }, timestamps are stored as Unix seconds
+    // The datetime() function with 'unixepoch' expects seconds, so no conversion needed
     // For SQLite, we need to apply modifiers directly in the datetime conversion
     // to avoid nested datetime() calls which don't work properly
-    
+
     switch (granularity) {
       case 'year':
         // Start of year: 2023-01-01 00:00:00
@@ -31,7 +33,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
         // Calculate quarter start date using SQLite's date arithmetic
         // First convert to datetime, then calculate quarter
         const dateForQuarter = sql`datetime(${fieldExpr}, 'unixepoch')`
-        return sql`datetime(${dateForQuarter}, 'start of year', 
+        return sql`datetime(${dateForQuarter}, 'start of year',
           '+' || (((CAST(strftime('%m', ${dateForQuarter}) AS INTEGER) - 1) / 3) * 3) || ' months')`
       case 'month':
         // Start of month: 2023-05-01 00:00:00
@@ -161,6 +163,31 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    */
   buildBooleanLiteral(value: boolean): SQL {
     return value ? sql`1` : sql`0`
+  }
+
+  /**
+   * Preprocess calculated measure templates for SQLite-specific handling
+   *
+   * SQLite performs integer division by default (5/2 = 2 instead of 2.5).
+   * This method wraps division operands with CAST to REAL to ensure float division.
+   *
+   * Pattern matched: {measure1} / {measure2} or {measure1} / NULLIF({measure2}, 0)
+   * Transforms to: CAST({measure1} AS REAL) / ...
+   *
+   * @param calculatedSql - Template string with {member} references
+   * @returns Preprocessed template with CAST for division operations
+   */
+  preprocessCalculatedTemplate(calculatedSql: string): string {
+    // Match division patterns: {anything} / {anything} or {anything} / NULLIF(...)
+    // We need to cast the numerator to REAL to ensure float division
+    // Pattern: captures the opening brace and content before division operator
+    const divisionPattern = /(\{[^}]+\})\s*\/\s*/g
+
+    return calculatedSql.replace(divisionPattern, (_match, numerator) => {
+      // Replace {measure} with CAST({measure} AS REAL)
+      const castNumerator = numerator.replace(/\{([^}]+)\}/, 'CAST({$1} AS REAL)')
+      return `${castNumerator} / `
+    })
   }
 
 

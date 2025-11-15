@@ -112,6 +112,23 @@ employeesCube = defineCube('Employees', {
       type: 'avg',
       sql: employees.salary,
       format: 'currency'
+    },
+    // Calculated measures
+    activePercentage: {
+      name: 'activePercentage',
+      title: 'Active Employee %',
+      type: 'calculated',
+      calculatedSql: '({activeCount} / NULLIF({count}, 0)) * 100',
+      description: 'Percentage of active employees',
+      format: 'percent'
+    },
+    avgSalaryPerActive: {
+      name: 'avgSalaryPerActive',
+      title: 'Avg Salary Per Active Employee',
+      type: 'calculated',
+      calculatedSql: '{totalSalary} / NULLIF({activeCount}, 0)',
+      description: 'Average salary across only active employees',
+      format: 'currency'
     }
   }
 }) as Cube<Schema>
@@ -135,6 +152,13 @@ departmentsCube = defineCube('Departments', {
       relationship: 'hasMany',
       on: [
         { source: departments.id, target: employees.departmentId }
+      ]
+    },
+    Productivity: {
+      targetCube: () => productivityCube,
+      relationship: 'hasMany',
+      on: [
+        { source: departments.id, target: productivity.departmentId }
       ]
     }
   },
@@ -173,6 +197,15 @@ departmentsCube = defineCube('Departments', {
       title: 'Average Budget',
       type: 'avg',
       sql: departments.budget
+    },
+    // Calculated measures
+    budgetPerDepartment: {
+      name: 'budgetPerDepartment',
+      title: 'Budget Per Department',
+      type: 'calculated',
+      calculatedSql: '{totalBudget} / NULLIF({count}, 0)',
+      description: 'Average budget allocation per department',
+      format: 'currency'
     }
   }
 }) as Cube<Schema>
@@ -338,6 +371,44 @@ productivityCube = defineCube('Productivity', {
       type: 'avg',
       sql: sql`(${productivity.linesOfCode} + ${productivity.pullRequests} * 50 + ${productivity.liveDeployments} * 100)`,
       description: 'Composite productivity score based on code output, reviews, and deployments'
+    },
+    // Calculated measures
+    workingDaysPercentage: {
+      name: 'workingDaysPercentage',
+      title: 'Working Days %',
+      type: 'calculated',
+      calculatedSql: '({workingDaysCount} / NULLIF({recordCount}, 0)) * 100',
+      description: 'Percentage of working days vs total days',
+      format: 'percent'
+    },
+    avgCodePerWorkday: {
+      name: 'avgCodePerWorkday',
+      title: 'Avg Lines Per Working Day',
+      type: 'calculated',
+      calculatedSql: '{totalLinesOfCode} / NULLIF({workingDaysCount}, 0)',
+      description: 'Average lines of code per working day'
+    },
+    avgPRsPerWorkday: {
+      name: 'avgPRsPerWorkday',
+      title: 'Avg PRs Per Working Day',
+      type: 'calculated',
+      calculatedSql: '{totalPullRequests} / NULLIF({workingDaysCount}, 0)',
+      description: 'Average pull requests per working day'
+    },
+    compositeProductivityScore: {
+      name: 'compositeProductivityScore',
+      title: 'Composite Productivity Score',
+      type: 'calculated',
+      calculatedSql: '({totalLinesOfCode} * 0.3 + {totalPullRequests} * 2 + {totalDeployments} * 5) / NULLIF({workingDaysCount}, 0)',
+      description: 'Weighted productivity score: lines (30%), PRs (2x), deployments (5x) per working day'
+    },
+    deploymentRate: {
+      name: 'deploymentRate',
+      title: 'Deployment Rate',
+      type: 'calculated',
+      calculatedSql: '({totalDeployments} / NULLIF({workingDaysCount}, 0)) * 100',
+      description: 'Deployments per 100 working days',
+      format: 'percent'
     }
   }
 }) as Cube<Schema>

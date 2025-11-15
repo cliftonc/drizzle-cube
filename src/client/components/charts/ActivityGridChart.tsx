@@ -55,7 +55,7 @@ export default function ActivityGridChart({
   const safeDisplayConfig = {
     showTooltip: displayConfig?.showTooltip ?? true,
     showLabels: displayConfig?.showLabels ?? true,
-    colorIntensity: displayConfig?.colorIntensity ?? 'medium'
+    fitToWidth: displayConfig?.fitToWidth ?? false
   }
 
   // Enhanced dimension measurement with retry mechanism
@@ -423,26 +423,41 @@ export default function ActivityGridChart({
     const availableWidth = dimensions.width - margin.left - margin.right
     const availableHeight = dimensions.height - margin.top - margin.bottom
 
-    // Scale the grid to fit the available space, but ensure minimum cell size
-    // Same minimum sizes for all granularities for consistency
-    const getMinCellSize = () => {
-      return { width: 16, height: 16 } // Same size for all views
-    }
-    
-    const minCellSize = getMinCellSize()
-    const maxCellSize = 24
-    
-    const scaleX = availableWidth / gridWidth
-    const scaleY = availableHeight / gridHeight
-    const scale = Math.min(scaleX, scaleY)
+    // Scale the grid to fit the available space
+    let finalCellWidth: number
+    let finalCellHeight: number
 
-    // Calculate final cell size with constraints
-    let finalCellWidth = Math.max(minCellSize.width, Math.min(maxCellSize, gridMapping.cellWidth * scale))
-    let finalCellHeight = Math.max(minCellSize.height, Math.min(maxCellSize, gridMapping.cellHeight * scale))
-    
-    // For week view, prefer scrolling over tiny cells
-    if (queryGranularity === 'week' && finalCellWidth < minCellSize.width) {
-      finalCellWidth = minCellSize.width
+    if (safeDisplayConfig.fitToWidth) {
+      // Fit to Width mode: Calculate cell size to perfectly fit both dimensions
+      // Remove min/max constraints and let blocks scale to optimal size
+      const scaleX = availableWidth / gridWidth
+      const scaleY = availableHeight / gridHeight
+      const scale = Math.min(scaleX, scaleY)
+
+      // Use the scale to calculate cell size, maintaining 1:1 aspect ratio
+      finalCellWidth = gridMapping.cellWidth * scale
+      finalCellHeight = gridMapping.cellHeight * scale
+    } else {
+      // Default mode: Use minimum/maximum size constraints with scrolling
+      const getMinCellSize = () => {
+        return { width: 16, height: 16 } // Same size for all views
+      }
+
+      const minCellSize = getMinCellSize()
+      const maxCellSize = 24
+
+      const scaleX = availableWidth / gridWidth
+      const scaleY = availableHeight / gridHeight
+      const scale = Math.min(scaleX, scaleY)
+
+      // Calculate final cell size with constraints
+      finalCellWidth = Math.max(minCellSize.width, Math.min(maxCellSize, gridMapping.cellWidth * scale))
+      finalCellHeight = Math.max(minCellSize.height, Math.min(maxCellSize, gridMapping.cellHeight * scale))
+
+      // For week view, prefer scrolling over tiny cells
+      if (queryGranularity === 'week' && finalCellWidth < minCellSize.width) {
+        finalCellWidth = minCellSize.width
+      }
     }
     
     // Calculate actual grid dimensions with the final cell sizes

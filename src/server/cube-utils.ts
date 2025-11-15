@@ -4,7 +4,7 @@
  */
 
 import type { SQL, AnyColumn } from 'drizzle-orm'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type {
   Cube,
   CubeJoin,
@@ -45,10 +45,17 @@ export function resolveSqlExpression(
   expr: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL),
   ctx: QueryContext
 ): AnyColumn | SQL {
-  if (typeof expr === 'function') {
-    return expr(ctx)
+  const result = typeof expr === 'function' ? expr(ctx) : expr
+
+  // CRITICAL FIX: Wrap ALL objects in fresh SQL template
+  // Drizzle SQL objects are mutable and get corrupted with reuse
+  // Wrapping in sql template creates fresh, independent queryChunks
+  if (result && typeof result === 'object') {
+    // Wrap in double template to ensure complete isolation
+    return sql`${sql`${result}`}`
   }
-  return expr
+
+  return result
 }
 
 /**

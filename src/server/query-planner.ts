@@ -478,6 +478,12 @@ export class QueryPlanner {
         continue // No measures from this cube, no fan-out risk
       }
 
+      // Expand calculated measures to include their dependencies
+      const expandedMeasures = this.expandCalculatedMeasureDependencies(
+        joinCube.cube,
+        allMeasuresFromThisCube
+      )
+
       // Extract join keys from the new array-based format
       const joinKeys = hasManyJoinDef.on.map(joinOn => ({
         sourceColumn: joinOn.source.name,
@@ -491,11 +497,71 @@ export class QueryPlanner {
         alias: joinCube.alias,
         cteAlias: `${joinCube.cube.name.toLowerCase()}_agg`,
         joinKeys,
-        measures: allMeasuresFromThisCube
+        measures: expandedMeasures
       })
     }
 
     return preAggCTEs
+  }
+
+  /**
+   * Expand calculated measures to include their dependencies
+   */
+  private expandCalculatedMeasureDependencies(
+    cube: Cube,
+    measures: string[]
+  ): string[] {
+    const expandedSet = new Set<string>()
+    const toProcess = [...measures]
+
+    while (toProcess.length > 0) {
+      const measureName = toProcess.pop()!
+      if (expandedSet.has(measureName)) {
+        continue
+      }
+
+      expandedSet.add(measureName)
+
+      const [, fieldName] = measureName.split('.')
+      if (!cube.measures || !cube.measures[fieldName]) {
+        continue
+      }
+
+      const measure = cube.measures[fieldName]
+
+      // If it's a calculated measure, extract its dependencies
+      if (measure.type === 'calculated' && measure.calculatedSql) {
+        const deps = this.extractDependenciesFromTemplate(measure.calculatedSql, cube.name)
+        for (const dep of deps) {
+          if (!expandedSet.has(dep)) {
+            toProcess.push(dep)
+          }
+        }
+      }
+    }
+
+    return Array.from(expandedSet)
+  }
+
+  /**
+   * Extract measure references from calculatedSql template
+   */
+  private extractDependenciesFromTemplate(calculatedSql: string, cubeName: string): string[] {
+    const regex = /\{([^}]+)\}/g
+    const matches = calculatedSql.matchAll(regex)
+    const deps: string[] = []
+
+    for (const match of matches) {
+      const ref = match[1].trim()
+      // Handle both {measure} and {Cube.measure} formats
+      if (ref.includes('.')) {
+        deps.push(ref)
+      } else {
+        deps.push(`${cubeName}.${ref}`)
+      }
+    }
+
+    return deps
   }
 
   /**

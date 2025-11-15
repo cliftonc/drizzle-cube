@@ -7,6 +7,7 @@ import type { PortletConfig, DashboardConfig } from '../types'
 // Re-export chart utilities
 export * from './chartUtils'
 export * from './chartConstants'
+export * from './measureIcons'
 
 /**
  * Create a dashboard layout from portlet configurations

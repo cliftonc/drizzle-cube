@@ -64,7 +64,7 @@ export interface ChartDisplayConfig {
   
   // Activity grid specific display options
   showLabels?: boolean
-  colorIntensity?: 'low' | 'medium' | 'high'
+  fitToWidth?: boolean
   
   // Target functionality
   target?: string // Target values as string (single value or comma-separated for spread)

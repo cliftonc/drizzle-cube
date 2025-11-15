@@ -45,7 +45,7 @@ export const enhancedEmployees = [
     departmentId: 1, // Engineering
     organisationId: 1,
     salary: 125000,
-    createdAt: new Date('2020-03-15') // Senior, longer tenure
+    createdAt: new Date('2020-03-15T00:00:00Z') // Senior, longer tenure
   },
   {
     name: 'Sarah Johnson',
@@ -54,7 +54,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 95000,
-    createdAt: new Date('2022-01-20')
+    createdAt: new Date('2022-01-20T00:00:00Z')
   },
   {
     name: 'Mike Rodriguez',
@@ -63,7 +63,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 110000,
-    createdAt: new Date('2021-08-10')
+    createdAt: new Date('2021-08-10T00:00:00Z')
   },
   {
     name: 'Emily Davis',
@@ -72,7 +72,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 85000,
-    createdAt: new Date('2023-03-05')
+    createdAt: new Date('2023-03-05T00:00:00Z')
   },
   {
     name: 'James Wilson',
@@ -81,7 +81,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 75000,
-    createdAt: new Date('2024-01-15')
+    createdAt: new Date('2024-01-15T00:00:00Z')
   },
   
   // Marketing Team (Org 1)
@@ -92,7 +92,7 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 85000,
-    createdAt: new Date('2021-11-20')
+    createdAt: new Date('2021-11-20T00:00:00Z')
   },
   {
     name: 'David Kim',
@@ -101,7 +101,7 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 72000,
-    createdAt: new Date('2023-06-12')
+    createdAt: new Date('2023-06-12T00:00:00Z')
   },
   {
     name: 'Rachel Green',
@@ -110,7 +110,7 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 68000,
-    createdAt: new Date('2022-02-28')
+    createdAt: new Date('2022-02-28T00:00:00Z')
   },
   
   // Sales Team (Org 1)
@@ -121,7 +121,7 @@ export const enhancedEmployees = [
     departmentId: 3,
     organisationId: 1,
     salary: 90000,
-    createdAt: new Date('2021-05-18')
+    createdAt: new Date('2021-05-18T00:00:00Z')
   },
   {
     name: 'Nina Patel',
@@ -130,7 +130,7 @@ export const enhancedEmployees = [
     departmentId: 3,
     organisationId: 1,
     salary: 78000,
-    createdAt: new Date('2023-08-22')
+    createdAt: new Date('2023-08-22T00:00:00Z')
   },
   
   // HR Team (Org 1)
@@ -141,7 +141,7 @@ export const enhancedEmployees = [
     departmentId: 4,
     organisationId: 1,
     salary: 95000,
-    createdAt: new Date('2020-12-01') // Most senior
+    createdAt: new Date('2020-12-01T00:00:00Z') // Most senior
   },
   {
     name: 'Jennifer Lee',
@@ -150,7 +150,7 @@ export const enhancedEmployees = [
     departmentId: 4,
     organisationId: 1,
     salary: 65000,
-    createdAt: new Date('2023-10-15')
+    createdAt: new Date('2023-10-15T00:00:00Z')
   },
   
   // Finance Team (Org 1)
@@ -161,7 +161,7 @@ export const enhancedEmployees = [
     departmentId: 5,
     organisationId: 1,
     salary: 105000,
-    createdAt: new Date('2021-03-10')
+    createdAt: new Date('2021-03-10T00:00:00Z')
   },
   {
     name: 'Amanda White',
@@ -170,7 +170,7 @@ export const enhancedEmployees = [
     departmentId: 5,
     organisationId: 1,
     salary: 88000,
-    createdAt: new Date('2022-07-20')
+    createdAt: new Date('2022-07-20T00:00:00Z')
   },
   
   // Operations Team (Org 1)
@@ -181,7 +181,7 @@ export const enhancedEmployees = [
     departmentId: 6,
     organisationId: 1,
     salary: 82000,
-    createdAt: new Date('2022-09-15')
+    createdAt: new Date('2022-09-15T00:00:00Z')
   },
   
   // Edge case employees
@@ -192,7 +192,7 @@ export const enhancedEmployees = [
     departmentId: 7, // R&D
     organisationId: 1,
     salary: 140000,
-    createdAt: new Date('2019-01-01')
+    createdAt: new Date('2019-01-01T00:00:00Z')
   },
   {
     name: 'José María González', // Unicode characters
@@ -201,7 +201,7 @@ export const enhancedEmployees = [
     departmentId: 7,
     organisationId: 1,
     salary: 92000,
-    createdAt: new Date('2023-04-15')
+    createdAt: new Date('2023-04-15T00:00:00Z')
   },
   {
     name: 'Employee With NULL Salary', // NULL salary edge case
@@ -210,7 +210,7 @@ export const enhancedEmployees = [
     departmentId: 8, // QA
     organisationId: 1,
     salary: null,
-    createdAt: new Date('2023-12-01')
+    createdAt: new Date('2023-12-01T00:00:00Z')
   },
   {
     name: 'No Department Employee', // NULL department edge case
@@ -219,7 +219,7 @@ export const enhancedEmployees = [
     departmentId: null,
     organisationId: 1,
     salary: 50000,
-    createdAt: new Date('2024-01-01')
+    createdAt: new Date('2024-01-01T00:00:00Z')
   },
   
   // Organization 2 employees (for multi-tenant testing)
@@ -230,7 +230,7 @@ export const enhancedEmployees = [
     departmentId: 13, // Development (Org 2)
     organisationId: 2,
     salary: 120000,
-    createdAt: new Date('2022-06-01')
+    createdAt: new Date('2022-06-01T00:00:00Z')
   },
   {
     name: 'Jane Smith Org2',
@@ -239,7 +239,7 @@ export const enhancedEmployees = [
     departmentId: 14, // Product Management (Org 2)
     organisationId: 2,
     salary: 110000,
-    createdAt: new Date('2023-02-15')
+    createdAt: new Date('2023-02-15T00:00:00Z')
   },
   {
     name: 'Bob Wilson Org2',
@@ -248,7 +248,7 @@ export const enhancedEmployees = [
     departmentId: 15, // Support (Org 2)
     organisationId: 2,
     salary: 75000,
-    createdAt: new Date('2021-09-10')
+    createdAt: new Date('2021-09-10T00:00:00Z')
   },
   
   // Organization 3 employees (for additional isolation testing)
@@ -259,7 +259,7 @@ export const enhancedEmployees = [
     departmentId: 16, // Research (Org 3)
     organisationId: 3,
     salary: 130000,
-    createdAt: new Date('2020-05-20')
+    createdAt: new Date('2020-05-20T00:00:00Z')
   },
   {
     name: 'Dr. Analytics Expert',
@@ -268,7 +268,7 @@ export const enhancedEmployees = [
     departmentId: 17, // Analytics (Org 3)
     organisationId: 3,
     salary: 145000,
-    createdAt: new Date('2019-08-30')
+    createdAt: new Date('2019-08-30T00:00:00Z')
   }
 ]
 
@@ -278,8 +278,9 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
   
   
   // Generate data for a full year (2024) for comprehensive time dimension testing
-  const startDate = new Date('2024-01-01')
-  const endDate = new Date('2024-12-31')
+  // Use UTC dates to match query parsing
+  const startDate = new Date('2024-01-01T00:00:00Z')
+  const endDate = new Date('2024-12-31T23:59:59Z')
   
   // Create productivity profiles for different employee types
   const productivityProfiles: Record<string, { 
@@ -320,9 +321,9 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
   })
   
   // Generate daily productivity data
-  for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-    const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
-    const month = date.getMonth() + 1
+  for (let date = new Date(startDate); date <= endDate; date.setUTCDate(date.getUTCDate() + 1)) {
+    const dayOfWeek = date.getUTCDay() // 0 = Sunday, 6 = Saturday
+    const month = date.getUTCMonth() + 1
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
     const isHoliday = isHolidayDate(date)
     
@@ -419,7 +420,8 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
       })
     })
   }
-  
+
+  console.log(`Generated ${productivityData.length} productivity records for comprehensive testing`)
   return productivityData
 }
 
@@ -498,8 +500,9 @@ export function generateComprehensiveTimeEntriesData(
   }
   
   // Generate time entries for full year 2024
-  const startDate = new Date('2024-01-01')
-  const endDate = new Date('2024-12-31')
+  // Use UTC dates to match query parsing
+  const startDate = new Date('2024-01-01T00:00:00Z')
+  const endDate = new Date('2024-12-31T23:59:59Z')
   
   // Process each employee
   insertedEmployees.forEach((employee) => {
@@ -538,8 +541,8 @@ export function generateComprehensiveTimeEntriesData(
     }
     
     // Generate entries for each work day
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dayOfWeek = date.getDay() // 0 = Sunday, 6 = Saturday
+    for (let date = new Date(startDate); date <= endDate; date.setUTCDate(date.getUTCDate() + 1)) {
+      const dayOfWeek = date.getUTCDay() // 0 = Sunday, 6 = Saturday
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
       const isHoliday = isApproximateHoliday(date)
       
@@ -751,61 +754,61 @@ export const sampleAnalyticsPages = [
 // Teams data for testing belongsToMany relationships
 export const enhancedTeams = [
   // Organization 1 teams
-  { name: 'Frontend Team', description: 'UI/UX and frontend development', organisationId: 1, createdAt: new Date('2020-01-01') },
-  { name: 'Backend Team', description: 'API and server-side development', organisationId: 1, createdAt: new Date('2020-01-01') },
-  { name: 'DevOps Team', description: 'Infrastructure and deployment', organisationId: 1, createdAt: new Date('2020-02-01') },
-  { name: 'Data Team', description: 'Data engineering and analytics', organisationId: 1, createdAt: new Date('2020-03-01') },
-  { name: 'Mobile Team', description: 'iOS and Android development', organisationId: 1, createdAt: new Date('2020-04-01') },
-  { name: 'Security Team', description: 'Application and infrastructure security', organisationId: 1, createdAt: new Date('2020-05-01') },
+  { name: 'Frontend Team', description: 'UI/UX and frontend development', organisationId: 1, createdAt: new Date('2020-01-01T00:00:00Z') },
+  { name: 'Backend Team', description: 'API and server-side development', organisationId: 1, createdAt: new Date('2020-01-01T00:00:00Z') },
+  { name: 'DevOps Team', description: 'Infrastructure and deployment', organisationId: 1, createdAt: new Date('2020-02-01T00:00:00Z') },
+  { name: 'Data Team', description: 'Data engineering and analytics', organisationId: 1, createdAt: new Date('2020-03-01T00:00:00Z') },
+  { name: 'Mobile Team', description: 'iOS and Android development', organisationId: 1, createdAt: new Date('2020-04-01T00:00:00Z') },
+  { name: 'Security Team', description: 'Application and infrastructure security', organisationId: 1, createdAt: new Date('2020-05-01T00:00:00Z') },
 
   // Organization 2 teams
-  { name: 'Product Team', description: 'Product development', organisationId: 2, createdAt: new Date('2020-01-01') },
-  { name: 'Platform Team', description: 'Platform engineering', organisationId: 2, createdAt: new Date('2020-01-01') },
+  { name: 'Product Team', description: 'Product development', organisationId: 2, createdAt: new Date('2020-01-01T00:00:00Z') },
+  { name: 'Platform Team', description: 'Platform engineering', organisationId: 2, createdAt: new Date('2020-01-01T00:00:00Z') },
 
   // Organization 3 teams
-  { name: 'Research Team', description: 'R&D and innovation', organisationId: 3, createdAt: new Date('2020-01-01') }
+  { name: 'Research Team', description: 'R&D and innovation', organisationId: 3, createdAt: new Date('2020-01-01T00:00:00Z') }
 ]
 
 // EmployeeTeams junction data - maps employees to teams (many-to-many)
 export const enhancedEmployeeTeams = [
   // Alex Chen (employee 1) - Senior, on multiple teams
-  { employeeId: 1, teamId: 1, role: 'lead', organisationId: 1, joinedAt: new Date('2020-03-15') }, // Frontend lead
-  { employeeId: 1, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2020-06-01') }, // Also contributes to Backend
+  { employeeId: 1, teamId: 1, role: 'lead', organisationId: 1, joinedAt: new Date('2020-03-15T00:00:00Z') }, // Frontend lead
+  { employeeId: 1, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2020-06-01T00:00:00Z') }, // Also contributes to Backend
 
   // Sarah Johnson (employee 2) - Frontend focused
-  { employeeId: 2, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2022-01-20') },
+  { employeeId: 2, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2022-01-20T00:00:00Z') },
 
   // Mike Rodriguez (employee 3) - Backend and DevOps
-  { employeeId: 3, teamId: 2, role: 'lead', organisationId: 1, joinedAt: new Date('2021-08-10') },
-  { employeeId: 3, teamId: 3, role: 'member', organisationId: 1, joinedAt: new Date('2021-09-01') },
+  { employeeId: 3, teamId: 2, role: 'lead', organisationId: 1, joinedAt: new Date('2021-08-10T00:00:00Z') },
+  { employeeId: 3, teamId: 3, role: 'member', organisationId: 1, joinedAt: new Date('2021-09-01T00:00:00Z') },
 
   // Emily Davis (employee 4) - Mobile team
-  { employeeId: 4, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-03-05') },
+  { employeeId: 4, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-03-05T00:00:00Z') },
 
   // James Wilson (employee 5) - Data team
-  { employeeId: 5, teamId: 4, role: 'lead', organisationId: 1, joinedAt: new Date('2019-11-10') },
+  { employeeId: 5, teamId: 4, role: 'lead', organisationId: 1, joinedAt: new Date('2019-11-10T00:00:00Z') },
 
   // Linda Martinez (employee 6) - Security team
-  { employeeId: 6, teamId: 6, role: 'lead', organisationId: 1, joinedAt: new Date('2018-05-22') },
+  { employeeId: 6, teamId: 6, role: 'lead', organisationId: 1, joinedAt: new Date('2018-05-22T00:00:00Z') },
 
   // Robert Lee (employee 7) - Backend team
-  { employeeId: 7, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2022-07-15') },
+  { employeeId: 7, teamId: 2, role: 'member', organisationId: 1, joinedAt: new Date('2022-07-15T00:00:00Z') },
 
   // Jennifer Taylor (employee 8) - Frontend and Mobile
-  { employeeId: 8, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2023-02-01') },
-  { employeeId: 8, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-05-01') },
+  { employeeId: 8, teamId: 1, role: 'member', organisationId: 1, joinedAt: new Date('2023-02-01T00:00:00Z') },
+  { employeeId: 8, teamId: 5, role: 'member', organisationId: 1, joinedAt: new Date('2023-05-01T00:00:00Z') },
 
   // David Brown (employee 9) - DevOps team
-  { employeeId: 9, teamId: 3, role: 'lead', organisationId: 1, joinedAt: new Date('2020-09-03') },
+  { employeeId: 9, teamId: 3, role: 'lead', organisationId: 1, joinedAt: new Date('2020-09-03T00:00:00Z') },
 
   // Org 2 employees on teams (employees 13-15)
-  { employeeId: 13, teamId: 7, role: 'lead', organisationId: 2, joinedAt: new Date('2019-06-01') }, // Product team
-  { employeeId: 14, teamId: 8, role: 'lead', organisationId: 2, joinedAt: new Date('2020-03-15') }, // Platform team
-  { employeeId: 15, teamId: 7, role: 'member', organisationId: 2, joinedAt: new Date('2021-01-10') },
+  { employeeId: 13, teamId: 7, role: 'lead', organisationId: 2, joinedAt: new Date('2019-06-01T00:00:00Z') }, // Product team
+  { employeeId: 14, teamId: 8, role: 'lead', organisationId: 2, joinedAt: new Date('2020-03-15T00:00:00Z') }, // Platform team
+  { employeeId: 15, teamId: 7, role: 'member', organisationId: 2, joinedAt: new Date('2021-01-10T00:00:00Z') },
 
   // Org 3 employees on teams (employees 16-17)
-  { employeeId: 16, teamId: 9, role: 'lead', organisationId: 3, joinedAt: new Date('2019-01-15') },
-  { employeeId: 17, teamId: 9, role: 'member', organisationId: 3, joinedAt: new Date('2020-04-20') }
+  { employeeId: 16, teamId: 9, role: 'lead', organisationId: 3, joinedAt: new Date('2019-01-15T00:00:00Z') },
+  { employeeId: 17, teamId: 9, role: 'member', organisationId: 3, joinedAt: new Date('2020-04-20T00:00:00Z') }
 ]
 
 // Test security contexts for comprehensive testing
@@ -824,8 +827,8 @@ export const edgeCaseTestData = {
   specialCharactersName: "O'Brien-Smith & Co. (测试)", // Special chars and unicode
   minSalary: 0.01,
   maxSalary: 999999.99,
-  futureDateHire: new Date('2030-01-01'), // Future date
-  veryOldDateHire: new Date('1900-01-01'), // Very old date
+  futureDateHire: new Date('2030-01-01T00:00:00Z'), // Future date
+  veryOldDateHire: new Date('1900-01-01T00:00:00Z'), // Very old date
   maxHappiness: 10,
   minHappiness: 1,
   zeroProductivity: 0,

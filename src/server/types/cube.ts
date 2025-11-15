@@ -133,26 +133,40 @@ export interface Measure {
   title?: string
   description?: string
   type: MeasureType
-  
+
   /** Column to aggregate or SQL expression */
   sql: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL)
-  
+
   /** Display format */
   format?: string
-  
+
   /** Whether to show in UI */
   shown?: boolean
-  
+
   /** Filters applied to this measure */
   filters?: Array<(ctx: QueryContext) => SQL>
-  
+
   /** Rolling window configuration */
   rollingWindow?: {
     trailing?: string
     leading?: string
     offset?: string
   }
-  
+
+  /**
+   * Calculated measure template with {member} references
+   * Only used when type === 'calculated'
+   * Example: "1.0 * {completed} / NULLIF({total}, 0)"
+   */
+  calculatedSql?: string
+
+  /**
+   * List of measure dependencies for calculated measures
+   * Auto-detected from calculatedSql if not provided
+   * Example: ['completed', 'total']
+   */
+  dependencies?: string[]
+
   /** Additional metadata */
   meta?: Record<string, any>
 }
