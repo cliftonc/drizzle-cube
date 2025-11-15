@@ -233,6 +233,38 @@ export interface CompiledCube
 }
 
 /**
+ * Join key information for CTE joins
+ * Describes how a CTE should be joined to the main query
+ */
+export interface JoinKeyInfo {
+  /** Column name in the source table */
+  sourceColumn: string
+  /** Column name in the target table (CTE) */
+  targetColumn: string
+  /** Optional Drizzle column object for source */
+  sourceColumnObj?: AnyColumn
+  /** Optional Drizzle column object for target */
+  targetColumnObj?: AnyColumn
+}
+
+/**
+ * Pre-aggregation CTE information
+ * Describes a Common Table Expression used for pre-aggregating hasMany relationships
+ */
+export interface PreAggregationCTEInfo {
+  /** The cube being pre-aggregated */
+  cube: Cube
+  /** Table alias for this cube in the main query */
+  alias: string
+  /** CTE alias (WITH clause name) */
+  cteAlias: string
+  /** Join keys to connect CTE back to main query */
+  joinKeys: JoinKeyInfo[]
+  /** List of measure names included in this CTE */
+  measures: string[]
+}
+
+/**
  * Unified Query Plan for both single and multi-cube queries
  * - For single-cube queries: joinCubes array is empty
  * - For multi-cube queries: joinCubes contains the additional cubes to join
@@ -264,18 +296,7 @@ export interface QueryPlan {
   /** GROUP BY fields if aggregations are present (built by QueryBuilder) */
   groupByFields: (SQL | AnyColumn)[]
   /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
-  preAggregationCTEs?: Array<{
-    cube: Cube
-    alias: string
-    cteAlias: string
-    joinKeys: Array<{
-      sourceColumn: string
-      targetColumn: string
-      sourceColumnObj?: AnyColumn
-      targetColumnObj?: AnyColumn
-    }>
-    measures: string[]
-  }>
+  preAggregationCTEs?: PreAggregationCTEInfo[]
 }
 
 

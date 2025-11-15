@@ -14,22 +14,21 @@ import {
   max
 } from 'drizzle-orm'
 
-import type { 
+import type {
   SecurityContext,
-  SemanticQuery, 
-  QueryResult, 
+  SemanticQuery,
+  QueryResult,
   MeasureAnnotation,
   DimensionAnnotation,
   TimeDimensionAnnotation,
   DatabaseExecutor,
   Cube,
   QueryContext,
-  QueryPlan
+  QueryPlan,
+  JoinKeyInfo
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
-import { getMemberReferences } from './template-substitution'
-
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { validateQueryAgainstCubes } from './compiler'
@@ -42,7 +41,7 @@ export class QueryExecutor {
 
   constructor(private dbExecutor: DatabaseExecutor) {
     // Get the database adapter from the executor
-    this.databaseAdapter = (dbExecutor as any).databaseAdapter
+    this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
       throw new Error('DatabaseExecutor must have a databaseAdapter property')
     }
@@ -419,64 +418,13 @@ export class QueryExecutor {
               let aggregatedExpr: SQL
 
               if (measure.type === 'calculated' && measure.calculatedSql) {
-                // CRITICAL FIX: For calculated measures, re-compute from CTE base measures
-                // We cannot sum/avg pre-computed ratios - we must recalculate from base measures
-
-                // Build a resolvedMeasures map with CTE column references
-                const cteResolvedMeasures = new Map<string, () => SQL>()
+                // Use QueryBuilder's helper to build calculated measure from CTE columns
                 const allCubes = this.getCubesFromPlan(queryPlan)
-
-                // Get all dependencies for this calculated measure
-                const deps = getMemberReferences(measure.calculatedSql, cubeName)
-
-                for (const depMeasureName of deps) {
-                  const [depCubeName, depFieldName] = depMeasureName.split('.')
-                  const depCube = allCubes.get(depCubeName)
-
-                  if (depCube && depCube.measures[depFieldName]) {
-                    const depMeasure = depCube.measures[depFieldName]
-
-                    // Check if this dependency is also in the CTE
-                    if (cteInfo.measures.includes(depMeasureName)) {
-                      // Reference the CTE column and apply appropriate aggregation
-                      const cteDepColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(depFieldName)}`
-
-                      // Apply aggregation based on the dependency's type
-                      let aggregatedDep: SQL
-                      switch (depMeasure.type) {
-                        case 'count':
-                        case 'countDistinct':
-                        case 'sum':
-                          aggregatedDep = sum(cteDepColumn)
-                          break
-                        case 'avg':
-                          aggregatedDep = this.databaseAdapter.buildAvg(cteDepColumn)
-                          break
-                        case 'min':
-                          aggregatedDep = min(cteDepColumn)
-                          break
-                        case 'max':
-                          aggregatedDep = max(cteDepColumn)
-                          break
-                        case 'number':
-                          aggregatedDep = sum(cteDepColumn)
-                          break
-                        default:
-                          aggregatedDep = sum(cteDepColumn)
-                      }
-
-                      // Store the aggregated CTE column as a builder function
-                      cteResolvedMeasures.set(depMeasureName, () => aggregatedDep)
-                    }
-                  }
-                }
-
-                // Re-apply the calculated measure template with CTE-based dependencies
-                aggregatedExpr = this.queryBuilder.buildCalculatedMeasure(
+                aggregatedExpr = this.queryBuilder.buildCTECalculatedMeasure(
                   measure,
                   cube,
+                  cteInfo,
                   allCubes,
-                  cteResolvedMeasures,
                   context
                 )
               } else {
@@ -527,7 +475,7 @@ export class QueryExecutor {
             if (isDimension || isTimeDimension) {
               // Check if this is one of the join keys that's already in the CTE
               // First try exact name match
-              let matchingJoinKey = cteInfo.joinKeys.find((jk: any) => jk.targetColumn === fieldName)
+              let matchingJoinKey = cteInfo.joinKeys.find((jk: JoinKeyInfo) => jk.targetColumn === fieldName)
               
               // If no exact match, check if the dimension SQL matches any join key target column
               if (!matchingJoinKey && cube?.dimensions?.[fieldName]) {

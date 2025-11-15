@@ -40,6 +40,30 @@ export function getJoinType(relationship: string, override?: string): string {
 
 /**
  * Helper to resolve SQL expressions
+ *
+ * IMPORTANT: SQL Wrapping Pattern - Why Double Wrapping?
+ *
+ * Drizzle SQL objects are internally mutable and share state through their `queryChunks` array.
+ * When an SQL object is reused across multiple query contexts (e.g., in measure definitions
+ * that get evaluated multiple times), the internal state can become corrupted, leading to:
+ * - Duplicate SQL fragments
+ * - Incorrect parameter ordering
+ * - Query execution failures
+ *
+ * The double wrapping pattern `sql`${sql`${result}`}`` creates complete isolation by:
+ * 1. Inner wrap: Creates a new SQL object with fresh queryChunks
+ * 2. Outer wrap: Ensures the reference is completely independent
+ *
+ * This pattern is used consistently in:
+ * - resolveSqlExpression() - Wraps all resolved SQL expressions (double wrap)
+ * - buildMeasureExpression() - Wraps base measure expressions (single wrap, already fresh)
+ *
+ * When to use double vs single wrapping:
+ * - Double wrap: When SQL objects may be reused/shared (e.g., cube SQL definitions)
+ * - Single wrap: When creating fresh SQL for the first time (e.g., new aggregations)
+ *
+ * This is a defensive programming pattern to work around Drizzle's internal mutation behavior.
+ * If Drizzle's SQL object handling changes in future versions, this pattern may be simplified.
  */
 export function resolveSqlExpression(
   expr: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL),
@@ -47,11 +71,8 @@ export function resolveSqlExpression(
 ): AnyColumn | SQL {
   const result = typeof expr === 'function' ? expr(ctx) : expr
 
-  // CRITICAL FIX: Wrap ALL objects in fresh SQL template
-  // Drizzle SQL objects are mutable and get corrupted with reuse
-  // Wrapping in sql template creates fresh, independent queryChunks
+  // Apply double wrapping for complete SQL object isolation
   if (result && typeof result === 'object') {
-    // Wrap in double template to ensure complete isolation
     return sql`${sql`${result}`}`
   }
 
