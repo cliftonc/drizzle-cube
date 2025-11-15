@@ -297,7 +297,8 @@ describe('SQL Wrapping Pattern - Prevention of SQL Object Mutation', () => {
         expect(row['Employees.name']).toBeDefined()
         expect(row['Employees.email']).toBeDefined()
         expect(row['Employees.departmentId']).toBeDefined()
-        expect(row['Employees.active']).toBe(true)
+        // SQLite stores booleans as 0/1, PostgreSQL/MySQL return true/false
+        expect([true, 1]).toContain(row['Employees.active'])
       })
     })
   })
