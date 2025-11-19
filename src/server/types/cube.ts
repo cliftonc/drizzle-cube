@@ -134,8 +134,11 @@ export interface Measure {
   description?: string
   type: MeasureType
 
-  /** Column to aggregate or SQL expression */
-  sql: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL)
+  /**
+   * Column to aggregate or SQL expression
+   * Optional for calculated measures (type: 'calculated') which use calculatedSql instead
+   */
+  sql?: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL)
 
   /** Display format */
   format?: string

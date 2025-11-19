@@ -762,8 +762,8 @@ export default function ActivityGridChart({
   }
 
   return (
-    <div className="w-full flex-1 flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden' }}>
-      <div ref={containerRef} className="w-full h-full relative overflow-x-auto">
+    <div className="w-full flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden', width: '100%' }}>
+      <div ref={containerRef} className="w-full h-full relative overflow-x-auto" style={{ width: '100%' }}>
         <svg ref={svgRef} className="h-full" />
         {!dimensionsReady && (
           <div className="absolute inset-0 flex items-center justify-center">
