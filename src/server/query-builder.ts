@@ -448,6 +448,14 @@ export class QueryBuilder {
       )
     }
 
+    // Non-calculated measures must have sql property
+    if (!measure.sql) {
+      throw new Error(
+        `Measure '${measure.name}' of type '${measure.type}' is missing required 'sql' property. ` +
+        `Only calculated measures can omit 'sql'.`
+      )
+    }
+
     // resolveSqlExpression already applies isolation via isolateSqlExpression()
     // This protects against Drizzle SQL object mutation during reuse
     let baseExpr = resolveSqlExpression(measure.sql, context)
