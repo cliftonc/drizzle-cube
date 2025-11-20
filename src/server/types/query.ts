@@ -27,6 +27,7 @@ export interface FilterCondition {
   member: string
   operator: FilterOperator
   values: any[]
+  dateRange?: string | string[]
 }
 
 export interface LogicalFilter {

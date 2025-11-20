@@ -9,9 +9,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { XMarkIcon, FunnelIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import FilterValueSelector from './FilterValueSelector'
-import type { FilterItemProps, MetaField } from './types'
-import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators } from './utils'
+import type { FilterItemProps, MetaField, DateRangeType } from './types'
+import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
+import { DATE_RANGE_OPTIONS } from './types'
 
 const FilterItem: React.FC<FilterItemProps> = ({
   filter,
@@ -23,10 +24,19 @@ const FilterItem: React.FC<FilterItemProps> = ({
 }) => {
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
+  const [isDateRangeDropdownOpen, setIsDateRangeDropdownOpen] = useState(false)
   const [fieldSearchTerm, setFieldSearchTerm] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  
+
+  // Date range state - always initialized with defaults (must be before any early returns)
+  const [rangeType, setRangeType] = useState<DateRangeType>('this_month')
+  const [customDates, setCustomDates] = useState({
+    startDate: formatDateForCube(new Date()),
+    endDate: formatDateForCube(new Date())
+  })
+  const [numberValue, setNumberValue] = useState<number>(1)
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,29 +45,76 @@ const FilterItem: React.FC<FilterItemProps> = ({
         setIsOperatorDropdownOpen(false)
       }
     }
-    
+
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-  
+
   // Close other dropdowns when opening one
   const handleFieldDropdownToggle = () => {
     setIsOperatorDropdownOpen(false)
     const newOpen = !isFieldDropdownOpen
     setIsFieldDropdownOpen(newOpen)
     setFieldSearchTerm('') // Reset search when toggling
-    
+
     // Focus search input when opening
     if (newOpen) {
       setTimeout(() => searchInputRef.current?.focus(), 50)
     }
   }
-  
+
   const handleOperatorDropdownToggle = () => {
     setIsFieldDropdownOpen(false)
     setIsOperatorDropdownOpen(!isOperatorDropdownOpen)
   }
-  
+
+  // Get field info (safe defaults if schema not loaded)
+  const allFields = schema ? getAllFilterableFields(schema) : []
+  const { queryFields } = schema ? getOrganizedFilterFields(schema, query) : { queryFields: [] }
+  const selectedField = allFields.find(f => f.name === filter.member)
+  const fieldType = selectedField ? selectedField.type : 'string'
+  const availableOperators = getAvailableOperators(fieldType)
+
+  // Determine if we should show date range selector (for time fields with inDateRange operator)
+  const shouldShowDateRangeSelector = fieldType === 'time' && filter.operator === 'inDateRange'
+
+  // Update date range state when filter.dateRange changes (must be before early return)
+  useEffect(() => {
+    if (!shouldShowDateRangeSelector || !filter.dateRange) return
+
+    // Update rangeType
+    if (Array.isArray(filter.dateRange)) {
+      setRangeType('custom')
+      setCustomDates({
+        startDate: filter.dateRange[0] || '',
+        endDate: filter.dateRange[1] || filter.dateRange[0] || ''
+      })
+    } else {
+      // Check for flexible range patterns
+      const flexibleRangeMatch = filter.dateRange.match(/^last (\d+) (days|weeks|months|quarters|years)$/)
+      if (flexibleRangeMatch) {
+        const [, num, unit] = flexibleRangeMatch
+        const unitPlural = unit === 'days' ? 'days' : unit === 'weeks' ? 'weeks' : unit === 'months' ? 'months' : unit === 'quarters' ? 'quarters' : 'years'
+        setRangeType(`last_n_${unitPlural}` as DateRangeType)
+        setNumberValue(parseInt(num) || 1)
+      } else {
+        // Check for predefined ranges
+        let found = false
+        for (const option of DATE_RANGE_OPTIONS) {
+          if (option.value !== 'custom' && !requiresNumberInput(option.value) && convertDateRangeTypeToValue(option.value) === filter.dateRange) {
+            setRangeType(option.value)
+            found = true
+            break
+          }
+        }
+        if (!found) {
+          setRangeType('custom')
+        }
+      }
+    }
+  }, [filter.dateRange, shouldShowDateRangeSelector])
+
+  // Early return AFTER all hooks
   if (!schema) {
     return (
       <div className="text-sm text-dc-text-muted">
@@ -65,13 +122,6 @@ const FilterItem: React.FC<FilterItemProps> = ({
       </div>
     )
   }
-  
-  // Get all available fields and organize them
-  const allFields = getAllFilterableFields(schema)
-  const { queryFields } = getOrganizedFilterFields(schema, query)
-  const selectedField = allFields.find(f => f.name === filter.member)
-  const fieldType = selectedField ? selectedField.type : 'string'
-  const availableOperators = getAvailableOperators(fieldType)
   
   // Filter fields based on search term
   const filterFieldsBySearch = (fields: MetaField[]) => {
@@ -140,7 +190,62 @@ const FilterItem: React.FC<FilterItemProps> = ({
       values
     })
   }
-  
+
+  // Date range handlers for time dimension filters
+  const handleDateRangeChange = (dateRange: string | string[]) => {
+    onFilterChange(index, {
+      ...filter,
+      dateRange
+    })
+  }
+
+  const handleRangeTypeChange = (newRangeType: DateRangeType) => {
+    setIsDateRangeDropdownOpen(false)
+
+    if (newRangeType === 'custom') {
+      // For custom, use current custom dates or default to today
+      if (customDates.startDate && customDates.endDate) {
+        const dateRange = customDates.startDate === customDates.endDate
+          ? customDates.startDate
+          : [customDates.startDate, customDates.endDate]
+        handleDateRangeChange(dateRange)
+      }
+    } else if (requiresNumberInput(newRangeType)) {
+      // For number-based ranges, use the number value
+      const cubeRangeValue = convertDateRangeTypeToValue(newRangeType, numberValue)
+      handleDateRangeChange(cubeRangeValue)
+    } else {
+      // For predefined ranges, use the converted value
+      const cubeRangeValue = convertDateRangeTypeToValue(newRangeType)
+      handleDateRangeChange(cubeRangeValue)
+    }
+
+    setRangeType(newRangeType)
+  }
+
+  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    const newCustomDates = { ...customDates, [field]: value }
+    setCustomDates(newCustomDates)
+
+    if (rangeType === 'custom' && newCustomDates.startDate) {
+      const dateRange = !newCustomDates.endDate || newCustomDates.startDate === newCustomDates.endDate
+        ? newCustomDates.startDate
+        : [newCustomDates.startDate, newCustomDates.endDate]
+      handleDateRangeChange(dateRange)
+    }
+  }
+
+  const handleNumberChange = (value: number) => {
+    setNumberValue(value)
+
+    if (requiresNumberInput(rangeType)) {
+      const cubeRangeValue = convertDateRangeTypeToValue(rangeType, value)
+      handleDateRangeChange(cubeRangeValue)
+    }
+  }
+
+  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
+
   return (
     <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
@@ -294,15 +399,88 @@ const FilterItem: React.FC<FilterItemProps> = ({
               )}
             </div>
             
-            {/* Value input */}
+            {/* Value input or Date Range Selector */}
             <div className="flex-1 min-w-0">
-              <FilterValueSelector
-                fieldName={filter.member}
-                operator={filter.operator}
-                values={filter.values}
-                onValuesChange={handleValuesChange}
-                schema={schema}
-              />
+              {shouldShowDateRangeSelector ? (
+                /* Date Range Selector for time dimensions with inDateRange */
+                <div className="flex items-center gap-2">
+                  {/* Range type selector */}
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => {
+                        setIsOperatorDropdownOpen(false)
+                        setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
+                      }}
+                      className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <span className="truncate">{selectedRangeLabel}</span>
+                      <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
+                        isDateRangeDropdownOpen ? 'transform rotate-180' : ''
+                      }`} />
+                    </button>
+
+                    {isDateRangeDropdownOpen && (
+                      <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {DATE_RANGE_OPTIONS.map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => handleRangeTypeChange(option.value)}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                              option.value === rangeType ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Custom date inputs or number input */}
+                  {rangeType === 'custom' ? (
+                    <>
+                      <input
+                        type="date"
+                        value={customDates.startDate}
+                        onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                        placeholder="Start date"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <input
+                        type="date"
+                        value={customDates.endDate}
+                        onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                        placeholder="End date"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </>
+                  ) : requiresNumberInput(rangeType) ? (
+                    <>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1000"
+                        value={numberValue}
+                        onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
+                        placeholder="Number"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="shrink-0 text-sm text-dc-text-secondary">
+                        {rangeType.replace('last_n_', '').replace('_', ' ')}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                /* Regular FilterValueSelector for non-dateRange filters */
+                <FilterValueSelector
+                  fieldName={filter.member}
+                  operator={filter.operator}
+                  values={filter.values}
+                  onValuesChange={handleValuesChange}
+                  schema={schema}
+                />
+              )}
             </div>
           </div>
         )}

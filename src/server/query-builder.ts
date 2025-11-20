@@ -657,7 +657,13 @@ export class QueryBuilder {
       
       // WHERE clause: use raw dimension expression
       const fieldExpr = resolveSqlExpression(dimension.sql, context)
-      return this.buildFilterCondition(fieldExpr, filterCondition.operator, filterCondition.values, field)
+      return this.buildFilterCondition(
+        fieldExpr,
+        filterCondition.operator,
+        filterCondition.values,
+        field,
+        filterCondition.dateRange
+      )
     } else if (filterType === 'where' && measure) {
       // NEVER apply measure filters in WHERE clause - they should only be in HAVING
       // This prevents incorrect behavior where measure filters are applied before aggregation
@@ -666,7 +672,13 @@ export class QueryBuilder {
       // HAVING clause: use aggregated measure expression
       // Check if this measure is from a CTE cube
       const measureExpr = this.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
-      return this.buildFilterCondition(measureExpr, filterCondition.operator, filterCondition.values, field)
+      return this.buildFilterCondition(
+        measureExpr,
+        filterCondition.operator,
+        filterCondition.values,
+        field,
+        filterCondition.dateRange
+      )
     }
     
     // Skip if this filter doesn't match the type we're processing
@@ -677,11 +689,33 @@ export class QueryBuilder {
    * Build filter condition using Drizzle operators
    */
   private buildFilterCondition(
-    fieldExpr: AnyColumn | SQL, 
-    operator: FilterOperator, 
+    fieldExpr: AnyColumn | SQL,
+    operator: FilterOperator,
     values: any[],
-    field?: any
+    field?: any,
+    dateRange?: string | string[]
   ): SQL | null {
+    // Handle dateRange for date filters
+    if (dateRange !== undefined) {
+      // Validate: dateRange only works with inDateRange operator
+      if (operator !== 'inDateRange') {
+        throw new Error(
+          `dateRange can only be used with 'inDateRange' operator, but got '${operator}'. ` +
+          `Use explicit date values in the 'values' array for other date operators.`
+        )
+      }
+
+      // Validate: field must be a time dimension
+      if (field && field.type !== 'time') {
+        throw new Error(
+          `dateRange can only be used on time dimensions, but field '${field.name || 'unknown'}' has type '${field.type}'`
+        )
+      }
+
+      // Use existing buildDateRangeCondition logic - dateRange takes precedence over values
+      return this.buildDateRangeCondition(fieldExpr, dateRange)
+    }
+
     // Handle empty values
     if (!values || values.length === 0) {
       // For empty equals filter, return condition that matches nothing
@@ -1033,6 +1067,19 @@ export class QueryBuilder {
     const lastDaysMatch = lowerRange.match(/^last\s+(\d+)\s+days?$/)
     if (lastDaysMatch) {
       const days = parseInt(lastDaysMatch[1], 10)
+      const start = new Date(now)
+      start.setUTCDate(utcDate - days + 1) // Include today in the count
+      start.setUTCHours(0, 0, 0, 0)
+      const end = new Date(now)
+      end.setUTCHours(23, 59, 59, 999)
+      return { start, end }
+    }
+
+    // Handle "last N weeks" pattern
+    const lastWeeksMatch = lowerRange.match(/^last\s+(\d+)\s+weeks?$/)
+    if (lastWeeksMatch) {
+      const weeks = parseInt(lastWeeksMatch[1], 10)
+      const days = weeks * 7
       const start = new Date(now)
       start.setUTCDate(utcDate - days + 1) // Include today in the count
       start.setUTCHours(0, 0, 0, 0)

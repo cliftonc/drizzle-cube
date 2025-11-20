@@ -293,12 +293,22 @@ export default function KpiDelta({
   const isPositiveChange = absoluteChange >= 0
 
   // Format number with appropriate units and decimals
-  const formatNumber = (value: number): string => {
+  const formatNumber = (value: number | null | undefined): string => {
+    // If custom formatValue is provided, use it exclusively
+    if (displayConfig.formatValue) {
+      return displayConfig.formatValue(value)
+    }
+
+    // Fallback to default formatting
+    if (value === null || value === undefined) {
+      return '0'
+    }
+
     const decimals = displayConfig.decimals ?? 0
     const prefix = displayConfig.prefix ?? ''
-    
+
     let formattedValue: string
-    
+
     if (Math.abs(value) >= 1e9) {
       formattedValue = (value / 1e9).toFixed(decimals) + 'B'
     } else if (Math.abs(value) >= 1e6) {
@@ -308,7 +318,7 @@ export default function KpiDelta({
     } else {
       formattedValue = value.toFixed(decimals)
     }
-    
+
     return prefix + formattedValue
   }
 
@@ -412,8 +422,8 @@ export default function KpiDelta({
         </div>
       </div>
 
-      {/* Unit/Suffix */}
-      {displayConfig.suffix && (
+      {/* Unit/Suffix (hidden when formatValue is provided) */}
+      {displayConfig.suffix && !displayConfig.formatValue && (
         <div
           className="text-dc-text-muted text-center mb-3"
           style={{
