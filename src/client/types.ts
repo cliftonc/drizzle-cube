@@ -72,8 +72,9 @@ export interface ChartDisplayConfig {
   // KPI specific display options
   template?: string // JavaScript template string for KPI Text
   prefix?: string   // Text prefix for KPI Number
-  suffix?: string   // Text suffix for KPI Number  
+  suffix?: string   // Text suffix for KPI Number
   decimals?: number // Number of decimal places
+  formatValue?: (value: number | null | undefined) => string // Custom value formatter function (takes precedence over prefix/suffix/decimals)
   valueColor?: string // Color for the KPI value (legacy)
   valueColorIndex?: number // Index of color from dashboard palette for KPI value
   
@@ -131,6 +132,7 @@ export interface SimpleFilter {
   member: string
   operator: FilterOperator
   values: any[]
+  dateRange?: string | string[]
 }
 
 export interface GroupFilter {

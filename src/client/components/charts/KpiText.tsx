@@ -187,9 +187,19 @@ export default function KpiText({
   }
 
   // Format number with appropriate units and decimals
-  const formatNumber = (value: number): string => {
+  const formatNumber = (value: number | null | undefined): string => {
+    // If custom formatValue is provided, use it exclusively
+    if (displayConfig.formatValue) {
+      return displayConfig.formatValue(value)
+    }
+
+    // Fallback to default formatting
+    if (value === null || value === undefined) {
+      return '0'
+    }
+
     const decimals = displayConfig.decimals ?? 2
-    
+
     if (Math.abs(value) >= 1e9) {
       return (value / 1e9).toFixed(decimals) + 'B'
     } else if (Math.abs(value) >= 1e6) {
