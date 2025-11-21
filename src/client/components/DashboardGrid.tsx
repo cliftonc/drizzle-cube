@@ -775,6 +775,7 @@ export default function DashboardGrid({
         schema={schema || null}
         dashboardConfig={config}
         onDashboardFiltersChange={onDashboardFiltersChange || (() => {})}
+        onSaveFilters={onSave ? () => onSave(config) : undefined}
         selectedFilterId={selectedFilterId}
         onFilterSelect={handleFilterSelect}
         isEditMode={isEditMode}

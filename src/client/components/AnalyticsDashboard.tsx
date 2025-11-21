@@ -90,7 +90,7 @@ export default function AnalyticsDashboard({
   }, [onConfigChange, onDirtyStateChange])
 
   // Handle dashboard filter changes
-  const handleDashboardFiltersChange = useCallback(async (filters: DashboardFilter[]) => {
+  const handleDashboardFiltersChange = useCallback((filters: DashboardFilter[]) => {
     // Only update config if we're not using programmatic filters
     if (!propDashboardFilters || propDashboardFilters.length === 0) {
       const updatedConfig = {
@@ -98,19 +98,10 @@ export default function AnalyticsDashboard({
         filters
       }
       handleConfigChangeWithDirtyTracking(updatedConfig)
-
-      // Auto-save filter changes (matches pattern for other dashboard changes)
-      if (onSave) {
-        try {
-          await onSave(updatedConfig)
-        } catch (error) {
-          console.error('Failed to save filter changes:', error)
-        }
-      }
     } else {
       console.warn('Dashboard filters are controlled via props - config changes ignored')
     }
-  }, [config, propDashboardFilters, handleConfigChangeWithDirtyTracking, onSave])
+  }, [config, propDashboardFilters, handleConfigChangeWithDirtyTracking])
 
   // Resolve complete palette object based on config
   const colorPalette = useMemo(() => {

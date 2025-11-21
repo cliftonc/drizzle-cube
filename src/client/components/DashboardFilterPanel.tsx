@@ -20,6 +20,7 @@ interface DashboardFilterPanelProps {
   schema: CubeMeta | null
   dashboardConfig: DashboardConfig
   onDashboardFiltersChange: (filters: DashboardFilter[]) => void
+  onSaveFilters?: () => void | Promise<void>
   selectedFilterId?: string | null
   onFilterSelect?: (filterId: string) => void
   isEditMode?: boolean
@@ -31,6 +32,7 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   schema,
   dashboardConfig,
   onDashboardFiltersChange,
+  onSaveFilters,
   selectedFilterId,
   onFilterSelect,
   isEditMode = false
@@ -279,7 +281,7 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   }, [])
 
   // Close filter builder with validation
-  const handleCloseFilterBuilder = useCallback(() => {
+  const handleCloseFilterBuilder = useCallback(async () => {
     // Validate the filter before closing
     if (editingFilter) {
       const validation = validateFilter(editingFilter.filter)
@@ -294,7 +296,16 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
 
     setEditingFilterId(null)
     setShowFilterBuilder(false)
-  }, [editingFilter, validateFilter])
+
+    // Save filters when Done is clicked
+    if (onSaveFilters) {
+      try {
+        await onSaveFilters()
+      } catch (error) {
+        console.error('Failed to save filters:', error)
+      }
+    }
+  }, [editingFilter, validateFilter, onSaveFilters])
 
   // Extract the currently selected field from the editing filter to highlight it in the schema
   const selectedFieldInFilter = useMemo(() => {
