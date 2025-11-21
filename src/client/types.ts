@@ -98,8 +98,9 @@ export interface PortletConfig {
   chartType: ChartType
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
+  dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
   w: number // Grid width
-  h: number // Grid height  
+  h: number // Grid height
   x: number // Grid x position
   y: number // Grid y position
 }
@@ -109,6 +110,7 @@ export interface DashboardConfig {
   portlets: PortletConfig[]
   layouts?: { [key: string]: any } // react-grid-layout layouts
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
+  filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
 }
 
 // Filter types - hierarchical structure supporting AND/OR logic
@@ -141,6 +143,13 @@ export interface GroupFilter {
 }
 
 export type Filter = SimpleFilter | GroupFilter
+
+// Dashboard filter with ID and label for dashboard-level filtering
+export interface DashboardFilter {
+  id: string // Unique identifier for the filter
+  label: string // Display label for the filter
+  filter: Filter // The actual filter definition
+}
 
 // Cube query types
 export interface CubeQuery {
@@ -185,6 +194,8 @@ export interface AnalyticsPortletProps {
   chartType: ChartType
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
+  dashboardFilters?: DashboardFilter[] // Dashboard-level filters to merge with portlet query
+  dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
   height?: string | number
   title?: string
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
@@ -200,6 +211,7 @@ export interface AnalyticsPortletProps {
 export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
+  dashboardFilters?: DashboardFilter[] // Programmatic dashboard filters (merged with config.filters)
   onConfigChange?: (config: DashboardConfig) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
   onDirtyStateChange?: (isDirty: boolean) => void

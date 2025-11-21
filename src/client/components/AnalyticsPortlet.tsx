@@ -8,15 +8,15 @@ import { useCubeQuery } from '../hooks/useCubeQuery'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { getChartConfig } from '../charts/chartConfigs'
-import { 
-  RechartsBarChart, 
-  RechartsLineChart, 
-  RechartsAreaChart, 
-  RechartsPieChart, 
-  RechartsScatterChart, 
-  RechartsRadarChart, 
-  RechartsRadialBarChart, 
-  RechartsTreeMapChart, 
+import {
+  RechartsBarChart,
+  RechartsLineChart,
+  RechartsAreaChart,
+  RechartsPieChart,
+  RechartsScatterChart,
+  RechartsRadarChart,
+  RechartsRadialBarChart,
+  RechartsTreeMapChart,
   BubbleChart,
   DataTable,
   ActivityGridChart,
@@ -26,18 +26,21 @@ import {
   MarkdownChart
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
+import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters } from '../utils/filterUtils'
 
 
 interface AnalyticsPortletRef {
   refresh: () => void
 }
 
-const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({ 
-  query, 
-  chartType, 
-  chartConfig, 
-  displayConfig, 
-  height = 300, 
+const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({
+  query,
+  chartType,
+  chartConfig,
+  displayConfig,
+  dashboardFilters,
+  dashboardFilterMapping,
+  height = 300,
   title: _title,
   colorPalette,
   onDebugDataReady
@@ -57,25 +60,47 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   )
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
-  // Parse query from JSON string and include refresh counter to force re-query
+  // Parse query from JSON string, merge dashboard filters, and include refresh counter to force re-query
   const queryObject = useMemo(() => {
     // Skip query parsing for charts that don't need queries
     if (shouldSkipQuery) {
       return null
     }
-    
+
     try {
       const parsed = JSON.parse(query)
+
+      // Get applicable dashboard filters based on mapping
+      const applicableFilters = getApplicableDashboardFilters(dashboardFilters, dashboardFilterMapping)
+
+      // Merge dashboard filters with portlet filters
+      const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
+
+      // Log filter merging for debugging
+      console.log('AnalyticsPortlet - Filter merging:', {
+        dashboardFiltersAvailable: dashboardFilters?.length || 0,
+        dashboardFilterMapping: dashboardFilterMapping,
+        applicableFiltersCount: applicableFilters.length,
+        applicableFilters,
+        portletFilters: parsed.filters,
+        mergedFilters,
+        hasMapping: !!dashboardFilterMapping && dashboardFilterMapping.length > 0
+      })
+
       const result = {
         ...parsed,
+        filters: mergedFilters,
         __refresh_counter: refreshCounter
       }
+
+      console.log('AnalyticsPortlet - Final query object being sent to useCubeQuery:', result)
+
       return result
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return null
     }
-  }, [query, refreshCounter, shouldSkipQuery])
+  }, [query, refreshCounter, shouldSkipQuery, dashboardFilters, dashboardFilterMapping])
 
   // Use the cube React hook (skip for charts that don't need queries)
   const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
@@ -166,9 +191,9 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
           <div className="space-y-2 text-xs">
             <details>
-              <summary className="cursor-pointer text-dc-text-secondary font-medium">Original Query</summary>
+              <summary className="cursor-pointer text-dc-text-secondary font-medium">Query (with filters applied)</summary>
               <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
-                {query}
+                {queryObject ? JSON.stringify(queryObject, null, 2) : query}
               </pre>
             </details>
 

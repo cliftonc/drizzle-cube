@@ -23,9 +23,12 @@ export class CubeClient {
 
   async load(query: CubeQuery): Promise<CubeResultSet> {
     // Use GET with query parameter for standard Cube.js compatibility
-    const queryParam = encodeURIComponent(JSON.stringify(query))
+    const queryString = JSON.stringify(query)
+    console.log('CubeClient.load - Query being sent to API:', queryString)
+
+    const queryParam = encodeURIComponent(queryString)
     const url = `${this.apiUrl}/load?query=${queryParam}`
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {

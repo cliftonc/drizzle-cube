@@ -81,7 +81,7 @@ export class QueryPlanner {
    * Recursively extract cube names from filters (handles logical filters)
    */
   private extractCubeNamesFromFilter(filter: any, cubesUsed: Set<string>): void {
-    // Handle logical filters (AND/OR)
+    // Handle logical filters (AND/OR) - Server format: { and: [...] } or { or: [...] }
     if ('and' in filter || 'or' in filter) {
       const logicalFilters = filter.and || filter.or || []
       for (const subFilter of logicalFilters) {

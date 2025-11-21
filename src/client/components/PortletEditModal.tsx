@@ -90,6 +90,7 @@ export default function PortletEditModal({
   const [formTitle, setFormTitle] = useState('')
   const [query, setQuery] = useState('')
   const [chartType, setChartType] = useState<ChartType>('bar')
+  const [dashboardFilterMapping, setDashboardFilterMapping] = useState<string[]>([])
   const [isValidating, setIsValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ isValid: boolean; message: string } | null>(null)
   const [lastValidatedQuery, setLastValidatedQuery] = useState<string>('')
@@ -132,10 +133,11 @@ export default function PortletEditModal({
         setChartType(portlet.chartType)
         setChartConfig(portlet.chartConfig || { xAxis: [], yAxis: [], series: [] })
         setDisplayConfig(portlet.displayConfig || {})
+        setDashboardFilterMapping(portlet.dashboardFilterMapping || [])
         setLastValidatedQuery(formattedQuery)
         setValidationResult({ isValid: true, message: 'Loaded query (assumed valid)' })
         setDryRunData(null)
-        
+
         // Auto-run dry-run validation for edit mode to enable chart configuration (skip for skipQuery charts)
         if (!shouldSkipQuery) {
           setTimeout(() => {
@@ -149,6 +151,7 @@ export default function PortletEditModal({
         setChartType('bar')
         setChartConfig({ xAxis: [], yAxis: [], series: [] })
         setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true, stacked: false })
+        setDashboardFilterMapping([])
         setLastValidatedQuery('')
         setValidationResult(null)
         setDryRunData(null)
@@ -198,6 +201,7 @@ export default function PortletEditModal({
         chartType,
         chartConfig: Object.keys(chartConfig).length > 0 ? chartConfig : undefined,
         displayConfig: displayConfig,
+        dashboardFilterMapping: dashboardFilterMapping.length > 0 ? dashboardFilterMapping : undefined,
         w: portlet.w || defaultWidth,
         h: portlet.h || defaultHeight
       })
@@ -209,6 +213,7 @@ export default function PortletEditModal({
         chartType,
         chartConfig: Object.keys(chartConfig).length > 0 ? chartConfig : undefined,
         displayConfig: displayConfig,
+        dashboardFilterMapping: dashboardFilterMapping.length > 0 ? dashboardFilterMapping : undefined,
         w: defaultWidth,
         h: defaultHeight
       })
@@ -589,7 +594,7 @@ export default function PortletEditModal({
             )}
           </div>
         </div>
-        
+
         {/* Validation section - Hidden for skipQuery charts */}
         {!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
           <div className={`rounded-lg p-4 ${

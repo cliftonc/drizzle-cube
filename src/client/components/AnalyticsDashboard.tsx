@@ -6,19 +6,39 @@
 
 import { useCallback, useRef, useMemo } from 'react'
 import DashboardGrid from './DashboardGrid'
+import { useCubeContext } from '../providers/CubeProvider'
 import { getColorPalette } from '../utils/colorPalettes'
-import type { AnalyticsDashboardProps, DashboardConfig } from '../types'
+import type { AnalyticsDashboardProps, DashboardConfig, DashboardFilter } from '../types'
 
 export default function AnalyticsDashboard({
   config,
   editable = false,
+  dashboardFilters: propDashboardFilters,
   onConfigChange,
   onSave,
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
+  // Get cube metadata for filter building
+  const { meta } = useCubeContext()
+
   // Track initial config to prevent saves during initial load
   const initialConfigRef = useRef(config)
   const hasConfigChangedFromInitial = useRef(false)
+
+  // Merge programmatic filters (props) with config filters
+  // Programmatic filters take precedence
+  const mergedDashboardFilters = useMemo<DashboardFilter[]>(() => {
+    const configFilters = config.filters || []
+    const propFilters = propDashboardFilters || []
+
+    // If we have prop filters, use only those (they override config)
+    if (propFilters.length > 0) {
+      return propFilters
+    }
+
+    // Otherwise use config filters
+    return configFilters
+  }, [config.filters, propDashboardFilters])
 
   // Enhanced save handler that tracks dirty state and prevents saves during initial load
   const handleSaveWithDirtyTracking = useCallback(async (config: DashboardConfig) => {
@@ -69,6 +89,20 @@ export default function AnalyticsDashboard({
     }
   }, [onConfigChange, onDirtyStateChange])
 
+  // Handle dashboard filter changes
+  const handleDashboardFiltersChange = useCallback((filters: DashboardFilter[]) => {
+    // Only update config if we're not using programmatic filters
+    if (!propDashboardFilters || propDashboardFilters.length === 0) {
+      const updatedConfig = {
+        ...config,
+        filters
+      }
+      handleConfigChangeWithDirtyTracking(updatedConfig)
+    } else {
+      console.warn('Dashboard filters are controlled via props - config changes ignored')
+    }
+  }, [config, propDashboardFilters, handleConfigChangeWithDirtyTracking])
+
   // Resolve complete palette object based on config
   const colorPalette = useMemo(() => {
     const paletteName = config.colorPalette
@@ -77,12 +111,16 @@ export default function AnalyticsDashboard({
 
   return (
     <div className="w-full">
-      <DashboardGrid 
+      {/* Dashboard Grid (now includes filter panel) */}
+      <DashboardGrid
         config={config}
         editable={editable}
+        dashboardFilters={mergedDashboardFilters}
         onConfigChange={handleConfigChangeWithDirtyTracking}
         onSave={handleSaveWithDirtyTracking}
         colorPalette={colorPalette}
+        schema={meta}
+        onDashboardFiltersChange={handleDashboardFiltersChange}
       />
     </div>
   )

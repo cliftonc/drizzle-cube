@@ -58,6 +58,8 @@ export function useCubeQuery(
       queryId
     }))
 
+    console.log('useCubeQuery - Sending query to API:', JSON.stringify(query, null, 2))
+
     cubeApi.load(query)
       .then((result) => {
         setState(prevState => {

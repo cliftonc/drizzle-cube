@@ -6,13 +6,15 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { Responsive, WidthProvider } from 'react-grid-layout'
-import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
+import PortletFilterConfigModal from './PortletFilterConfigModal'
 import DebugModal from './DebugModal'
 import ColorPaletteSelector from './ColorPaletteSelector'
+import DashboardFilterPanel from './DashboardFilterPanel'
 import type { ColorPalette } from '../utils/colorPalettes'
-import type { DashboardConfig, PortletConfig } from '../types'
+import type { DashboardConfig, PortletConfig, DashboardFilter, CubeMeta } from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
 // import 'react-grid-layout/css/styles.css'
@@ -22,19 +24,25 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 interface DashboardGridProps {
   config: DashboardConfig
   editable?: boolean
+  dashboardFilters?: DashboardFilter[] // Dashboard-level filters to apply to portlets
   onConfigChange?: (config: DashboardConfig) => void
   onPortletRefresh?: (portletId: string) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
+  schema?: CubeMeta | null  // Cube metadata for filter panel
+  onDashboardFiltersChange?: (filters: DashboardFilter[]) => void  // Handler for filter changes
 }
 
-export default function DashboardGrid({ 
-  config, 
-  editable = false, 
+export default function DashboardGrid({
+  config,
+  editable = false,
+  dashboardFilters,
   onConfigChange,
   onPortletRefresh,
   onSave,
-  colorPalette
+  colorPalette,
+  schema,
+  onDashboardFiltersChange
 }: DashboardGridProps) {
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -46,16 +54,28 @@ export default function DashboardGrid({
   
   // Edit mode state - dashboard is readonly by default
   const [isEditMode, setIsEditMode] = useState(false)
-  
+
+  // Filter selection mode state
+  const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null)
+
+  // Exit filter selection mode when leaving edit mode
+  useEffect(() => {
+    if (!isEditMode && selectedFilterId) {
+      setSelectedFilterId(null)
+    }
+  }, [isEditMode, selectedFilterId])
+
   // Track current breakpoint to handle mobile vs desktop saves differently
   const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg')
-  
+
   // Track scroll state for sticky header
   const [isScrolled, setIsScrolled] = useState(false)
 
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
   const [editingPortlet, setEditingPortlet] = useState<PortletConfig | null>(null)
+  const [isFilterConfigModalOpen, setIsFilterConfigModalOpen] = useState(false)
+  const [filterConfigPortlet, setFilterConfigPortlet] = useState<PortletConfig | null>(null)
 
   // Debug data state - keyed by portlet ID
   const [debugData, setDebugData] = useState<{ [portletId: string]: {
@@ -93,7 +113,7 @@ export default function DashboardGrid({
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
-    
+
     // Check initial scroll position
     handleScroll()
 
@@ -101,6 +121,21 @@ export default function DashboardGrid({
       window.removeEventListener('scroll', handleScroll)
     }
   }, [])
+
+  // Set up ESC key listener for filter selection mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedFilterId) {
+        setSelectedFilterId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedFilterId])
 
   // Helper function to check if layout actually changed (not just reordered due to responsive changes)
   const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
@@ -476,7 +511,7 @@ export default function DashboardGrid({
       ...config,
       colorPalette: paletteName
     }
-    
+
     onConfigChange(updatedConfig)
 
     // Auto-save if handler is provided
@@ -488,6 +523,123 @@ export default function DashboardGrid({
       }
     }
   }, [config, onConfigChange, onSave])
+
+  // Handle opening filter config modal
+  const handleOpenFilterConfig = useCallback((portlet: PortletConfig) => {
+    setFilterConfigPortlet(portlet)
+    setIsFilterConfigModalOpen(true)
+  }, [])
+
+  // Handle saving filter configuration
+  const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
+    if (!onConfigChange || !filterConfigPortlet) return
+
+    const updatedPortlets = config.portlets.map(p => {
+      if (p.id === filterConfigPortlet.id) {
+        return {
+          ...p,
+          dashboardFilterMapping: mapping
+        }
+      }
+      return p
+    })
+
+    const updatedConfig = {
+      ...config,
+      portlets: updatedPortlets
+    }
+
+    onConfigChange(updatedConfig)
+
+    // Auto-save if handler is provided
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    }
+  }, [config, filterConfigPortlet, onConfigChange, onSave])
+
+  // Handle toggling filter for a portlet (used in filter selection mode)
+  const handleToggleFilterForPortlet = useCallback(async (portletId: string, filterId: string) => {
+    if (!onConfigChange) return
+
+    const updatedPortlets = config.portlets.map(p => {
+      if (p.id === portletId) {
+        const currentMapping = p.dashboardFilterMapping || []
+        const hasFilter = currentMapping.includes(filterId)
+
+        return {
+          ...p,
+          dashboardFilterMapping: hasFilter
+            ? currentMapping.filter(id => id !== filterId)
+            : [...currentMapping, filterId]
+        }
+      }
+      return p
+    })
+
+    const updatedConfig = {
+      ...config,
+      portlets: updatedPortlets
+    }
+
+    onConfigChange(updatedConfig)
+
+    // Auto-save if handler is provided
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    }
+  }, [config, onConfigChange, onSave])
+
+  // Handle filter selection (click on filter chip)
+  const handleFilterSelect = useCallback((filterId: string) => {
+    // Toggle selection: if already selected, deselect
+    setSelectedFilterId(prev => prev === filterId ? null : filterId)
+  }, [])
+
+  // Handle select all - apply current filter to all portlets
+  const handleSelectAllForFilter = useCallback(async (filterId: string) => {
+    if (!onConfigChange) return
+
+    const updatedPortlets = config.portlets.map(p => {
+      const currentMapping = p.dashboardFilterMapping || []
+      // Add the filter if it's not already in the mapping
+      if (!currentMapping.includes(filterId)) {
+        return {
+          ...p,
+          dashboardFilterMapping: [...currentMapping, filterId]
+        }
+      }
+      return p
+    })
+
+    const updatedConfig = {
+      ...config,
+      portlets: updatedPortlets
+    }
+
+    onConfigChange(updatedConfig)
+
+    // Auto-save if handler is provided
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed:', error)
+      }
+    }
+  }, [config, onConfigChange, onSave])
+
+  // Get the selected filter object
+  const selectedFilter = selectedFilterId
+    ? dashboardFilters?.find(f => f.id === selectedFilterId)
+    : null
 
   if (!config.portlets || config.portlets.length === 0) {
     return (
@@ -595,7 +747,7 @@ export default function DashboardGrid({
                 className="shrink-0"
               />
             )}
-            
+
             <button
               onClick={handleAddPortlet}
               disabled={!isEditMode}
@@ -615,6 +767,66 @@ export default function DashboardGrid({
           </div>
         </div>
       )}
+
+      {/* Dashboard Filter Panel - Always visible below toolbar */}
+      <DashboardFilterPanel
+        dashboardFilters={dashboardFilters || []}
+        editable={editable}
+        schema={schema || null}
+        dashboardConfig={config}
+        onDashboardFiltersChange={onDashboardFiltersChange || (() => {})}
+        selectedFilterId={selectedFilterId}
+        onFilterSelect={handleFilterSelect}
+        isEditMode={isEditMode}
+      />
+
+      {/* Filter Selection Mode Banner */}
+      {selectedFilterId && selectedFilter && (
+        <div
+          className="mb-4 px-4 py-3 rounded-md border-2 transition-all"
+          style={{
+            backgroundColor: 'var(--dc-primary)',
+            borderColor: 'var(--dc-primary)',
+            color: 'white'
+          }}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <FunnelIcon className="w-5 h-5 shrink-0" />
+              <span className="font-medium">
+                Filter Selection Mode - Click portlets to toggle '{selectedFilter.label}'
+              </span>
+              <span className="text-sm opacity-90 hidden sm:inline">• Press ESC to exit</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleSelectAllForFilter(selectedFilterId)}
+                className="px-3 py-1 rounded-md transition-colors text-sm font-medium"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+              >
+                Select All
+              </button>
+              <button
+                onClick={() => setSelectedFilterId(null)}
+                className="px-3 py-1 rounded-md transition-colors text-sm font-medium"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <ResponsiveGridLayout
         className="layout"
@@ -625,8 +837,8 @@ export default function DashboardGrid({
         onBreakpointChange={(newBreakpoint) => setCurrentBreakpoint(newBreakpoint)}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        isDraggable={editable && isEditMode}
-        isResizable={editable && isEditMode}
+        isDraggable={editable && isEditMode && !selectedFilterId}
+        isResizable={editable && isEditMode && !selectedFilterId}
         draggableHandle=".portlet-drag-handle"
         margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
         containerPadding={[0, 0]}
@@ -634,28 +846,52 @@ export default function DashboardGrid({
         compactType="vertical"
         preventCollision={false}
       >
-        {config.portlets.map(portlet => (
+        {config.portlets.map(portlet => {
+          const hasSelectedFilter = selectedFilterId
+            ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
+            : false
+          const isInSelectionMode = !!selectedFilterId
+
+          return (
           <div
             key={portlet.id}
             data-portlet-id={portlet.id}
             ref={el => { portletRefs.current[portlet.id] = el }}
-            className="bg-dc-surface border border-dc-border rounded-lg flex flex-col h-full"
-            style={{ boxShadow: 'var(--dc-shadow-sm)' }}
+            className={`bg-dc-surface border rounded-lg flex flex-col h-full transition-all ${
+              isInSelectionMode ? 'cursor-pointer' : ''
+            }`}
+            style={{
+              boxShadow: 'var(--dc-shadow-sm)',
+              borderColor: isInSelectionMode && hasSelectedFilter
+                ? 'var(--dc-primary)'
+                : 'var(--dc-border)',
+              borderWidth: isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
+              backgroundColor: isInSelectionMode && hasSelectedFilter
+                ? 'rgba(var(--dc-primary-rgb), 0.05)'
+                : 'var(--dc-surface)',
+              opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1'
+            }}
+            onClick={(e) => {
+              if (isInSelectionMode && selectedFilterId) {
+                e.stopPropagation()
+                handleToggleFilterForPortlet(portlet.id, selectedFilterId)
+              }
+            }}
           >
           {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
           {(!portlet.displayConfig?.hideHeader || isEditMode) && (
-            <div className={`flex items-center justify-between px-3 py-2 md:px-4 md:py-3 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
+            <div className={`flex items-center justify-between px-3 py-1.5 md:px-4 md:py-1 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
-                {/* Debug button - right next to title, outside drag area */}
-                {debugData[portlet.id] && (
-                  <div 
-                    onMouseDown={(e) => e.stopPropagation()} 
+                {/* Debug button - only show in edit mode */}
+                {editable && isEditMode && debugData[portlet.id] && (
+                  <div
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
                     onTouchEnd={(e) => e.stopPropagation()}
                   >
-                    <DebugModal 
+                    <DebugModal
                       chartConfig={debugData[portlet.id].chartConfig}
                       displayConfig={debugData[portlet.id].displayConfig}
                       queryObject={debugData[portlet.id].queryObject}
@@ -665,9 +901,9 @@ export default function DashboardGrid({
                   </div>
                 )}
               </div>
-              <div 
-                className="flex items-center gap-3 shrink-0 ml-4 -mr-2" 
-                onMouseDown={(e) => e.stopPropagation()} 
+              <div
+                className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => e.stopPropagation()}
@@ -683,13 +919,39 @@ export default function DashboardGrid({
                     e.preventDefault()
                     handlePortletRefresh(portlet.id)
                   }}
-                  className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                  disabled={isInSelectionMode}
+                  className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
+                    isInSelectionMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-dc-surface-hover'
+                  }`}
                   title="Refresh portlet data"
                 >
                   <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                 </button>
-                {editable && isEditMode && (
+
+                {editable && isEditMode && !isInSelectionMode && (
                   <>
+                    {/* Filter configuration button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenFilterConfig(portlet)
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleOpenFilterConfig(portlet)
+                      }}
+                      className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
+                      title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
+                      style={{
+                        color: portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0
+                          ? 'var(--dc-primary)'
+                          : 'var(--dc-text-secondary)'
+                      }}
+                    >
+                      <FunnelIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    </button>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -700,7 +962,7 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleDuplicatePortlet(portlet.id)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                      className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                       title="Duplicate portlet"
                     >
                       <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -715,7 +977,7 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleEditPortlet(portlet)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                      className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                       title="Edit portlet"
                     >
                       <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -730,7 +992,8 @@ export default function DashboardGrid({
                         e.preventDefault()
                         handleDeletePortlet(portlet.id)
                       }}
-                      className="p-2 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                      className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
+                      style={{ color: '#ef4444' }}
                       title="Delete portlet"
                     >
                       <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -749,6 +1012,8 @@ export default function DashboardGrid({
               chartType={portlet.chartType}
               chartConfig={portlet.chartConfig}
               displayConfig={portlet.displayConfig}
+              dashboardFilters={dashboardFilters}
+              dashboardFilterMapping={portlet.dashboardFilterMapping}
               title={portlet.title}
               height="100%"
               colorPalette={colorPalette}
@@ -761,7 +1026,8 @@ export default function DashboardGrid({
             />
           </div>
         </div>
-      ))}
+          )
+        })}
       </ResponsiveGridLayout>
       
       {/* Portlet Modal */}
@@ -776,6 +1042,19 @@ export default function DashboardGrid({
         title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
         submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
         colorPalette={colorPalette}
+      />
+
+      {/* Filter Configuration Modal */}
+      <PortletFilterConfigModal
+        isOpen={isFilterConfigModalOpen}
+        onClose={() => {
+          setIsFilterConfigModalOpen(false)
+          setFilterConfigPortlet(null)
+        }}
+        dashboardFilters={dashboardFilters || []}
+        currentMapping={filterConfigPortlet?.dashboardFilterMapping || []}
+        onSave={handleSaveFilterConfig}
+        portletTitle={filterConfigPortlet?.title || ''}
       />
     </>
   )
