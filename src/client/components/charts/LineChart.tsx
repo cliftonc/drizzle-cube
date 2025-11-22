@@ -135,8 +135,12 @@ export default function LineChart({
             label={{ value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip 
+            <ChartTooltip
               formatter={(value: any, name: any) => {
+                // Handle null values in tooltip
+                if (value === null || value === undefined) {
+                  return ['No data', name]
+                }
                 if (name === 'Target') {
                   return [`${value}`, 'Target Value']
                 }
@@ -156,6 +160,7 @@ export default function LineChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
+          {/* Null handling: connectNulls=false creates gaps in the line where data is null, clearly showing missing data points */}
           {seriesKeys.map((seriesKey, index) => (
             <Line
               key={seriesKey}
@@ -166,6 +171,7 @@ export default function LineChart({
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
               strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+              connectNulls={false}
             />
           ))}
           {spreadTargets.length > 0 && (

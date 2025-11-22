@@ -3,7 +3,7 @@ import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianG
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -73,6 +73,7 @@ export default function ScatterChart({
     }
 
     // Transform data for scatter plot
+    // Null handling: Filter out data points where x or y coordinates are null
     let scatterData: any[]
     let seriesGroups: { [key: string]: any[] } = {}
 
@@ -84,38 +85,42 @@ export default function ScatterChart({
         if (!seriesGroups[seriesValue]) {
           seriesGroups[seriesValue] = []
         }
-        
+
         const xGranularity = getFieldGranularity(queryObject, xAxisField)
         const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
-        const yValue = typeof item[yAxisField] === 'string' 
-          ? parseFloat(item[yAxisField]) 
-          : (item[yAxisField] || 0)
-          
-        seriesGroups[seriesValue].push({
-          x: typeof xValue === 'string' ? parseFloat(xValue) || 0 : xValue,
-          y: yValue,
-          name: `${seriesValue} (${xValue}, ${yValue})`
-        })
+        const yValue = parseNumericValue(item[yAxisField])
+
+        // Only add point if both x and y are valid numbers
+        const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
+        if (isValidNumericValue(xNum) && yValue !== null) {
+          seriesGroups[seriesValue].push({
+            x: xNum,
+            y: yValue,
+            name: `${seriesValue} (${xValue}, ${yValue})`
+          })
+        }
       })
-      
+
       // Use the first series as primary data
       const seriesKeys = Object.keys(seriesGroups)
       scatterData = seriesGroups[seriesKeys[0]] || []
     } else {
       // Single series scatter plot
       const xGranularity = getFieldGranularity(queryObject, xAxisField)
-      scatterData = data.map(item => {
-        const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
-        const yValue = typeof item[yAxisField] === 'string' 
-          ? parseFloat(item[yAxisField]) 
-          : (item[yAxisField] || 0)
-          
-        return {
-          x: typeof xValue === 'string' ? parseFloat(xValue) || 0 : xValue,
-          y: yValue,
-          name: `(${xValue}, ${yValue})`
-        }
-      })
+      scatterData = data
+        .map(item => {
+          const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
+          const yValue = parseNumericValue(item[yAxisField])
+          const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
+
+          return {
+            x: xNum,
+            y: yValue,
+            name: `(${xValue}, ${yValue})`,
+            isValid: isValidNumericValue(xNum) && yValue !== null
+          }
+        })
+        .filter(point => point.isValid)
     }
     
     // Validate transformed data

@@ -296,9 +296,9 @@ export default function KpiDelta({
       return displayConfig.formatValue(value)
     }
 
-    // Fallback to default formatting
+    // Null handling: Show placeholder for missing data
     if (value === null || value === undefined) {
-      return '0'
+      return '—'
     }
 
     const decimals = displayConfig.decimals ?? 0

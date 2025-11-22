@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, type ScaleOrdinal, type ScaleQuantize } from 'd3'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { getTheme, watchThemeChanges, type Theme } from '../../theme'
 import type { ChartProps } from '../../types'
@@ -168,27 +168,28 @@ export default function BubbleChart({
     }
 
     // Transform data for bubble chart
+    // Null handling: Filter out bubbles where x, y, or size are null
     const xGranularity = getFieldGranularity(queryObject, xAxisField)
-    const bubbleData: BubbleData[] = data.map(item => {
-      const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
-      const yValue = typeof item[yAxisField] === 'string' 
-        ? parseFloat(item[yAxisField]) 
-        : (item[yAxisField] || 0)
-      const sizeValue = typeof item[sizeFieldName] === 'string'
-        ? parseFloat(item[sizeFieldName])
-        : (item[sizeFieldName] || 0)
-      
-      const seriesValue = item[seriesField]
-      
-      return {
-        x: typeof xValue === 'string' ? parseFloat(xValue) || 0 : xValue,
-        y: yValue,
-        size: Math.abs(sizeValue), // Ensure positive size
-        color: colorFieldName ? item[colorFieldName] : seriesValue,
-        series: seriesValue,
-        label: `${seriesValue || 'Unknown'}`
-      }
-    }).filter(d => d.size > 0) // Filter out bubbles with no size
+    const bubbleData: BubbleData[] = data
+      .map(item => {
+        const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
+        const yValue = parseNumericValue(item[yAxisField])
+        const sizeValue = parseNumericValue(item[sizeFieldName])
+
+        const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
+        const seriesValue = item[seriesField]
+
+        return {
+          x: xNum,
+          y: yValue as number, // Type assertion: filter below ensures this is never null
+          size: sizeValue !== null ? Math.abs(sizeValue) : 0, // Ensure positive size
+          color: colorFieldName ? item[colorFieldName] : seriesValue,
+          series: seriesValue,
+          label: `${seriesValue || 'Unknown'}`,
+          isValid: isValidNumericValue(xNum) && yValue !== null && sizeValue !== null && sizeValue > 0
+        }
+      })
+      .filter(d => d.isValid && d.size > 0) // Filter out bubbles with invalid coordinates or no size
 
     if (bubbleData.length === 0) return
 

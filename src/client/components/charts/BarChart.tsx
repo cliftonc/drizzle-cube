@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, isValidNumericValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
@@ -75,16 +75,26 @@ export default function BarChart({
     }
 
     // Use shared function to transform data and handle series
-    const { data: chartData, seriesKeys } = transformChartDataWithSeries(
-      data, 
-      xAxisField, 
-      yAxisFields, 
+    const { data: transformedData, seriesKeys } = transformChartDataWithSeries(
+      data,
+      xAxisField,
+      yAxisFields,
       queryObject,
       seriesFields,
       labelMap
     )
 
-    
+    // Null handling: Filter out data points where ALL measure values are null
+    // This prevents rendering empty bars and makes the chart clearer
+    const { chartData, skippedCount } = useMemo(() => {
+      const filtered = transformedData.filter(row => {
+        // Keep the row if at least one series has a valid numeric value
+        return seriesKeys.some(key => isValidNumericValue(row[key]))
+      })
+      const skipped = transformedData.length - filtered.length
+      return { chartData: filtered, skippedCount: skipped }
+    }, [transformedData, seriesKeys])
+
     // Stacking is now controlled only by the explicit config
     const shouldStack = safeDisplayConfig.stacked === true
     
@@ -130,8 +140,9 @@ export default function BarChart({
     }
 
     return (
-      <ChartContainer height={height}>
-        <ComposedChart data={enhancedChartData} margin={chartMargins}>
+      <div className="relative w-full" style={{ height }}>
+        <ChartContainer height={skippedCount > 0 ? `calc(100% - 20px)` : "100%"}>
+          <ComposedChart data={enhancedChartData} margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -147,8 +158,12 @@ export default function BarChart({
             label={{ value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip 
+            <ChartTooltip
               formatter={(value: any, name: any) => {
+                // Handle null values in tooltip
+                if (value === null || value === undefined) {
+                  return ['No data', name]
+                }
                 if (name === 'Target') {
                   return [`${value}`, 'Target Value']
                 }
@@ -215,8 +230,14 @@ export default function BarChart({
               />
             </>
           )}
-        </ComposedChart>
-      </ChartContainer>
+          </ComposedChart>
+        </ChartContainer>
+        {skippedCount > 0 && (
+          <div className="text-xs text-dc-text-muted text-center mt-1">
+            {skippedCount} data point{skippedCount !== 1 ? 's' : ''} with no values hidden
+          </div>
+        )}
+      </div>
     )
   } catch (error) {
     // 'BarChart rendering error

@@ -144,25 +144,39 @@ export default function KpiNumber({
     .map(val => Number(val))
   
 
+  // Null handling: If all values are null, show placeholder instead of error
   if (values.length === 0) {
-    const dataKeys = data.length > 0 ? Object.keys(data[0]).join(', ') : 'none'
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        ref={containerRef}
+        className="flex flex-col items-center justify-center w-full h-full p-4"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined,
-          backgroundColor: 'var(--dc-danger-bg)',
-          color: 'var(--dc-danger)',
-          borderColor: 'var(--dc-danger-border)'
+          minHeight: height === "100%" ? '200px' : undefined
         }}
       >
-        <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No valid data</div>
-          <div className="text-xs mb-1">Looking for field: {valueField}</div>
-          <div className="text-xs">Available fields: {dataKeys}</div>
-          <div className="text-xs mt-1">Raw values: {JSON.stringify(rawValues.slice(0, 3))}</div>
+        {/* Field Label */}
+        <div
+          className="text-dc-text-secondary font-bold text-center mb-3"
+          style={{
+            fontSize: '14px',
+            lineHeight: '1.2'
+          }}
+        >
+          {getFieldLabel(valueField)}
         </div>
+
+        {/* No Data Placeholder */}
+        <div
+          className="font-bold leading-none text-dc-text-muted"
+          style={{
+            fontSize: `${fontSize}px`
+          }}
+        >
+          —
+        </div>
+
+        <div className="text-xs text-dc-text-muted mt-2">No data</div>
       </div>
     )
   }
@@ -180,9 +194,9 @@ export default function KpiNumber({
       return displayConfig.formatValue(value)
     }
 
-    // Fallback to default formatting
+    // Null handling: Show placeholder for missing data
     if (value === null || value === undefined) {
-      return '0'
+      return '—'
     }
 
     const decimals = displayConfig.decimals ?? 0

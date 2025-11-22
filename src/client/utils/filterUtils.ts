@@ -2,7 +2,43 @@
  * Filter utility functions for dashboard-level filtering
  */
 
-import type { Filter, DashboardFilter, CubeMeta, GroupFilter, DashboardConfig } from '../types'
+import type { Filter, DashboardFilter, CubeMeta, GroupFilter, DashboardConfig, SimpleFilter } from '../types'
+
+/**
+ * Check if a filter should be included in the query (has valid values or doesn't require values)
+ * @param filter - The filter to check
+ * @returns true if the filter should be included, false otherwise
+ */
+function shouldIncludeFilter(filter: Filter): boolean {
+  // Handle SimpleFilter
+  if ('member' in filter && 'operator' in filter) {
+    const simpleFilter = filter as SimpleFilter
+
+    // Operators that don't require values
+    const noValueOperators = ['set', 'notSet', 'isEmpty', 'isNotEmpty']
+    if (noValueOperators.includes(simpleFilter.operator)) {
+      return true
+    }
+
+    // For inDateRange, check if dateRange is provided as alternative to values
+    if (simpleFilter.operator === 'inDateRange' && simpleFilter.dateRange) {
+      return true
+    }
+
+    // For other operators, check if values exist and are non-empty
+    return !!(simpleFilter.values && simpleFilter.values.length > 0)
+  }
+
+  // Handle GroupFilter - recursively check nested filters
+  if ('type' in filter && 'filters' in filter) {
+    const groupFilter = filter as GroupFilter
+    // Include group filter if at least one nested filter is valid
+    const validFilters = groupFilter.filters.filter(f => shouldIncludeFilter(f))
+    return validFilters.length > 0
+  }
+
+  return false
+}
 
 /**
  * Get dashboard filters that should be applied to a portlet based on its mapping configuration
@@ -23,9 +59,10 @@ export function getApplicableDashboardFilters(
     return []
   }
 
-  // Return filters that are in the mapping
+  // Return filters that are in the mapping AND have valid values
   return dashboardFilters
     .filter(df => filterMapping.includes(df.id))
+    .filter(df => shouldIncludeFilter(df.filter))
     .map(df => df.filter)
 }
 

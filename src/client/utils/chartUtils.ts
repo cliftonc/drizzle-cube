@@ -1,5 +1,19 @@
 import type { FieldLabelMap } from '../hooks/useCubeMeta'
 
+// Utility function to check if a value is a valid numeric value (not null, undefined, or NaN)
+// This is used to preserve null values instead of converting them to 0
+export function isValidNumericValue(value: any): boolean {
+  return value !== null && value !== undefined && !isNaN(Number(value))
+}
+
+// Utility function to parse numeric value from data, preserving nulls
+// Returns null for null/undefined/NaN values, otherwise returns the numeric value
+export function parseNumericValue(value: any): number | null {
+  if (value === null || value === undefined) return null
+  const num = typeof value === 'string' ? parseFloat(value) : Number(value)
+  return isNaN(num) ? null : num
+}
+
 // Utility function to get field label from field name
 export function getFieldLabel(fieldName: string, labelMap: FieldLabelMap): string {
   return labelMap[fieldName] || fieldName
@@ -136,23 +150,23 @@ export function getFieldGranularity(queryObject: any, fieldName: string): string
 }
 
 // Transform data for charts with proper type handling
+// NOTE: Preserves null values to allow charts to handle gaps/missing data appropriately
 export function transformChartData(data: any[], xAxisField: string, yAxisFields: string[], queryObject: any, labelMap: FieldLabelMap = {}) {
   if (!data || data.length === 0) return []
 
   const granularity = getFieldGranularity(queryObject, xAxisField)
-  
+
   return data.map((row: any) => {
     const transformed: any = {
       name: formatTimeValue(row[xAxisField], granularity) || row[xAxisField] || 'Unknown',
     }
-    
+
     yAxisFields.forEach(field => {
       const displayName = getFieldLabel(field, labelMap)
-      transformed[displayName] = typeof row[field] === 'string' 
-        ? parseFloat(row[field]) 
-        : (row[field] || 0)
+      // Preserve null values instead of converting to 0
+      transformed[displayName] = parseNumericValue(row[field])
     })
-    
+
     return transformed
   })
 }
@@ -164,10 +178,11 @@ export interface ChartSeriesResult {
 }
 
 // Advanced data transformation that handles both measures and dimensions on Y-axis
+// NOTE: Preserves null values to allow charts to handle gaps/missing data appropriately
 export function transformChartDataWithSeries(
-  data: any[], 
-  xAxisField: string, 
-  yAxisFields: string[], 
+  data: any[],
+  xAxisField: string,
+  yAxisFields: string[],
   queryObject: any,
   seriesFields?: string[], // New optional parameter for explicit series fields
   labelMap: FieldLabelMap = {} // Optional label map for field names
@@ -182,45 +197,63 @@ export function transformChartDataWithSeries(
     ...(originalQuery.timeDimensions?.map((td: any) => td.dimension) || [])
   ]
   const queryMeasures = originalQuery.measures || []
-  
+
   // Use explicit series fields if provided, otherwise no dimension-based series
   const yAxisMeasures = yAxisFields.filter(field => queryMeasures.includes(field))
   const yAxisDimensions = (seriesFields || []).filter(field => queryDimensions.includes(field))
-  
+
   // Handle complex case with dimensions on Y-axis
   if (yAxisDimensions.length > 0) {
     // Group data by X-axis field and create separate series for dimension values
     const groupedData: { [key: string]: any } = {}
-    
+
     data.forEach((row: any) => {
       const granularity = getFieldGranularity(queryObject, xAxisField)
       const xValue = formatTimeValue(row[xAxisField], granularity) || row[xAxisField] || 'Unknown'
       if (!groupedData[xValue]) {
         groupedData[xValue] = { name: String(xValue) }
       }
-      
-      // Add measures
+
+      // Add measures - preserve nulls for individual measures
       yAxisMeasures.forEach(measure => {
         const displayName = getFieldLabel(measure, labelMap)
-        groupedData[xValue][displayName] = (groupedData[xValue][displayName] || 0) + 
-          (typeof row[measure] === 'string' ? parseFloat(row[measure]) : (row[measure] || 0))
+        const measureValue = parseNumericValue(row[measure])
+
+        // For aggregation: sum non-null values, preserve null if all are null
+        if (measureValue !== null) {
+          const currentValue = groupedData[xValue][displayName]
+          groupedData[xValue][displayName] = (currentValue === null || currentValue === undefined)
+            ? measureValue
+            : currentValue + measureValue
+        } else if (!(displayName in groupedData[xValue])) {
+          // Only set to null if no value exists yet
+          groupedData[xValue][displayName] = null
+        }
       })
-      
+
       // Add dimensions as separate series (aggregate measure values by dimension)
       yAxisDimensions.forEach(dimension => {
         const dimValue = row[dimension]
         if (dimValue !== undefined && dimValue !== null) {
           const seriesName = String(dimValue)
           // Aggregate the first measure for this dimension value, or use totalCost if available
-          const measureToAggregate = yAxisMeasures[0] || queryMeasures.find((m: string) => 
+          const measureToAggregate = yAxisMeasures[0] || queryMeasures.find((m: string) =>
             m.includes('totalCost') || m.includes('count') || m.includes('sum')
           ) || queryMeasures[0]
-          
+
           if (measureToAggregate) {
-            const measureValue = typeof row[measureToAggregate] === 'string' 
-              ? parseFloat(row[measureToAggregate]) 
-              : (row[measureToAggregate] || 0)
-            groupedData[xValue][seriesName] = (groupedData[xValue][seriesName] || 0) + measureValue
+            const measureValue = parseNumericValue(row[measureToAggregate])
+
+            // For dimension series: sum non-null values, preserve null if all are null
+            if (measureValue !== null) {
+              const currentValue = groupedData[xValue][seriesName]
+              groupedData[xValue][seriesName] = (currentValue === null || currentValue === undefined)
+                ? measureValue
+                : currentValue + measureValue
+            } else if (!(seriesName in groupedData[xValue])) {
+              // Only set to null if no value exists yet
+              groupedData[xValue][seriesName] = null
+            }
           }
         }
       })

@@ -136,8 +136,12 @@ export default function AreaChart({
             label={{ value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip 
+            <ChartTooltip
               formatter={(value: any, name: any) => {
+                // Handle null values in tooltip
+                if (value === null || value === undefined) {
+                  return ['No data', name]
+                }
                 if (name === 'Target') {
                   return [`${value}`, 'Target Value']
                 }
@@ -157,6 +161,7 @@ export default function AreaChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
+          {/* Null handling: connectNulls=false creates gaps in the area where data is null, clearly showing missing data points */}
           {seriesKeys.map((seriesKey, index) => (
             <Area
               key={seriesKey}
@@ -168,6 +173,7 @@ export default function AreaChart({
               fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
               strokeWidth={2}
               strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+              connectNulls={false}
             />
           ))}
           {spreadTargets.length > 0 && (
