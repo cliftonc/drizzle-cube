@@ -1,6 +1,6 @@
 {
   "name": "drizzle-cube",
-  "version": "0.1.43",
+  "version": "0.1.44",
   "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
