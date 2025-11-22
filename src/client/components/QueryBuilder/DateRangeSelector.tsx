@@ -17,6 +17,8 @@ interface DateRangeSelectorProps {
   onDateRangeChange: (timeDimension: string, dateRange: string | string[]) => void
   onTimeDimensionChange: (oldTimeDimension: string, newTimeDimension: string) => void
   onRemove: (timeDimension: string) => void
+  hideFieldSelector?: boolean // Hide the time dimension field selector (for read-only filters)
+  hideRemoveButton?: boolean // Hide the remove button (for read-only filters)
 }
 
 const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
@@ -25,7 +27,9 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   currentDateRange,
   onDateRangeChange,
   onTimeDimensionChange,
-  onRemove
+  onRemove,
+  hideFieldSelector = false,
+  hideRemoveButton = false
 }) => {
   // Parse current date range to determine the type and custom dates
   const getCurrentRangeType = (): DateRangeType => {
@@ -164,39 +168,41 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
     <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
-        {/* Row 1: Filter icon and time dimension field */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <CalendarIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+        {/* Row 1: Filter icon and time dimension field - conditionally hidden */}
+        {!hideFieldSelector && (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <CalendarIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
 
-          {/* Time dimension field selector */}
-          <div className="relative flex-1 min-w-0">
-            <button
-              onClick={handleTimeDimensionDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
-            >
-              <span className="truncate">{timeDimension}</span>
-              <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 transition-transform ${
-                isTimeDimensionDropdownOpen ? 'transform rotate-180' : ''
-              }`} />
-            </button>
+            {/* Time dimension field selector */}
+            <div className="relative flex-1 min-w-0">
+              <button
+                onClick={handleTimeDimensionDropdownToggle}
+                className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+              >
+                <span className="truncate">{timeDimension}</span>
+                <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 transition-transform ${
+                  isTimeDimensionDropdownOpen ? 'transform rotate-180' : ''
+                }`} />
+              </button>
 
-            {isTimeDimensionDropdownOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {availableTimeDimensions.map((td) => (
-                  <button
-                    key={td}
-                    onClick={() => handleTimeDimensionChange(td)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
-                      td === timeDimension ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-dc-text-secondary'
-                    }`}
-                  >
-                    {td}
-                  </button>
-                ))}
-              </div>
-            )}
+              {isTimeDimensionDropdownOpen && (
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {availableTimeDimensions.map((td) => (
+                    <button
+                      key={td}
+                      onClick={() => handleTimeDimensionChange(td)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                        td === timeDimension ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-dc-text-secondary'
+                      }`}
+                    >
+                      {td}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Row 2: Date range selector */}
         <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
@@ -280,15 +286,17 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
             // Empty placeholder to maintain layout consistency
             <div className="flex-1"></div>
           )}
-          
-          {/* Remove button */}
-          <button
-            onClick={() => onRemove(timeDimension)}
-            className="text-dc-text-muted hover:text-red-600 focus:outline-hidden shrink-0 p-1"
-            title="Remove date range"
-          >
-            <XMarkIcon className="w-4 h-4" />
-          </button>
+
+          {/* Remove button - conditionally hidden */}
+          {!hideRemoveButton && (
+            <button
+              onClick={() => onRemove(timeDimension)}
+              className="text-dc-text-muted hover:text-red-600 focus:outline-hidden shrink-0 p-1"
+              title="Remove date range"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

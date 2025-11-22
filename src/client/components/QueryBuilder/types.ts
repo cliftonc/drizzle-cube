@@ -406,6 +406,9 @@ export interface FilterItemProps {
   onFilterRemove: (index: number) => void
   schema: MetaResponse | null
   query: CubeQuery
+  hideFieldSelector?: boolean // Hide the field selector (for read-only filters)
+  hideOperatorSelector?: boolean // Hide the operator selector (for read-only filters)
+  hideRemoveButton?: boolean // Hide the remove button (for read-only filters)
 }
 
 export interface FilterGroupProps {

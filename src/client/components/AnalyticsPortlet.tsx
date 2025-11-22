@@ -148,10 +148,10 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   
   if (!chartConfig && hasMandatoryFields) {
     return (
-      <div className="flex items-center justify-center w-full text-red-500" style={{ height }}>
+      <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">chartConfig is required but not provided</div>
+          <div className="text-sm font-semibold mb-1">Configuration Required</div>
+          <div className="text-xs text-dc-text-secondary">Please configure this chart</div>
         </div>
       </div>
     )
@@ -169,10 +169,10 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (error) {
       return (
-        <div className="p-4 border bg-red-50 rounded-sm" style={{ height, borderColor: '#fca5a5' }}>
+        <div className="p-4 border rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
           <div className="mb-2">
             <div className="flex items-center justify-between">
-              <span className="text-red-600 font-medium text-sm">⚠️ Query Error</span>
+              <span className="font-medium text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
               <button
                 onClick={() => setRefreshCounter(prev => prev + 1)}
                 className="px-2 py-1 text-white rounded-sm text-xs"
@@ -184,22 +184,22 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
           </div>
 
           <div className="mb-3">
-            <div className="text-xs text-red-700 bg-dc-surface p-2 rounded-sm border" style={{ borderColor: '#fca5a5' }}>
+            <div className="text-xs p-2 rounded-sm border" style={{ color: 'var(--dc-text-secondary)', backgroundColor: 'var(--dc-surface)', borderColor: 'var(--dc-border)' }}>
               {error.message || error.toString()}
             </div>
           </div>
 
           <div className="space-y-2 text-xs">
             <details>
-              <summary className="cursor-pointer text-dc-text-secondary font-medium">Query (with filters applied)</summary>
+              <summary className="cursor-pointer font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Query (with filters applied)</summary>
               <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                 {queryObject ? JSON.stringify(queryObject, null, 2) : query}
               </pre>
             </details>
 
             <details>
-              <summary className="cursor-pointer text-dc-text-secondary font-medium">Chart Config</summary>
-              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: '#f3e8ff' }}>
+              <summary className="cursor-pointer font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Chart Config</summary>
+              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
                 {JSON.stringify({
                   chartType,
                   chartConfig,
@@ -433,10 +433,10 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     } catch (error) {
       console.error('Chart rendering error:', error)
       return (
-        <div className="flex items-center justify-center w-full text-red-500 p-4" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-text-muted p-4" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Error rendering chart</div>
-            <div className="text-xs">{error instanceof Error ? error.message : 'Unknown error'}</div>
+            <div className="text-sm font-semibold mb-1">Unable to render chart</div>
+            <div className="text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
           </div>
         </div>
       )

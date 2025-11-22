@@ -17,16 +17,11 @@ export default function DataTable({
     return (
       <div
         className="flex items-center justify-center w-full"
-        style={{
-          height,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
-        }}
+        style={{ height }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs">No data to display in table</div>
+          <div className="text-xs text-dc-text-secondary">No data to display in table</div>
         </div>
       </div>
     )
@@ -42,16 +37,11 @@ export default function DataTable({
     return (
       <div
         className="flex items-center justify-center w-full"
-        style={{
-          height,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
-        }}
+        style={{ height }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">No columns available</div>
-          <div className="text-xs">Data structure is invalid</div>
+          <div className="text-xs text-dc-text-secondary">Data structure is invalid</div>
         </div>
       </div>
     )

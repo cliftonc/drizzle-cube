@@ -383,15 +383,12 @@ export default function MarkdownChart({
         className="flex items-center justify-center w-full h-full"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
+          minHeight: height === "100%" ? '200px' : undefined
         }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">No content</div>
-          <div className="text-xs">Add markdown content in the chart configuration</div>
+          <div className="text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
         </div>
       </div>
     )

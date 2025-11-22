@@ -15,10 +15,10 @@ interface UseCubeQueryResult {
 }
 
 export function useCubeQuery(
-  query: CubeQuery | null, 
+  query: CubeQuery | null,
   options: CubeQueryOptions = {}
 ): UseCubeQueryResult {
-  const { cubeApi } = useCubeContext()
+  const { cubeApi, batchCoordinator, enableBatching } = useCubeContext()
   
   // Use a single state object to ensure atomic updates
   const [state, setState] = useState<UseCubeQueryResult>({
@@ -60,7 +60,12 @@ export function useCubeQuery(
 
     console.log('useCubeQuery - Sending query to API:', JSON.stringify(query, null, 2))
 
-    cubeApi.load(query)
+    // Use batch coordinator if enabled, otherwise use direct API call
+    const executeQuery = enableBatching && batchCoordinator
+      ? batchCoordinator.register(query)
+      : cubeApi.load(query)
+
+    executeQuery
       .then((result) => {
         setState(prevState => {
           // Only update if this is still the current query
@@ -89,7 +94,7 @@ export function useCubeQuery(
           return prevState
         })
       })
-  }, [query, cubeApi, options.skip, options.resetResultSetOnChange])
+  }, [query, cubeApi, batchCoordinator, enableBatching, options.skip, options.resetResultSetOnChange])
 
   return state
 }

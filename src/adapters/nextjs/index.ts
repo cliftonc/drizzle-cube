@@ -20,7 +20,8 @@ import {
   formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
-  formatErrorResponse
+  formatErrorResponse,
+  handleBatchRequest
 } from '../utils'
 
 export interface NextCorsOptions {
@@ -121,6 +122,7 @@ export interface CubeHandlers {
   meta: RouteHandler
   sql: RouteHandler
   dryRun: RouteHandler
+  batch: RouteHandler
 }
 
 /**
@@ -469,8 +471,71 @@ export function createDryRunHandler(
 }
 
 /**
+ * Create batch handler - Execute multiple queries in a single request
+ * Optimizes network overhead for dashboards with many portlets
+ */
+export function createBatchHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { extractSecurityContext, cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function batchHandler(request: NextRequest, context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          formatErrorResponse('Method not allowed - use POST', 405),
+          { status: 405 }
+        )
+      }
+
+      const body = await request.json()
+      const { queries } = body as { queries: SemanticQuery[] }
+
+      if (!queries || !Array.isArray(queries)) {
+        return NextResponse.json(
+          formatErrorResponse('Request body must contain a "queries" array', 400),
+          { status: 400 }
+        )
+      }
+
+      if (queries.length === 0) {
+        return NextResponse.json(
+          formatErrorResponse('Queries array cannot be empty', 400),
+          { status: 400 }
+        )
+      }
+
+      // Extract security context ONCE (shared across all queries)
+      const securityContext = await extractSecurityContext(request, context)
+
+      // Use shared batch handler (wraps existing single query logic)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+
+      return NextResponse.json(batchResult, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js batch handler error:', error)
+      }
+      return NextResponse.json(
+        formatErrorResponse(
+          error instanceof Error ? error.message : 'Batch execution failed',
+          500
+        ),
+        { status: 500 }
+      )
+    }
+  }
+}
+
+/**
  * Convenience function to create all route handlers
- * 
+ *
  * @example
  * const handlers = createCubeHandlers({
  *   cubes: [salesCube, employeesCube],
@@ -482,7 +547,7 @@ export function createDryRunHandler(
  *     return { organisationId: decoded.orgId, userId: decoded.userId }
  *   }
  * })
- * 
+ *
  * // Use in your API routes:
  * export const GET = handlers.load
  * export const POST = handlers.load
@@ -494,7 +559,8 @@ export function createCubeHandlers(
     load: createLoadHandler(options),
     meta: createMetaHandler(options),
     sql: createSqlHandler(options),
-    dryRun: createDryRunHandler(options)
+    dryRun: createDryRunHandler(options),
+    batch: createBatchHandler(options)
   }
 }
 

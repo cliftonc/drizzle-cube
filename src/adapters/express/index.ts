@@ -22,7 +22,8 @@ import {
   formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
-  formatErrorResponse
+  formatErrorResponse,
+  handleBatchRequest
 } from '../utils'
 
 export interface ExpressAdapterOptions {
@@ -218,6 +219,45 @@ export function createCubeRouter(
       console.error('Query execution error:', error)
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'Query execution failed',
+        500
+      ))
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/batch - Execute multiple queries in a single request
+   * Optimizes network overhead for dashboards with many portlets
+   */
+  router.post(`${basePath}/batch`, async (req: Request, res: Response) => {
+    try {
+      const { queries } = req.body as { queries: SemanticQuery[] }
+
+      if (!queries || !Array.isArray(queries)) {
+        return res.status(400).json(formatErrorResponse(
+          'Request body must contain a "queries" array',
+          400
+        ))
+      }
+
+      if (queries.length === 0) {
+        return res.status(400).json(formatErrorResponse(
+          'Queries array cannot be empty',
+          400
+        ))
+      }
+
+      // Extract security context ONCE (shared across all queries)
+      const securityContext = await extractSecurityContext(req, res)
+
+      // Use shared batch handler (wraps existing single query logic)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+
+      res.json(batchResult)
+
+    } catch (error) {
+      console.error('Batch execution error:', error)
+      res.status(500).json(formatErrorResponse(
+        error instanceof Error ? error.message : 'Batch execution failed',
         500
       ))
     }

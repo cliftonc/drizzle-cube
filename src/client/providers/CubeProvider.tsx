@@ -7,6 +7,7 @@ import React, { createContext, useContext, useMemo, useState } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
 import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig } from '../types'
 import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
+import { BatchCoordinator } from '../client/BatchCoordinator'
 
 interface CubeContextValue {
   cubeApi: CubeClient
@@ -19,6 +20,8 @@ interface CubeContextValue {
   refetchMeta: () => void
   updateApiConfig: (apiOptions: CubeApiOptions, token?: string) => void
   features: FeaturesConfig
+  batchCoordinator: BatchCoordinator | null
+  enableBatching: boolean
 }
 
 const CubeContext = createContext<CubeContextValue | null>(null)
@@ -29,16 +32,18 @@ interface CubeProviderProps {
   token?: string
   options?: CubeQueryOptions
   features?: FeaturesConfig
+  enableBatching?: boolean
   children: React.ReactNode
 }
 
-export function CubeProvider({ 
-  cubeApi: initialCubeApi, 
+export function CubeProvider({
+  cubeApi: initialCubeApi,
   apiOptions: initialApiOptions,
   token: initialToken,
   options = {},
   features = { enableAI: true, aiEndpoint: '/api/ai/generate' }, // Default to AI enabled for backward compatibility
-  children 
+  enableBatching = true, // Default to batching enabled
+  children
 }: CubeProviderProps) {
   // State for dynamic API configuration (only for updates via updateApiConfig)
   const [dynamicConfig, setDynamicConfig] = useState<{ apiOptions: CubeApiOptions; token?: string } | null>(null)
@@ -55,10 +60,22 @@ export function CubeProvider({
       // Use provided client if no initial config specified
       return initialCubeApi
     }
-    
+
     // Create client with current config
     return createCubeClient(currentConfig.token, currentConfig.apiOptions)
   }, [initialCubeApi, initialApiOptions, initialToken, currentConfig.apiOptions, currentConfig.token])
+
+  // Create BatchCoordinator if batching is enabled
+  const batchCoordinator = useMemo(() => {
+    if (!enableBatching) {
+      return null
+    }
+
+    // Create batch executor function that uses cubeApi.batchLoad
+    const batchExecutor = (queries: any[]) => cubeApi.batchLoad(queries)
+
+    return new BatchCoordinator(batchExecutor)
+  }, [enableBatching, cubeApi])
 
   const { meta, labelMap, loading: metaLoading, error: metaError, getFieldLabel, refetch: refetchMeta } = useCubeMeta(cubeApi)
   
@@ -69,17 +86,19 @@ export function CubeProvider({
     })
   }
   
-  const contextValue = { 
-    cubeApi, 
-    options, 
-    meta, 
-    labelMap, 
-    metaLoading, 
-    metaError, 
-    getFieldLabel, 
+  const contextValue = {
+    cubeApi,
+    options,
+    meta,
+    labelMap,
+    metaLoading,
+    metaError,
+    getFieldLabel,
     refetchMeta,
     updateApiConfig,
-    features
+    features,
+    batchCoordinator,
+    enableBatching
   }
   
   return (

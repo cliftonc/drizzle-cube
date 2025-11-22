@@ -62,20 +62,20 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
       // Default error display
       return (
-        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center border-2 border-dashed rounded-lg bg-red-50"
-          style={{ borderColor: '#fca5a5' }}>
-          <div className="h-12 w-12 text-red-500 mb-4">⚠️</div>
-          <h3 className="text-lg font-semibold text-red-600 mb-2">
-            {this.props.portletTitle ? `Rendering Error in ${this.props.portletTitle}` : 'Chart Rendering Error'}
+        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center border border-dashed rounded-lg"
+          style={{ borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
+          <div className="h-12 w-12 mb-4 text-dc-text-muted">⚠️</div>
+          <h3 className="text-lg font-semibold mb-2 text-dc-text">
+            {this.props.portletTitle ? `Unable to render ${this.props.portletTitle}` : 'Unable to render chart'}
           </h3>
           <p className="text-sm text-dc-text-secondary mb-4 max-w-md">
-            There was an error rendering this chart component. This is different from query errors. The error details are shown below.
+            There was an error rendering this chart component. The error details are shown below.
           </p>
-          
+
           {/* Error details */}
           <div className="w-full max-w-2xl mb-4">
             <div className="bg-dc-surface-secondary rounded-lg p-3 text-left">
-              <div className="text-xs font-mono text-red-600 mb-2">
+              <div className="text-xs font-mono mb-2 text-dc-text">
                 <strong>Error:</strong> {this.state.error?.message}
               </div>
               {this.state.error?.name && (

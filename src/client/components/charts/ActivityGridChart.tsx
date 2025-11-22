@@ -699,16 +699,11 @@ export default function ActivityGridChart({
     return (
       <div
         className="flex items-center justify-center w-full"
-        style={{
-          height,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
-        }}
+        style={{ height }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs">No data points to display in activity grid</div>
+          <div className="text-xs text-dc-text-secondary">No data points to display in activity grid</div>
         </div>
       </div>
     )
@@ -720,16 +715,11 @@ export default function ActivityGridChart({
     return (
       <div
         className="flex items-center justify-center w-full"
-        style={{
-          height,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
-        }}
+        style={{ height }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">Configuration Required</div>
-          <div className="text-xs">Activity grid requires a time dimension and a measure</div>
+          <div className="text-xs text-dc-text-secondary">Activity grid requires a time dimension and a measure</div>
         </div>
       </div>
     )
@@ -745,17 +735,12 @@ export default function ActivityGridChart({
     return (
       <div
         className="flex items-center justify-center w-full"
-        style={{
-          height,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
-        }}
+        style={{ height }}
       >
-        <div className="text-center">
+        <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">Granularity Too High</div>
-          <div className="text-xs">Activity grids work best with hour, day, week, month, or quarter granularity</div>
-          <div className="text-xs mt-1">Please choose a lower granularity for your time dimension</div>
+          <div className="text-xs text-dc-text-secondary">Activity grids work best with hour, day, week, month, or quarter granularity</div>
+          <div className="text-xs text-dc-text-secondary mt-1">Please choose a lower granularity for your time dimension</div>
         </div>
       </div>
     )

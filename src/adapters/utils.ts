@@ -265,3 +265,52 @@ export function formatErrorResponse(error: string | Error, status: number = 500)
     status
   }
 }
+
+/**
+ * Handle batch query requests - wrapper around existing single query execution
+ * Executes multiple queries in parallel and returns partial success results
+ *
+ * @param queries - Array of semantic queries to execute
+ * @param securityContext - Security context (extracted once, shared across all queries)
+ * @param semanticLayer - Semantic layer compiler instance
+ * @returns Array of results matching input query order (successful or error results)
+ */
+export async function handleBatchRequest(
+  queries: SemanticQuery[],
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  // Execute all queries in parallel using Promise.allSettled for partial success
+  // This ensures one failing query doesn't affect others
+  const settledResults = await Promise.allSettled(
+    queries.map(async (query) => {
+      // Use EXISTING single query execution logic - NO CODE DUPLICATION
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
+
+      // Use EXISTING response formatter - NO CODE DUPLICATION
+      return formatCubeResponse(query, result, semanticLayer)
+    })
+  )
+
+  // Transform Promise.allSettled results to match expected format
+  const results = settledResults.map((settledResult, index) => {
+    if (settledResult.status === 'fulfilled') {
+      // Query succeeded - return the formatted result with success flag
+      return {
+        success: true,
+        ...settledResult.value
+      }
+    } else {
+      // Query failed - return error information
+      return {
+        success: false,
+        error: settledResult.reason instanceof Error
+          ? settledResult.reason.message
+          : String(settledResult.reason),
+        query: queries[index] // Include the query that failed for debugging
+      }
+    }
+  })
+
+  return { results }
+}

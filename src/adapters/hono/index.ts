@@ -20,7 +20,8 @@ import {
   handleDryRun,
   formatCubeResponse,
   formatSqlResponse,
-  formatMetaResponse
+  formatMetaResponse,
+  handleBatchRequest
 } from '../utils'
 
 export interface HonoAdapterOptions {
@@ -205,6 +206,43 @@ export function createCubeRoutes(
       console.error('Query execution error:', error)
       return c.json({
         error: error instanceof Error ? error.message : 'Query execution failed'
+      }, 500)
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/batch - Execute multiple queries in a single request
+   * Optimizes network overhead for dashboards with many portlets
+   */
+  app.post(`${basePath}/batch`, async (c) => {
+    try {
+      const requestBody = await c.req.json()
+      const { queries } = requestBody as { queries: SemanticQuery[] }
+
+      if (!queries || !Array.isArray(queries)) {
+        return c.json({
+          error: 'Request body must contain a "queries" array'
+        }, 400)
+      }
+
+      if (queries.length === 0) {
+        return c.json({
+          error: 'Queries array cannot be empty'
+        }, 400)
+      }
+
+      // Extract security context ONCE (shared across all queries)
+      const securityContext = await extractSecurityContext(c)
+
+      // Use shared batch handler (wraps existing single query logic)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+
+      return c.json(batchResult)
+
+    } catch (error) {
+      console.error('Batch execution error:', error)
+      return c.json({
+        error: error instanceof Error ? error.message : 'Batch execution failed'
       }, 500)
     }
   })

@@ -35,14 +35,14 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     )
   } catch (error) {
     // ChartContainer ResponsiveContainer error
-    
+
     return (
       <div
-        className="flex flex-col items-center justify-center w-full h-full p-4 text-center border-2 border-dashed rounded-lg"
-        style={{ height, borderColor: 'var(--dc-warning-border)', backgroundColor: 'var(--dc-warning-bg)' }}
+        className="flex flex-col items-center justify-center w-full h-full p-4 text-center border border-dashed rounded-lg"
+        style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}
       >
-        <div className="text-sm font-semibold mb-1" style={{ color: 'var(--dc-warning)' }}>Chart Container Error</div>
-        <div className="text-xs text-dc-text-muted">
+        <div className="text-sm font-semibold mb-1 text-dc-text-muted">Unable to display chart</div>
+        <div className="text-xs text-dc-text-secondary">
           {error instanceof Error ? error.message : 'Failed to create responsive container'}
         </div>
       </div>

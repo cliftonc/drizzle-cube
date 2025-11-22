@@ -21,7 +21,8 @@ import {
   formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
-  formatErrorResponse
+  formatErrorResponse,
+  handleBatchRequest
 } from '../utils'
 
 export interface FastifyAdapterOptions {
@@ -230,6 +231,59 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       request.log.error(error, 'Query execution error')
       return reply.status(500).send(formatErrorResponse(
         error instanceof Error ? error.message : 'Query execution failed',
+        500
+      ))
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/batch - Execute multiple queries in a single request
+   * Optimizes network overhead for dashboards with many portlets
+   */
+  fastify.post(`${basePath}/batch`, {
+    bodyLimit,
+    schema: {
+      body: {
+        type: 'object',
+        required: ['queries'],
+        properties: {
+          queries: {
+            type: 'array',
+            items: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { queries } = request.body as { queries: SemanticQuery[] }
+
+      if (!queries || !Array.isArray(queries)) {
+        return reply.status(400).send(formatErrorResponse(
+          'Request body must contain a "queries" array',
+          400
+        ))
+      }
+
+      if (queries.length === 0) {
+        return reply.status(400).send(formatErrorResponse(
+          'Queries array cannot be empty',
+          400
+        ))
+      }
+
+      // Extract security context ONCE (shared across all queries)
+      const securityContext = await extractSecurityContext(request)
+
+      // Use shared batch handler (wraps existing single query logic)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+
+      return batchResult
+
+    } catch (error) {
+      request.log.error(error, 'Batch execution error')
+      return reply.status(500).send(formatErrorResponse(
+        error instanceof Error ? error.message : 'Batch execution failed',
         500
       ))
     }

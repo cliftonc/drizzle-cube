@@ -775,7 +775,13 @@ export default function DashboardGrid({
         schema={schema || null}
         dashboardConfig={config}
         onDashboardFiltersChange={onDashboardFiltersChange || (() => {})}
-        onSaveFilters={onSave ? () => onSave(config) : undefined}
+        onSaveFilters={onSave ? async (filters: DashboardFilter[]) => {
+          const updatedConfig = {
+            ...config,
+            filters
+          }
+          await onSave(updatedConfig)
+        } : undefined}
         selectedFilterId={selectedFilterId}
         onFilterSelect={handleFilterSelect}
         isEditMode={isEditMode}

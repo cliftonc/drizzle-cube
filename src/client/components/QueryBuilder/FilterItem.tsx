@@ -20,7 +20,10 @@ const FilterItem: React.FC<FilterItemProps> = ({
   onFilterChange,
   onFilterRemove,
   schema,
-  query
+  query,
+  hideFieldSelector = false,
+  hideOperatorSelector = false,
+  hideRemoveButton = false
 }) => {
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
@@ -250,12 +253,13 @@ const FilterItem: React.FC<FilterItemProps> = ({
     <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
-        {/* Row 1 on mobile: Filter icon and field selection */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FunnelIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+        {/* Row 1 on mobile: Filter icon and field selection - conditionally hidden */}
+        {!hideFieldSelector && (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <FunnelIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
 
-          {/* Field selection */}
-          <div className="relative flex-1 min-w-0">
+            {/* Field selection */}
+            <div className="relative flex-1 min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
               className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
@@ -363,13 +367,15 @@ const FilterItem: React.FC<FilterItemProps> = ({
               </div>
             )}
           </div>
-        </div>
-        
+          </div>
+        )}
+
         {/* Row 2 on mobile: Operator and Value selection */}
         {selectedField && (
           <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
-            {/* Operator selection */}
-            <div className="relative shrink-0">
+            {/* Operator selection - conditionally hidden */}
+            {!hideOperatorSelector && (
+              <div className="relative shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
                 className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -397,8 +403,9 @@ const FilterItem: React.FC<FilterItemProps> = ({
                   ))}
                 </div>
               )}
-            </div>
-            
+              </div>
+            )}
+
             {/* Value input or Date Range Selector */}
             <div className="flex-1 min-w-0">
               {shouldShowDateRangeSelector ? (
@@ -485,16 +492,18 @@ const FilterItem: React.FC<FilterItemProps> = ({
           </div>
         )}
         
-        {/* Row 3 on mobile: Remove button - positioned at the end */}
-        <div className="flex justify-end sm:justify-start">
-          <button
-            onClick={() => onFilterRemove(index)}
-            className="text-dc-text-muted hover:text-red-600 focus:outline-none shrink-0"
-            title="Remove filter"
-          >
-            <XMarkIcon className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Row 3 on mobile: Remove button - conditionally hidden */}
+        {!hideRemoveButton && (
+          <div className="flex justify-end sm:justify-start">
+            <button
+              onClick={() => onFilterRemove(index)}
+              className="text-dc-text-muted hover:text-red-600 focus:outline-none shrink-0"
+              title="Remove filter"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
