@@ -98,7 +98,6 @@ export default function PortletContainer({
           title={portlet.title}
           height="100%"
           onDebugDataReady={(data) => {
-            console.log('PortletContainer: onDebugDataReady called with:', data)
             setDebugData(data)
           }}
         />

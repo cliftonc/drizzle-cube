@@ -99,6 +99,7 @@ export interface PortletConfig {
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
+  eagerLoad?: boolean // Force immediate loading (overrides dashboard lazy loading setting)
   w: number // Grid width
   h: number // Grid height
   x: number // Grid x position
@@ -111,6 +112,7 @@ export interface DashboardConfig {
   layouts?: { [key: string]: any } // react-grid-layout layouts
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
+  eagerLoad?: boolean // Force immediate loading for all portlets (default: false, lazy load enabled)
 }
 
 // Filter types - hierarchical structure supporting AND/OR logic
@@ -196,6 +198,8 @@ export interface AnalyticsPortletProps {
   displayConfig?: ChartDisplayConfig
   dashboardFilters?: DashboardFilter[] // Dashboard-level filters to merge with portlet query
   dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
+  eagerLoad?: boolean // Force immediate loading (default: false, lazy load enabled)
+  isVisible?: boolean // Whether the portlet is visible in the viewport (for lazy loading)
   height?: string | number
   title?: string
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient

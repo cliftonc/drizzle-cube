@@ -40,6 +40,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   displayConfig,
   dashboardFilters,
   dashboardFilterMapping,
+  eagerLoad = false,
+  isVisible = true,
   height = 300,
   title: _title,
   colorPalette,
@@ -47,15 +49,15 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 }, ref) => {
   const [refreshCounter, setRefreshCounter] = useState(0)
   const onDebugDataReadyRef = useRef(onDebugDataReady)
-  
+
   // Update ref when callback changes
   useEffect(() => {
     onDebugDataReadyRef.current = onDebugDataReady
   }, [onDebugDataReady])
 
   // Check if this chart type skips queries
-  const chartTypeConfig = useMemo(() => 
-    getChartConfig(chartType, chartConfigRegistry), 
+  const chartTypeConfig = useMemo(() =>
+    getChartConfig(chartType, chartConfigRegistry),
     [chartType]
   )
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
@@ -76,35 +78,22 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       // Merge dashboard filters with portlet filters
       const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
 
-      // Log filter merging for debugging
-      console.log('AnalyticsPortlet - Filter merging:', {
-        dashboardFiltersAvailable: dashboardFilters?.length || 0,
-        dashboardFilterMapping: dashboardFilterMapping,
-        applicableFiltersCount: applicableFilters.length,
-        applicableFilters,
-        portletFilters: parsed.filters,
-        mergedFilters,
-        hasMapping: !!dashboardFilterMapping && dashboardFilterMapping.length > 0
-      })
-
-      const result = {
+      return {
         ...parsed,
         filters: mergedFilters,
         __refresh_counter: refreshCounter
       }
-
-      console.log('AnalyticsPortlet - Final query object being sent to useCubeQuery:', result)
-
-      return result
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return null
     }
   }, [query, refreshCounter, shouldSkipQuery, dashboardFilters, dashboardFilterMapping])
 
-  // Use the cube React hook (skip for charts that don't need queries)
+  // Use the cube React hook (skip for charts that don't need queries or not yet visible)
+  const shouldSkip = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible)
+
   const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
-    skip: !queryObject || shouldSkipQuery,
+    skip: shouldSkip,
     resetResultSetOnChange: true
   })
 
@@ -444,7 +433,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   }
 
   return (
-    <ChartErrorBoundary 
+    <ChartErrorBoundary
       portletTitle={_title}
       portletConfig={{
         chartType,

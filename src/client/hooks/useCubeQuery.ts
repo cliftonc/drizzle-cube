@@ -58,8 +58,6 @@ export function useCubeQuery(
       queryId
     }))
 
-    console.log('useCubeQuery - Sending query to API:', JSON.stringify(query, null, 2))
-
     // Use batch coordinator if enabled, otherwise use direct API call
     const executeQuery = enableBatching && batchCoordinator
       ? batchCoordinator.register(query)

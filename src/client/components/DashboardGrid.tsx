@@ -51,12 +51,15 @@ export default function DashboardGrid({
   // Track if component has been initialized to prevent saves during initial load
   const [isInitialized, setIsInitialized] = useState(false)
   const [lastKnownLayout, setLastKnownLayout] = useState<any[]>([])
-  
+
   // Edit mode state - dashboard is readonly by default
   const [isEditMode, setIsEditMode] = useState(false)
 
   // Filter selection mode state
   const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null)
+
+  // Track visible portlets for lazy loading
+  const [visiblePortlets, setVisiblePortlets] = useState<Set<string>>(new Set())
 
   // Exit filter selection mode when leaving edit mode
   useEffect(() => {
@@ -136,6 +139,76 @@ export default function DashboardGrid({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [selectedFilterId])
+
+  // Set up intersection observer for lazy loading portlets
+  useEffect(() => {
+    let observer: IntersectionObserver | null = null
+    let pollTimer: NodeJS.Timeout | null = null
+    let attempts = 0
+    const maxAttempts = 20 // Max 2 seconds (20 * 100ms)
+
+    function setupObserver() {
+      // Query DOM directly for portlet elements since ResponsiveGridLayout doesn't preserve refs
+      const portletElements = document.querySelectorAll('[data-portlet-id]')
+
+      // If elements not ready yet and haven't exceeded max attempts, try again
+      if (portletElements.length === 0 && attempts < maxAttempts) {
+        attempts++
+        pollTimer = setTimeout(setupObserver, 100)
+        return
+      }
+
+      if (portletElements.length === 0) {
+        return
+      }
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            const portletId = entry.target.getAttribute('data-portlet-id')
+            if (portletId && entry.isIntersecting) {
+              setVisiblePortlets(prev => new Set(prev).add(portletId))
+            }
+          })
+        },
+        {
+          rootMargin: '200px', // Start loading 200px before portlet enters viewport
+          threshold: 0
+        }
+      )
+
+      // Observe all portlet containers and mark initially visible ones
+      portletElements.forEach((el) => {
+        const portletId = el.getAttribute('data-portlet-id')
+        if (portletId) {
+          observer!.observe(el)
+
+          // Check if element is already in viewport on mount
+          const rect = el.getBoundingClientRect()
+          const isInViewport = (
+            rect.top < window.innerHeight + 200 &&
+            rect.bottom > -200
+          )
+
+          if (isInViewport) {
+            setVisiblePortlets(prev => new Set(prev).add(portletId))
+          }
+        }
+      })
+    }
+
+    // Start polling for elements in DOM
+    pollTimer = setTimeout(setupObserver, 50)
+
+    return () => {
+      if (pollTimer) {
+        clearTimeout(pollTimer)
+      }
+      if (observer) {
+        observer.disconnect()
+      }
+    }
+  }, [config.portlets])
 
   // Helper function to check if layout actually changed (not just reordered due to responsive changes)
   const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
@@ -1021,6 +1094,8 @@ export default function DashboardGrid({
               displayConfig={portlet.displayConfig}
               dashboardFilters={dashboardFilters}
               dashboardFilterMapping={portlet.dashboardFilterMapping}
+              eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
+              isVisible={visiblePortlets.has(portlet.id)}
               title={portlet.title}
               height="100%"
               colorPalette={colorPalette}
