@@ -6,14 +6,14 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { sql } from 'drizzle-orm'
 import postgres from 'postgres'
-import { testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams } from './schema'
-import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
+import { testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams, products, sales, inventory } from './schema'
+import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData, enhancedProducts, enhancedSales, enhancedInventory } from '../../enhanced-test-data'
 
 /**
  * Create PostgreSQL connection for testing
  */
 export function createPostgresConnection() {
-  const connectionString = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5433/drizzle_cube_test'
+  const connectionString = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:54333/drizzle_cube_test'
   
   // Configure postgres client to suppress NOTICE messages during tests
   const client = postgres(connectionString, {
@@ -52,7 +52,7 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   console.log('Setting up PostgreSQL test data...')
   
   // Safety check: ensure we're using test database
-  const dbUrl = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5433/drizzle_cube_test'
+  const dbUrl = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:54333/drizzle_cube_test'
   if (!dbUrl.includes('test')) {
     throw new Error('Safety check failed: TEST_DATABASE_URL must contain "test" to prevent accidental production usage')
   }
@@ -64,6 +64,11 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(teams)
   await db.delete(departments)
   await db.delete(analyticsPages)
+
+  // Clear star schema tables
+  await db.delete(sales)
+  await db.delete(inventory)
+  await db.delete(products)
     
   // Insert departments first (dependencies)
   const insertedDepartments = await db.insert(departments)
@@ -148,7 +153,35 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     }
   ]
   
-  await db.insert(analyticsPages).values(analyticsData)  
+  await db.insert(analyticsPages).values(analyticsData)
+
+  // Insert star schema test data
+  console.log('Inserting star schema test data...')
+
+  // Insert products (dimension) first
+  const insertedProducts = await db.insert(products)
+    .values(enhancedProducts)
+    .returning({ id: products.id, name: products.name, organisationId: products.organisationId })
+
+  // Update sales with actual product IDs
+  const updatedSales = enhancedSales.map(sale => ({
+    ...sale,
+    productId: insertedProducts[sale.productId - 1]?.id || sale.productId
+  }))
+
+  // Insert sales (fact table #1)
+  await db.insert(sales).values(updatedSales)
+
+  // Update inventory with actual product IDs
+  const updatedInventory = enhancedInventory.map(inv => ({
+    ...inv,
+    productId: insertedProducts[inv.productId - 1]?.id || inv.productId
+  }))
+
+  // Insert inventory (fact table #2)
+  await db.insert(inventory).values(updatedInventory)
+
+  console.log('Star schema test data inserted successfully')
 }
 
 /**

@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: test
       POSTGRES_DB: drizzle_cube_test
     ports:
-      - "5433:5432"
+      - "54333:5432"  # Use 54333 to avoid conflicts with other projects
 
   mysql:
     image: mysql:8.4
@@ -18,5 +18,5 @@ services:
       MYSQL_USER: test
       MYSQL_PASSWORD: test
     ports:
-      - "3307:3306"  # Use 3307 to avoid conflicts with local MySQL
+      - "33077:3306"  # Use 33077 to avoid conflicts with other projects
     

@@ -29,6 +29,13 @@
       "when": 1763012633169,
       "tag": "0003_wild_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763878644249,
+      "tag": "0004_next_nitro",
+      "breakpoints": true
     }
   ]
 }

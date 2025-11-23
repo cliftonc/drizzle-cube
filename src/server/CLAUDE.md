@@ -349,6 +349,176 @@ const result = await semanticLayer.execute({
 }, securityContext)
 ```
 
+### Star Schema Pattern (Fact-Dimension-Fact Joins)
+
+**Pattern**: Multiple fact cubes joining through a shared dimension cube
+
+This is a fundamental analytics pattern where two or more fact tables share a common dimension:
+
+```
+Sales (fact) ──belongsTo──→ Products (dimension) ←──belongsTo── Inventory (fact)
+```
+
+**⚠️ IMPORTANT**: For this pattern to work, the dimension cube **MUST** define `hasMany` relationships back to BOTH fact cubes.
+
+**Example Implementation:**
+
+```typescript
+// Dimension Cube - MUST define hasMany back to both facts
+export const productsCube = defineCube({
+  name: 'Products',
+  sql: (ctx) => ({
+    from: products,
+    where: eq(products.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  // Critical: Define reverse relationships to enable fact-to-fact joins
+  joins: {
+    Sales: {
+      targetCube: () => salesCube,
+      relationship: 'hasMany',
+      on: [
+        { source: products.id, target: sales.productId }
+      ]
+    },
+    Inventory: {
+      targetCube: () => inventoryCube,
+      relationship: 'hasMany',
+      on: [
+        { source: products.id, target: inventory.productId }
+      ]
+    }
+  },
+
+  measures: {
+    count: { type: 'count', sql: products.id }
+  },
+  dimensions: {
+    name: { type: 'string', sql: products.name },
+    category: { type: 'string', sql: products.category }
+  }
+})
+
+// Fact Cube #1
+export const salesCube = defineCube({
+  name: 'Sales',
+  sql: (ctx) => ({
+    from: sales,
+    where: eq(sales.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    Products: {
+      targetCube: () => productsCube,
+      relationship: 'belongsTo',
+      on: [{ source: sales.productId, target: products.id }]
+    }
+  },
+
+  measures: {
+    totalRevenue: { type: 'sum', sql: sales.revenue },
+    avgOrderValue: { type: 'avg', sql: sales.revenue }
+  }
+})
+
+// Fact Cube #2
+export const inventoryCube = defineCube({
+  name: 'Inventory',
+  sql: (ctx) => ({
+    from: inventory,
+    where: eq(inventory.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    Products: {
+      targetCube: () => productsCube,
+      relationship: 'belongsTo',
+      on: [{ source: inventory.productId, target: products.id }]
+    }
+  },
+
+  measures: {
+    totalStock: { type: 'sum', sql: inventory.stockLevel },
+    avgStockLevel: { type: 'avg', sql: inventory.stockLevel }
+  }
+})
+```
+
+**Querying Across Multiple Facts:**
+
+```typescript
+// Query combining measures from both fact cubes
+const result = await semanticLayer.execute({
+  measures: ['Sales.totalRevenue', 'Inventory.totalStock'],
+  dimensions: ['Products.name', 'Products.category']
+}, securityContext)
+
+// The system automatically:
+// 1. Detects Sales and Inventory need to be joined
+// 2. Finds join path: Sales → Products → Inventory
+// 3. Includes Products in the join plan
+// 4. Applies security context to ALL three cubes
+```
+
+**How Join Path Detection Works:**
+
+1. Query planner identifies all cubes needed (Sales, Inventory, Products)
+2. Chooses primary cube (typically the one with most dimensions)
+3. Uses BFS to find path from primary to all other cubes:
+   - Sales → Products (via `belongsTo`)
+   - Products → Inventory (via `hasMany`)
+4. Builds join plan including all cubes in the path
+5. Applies security context to every cube in the final query
+
+**Why hasMany is Required:**
+
+The join path algorithm traverses relationships **forward only**. Without `hasMany` from the dimension:
+
+```typescript
+// ❌ WRONG - Missing hasMany from Products
+// This will FAIL with "No join path found from Inventory to Sales"
+
+productsCube = defineCube({
+  name: 'Products',
+  // NO joins defined - cannot traverse back to facts!
+  measures: { /* ... */ }
+})
+
+// Query will fail:
+{
+  measures: ['Sales.totalRevenue', 'Inventory.totalStock']
+  // Error: No join path found from 'Inventory' to 'Sales'
+}
+```
+
+**Best Practices:**
+
+1. **Always define bidirectional relationships** in star schemas
+2. **Include all fact cubes** in dimension's `hasMany` joins
+3. **Test cross-fact queries** to verify join paths exist
+4. **Use descriptive join names** (e.g., `SalesByProduct`, `InventoryByProduct`)
+5. **Document the star schema** structure in comments
+
+**Performance Considerations:**
+
+- Join path includes ALL cubes in the path (Sales + Products + Inventory)
+- Security context applied to all cubes prevents data leakage
+- Use appropriate indexes on foreign key columns (productId)
+- Consider materialized views for frequently queried fact combinations
+
+**Common Pitfalls:**
+
+- **Forgetting reverse joins**: Dimension must have `hasMany` to facts
+- **One-way relationships**: Only defining `belongsTo` from facts isn't enough
+- **Missing security filters**: All cubes in path must filter by security context
+- **Circular dependencies**: Avoid cycles in join definitions
+
+**Reference Implementation:**
+
+- See @tests/star-schema-joins.test.ts for comprehensive examples
+- Tests cover multiple fact cubes, filters across cubes, and security isolation
+- All patterns tested against PostgreSQL, MySQL, and SQLite
+
 ## Error Handling
 
 ### Common Error Categories

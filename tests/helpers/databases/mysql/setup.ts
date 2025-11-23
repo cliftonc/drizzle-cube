@@ -5,14 +5,14 @@
 import { drizzle } from 'drizzle-orm/mysql2'
 import { migrate } from 'drizzle-orm/mysql2/migrator'
 import mysql from 'mysql2/promise'
-import { mysqlTestSchema as testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams } from './schema'
-import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
+import { mysqlTestSchema as testSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams, products, sales, inventory } from './schema'
+import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData, enhancedProducts, enhancedSales, enhancedInventory } from '../../enhanced-test-data'
 
 /**
  * Create MySQL connection for testing
  */
 export async function createMySQLConnection() {
-  const connectionString = process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:3307/drizzle_cube_test'
+  const connectionString = process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:33077/drizzle_cube_test'
   
   // Create MySQL connection using promises
   const connection = await mysql.createConnection(connectionString)
@@ -50,7 +50,7 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   console.log('Setting up MySQL test data...')
   
   // Safety check: ensure we're using test database
-  const dbUrl = process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:3307/drizzle_cube_test'
+  const dbUrl = process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:33077/drizzle_cube_test'
   if (!dbUrl.includes('test')) {
     throw new Error('Safety check failed: MYSQL_TEST_DATABASE_URL must contain "test" to prevent accidental production usage')
   }
@@ -58,6 +58,8 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   // Clear existing data to ensure clean test state
   // MySQL requires different order due to foreign key constraints
   await db.delete(productivity)
+  await db.delete(sales)
+  await db.delete(inventory)
   await db.delete(employeeTeams)
   await db.delete(employees)
   await db.delete(teams)
@@ -162,8 +164,44 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
       })
     }
   ]
-  
-  await db.insert(analyticsPages).values(analyticsData)    
+
+  await db.insert(analyticsPages).values(analyticsData)
+
+  // Insert star schema test data
+  console.log('Inserting star schema test data...')
+
+  // Clear products last (due to foreign key dependencies from sales/inventory)
+  await db.delete(products)
+
+  // Insert products (dimension) first
+  await db.insert(products).values(enhancedProducts)
+
+  // Fetch inserted products to get their actual IDs
+  const insertedProducts = await db.select({
+    id: products.id,
+    name: products.name,
+    organisationId: products.organisationId
+  }).from(products).orderBy(products.id)
+
+  // Update sales with actual product IDs
+  const updatedSales = enhancedSales.map(sale => ({
+    ...sale,
+    productId: insertedProducts[sale.productId - 1]?.id || sale.productId
+  }))
+
+  // Insert sales (fact table #1)
+  await db.insert(sales).values(updatedSales)
+
+  // Update inventory with actual product IDs
+  const updatedInventory = enhancedInventory.map(inv => ({
+    ...inv,
+    productId: insertedProducts[inv.productId - 1]?.id || inv.productId
+  }))
+
+  // Insert inventory (fact table #2)
+  await db.insert(inventory).values(updatedInventory)
+
+  console.log('Star schema test data inserted successfully')
 }
 
 /**

@@ -87,6 +87,40 @@ export const employeeTeams = mysqlTable('employee_teams', {
   createdAt: timestamp('created_at').defaultNow()
 })
 
+// Star Schema Tables - for testing fact-dimension-fact join patterns
+
+// Products table - dimension table shared by multiple fact tables
+export const products = mysqlTable('products', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  category: varchar('category', { length: 100 }).notNull(),
+  sku: varchar('sku', { length: 50 }).notNull(),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
+// Sales table - fact table #1
+export const sales = mysqlTable('sales', {
+  id: int('id').primaryKey().autoincrement(),
+  productId: int('product_id').notNull(),
+  quantity: int('quantity').notNull(),
+  revenue: decimal('revenue', { precision: 10, scale: 2 }).notNull(),
+  saleDate: timestamp('sale_date').notNull(),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
+// Inventory table - fact table #2
+export const inventory = mysqlTable('inventory', {
+  id: int('id').primaryKey().autoincrement(),
+  productId: int('product_id').notNull(),
+  warehouse: varchar('warehouse', { length: 100 }).notNull(),
+  stockLevel: int('stock_level').notNull(),
+  organisationId: int('organisation_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
 // Relations (same as PostgreSQL schema)
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
@@ -120,17 +154,45 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   })
 }))
 
+// Star schema relations
+export const productsRelations = relations(products, ({ many }) => ({
+  sales: many(sales),
+  inventory: many(inventory)
+}))
+
+export const salesRelations = relations(sales, ({ one }) => ({
+  product: one(products, {
+    fields: [sales.productId],
+    references: [products.id]
+  })
+}))
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  product: one(products, {
+    fields: [inventory.productId],
+    references: [products.id]
+  })
+}))
+
 // Create combined schema object for MySQL
 export const mysqlTestSchema = {
   employees,
-  departments, 
+  departments,
   productivity,
   timeEntries,
   analyticsPages,
+  teams,
+  employeeTeams,
+  products,
+  sales,
+  inventory,
   employeesRelations,
   departmentsRelations,
   productivityRelations,
-  timeEntriesRelations
+  timeEntriesRelations,
+  productsRelations,
+  salesRelations,
+  inventoryRelations
 }
 
 // Type export

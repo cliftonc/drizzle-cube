@@ -834,3 +834,113 @@ export const edgeCaseTestData = {
   zeroProductivity: 0,
   extremeProductivity: 10000
 }
+
+// ============================================================================
+// STAR SCHEMA TEST DATA
+// Products, Sales, Inventory - for fact-dimension-fact join pattern testing
+// ============================================================================
+
+// Products (Dimension Table) - Shared dimension for both fact tables
+export const enhancedProducts = [
+  // Organization 1 - Electronics Category
+  { name: 'Laptop Pro 15', category: 'Electronics', sku: 'LAP-PRO-15', price: 1299.99, organisationId: 1 },
+  { name: 'Wireless Mouse', category: 'Electronics', sku: 'MSE-WRL-01', price: 29.99, organisationId: 1 },
+  { name: 'USB-C Hub', category: 'Electronics', sku: 'HUB-USBC-8', price: 49.99, organisationId: 1 },
+  { name: 'Monitor 27"', category: 'Electronics', sku: 'MON-27-4K', price: 399.99, organisationId: 1 },
+  { name: 'Keyboard Mechanical', category: 'Electronics', sku: 'KEY-MECH-RGB', price: 149.99, organisationId: 1 },
+
+  // Organization 1 - Office Supplies Category
+  { name: 'Notebook A4', category: 'Office Supplies', sku: 'NB-A4-100', price: 4.99, organisationId: 1 },
+  { name: 'Pen Set', category: 'Office Supplies', sku: 'PEN-SET-12', price: 12.99, organisationId: 1 },
+  { name: 'Desk Organizer', category: 'Office Supplies', sku: 'ORG-DESK-BLK', price: 24.99, organisationId: 1 },
+
+  // Organization 1 - Furniture Category
+  { name: 'Office Chair', category: 'Furniture', sku: 'CHR-ERG-BLK', price: 299.99, organisationId: 1 },
+  { name: 'Standing Desk', category: 'Furniture', sku: 'DSK-STD-ADJ', price: 599.99, organisationId: 1 },
+
+  // Organization 2 - Different products
+  { name: 'Tablet Pro', category: 'Electronics', sku: 'TAB-PRO-11', price: 899.99, organisationId: 2 },
+  { name: 'Headphones', category: 'Electronics', sku: 'HPH-NC-PRO', price: 299.99, organisationId: 2 },
+  { name: 'Webcam HD', category: 'Electronics', sku: 'CAM-HD-1080', price: 89.99, organisationId: 2 },
+
+  // Organization 3
+  { name: 'Phone Stand', category: 'Accessories', sku: 'STD-PHN-ALU', price: 19.99, organisationId: 3 },
+  { name: 'Cable Set', category: 'Accessories', sku: 'CBL-SET-5', price: 14.99, organisationId: 3 }
+]
+
+// Sales (Fact Table #1) - Sales transactions
+export const enhancedSales = [
+  // Organization 1 - Electronics Sales
+  { productId: 1, quantity: 5, revenue: 6499.95, saleDate: new Date('2024-01-15T10:30:00Z'), organisationId: 1 },
+  { productId: 1, quantity: 3, revenue: 3899.97, saleDate: new Date('2024-02-20T14:45:00Z'), organisationId: 1 },
+  { productId: 2, quantity: 25, revenue: 749.75, saleDate: new Date('2024-01-10T09:15:00Z'), organisationId: 1 },
+  { productId: 2, quantity: 15, revenue: 449.85, saleDate: new Date('2024-02-05T11:20:00Z'), organisationId: 1 },
+  { productId: 3, quantity: 10, revenue: 499.90, saleDate: new Date('2024-01-25T16:00:00Z'), organisationId: 1 },
+  { productId: 4, quantity: 7, revenue: 2799.93, saleDate: new Date('2024-01-30T13:30:00Z'), organisationId: 1 },
+  { productId: 5, quantity: 4, revenue: 599.96, saleDate: new Date('2024-02-10T10:00:00Z'), organisationId: 1 },
+
+  // Organization 1 - Office Supplies Sales
+  { productId: 6, quantity: 100, revenue: 499.00, saleDate: new Date('2024-01-05T08:00:00Z'), organisationId: 1 },
+  { productId: 7, quantity: 50, revenue: 649.50, saleDate: new Date('2024-01-12T12:30:00Z'), organisationId: 1 },
+  { productId: 8, quantity: 20, revenue: 499.80, saleDate: new Date('2024-02-15T15:45:00Z'), organisationId: 1 },
+
+  // Organization 1 - Furniture Sales
+  { productId: 9, quantity: 8, revenue: 2399.92, saleDate: new Date('2024-01-20T11:00:00Z'), organisationId: 1 },
+  { productId: 10, quantity: 2, revenue: 1199.98, saleDate: new Date('2024-02-25T14:00:00Z'), organisationId: 1 },
+
+  // Organization 2 - Sales
+  { productId: 11, quantity: 10, revenue: 8999.90, saleDate: new Date('2024-01-08T10:00:00Z'), organisationId: 2 },
+  { productId: 12, quantity: 12, revenue: 3599.88, saleDate: new Date('2024-01-18T13:00:00Z'), organisationId: 2 },
+  { productId: 13, quantity: 6, revenue: 539.94, saleDate: new Date('2024-02-12T09:30:00Z'), organisationId: 2 },
+
+  // Organization 3 - Sales
+  { productId: 14, quantity: 30, revenue: 599.70, saleDate: new Date('2024-01-22T11:00:00Z'), organisationId: 3 },
+  { productId: 15, quantity: 40, revenue: 599.60, saleDate: new Date('2024-02-08T10:30:00Z'), organisationId: 3 },
+
+  // Edge cases - high volume sales
+  { productId: 2, quantity: 100, revenue: 2999.00, saleDate: new Date('2024-03-01T10:00:00Z'), organisationId: 1 },
+
+  // Edge cases - single item sales
+  { productId: 4, quantity: 1, revenue: 399.99, saleDate: new Date('2024-03-05T15:00:00Z'), organisationId: 1 }
+]
+
+// Inventory (Fact Table #2) - Inventory levels across warehouses
+export const enhancedInventory = [
+  // Organization 1 - Warehouse A
+  { productId: 1, warehouse: 'Warehouse A', stockLevel: 45, organisationId: 1 },
+  { productId: 2, warehouse: 'Warehouse A', stockLevel: 200, organisationId: 1 },
+  { productId: 3, warehouse: 'Warehouse A', stockLevel: 75, organisationId: 1 },
+  { productId: 4, warehouse: 'Warehouse A', stockLevel: 30, organisationId: 1 },
+  { productId: 5, warehouse: 'Warehouse A', stockLevel: 25, organisationId: 1 },
+
+  // Organization 1 - Warehouse B (different stock levels for same products)
+  { productId: 1, warehouse: 'Warehouse B', stockLevel: 20, organisationId: 1 },
+  { productId: 2, warehouse: 'Warehouse B', stockLevel: 150, organisationId: 1 },
+  { productId: 3, warehouse: 'Warehouse B', stockLevel: 50, organisationId: 1 },
+  { productId: 4, warehouse: 'Warehouse B', stockLevel: 15, organisationId: 1 },
+  { productId: 5, warehouse: 'Warehouse B', stockLevel: 10, organisationId: 1 },
+
+  // Organization 1 - Office Supplies in Warehouse C
+  { productId: 6, warehouse: 'Warehouse C', stockLevel: 500, organisationId: 1 },
+  { productId: 7, warehouse: 'Warehouse C', stockLevel: 300, organisationId: 1 },
+  { productId: 8, warehouse: 'Warehouse C', stockLevel: 100, organisationId: 1 },
+
+  // Organization 1 - Furniture in Warehouse D
+  { productId: 9, warehouse: 'Warehouse D', stockLevel: 40, organisationId: 1 },
+  { productId: 10, warehouse: 'Warehouse D', stockLevel: 15, organisationId: 1 },
+
+  // Organization 2 - Warehouse E
+  { productId: 11, warehouse: 'Warehouse E', stockLevel: 60, organisationId: 2 },
+  { productId: 12, warehouse: 'Warehouse E', stockLevel: 80, organisationId: 2 },
+  { productId: 13, warehouse: 'Warehouse E', stockLevel: 45, organisationId: 2 },
+
+  // Organization 3 - Warehouse F
+  { productId: 14, warehouse: 'Warehouse F', stockLevel: 200, organisationId: 3 },
+  { productId: 15, warehouse: 'Warehouse F', stockLevel: 350, organisationId: 3 },
+
+  // Edge cases - out of stock (0 inventory)
+  { productId: 1, warehouse: 'Warehouse C', stockLevel: 0, organisationId: 1 },
+
+  // Edge cases - overstocked
+  { productId: 2, warehouse: 'Warehouse D', stockLevel: 1000, organisationId: 1 }
+]

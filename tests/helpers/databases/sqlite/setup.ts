@@ -6,8 +6,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { sql } from 'drizzle-orm'
 import Database from 'better-sqlite3'
-import { sqliteTestSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams } from './schema'
-import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData } from '../../enhanced-test-data'
+import { sqliteTestSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams, products, sales, inventory } from './schema'
+import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData, enhancedProducts, enhancedSales, enhancedInventory } from '../../enhanced-test-data'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
@@ -86,6 +86,11 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(teams)
   await db.delete(departments)
   await db.delete(analyticsPages)
+
+  // Clear star schema tables
+  await db.delete(sales)
+  await db.delete(inventory)
+  await db.delete(products)
  
   // Insert departments first (dependencies)
   const insertedDepartments = await db.insert(departments)
@@ -169,8 +174,36 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
       }
     }
   ]
-  
-  await db.insert(analyticsPages).values(analyticsData)  
+
+  await db.insert(analyticsPages).values(analyticsData)
+
+  // Insert star schema test data
+  console.log('Inserting star schema test data...')
+
+  // Insert products (dimension) first
+  const insertedProducts = await db.insert(products)
+    .values(enhancedProducts)
+    .returning({ id: products.id, name: products.name, organisationId: products.organisationId })
+
+  // Update sales with actual product IDs
+  const updatedSales = enhancedSales.map(sale => ({
+    ...sale,
+    productId: insertedProducts[sale.productId - 1]?.id || sale.productId
+  }))
+
+  // Insert sales (fact table #1)
+  await db.insert(sales).values(updatedSales)
+
+  // Update inventory with actual product IDs
+  const updatedInventory = enhancedInventory.map(inv => ({
+    ...inv,
+    productId: insertedProducts[inv.productId - 1]?.id || inv.productId
+  }))
+
+  // Insert inventory (fact table #2)
+  await db.insert(inventory).values(updatedInventory)
+
+  console.log('Star schema test data inserted successfully')
 }
 
 /**

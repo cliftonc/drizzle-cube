@@ -108,6 +108,40 @@ export const employeeTeams = pgTable('employee_teams', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
 })
 
+// Star Schema Tables - for testing fact-dimension-fact join patterns
+
+// Products table - dimension table shared by multiple fact tables
+export const products = pgTable('products', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  sku: text('sku').notNull(),
+  price: real('price').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
+// Sales table - fact table #1
+export const sales = pgTable('sales', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  productId: integer('product_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  revenue: real('revenue').notNull(),
+  saleDate: timestamp('sale_date', { mode: 'date' }).notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
+// Inventory table - fact table #2
+export const inventory = pgTable('inventory', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  productId: integer('product_id').notNull(),
+  warehouse: text('warehouse').notNull(),
+  stockLevel: integer('stock_level').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
@@ -141,16 +175,44 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   })
 }))
 
+// Star schema relations
+export const productsRelations = relations(products, ({ many }) => ({
+  sales: many(sales),
+  inventory: many(inventory)
+}))
+
+export const salesRelations = relations(sales, ({ one }) => ({
+  product: one(products, {
+    fields: [sales.productId],
+    references: [products.id]
+  })
+}))
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  product: one(products, {
+    fields: [inventory.productId],
+    references: [products.id]
+  })
+}))
+
 // Export schema for use with Drizzle
-export const testSchema = { 
-  employees, 
+export const testSchema = {
+  employees,
   departments,
   productivity,
   timeEntries,
   analyticsPages,
+  teams,
+  employeeTeams,
+  products,
+  sales,
+  inventory,
   employeesRelations,
   departmentsRelations,
   productivityRelations,
-  timeEntriesRelations
+  timeEntriesRelations,
+  productsRelations,
+  salesRelations,
+  inventoryRelations
 }
 export type TestSchema = typeof testSchema

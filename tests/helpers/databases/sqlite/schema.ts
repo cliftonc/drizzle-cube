@@ -109,6 +109,40 @@ export const employeeTeams = sqliteTable('employee_teams', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 })
 
+// Star Schema Tables - for testing fact-dimension-fact join patterns
+
+// Products table - dimension table shared by multiple fact tables
+export const products = sqliteTable('products', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  sku: text('sku').notNull(),
+  price: real('price').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
+// Sales table - fact table #1
+export const sales = sqliteTable('sales', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  revenue: real('revenue').notNull(),
+  saleDate: integer('sale_date', { mode: 'timestamp' }).notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
+// Inventory table - fact table #2
+export const inventory = sqliteTable('inventory', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull(),
+  warehouse: text('warehouse').notNull(),
+  stockLevel: integer('stock_level').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+})
+
 // Define relations for better type inference
 export const employeesRelations = relations(employees, ({ one, many }) => ({
   department: one(departments, {
@@ -142,16 +176,44 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   })
 }))
 
+// Star schema relations
+export const productsRelations = relations(products, ({ many }) => ({
+  sales: many(sales),
+  inventory: many(inventory)
+}))
+
+export const salesRelations = relations(sales, ({ one }) => ({
+  product: one(products, {
+    fields: [sales.productId],
+    references: [products.id]
+  })
+}))
+
+export const inventoryRelations = relations(inventory, ({ one }) => ({
+  product: one(products, {
+    fields: [inventory.productId],
+    references: [products.id]
+  })
+}))
+
 // Export schema for use with Drizzle
-export const sqliteTestSchema = { 
-  employees, 
+export const sqliteTestSchema = {
+  employees,
   departments,
   productivity,
   timeEntries,
   analyticsPages,
+  teams,
+  employeeTeams,
+  products,
+  sales,
+  inventory,
   employeesRelations,
   departmentsRelations,
   productivityRelations,
-  timeEntriesRelations
+  timeEntriesRelations,
+  productsRelations,
+  salesRelations,
+  inventoryRelations
 }
 export type SQLiteTestSchema = typeof sqliteTestSchema

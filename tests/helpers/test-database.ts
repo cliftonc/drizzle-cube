@@ -32,7 +32,10 @@ export async function getTestSchema() {
       timeEntries,
       analyticsPages,
       teams,
-      employeeTeams
+      employeeTeams,
+      products,
+      sales,
+      inventory
     } = await import('./databases/mysql/schema')
 
     return {
@@ -44,6 +47,9 @@ export async function getTestSchema() {
       analyticsPages,
       teams,
       employeeTeams,
+      products,
+      sales,
+      inventory,
       type: 'MySQLTestSchema' as const,
       // Database-specific value helpers
       dbTrue: true,
@@ -59,7 +65,10 @@ export async function getTestSchema() {
       timeEntries,
       analyticsPages,
       teams,
-      employeeTeams
+      employeeTeams,
+      products,
+      sales,
+      inventory
     } = await import('./databases/sqlite/schema')
 
     return {
@@ -71,6 +80,9 @@ export async function getTestSchema() {
       analyticsPages,
       teams,
       employeeTeams,
+      products,
+      sales,
+      inventory,
       type: 'SQLiteTestSchema' as const,
       // Database-specific value helpers for SQLite
       dbTrue: 1,
@@ -86,7 +98,10 @@ export async function getTestSchema() {
       timeEntries,
       analyticsPages,
       teams,
-      employeeTeams
+      employeeTeams,
+      products,
+      sales,
+      inventory
     } = await import('./databases/postgres/schema')
 
     return {
@@ -98,6 +113,9 @@ export async function getTestSchema() {
       analyticsPages,
       teams,
       employeeTeams,
+      products,
+      sales,
+      inventory,
       type: 'TestSchema' as const,
       // Database-specific value helpers
       dbTrue: true,
@@ -281,12 +299,12 @@ export async function setupTestDatabase(): Promise<void> {
 export const DATABASE_CONFIGS: Record<'postgres' | 'mysql', DatabaseConfig> = {
   postgres: {
     type: 'postgres',
-    connectionString: process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5433/drizzle_cube_test',
+    connectionString: process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:54333/drizzle_cube_test',
     migrationPath: './tests/helpers/migrations'
   },
   mysql: {
-    type: 'mysql', 
-    connectionString: process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:3307/drizzle_cube_test',
+    type: 'mysql',
+    connectionString: process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:33077/drizzle_cube_test',
     migrationPath: './tests/helpers/mysql-migrations'
   }
 }
