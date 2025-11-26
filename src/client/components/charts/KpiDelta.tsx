@@ -12,29 +12,33 @@ interface VarianceHistogramProps {
   height: number
 }
 
-function VarianceHistogram({ 
-  values, 
-  lastValue, 
-  positiveColor, 
+function VarianceHistogram({
+  values,
+  lastValue,
+  positiveColor,
   negativeColor,
   formatValue,
   width,
-  height 
+  height
 }: VarianceHistogramProps) {
-  // Calculate variance percentages from last value for each point
-  const variances = values.map(value => {
-    if (lastValue === 0) return 0
-    return ((value - lastValue) / Math.abs(lastValue)) * 100
-  })
+  // Limit to most recent N values to fit in the histogram
+  // Calculate max bars based on width (minimum 8px per bar including gap)
+  const maxBars = Math.max(10, Math.floor(width / 10))
+  const limitedValues = values.length > maxBars
+    ? values.slice(-maxBars)  // Take the most recent values
+    : values
 
-  // Find min/max variance for scaling
-  const minVariance = Math.min(...variances, 0) // Include 0 as baseline
-  const maxVariance = Math.max(...variances, 0) // Include 0 as baseline
+  // Calculate variance (difference) from current/last value for each point
+  const variances = limitedValues.map(value => value - lastValue)
+
+  // Find min/max variance for scaling (include 0 as baseline)
+  const minVariance = Math.min(...variances, 0)
+  const maxVariance = Math.max(...variances, 0)
   const range = Math.max(Math.abs(minVariance), Math.abs(maxVariance))
 
   if (range === 0 || variances.length === 0) {
     return (
-      <div 
+      <div
         className="flex items-center justify-center bg-gray-50 rounded-sm border"
         style={{ width: `${width}px`, height: `${height}px` }}
       >
@@ -43,89 +47,74 @@ function VarianceHistogram({
     )
   }
 
+  // Calculate bar dimensions
+  const barGap = 2
+  const availableWidth = width - ((limitedValues.length - 1) * barGap)
+  const barWidth = Math.max(4, availableWidth / limitedValues.length)
+
+  // Calculate where zero line should be positioned (as percentage from top)
+  // If maxVariance = 67 and minVariance = -24, total range = 91
+  // Zero should be at 67/91 = 73.6% from top
+  const totalRange = maxVariance - minVariance
+  const zeroLinePercent = totalRange > 0 ? (maxVariance / totalRange) * 100 : 50
+
   return (
     <div className="flex items-center space-x-2">
       {/* Histogram bars */}
       <div
-        className="relative flex items-center justify-center"
+        className="relative"
         style={{
           width: `${width}px`,
           height: `${height}px`
         }}
       >
-        {/* Zero line indicator */}
+        {/* Zero line (represents current value) */}
         <div
-          className="absolute"
+          className="absolute left-0 right-0"
           style={{
-            left: 0,
-            right: 0,
             height: '1px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            zIndex: 1,
-            backgroundColor: 'var(--dc-border)'
+            top: `${zeroLinePercent}%`,
+            backgroundColor: 'var(--dc-border)',
+            zIndex: 1
           }}
         />
-        
-        {/* Variance bars - right to left (recent to old) */}
-        {variances.slice().reverse().map((variance, index) => {
-          const normalizedHeight = Math.abs(variance) / range
-          const barHeight = Math.max(2, normalizedHeight * (height / 2 - 4)) // Leave room for zero line
+
+        {/* Variance bars - oldest to newest (left to right) */}
+        {variances.map((variance, index) => {
+          // Calculate bar height as proportion of total range
+          const normalizedHeight = Math.abs(variance) / totalRange
+          const barHeight = Math.max(2, normalizedHeight * (height - 4))
           const isPositive = variance >= 0
+          const isLastValue = index === limitedValues.length - 1
           const color = isPositive ? positiveColor : negativeColor
-          const barWidth = Math.max(2, width / variances.length - 1)
-          
+          const xPosition = index * (barWidth + barGap)
+
           return (
             <div
               key={index}
-              className="absolute rounded-xs opacity-70"
+              className="absolute rounded-xs"
               style={{
-                left: `${(index / variances.length) * 100}%`,
+                left: `${xPosition}px`,
                 width: `${barWidth}px`,
                 height: `${barHeight}px`,
                 backgroundColor: color,
-                ...(isPositive 
-                  ? { bottom: '50%' }
-                  : { top: '50%' }),
+                opacity: isLastValue ? 1 : 0.6,
+                // Position bar relative to zero line
+                ...(isPositive
+                  ? { bottom: `${100 - zeroLinePercent}%` }
+                  : { top: `${zeroLinePercent}%` }),
                 zIndex: 2
               }}
-              title={`${formatValue(values[variances.length - 1 - index])}: ${variance.toFixed(1)}% from current`}
+              title={`${formatValue(limitedValues[index])}: ${variance >= 0 ? '+' : ''}${formatValue(variance)} vs current`}
             />
           )
         })}
-        
-        {/* "Now" indicator at the right edge */}
-        <div
-          className="absolute top-0 bottom-0 pointer-events-none"
-          style={{
-            right: '0px',
-            width: '2px',
-            backgroundColor: '#ef4444',
-            opacity: 0.8,
-            zIndex: 10
-          }}
-          title="Current value (Now)"
-        >
-          {/* Small triangle at top to indicate current time */}
-          <div
-            className="absolute -top-1"
-            style={{
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '0',
-              height: '0',
-              borderLeft: '4px solid transparent',
-              borderRight: '4px solid transparent',
-              borderTop: '6px solid #ef4444'
-            }}
-          />
-        </div>
       </div>
-      
-      {/* Variance labels on the right */}
+
+      {/* Variance labels on the right - show actual value difference */}
       <div className="flex flex-col justify-between text-xs text-dc-text-muted" style={{ height: `${height}px` }}>
-        <span>+{Math.abs(maxVariance).toFixed(0)}%</span>
-        <span>-{Math.abs(minVariance).toFixed(0)}%</span>
+        <span>+{formatValue(maxVariance)}</span>
+        <span>{minVariance < 0 ? '' : ''}{formatValue(minVariance)}</span>
       </div>
     </div>
   )
@@ -164,8 +153,10 @@ export default function KpiDelta({
             if (valueRef.current) {
               const textRect = valueRef.current.getBoundingClientRect()
               const measuredWidth = textRect.width
-              const effectiveWidth = Math.max(measuredWidth, Math.min(containerWidth * 0.7, 300))
-              setTextWidth(effectiveWidth)
+              // Scale histogram width with container, accounting for labels on the right (~60px)
+              const maxHistogramWidth = containerWidth - 100 // Leave room for padding and labels
+              const effectiveWidth = Math.max(measuredWidth, Math.min(maxHistogramWidth, containerWidth * 0.7))
+              setTextWidth(Math.max(100, effectiveWidth)) // Minimum 100px
             }
           }, 10)
         }
@@ -382,33 +373,33 @@ export default function KpiDelta({
         </div>
 
         {/* Delta Information */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           {/* Arrow */}
-          <div 
+          <div
             className="font-bold"
-            style={{ 
+            style={{
               color: currentColor,
-              fontSize: `${fontSize * 0.6}px` // Larger arrow
+              fontSize: `${fontSize * 0.35}px`
             }}
           >
             {isPositiveChange ? '▲' : '▼'}
           </div>
-          
+
           {/* Delta Values */}
           <div className="text-left">
-            <div 
+            <div
               className="font-bold leading-tight"
-              style={{ 
-                fontSize: `${fontSize * 0.6}px`, // Larger delta value
+              style={{
+                fontSize: `${fontSize * 0.35}px`,
                 color: currentColor
               }}
             >
               {isPositiveChange ? '+' : ''}{formatNumber(absoluteChange)}
             </div>
-            <div 
+            <div
               className="font-semibold leading-tight"
-              style={{ 
-                fontSize: `${fontSize * 0.45}px`, // Larger percentage
+              style={{
+                fontSize: `${fontSize * 0.28}px`,
                 color: currentColor,
                 opacity: 0.8
               }}
@@ -435,7 +426,7 @@ export default function KpiDelta({
 
       {/* Variance Histogram */}
       {displayConfig.showHistogram !== false && values.length > 2 && (
-        <div className="mt-2">
+        <div className="mt-2 w-full flex justify-center overflow-hidden">
           <VarianceHistogram
             values={values}
             lastValue={lastValue}
