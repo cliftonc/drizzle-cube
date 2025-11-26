@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
+import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
-import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
@@ -42,10 +41,12 @@ export default function ScatterChart({
     let seriesFields: string[] = []
     
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format
-      xAxisField = chartConfig.xAxis[0]
+      // New format - handle both string and array values
+      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
       yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis
-      seriesFields = chartConfig.series || []
+      // Normalize series to array
+      const seriesConfig = chartConfig.series
+      seriesFields = seriesConfig ? (Array.isArray(seriesConfig) ? seriesConfig : [seriesConfig]) : []
     } else if (chartConfig?.x && chartConfig?.y) {
       // Legacy format (adapt for scatter chart)
       xAxisField = chartConfig.x
@@ -72,6 +73,10 @@ export default function ScatterChart({
       )
     }
 
+    // Extract time dimensions from query for tooltip display
+    const timeDimensions = queryObject?.timeDimensions || []
+    const timeDimensionFields = timeDimensions.map((td: any) => td.dimension)
+
     // Transform data for scatter plot
     // Null handling: Filter out data points where x or y coordinates are null
     let scatterData: any[]
@@ -93,17 +98,29 @@ export default function ScatterChart({
         // Only add point if both x and y are valid numbers
         const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
         if (isValidNumericValue(xNum) && yValue !== null) {
+          // Extract time dimension values for tooltip
+          const timeValues: { [key: string]: string } = {}
+          timeDimensionFields.forEach((field: string) => {
+            if (item[field]) {
+              const granularity = getFieldGranularity(queryObject, field)
+              timeValues[field] = formatTimeValue(item[field], granularity)
+            }
+          })
+
           seriesGroups[seriesValue].push({
             x: xNum,
             y: yValue,
-            name: `${seriesValue} (${xValue}, ${yValue})`
+            name: seriesValue,
+            timeValues,
+            originalItem: item
           })
         }
       })
 
-      // Use the first series as primary data
+      // Collect all valid points from all series for validation
+      // (The actual rendering uses seriesGroups with series separated)
       const seriesKeys = Object.keys(seriesGroups)
-      scatterData = seriesGroups[seriesKeys[0]] || []
+      scatterData = seriesKeys.flatMap(key => seriesGroups[key])
     } else {
       // Single series scatter plot
       const xGranularity = getFieldGranularity(queryObject, xAxisField)
@@ -113,10 +130,21 @@ export default function ScatterChart({
           const yValue = parseNumericValue(item[yAxisField])
           const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
 
+          // Extract time dimension values for tooltip
+          const timeValues: { [key: string]: string } = {}
+          timeDimensionFields.forEach((field: string) => {
+            if (item[field]) {
+              const granularity = getFieldGranularity(queryObject, field)
+              timeValues[field] = formatTimeValue(item[field], granularity)
+            }
+          })
+
           return {
             x: xNum,
             y: yValue,
-            name: `(${xValue}, ${yValue})`,
+            name: `Point`,
+            timeValues,
+            originalItem: item,
             isValid: isValidNumericValue(xNum) && yValue !== null
           }
         })
@@ -136,7 +164,10 @@ export default function ScatterChart({
     }
 
     const seriesKeys = Object.keys(seriesGroups)
-    const hasSeries = seriesKeys.length > 1
+    // Limit series to prevent performance issues with high-cardinality fields (e.g., dates)
+    // If more than 20 unique series, fall back to single-series mode
+    const MAX_SERIES = 20
+    const hasSeries = seriesKeys.length > 1 && seriesKeys.length <= MAX_SERIES
     
     // Determine if legend will be shown
     const showLegend = safeDisplayConfig.showLegend && hasSeries
@@ -149,7 +180,7 @@ export default function ScatterChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsScatterChart data={scatterData} margin={chartMargins}>
+        <RechartsScatterChart margin={chartMargins}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
@@ -167,7 +198,45 @@ export default function ScatterChart({
             label={{ value: getFieldLabel(yAxisField), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip />
+            <Tooltip
+              cursor={{ strokeDasharray: '3 3' }}
+              content={({ active, payload }) => {
+                if (!active || !payload || payload.length === 0) return null
+                // Only show the first (active) point
+                const point = payload[0]?.payload
+                if (!point) return null
+
+                // Format numbers for display
+                const formatNumber = (n: number) => {
+                  if (Number.isInteger(n)) return n.toString()
+                  return n.toFixed(2)
+                }
+
+                return (
+                  <div style={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    color: '#1f2937',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    padding: '8px 12px'
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>{point.name}</div>
+                    {/* Show time dimension values if present */}
+                    {point.timeValues && Object.keys(point.timeValues).length > 0 && (
+                      <div style={{ marginBottom: '4px', color: '#6b7280' }}>
+                        {Object.entries(point.timeValues).map(([field, value]) => (
+                          <div key={field}>{getFieldLabel(field)}: {value as string}</div>
+                        ))}
+                      </div>
+                    )}
+                    <div>{getFieldLabel(xAxisField)}: {formatNumber(point.x)}</div>
+                    <div>{getFieldLabel(yAxisField)}: {formatNumber(point.y)}</div>
+                  </div>
+                )
+              }}
+            />
           )}
           {showLegend && (
             <Legend 
