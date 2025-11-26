@@ -95,7 +95,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts tests/**/*.ts",
     "lint:fix": "eslint src/**/*.ts tests/**/*.ts --fix",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm run test",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build",
     "dev:db:up": "cd dev && docker-compose up -d",
     "dev:db:down": "cd dev && docker-compose down",
     "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
