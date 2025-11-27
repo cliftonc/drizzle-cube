@@ -20,11 +20,16 @@ export default function AreaChart({
   const { labelMap, getFieldLabel } = useCubeContext()
   
   try {
+    // Determine stacking from stackType (new) or stacked (legacy)
+    const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
+    const shouldStack = stackType !== 'none'
+    const isPercentStack = stackType === 'percent'
+
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showGrid: displayConfig?.showGrid ?? true,
       showTooltip: displayConfig?.showTooltip ?? true,
-      stacked: displayConfig?.stacked ?? false
+      connectNulls: displayConfig?.connectNulls ?? false
     }
 
     if (!data || data.length === 0) {
@@ -118,22 +123,27 @@ export default function AreaChart({
       )
     }
 
+    // Determine stack offset for percentage stacking
+    const stackOffset = isPercentStack ? 'expand' as const : undefined
+
     return (
       <ChartContainer height={height}>
-        <ComposedChart data={enhancedChartData} margin={chartMargins}>
+        <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
-          <XAxis 
+          <XAxis
             dataKey="name"
             tick={{ fontSize: 12 }}
             angle={-45}
             textAnchor="end"
             height={60}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }} 
-            label={{ value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+          <YAxis
+            tick={{ fontSize: 12 }}
+            tickFormatter={isPercentStack ? (v) => `${(v * 100).toFixed(0)}%` : undefined}
+            domain={isPercentStack ? [0, 1] : undefined}
+            label={isPercentStack ? undefined : { value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
@@ -144,6 +154,10 @@ export default function AreaChart({
                 }
                 if (name === 'Target') {
                   return [formatNumericValue(value), 'Target Value']
+                }
+                // Format as percentage when using percent stacking
+                if (isPercentStack && typeof value === 'number') {
+                  return [`${(value * 100).toFixed(1)}%`, name]
                 }
                 return [formatNumericValue(value), name]
               }}
@@ -161,19 +175,18 @@ export default function AreaChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          {/* Null handling: connectNulls=false creates gaps in the area where data is null, clearly showing missing data points */}
           {seriesKeys.map((seriesKey, index) => (
             <Area
               key={seriesKey}
               type="monotone"
               dataKey={seriesKey}
-              stackId={safeDisplayConfig.stacked ? "stack" : undefined}
+              stackId={shouldStack ? "stack" : undefined}
               stroke={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
               fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
               fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
               strokeWidth={2}
               strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-              connectNulls={false}
+              connectNulls={safeDisplayConfig.connectNulls}
             />
           ))}
           {spreadTargets.length > 0 && (

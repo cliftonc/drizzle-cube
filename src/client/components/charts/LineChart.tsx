@@ -23,7 +23,8 @@ export default function LineChart({
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showGrid: displayConfig?.showGrid ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true
+      showTooltip: displayConfig?.showTooltip ?? true,
+      connectNulls: displayConfig?.connectNulls ?? false
     }
 
     if (!data || data.length === 0) {
@@ -160,7 +161,6 @@ export default function LineChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          {/* Null handling: connectNulls=false creates gaps in the line where data is null, clearly showing missing data points */}
           {seriesKeys.map((seriesKey, index) => (
             <Line
               key={seriesKey}
@@ -171,7 +171,7 @@ export default function LineChart({
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
               strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-              connectNulls={false}
+              connectNulls={safeDisplayConfig.connectNulls}
             />
           ))}
           {spreadTargets.length > 0 && (

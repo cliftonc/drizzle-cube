@@ -38,6 +38,13 @@ export const lineChartConfig: ChartTypeConfig = {
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
+      key: 'connectNulls',
+      label: 'Connect Nulls',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Draw continuous line through missing data points'
+    },
+    {
       key: 'target',
       label: 'Target Values',
       type: 'string',

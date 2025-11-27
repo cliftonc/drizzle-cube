@@ -20,11 +20,15 @@ export default function BarChart({
   const { labelMap, getFieldLabel: contextGetFieldLabel } = useCubeContext()
   
   try {
+    // Determine stacking from stackType (new) or stacked (legacy)
+    const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
+    const shouldStack = stackType !== 'none'
+    const isPercentStack = stackType === 'percent'
+
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showGrid: displayConfig?.showGrid ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true,
-      stacked: displayConfig?.stacked ?? false
+      showTooltip: displayConfig?.showTooltip ?? true
     }
 
     if (!data || data.length === 0) {
@@ -95,8 +99,8 @@ export default function BarChart({
       return { chartData: filtered, skippedCount: skipped }
     }, [transformedData, seriesKeys])
 
-    // Stacking is now controlled only by the explicit config
-    const shouldStack = safeDisplayConfig.stacked === true
+    // Determine stack offset for percentage stacking
+    const stackOffset = isPercentStack ? 'expand' as const : undefined
     
     // Check if we should use positive/negative coloring
     // This is enabled when we have single series data with mixed positive/negative values
@@ -142,20 +146,22 @@ export default function BarChart({
     return (
       <div className="relative w-full" style={{ height }}>
         <ChartContainer height={skippedCount > 0 ? `calc(100% - 20px)` : "100%"}>
-          <ComposedChart data={enhancedChartData} margin={chartMargins}>
+          <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
-          <XAxis 
+          <XAxis
             dataKey="name"
             tick={{ fontSize: 12 }}
             angle={-45}
             textAnchor="end"
             height={60}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }} 
-            label={{ value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+          <YAxis
+            tick={{ fontSize: 12 }}
+            tickFormatter={isPercentStack ? (v) => `${(v * 100).toFixed(0)}%` : undefined}
+            domain={isPercentStack ? [0, 1] : undefined}
+            label={isPercentStack ? undefined : { value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
@@ -166,6 +172,10 @@ export default function BarChart({
                 }
                 if (name === 'Target') {
                   return [formatNumericValue(value), 'Target Value']
+                }
+                // Format as percentage when using percent stacking
+                if (isPercentStack && typeof value === 'number') {
+                  return [`${(value * 100).toFixed(1)}%`, name]
                 }
                 return [formatNumericValue(value), name]
               }}

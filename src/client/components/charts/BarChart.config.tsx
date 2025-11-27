@@ -35,8 +35,20 @@ export const barChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here to split data into series'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
+    {
+      key: 'stackType',
+      label: 'Stacking',
+      type: 'select',
+      defaultValue: 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'normal', label: 'Stacked' },
+        { value: 'percent', label: 'Stacked 100%' }
+      ],
+      description: 'How to stack multiple bar series'
+    },
     {
       key: 'target',
       label: 'Target Values',

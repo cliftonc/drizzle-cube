@@ -54,7 +54,9 @@ export interface ChartDisplayConfig {
   showTooltip?: boolean
   colors?: string[]
   orientation?: 'horizontal' | 'vertical'
-  stacked?: boolean
+  stacked?: boolean // Deprecated: use stackType instead
+  stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
+  connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
   hideHeader?: boolean // Hide portlet header in non-edit mode
   
   // Bubble chart specific display options

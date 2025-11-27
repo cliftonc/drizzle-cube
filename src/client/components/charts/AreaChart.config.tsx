@@ -35,8 +35,27 @@ export const areaChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions here for stacked areas'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'stacked', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
+    {
+      key: 'stackType',
+      label: 'Stacking',
+      type: 'select',
+      defaultValue: 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'normal', label: 'Stacked' },
+        { value: 'percent', label: 'Stacked 100%' }
+      ],
+      description: 'How to stack multiple area series'
+    },
+    {
+      key: 'connectNulls',
+      label: 'Connect Nulls',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Draw continuous line through missing data points'
+    },
     {
       key: 'target',
       label: 'Target Values',
