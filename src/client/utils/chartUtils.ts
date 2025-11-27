@@ -14,6 +14,17 @@ export function parseNumericValue(value: any): number | null {
   return isNaN(num) ? null : num
 }
 
+// Utility function to format numeric values for display in charts
+// Rounds to at most 2 decimal places, preserves integers
+export function formatNumericValue(value: any): string {
+  if (value === null || value === undefined) return 'No data'
+  const num = typeof value === 'number' ? value : parseFloat(value)
+  if (isNaN(num)) return String(value)
+  if (Number.isInteger(num)) return num.toLocaleString()
+  // Round to at most 2 decimal places, remove trailing zeros
+  return parseFloat(num.toFixed(2)).toLocaleString()
+}
+
 // Utility function to get field label from field name
 export function getFieldLabel(fieldName: string, labelMap: FieldLabelMap): string {
   return labelMap[fieldName] || fieldName

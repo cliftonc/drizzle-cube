@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue, formatNumericValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -206,12 +206,6 @@ export default function ScatterChart({
                 const point = payload[0]?.payload
                 if (!point) return null
 
-                // Format numbers for display
-                const formatNumber = (n: number) => {
-                  if (Number.isInteger(n)) return n.toString()
-                  return n.toFixed(2)
-                }
-
                 return (
                   <div style={{
                     backgroundColor: 'white',
@@ -231,8 +225,8 @@ export default function ScatterChart({
                         ))}
                       </div>
                     )}
-                    <div>{getFieldLabel(xAxisField)}: {formatNumber(point.x)}</div>
-                    <div>{getFieldLabel(yAxisField)}: {formatNumber(point.y)}</div>
+                    <div>{getFieldLabel(xAxisField)}: {formatNumericValue(point.x)}</div>
+                    <div>{getFieldLabel(yAxisField)}: {formatNumericValue(point.y)}</div>
                   </div>
                 )
               }}

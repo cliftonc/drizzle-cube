@@ -44,7 +44,7 @@ export default function PieChart({
     
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
-      xAxisField = chartConfig.xAxis[0]
+      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
       yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {

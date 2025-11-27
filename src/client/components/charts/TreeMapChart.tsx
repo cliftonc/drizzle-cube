@@ -42,7 +42,7 @@ export default function TreeMapChart({
 
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format - use chart config
-      const xAxisField = chartConfig.xAxis[0] // Name/category field
+      const xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis // Name/category field
       const yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis // Size field
       seriesField = Array.isArray(chartConfig.series) ? chartConfig.series[0] : chartConfig.series // Color grouping field
 

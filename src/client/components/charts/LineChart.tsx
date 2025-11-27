@@ -3,7 +3,7 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Lege
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatNumericValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
@@ -44,7 +44,7 @@ export default function LineChart({
     
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
-      xAxisField = chartConfig.xAxis[0]
+      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
       yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {
@@ -142,9 +142,9 @@ export default function LineChart({
                   return ['No data', name]
                 }
                 if (name === 'Target') {
-                  return [`${value}`, 'Target Value']
+                  return [formatNumericValue(value), 'Target Value']
                 }
-                return [value, name]
+                return [formatNumericValue(value), name]
               }}
             />
           )}
