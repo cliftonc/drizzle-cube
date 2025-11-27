@@ -26,7 +26,7 @@ import {
   MarkdownChart
 } from './charts'
 import type { AnalyticsPortletProps } from '../types'
-import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters } from '../utils/filterUtils'
+import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 
 
 interface AnalyticsPortletRef {
@@ -72,15 +72,24 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     try {
       const parsed = JSON.parse(query)
 
-      // Get applicable dashboard filters based on mapping
-      const applicableFilters = getApplicableDashboardFilters(dashboardFilters, dashboardFilterMapping)
+      // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
+      const regularFilters = dashboardFilters?.filter(df => !df.isUniversalTime)
+      const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
 
       // Merge dashboard filters with portlet filters
       const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
 
+      // Apply universal time filters to timeDimensions (dashboard wins over portlet dateRange)
+      const mergedTimeDimensions = applyUniversalTimeFilters(
+        dashboardFilters,
+        dashboardFilterMapping,
+        parsed.timeDimensions
+      )
+
       return {
         ...parsed,
         filters: mergedFilters,
+        timeDimensions: mergedTimeDimensions,
         __refresh_counter: refreshCounter
       }
     } catch (e) {

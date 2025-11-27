@@ -5,7 +5,7 @@
  */
 
 import React, { useCallback } from 'react'
-import { FunnelIcon } from '@heroicons/react/24/outline'
+import { FunnelIcon, ClockIcon } from '@heroicons/react/24/outline'
 import FilterItem from '../QueryBuilder/FilterItem'
 import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
@@ -30,7 +30,7 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
 }) => {
   // Render individual read-only filter
   const renderReadOnlyFilter = useCallback((dashboardFilter: DashboardFilter) => {
-    const { id, label, filter } = dashboardFilter
+    const { id, label, filter, isUniversalTime } = dashboardFilter
 
     // Only render SimpleFilter in read-only mode (skip GroupFilters for now)
     if (!('member' in filter)) {
@@ -40,21 +40,38 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
     const simpleFilter = filter as SimpleFilter
     const isTimeDim = isTimeDimensionField(simpleFilter.member)
 
-    // For time dimensions with inDateRange operator, use DateRangeSelector
-    if (isTimeDim && simpleFilter.operator === 'inDateRange') {
+    // For universal time filters OR time dimensions with inDateRange, use DateRangeSelector
+    if (isUniversalTime || (isTimeDim && simpleFilter.operator === 'inDateRange')) {
+      // Get date range - handle both dateRange property and values array
+      // If values is a single-element array with a preset string, use that string directly
+      let dateRangeValue: string | string[] | undefined = simpleFilter.dateRange
+      if (!dateRangeValue && simpleFilter.values) {
+        if (Array.isArray(simpleFilter.values) && simpleFilter.values.length === 1 && typeof simpleFilter.values[0] === 'string') {
+          // Single string value (preset like "last 30 days") - pass as string
+          dateRangeValue = simpleFilter.values[0]
+        } else {
+          dateRangeValue = simpleFilter.values
+        }
+      }
+
       return (
         <div key={id} className="flex flex-col gap-1.5">
-          <label
-            className="text-xs font-semibold uppercase tracking-wide truncate px-1"
-            style={{ color: 'var(--dc-text-secondary)' }}
-            title={label}
-          >
-            {label}
-          </label>
+          <div className="flex items-center gap-1.5 px-1">
+            {isUniversalTime && (
+              <ClockIcon className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--dc-primary)' }} />
+            )}
+            <label
+              className="text-xs font-semibold uppercase tracking-wide truncate"
+              style={{ color: 'var(--dc-text-secondary)' }}
+              title={isUniversalTime ? `${label} (applies to all time dimensions)` : label}
+            >
+              {label}
+            </label>
+          </div>
           <DateRangeSelector
-            timeDimension={simpleFilter.member}
-            availableTimeDimensions={[simpleFilter.member]}
-            currentDateRange={simpleFilter.dateRange || simpleFilter.values}
+            timeDimension={isUniversalTime ? '__universal_time__' : simpleFilter.member}
+            availableTimeDimensions={isUniversalTime ? ['__universal_time__'] : [simpleFilter.member]}
+            currentDateRange={dateRangeValue}
             onDateRangeChange={(_timeDim, dateRange) => onDateRangeChange(id, dateRange)}
             onTimeDimensionChange={() => {}} // Not editable in read-only mode
             onRemove={() => {}} // Not removable in read-only mode

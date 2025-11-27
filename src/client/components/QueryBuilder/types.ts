@@ -397,6 +397,7 @@ export interface FilterBuilderProps {
   schema: MetaResponse | null
   query: CubeQuery
   onFiltersChange: (filters: Filter[]) => void
+  hideFieldSelector?: boolean // Hide the field selector (for universal time filters)
 }
 
 export interface FilterItemProps {

@@ -12,9 +12,10 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import FilterBuilder from '../QueryBuilder/FilterBuilder'
+import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
 import CubeMetaExplorer from '../QueryBuilder/CubeMetaExplorer'
 import { extractDashboardFields } from '../../utils/filterUtils'
-import type { DashboardFilter, CubeMeta, Filter, DashboardConfig } from '../../types'
+import type { DashboardFilter, CubeMeta, Filter, DashboardConfig, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../QueryBuilder/types'
 
 interface FilterEditModalProps {
@@ -132,18 +133,29 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
     }
   }, [localFilter])
 
+  // Handle date range change for universal time filters
+  const handleDateRangeChange = useCallback((_timeDim: string, dateRange: string | string[]) => {
+    if ('member' in localFilter) {
+      setLocalFilter({
+        ...localFilter,
+        values: Array.isArray(dateRange) ? dateRange : [dateRange]
+      } as SimpleFilter)
+    }
+  }, [localFilter])
+
   // Validate filter before saving
   const validateFilter = useCallback((): { isValid: boolean; message?: string } => {
     if (!localLabel.trim()) {
       return { isValid: false, message: 'Filter label is required' }
     }
 
-    if ('member' in localFilter && !localFilter.member) {
+    // Skip member validation for universal time filters (member is placeholder)
+    if (!filter.isUniversalTime && 'member' in localFilter && !localFilter.member) {
       return { isValid: false, message: 'Please select a field for the filter' }
     }
 
     return { isValid: true }
-  }, [localLabel, localFilter])
+  }, [localLabel, localFilter, filter.isUniversalTime])
 
   // Handle save - validate then call onSave with complete filter data
   const handleSave = useCallback(async () => {
@@ -156,7 +168,9 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
     const updatedFilter: DashboardFilter = {
       id: filter.id,
       label: localLabel,
-      filter: localFilter
+      filter: localFilter,
+      // Preserve isUniversalTime flag if present
+      ...(filter.isUniversalTime && { isUniversalTime: true })
     }
 
     try {
@@ -166,7 +180,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
       console.error('Failed to save filter:', error)
       alert('Failed to save filter. Please try again.')
     }
-  }, [filter.id, localLabel, localFilter, validateFilter, onSave, onClose])
+  }, [filter.id, filter.isUniversalTime, localLabel, localFilter, validateFilter, onSave, onClose])
 
   // Handle cancel/close - reset local state
   const handleCancel = useCallback(() => {
@@ -200,79 +214,121 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Body - Two Column Layout */}
+        {/* Modal Body - Two Column Layout (or single column for universal time filters) */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Left Column - Schema Explorer */}
-          <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-auto">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Available Fields
-                </h3>
-                <button
-                  onClick={() => setShowAllFields(!showAllFields)}
-                  className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
-                  title={showAllFields ? 'Show dashboard fields only' : 'Show all fields'}
-                >
-                  {showAllFields ? (
-                    <>
-                      <EyeSlashIcon className="w-3.5 h-3.5" />
-                      <span>Dashboard</span>
-                    </>
-                  ) : (
-                    <>
-                      <EyeIcon className="w-3.5 h-3.5" />
-                      <span>All</span>
-                    </>
-                  )}
-                </button>
+          {/* Left Column - Schema Explorer (hidden for universal time filters) */}
+          {!filter.isUniversalTime && (
+            <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-auto">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Available Fields
+                  </h3>
+                  <button
+                    onClick={() => setShowAllFields(!showAllFields)}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+                    title={showAllFields ? 'Show dashboard fields only' : 'Show all fields'}
+                  >
+                    {showAllFields ? (
+                      <>
+                        <EyeSlashIcon className="w-3.5 h-3.5" />
+                        <span>Dashboard</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeIcon className="w-3.5 h-3.5" />
+                        <span>All</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {!showAllFields && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                    Showing only fields used in this dashboard
+                  </div>
+                )}
+
+                {filteredSchema && filteredSchema.cubes.length > 0 ? (
+                  <CubeMetaExplorer
+                    schema={filteredSchema}
+                    schemaStatus="success"
+                    schemaError={null}
+                    selectedFields={{
+                      measures: selectedFieldInFilter ? [selectedFieldInFilter] : [],
+                      dimensions: selectedFieldInFilter ? [selectedFieldInFilter] : [],
+                      timeDimensions: selectedFieldInFilter ? [selectedFieldInFilter] : []
+                    }}
+                    onFieldSelect={(fieldName) => handleFieldSelect(fieldName)}
+                    onFieldDeselect={() => {}}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+                    {showAllFields ? (
+                      <div>
+                        <p className="mb-2">No schema available</p>
+                        <p className="text-xs">Check your API connection</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="mb-2">No fields used in dashboard</p>
+                        <p className="text-xs">Add portlets to the dashboard first, or toggle to show all fields</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-
-              {!showAllFields && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                  Showing only fields used in this dashboard
-                </div>
-              )}
-
-              {filteredSchema && filteredSchema.cubes.length > 0 ? (
-                <CubeMetaExplorer
-                  schema={filteredSchema}
-                  schemaStatus="success"
-                  schemaError={null}
-                  selectedFields={{
-                    measures: selectedFieldInFilter ? [selectedFieldInFilter] : [],
-                    dimensions: selectedFieldInFilter ? [selectedFieldInFilter] : [],
-                    timeDimensions: selectedFieldInFilter ? [selectedFieldInFilter] : []
-                  }}
-                  onFieldSelect={(fieldName) => handleFieldSelect(fieldName)}
-                  onFieldDeselect={() => {}}
-                />
-              ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
-                  {showAllFields ? (
-                    <div>
-                      <p className="mb-2">No schema available</p>
-                      <p className="text-xs">Check your API connection</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="mb-2">No fields used in dashboard</p>
-                      <p className="text-xs">Add portlets to the dashboard first, or toggle to show all fields</p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
-          {/* Right Column - Filter Builder */}
+          {/* Right Column - Filter Builder or Date Range Selector */}
           <div className="flex-1 overflow-auto px-6 py-4 bg-gray-50 dark:bg-gray-800">
-            <FilterBuilder
-              filters={[localFilter]}
-              schema={convertToMetaResponse(schema)}
-              query={{}} // Empty query object - not needed for standalone filter editing
-              onFiltersChange={handleFilterBuilderChange}
-            />
+            {filter.isUniversalTime ? (
+              /* Universal time filter - show DateRangeSelector */
+              <div>
+                <div className="mb-4 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                  <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Universal Time Filter
+                  </div>
+                  <div className="text-xs text-blue-600 dark:text-blue-300">
+                    This filter applies to all time dimensions in portlets it&apos;s mapped to.
+                    Select a date range below to filter data across all time-based charts.
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <DateRangeSelector
+                    timeDimension="__universal_time__"
+                    availableTimeDimensions={['__universal_time__']}
+                    currentDateRange={(() => {
+                      // Handle both dateRange property and values array
+                      const simpleFilter = localFilter as SimpleFilter
+                      if (simpleFilter.dateRange) return simpleFilter.dateRange
+                      if (simpleFilter.values) {
+                        // Single string value (preset like "last 30 days") - pass as string
+                        if (Array.isArray(simpleFilter.values) && simpleFilter.values.length === 1 && typeof simpleFilter.values[0] === 'string') {
+                          return simpleFilter.values[0]
+                        }
+                        return simpleFilter.values
+                      }
+                      return undefined
+                    })()}
+                    onDateRangeChange={handleDateRangeChange}
+                    onTimeDimensionChange={() => {}}
+                    onRemove={() => {}}
+                    hideFieldSelector={true}
+                    hideRemoveButton={true}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Regular filter - show FilterBuilder */
+              <FilterBuilder
+                filters={[localFilter]}
+                schema={convertToMetaResponse(schema)}
+                query={{}} // Empty query object - not needed for standalone filter editing
+                onFiltersChange={handleFilterBuilderChange}
+              />
+            )}
           </div>
         </div>
 

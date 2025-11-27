@@ -5,12 +5,13 @@
  */
 
 import React from 'react'
-import { FunnelIcon, PlusIcon, XMarkIcon, PencilIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { FunnelIcon, PlusIcon, XMarkIcon, PencilIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
 import type { DashboardFilter } from '../../types'
 
 interface EditModeFilterListProps {
   dashboardFilters: DashboardFilter[]
   onAddFilter: () => void
+  onAddTimeFilter: () => void
   onEditFilter: (filterId: string) => void
   onRemoveFilter: (filterId: string) => void
   selectedFilterId?: string | null
@@ -20,6 +21,7 @@ interface EditModeFilterListProps {
 const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
   dashboardFilters,
   onAddFilter,
+  onAddTimeFilter,
   onEditFilter,
   onRemoveFilter,
   selectedFilterId,
@@ -29,8 +31,11 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
 
   // Render compact filter chip - just label + edit + delete
   const renderFilterChip = (dashboardFilter: DashboardFilter) => {
-    const { id, label } = dashboardFilter
+    const { id, label, isUniversalTime } = dashboardFilter
     const isSelected = selectedFilterId === id
+
+    // Use calendar icon for universal time filters, funnel for regular filters
+    const IconComponent = isUniversalTime ? ClockIcon : FunnelIcon
 
     return (
       <div
@@ -51,7 +56,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
           }
         }}
       >
-        <FunnelIcon
+        <IconComponent
           className="w-3.5 h-3.5 shrink-0"
           style={{ color: isSelected ? 'white' : 'var(--dc-primary)' }}
         />
@@ -110,19 +115,40 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
             />
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onAddFilter()
-            }}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
-            style={{
-              backgroundColor: 'var(--dc-primary)',
-              color: 'white'
-            }}
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Only show Date Range button if no universal time filter exists */}
+            {!dashboardFilters.some(f => f.isUniversalTime) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAddTimeFilter()
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+                style={{
+                  backgroundColor: 'var(--dc-surface)',
+                  color: 'var(--dc-primary)',
+                  border: '1px solid var(--dc-border)'
+                }}
+                title="Add date range filter (applies to all time dimensions)"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                <ClockIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddFilter()
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: 'var(--dc-primary)',
+                color: 'white'
+              }}
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Mobile Filter Chips - Collapsible */}
@@ -189,17 +215,35 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
         )}
 
         {/* Add Button Section */}
-        <button
-          onClick={onAddFilter}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80 shrink-0"
-          style={{
-            backgroundColor: 'var(--dc-primary)',
-            color: 'white'
-          }}
-        >
-          <PlusIcon className="w-3.5 h-3.5" />
-          <span>Add</span>
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Only show Date Range button if no universal time filter exists */}
+          {!dashboardFilters.some(f => f.isUniversalTime) && (
+            <button
+              onClick={onAddTimeFilter}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: 'var(--dc-surface)',
+                color: 'var(--dc-primary)',
+                border: '1px solid var(--dc-border)'
+              }}
+              title="Add date range filter (applies to all time dimensions)"
+            >
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>Date Range</span>
+            </button>
+          )}
+          <button
+            onClick={onAddFilter}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+            style={{
+              backgroundColor: 'var(--dc-primary)',
+              color: 'white'
+            }}
+          >
+            <PlusIcon className="w-3.5 h-3.5" />
+            <span>Filter</span>
+          </button>
+        </div>
       </div>
     </>
   )

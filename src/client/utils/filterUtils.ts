@@ -295,3 +295,78 @@ function extractFieldsFromFilters(filters: Filter[]): string[] {
 
   return [...new Set(fields)] // Return unique fields
 }
+
+/**
+ * Time dimension type from CubeQuery
+ */
+type TimeDimension = {
+  dimension: string
+  granularity?: string
+  dateRange?: string[] | string
+}
+
+/**
+ * Helper to get date range from a SimpleFilter (backward compatible)
+ * Reads from both dateRange and values for compatibility
+ */
+function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undefined {
+  // Prefer dateRange for backward compatibility, fall back to values
+  if (filter.dateRange) {
+    return filter.dateRange
+  }
+  if (filter.values && filter.values.length >= 2) {
+    return filter.values as string[]
+  }
+  return undefined
+}
+
+/**
+ * Apply universal time filters to a portlet's timeDimensions
+ * Universal time filters apply their dateRange to ALL time dimensions in the portlet
+ *
+ * @param dashboardFilters - All dashboard filters
+ * @param filterMapping - Filter IDs that apply to this portlet
+ * @param portletTimeDimensions - The portlet's existing timeDimensions array
+ * @returns Updated timeDimensions array with date ranges applied
+ */
+export function applyUniversalTimeFilters(
+  dashboardFilters: DashboardFilter[] | undefined,
+  filterMapping: string[] | undefined,
+  portletTimeDimensions: TimeDimension[] | undefined
+): TimeDimension[] | undefined {
+  // Return as-is if no time dimensions in portlet (skip silently)
+  if (!portletTimeDimensions || portletTimeDimensions.length === 0) {
+    return portletTimeDimensions
+  }
+
+  // If no mapping specified, no filters apply
+  if (!filterMapping || filterMapping.length === 0) {
+    return portletTimeDimensions
+  }
+
+  // Find applicable universal time filters that have valid date ranges
+  const universalTimeFilters = dashboardFilters
+    ?.filter(df => df.isUniversalTime && filterMapping.includes(df.id))
+    ?.filter(df => {
+      // Must be a SimpleFilter with a valid dateRange
+      if (!('member' in df.filter)) return false
+      const simpleFilter = df.filter as SimpleFilter
+      const dateRange = getDateRangeFromFilter(simpleFilter)
+      return dateRange !== undefined
+    })
+
+  if (!universalTimeFilters || universalTimeFilters.length === 0) {
+    return portletTimeDimensions
+  }
+
+  // Use the first universal time filter's dateRange (typically only one)
+  const timeFilter = universalTimeFilters[0]
+  const simpleFilter = timeFilter.filter as SimpleFilter
+  const dateRange = getDateRangeFromFilter(simpleFilter)
+
+  // Apply dateRange to ALL time dimensions (dashboard wins - overrides portlet dateRange)
+  return portletTimeDimensions.map(td => ({
+    ...td,
+    dateRange: dateRange
+  }))
+}

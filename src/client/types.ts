@@ -153,6 +153,7 @@ export interface DashboardFilter {
   id: string // Unique identifier for the filter
   label: string // Display label for the filter
   filter: Filter // The actual filter definition
+  isUniversalTime?: boolean // When true, applies to all timeDimensions in portlets (ignores member field)
 }
 
 // Cube query types

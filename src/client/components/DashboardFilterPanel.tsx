@@ -99,6 +99,24 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     setShowFilterBuilder(true)
   }, [dashboardFilters.length, generateFilterId])
 
+  // Handle adding a universal time filter - applies to all time dimensions
+  // Creates filter directly without opening modal (fixed name, user just sets date range in view mode)
+  const handleAddTimeFilter = useCallback(() => {
+    const newFilter: DashboardFilter = {
+      id: generateFilterId(),
+      label: 'Date Range Filter',
+      isUniversalTime: true,
+      filter: {
+        member: '__universal_time__', // Placeholder, not used in merge logic
+        operator: 'inDateRange',
+        values: ['last 30 days']
+      }
+    }
+    // Add directly to filters without opening modal
+    const updatedFilters = [...dashboardFilters, newFilter]
+    onDashboardFiltersChange(updatedFilters)
+  }, [generateFilterId, dashboardFilters, onDashboardFiltersChange])
+
   // Handle editing an existing filter - just open modal with filter
   const handleEditFilter = useCallback((filterId: string) => {
     const filterToEdit = dashboardFilters.find(df => df.id === filterId)
@@ -217,6 +235,7 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
         <EditModeFilterList
           dashboardFilters={dashboardFilters}
           onAddFilter={handleAddFilter}
+          onAddTimeFilter={handleAddTimeFilter}
           onEditFilter={handleEditFilter}
           onRemoveFilter={handleRemoveFilter}
           selectedFilterId={selectedFilterId}
