@@ -74,9 +74,6 @@ export default function DashboardGrid({
   // Filter selection mode state
   const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null)
 
-  // Track visible portlets for lazy loading
-  const [visiblePortlets, setVisiblePortlets] = useState<Set<string>>(new Set())
-
   // Exit filter selection mode when leaving edit mode or when switching to non-desktop mode
   useEffect(() => {
     if ((!isEditMode || !isResponsiveEditable) && selectedFilterId) {
@@ -159,69 +156,6 @@ export default function DashboardGrid({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [selectedFilterId])
-
-  // Track previous display mode to detect mode changes
-  const prevDisplayModeRef = useRef(displayMode)
-
-  // Simplified scroll-based visibility detection for lazy loading portlets
-  useEffect(() => {
-    const checkVisibility = () => {
-      const newVisible = new Set<string>()
-      document.querySelectorAll('[data-portlet-id]').forEach(el => {
-        const rect = el.getBoundingClientRect()
-        const viewportHeight = window.innerHeight
-        // Load portlets that are in viewport or within 200px of it
-        if (rect.top < viewportHeight + 200 && rect.bottom > -200) {
-          const portletId = el.getAttribute('data-portlet-id')
-          if (portletId) newVisible.add(portletId)
-        }
-      })
-      setVisiblePortlets(prev => {
-        // Only update if new portlets became visible (union, never remove)
-        const merged = new Set([...prev, ...newVisible])
-        if (merged.size !== prev.size) return merged
-        return prev
-      })
-    }
-
-    // Debounce scroll handler (16ms = ~60fps)
-    let scrollTimeout: NodeJS.Timeout | null = null
-    const handleScroll = () => {
-      if (scrollTimeout) return
-      scrollTimeout = setTimeout(() => {
-        scrollTimeout = null
-        checkVisibility()
-      }, 16)
-    }
-
-    // Only reset visibility when display mode actually changes (not on portlet drag/resize)
-    const displayModeChanged = prevDisplayModeRef.current !== displayMode
-    prevDisplayModeRef.current = displayMode
-
-    if (displayModeChanged) {
-      // Reset visibility and schedule multiple checks when display mode changes
-      // This ensures we catch the DOM after it re-renders in the new layout
-      setVisiblePortlets(new Set())
-    }
-
-    const initialCheck = setTimeout(checkVisibility, 50)
-    const secondCheck = setTimeout(checkVisibility, 150)
-    const thirdCheck = setTimeout(checkVisibility, 300)
-
-    // Listen for scroll events
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    // Also listen for resize since mode changes come from resize
-    window.addEventListener('resize', checkVisibility, { passive: true })
-
-    return () => {
-      clearTimeout(initialCheck)
-      clearTimeout(secondCheck)
-      clearTimeout(thirdCheck)
-      if (scrollTimeout) clearTimeout(scrollTimeout)
-      window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', checkVisibility)
-    }
-  }, [displayMode, config.portlets])
 
   // Helper function to check if layout actually changed (not just reordered due to responsive changes)
   const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
@@ -946,7 +880,7 @@ export default function DashboardGrid({
                 dashboardFilters={dashboardFilters}
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-                isVisible={visiblePortlets.has(portlet.id)}
+                isVisible={true}
                 title={portlet.title}
                 height="100%"
                 colorPalette={colorPalette}
@@ -1110,7 +1044,6 @@ export default function DashboardGrid({
           config={config}
           colorPalette={colorPalette}
           dashboardFilters={dashboardFilters}
-          visiblePortlets={visiblePortlets}
           onPortletRefresh={handlePortletRefresh}
         />
       ) : displayMode === 'scaled' ? (

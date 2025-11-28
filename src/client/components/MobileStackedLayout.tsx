@@ -14,7 +14,6 @@ interface MobileStackedLayoutProps {
   config: DashboardConfig
   colorPalette?: ColorPalette
   dashboardFilters?: DashboardFilter[]
-  visiblePortlets: Set<string>
   onPortletRefresh?: (portletId: string) => void
 }
 
@@ -26,7 +25,6 @@ export default function MobileStackedLayout({
   config,
   colorPalette,
   dashboardFilters,
-  visiblePortlets,
   onPortletRefresh
 }: MobileStackedLayoutProps) {
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
@@ -98,7 +96,7 @@ export default function MobileStackedLayout({
                 dashboardFilters={dashboardFilters}
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-                isVisible={visiblePortlets.has(portlet.id)}
+                isVisible={true}
                 title={portlet.title}
                 height={contentHeight}
                 colorPalette={colorPalette}
