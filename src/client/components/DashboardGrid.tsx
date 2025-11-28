@@ -160,6 +160,9 @@ export default function DashboardGrid({
     }
   }, [selectedFilterId])
 
+  // Track previous display mode to detect mode changes
+  const prevDisplayModeRef = useRef(displayMode)
+
   // Simplified scroll-based visibility detection for lazy loading portlets
   useEffect(() => {
     const checkVisibility = () => {
@@ -191,9 +194,16 @@ export default function DashboardGrid({
       }, 16)
     }
 
-    // Reset visibility and schedule multiple checks when display mode changes
-    // This ensures we catch the DOM after it re-renders in the new layout
-    setVisiblePortlets(new Set())
+    // Only reset visibility when display mode actually changes (not on portlet drag/resize)
+    const displayModeChanged = prevDisplayModeRef.current !== displayMode
+    prevDisplayModeRef.current = displayMode
+
+    if (displayModeChanged) {
+      // Reset visibility and schedule multiple checks when display mode changes
+      // This ensures we catch the DOM after it re-renders in the new layout
+      setVisiblePortlets(new Set())
+    }
+
     const initialCheck = setTimeout(checkVisibility, 50)
     const secondCheck = setTimeout(checkVisibility, 150)
     const thirdCheck = setTimeout(checkVisibility, 300)
