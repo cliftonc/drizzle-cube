@@ -73,6 +73,29 @@ export function useResponsiveDashboard(): UseResponsiveDashboardResult {
     }
   }, [])
 
+  // Fallback: window resize listener to catch resize events that ResizeObserver might miss
+  // This is particularly important for containers in flex/grid layouts or deeply nested elements
+  useEffect(() => {
+    const handleWindowResize = () => {
+      if (elementRef.current) {
+        const width = elementRef.current.offsetWidth
+        if (width > 0) {
+          setContainerWidth(width)
+        }
+      }
+    }
+
+    window.addEventListener('resize', handleWindowResize)
+
+    // Also measure after a short delay to catch late layout calculations
+    const timeoutId = setTimeout(handleWindowResize, 100)
+
+    return () => {
+      window.removeEventListener('resize', handleWindowResize)
+      clearTimeout(timeoutId)
+    }
+  }, [])
+
   const displayMode = useMemo<DashboardDisplayMode>(() => {
     if (containerWidth >= DESIGN_WIDTH) return 'desktop'
     if (containerWidth >= MOBILE_THRESHOLD) return 'scaled'
