@@ -308,14 +308,19 @@ type TimeDimension = {
 /**
  * Helper to get date range from a SimpleFilter (backward compatible)
  * Reads from both dateRange and values for compatibility
+ * Handles both:
+ * - Preset ranges: ["this quarter"], ["last 7 days"] (single string value)
+ * - Custom ranges: ["2024-01-01", "2024-12-31"] (two date values)
  */
 function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undefined {
   // Prefer dateRange for backward compatibility, fall back to values
   if (filter.dateRange) {
     return filter.dateRange
   }
-  if (filter.values && filter.values.length >= 2) {
-    return filter.values as string[]
+  if (filter.values && filter.values.length > 0) {
+    // Single value = preset like "this quarter", return as string
+    // Multiple values = custom date range, return as array
+    return filter.values.length === 1 ? filter.values[0] : filter.values
   }
   return undefined
 }
