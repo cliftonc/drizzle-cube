@@ -25,19 +25,44 @@ export default function AnalyticsDashboard({
   const initialConfigRef = useRef(config)
   const hasConfigChangedFromInitial = useRef(false)
 
-  // Merge programmatic filters (props) with config filters
-  // Programmatic filters take precedence
+  // Merge programmatic filters (props) with config filters by ID
+  // Config provides structure/metadata, props provide value overrides
   const mergedDashboardFilters = useMemo<DashboardFilter[]>(() => {
     const configFilters = config.filters || []
     const propFilters = propDashboardFilters || []
 
-    // If we have prop filters, use only those (they override config)
-    if (propFilters.length > 0) {
+    // If no prop filters, use config filters as-is
+    if (propFilters.length === 0) {
+      return configFilters
+    }
+
+    // If no config filters, use prop filters as-is
+    if (configFilters.length === 0) {
       return propFilters
     }
 
-    // Otherwise use config filters
-    return configFilters
+    // Merge by ID: config filters provide structure, prop filters provide values
+    const mergedFilters: DashboardFilter[] = configFilters.map(configFilter => {
+      // Find matching prop filter by ID
+      const propFilter = propFilters.find(pf => pf.id === configFilter.id)
+
+      if (propFilter) {
+        // Merge: preserve config metadata, use prop filter values
+        return {
+          ...configFilter,           // Preserve id, label, isUniversalTime from config
+          filter: propFilter.filter  // Use filter values from prop override
+        }
+      }
+
+      // No override for this filter, use config as-is
+      return configFilter
+    })
+
+    // Add any prop filters that don't exist in config (new filters)
+    const configIds = new Set(configFilters.map(cf => cf.id))
+    const newFilters = propFilters.filter(pf => !configIds.has(pf.id))
+
+    return [...mergedFilters, ...newFilters]
   }, [config.filters, propDashboardFilters])
 
   // Enhanced save handler that tracks dirty state and prevents saves during initial load
