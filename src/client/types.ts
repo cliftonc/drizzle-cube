@@ -253,3 +253,6 @@ export interface GridLayout {
 export interface ResponsiveLayout {
   [breakpoint: string]: GridLayout[]
 }
+
+// Dashboard display modes for responsive layout
+export type DashboardDisplayMode = 'desktop' | 'scaled' | 'mobile'

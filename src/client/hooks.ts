@@ -10,6 +10,8 @@ export { useCubeQuery } from './hooks/useCubeQuery'
 export { useCubeMeta } from './hooks/useCubeMeta'
 export { useDebounce } from './hooks/useDebounce'
 export { useFilterValues } from './hooks/useFilterValues'
+export { useResponsiveDashboard } from './hooks/useResponsiveDashboard'
+export type { DashboardDisplayMode, UseResponsiveDashboardResult } from './hooks/useResponsiveDashboard'
 
 // Hook-related types
 export type {

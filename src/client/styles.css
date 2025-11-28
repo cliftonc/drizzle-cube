@@ -11,3 +11,23 @@
 .react-grid-layout {
   margin: 0 !important;
 }
+
+/* Scaled grid wrapper styles - disable transitions during scaling to prevent jank */
+.scaled-grid-inner .react-grid-item {
+  transition: none !important;
+}
+
+.scaled-grid-inner .react-grid-item.react-grid-placeholder {
+  display: none !important;
+}
+
+/* Dashboard grid container for responsive layout */
+.dashboard-grid-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Mobile stacked layout */
+.mobile-stacked-layout {
+  width: 100%;
+}

@@ -5,21 +5,22 @@
  */
 
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { Responsive, WidthProvider } from 'react-grid-layout'
-import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import GridLayout from 'react-grid-layout'
+import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
 import DebugModal from './DebugModal'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
+import ScaledGridWrapper from './ScaledGridWrapper'
+import MobileStackedLayout from './MobileStackedLayout'
+import { useResponsiveDashboard } from '../hooks/useResponsiveDashboard'
 import type { ColorPalette } from '../utils/colorPalettes'
 import type { DashboardConfig, PortletConfig, DashboardFilter, CubeMeta } from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
 // import 'react-grid-layout/css/styles.css'
-
-const ResponsiveGridLayout = WidthProvider(Responsive)
 
 interface DashboardGridProps {
   config: DashboardConfig
@@ -44,6 +45,21 @@ export default function DashboardGrid({
   schema,
   onDashboardFiltersChange
 }: DashboardGridProps) {
+  // Responsive dashboard hook for three-tier layout strategy
+  const {
+    containerRef,
+    containerWidth,
+    displayMode,
+    scaleFactor,
+    isEditable: isResponsiveEditable,
+    designWidth
+  } = useResponsiveDashboard()
+
+  // Calculate grid width based on display mode
+  // Desktop: use actual container width (allows wider than 1200px)
+  // Scaled: use design width (1200px) and apply CSS scaling
+  const gridWidth = displayMode === 'desktop' ? containerWidth : designWidth
+
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
@@ -61,15 +77,19 @@ export default function DashboardGrid({
   // Track visible portlets for lazy loading
   const [visiblePortlets, setVisiblePortlets] = useState<Set<string>>(new Set())
 
-  // Exit filter selection mode when leaving edit mode
+  // Exit filter selection mode when leaving edit mode or when switching to non-desktop mode
   useEffect(() => {
-    if (!isEditMode && selectedFilterId) {
+    if ((!isEditMode || !isResponsiveEditable) && selectedFilterId) {
       setSelectedFilterId(null)
     }
-  }, [isEditMode, selectedFilterId])
+  }, [isEditMode, isResponsiveEditable, selectedFilterId])
 
-  // Track current breakpoint to handle mobile vs desktop saves differently
-  const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg')
+  // Exit edit mode when switching to non-desktop view
+  useEffect(() => {
+    if (!isResponsiveEditable && isEditMode) {
+      setIsEditMode(false)
+    }
+  }, [isResponsiveEditable, isEditMode])
 
   // Track scroll state for sticky header
   const [isScrolled, setIsScrolled] = useState(false)
@@ -140,75 +160,58 @@ export default function DashboardGrid({
     }
   }, [selectedFilterId])
 
-  // Set up intersection observer for lazy loading portlets
+  // Simplified scroll-based visibility detection for lazy loading portlets
   useEffect(() => {
-    let observer: IntersectionObserver | null = null
-    let pollTimer: NodeJS.Timeout | null = null
-    let attempts = 0
-    const maxAttempts = 20 // Max 2 seconds (20 * 100ms)
-
-    function setupObserver() {
-      // Query DOM directly for portlet elements since ResponsiveGridLayout doesn't preserve refs
-      const portletElements = document.querySelectorAll('[data-portlet-id]')
-
-      // If elements not ready yet and haven't exceeded max attempts, try again
-      if (portletElements.length === 0 && attempts < maxAttempts) {
-        attempts++
-        pollTimer = setTimeout(setupObserver, 100)
-        return
-      }
-
-      if (portletElements.length === 0) {
-        return
-      }
-
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach(entry => {
-            const portletId = entry.target.getAttribute('data-portlet-id')
-            if (portletId && entry.isIntersecting) {
-              setVisiblePortlets(prev => new Set(prev).add(portletId))
-            }
-          })
-        },
-        {
-          rootMargin: '200px', // Start loading 200px before portlet enters viewport
-          threshold: 0
+    const checkVisibility = () => {
+      const newVisible = new Set<string>()
+      document.querySelectorAll('[data-portlet-id]').forEach(el => {
+        const rect = el.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+        // Load portlets that are in viewport or within 200px of it
+        if (rect.top < viewportHeight + 200 && rect.bottom > -200) {
+          const portletId = el.getAttribute('data-portlet-id')
+          if (portletId) newVisible.add(portletId)
         }
-      )
-
-      // Observe all portlet containers and mark initially visible ones
-      portletElements.forEach((el) => {
-        const portletId = el.getAttribute('data-portlet-id')
-        if (portletId) {
-          observer!.observe(el)
-
-          // Check if element is already in viewport on mount
-          const rect = el.getBoundingClientRect()
-          const isInViewport = (
-            rect.top < window.innerHeight + 200 &&
-            rect.bottom > -200
-          )
-
-          if (isInViewport) {
-            setVisiblePortlets(prev => new Set(prev).add(portletId))
-          }
-        }
+      })
+      setVisiblePortlets(prev => {
+        // Only update if new portlets became visible (union, never remove)
+        const merged = new Set([...prev, ...newVisible])
+        if (merged.size !== prev.size) return merged
+        return prev
       })
     }
 
-    // Start polling for elements in DOM
-    pollTimer = setTimeout(setupObserver, 50)
+    // Debounce scroll handler (16ms = ~60fps)
+    let scrollTimeout: NodeJS.Timeout | null = null
+    const handleScroll = () => {
+      if (scrollTimeout) return
+      scrollTimeout = setTimeout(() => {
+        scrollTimeout = null
+        checkVisibility()
+      }, 16)
+    }
+
+    // Reset visibility and schedule multiple checks when display mode changes
+    // This ensures we catch the DOM after it re-renders in the new layout
+    setVisiblePortlets(new Set())
+    const initialCheck = setTimeout(checkVisibility, 50)
+    const secondCheck = setTimeout(checkVisibility, 150)
+    const thirdCheck = setTimeout(checkVisibility, 300)
+
+    // Listen for scroll events
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    // Also listen for resize since mode changes come from resize
+    window.addEventListener('resize', checkVisibility, { passive: true })
 
     return () => {
-      if (pollTimer) {
-        clearTimeout(pollTimer)
-      }
-      if (observer) {
-        observer.disconnect()
-      }
+      clearTimeout(initialCheck)
+      clearTimeout(secondCheck)
+      clearTimeout(thirdCheck)
+      if (scrollTimeout) clearTimeout(scrollTimeout)
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', checkVisibility)
     }
-  }, [config.portlets])
+  }, [displayMode, config.portlets])
 
   // Helper function to check if layout actually changed (not just reordered due to responsive changes)
   const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
@@ -227,12 +230,12 @@ export default function DashboardGrid({
     return false
   }, [isInitialized, lastKnownLayout])
 
-  const handleLayoutChange = useCallback((_currentLayout: any[], _allLayouts: any) => {
-    // This function is called for ALL layout changes including responsive breakpoints
+  const handleLayoutChange = useCallback((_layout: any[]) => {
+    // This function is called for ALL layout changes
     // We should NOT save here - only update internal state if needed
     // Actual saving only happens in handleDragStop and handleResizeStop for explicit user actions
-    
-    // Note: We don't call onConfigChange here to prevent saving responsive layout changes
+
+    // Note: We don't call onConfigChange here to prevent saving intermediate layout changes
     // The layout changes are handled by react-grid-layout internally
   }, [])  // No dependencies since we're not doing anything
 
@@ -245,29 +248,16 @@ export default function DashboardGrid({
       return // No actual change, don't save
     }
 
-    // Get the current updated config - on mobile only update position, preserve desktop sizing
+    // Get the current updated config (only called in desktop mode)
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
-        if (currentBreakpoint === 'lg') {
-          // Desktop: update everything (position and size)
-          return {
-            ...portlet,
-            x: layoutItem.x,
-            y: layoutItem.y,
-            w: layoutItem.w,
-            h: layoutItem.h
-          }
-        } else {
-          // Mobile/tablet: only update position, preserve original size
-          return {
-            ...portlet,
-            x: layoutItem.x,
-            y: layoutItem.y,
-            // Keep original desktop w and h
-            w: portlet.w,
-            h: portlet.h
-          }
+        return {
+          ...portlet,
+          x: layoutItem.x,
+          y: layoutItem.y,
+          w: layoutItem.w,
+          h: layoutItem.h
         }
       }
       return portlet
@@ -295,7 +285,7 @@ export default function DashboardGrid({
     } catch (error) {
       console.error('Auto-save failed after drag:', error)
     }
-  }, [config.portlets, config.layouts, editable, isEditMode, currentBreakpoint, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle resize stop - update config and save (resize is user interaction)
   const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
@@ -306,29 +296,16 @@ export default function DashboardGrid({
       return // No actual change, don't save
     }
 
-    // Get the current updated config - on mobile only update position, preserve desktop sizing
+    // Get the current updated config (only called in desktop mode)
     const updatedPortlets = config.portlets.map(portlet => {
       const layoutItem = layout.find(item => item.i === portlet.id)
       if (layoutItem) {
-        if (currentBreakpoint === 'lg') {
-          // Desktop: update everything (position and size)
-          return {
-            ...portlet,
-            x: layoutItem.x,
-            y: layoutItem.y,
-            w: layoutItem.w,
-            h: layoutItem.h
-          }
-        } else {
-          // Mobile/tablet: only update position, preserve original size
-          return {
-            ...portlet,
-            x: layoutItem.x,
-            y: layoutItem.y,
-            // Keep original desktop w and h
-            w: portlet.w,
-            h: portlet.h
-          }
+        return {
+          ...portlet,
+          x: layoutItem.x,
+          y: layoutItem.y,
+          w: layoutItem.w,
+          h: layoutItem.h
         }
       }
       return portlet
@@ -358,7 +335,7 @@ export default function DashboardGrid({
         console.error('Auto-save failed after resize:', error)
       }
     }
-  }, [config.portlets, config.layouts, editable, isEditMode, currentBreakpoint, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
@@ -769,16 +746,216 @@ export default function DashboardGrid({
     minH: 3
   }))
 
-  // Create responsive layouts - use stored layouts if available, otherwise let RGL auto-generate
-  // The key insight: only the 'lg' layout should be controlled by our stored portlet positions
-  // All other breakpoints should be auto-generated by react-grid-layout for proper responsive behavior
-  const responsiveLayouts = {
-    lg: baseLayout // Only control the large desktop layout, let RGL handle all responsive adjustments
-  }
+  // Determine if editing is allowed (only in desktop mode)
+  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
 
+  // Render the portlet grid content (shared between desktop and scaled modes)
+  const renderGridContent = () => (
+    <GridLayout
+      className="layout"
+      layout={baseLayout}
+      onLayoutChange={handleLayoutChange}
+      onDragStop={handleDragStop}
+      onResizeStop={handleResizeStop}
+      cols={12}
+      width={gridWidth}
+      isDraggable={canEdit}
+      isResizable={canEdit}
+      draggableHandle=".portlet-drag-handle"
+      margin={[16, 16]}
+      containerPadding={[0, 0]}
+      rowHeight={80}
+      compactType="vertical"
+      preventCollision={false}
+    >
+      {config.portlets.map(portlet => {
+        const hasSelectedFilter = selectedFilterId
+          ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
+          : false
+        const isInSelectionMode = !!selectedFilterId
+
+        return (
+          <div
+            key={portlet.id}
+            data-portlet-id={portlet.id}
+            ref={el => { portletRefs.current[portlet.id] = el }}
+            className={`bg-dc-surface border rounded-lg flex flex-col h-full transition-all ${
+              isInSelectionMode ? 'cursor-pointer' : ''
+            }`}
+            style={{
+              boxShadow: 'var(--dc-shadow-sm)',
+              borderColor: isInSelectionMode && hasSelectedFilter
+                ? 'var(--dc-primary)'
+                : 'var(--dc-border)',
+              borderWidth: isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
+              backgroundColor: isInSelectionMode && hasSelectedFilter
+                ? 'rgba(var(--dc-primary-rgb), 0.05)'
+                : 'var(--dc-surface)',
+              opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1'
+            }}
+            onClick={(e) => {
+              if (isInSelectionMode && selectedFilterId) {
+                e.stopPropagation()
+                handleToggleFilterForPortlet(portlet.id, selectedFilterId)
+              }
+            }}
+          >
+            {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
+            {(!portlet.displayConfig?.hideHeader || isEditMode) && (
+              <div className={`flex items-center justify-between px-3 py-1.5 md:px-4 md:py-1 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
+                  {/* Debug button - only show in edit mode */}
+                  {editable && isEditMode && debugData[portlet.id] && (
+                    <div
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                    >
+                      <DebugModal
+                        chartConfig={debugData[portlet.id].chartConfig}
+                        displayConfig={debugData[portlet.id].displayConfig}
+                        queryObject={debugData[portlet.id].queryObject}
+                        data={debugData[portlet.id].data}
+                        chartType={debugData[portlet.id].chartType}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div
+                  className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handlePortletRefresh(portlet.id)
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      handlePortletRefresh(portlet.id)
+                    }}
+                    disabled={isInSelectionMode}
+                    className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
+                      isInSelectionMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-dc-surface-hover'
+                    }`}
+                    title="Refresh portlet data"
+                  >
+                    <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  </button>
+
+                  {editable && isEditMode && !isInSelectionMode && (
+                    <>
+                      {/* Filter configuration button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenFilterConfig(portlet)
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          handleOpenFilterConfig(portlet)
+                        }}
+                        className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
+                        title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
+                        style={{
+                          color: portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0
+                            ? 'var(--dc-primary)'
+                            : 'var(--dc-text-secondary)'
+                        }}
+                      >
+                        <FunnelIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDuplicatePortlet(portlet.id)
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          handleDuplicatePortlet(portlet.id)
+                        }}
+                        className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                        title="Duplicate portlet"
+                      >
+                        <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditPortlet(portlet)
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          handleEditPortlet(portlet)
+                        }}
+                        className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                        title="Edit portlet"
+                      >
+                        <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeletePortlet(portlet.id)
+                        }}
+                        onTouchEnd={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          handleDeletePortlet(portlet.id)
+                        }}
+                        className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
+                        style={{ color: '#ef4444' }}
+                        title="Delete portlet"
+                      >
+                        <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Portlet Content */}
+            <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
+              <AnalyticsPortlet
+                ref={el => { portletComponentRefs.current[portlet.id] = el }}
+                query={portlet.query}
+                chartType={portlet.chartType}
+                chartConfig={portlet.chartConfig}
+                displayConfig={portlet.displayConfig}
+                dashboardFilters={dashboardFilters}
+                dashboardFilterMapping={portlet.dashboardFilterMapping}
+                eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
+                isVisible={visiblePortlets.has(portlet.id)}
+                title={portlet.title}
+                height="100%"
+                colorPalette={colorPalette}
+                onDebugDataReady={(data) => {
+                  setDebugData(prev => ({
+                    ...prev,
+                    [portlet.id]: data
+                  }))
+                }}
+              />
+            </div>
+          </div>
+        )
+      })}
+    </GridLayout>
+  )
 
   return (
-    <>
+    <div ref={containerRef} className="dashboard-grid-container w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
       {editable && (
         <div
           className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-dc-surface-tertiary border border-dc-border rounded-lg transition-all duration-200 ${
@@ -790,21 +967,30 @@ export default function DashboardGrid({
         >
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setIsEditMode(!isEditMode)}
+              onClick={() => isResponsiveEditable && setIsEditMode(!isEditMode)}
+              disabled={!isResponsiveEditable}
               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
-                isEditMode
-                  ? 'bg-dc-surface-secondary border border-dc-border hover:bg-dc-surface-hover'
-                  : 'bg-dc-surface border border-dc-border hover:bg-dc-surface-hover'
+                !isResponsiveEditable
+                  ? 'opacity-50 cursor-not-allowed bg-dc-surface-secondary border border-dc-border'
+                  : isEditMode
+                    ? 'bg-dc-surface-secondary border border-dc-border hover:bg-dc-surface-hover'
+                    : 'bg-dc-surface border border-dc-border hover:bg-dc-surface-hover'
               }`}
               style={{
-                color: 'var(--dc-primary)',
-                borderColor: isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
+                color: !isResponsiveEditable ? 'var(--dc-text-muted)' : 'var(--dc-primary)',
+                borderColor: !isResponsiveEditable ? 'var(--dc-border)' : isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
               }}
             >
               <PencilIcon className="w-4 h-4 mr-1.5" />
               {isEditMode ? 'Finished Editing' : 'Edit'}
             </button>
-            {isEditMode && (
+            {!isResponsiveEditable && (
+              <div className="flex items-center gap-2 text-sm text-dc-text-secondary">
+                <ComputerDesktopIcon className="w-4 h-4" />
+                <span>Desktop view required for editing</span>
+              </div>
+            )}
+            {isEditMode && isResponsiveEditable && (
               <p className="hidden md:block text-sm text-dc-text-secondary">
                 Drag to rearrange • Resize from corners • Changes save automatically
               </p>
@@ -908,209 +1094,22 @@ export default function DashboardGrid({
         </div>
       )}
       
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={responsiveLayouts}
-        onLayoutChange={handleLayoutChange}
-        onDragStop={handleDragStop}
-        onResizeStop={handleResizeStop}
-        onBreakpointChange={(newBreakpoint) => setCurrentBreakpoint(newBreakpoint)}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        isDraggable={editable && isEditMode && !selectedFilterId}
-        isResizable={editable && isEditMode && !selectedFilterId}
-        draggableHandle=".portlet-drag-handle"
-        margin={{ lg: [16, 16], md: [12, 12], sm: [8, 8], xs: [6, 6], xxs: [4, 4] }}
-        containerPadding={[0, 0]}
-        rowHeight={80}
-        compactType="vertical"
-        preventCollision={false}
-      >
-        {config.portlets.map(portlet => {
-          const hasSelectedFilter = selectedFilterId
-            ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
-            : false
-          const isInSelectionMode = !!selectedFilterId
-
-          return (
-          <div
-            key={portlet.id}
-            data-portlet-id={portlet.id}
-            ref={el => { portletRefs.current[portlet.id] = el }}
-            className={`bg-dc-surface border rounded-lg flex flex-col h-full transition-all ${
-              isInSelectionMode ? 'cursor-pointer' : ''
-            }`}
-            style={{
-              boxShadow: 'var(--dc-shadow-sm)',
-              borderColor: isInSelectionMode && hasSelectedFilter
-                ? 'var(--dc-primary)'
-                : 'var(--dc-border)',
-              borderWidth: isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
-              backgroundColor: isInSelectionMode && hasSelectedFilter
-                ? 'rgba(var(--dc-primary-rgb), 0.05)'
-                : 'var(--dc-surface)',
-              opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1'
-            }}
-            onClick={(e) => {
-              if (isInSelectionMode && selectedFilterId) {
-                e.stopPropagation()
-                handleToggleFilterForPortlet(portlet.id, selectedFilterId)
-              }
-            }}
-          >
-          {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
-          {(!portlet.displayConfig?.hideHeader || isEditMode) && (
-            <div className={`flex items-center justify-between px-3 py-1.5 md:px-4 md:py-1 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
-                {/* Debug button - only show in edit mode */}
-                {editable && isEditMode && debugData[portlet.id] && (
-                  <div
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                  >
-                    <DebugModal
-                      chartConfig={debugData[portlet.id].chartConfig}
-                      displayConfig={debugData[portlet.id].displayConfig}
-                      queryObject={debugData[portlet.id].queryObject}
-                      data={debugData[portlet.id].data}
-                      chartType={debugData[portlet.id].chartType}
-                    />
-                  </div>
-                )}
-              </div>
-              <div
-                className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchEnd={(e) => e.stopPropagation()}
-              >
-                
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handlePortletRefresh(portlet.id)
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
-                    handlePortletRefresh(portlet.id)
-                  }}
-                  disabled={isInSelectionMode}
-                  className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
-                    isInSelectionMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-dc-surface-hover'
-                  }`}
-                  title="Refresh portlet data"
-                >
-                  <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                </button>
-
-                {editable && isEditMode && !isInSelectionMode && (
-                  <>
-                    {/* Filter configuration button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleOpenFilterConfig(portlet)
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        handleOpenFilterConfig(portlet)
-                      }}
-                      className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
-                      title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
-                      style={{
-                        color: portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0
-                          ? 'var(--dc-primary)'
-                          : 'var(--dc-text-secondary)'
-                      }}
-                    >
-                      <FunnelIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDuplicatePortlet(portlet.id)
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        handleDuplicatePortlet(portlet.id)
-                      }}
-                      className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
-                      title="Duplicate portlet"
-                    >
-                      <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleEditPortlet(portlet)
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        handleEditPortlet(portlet)
-                      }}
-                      className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
-                      title="Edit portlet"
-                    >
-                      <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeletePortlet(portlet.id)
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        handleDeletePortlet(portlet.id)
-                      }}
-                      className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
-                      style={{ color: '#ef4444' }}
-                      title="Delete portlet"
-                    >
-                      <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Portlet Content */}
-          <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
-            <AnalyticsPortlet
-              ref={el => { portletComponentRefs.current[portlet.id] = el }}
-              query={portlet.query}
-              chartType={portlet.chartType}
-              chartConfig={portlet.chartConfig}
-              displayConfig={portlet.displayConfig}
-              dashboardFilters={dashboardFilters}
-              dashboardFilterMapping={portlet.dashboardFilterMapping}
-              eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-              isVisible={visiblePortlets.has(portlet.id)}
-              title={portlet.title}
-              height="100%"
-              colorPalette={colorPalette}
-              onDebugDataReady={(data) => {
-                setDebugData(prev => ({
-                  ...prev,
-                  [portlet.id]: data
-                }))
-              }}
-            />
-          </div>
-        </div>
-          )
-        })}
-      </ResponsiveGridLayout>
+      {/* Render layout based on display mode */}
+      {displayMode === 'mobile' ? (
+        <MobileStackedLayout
+          config={config}
+          colorPalette={colorPalette}
+          dashboardFilters={dashboardFilters}
+          visiblePortlets={visiblePortlets}
+          onPortletRefresh={handlePortletRefresh}
+        />
+      ) : displayMode === 'scaled' ? (
+        <ScaledGridWrapper scaleFactor={scaleFactor} designWidth={designWidth}>
+          {renderGridContent()}
+        </ScaledGridWrapper>
+      ) : (
+        renderGridContent()
+      )}
       
       {/* Portlet Modal */}
       <PortletEditModal
@@ -1138,6 +1137,6 @@ export default function DashboardGrid({
         onSave={handleSaveFilterConfig}
         portletTitle={filterConfigPortlet?.title || ''}
       />
-    </>
+    </div>
   )
 }
