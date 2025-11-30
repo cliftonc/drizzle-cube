@@ -40,8 +40,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   displayConfig,
   dashboardFilters,
   dashboardFilterMapping,
-  eagerLoad = false,
-  isVisible = true,
+  eagerLoad: _eagerLoad,
+  isVisible: _isVisible,
   height = 300,
   title: _title,
   colorPalette,
@@ -98,8 +98,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     }
   }, [query, refreshCounter, shouldSkipQuery, dashboardFilters, dashboardFilterMapping])
 
-  // Use the cube React hook (skip for charts that don't need queries or not yet visible)
-  const shouldSkip = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible)
+  // Use the cube React hook (skip for charts that don't need queries)
+  const shouldSkip = !queryObject || shouldSkipQuery
 
   const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
     skip: shouldSkip,
