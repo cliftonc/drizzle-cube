@@ -33,6 +33,7 @@ interface CubeProviderProps {
   options?: CubeQueryOptions
   features?: FeaturesConfig
   enableBatching?: boolean
+  batchDelayMs?: number  // Delay in ms to collect queries before batching (default: 100)
   children: React.ReactNode
 }
 
@@ -43,6 +44,7 @@ export function CubeProvider({
   options = {},
   features = { enableAI: true, aiEndpoint: '/api/ai/generate' }, // Default to AI enabled for backward compatibility
   enableBatching = true, // Default to batching enabled
+  batchDelayMs = 100, // Default 100ms batch window
   children
 }: CubeProviderProps) {
   // State for dynamic API configuration (only for updates via updateApiConfig)
@@ -74,8 +76,8 @@ export function CubeProvider({
     // Create batch executor function that uses cubeApi.batchLoad
     const batchExecutor = (queries: any[]) => cubeApi.batchLoad(queries)
 
-    return new BatchCoordinator(batchExecutor)
-  }, [enableBatching, cubeApi])
+    return new BatchCoordinator(batchExecutor, batchDelayMs)
+  }, [enableBatching, cubeApi, batchDelayMs])
 
   const { meta, labelMap, loading: metaLoading, error: metaError, getFieldLabel, refetch: refetchMeta } = useCubeMeta(cubeApi)
   

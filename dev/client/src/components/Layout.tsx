@@ -67,9 +67,9 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-dc-surface-secondary transition-colors">
+    <div className="h-screen flex flex-col bg-dc-surface-secondary transition-colors overflow-hidden">
       <FloatingGitHubButton />
-      <nav className="bg-dc-surface shadow-2xs border-b border-dc-border relative z-10 transition-colors">
+      <nav className="bg-dc-surface shadow-2xs border-b border-dc-border relative z-10 transition-colors shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Desktop layout */}
@@ -223,15 +223,17 @@ export default function Layout({ children }: LayoutProps) {
         )}
       </nav>
 
-      {isHomePage ? (
-        children
-      ) : (
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            {children}
-          </div>
-        </main>
-      )}
+      <div className="flex-1 overflow-y-auto">
+        {isHomePage ? (
+          children
+        ) : (
+          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="px-4 py-6 sm:px-0">
+              {children}
+            </div>
+          </main>
+        )}
+      </div>
     </div>
   )
 }

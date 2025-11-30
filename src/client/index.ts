@@ -46,6 +46,7 @@ export { default as QueryBuilder } from './components/QueryBuilder'
 
 // Data provider and hooks
 export { CubeProvider, useCubeContext } from './providers/CubeProvider'
+export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
 export { useCubeQuery } from './hooks/useCubeQuery'
 export { createCubeClient } from './client/CubeClient'
 

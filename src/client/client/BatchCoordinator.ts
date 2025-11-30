@@ -13,15 +13,18 @@ interface QueuedQuery {
  * BatchCoordinator collects queries triggered in the same render cycle
  * and sends them as a single batch request to minimize network overhead.
  *
- * Uses microtask queue (setTimeout 0) to batch queries from same tick.
+ * Uses a configurable delay (default 100ms) to batch queries from lazy-loaded
+ * portlets that become visible during the same scroll action.
  */
 export class BatchCoordinator {
   private queue: QueuedQuery[] = []
   private flushScheduled = false
   private batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>
+  private delayMs: number
 
-  constructor(batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>) {
+  constructor(batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>, delayMs: number = 100) {
     this.batchExecutor = batchExecutor
+    this.delayMs = delayMs
   }
 
   /**
@@ -41,15 +44,16 @@ export class BatchCoordinator {
   }
 
   /**
-   * Schedule a flush on the next microtask (setTimeout 0)
-   * This ensures we collect all queries from the same render cycle
+   * Schedule a flush after a short delay to collect multiple queries.
+   * The delay allows queries from lazy-loaded portlets that become visible
+   * during the same scroll action to be batched together.
    */
   private scheduleFlush(): void {
     this.flushScheduled = true
 
     setTimeout(() => {
       this.flush()
-    }, 0)
+    }, this.delayMs)
   }
 
   /**

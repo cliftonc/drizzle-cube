@@ -16,7 +16,41 @@ import DashboardFilterPanel from './DashboardFilterPanel'
 import ScaledGridWrapper from './ScaledGridWrapper'
 import MobileStackedLayout from './MobileStackedLayout'
 import { useResponsiveDashboard } from '../hooks/useResponsiveDashboard'
+import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
 import type { ColorPalette } from '../utils/colorPalettes'
+
+/**
+ * Finds the nearest scrollable ancestor of an element.
+ * Used to detect scroll container for lazy loading IntersectionObserver.
+ */
+function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null {
+  if (!element) return null
+
+  let current = element.parentElement
+
+  while (current) {
+    const style = window.getComputedStyle(current)
+    const overflowY = style.overflowY
+    const overflowX = style.overflowX
+
+    const hasScrollableOverflow =
+      overflowY === 'auto' || overflowY === 'scroll' ||
+      overflowX === 'auto' || overflowX === 'scroll'
+
+    const hasScrollContent =
+      current.scrollHeight > current.clientHeight ||
+      current.scrollWidth > current.clientWidth
+
+    if (hasScrollableOverflow && hasScrollContent) {
+      return current
+    }
+
+    if (current === document.body) break
+    current = current.parentElement
+  }
+
+  return null // Use viewport
+}
 import type { DashboardConfig, PortletConfig, DashboardFilter, CubeMeta } from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
@@ -54,6 +88,27 @@ export default function DashboardGrid({
     isEditable: isResponsiveEditable,
     designWidth
   } = useResponsiveDashboard()
+
+  // Scroll container detection for lazy loading
+  // Null = viewport, element = scrolling container
+  const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null)
+  const containerElementRef = useRef<HTMLDivElement | null>(null)
+
+  // Detect scroll container after mount
+  useEffect(() => {
+    if (containerElementRef.current) {
+      setScrollContainer(findScrollableAncestor(containerElementRef.current))
+    }
+  }, [])
+
+  // Combined ref for container
+  const combinedContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerElementRef.current = node
+    containerRef(node)
+    if (node) {
+      setScrollContainer(findScrollableAncestor(node))
+    }
+  }, [containerRef])
 
   // Calculate grid width based on display mode
   // Desktop: use actual container width (allows wider than 1200px)
@@ -880,7 +935,6 @@ export default function DashboardGrid({
                 dashboardFilters={dashboardFilters}
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-                isVisible={true}
                 title={portlet.title}
                 height="100%"
                 colorPalette={colorPalette}
@@ -899,8 +953,9 @@ export default function DashboardGrid({
   )
 
   return (
-    <div ref={containerRef} className="dashboard-grid-container w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-      {editable && (
+    <ScrollContainerProvider value={scrollContainer}>
+      <div ref={combinedContainerRef} className="dashboard-grid-container w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+        {editable && (
         <div
           className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-dc-surface-tertiary border border-dc-border rounded-lg transition-all duration-200 ${
             isScrolled ? 'border-b' : ''
@@ -1080,6 +1135,7 @@ export default function DashboardGrid({
         onSave={handleSaveFilterConfig}
         portletTitle={filterConfigPortlet?.title || ''}
       />
-    </div>
+      </div>
+    </ScrollContainerProvider>
   )
 }

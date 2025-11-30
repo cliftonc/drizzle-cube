@@ -4,7 +4,9 @@
  */
 
 import { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
+import { useInView } from 'react-intersection-observer'
 import { useCubeQuery } from '../hooks/useCubeQuery'
+import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { getChartConfig } from '../charts/chartConfigs'
@@ -40,8 +42,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   displayConfig,
   dashboardFilters,
   dashboardFilterMapping,
-  eagerLoad: _eagerLoad,
-  isVisible: _isVisible,
+  eagerLoad = false,
+  isVisible: _isVisible, // Deprecated - visibility now handled internally via useInView
   height = 300,
   title: _title,
   colorPalette,
@@ -49,6 +51,21 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 }, ref) => {
   const [refreshCounter, setRefreshCounter] = useState(0)
   const onDebugDataReadyRef = useRef(onDebugDataReady)
+
+  // Lazy loading: Use IntersectionObserver to detect when portlet is visible
+  // Get scroll container from context (null = viewport, element = container scroll)
+  const scrollContainer = useScrollContainer()
+  const { ref: inViewRef, inView } = useInView({
+    root: scrollContainer,
+    rootMargin: '200px',      // Start loading 200px before entering viewport
+    triggerOnce: true,        // Once visible, stay "visible" (don't unload data)
+    initialInView: false,     // Start as not visible, let observer determine actual state
+    skip: eagerLoad           // Skip observation entirely if eagerLoad is true
+  })
+
+  // Effective visibility: eagerLoad forces visible, otherwise use inView from IntersectionObserver
+  // Note: Batching is handled by BatchCoordinator which collects queries for 100ms before flushing
+  const isVisible = eagerLoad || inView
 
   // Update ref when callback changes
   useEffect(() => {
@@ -98,8 +115,9 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     }
   }, [query, refreshCounter, shouldSkipQuery, dashboardFilters, dashboardFilterMapping])
 
-  // Use the cube React hook (skip for charts that don't need queries)
-  const shouldSkip = !queryObject || shouldSkipQuery
+  // Use the cube React hook (skip for charts that don't need queries or not visible for lazy loading)
+  // Priority: shouldSkipQuery (chart type) > eagerLoad override > isVisible (lazy loading)
+  const shouldSkip = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible)
 
   const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
     skip: shouldSkip,
@@ -146,10 +164,22 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   
   if (!chartConfig && hasMandatoryFields) {
     return (
-      <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+      <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Configuration Required</div>
           <div className="text-xs text-dc-text-secondary">Please configure this chart</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show placeholder for lazy-loaded portlets that aren't visible yet
+  if (!shouldSkipQuery && !eagerLoad && !isVisible) {
+    return (
+      <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="text-center">
+          <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-dc-surface-secondary animate-pulse" />
+          <div className="text-xs text-dc-text-secondary">Scroll to load</div>
         </div>
       </div>
     )
@@ -159,7 +189,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   if (!shouldSkipQuery) {
     if (isLoading || (queryObject && !resultSet && !error)) {
       return (
-        <div className="flex items-center justify-center w-full" style={{ height }}>
+        <div ref={inViewRef} className="flex items-center justify-center w-full" style={{ height }}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
       )
@@ -167,7 +197,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (error) {
       return (
-        <div className="p-4 border rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
+        <div ref={inViewRef} className="p-4 border rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
           <div className="mb-2">
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
@@ -212,7 +242,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
     if (!resultSet || !queryObject) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">No data available</div>
             <div className="text-xs">Invalid query or no results</div>
@@ -246,6 +276,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   const data = getData()
 
   // Render appropriate chart component
+  // Note: ChartContainer now handles dimension validation to prevent Recharts -1 errors
   const renderChart = () => {
     try {
       // Pass height directly to charts - let ChartContainer handle it
@@ -442,20 +473,22 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   }
 
   return (
-    <ChartErrorBoundary
-      portletTitle={_title}
-      portletConfig={{
-        chartType,
-        chartConfig,
-        displayConfig,
-        height
-      }}
-      cubeQuery={query}
-    >
-      <div className="w-full h-full flex flex-col flex-1" style={{ minHeight: '200px' }}>
-        {renderChart()}
-      </div>
-    </ChartErrorBoundary>
+    <div ref={inViewRef} className="w-full h-full">
+      <ChartErrorBoundary
+        portletTitle={_title}
+        portletConfig={{
+          chartType,
+          chartConfig,
+          displayConfig,
+          height
+        }}
+        cubeQuery={query}
+      >
+        <div className="w-full h-full flex flex-col flex-1" style={{ minHeight: '200px' }}>
+          {renderChart()}
+        </div>
+      </ChartErrorBoundary>
+    </div>
   )
 })
 

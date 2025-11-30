@@ -4,11 +4,44 @@
  * Read-only view with portlets sorted by grid position
  */
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState, useCallback } from 'react'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
+import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
 import type { DashboardFilter, DashboardConfig } from '../types'
 import type { ColorPalette } from '../utils/colorPalettes'
+
+/**
+ * Finds the nearest scrollable ancestor of an element.
+ */
+function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null {
+  if (!element) return null
+
+  let current = element.parentElement
+
+  while (current) {
+    const style = window.getComputedStyle(current)
+    const overflowY = style.overflowY
+    const overflowX = style.overflowX
+
+    const hasScrollableOverflow =
+      overflowY === 'auto' || overflowY === 'scroll' ||
+      overflowX === 'auto' || overflowX === 'scroll'
+
+    const hasScrollContent =
+      current.scrollHeight > current.clientHeight ||
+      current.scrollWidth > current.clientWidth
+
+    if (hasScrollableOverflow && hasScrollContent) {
+      return current
+    }
+
+    if (current === document.body) break
+    current = current.parentElement
+  }
+
+  return null
+}
 
 interface MobileStackedLayoutProps {
   config: DashboardConfig
@@ -29,6 +62,17 @@ export default function MobileStackedLayout({
 }: MobileStackedLayoutProps) {
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
 
+  // Scroll container detection for lazy loading
+  const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node
+    if (node) {
+      setScrollContainer(findScrollableAncestor(node))
+    }
+  }, [])
+
   // Sort portlets by y position, then x position (top-to-bottom, left-to-right)
   const sortedPortlets = useMemo(() => {
     return [...config.portlets].sort((a, b) => {
@@ -45,8 +89,9 @@ export default function MobileStackedLayout({
   }
 
   return (
-    <div className="mobile-stacked-layout space-y-4 px-2">
-      {sortedPortlets.map(portlet => {
+    <ScrollContainerProvider value={scrollContainer}>
+      <div ref={setContainerRef} className="mobile-stacked-layout space-y-4 px-2">
+        {sortedPortlets.map(portlet => {
         // Calculate height: use stored h * rowHeight (80px), with minimum
         const portletHeight = Math.max(300, portlet.h * 80)
         // Header is approximately 40px when shown
@@ -96,7 +141,6 @@ export default function MobileStackedLayout({
                 dashboardFilters={dashboardFilters}
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-                isVisible={true}
                 title={portlet.title}
                 height={contentHeight}
                 colorPalette={colorPalette}
@@ -105,6 +149,7 @@ export default function MobileStackedLayout({
           </div>
         )
       })}
-    </div>
+      </div>
+    </ScrollContainerProvider>
   )
 }

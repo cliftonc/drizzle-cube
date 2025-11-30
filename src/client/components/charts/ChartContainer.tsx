@@ -1,4 +1,4 @@
-import { ReactElement } from 'react'
+import { ReactElement, useState, useRef, useLayoutEffect } from 'react'
 import { ResponsiveContainer } from 'recharts'
 
 interface ChartContainerProps {
@@ -7,30 +7,111 @@ interface ChartContainerProps {
 }
 
 export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
+  // Track if container is ready to render ResponsiveContainer
+  // We need to wait for the container to be in the DOM with valid dimensions
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isReady, setIsReady] = useState(false)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+  // Use useLayoutEffect to measure before paint
+  useLayoutEffect(() => {
+    let mounted = true
+    let resizeObserver: ResizeObserver | null = null
+
+    const measureAndSetReady = () => {
+      if (!mounted || !containerRef.current) return
+
+      const rect = containerRef.current.getBoundingClientRect()
+      // Check both clientWidth/Height AND getBoundingClientRect for robustness
+      const width = Math.max(containerRef.current.clientWidth, rect.width)
+      const height = Math.max(containerRef.current.clientHeight, rect.height)
+
+      if (width > 0 && height > 0) {
+        setContainerSize({ width, height })
+        setIsReady(true)
+      }
+    }
+
+    // Set up ResizeObserver to detect when container gets valid dimensions
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width > 0 && height > 0) {
+          setContainerSize({ width, height })
+          if (!isReady) {
+            setIsReady(true)
+          }
+        }
+      }
+    })
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+      // Also try immediate measurement
+      measureAndSetReady()
+    }
+
+    return () => {
+      mounted = false
+      resizeObserver?.disconnect()
+    }
+  }, [isReady])
+
   try {
     if (height === "100%") {
       // For 100% height, make the container fill the available flex space with proper sizing
       return (
-        <div className="w-full h-full flex-1 flex flex-col relative" style={{ minHeight: '250px', overflow: 'hidden' }}>
-          <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
-            {children}
-          </ResponsiveContainer>
+        <div
+          ref={containerRef}
+          className="w-full h-full flex-1 flex flex-col relative"
+          style={{ minHeight: '250px', minWidth: '100px', overflow: 'hidden' }}
+        >
+          {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
+            <ResponsiveContainer
+              width={containerSize.width}
+              height={containerSize.height - 16}
+              debounce={100}
+              style={{ marginTop: '16px' }}
+            >
+              {children}
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center w-full h-full">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            </div>
+          )}
         </div>
       )
     }
-    
+
     // For specific heights, use them directly
     const containerStyle = {
       height: typeof height === 'number' ? `${height}px` : height,
       width: '100%',
-      minHeight: '200px'
+      minHeight: '200px',
+      minWidth: '100px'
     }
-    
+
     return (
-      <div className="w-full flex flex-col relative" style={{ ...containerStyle, overflow: 'hidden' }}>
-        <ResponsiveContainer width="100%" height="100%" debounce={50} style={{ marginTop: '16px' }}>
-          {children}
-        </ResponsiveContainer>
+      <div
+        ref={containerRef}
+        className="w-full flex flex-col relative"
+        style={{ ...containerStyle, overflow: 'hidden' }}
+      >
+        {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
+          <ResponsiveContainer
+            width={containerSize.width}
+            height={containerSize.height - 16}
+            debounce={100}
+            style={{ marginTop: '16px' }}
+          >
+            {children}
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center w-full h-full">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          </div>
+        )}
       </div>
     )
   } catch (error) {
