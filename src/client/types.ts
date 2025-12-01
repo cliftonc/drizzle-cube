@@ -84,6 +84,10 @@ export interface ChartDisplayConfig {
   positiveColorIndex?: number // Index of color from dashboard palette for positive changes
   negativeColorIndex?: number // Index of color from dashboard palette for negative changes
   showHistogram?: boolean // Whether to show variance histogram
+
+  // KPI time period handling
+  useLastCompletePeriod?: boolean // Exclude incomplete current period (e.g., partial week/month)
+  skipLastPeriod?: boolean // Always exclude the last period regardless of completeness
   
   // Markdown specific display options
   content?: string // Markdown content text

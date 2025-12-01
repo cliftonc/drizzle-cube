@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
+import { Icon } from '@iconify/react'
+import infoCircleIcon from '@iconify-icons/tabler/info-circle'
 import { useCubeContext } from '../../providers/CubeProvider'
 import DataHistogram from '../DataHistogram'
 import { parseTargetValues, calculateVariance, formatVariance } from '../../utils/targetUtils'
+import { filterIncompletePeriod } from '../../utils/periodUtils'
 import type { ChartProps } from '../../types'
 
-export default function KpiNumber({ 
-  data, 
-  chartConfig, 
+export default function KpiNumber({
+  data,
+  chartConfig,
   displayConfig = {},
+  queryObject,
   height = "100%",
   colorPalette
 }: ChartProps) {
@@ -118,10 +122,36 @@ export default function KpiNumber({
   }
 
   const valueField = valueFields[0] // Use first measure field
-  
-  
+
+  // Get time dimension field if present (for incomplete period filtering)
+  const timeDimensionField = queryObject?.timeDimensions?.[0]?.dimension || undefined
+
+  // Sort data by time dimension if available (for proper filtering)
+  let sortedData = [...data]
+  if (timeDimensionField) {
+    sortedData = sortedData.sort((a, b) => {
+      const aVal = a[timeDimensionField]
+      const bVal = b[timeDimensionField]
+      if (aVal < bVal) return -1
+      if (aVal > bVal) return 1
+      return 0
+    })
+  }
+
+  // Filter out incomplete or last period if enabled
+  const { useLastCompletePeriod = true, skipLastPeriod = false } = displayConfig
+  const {
+    filteredData,
+    excludedIncompletePeriod,
+    skippedLastPeriod,
+    granularity
+  } = filterIncompletePeriod(sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
+
+  // Use filtered data for calculations
+  const dataToUse = filteredData
+
   // Extract values for the selected field
-  const rawValues = data.map(row => {
+  const rawValues = dataToUse.map(row => {
     // Try direct field access first
     if (row[valueField] !== undefined) {
       return row[valueField]
@@ -265,18 +295,30 @@ export default function KpiNumber({
     >
         {/* Field Label - Bolder and bigger */}
         <div
-          className="text-dc-text-secondary font-bold text-center mb-3"
+          className="text-dc-text-secondary font-bold text-center mb-3 flex items-center justify-center gap-1"
           style={{
             fontSize: '14px',
             lineHeight: '1.2'
           }}
         >
-          {(() => {
-            const label = getFieldLabel(valueField)
-            // Temporary fix: if label seems wrong, use the field name directly
-            const displayLabel = (label && label.length > 1) ? label : valueField
-            return displayLabel
-          })()}
+          <span>
+            {(() => {
+              const label = getFieldLabel(valueField)
+              // Temporary fix: if label seems wrong, use the field name directly
+              const displayLabel = (label && label.length > 1) ? label : valueField
+              return displayLabel
+            })()}
+          </span>
+          {(excludedIncompletePeriod || skippedLastPeriod) && (
+            <span
+              title={skippedLastPeriod
+                ? `Excludes last ${granularity || 'period'}`
+                : `Excludes current incomplete ${granularity}`}
+              className="cursor-help"
+            >
+              <Icon icon={infoCircleIcon} className="w-4 h-4 text-dc-text-muted opacity-70" />
+            </span>
+          )}
         </div>
 
         {/* Main KPI Value and Variance - Horizontal layout */}

@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { Icon } from '@iconify/react'
+import infoCircleIcon from '@iconify-icons/tabler/info-circle'
 import { useCubeContext } from '../../providers/CubeProvider'
+import { filterIncompletePeriod } from '../../utils/periodUtils'
 import type { ChartProps } from '../../types'
 
 interface VarianceHistogramProps {
@@ -120,10 +123,11 @@ function VarianceHistogram({
   )
 }
 
-export default function KpiDelta({ 
-  data, 
-  chartConfig, 
+export default function KpiDelta({
+  data,
+  chartConfig,
   displayConfig = {},
+  queryObject,
   height = "100%",
   colorPalette
 }: ChartProps) {
@@ -243,8 +247,20 @@ export default function KpiDelta({
     })
   }
 
-  // Extract values
-  const values = sortedData
+  // Filter out incomplete or last period if enabled
+  const { useLastCompletePeriod = true, skipLastPeriod = false } = displayConfig
+  const {
+    filteredData,
+    excludedIncompletePeriod,
+    skippedLastPeriod,
+    granularity
+  } = filterIncompletePeriod(sortedData, dimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
+
+  // Use filtered data for calculations
+  const dataToUse = filteredData
+
+  // Extract values from filtered data
+  const values = dataToUse
     .map(row => row[valueField])
     .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
     .map(val => Number(val))
@@ -346,16 +362,28 @@ export default function KpiDelta({
     >
       {/* Field Label */}
       <div
-        className="text-dc-text-secondary font-bold text-center mb-2"
+        className="text-dc-text-secondary font-bold text-center mb-2 flex items-center justify-center gap-1"
         style={{
           fontSize: '14px',
           lineHeight: '1.2'
         }}
       >
-        {(() => {
-          const label = getFieldLabel(valueField)
-          return (label && label.length > 1) ? label : valueField
-        })()}
+        <span>
+          {(() => {
+            const label = getFieldLabel(valueField)
+            return (label && label.length > 1) ? label : valueField
+          })()}
+        </span>
+        {(excludedIncompletePeriod || skippedLastPeriod) && (
+          <span
+            title={skippedLastPeriod
+              ? `Excludes last ${granularity || 'period'}`
+              : `Excludes current incomplete ${granularity}`}
+            className="cursor-help"
+          >
+            <Icon icon={infoCircleIcon} className="w-4 h-4 text-dc-text-muted opacity-70" />
+          </span>
+        )}
       </div>
 
       {/* Main KPI Value and Delta */}

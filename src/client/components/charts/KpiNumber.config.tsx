@@ -58,6 +58,20 @@ export const kpiNumberConfig: ChartTypeConfig = {
       type: 'paletteColor',
       defaultValue: 0,
       description: 'Color from the dashboard palette for the KPI value text'
+    },
+    {
+      key: 'useLastCompletePeriod',
+      label: 'Use Last Complete Period',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Exclude current incomplete period from aggregation (e.g., partial week/month)'
+    },
+    {
+      key: 'skipLastPeriod',
+      label: 'Skip Last Period',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Always exclude the last period regardless of completeness'
     }
   ],
   displayOptions: ['hideHeader']
