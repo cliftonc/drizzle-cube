@@ -8,7 +8,8 @@
   "exports": {
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js"
+      "import": "./dist/server/index.js",
+      "require": "./dist/server/index.cjs"
     },
     "./client": {
       "types": "./dist/client/index.d.ts",
@@ -37,19 +38,23 @@
     "./client/styles.css": "./dist/client/styles.css",
     "./adapters/hono": {
       "types": "./dist/adapters/hono/index.d.ts",
-      "import": "./dist/adapters/hono/index.js"
+      "import": "./dist/adapters/hono/index.js",
+      "require": "./dist/adapters/hono/index.cjs"
     },
     "./adapters/express": {
       "types": "./dist/adapters/express/index.d.ts",
-      "import": "./dist/adapters/express/index.js"
+      "import": "./dist/adapters/express/index.js",
+      "require": "./dist/adapters/express/index.cjs"
     },
     "./adapters/fastify": {
       "types": "./dist/adapters/fastify/index.d.ts",
-      "import": "./dist/adapters/fastify/index.js"
+      "import": "./dist/adapters/fastify/index.js",
+      "require": "./dist/adapters/fastify/index.cjs"
     },
     "./adapters/nextjs": {
       "types": "./dist/adapters/nextjs/index.d.ts",
-      "import": "./dist/adapters/nextjs/index.js"
+      "import": "./dist/adapters/nextjs/index.js",
+      "require": "./dist/adapters/nextjs/index.cjs"
     }
   },
   "files": [

@@ -20,7 +20,7 @@ export default defineConfig({
         'fastify/index': resolve(__dirname, 'src/adapters/fastify/index.ts'),
         'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts')
       },
-      formats: ['es']
+      formats: ['es', 'cjs']
     },
     outDir: 'dist/adapters',
     rollupOptions: {
