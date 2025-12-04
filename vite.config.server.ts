@@ -15,7 +15,7 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/server/index.ts'),
       name: 'DrizzleCubeServer',
-      formats: ['es'],
+      formats: ['es', 'cjs'],
       fileName: 'index'
     },
     outDir: 'dist/server',
