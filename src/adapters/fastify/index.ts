@@ -490,12 +490,13 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   // Global error handler
   fastify.setErrorHandler(async (error, request, reply) => {
     request.log.error(error, 'Fastify cube adapter error')
-    
+
     if (reply.statusCode < 400) {
       reply.status(500)
     }
-    
-    return formatErrorResponse(error, reply.statusCode)
+
+    const errorArg = error instanceof Error ? error : String(error)
+    return formatErrorResponse(errorArg, reply.statusCode)
   })
 
   done()
