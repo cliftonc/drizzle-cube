@@ -138,7 +138,7 @@
     "@neondatabase/serverless": "^1.0.1",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
-    "drizzle-orm": "^0.44.4",
+    "drizzle-orm": "^0.44.4 || ^0.45.0",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
     "hono": "^4.0.0",
