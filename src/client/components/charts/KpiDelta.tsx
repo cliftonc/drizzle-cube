@@ -1,18 +1,18 @@
-import { useState, useRef, useEffect } from 'react'
-import { Icon } from '@iconify/react'
-import infoCircleIcon from '@iconify-icons/tabler/info-circle'
-import { useCubeContext } from '../../providers/CubeProvider'
-import { filterIncompletePeriod } from '../../utils/periodUtils'
-import type { ChartProps } from '../../types'
+import { useState, useRef, useEffect } from "react";
+import { Icon } from "@iconify/react";
+import infoCircleIcon from "@iconify-icons/tabler/info-circle";
+import { useCubeContext } from "../../providers/CubeProvider";
+import { filterIncompletePeriod } from "../../utils/periodUtils";
+import type { ChartProps } from "../../types";
 
 interface VarianceHistogramProps {
-  values: number[]
-  lastValue: number
-  positiveColor: string
-  negativeColor: string
-  formatValue: (value: number) => string
-  width: number
-  height: number
+  values: number[];
+  lastValue: number;
+  positiveColor: string;
+  negativeColor: string;
+  formatValue: (value: number) => string;
+  width: number;
+  height: number;
 }
 
 function VarianceHistogram({
@@ -22,22 +22,23 @@ function VarianceHistogram({
   negativeColor,
   formatValue,
   width,
-  height
+  height,
 }: VarianceHistogramProps) {
   // Limit to most recent N values to fit in the histogram
   // Calculate max bars based on width (minimum 8px per bar including gap)
-  const maxBars = Math.max(10, Math.floor(width / 10))
-  const limitedValues = values.length > maxBars
-    ? values.slice(-maxBars)  // Take the most recent values
-    : values
+  const maxBars = Math.max(10, Math.floor(width / 10));
+  const limitedValues =
+    values.length > maxBars
+      ? values.slice(-maxBars) // Take the most recent values
+      : values;
 
   // Calculate variance (difference) from current/last value for each point
-  const variances = limitedValues.map(value => value - lastValue)
+  const variances = limitedValues.map((value) => value - lastValue);
 
   // Find min/max variance for scaling (include 0 as baseline)
-  const minVariance = Math.min(...variances, 0)
-  const maxVariance = Math.max(...variances, 0)
-  const range = Math.max(Math.abs(minVariance), Math.abs(maxVariance))
+  const minVariance = Math.min(...variances, 0);
+  const maxVariance = Math.max(...variances, 0);
+  const range = Math.max(Math.abs(minVariance), Math.abs(maxVariance));
 
   if (range === 0 || variances.length === 0) {
     return (
@@ -47,19 +48,20 @@ function VarianceHistogram({
       >
         <span className="text-xs text-gray-500">No variance data</span>
       </div>
-    )
+    );
   }
 
   // Calculate bar dimensions
-  const barGap = 2
-  const availableWidth = width - ((limitedValues.length - 1) * barGap)
-  const barWidth = Math.max(4, availableWidth / limitedValues.length)
+  const barGap = 2;
+  const availableWidth = width - (limitedValues.length - 1) * barGap;
+  const barWidth = Math.max(4, availableWidth / limitedValues.length);
 
   // Calculate where zero line should be positioned (as percentage from top)
   // If maxVariance = 67 and minVariance = -24, total range = 91
   // Zero should be at 67/91 = 73.6% from top
-  const totalRange = maxVariance - minVariance
-  const zeroLinePercent = totalRange > 0 ? (maxVariance / totalRange) * 100 : 50
+  const totalRange = maxVariance - minVariance;
+  const zeroLinePercent =
+    totalRange > 0 ? (maxVariance / totalRange) * 100 : 50;
 
   return (
     <div className="flex items-center space-x-2">
@@ -68,29 +70,29 @@ function VarianceHistogram({
         className="relative"
         style={{
           width: `${width}px`,
-          height: `${height}px`
+          height: `${height}px`,
         }}
       >
         {/* Zero line (represents current value) */}
         <div
           className="absolute left-0 right-0"
           style={{
-            height: '1px',
+            height: "1px",
             top: `${zeroLinePercent}%`,
-            backgroundColor: 'var(--dc-border)',
-            zIndex: 1
+            backgroundColor: "var(--dc-border)",
+            zIndex: 1,
           }}
         />
 
         {/* Variance bars - oldest to newest (left to right) */}
         {variances.map((variance, index) => {
           // Calculate bar height as proportion of total range
-          const normalizedHeight = Math.abs(variance) / totalRange
-          const barHeight = Math.max(2, normalizedHeight * (height - 4))
-          const isPositive = variance >= 0
-          const isLastValue = index === limitedValues.length - 1
-          const color = isPositive ? positiveColor : negativeColor
-          const xPosition = index * (barWidth + barGap)
+          const normalizedHeight = Math.abs(variance) / totalRange;
+          const barHeight = Math.max(2, normalizedHeight * (height - 4));
+          const isPositive = variance >= 0;
+          const isLastValue = index === limitedValues.length - 1;
+          const color = isPositive ? positiveColor : negativeColor;
+          const xPosition = index * (barWidth + barGap);
 
           return (
             <div
@@ -106,21 +108,27 @@ function VarianceHistogram({
                 ...(isPositive
                   ? { bottom: `${100 - zeroLinePercent}%` }
                   : { top: `${zeroLinePercent}%` }),
-                zIndex: 2
+                zIndex: 2,
               }}
-              title={`${formatValue(limitedValues[index])}: ${variance >= 0 ? '+' : ''}${formatValue(variance)} vs current`}
+              title={`${formatValue(limitedValues[index])}: ${variance >= 0 ? "+" : ""}${formatValue(variance)} vs current`}
             />
-          )
+          );
         })}
       </div>
 
       {/* Variance labels on the right - show actual value difference */}
-      <div className="flex flex-col justify-between text-xs text-dc-text-muted" style={{ height: `${height}px` }}>
+      <div
+        className="flex flex-col justify-between text-xs text-dc-text-muted"
+        style={{ height: `${height}px` }}
+      >
         <span>+{formatValue(maxVariance)}</span>
-        <span>{minVariance < 0 ? '' : ''}{formatValue(minVariance)}</span>
+        <span>
+          {minVariance < 0 ? "" : ""}
+          {formatValue(minVariance)}
+        </span>
       </div>
     </div>
-  )
+  );
 }
 
 export default function KpiDelta({
@@ -129,59 +137,62 @@ export default function KpiDelta({
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
 }: ChartProps) {
-  const [fontSize, setFontSize] = useState(32)
-  const [textWidth, setTextWidth] = useState(250)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const valueRef = useRef<HTMLDivElement>(null)
-  const { getFieldLabel } = useCubeContext()
+  const [fontSize, setFontSize] = useState(32);
+  const [textWidth, setTextWidth] = useState(250);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef<HTMLDivElement>(null);
+  const { getFieldLabel } = useCubeContext();
 
   // Calculate font size and text width based on container dimensions
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        const container = containerRef.current
-        const rect = container.getBoundingClientRect()
-        const containerWidth = rect.width
-        const containerHeight = rect.height
-        
+        const container = containerRef.current;
+        const rect = container.getBoundingClientRect();
+        const containerWidth = rect.width;
+        const containerHeight = rect.height;
+
         if (containerWidth > 0 && containerHeight > 0) {
-          const widthBasedSize = containerWidth / 4
-          const heightBasedSize = containerHeight / 4 
-          const baseFontSize = Math.min(widthBasedSize, heightBasedSize)
-          const clampedFontSize = Math.max(28, Math.min(baseFontSize, 140))
-          setFontSize(clampedFontSize)
-          
+          const widthBasedSize = containerWidth / 4;
+          const heightBasedSize = containerHeight / 4;
+          const baseFontSize = Math.min(widthBasedSize, heightBasedSize);
+          const clampedFontSize = Math.max(28, Math.min(baseFontSize, 140));
+          setFontSize(clampedFontSize);
+
           setTimeout(() => {
             if (valueRef.current) {
-              const textRect = valueRef.current.getBoundingClientRect()
-              const measuredWidth = textRect.width
+              const textRect = valueRef.current.getBoundingClientRect();
+              const measuredWidth = textRect.width;
               // Scale histogram width with container, accounting for labels on the right (~60px)
-              const maxHistogramWidth = containerWidth - 100 // Leave room for padding and labels
-              const effectiveWidth = Math.max(measuredWidth, Math.min(maxHistogramWidth, containerWidth * 0.7))
-              setTextWidth(Math.max(100, effectiveWidth)) // Minimum 100px
+              const maxHistogramWidth = containerWidth - 100; // Leave room for padding and labels
+              const effectiveWidth = Math.max(
+                measuredWidth,
+                Math.min(maxHistogramWidth, containerWidth * 0.7),
+              );
+              setTextWidth(Math.max(100, effectiveWidth)); // Minimum 100px
             }
-          }, 10)
+          }, 10);
         }
       }
-    }
+    };
 
-    const timer = setTimeout(updateDimensions, 50)
-    
+    const timer = setTimeout(updateDimensions, 50);
+
     const resizeObserver = new ResizeObserver(() => {
-      setTimeout(updateDimensions, 10)
-    })
-    
+      setTimeout(updateDimensions, 10);
+    });
+
     if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
+      resizeObserver.observe(containerRef.current);
     }
 
     return () => {
-      clearTimeout(timer)
-      resizeObserver.disconnect()
-    }
-  }, [data, chartConfig])
+      clearTimeout(timer);
+      resizeObserver.disconnect();
+    };
+  }, [data, chartConfig]);
 
   if (!data || data.length === 0) {
     return (
@@ -189,27 +200,33 @@ export default function KpiDelta({
         className="flex items-center justify-center w-full h-full"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
+          minHeight: height === "100%" ? "200px" : undefined,
         }}
       >
         <div className="text-center text-dc-text-muted">
           <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display</div>
+          <div className="text-xs text-dc-text-secondary">
+            No data points to display
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Extract value and dimension fields from chart config
-  let valueFields: string[] = []
-  let dimensionFields: string[] = []
-  
+  let valueFields: string[] = [];
+  let dimensionFields: string[] = [];
+
   if (chartConfig?.yAxis) {
-    valueFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
+    valueFields = Array.isArray(chartConfig.yAxis)
+      ? chartConfig.yAxis
+      : [chartConfig.yAxis];
   }
-  
+
   if (chartConfig?.xAxis) {
-    dimensionFields = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis : [chartConfig.xAxis]
+    dimensionFields = Array.isArray(chartConfig.xAxis)
+      ? chartConfig.xAxis
+      : [chartConfig.xAxis];
   }
 
   if (valueFields.length === 0) {
@@ -218,10 +235,10 @@ export default function KpiDelta({
         className="flex items-center justify-center w-full h-full"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined,
-          backgroundColor: 'var(--dc-danger-bg)',
-          color: 'var(--dc-danger)',
-          borderColor: 'var(--dc-danger-border)'
+          minHeight: height === "100%" ? "200px" : undefined,
+          backgroundColor: "var(--dc-danger-bg)",
+          color: "var(--dc-danger)",
+          borderColor: "var(--dc-danger-border)",
         }}
       >
         <div className="text-center">
@@ -229,41 +246,48 @@ export default function KpiDelta({
           <div className="text-xs">No measure field configured</div>
         </div>
       </div>
-    )
+    );
   }
 
-  const valueField = valueFields[0]
-  const dimensionField = dimensionFields[0] // Optional
+  const valueField = valueFields[0];
+  const dimensionField = dimensionFields[0]; // Optional
 
   // Sort data by dimension if available (for time series)
-  let sortedData = [...data]
+  let sortedData = [...data];
   if (dimensionField) {
     sortedData = sortedData.sort((a, b) => {
-      const aVal = a[dimensionField]
-      const bVal = b[dimensionField]
-      if (aVal < bVal) return -1
-      if (aVal > bVal) return 1
-      return 0
-    })
+      const aVal = a[dimensionField];
+      const bVal = b[dimensionField];
+      if (aVal < bVal) return -1;
+      if (aVal > bVal) return 1;
+      return 0;
+    });
   }
 
   // Filter out incomplete or last period if enabled
-  const { useLastCompletePeriod = true, skipLastPeriod = false } = displayConfig
+  const { useLastCompletePeriod = true, skipLastPeriod = false } =
+    displayConfig;
   const {
     filteredData,
     excludedIncompletePeriod,
     skippedLastPeriod,
-    granularity
-  } = filterIncompletePeriod(sortedData, dimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
+    granularity,
+  } = filterIncompletePeriod(
+    sortedData,
+    dimensionField,
+    queryObject,
+    useLastCompletePeriod,
+    skipLastPeriod,
+  );
 
   // Use filtered data for calculations
-  const dataToUse = filteredData
+  const dataToUse = filteredData;
 
   // Extract values from filtered data
   const values = dataToUse
-    .map(row => row[valueField])
-    .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
-    .map(val => Number(val))
+    .map((row) => row[valueField])
+    .filter((val) => val !== null && val !== undefined && !isNaN(Number(val)))
+    .map((val) => Number(val));
 
   if (values.length < 2) {
     return (
@@ -271,117 +295,131 @@ export default function KpiDelta({
         className="flex items-center justify-center w-full h-full"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined,
-          backgroundColor: 'var(--dc-warning-bg)',
-          color: 'var(--dc-warning)',
-          borderColor: 'var(--dc-warning-border)'
+          minHeight: height === "100%" ? "200px" : undefined,
+          backgroundColor: "var(--dc-warning-bg)",
+          color: "var(--dc-warning)",
+          borderColor: "var(--dc-warning-border)",
         }}
       >
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Insufficient Data</div>
-          <div className="text-xs">Delta calculation requires at least 2 data points</div>
+          <div className="text-xs">
+            Delta calculation requires at least 2 data points
+          </div>
           <div className="text-xs">Current data points: {values.length}</div>
         </div>
       </div>
-    )
+    );
   }
 
   // Calculate delta between last and second-last values
-  const lastValue = values[values.length - 1]
-  const secondLastValue = values[values.length - 2]
-  const absoluteChange = lastValue - secondLastValue
-  const percentageChange = secondLastValue !== 0 
-    ? ((absoluteChange / Math.abs(secondLastValue)) * 100)
-    : 0
+  const lastValue = values[values.length - 1];
+  const secondLastValue = values[values.length - 2];
+  const absoluteChange = lastValue - secondLastValue;
+  const percentageChange =
+    secondLastValue !== 0
+      ? (absoluteChange / Math.abs(secondLastValue)) * 100
+      : 0;
 
-  const isPositiveChange = absoluteChange >= 0
+  const isPositiveChange = absoluteChange >= 0;
 
   // Format number with appropriate units and decimals
   const formatNumber = (value: number | null | undefined): string => {
     // If custom formatValue is provided, use it exclusively
     if (displayConfig.formatValue) {
-      return displayConfig.formatValue(value)
+      return displayConfig.formatValue(value);
     }
 
     // Null handling: Show placeholder for missing data
     if (value === null || value === undefined) {
-      return '—'
+      return "—";
     }
 
-    const decimals = displayConfig.decimals ?? 0
-    const prefix = displayConfig.prefix ?? ''
+    const decimals = displayConfig.decimals ?? 0;
+    const prefix = displayConfig.prefix ?? "";
 
-    let formattedValue: string
+    let formattedValue: string;
 
     if (Math.abs(value) >= 1e9) {
-      formattedValue = (value / 1e9).toFixed(decimals) + 'B'
+      formattedValue = (value / 1e9).toFixed(decimals) + "B";
     } else if (Math.abs(value) >= 1e6) {
-      formattedValue = (value / 1e6).toFixed(decimals) + 'M'
+      formattedValue = (value / 1e6).toFixed(decimals) + "M";
     } else if (Math.abs(value) >= 1e3) {
-      formattedValue = (value / 1e3).toFixed(decimals) + 'K'
+      formattedValue = (value / 1e3).toFixed(decimals) + "K";
     } else {
-      formattedValue = value.toFixed(decimals)
+      formattedValue = value.toFixed(decimals);
     }
 
-    return prefix + formattedValue
-  }
+    return prefix + formattedValue;
+  };
 
   // Get colors from palette
   const getPositiveColor = (): string => {
-    if (displayConfig.positiveColorIndex !== undefined && colorPalette?.colors) {
-      const colorIndex = displayConfig.positiveColorIndex
+    if (
+      displayConfig.positiveColorIndex !== undefined &&
+      colorPalette?.colors
+    ) {
+      const colorIndex = displayConfig.positiveColorIndex;
       if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex]
+        return colorPalette.colors[colorIndex];
       }
     }
-    return '#10b981' // Default green
-  }
+    return "#10b981"; // Default green
+  };
 
   const getNegativeColor = (): string => {
-    if (displayConfig.negativeColorIndex !== undefined && colorPalette?.colors) {
-      const colorIndex = displayConfig.negativeColorIndex
+    if (
+      displayConfig.negativeColorIndex !== undefined &&
+      colorPalette?.colors
+    ) {
+      const colorIndex = displayConfig.negativeColorIndex;
       if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex]
+        return colorPalette.colors[colorIndex];
       }
     }
-    return '#ef4444' // Default red
-  }
+    return "#ef4444"; // Default red
+  };
 
-  const positiveColor = getPositiveColor()
-  const negativeColor = getNegativeColor()
-  const currentColor = isPositiveChange ? positiveColor : negativeColor
+  const positiveColor = getPositiveColor();
+  const negativeColor = getNegativeColor();
+  const currentColor = isPositiveChange ? positiveColor : negativeColor;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex flex-col items-center justify-center w-full h-full p-4"
-      style={{ 
+      style={{
         height: height === "100%" ? "100%" : height,
-        minHeight: height === "100%" ? '200px' : undefined
+        minHeight: height === "100%" ? "200px" : undefined,
       }}
     >
       {/* Field Label */}
       <div
         className="text-dc-text-secondary font-bold text-center mb-2 flex items-center justify-center gap-1"
         style={{
-          fontSize: '14px',
-          lineHeight: '1.2'
+          fontSize: "14px",
+          lineHeight: "1.2",
         }}
       >
         <span>
           {(() => {
-            const label = getFieldLabel(valueField)
-            return (label && label.length > 1) ? label : valueField
+            const label = getFieldLabel(valueField);
+            return label && label.length > 1 ? label : valueField;
           })()}
         </span>
         {(excludedIncompletePeriod || skippedLastPeriod) && (
           <span
-            title={skippedLastPeriod
-              ? `Excludes last ${granularity || 'period'}`
-              : `Excludes current incomplete ${granularity}`}
+            title={
+              skippedLastPeriod
+                ? `Excludes last ${granularity || "period"}`
+                : `Excludes current incomplete ${granularity}`
+            }
             className="cursor-help"
           >
-            <Icon icon={infoCircleIcon} className="w-4 h-4 text-dc-text-muted opacity-70" />
+            <Icon
+              icon={infoCircleIcon}
+              className="w-4 h-4 text-dc-text-muted opacity-70"
+            />
           </span>
         )}
       </div>
@@ -389,12 +427,12 @@ export default function KpiDelta({
       {/* Main KPI Value and Delta */}
       <div className="flex items-center justify-center space-x-4 mb-2">
         {/* Main KPI Value */}
-        <div 
+        <div
           ref={valueRef}
           className="font-bold leading-none"
-          style={{ 
+          style={{
             fontSize: `${fontSize}px`,
-            color: '#1f2937' // Keep main value neutral
+            color: "var(--dc-text)", // Keep main value neutral
           }}
         >
           {formatNumber(lastValue)}
@@ -407,10 +445,10 @@ export default function KpiDelta({
             className="font-bold"
             style={{
               color: currentColor,
-              fontSize: `${fontSize * 0.35}px`
+              fontSize: `${fontSize * 0.35}px`,
             }}
           >
-            {isPositiveChange ? '▲' : '▼'}
+            {isPositiveChange ? "▲" : "▼"}
           </div>
 
           {/* Delta Values */}
@@ -419,20 +457,22 @@ export default function KpiDelta({
               className="font-bold leading-tight"
               style={{
                 fontSize: `${fontSize * 0.35}px`,
-                color: currentColor
+                color: currentColor,
               }}
             >
-              {isPositiveChange ? '+' : ''}{formatNumber(absoluteChange)}
+              {isPositiveChange ? "+" : ""}
+              {formatNumber(absoluteChange)}
             </div>
             <div
               className="font-semibold leading-tight"
               style={{
                 fontSize: `${fontSize * 0.28}px`,
                 color: currentColor,
-                opacity: 0.8
+                opacity: 0.8,
               }}
             >
-              {isPositiveChange ? '+' : ''}{percentageChange.toFixed(1)}%
+              {isPositiveChange ? "+" : ""}
+              {percentageChange.toFixed(1)}%
             </div>
           </div>
         </div>
@@ -443,9 +483,9 @@ export default function KpiDelta({
         <div
           className="text-dc-text-muted text-center mb-3"
           style={{
-            fontSize: '14px',
-            lineHeight: '1.2',
-            opacity: 0.8
+            fontSize: "14px",
+            lineHeight: "1.2",
+            opacity: 0.8,
           }}
         >
           {displayConfig.suffix}
@@ -467,5 +507,5 @@ export default function KpiDelta({
         </div>
       )}
     </div>
-  )
+  );
 }
