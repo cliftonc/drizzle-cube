@@ -4,7 +4,7 @@
  * Extended with productivity metrics and analytics pages for comprehensive testing
  */
 
-import { pgTable, integer, text, real, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, integer, text, real, boolean, timestamp, jsonb, varchar } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // Employee table
@@ -16,6 +16,7 @@ export const employees = pgTable('employees', {
   departmentId: integer('department_id'),
   organisationId: integer('organisation_id').notNull(),
   salary: real('salary'),
+  tags: varchar('tags', { length: 100 }).array(), // PostgreSQL TEXT[] array for testing array operators
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow()
 })
 

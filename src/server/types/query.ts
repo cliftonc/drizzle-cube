@@ -76,3 +76,7 @@ export type FilterOperator =
   | 'notRegex'
   | 'isEmpty'
   | 'isNotEmpty'
+  // PostgreSQL array operators
+  | 'arrayContains'
+  | 'arrayOverlaps'
+  | 'arrayContained'

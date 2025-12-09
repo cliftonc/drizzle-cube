@@ -182,9 +182,15 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         title: 'Salary',
         type: 'number',
         sql: employees.salary
+      },
+      tags: {
+        name: 'tags',
+        title: 'Employee Tags',
+        type: 'string', // PostgreSQL TEXT[] array - used for array operator testing
+        sql: employees.tags
       }
     },
-    
+
     measures: {
       count: {
         name: 'count',

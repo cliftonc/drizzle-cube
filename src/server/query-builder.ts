@@ -26,7 +26,10 @@ import {
   asc,
   desc,
   SQL,
-  type AnyColumn
+  type AnyColumn,
+  arrayContains as drizzleArrayContains,
+  arrayContained as drizzleArrayContained,
+  arrayOverlaps as drizzleArrayOverlaps
 } from 'drizzle-orm'
 
 import type {
@@ -654,9 +657,14 @@ export class QueryBuilder {
           return null // Skip this filter - it's handled in the CTE
         }
       }
-      
-      // WHERE clause: use raw dimension expression
-      const fieldExpr = resolveSqlExpression(dimension.sql, context)
+
+      // For array operators, we need the raw column (not isolated SQL)
+      // because Drizzle's array functions need column type metadata for proper encoding
+      const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filterCondition.operator)
+      const fieldExpr = isArrayOperator
+        ? (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+        : resolveSqlExpression(dimension.sql, context)
+
       return this.buildFilterCondition(
         fieldExpr,
         filterCondition.operator,
@@ -879,6 +887,23 @@ export class QueryBuilder {
           isNotNull(fieldExpr as AnyColumn),
           ne(fieldExpr as AnyColumn, '')
         ) as SQL
+      // PostgreSQL array operators - silent no-op for other databases
+      // These use Drizzle's built-in array operator functions
+      case 'arrayContains':
+        if (this.databaseAdapter.getEngineType() === 'postgres') {
+          return drizzleArrayContains(fieldExpr as AnyColumn, filteredValues)
+        }
+        return null
+      case 'arrayOverlaps':
+        if (this.databaseAdapter.getEngineType() === 'postgres') {
+          return drizzleArrayOverlaps(fieldExpr as AnyColumn, filteredValues)
+        }
+        return null
+      case 'arrayContained':
+        if (this.databaseAdapter.getEngineType() === 'postgres') {
+          return drizzleArrayContained(fieldExpr as AnyColumn, filteredValues)
+        }
+        return null
       default:
         return null
     }

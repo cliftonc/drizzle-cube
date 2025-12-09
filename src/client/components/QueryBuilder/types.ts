@@ -388,6 +388,31 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
+  },
+  // PostgreSQL array operators
+  arrayContains: {
+    label: 'array contains all',
+    description: 'Array field contains all specified values (PostgreSQL only)',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  arrayOverlaps: {
+    label: 'array contains any',
+    description: 'Array field contains any of the specified values (PostgreSQL only)',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'string',
+    fieldTypes: ['string']
+  },
+  arrayContained: {
+    label: 'array values in',
+    description: 'All array field values are within specified values (PostgreSQL only)',
+    requiresValues: true,
+    supportsMultipleValues: true,
+    valueType: 'string',
+    fieldTypes: ['string']
   }
 }
 

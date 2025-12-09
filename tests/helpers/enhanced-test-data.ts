@@ -45,6 +45,7 @@ export const enhancedEmployees = [
     departmentId: 1, // Engineering
     organisationId: 1,
     salary: 125000,
+    tags: ['senior', 'backend', 'python', 'aws'], // Has all: senior, backend
     createdAt: new Date('2020-03-15T00:00:00Z') // Senior, longer tenure
   },
   {
@@ -54,6 +55,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 95000,
+    tags: ['frontend', 'react', 'typescript'], // Has frontend only
     createdAt: new Date('2022-01-20T00:00:00Z')
   },
   {
@@ -63,6 +65,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 110000,
+    tags: ['senior', 'fullstack', 'python', 'react'], // Has senior and fullstack
     createdAt: new Date('2021-08-10T00:00:00Z')
   },
   {
@@ -72,6 +75,7 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 85000,
+    tags: ['junior', 'frontend', 'react'], // Has junior
     createdAt: new Date('2023-03-05T00:00:00Z')
   },
   {
@@ -81,9 +85,10 @@ export const enhancedEmployees = [
     departmentId: 1,
     organisationId: 1,
     salary: 75000,
+    tags: ['junior', 'backend', 'nodejs'], // Has junior and backend
     createdAt: new Date('2024-01-15T00:00:00Z')
   },
-  
+
   // Marketing Team (Org 1)
   {
     name: 'Lisa Martinez',
@@ -92,6 +97,7 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 85000,
+    tags: ['senior', 'marketing', 'seo'], // Marketing tags
     createdAt: new Date('2021-11-20T00:00:00Z')
   },
   {
@@ -101,6 +107,7 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 72000,
+    tags: ['marketing', 'content', 'social'], // Marketing tags
     createdAt: new Date('2023-06-12T00:00:00Z')
   },
   {
@@ -110,9 +117,10 @@ export const enhancedEmployees = [
     departmentId: 2,
     organisationId: 1,
     salary: 68000,
+    tags: ['marketing', 'design'], // Marketing tags
     createdAt: new Date('2022-02-28T00:00:00Z')
   },
-  
+
   // Sales Team (Org 1)
   {
     name: 'Tom Anderson',
@@ -121,6 +129,7 @@ export const enhancedEmployees = [
     departmentId: 3,
     organisationId: 1,
     salary: 90000,
+    tags: ['senior', 'sales', 'enterprise'], // Sales tags
     createdAt: new Date('2021-05-18T00:00:00Z')
   },
   {
@@ -130,9 +139,10 @@ export const enhancedEmployees = [
     departmentId: 3,
     organisationId: 1,
     salary: 78000,
+    tags: ['sales', 'smb'], // Sales tags
     createdAt: new Date('2023-08-22T00:00:00Z')
   },
-  
+
   // HR Team (Org 1)
   {
     name: 'Robert Taylor',
@@ -141,6 +151,7 @@ export const enhancedEmployees = [
     departmentId: 4,
     organisationId: 1,
     salary: 95000,
+    tags: ['senior', 'hr', 'recruiting'], // HR tags
     createdAt: new Date('2020-12-01T00:00:00Z') // Most senior
   },
   {
@@ -150,9 +161,10 @@ export const enhancedEmployees = [
     departmentId: 4,
     organisationId: 1,
     salary: 65000,
+    tags: ['hr', 'benefits'], // HR tags
     createdAt: new Date('2023-10-15T00:00:00Z')
   },
-  
+
   // Finance Team (Org 1)
   {
     name: 'Michael Brown',
@@ -161,6 +173,7 @@ export const enhancedEmployees = [
     departmentId: 5,
     organisationId: 1,
     salary: 105000,
+    tags: ['senior', 'finance', 'accounting'], // Finance tags
     createdAt: new Date('2021-03-10T00:00:00Z')
   },
   {
@@ -170,9 +183,10 @@ export const enhancedEmployees = [
     departmentId: 5,
     organisationId: 1,
     salary: 88000,
+    tags: ['finance', 'payroll'], // Finance tags
     createdAt: new Date('2022-07-20T00:00:00Z')
   },
-  
+
   // Operations Team (Org 1)
   {
     name: 'Carlos Garcia',
@@ -181,9 +195,10 @@ export const enhancedEmployees = [
     departmentId: 6,
     organisationId: 1,
     salary: 82000,
+    tags: ['operations', 'logistics'], // Operations tags
     createdAt: new Date('2022-09-15T00:00:00Z')
   },
-  
+
   // Edge case employees
   {
     name: 'Jean-Luc Picard', // Special characters
@@ -192,6 +207,7 @@ export const enhancedEmployees = [
     departmentId: 7, // R&D
     organisationId: 1,
     salary: 140000,
+    tags: ['senior', 'research', 'leadership'], // R&D tags
     createdAt: new Date('2019-01-01T00:00:00Z')
   },
   {
@@ -201,6 +217,7 @@ export const enhancedEmployees = [
     departmentId: 7,
     organisationId: 1,
     salary: 92000,
+    tags: ['research', 'innovation'], // R&D tags
     createdAt: new Date('2023-04-15T00:00:00Z')
   },
   {
@@ -210,6 +227,7 @@ export const enhancedEmployees = [
     departmentId: 8, // QA
     organisationId: 1,
     salary: null,
+    tags: null, // NULL tags edge case
     createdAt: new Date('2023-12-01T00:00:00Z')
   },
   {
@@ -219,9 +237,10 @@ export const enhancedEmployees = [
     departmentId: null,
     organisationId: 1,
     salary: 50000,
+    tags: [], // Empty array edge case
     createdAt: new Date('2024-01-01T00:00:00Z')
   },
-  
+
   // Organization 2 employees (for multi-tenant testing)
   {
     name: 'John Doe Org2',
@@ -230,6 +249,7 @@ export const enhancedEmployees = [
     departmentId: 13, // Development (Org 2)
     organisationId: 2,
     salary: 120000,
+    tags: ['senior', 'backend', 'java'], // Org 2 tags
     createdAt: new Date('2022-06-01T00:00:00Z')
   },
   {
@@ -239,6 +259,7 @@ export const enhancedEmployees = [
     departmentId: 14, // Product Management (Org 2)
     organisationId: 2,
     salary: 110000,
+    tags: ['product', 'management'], // Org 2 tags
     createdAt: new Date('2023-02-15T00:00:00Z')
   },
   {
@@ -248,9 +269,10 @@ export const enhancedEmployees = [
     departmentId: 15, // Support (Org 2)
     organisationId: 2,
     salary: 75000,
+    tags: ['support', 'customer-service'], // Org 2 tags
     createdAt: new Date('2021-09-10T00:00:00Z')
   },
-  
+
   // Organization 3 employees (for additional isolation testing)
   {
     name: 'Alice Research',
@@ -259,6 +281,7 @@ export const enhancedEmployees = [
     departmentId: 16, // Research (Org 3)
     organisationId: 3,
     salary: 130000,
+    tags: ['senior', 'research', 'ml'], // Org 3 tags
     createdAt: new Date('2020-05-20T00:00:00Z')
   },
   {
@@ -268,6 +291,7 @@ export const enhancedEmployees = [
     departmentId: 17, // Analytics (Org 3)
     organisationId: 3,
     salary: 145000,
+    tags: ['senior', 'analytics', 'data-science'], // Org 3 tags
     createdAt: new Date('2019-08-30T00:00:00Z')
   }
 ]

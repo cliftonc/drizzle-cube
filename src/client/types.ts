@@ -131,6 +131,8 @@ export type FilterOperator =
   | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'notBetween'
   // Array operators
   | 'in' | 'notIn'
+  // PostgreSQL array operators
+  | 'arrayContains' | 'arrayOverlaps' | 'arrayContained'
   // Null/Empty operators
   | 'set' | 'notSet' | 'isEmpty' | 'isNotEmpty'
   // Date operators
