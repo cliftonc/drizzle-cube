@@ -32,6 +32,7 @@ import { resolveSqlExpression } from './cube-utils'
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { validateQueryAgainstCubes } from './compiler'
+import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 
 export class QueryExecutor {
@@ -87,31 +88,35 @@ export class QueryExecutor {
         if (query.timeDimensions) {
           for (const timeDim of query.timeDimensions) {
             if (timeDim.dimension in mappedRow) {
-              let dateValue = mappedRow[timeDim.dimension]  
+              let dateValue = mappedRow[timeDim.dimension]
 
               // If we have a date that is not 'T' in the center and Z at the end, we need to fix it
               if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
                 const isoString = dateValue.replace(' ', 'T')
-                const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+') 
-                  ? isoString + 'Z' 
+                const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+')
+                  ? isoString + 'Z'
                   : isoString
                 dateValue = new Date(finalIsoString)
               }
 
               // Convert time dimension result using database adapter if required
-              dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)           
+              dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)
               mappedRow[timeDim.dimension] = dateValue
             }
           }
         }
         return mappedRow
       }) : [data]
-      
+
+      // Apply gap filling for time series if requested
+      const measureNames = query.measures || []
+      const filledData = applyGapFilling(mappedData, query, measureNames)
+
       // Generate annotations for UI
       const annotation = this.generateAnnotations(queryPlan, query)
-      
+
       return {
-        data: mappedData,
+        data: filledData,
         annotation
       }
     } catch (error) {

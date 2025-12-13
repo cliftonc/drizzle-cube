@@ -16,6 +16,12 @@ export interface SemanticQuery {
   limit?: number
   offset?: number
   order?: Record<string, 'asc' | 'desc'>
+  /**
+   * Default value to fill missing time series gaps with.
+   * Used when fillMissingDates is enabled on time dimensions.
+   * Default: 0
+   */
+  fillMissingDatesValue?: number | null
 }
 
 /**
@@ -42,6 +48,12 @@ export interface TimeDimension {
   dimension: string
   granularity?: TimeGranularity
   dateRange?: string | string[]
+  /**
+   * Fill missing dates in time series with the fill value.
+   * Requires both granularity and dateRange to be set.
+   * Default: true (enabled)
+   */
+  fillMissingDates?: boolean
 }
 
 /**

@@ -416,7 +416,8 @@ describe('Comprehensive Query Options', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'week',
-          dateRange: ['2024-01-01', '2024-03-31']
+          dateRange: ['2024-01-01', '2024-03-31'],
+          fillMissingDates: false // Disable gap filling to test pagination behavior
         }])
         .order({ 'Productivity.date': 'desc' })
         .limit(8)

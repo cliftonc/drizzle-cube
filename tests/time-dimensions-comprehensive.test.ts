@@ -479,13 +479,14 @@ describe('Comprehensive Time Dimensions', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['2030-01-01', '2030-01-31']
+          dateRange: ['2030-01-01', '2030-01-31'],
+          fillMissingDates: false // Disable gap filling to test raw database results
         }])
         .build()
 
       const result = await testExecutor.executeQuery(query)
 
-      // Should return empty results for future dates
+      // Should return empty results for future dates (no actual data)
       expect(result.data).toHaveLength(0)
     })
 
@@ -495,13 +496,14 @@ describe('Comprehensive Time Dimensions', () => {
         .timeDimensions([{
           dimension: 'Productivity.date',
           granularity: 'day',
-          dateRange: ['1900-01-01', '1900-01-31']
+          dateRange: ['1900-01-01', '1900-01-31'],
+          fillMissingDates: false // Disable gap filling to test raw database results
         }])
         .build()
 
       const result = await testExecutor.executeQuery(query)
 
-      // Should return empty results for very old dates
+      // Should return empty results for very old dates (no actual data)
       expect(result.data).toHaveLength(0)
     })
   })
