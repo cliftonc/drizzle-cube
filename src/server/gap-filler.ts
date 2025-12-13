@@ -64,22 +64,24 @@ function alignToGranularity(date: Date, granularity: TimeGranularity): Date {
     case 'day':
       aligned.setUTCHours(0, 0, 0, 0)
       break
-    case 'week':
+    case 'week': {
       // Align to Monday (ISO week start)
       const dayOfWeek = aligned.getUTCDay()
       const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
       aligned.setUTCDate(aligned.getUTCDate() - daysToMonday)
       aligned.setUTCHours(0, 0, 0, 0)
       break
+    }
     case 'month':
       aligned.setUTCDate(1)
       aligned.setUTCHours(0, 0, 0, 0)
       break
-    case 'quarter':
+    case 'quarter': {
       const quarterMonth = Math.floor(aligned.getUTCMonth() / 3) * 3
       aligned.setUTCMonth(quarterMonth, 1)
       aligned.setUTCHours(0, 0, 0, 0)
       break
+    }
     case 'year':
       aligned.setUTCMonth(0, 1)
       aligned.setUTCHours(0, 0, 0, 0)
