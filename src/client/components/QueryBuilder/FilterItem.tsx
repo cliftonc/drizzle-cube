@@ -169,11 +169,12 @@ const FilterItem: React.FC<FilterItemProps> = ({
     const newFieldType = getFieldType(fieldName, schema)
     const newAvailableOperators = getAvailableOperators(newFieldType)
     const defaultOperator = newAvailableOperators[0]?.operator || 'equals'
-    
+
     onFilterChange(index, {
       member: fieldName,
       operator: defaultOperator as any,
-      values: []
+      values: [],
+      dateRange: undefined  // Reset dateRange when field changes
     })
     setIsFieldDropdownOpen(false)
   }
@@ -182,7 +183,8 @@ const FilterItem: React.FC<FilterItemProps> = ({
     onFilterChange(index, {
       ...filter,
       operator: operator as any,
-      values: [] // Reset values when operator changes
+      values: [],           // Reset values when operator changes
+      dateRange: undefined  // Reset dateRange when operator changes
     })
     setIsOperatorDropdownOpen(false)
   }

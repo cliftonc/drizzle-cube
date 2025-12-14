@@ -287,7 +287,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
-    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max', 'time']
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   notBetween: {
     label: 'not between',
@@ -295,7 +295,7 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
-    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max', 'time']
+    fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   // Array operators
   in: {

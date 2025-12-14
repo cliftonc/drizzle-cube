@@ -159,7 +159,22 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     const currentValues = values.length >= 2 ? values : ['', '']
     onValuesChange([currentValues[0], value])
   }, [values, onValuesChange])
-  
+
+  // Handle between/notBetween range inputs (must be defined at top level, not inside conditionals)
+  const handleBetweenStartInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value)
+    const currentValues = values.length >= 2 ? values : ['', '']
+    const newValues = [!isNaN(value) ? value : e.target.value === '' ? '' : currentValues[0], currentValues[1]]
+    onValuesChange(newValues.filter(v => v !== ''))
+  }, [values, onValuesChange])
+
+  const handleBetweenEndInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value)
+    const currentValues = values.length >= 2 ? values : ['', '']
+    const newValues = [currentValues[0], !isNaN(value) ? value : e.target.value === '' ? '' : currentValues[1]]
+    onValuesChange(newValues.filter(v => v !== ''))
+  }, [values, onValuesChange])
+
   // Render based on operator type
   if (!operatorMeta.requiresValues) {
     // No input needed for set/notSet
@@ -193,20 +208,6 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   
   if (operator === 'between' || operator === 'notBetween') {
     // Between range picker (for numbers)
-    const handleBetweenStartInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = parseFloat(e.target.value)
-      const currentValues = values.length >= 2 ? values : ['', '']
-      const newValues = [!isNaN(value) ? value : e.target.value === '' ? '' : currentValues[0], currentValues[1]]
-      onValuesChange(newValues.filter(v => v !== ''))
-    }, [values, onValuesChange])
-    
-    const handleBetweenEndInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = parseFloat(e.target.value)
-      const currentValues = values.length >= 2 ? values : ['', '']
-      const newValues = [currentValues[0], !isNaN(value) ? value : e.target.value === '' ? '' : currentValues[1]]
-      onValuesChange(newValues.filter(v => v !== ''))
-    }, [values, onValuesChange])
-    
     return (
       <div className="flex items-center space-x-2">
         <input
