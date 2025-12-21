@@ -188,7 +188,7 @@ export interface CubeApiOptions {
   apiUrl?: string
   token?: string
   headers?: Record<string, string>
-  credentials?: RequestCredentials
+  credentials?: 'include' | 'omit' | 'same-origin'
 }
 
 // Result set types

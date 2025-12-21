@@ -8,7 +8,7 @@ import type { CubeQuery, CubeApiOptions, CubeResultSet } from '../types'
 export class CubeClient {
   private apiUrl: string
   private headers: Record<string, string>
-  private credentials: RequestCredentials
+  private credentials: 'include' | 'omit' | 'same-origin'
 
   constructor(token?: string, options: CubeApiOptions = {}) {
     this.apiUrl = options.apiUrl || '/cubejs-api/v1'
