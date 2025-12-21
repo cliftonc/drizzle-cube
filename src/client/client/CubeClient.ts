@@ -8,6 +8,7 @@ import type { CubeQuery, CubeApiOptions, CubeResultSet } from '../types'
 export class CubeClient {
   private apiUrl: string
   private headers: Record<string, string>
+  private credentials: RequestCredentials
 
   constructor(token?: string, options: CubeApiOptions = {}) {
     this.apiUrl = options.apiUrl || '/cubejs-api/v1'
@@ -15,7 +16,8 @@ export class CubeClient {
       'Content-Type': 'application/json',
       ...options.headers
     }
-    
+    this.credentials = options.credentials ?? 'include'
+
     if (token) {
       this.headers['Authorization'] = token
     }
@@ -35,7 +37,7 @@ export class CubeClient {
           Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
         )
       },
-      credentials: 'include' // Include cookies for session auth
+      credentials: this.credentials
     })
 
     if (!response.ok) {
@@ -70,7 +72,7 @@ export class CubeClient {
     const response = await fetch(url, {
       method: 'GET',
       headers: this.headers,
-      credentials: 'include'
+      credentials: this.credentials
     })
 
     if (!response.ok) {
@@ -93,7 +95,7 @@ export class CubeClient {
           Object.entries(this.headers).filter(([key]) => key !== 'Content-Type')
         )
       },
-      credentials: 'include'
+      credentials: this.credentials
     })
 
     if (!response.ok) {
@@ -109,7 +111,7 @@ export class CubeClient {
     const response = await fetch(url, {
       method: 'POST',
       headers: this.headers,
-      credentials: 'include',
+      credentials: this.credentials,
       body: JSON.stringify({ query })
     })
 
@@ -146,7 +148,7 @@ export class CubeClient {
     const response = await fetch(url, {
       method: 'POST',
       headers: this.headers,
-      credentials: 'include',
+      credentials: this.credentials,
       body: JSON.stringify({ queries })
     })
 
