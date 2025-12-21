@@ -14,6 +14,7 @@ export default function AnalyticsDashboard({
   config,
   editable = false,
   dashboardFilters: propDashboardFilters,
+  loadingComponent,
   onConfigChange,
   onSave,
   onDirtyStateChange
@@ -141,6 +142,7 @@ export default function AnalyticsDashboard({
         config={config}
         editable={editable}
         dashboardFilters={mergedDashboardFilters}
+        loadingComponent={loadingComponent}
         onConfigChange={handleConfigChangeWithDirtyTracking}
         onSave={handleSaveWithDirtyTracking}
         colorPalette={colorPalette}

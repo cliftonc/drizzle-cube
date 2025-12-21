@@ -4,7 +4,7 @@
  * Simplified version without app-specific dependencies
  */
 
-import { useCallback, useRef, useState, useEffect } from 'react'
+import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
 import GridLayout from 'react-grid-layout'
 import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
@@ -60,6 +60,7 @@ interface DashboardGridProps {
   config: DashboardConfig
   editable?: boolean
   dashboardFilters?: DashboardFilter[] // Dashboard-level filters to apply to portlets
+  loadingComponent?: ReactNode // Custom loading indicator for all portlets
   onConfigChange?: (config: DashboardConfig) => void
   onPortletRefresh?: (portletId: string) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
@@ -72,6 +73,7 @@ export default function DashboardGrid({
   config,
   editable = false,
   dashboardFilters,
+  loadingComponent,
   onConfigChange,
   onPortletRefresh,
   onSave,
@@ -938,6 +940,7 @@ export default function DashboardGrid({
                 title={portlet.title}
                 height="100%"
                 colorPalette={colorPalette}
+                loadingComponent={loadingComponent}
                 onDebugDataReady={(data) => {
                   setDebugData(prev => ({
                     ...prev,

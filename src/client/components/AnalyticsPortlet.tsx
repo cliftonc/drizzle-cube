@@ -8,6 +8,7 @@ import { useInView } from 'react-intersection-observer'
 import { useCubeQuery } from '../hooks/useCubeQuery'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
+import LoadingIndicator from './LoadingIndicator'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { getChartConfig } from '../charts/chartConfigs'
 import {
@@ -47,6 +48,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   height = 300,
   title: _title,
   colorPalette,
+  loadingComponent,
   onDebugDataReady
 }, ref) => {
   const [refreshCounter, setRefreshCounter] = useState(0)
@@ -190,7 +192,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     if (isLoading || (queryObject && !resultSet && !error)) {
       return (
         <div ref={inViewRef} className="flex items-center justify-center w-full" style={{ height }}>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          {loadingComponent || <LoadingIndicator size="md" />}
         </div>
       )
     }

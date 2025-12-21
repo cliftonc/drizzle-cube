@@ -2,6 +2,7 @@
  * Type definitions for drizzle-cube client components
  */
 
+import type { ReactNode } from 'react'
 import type { ColorPalette } from './utils/colorPalettes'
 
 // Re-export metadata types from useCubeMeta hook
@@ -213,6 +214,7 @@ export interface AnalyticsPortletProps {
   height?: string | number
   title?: string
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
+  loadingComponent?: ReactNode // Custom loading indicator (defaults to LoadingIndicator)
   onDebugDataReady?: (debugData: {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
@@ -226,6 +228,7 @@ export interface AnalyticsDashboardProps {
   config: DashboardConfig
   editable?: boolean
   dashboardFilters?: DashboardFilter[] // Programmatic dashboard filters (merged with config.filters)
+  loadingComponent?: ReactNode // Custom loading indicator for all portlets (defaults to LoadingIndicator)
   onConfigChange?: (config: DashboardConfig) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
   onDirtyStateChange?: (isDirty: boolean) => void

@@ -5,6 +5,18 @@ import { useAnalyticsPage, useUpdateAnalyticsPage, useResetAnalyticsPage } from 
 import type { DashboardConfig } from '../types'
 import { ArrowPathIcon, PencilIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 
+// Custom loading indicator using the drizzle-cube logo
+const DrizzleCubeLoader = () => (
+  <div className="flex items-center justify-center">
+    <img
+      src="/drizzle-cube.png"
+      alt="Loading..."
+      className="h-10 w-10 animate-spin"
+      style={{ animationDuration: '1.5s' }}
+    />
+  </div>
+)
+
 export default function DashboardViewPage() {
   const { id } = useParams<{ id: string }>()
   const { data: page, isLoading, error } = useAnalyticsPage(id!)
@@ -223,6 +235,7 @@ export default function DashboardViewPage() {
         onConfigChange={handleConfigChange}
         onSave={handleSave}
         onDirtyStateChange={handleDirtyStateChange}
+        loadingComponent={<DrizzleCubeLoader />}
       />
 
       <DashboardEditModal

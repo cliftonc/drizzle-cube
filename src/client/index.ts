@@ -18,6 +18,8 @@ import './styles.css'
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
 export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
+export { default as LoadingIndicator } from './components/LoadingIndicator'
+export type { LoadingIndicatorProps } from './components/LoadingIndicator'
 
 // Chart components
 export {

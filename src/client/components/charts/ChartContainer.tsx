@@ -1,5 +1,6 @@
 import { ReactElement, useState, useRef, useLayoutEffect } from 'react'
 import { ResponsiveContainer } from 'recharts'
+import LoadingIndicator from '../LoadingIndicator'
 
 interface ChartContainerProps {
   children: ReactElement
@@ -77,7 +78,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center w-full h-full">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <LoadingIndicator size="sm" />
             </div>
           )}
         </div>
@@ -109,7 +110,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center w-full h-full">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <LoadingIndicator size="sm" />
           </div>
         )}
       </div>
