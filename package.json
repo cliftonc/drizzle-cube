@@ -145,7 +145,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-grid-layout": "^1.4.0",
-    "react-is": "^18.0.0",
+    "react-is": "^18.0.0 || ^19.2.3",
     "recharts": "^3.5.1"
   },
   "peerDependenciesMeta": {
