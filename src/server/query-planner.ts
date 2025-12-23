@@ -4,12 +4,18 @@
  * All SQL building has been moved to QueryBuilder
  */
 
-import type { 
+import type {
   Cube,
   QueryContext,
   QueryPlan,
   CubeJoin,
-  SemanticQuery
+  SemanticQuery,
+  QueryAnalysis,
+  PrimaryCubeAnalysis,
+  PrimaryCubeCandidate,
+  JoinPathAnalysis,
+  JoinPathStep,
+  PreAggregationAnalysis
 } from './types'
 
 import {
@@ -584,5 +590,341 @@ export class QueryPlanner {
     }
 
     return null
+  }
+
+  /**
+   * Analyze query planning decisions without building the full query
+   * Returns detailed metadata about how the query plan would be constructed
+   * Used for debugging and transparency in the playground UI
+   */
+  analyzeQueryPlan(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    _ctx: QueryContext
+  ): QueryAnalysis {
+    const cubesUsed = this.analyzeCubeUsage(query)
+    const cubeNames = Array.from(cubesUsed)
+
+    // Handle empty query
+    if (cubeNames.length === 0) {
+      return {
+        timestamp: new Date().toISOString(),
+        cubeCount: 0,
+        cubesInvolved: [],
+        primaryCube: {
+          selectedCube: '',
+          reason: 'single_cube',
+          explanation: 'No cubes found in query'
+        },
+        joinPaths: [],
+        preAggregations: [],
+        querySummary: {
+          queryType: 'single_cube',
+          joinCount: 0,
+          cteCount: 0,
+          hasPreAggregation: false
+        },
+        warnings: ['No cubes found in query - add measures or dimensions']
+      }
+    }
+
+    // Analyze primary cube selection
+    const primaryCubeAnalysis = this.analyzePrimaryCubeSelection(cubeNames, query, cubes)
+    const primaryCubeName = primaryCubeAnalysis.selectedCube
+
+    // Build analysis object
+    const analysis: QueryAnalysis = {
+      timestamp: new Date().toISOString(),
+      cubeCount: cubeNames.length,
+      cubesInvolved: cubeNames.sort(),
+      primaryCube: primaryCubeAnalysis,
+      joinPaths: [],
+      preAggregations: [],
+      querySummary: {
+        queryType: 'single_cube',
+        joinCount: 0,
+        cteCount: 0,
+        hasPreAggregation: false
+      },
+      warnings: []
+    }
+
+    // If multi-cube, analyze join paths
+    if (cubeNames.length > 1) {
+      const cubesToJoin = cubeNames.filter(name => name !== primaryCubeName)
+
+      for (const targetCube of cubesToJoin) {
+        analysis.joinPaths.push(
+          this.analyzeJoinPath(cubes, primaryCubeName, targetCube)
+        )
+      }
+
+      // Analyze pre-aggregation requirements
+      const primaryCube = cubes.get(primaryCubeName)
+      if (primaryCube) {
+        analysis.preAggregations = this.analyzePreAggregations(
+          cubes,
+          primaryCube,
+          cubesToJoin,
+          query
+        )
+      }
+
+      // Update summary
+      const successfulPaths = analysis.joinPaths.filter(p => p.pathFound)
+      const failedPaths = analysis.joinPaths.filter(p => !p.pathFound)
+
+      analysis.querySummary.joinCount = successfulPaths.length
+      analysis.querySummary.cteCount = analysis.preAggregations.length
+      analysis.querySummary.hasPreAggregation = analysis.preAggregations.length > 0
+
+      if (analysis.preAggregations.length > 0) {
+        analysis.querySummary.queryType = 'multi_cube_cte'
+      } else {
+        analysis.querySummary.queryType = 'multi_cube_join'
+      }
+
+      // Add warnings for failed paths
+      for (const failedPath of failedPaths) {
+        analysis.warnings!.push(
+          `No join path found to cube '${failedPath.targetCube}'. Check that joins are defined correctly.`
+        )
+      }
+    }
+
+    return analysis
+  }
+
+  /**
+   * Analyze why a particular cube was chosen as primary
+   */
+  private analyzePrimaryCubeSelection(
+    cubeNames: string[],
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): PrimaryCubeAnalysis {
+    // Single cube case
+    if (cubeNames.length === 1) {
+      return {
+        selectedCube: cubeNames[0],
+        reason: 'single_cube',
+        explanation: 'Only one cube is used in this query'
+      }
+    }
+
+    // Build candidates list
+    const candidates: PrimaryCubeCandidate[] = []
+    const dimensionCubes = (query.dimensions || []).map(d => d.split('.')[0])
+    const cubeDimensionCount = new Map<string, number>()
+
+    for (const cube of dimensionCubes) {
+      cubeDimensionCount.set(cube, (cubeDimensionCount.get(cube) || 0) + 1)
+    }
+
+    for (const cubeName of cubeNames) {
+      const cube = cubes.get(cubeName)
+      const dimensionCount = cubeDimensionCount.get(cubeName) || 0
+      const joinCount = cube?.joins ? Object.keys(cube.joins).length : 0
+      const canReachAll = this.canReachAllCubes(cubeName, cubeNames, cubes)
+
+      candidates.push({
+        cubeName,
+        dimensionCount,
+        joinCount,
+        canReachAll
+      })
+    }
+
+    // Tier 1: Check for dimension-based selection
+    if (query.dimensions && query.dimensions.length > 0) {
+      const maxDimensions = Math.max(...candidates.map(c => c.dimensionCount))
+
+      if (maxDimensions > 0) {
+        const primaryCandidates = candidates
+          .filter(c => c.dimensionCount === maxDimensions)
+          .sort((a, b) => a.cubeName.localeCompare(b.cubeName))
+
+        // Check if candidate can reach all other cubes
+        for (const candidate of primaryCandidates) {
+          if (candidate.canReachAll) {
+            return {
+              selectedCube: candidate.cubeName,
+              reason: 'most_dimensions',
+              explanation: `Selected because it has ${candidate.dimensionCount} dimension${candidate.dimensionCount !== 1 ? 's' : ''} in the query (defines the analytical grain)`,
+              candidates
+            }
+          }
+        }
+      }
+    }
+
+    // Tier 2: Connectivity-based selection
+    const reachableCandidates = candidates.filter(c => c.canReachAll)
+
+    if (reachableCandidates.length > 0) {
+      const maxConnectivity = Math.max(...reachableCandidates.map(c => c.joinCount))
+      const mostConnected = reachableCandidates
+        .filter(c => c.joinCount === maxConnectivity)
+        .sort((a, b) => a.cubeName.localeCompare(b.cubeName))[0]
+
+      return {
+        selectedCube: mostConnected.cubeName,
+        reason: 'most_connected',
+        explanation: `Selected because it has ${mostConnected.joinCount} join relationship${mostConnected.joinCount !== 1 ? 's' : ''} and can reach all other cubes`,
+        candidates
+      }
+    }
+
+    // Tier 3: Alphabetical fallback
+    const fallback = [...cubeNames].sort()[0]
+    return {
+      selectedCube: fallback,
+      reason: 'alphabetical_fallback',
+      explanation: 'Selected alphabetically as fallback (no cube could reach all others)',
+      candidates
+    }
+  }
+
+  /**
+   * Analyze the join path between two cubes with detailed step information
+   */
+  private analyzeJoinPath(
+    cubes: Map<string, Cube>,
+    fromCube: string,
+    toCube: string
+  ): JoinPathAnalysis {
+    const visitedCubes: string[] = [fromCube]
+
+    // BFS to find path with tracking
+    const queue: Array<{
+      cube: string
+      path: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }>
+    }> = [{ cube: fromCube, path: [] }]
+    const visited = new Set([fromCube])
+
+    while (queue.length > 0) {
+      const { cube: currentCube, path } = queue.shift()!
+      const cubeDefinition = cubes.get(currentCube)
+
+      if (!cubeDefinition?.joins) {
+        continue
+      }
+
+      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+        const actualTargetName = resolvedTargetCube.name
+
+        if (visited.has(actualTargetName)) {
+          continue
+        }
+
+        visitedCubes.push(actualTargetName)
+        visited.add(actualTargetName)
+
+        const newPath = [...path, {
+          fromCube: currentCube,
+          toCube: actualTargetName,
+          joinDef: joinDef as CubeJoin
+        }]
+
+        if (actualTargetName === toCube) {
+          // Found the path - convert to analysis format
+          const pathSteps: JoinPathStep[] = newPath.map(step => {
+            const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+            const joinColumns = step.joinDef.on.map(joinOn => ({
+              sourceColumn: joinOn.source.name,
+              targetColumn: joinOn.target.name
+            }))
+
+            const result: JoinPathStep = {
+              fromCube: step.fromCube,
+              toCube: step.toCube,
+              relationship: step.joinDef.relationship,
+              joinType,
+              joinColumns
+            }
+
+            // Add junction table info for belongsToMany
+            if (step.joinDef.relationship === 'belongsToMany' && step.joinDef.through) {
+              const through = step.joinDef.through
+              result.junctionTable = {
+                tableName: (through.table as any)[Symbol.for('drizzle:Name')] || 'junction_table',
+                sourceColumns: through.sourceKey.map(k => k.target.name),
+                targetColumns: through.targetKey.map(k => k.source.name)
+              }
+            }
+
+            return result
+          })
+
+          return {
+            targetCube: toCube,
+            pathFound: true,
+            path: pathSteps,
+            pathLength: pathSteps.length,
+            visitedCubes
+          }
+        }
+
+        queue.push({ cube: actualTargetName, path: newPath })
+      }
+    }
+
+    // No path found
+    return {
+      targetCube: toCube,
+      pathFound: false,
+      error: `No join path found from '${fromCube}' to '${toCube}'. Ensure the target cube has a relationship defined (belongsTo, hasOne, hasMany, or belongsToMany).`,
+      visitedCubes
+    }
+  }
+
+  /**
+   * Analyze pre-aggregation requirements for hasMany relationships
+   */
+  private analyzePreAggregations(
+    _cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    cubesToJoin: string[],
+    query: SemanticQuery
+  ): PreAggregationAnalysis[] {
+    const preAggregations: PreAggregationAnalysis[] = []
+
+    if (!query.measures || query.measures.length === 0) {
+      return preAggregations
+    }
+
+    for (const targetCubeName of cubesToJoin) {
+      const hasManyJoinDef = this.findHasManyJoinDef(primaryCube, targetCubeName)
+      if (!hasManyJoinDef) {
+        continue
+      }
+
+      // Check if we have measures from this cube
+      const measuresFromThisCube = query.measures.filter(m =>
+        m.startsWith(targetCubeName + '.')
+      )
+
+      if (measuresFromThisCube.length === 0) {
+        continue
+      }
+
+      // Extract join keys
+      const joinKeys = hasManyJoinDef.on.map(joinOn => ({
+        sourceColumn: joinOn.source.name,
+        targetColumn: joinOn.target.name
+      }))
+
+      preAggregations.push({
+        cubeName: targetCubeName,
+        cteAlias: `${targetCubeName.toLowerCase()}_agg`,
+        reason: `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
+        measures: measuresFromThisCube,
+        joinKeys
+      })
+    }
+
+    return preAggregations
   }
 }

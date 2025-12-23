@@ -689,6 +689,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               validationStatus={state.validationStatus}
               validationError={state.validationError}
               validationSql={state.validationSql}
+              validationAnalysis={fullValidationResult?.analysis}
               onValidate={handleValidateQuery}
               onExecute={handleExecuteQuery}
               onRemoveField={handleFieldDeselect}

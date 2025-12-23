@@ -16,6 +16,9 @@ export * from './executor'
 // Metadata and API types
 export * from './metadata'
 
+// Query analysis types
+export * from './analysis'
+
 // Utility functions and helpers
 export * from './utils'
 

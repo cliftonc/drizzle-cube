@@ -4,10 +4,11 @@
  */
 
 import { format } from 'sql-formatter'
-import type { 
-  SemanticLayerCompiler, 
-  SemanticQuery, 
-  SecurityContext
+import type {
+  SemanticLayerCompiler,
+  SemanticQuery,
+  SecurityContext,
+  QueryAnalysis
 } from '../server'
 
 /**
@@ -148,6 +149,15 @@ export async function handleDryRun(
     }
   }))
 
+  // Generate query analysis for debugging transparency
+  let analysis: QueryAnalysis | undefined
+  try {
+    analysis = semanticLayer.analyzeQuery(query, securityContext)
+  } catch (analysisError) {
+    // Analysis is optional - don't fail the dry-run if it fails
+    console.warn('Query analysis failed:', analysisError)
+  }
+
   // Build comprehensive response
   return {
     queryType: "regularQuery",
@@ -166,7 +176,9 @@ export async function handleDryRun(
     valid: true,
     cubesUsed: Array.from(referencedCubes),
     joinType: isMultiCube ? "multi_cube_join" : "single_cube",
-    query
+    query,
+    // Query analysis for debugging and transparency
+    analysis
   }
 }
 

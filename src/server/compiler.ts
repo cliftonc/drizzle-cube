@@ -12,10 +12,12 @@ import type {
   MeasureMetadata,
   DimensionMetadata,
   CubeRelationshipMetadata,
-  Cube
+  Cube,
+  QueryAnalysis
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
+import { QueryPlanner } from './query-planner'
 import { formatSqlString } from '../adapters/utils'
 import { CalculatedMeasureResolver } from './calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
@@ -440,6 +442,29 @@ export class SemanticLayerCompiler {
    */
   validateQuery(query: SemanticQuery): { isValid: boolean; errors: string[] } {
     return validateQueryAgainstCubes(this.cubes, query)
+  }
+
+  /**
+   * Analyze query planning decisions for debugging and transparency
+   * Returns detailed metadata about how the query would be planned
+   * Used by the playground UI to help users understand query structure
+   */
+  analyzeQuery(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): QueryAnalysis {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const planner = new QueryPlanner()
+    const ctx = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    return planner.analyzeQueryPlan(this.cubes, query, ctx)
   }
 }
 

@@ -46,6 +46,81 @@ export interface QueryBuilderState {
   totalRowCountStatus: 'idle' | 'loading' | 'success' | 'error'
 }
 
+// Query analysis types for debugging transparency
+export type PrimaryCubeSelectionReason =
+  | 'most_dimensions'
+  | 'most_connected'
+  | 'alphabetical_fallback'
+  | 'single_cube'
+
+export interface PrimaryCubeCandidate {
+  cubeName: string
+  dimensionCount: number
+  joinCount: number
+  canReachAll: boolean
+}
+
+export interface PrimaryCubeAnalysis {
+  selectedCube: string
+  reason: PrimaryCubeSelectionReason
+  explanation: string
+  candidates?: PrimaryCubeCandidate[]
+}
+
+export interface JoinPathStep {
+  fromCube: string
+  toCube: string
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+  joinType: 'inner' | 'left' | 'right' | 'full'
+  joinColumns: Array<{
+    sourceColumn: string
+    targetColumn: string
+  }>
+  junctionTable?: {
+    tableName: string
+    sourceColumns: string[]
+    targetColumns: string[]
+  }
+}
+
+export interface JoinPathAnalysis {
+  targetCube: string
+  pathFound: boolean
+  path?: JoinPathStep[]
+  pathLength?: number
+  error?: string
+  visitedCubes?: string[]
+}
+
+export interface PreAggregationAnalysis {
+  cubeName: string
+  cteAlias: string
+  reason: string
+  measures: string[]
+  joinKeys: Array<{
+    sourceColumn: string
+    targetColumn: string
+  }>
+}
+
+export interface QuerySummary {
+  queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
+  joinCount: number
+  cteCount: number
+  hasPreAggregation: boolean
+}
+
+export interface QueryAnalysis {
+  timestamp: string
+  cubeCount: number
+  cubesInvolved: string[]
+  primaryCube: PrimaryCubeAnalysis
+  joinPaths: JoinPathAnalysis[]
+  preAggregations: PreAggregationAnalysis[]
+  querySummary: QuerySummary
+  warnings?: string[]
+}
+
 // Validation response from /dry-run endpoint
 export interface ValidationResult {
   valid?: boolean              // Our custom property (may not be present in official Cube.js)
@@ -63,7 +138,8 @@ export interface ValidationResult {
   complexity?: string
   cubesUsed?: string[]
   joinType?: string
-  // Additional validation metadata can be added here
+  // Query analysis for debugging transparency
+  analysis?: QueryAnalysis
 }
 
 // API Configuration
@@ -110,6 +186,7 @@ export interface QueryPanelProps {
   validationStatus: ValidationStatus
   validationError: string | null
   validationSql: { sql: string[], params: any[] } | null
+  validationAnalysis?: QueryAnalysis | null  // Query analysis for debugging transparency
   onValidate: () => void
   onExecute: () => void
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void

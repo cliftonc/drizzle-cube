@@ -10,6 +10,7 @@ import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, Clipboard
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
+import QueryAnalysisPanel from './QueryAnalysisPanel'
 import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection, getFieldType } from './utils'
@@ -21,6 +22,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   validationStatus,
   validationError,
   validationSql,
+  validationAnalysis,
   onValidate,
   onExecute,
   onRemoveField,
@@ -37,6 +39,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
+  const [showAnalysisPreview, setShowAnalysisPreview] = useState(false)
 
   // Trigger Prism highlighting when preview content changes
   useEffect(() => {
@@ -535,12 +538,15 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
             {/* Preview Toggles */}
             <div className="space-y-3">
-              <div className="flex space-x-4">
+              <div className="flex space-x-4 flex-wrap gap-y-2">
                 <button
                   onClick={() => {
                     const newJsonState = !showJsonPreview
                     setShowJsonPreview(newJsonState)
-                    if (newJsonState) setShowSqlPreview(false) // Hide SQL when showing JSON
+                    if (newJsonState) {
+                      setShowSqlPreview(false)
+                      setShowAnalysisPreview(false)
+                    }
                   }}
                   className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
                 >
@@ -551,11 +557,29 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     onClick={() => {
                       const newSqlState = !showSqlPreview
                       setShowSqlPreview(newSqlState)
-                      if (newSqlState) setShowJsonPreview(false) // Hide JSON when showing SQL
+                      if (newSqlState) {
+                        setShowJsonPreview(false)
+                        setShowAnalysisPreview(false)
+                      }
                     }}
                     className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
                   >
                     {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
+                  </button>
+                )}
+                {validationAnalysis && (
+                  <button
+                    onClick={() => {
+                      const newAnalysisState = !showAnalysisPreview
+                      setShowAnalysisPreview(newAnalysisState)
+                      if (newAnalysisState) {
+                        setShowJsonPreview(false)
+                        setShowSqlPreview(false)
+                      }
+                    }}
+                    className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
+                  >
+                    {showAnalysisPreview ? 'Hide' : 'Show'} Query Analysis
                   </button>
                 )}
               </div>
@@ -584,6 +608,10 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     </>
                   )}
                 </div>
+              )}
+
+              {showAnalysisPreview && validationAnalysis && (
+                <QueryAnalysisPanel analysis={validationAnalysis} />
               )}
             </div>
           </div>
