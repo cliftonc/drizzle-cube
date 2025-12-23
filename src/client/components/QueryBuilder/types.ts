@@ -2,7 +2,7 @@
  * Type definitions for QueryBuilder components
  */
 
-import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter } from '../../types'
+import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
 
 // Meta endpoint response types
 export interface MetaField {
@@ -154,6 +154,8 @@ export interface QueryBuilderProps {
   initialQuery?: CubeQuery         // Initial query to load (overrides localStorage)
   disableLocalStorage?: boolean    // Disable localStorage persistence
   hideSettings?: boolean           // Hide the settings/configuration button
+  enableSharing?: boolean          // Enable share analysis button (default: false)
+  onShare?: (url: string) => void  // Callback when share URL is generated
 }
 
 export interface QueryBuilderRef {
@@ -180,6 +182,9 @@ export interface CubeMetaExplorerProps {
   isExpanded?: boolean
 }
 
+// Share button states
+export type ShareButtonState = 'idle' | 'copied' | 'copied-no-chart'
+
 export interface QueryPanelProps {
   query: CubeQuery
   schema: MetaResponse | null
@@ -200,6 +205,16 @@ export interface QueryPanelProps {
   onSettingsClick?: () => void     // Handler for settings button click
   onAIAssistantClick?: () => void  // Handler for AI Assistant button click
   onSchemaClick?: () => void       // Handler for Schema button click
+  onShareClick?: () => void        // Handler for share button click
+  shareButtonState?: ShareButtonState  // Current state of share button
+  isViewingShared?: boolean        // Whether viewing a shared analysis
+}
+
+// Available fields for chart configuration (derived from validation result)
+export interface AvailableFields {
+  dimensions: string[]
+  timeDimensions: string[]
+  measures: string[]
 }
 
 export interface ResultsPanelProps {
@@ -211,6 +226,19 @@ export interface ResultsPanelProps {
   onDisplayLimitChange?: (limit: number) => void
   totalRowCount?: number | null
   totalRowCountStatus?: 'idle' | 'loading' | 'success' | 'error'
+
+  // Chart visualization props
+  chartType?: ChartType
+  chartConfig?: ChartAxisConfig
+  displayConfig?: ChartDisplayConfig
+  availableFields?: AvailableFields | null
+  onChartTypeChange?: (type: ChartType) => void
+  onChartConfigChange?: (config: ChartAxisConfig) => void
+  onDisplayConfigChange?: (config: ChartDisplayConfig) => void
+
+  // View state props
+  activeView?: 'table' | 'chart'
+  onActiveViewChange?: (view: 'table' | 'chart') => void
 }
 
 // Time dimension granularity options

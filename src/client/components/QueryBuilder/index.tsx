@@ -5,7 +5,7 @@
  * Manages state and coordinates between the meta explorer, query panel, and results panel.
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useCubeContext } from '../../providers/CubeProvider'
 import CubeMetaExplorer from './CubeMetaExplorer'
@@ -13,16 +13,19 @@ import QueryPanel from './QueryPanel'
 import ResultsPanel from './ResultsPanel'
 import SetupPanel from './SetupPanel'
 import AIAssistantModal from '../AIAssistant/AIAssistantModal'
-import type { 
-  QueryBuilderProps, 
+import type {
+  QueryBuilderProps,
   QueryBuilderRef,
-  QueryBuilderState, 
+  QueryBuilderState,
   MetaResponse,
   ValidationResult,
-  ApiConfig
+  ApiConfig,
+  ShareButtonState
 } from './types'
-import type { Filter } from '../../types'
+import type { Filter, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
 import { createEmptyQuery, hasQueryContent, cleanQuery, cleanQueryForServer, cleanupFilters, transformQueryForUI } from './utils'
+import { parseShareHash, clearShareHash, decodeAndDecompress, compressWithFallback, getMaxHashLength, type ShareableState } from './shareUtils'
+import ShareWarningModal from './ShareWarningModal'
 
 const STORAGE_KEY = 'drizzle-cube-query-builder-state'
 const API_CONFIG_STORAGE_KEY = 'drizzle-cube-api-config'
@@ -31,7 +34,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   className = '',
   initialQuery,
   disableLocalStorage = false,
-  hideSettings = false
+  hideSettings = false,
+  enableSharing = false,
+  onShare
 }, ref) => {
   // Get cube client, update function, and features from context
   const { cubeApi, updateApiConfig, features } = useCubeContext()
@@ -120,7 +125,40 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   
   // Separate state for display limit (doesn't affect the actual query object)
   const [displayLimit, setDisplayLimit] = useState<number>(10)
-  
+
+  // Load initial chart configuration from localStorage
+  const getInitialChartState = () => {
+    if (!disableLocalStorage) {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          return {
+            chartType: parsed.chartType || 'table',
+            chartConfig: parsed.chartConfig || {},
+            displayConfig: parsed.displayConfig || { showLegend: true, showGrid: true, showTooltip: true },
+            activeView: parsed.activeView || 'table'
+          }
+        }
+      } catch (error) {
+        // Failed to load chart config from localStorage
+      }
+    }
+    return {
+      chartType: 'table' as ChartType,
+      chartConfig: {} as ChartAxisConfig,
+      displayConfig: { showLegend: true, showGrid: true, showTooltip: true } as ChartDisplayConfig,
+      activeView: 'table' as 'table' | 'chart'
+    }
+  }
+
+  // Chart visualization state
+  const initialChartState = getInitialChartState()
+  const [chartType, setChartType] = useState<ChartType>(initialChartState.chartType)
+  const [chartConfig, setChartConfig] = useState<ChartAxisConfig>(initialChartState.chartConfig)
+  const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>(initialChartState.displayConfig)
+  const [activeView, setActiveView] = useState<'table' | 'chart'>(initialChartState.activeView)
+
   // API configuration state
   const [apiConfig, setApiConfig] = useState<ApiConfig>(getInitialApiConfig())
   const [showSetupPanel, setShowSetupPanel] = useState(false)
@@ -129,6 +167,12 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   
   // AI Assistant modal state
   const [showAIAssistant, setShowAIAssistant] = useState(false)
+
+  // Share functionality state
+  const [shareButtonState, setShareButtonState] = useState<ShareButtonState>('idle')
+  const [showShareWarning, setShowShareWarning] = useState(false)
+  const [shareWarningData, setShareWarningData] = useState({ size: 0, maxSize: 0 })
+  const [isViewingShared, setIsViewingShared] = useState(false)
 
   // Update query when initialQuery prop changes (for modal usage)
   useEffect(() => {
@@ -158,6 +202,16 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   // Store the full validation result for access via ref
   const [fullValidationResult, setFullValidationResult] = useState<ValidationResult | null>(null)
+
+  // Compute available fields for chart configuration from validation result
+  const availableFields = useMemo(() => {
+    if (!fullValidationResult?.pivotQuery?.query) return null
+    return {
+      dimensions: fullValidationResult.pivotQuery.query.dimensions || [],
+      timeDimensions: fullValidationResult.pivotQuery.query.timeDimensions?.map((td: { dimension: string }) => td.dimension) || [],
+      measures: fullValidationResult.pivotQuery.query.measures || []
+    }
+  }, [fullValidationResult])
 
   // Expose query and validation state to parent via ref (only called when Apply is clicked)
   useImperativeHandle(ref, () => ({
@@ -207,16 +261,22 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     loadSchema()
   }, [apiConfig.baseApiUrl, apiConfig.apiToken])
 
-  // Save query to localStorage whenever it changes (if not disabled)
+  // Save query and chart config to localStorage whenever they change (if not disabled)
   useEffect(() => {
     if (!disableLocalStorage) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ query: state.query }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          query: state.query,
+          chartType,
+          chartConfig,
+          displayConfig,
+          activeView
+        }))
       } catch (error) {
-        // Failed to save query to localStorage
+        // Failed to save state to localStorage
       }
     }
-  }, [state.query, disableLocalStorage])
+  }, [state.query, chartType, chartConfig, displayConfig, activeView, disableLocalStorage])
 
   // Save API config to localStorage whenever it changes (if not disabled)
   useEffect(() => {
@@ -229,15 +289,52 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }
   }, [apiConfig, disableLocalStorage])
 
+  // Track if we need to auto-run after loading shared analysis
+  const pendingSharedExecution = useRef(false)
 
+  // Parse URL hash for shared analysis on mount (when sharing is enabled)
+  useEffect(() => {
+    if (!enableSharing) return
 
+    const encoded = parseShareHash()
+    if (!encoded) return
 
-  // Auto re-run query when displayLimit changes
+    const decoded = decodeAndDecompress(encoded)
+    if (decoded) {
+      // Apply query (required)
+      setState(prev => ({
+        ...prev,
+        query: transformQueryForUI(decoded.query),
+        validationStatus: 'idle',
+        validationError: null,
+        validationSql: null,
+        executionStatus: 'idle',
+        executionResults: null,
+        executionError: null,
+        totalRowCount: null,
+        totalRowCountStatus: 'idle'
+      }))
+
+      // Apply chart config if present, otherwise use defaults
+      if (decoded.chartType) setChartType(decoded.chartType)
+      if (decoded.chartConfig) setChartConfig(decoded.chartConfig)
+      if (decoded.displayConfig) setDisplayConfig(decoded.displayConfig)
+      if (decoded.activeView) setActiveView(decoded.activeView)
+
+      setIsViewingShared(true)
+      pendingSharedExecution.current = true
+    }
+
+    // Clear hash from URL
+    clearShareHash()
+  }, [enableSharing])
+
+  // Auto re-run query when displayLimit or activeView changes
   useEffect(() => {
     if (state.executionStatus === 'success' && hasQueryContent(state.query) && state.validationStatus === 'valid') {
       handleExecuteQuery()
     }
-  }, [displayLimit]) // Only trigger on displayLimit change
+  }, [displayLimit, activeView]) // Re-run on limit or view change
 
 
   const updateQuery = useCallback((updater: (prev: typeof state.query) => typeof state.query) => {
@@ -477,16 +574,20 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
     try {
       // Run both queries in parallel: one with limit and one without for total count
+      // Chart view: no limit (show all data for visualization)
+      // Table view: apply displayLimit for pagination
       const cleanedQuery = cleanQueryForServer(state.query)
+      const effectiveLimit = activeView === 'chart' ? undefined : displayLimit
+
       const [limitedResultSet, totalResultSet] = await Promise.all([
-        cubeApi.load({ ...cleanedQuery, limit: displayLimit }),
+        cubeApi.load(effectiveLimit ? { ...cleanedQuery, limit: effectiveLimit } : cleanedQuery),
         cubeApi.load(cleanedQuery) // No limit for total count
       ])
-      
+
       const limitedData = limitedResultSet.tablePivot()
       const totalData = totalResultSet.tablePivot()
       const totalCount = totalData.length
-      
+
       setState(prev => ({
         ...prev,
         executionStatus: 'success',
@@ -506,7 +607,15 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         totalRowCountStatus: 'error'
       }))
     }
-  }, [state.query, state.validationStatus, cubeApi, displayLimit])
+  }, [state.query, state.validationStatus, cubeApi, displayLimit, activeView])
+
+  // Auto-execute query after loading from shared link once validation succeeds
+  useEffect(() => {
+    if (pendingSharedExecution.current && state.validationStatus === 'valid' && state.executionStatus === 'idle') {
+      pendingSharedExecution.current = false
+      handleExecuteQuery()
+    }
+  }, [state.validationStatus, state.executionStatus, handleExecuteQuery])
 
   const handleClearQuery = useCallback(() => {
     setState(prev => ({
@@ -522,6 +631,55 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       totalRowCountStatus: 'idle'
     }))
   }, [])
+
+  const handleShare = useCallback(async () => {
+    if (!enableSharing) return
+
+    const shareableState: ShareableState = {
+      query: cleanQueryForServer(state.query),
+      chartType,
+      chartConfig,
+      displayConfig,
+      activeView
+    }
+
+    // Try full state first, fall back to query-only if too large
+    const { encoded, queryOnly } = compressWithFallback(shareableState)
+
+    // If even query-only is too large, show warning modal
+    if (!encoded) {
+      const queryOnlyState: ShareableState = { query: shareableState.query }
+      const queryOnlySize = JSON.stringify(queryOnlyState).length
+      setShareWarningData({ size: queryOnlySize, maxSize: getMaxHashLength() })
+      setShowShareWarning(true)
+      return
+    }
+
+    const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`
+
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = url
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
+
+    // Update button state
+    setShareButtonState(queryOnly ? 'copied-no-chart' : 'copied')
+
+    // Call onShare callback if provided
+    onShare?.(url)
+
+    // Reset button state after 2 seconds
+    setTimeout(() => {
+      setShareButtonState('idle')
+    }, 2000)
+  }, [enableSharing, state.query, chartType, chartConfig, displayConfig, activeView, onShare])
 
   const handleApiConfigChange = useCallback((newConfig: ApiConfig) => {
     setApiConfig(newConfig)
@@ -702,6 +860,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               showSettings={!hideSettings}
               onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
               onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
+              onShareClick={enableSharing && hasQueryContent(state.query) ? handleShare : undefined}
+              shareButtonState={shareButtonState}
+              isViewingShared={isViewingShared}
             />
           </div>
 
@@ -716,6 +877,17 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onDisplayLimitChange={setDisplayLimit}
               totalRowCount={state.totalRowCount}
               totalRowCountStatus={state.totalRowCountStatus}
+              // Chart visualization props
+              chartType={chartType}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              availableFields={availableFields}
+              onChartTypeChange={setChartType}
+              onChartConfigChange={setChartConfig}
+              onDisplayConfigChange={setDisplayConfig}
+              // View state props
+              activeView={activeView}
+              onActiveViewChange={setActiveView}
             />
           </div>
           </div>
@@ -776,6 +948,14 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           }}
           />
         )}
+
+        {/* Share Warning Modal - shown when query is too large to share */}
+        <ShareWarningModal
+          isOpen={showShareWarning}
+          onClose={() => setShowShareWarning(false)}
+          size={shareWarningData.size}
+          maxSize={shareWarningData.maxSize}
+        />
 
       </div>
   )

@@ -8,6 +8,7 @@ import type { ChartProps } from '../../types'
 
 interface BubbleData {
   x: number
+  xLabel?: string // Formatted label for time dimensions
   y: number
   size: number
   color?: string | number
@@ -170,17 +171,53 @@ export default function BubbleChart({
     // Transform data for bubble chart
     // Null handling: Filter out bubbles where x, y, or size are null
     const xGranularity = getFieldGranularity(queryObject, xAxisField)
+
+    // Check if x-axis field is a time dimension
+    const isTimeDimension = queryObject?.timeDimensions?.some(
+      (td: { dimension: string }) => td.dimension === xAxisField
+    ) || false
+
     const bubbleData: BubbleData[] = data
       .map(item => {
-        const xValue = formatTimeValue(item[xAxisField], xGranularity) || item[xAxisField]
+        const rawXValue = item[xAxisField]
+        let xNum: number
+        let xLabel: string
+
+        if (isTimeDimension && rawXValue) {
+          // For time dimensions, convert to timestamp for proper numeric positioning
+          const dateStr = String(rawXValue)
+          // Try to parse as date - handle ISO format and PostgreSQL format
+          let date: Date
+          if (dateStr.match(/^\d{4}-\d{2}-\d{2}[T ]/)) {
+            // Full timestamp format
+            let isoStr = dateStr
+            if (dateStr.includes(' ')) {
+              isoStr = dateStr.replace(' ', 'T').replace('+00', 'Z').replace(/\+\d{2}:\d{2}$/, 'Z')
+            }
+            if (!isoStr.endsWith('Z') && !isoStr.includes('+')) {
+              isoStr = isoStr + 'Z'
+            }
+            date = new Date(isoStr)
+          } else {
+            date = new Date(dateStr)
+          }
+
+          xNum = isNaN(date.getTime()) ? parseFloat(dateStr) : date.getTime()
+          xLabel = formatTimeValue(rawXValue, xGranularity)
+        } else {
+          // Non-time value - use as-is
+          const formattedValue = formatTimeValue(rawXValue, xGranularity) || rawXValue
+          xNum = typeof formattedValue === 'string' ? parseFloat(formattedValue) : formattedValue
+          xLabel = String(formattedValue)
+        }
+
         const yValue = parseNumericValue(item[yAxisField])
         const sizeValue = parseNumericValue(item[sizeFieldName])
-
-        const xNum = typeof xValue === 'string' ? parseFloat(xValue) : xValue
         const seriesValue = item[seriesField]
 
         return {
           x: xNum,
+          xLabel, // Store formatted label for tooltip display
           y: yValue as number, // Type assertion: filter below ensures this is never null
           size: sizeValue !== null ? Math.abs(sizeValue) : 0, // Ensure positive size
           color: colorFieldName ? item[colorFieldName] : seriesValue,
@@ -310,10 +347,39 @@ export default function BubbleChart({
         .style('stroke', 'none')
     }
 
-    // Add X axis
+    // Add X axis with proper time formatting if needed
+    const xAxisGenerator = axisBottom(xScale)
+
+    // If it's a time dimension, format the tick labels
+    if (isTimeDimension) {
+      xAxisGenerator.tickFormat((d) => {
+        const date = new Date(d as number)
+        if (isNaN(date.getTime())) return String(d)
+
+        // Format based on granularity
+        switch (xGranularity?.toLowerCase()) {
+          case 'year':
+            return String(date.getUTCFullYear())
+          case 'quarter': {
+            const q = Math.floor(date.getUTCMonth() / 3) + 1
+            return `${date.getUTCFullYear()}-Q${q}`
+          }
+          case 'month':
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+          case 'week':
+          case 'day':
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+          case 'hour':
+            return `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')} ${String(date.getUTCHours()).padStart(2, '0')}:00`
+          default:
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+        }
+      })
+    }
+
     const xAxis = g.append('g')
       .attr('transform', `translate(0,${chartHeight})`)
-      .call(axisBottom(xScale))
+      .call(xAxisGenerator)
 
     xAxis.selectAll('text')
       .style('fill', textColor)
@@ -394,7 +460,7 @@ export default function BubbleChart({
 
           const tooltipContent = [
             `<strong>${d.series || 'Unknown'}</strong>`,
-            `${getFieldLabel(xAxisField)}: ${d.x}`,
+            `${getFieldLabel(xAxisField)}: ${d.xLabel || d.x}`,
             `${getFieldLabel(yAxisField)}: ${d.y}`,
             `${getFieldLabel(sizeFieldName)}: ${d.size}`,
             colorFieldName && d.color ? `${getFieldLabel(colorFieldName)}: ${d.color}` : ''

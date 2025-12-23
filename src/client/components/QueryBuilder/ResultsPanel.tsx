@@ -1,25 +1,45 @@
 /**
  * ResultsPanel Component
- * 
+ *
  * Displays query execution results, loading states, and errors.
- * Reuses the existing DataTable component for result display.
+ * Supports both table and chart visualization with configurable chart types.
  */
 
-import React from 'react'
-import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { DataTable } from '../../components/charts'
+import React, { useState } from 'react'
+import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronUpIcon, TableCellsIcon, ChartBarIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline'
+import { DataTable, RechartsBarChart, RechartsLineChart, RechartsAreaChart, RechartsPieChart, RechartsScatterChart, RechartsRadarChart, RechartsRadialBarChart, RechartsTreeMapChart, BubbleChart, ActivityGridChart, KpiNumber, KpiDelta, KpiText, MarkdownChart } from '../../components/charts'
+import ChartTypeSelector from '../ChartTypeSelector'
+import ChartConfigPanel from '../ChartConfigPanel'
 import type { ResultsPanelProps } from './types'
 
 const ResultsPanel: React.FC<ResultsPanelProps> = ({
   executionStatus,
   executionResults,
   executionError,
-  query: _query,
+  query,
   displayLimit = 10,
   onDisplayLimitChange,
   totalRowCount,
-  totalRowCountStatus
+  totalRowCountStatus,
+  // Chart visualization props
+  chartType = 'table',
+  chartConfig = {},
+  displayConfig = {},
+  availableFields,
+  onChartTypeChange,
+  onChartConfigChange,
+  onDisplayConfigChange,
+  // View state props
+  activeView: activeViewProp = 'table',
+  onActiveViewChange
 }) => {
+  // Use prop if provided, otherwise use local state for backwards compatibility
+  const [localActiveView, setLocalActiveView] = useState<'table' | 'chart'>('table')
+  const activeView = onActiveViewChange ? activeViewProp : localActiveView
+  const setActiveView = onActiveViewChange || setLocalActiveView
+
+  // Local state for config panel visibility
+  const [showChartConfig, setShowChartConfig] = useState(false)
 
   const LoadingState = () => (
     <div className="h-full flex items-center justify-center">
@@ -60,6 +80,71 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
     </div>
   )
 
+  // Render the appropriate chart component
+  const renderChart = () => {
+    if (!executionResults || executionResults.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full text-dc-text-muted">
+          <div className="text-center">
+            <ChartBarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="text-sm font-semibold mb-1">No data to display</div>
+            <div className="text-xs">Run a query to see chart visualization</div>
+          </div>
+        </div>
+      )
+    }
+
+    const chartHeight = 400
+    const data = executionResults
+
+    try {
+      switch (chartType) {
+        case 'bar':
+          return <RechartsBarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'line':
+          return <RechartsLineChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'area':
+          return <RechartsAreaChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'pie':
+          return <RechartsPieChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'scatter':
+          return <RechartsScatterChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'radar':
+          return <RechartsRadarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'radialBar':
+          return <RechartsRadialBarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'treemap':
+          return <RechartsTreeMapChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'bubble':
+          return <BubbleChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'activityGrid':
+          return <ActivityGridChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'kpiNumber':
+          return <KpiNumber data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'kpiDelta':
+          return <KpiDelta data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'kpiText':
+          return <KpiText data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'markdown':
+          return <MarkdownChart data={[]} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
+        case 'table':
+        default:
+          return <DataTable data={data} height="100%" />
+      }
+    } catch (error) {
+      console.error('Chart rendering error:', error)
+      return (
+        <div className="flex items-center justify-center h-full text-dc-text-muted p-4">
+          <div className="text-center">
+            <ExclamationCircleIcon className="w-12 h-12 mx-auto mb-3 text-red-400" />
+            <div className="text-sm font-semibold mb-1">Unable to render chart</div>
+            <div className="text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
+          </div>
+        </div>
+      )
+    }
+  }
+
   const SuccessState = () => {
     if (!executionResults || executionResults.length === 0) {
       return (
@@ -75,9 +160,10 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
     return (
       <div className="h-full flex flex-col">
-        {/* Results Header */}
+        {/* Results Header with Chart Controls */}
         <div className="p-4 border-b border-dc-border bg-dc-surface-secondary">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Left side: Status and row count */}
             <div className="flex items-center">
               <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
               <div className="flex flex-col">
@@ -96,21 +182,86 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                 )}
               </div>
             </div>
-            {onDisplayLimitChange && (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-dc-text-secondary">Show:</label>
-                <select
-                  value={displayLimit}
-                  onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-                  className="text-xs border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+
+            {/* Right side: View tabs and display limit */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* View Toggle Tabs */}
+              <div className="flex items-center bg-dc-surface border border-dc-border rounded-md overflow-hidden">
+                <button
+                  onClick={() => setActiveView('table')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                    activeView === 'table'
+                      ? 'bg-dc-primary text-white'
+                      : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+                  }`}
                 >
-                  <option value={10}>10 rows</option>
-                  <option value={50}>50 rows</option>
-                  <option value={100}>100 rows</option>
-                </select>
+                  <TableCellsIcon className="w-3.5 h-3.5" />
+                  Table
+                </button>
+                <button
+                  onClick={() => setActiveView('chart')}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                    activeView === 'chart'
+                      ? 'bg-dc-primary text-white'
+                      : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+                  }`}
+                >
+                  <ChartBarIcon className="w-3.5 h-3.5" />
+                  Chart
+                </button>
               </div>
-            )}
+
+              {/* Display Limit (only show for table view) */}
+              {activeView === 'table' && onDisplayLimitChange && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-dc-text-secondary">Show:</label>
+                  <select
+                    value={displayLimit}
+                    onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
+                    className="text-xs border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value={10}>10 rows</option>
+                    <option value={50}>50 rows</option>
+                    <option value={100}>100 rows</option>
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Chart Controls Row (only show when chart view is active) */}
+          {activeView === 'chart' && onChartTypeChange && (
+            <div className="mt-3 pt-3 border-t border-dc-border flex items-center justify-between gap-3 flex-wrap">
+              {/* Chart Type Selector */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-dc-text-secondary whitespace-nowrap">Chart Type:</label>
+                <ChartTypeSelector
+                  selectedType={chartType}
+                  onTypeChange={onChartTypeChange}
+                />
+              </div>
+
+              {/* Configure Chart Button (only show for non-table chart types) */}
+              {chartType !== 'table' && onChartConfigChange && onDisplayConfigChange && (
+                <button
+                  onClick={() => setShowChartConfig(!showChartConfig)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    showChartConfig
+                      ? 'bg-dc-primary text-white'
+                      : 'text-dc-text-secondary bg-dc-surface hover:bg-dc-surface-hover border border-dc-border'
+                  }`}
+                >
+                  <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                  {showChartConfig ? 'Hide Config' : 'Configure'}
+                  {showChartConfig ? (
+                    <ChevronUpIcon className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDownIcon className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Performance Warning */}
           {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && totalRowCount > 500 && (
@@ -124,12 +275,32 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           )}
         </div>
 
-        {/* Results Table */}
+        {/* Collapsible Chart Config Panel (only when chart view is active) */}
+        {activeView === 'chart' && showChartConfig && chartType !== 'table' && onChartConfigChange && onDisplayConfigChange && (
+          <div className="border-b border-dc-border bg-dc-surface-tertiary p-4">
+            <ChartConfigPanel
+              chartType={chartType}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              availableFields={availableFields || null}
+              onChartConfigChange={onChartConfigChange}
+              onDisplayConfigChange={onDisplayConfigChange}
+            />
+          </div>
+        )}
+
+        {/* Results Content - Table or Chart based on active view */}
         <div className="flex-1 min-h-0">
-          <DataTable 
-            data={executionResults} 
-            height="100%" 
-          />
+          {activeView === 'table' ? (
+            <DataTable
+              data={executionResults}
+              height="100%"
+            />
+          ) : (
+            <div className="p-4 h-full overflow-auto">
+              {renderChart()}
+            </div>
+          )}
         </div>
       </div>
     )

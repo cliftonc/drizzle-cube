@@ -33,7 +33,7 @@ export default function QueryBuilderPage() {
 
       {/* Query Builder - Responsive height for mobile */}
       <div className="flex-1 min-h-[calc(100vh-12rem)] sm:min-h-[calc(100vh-10rem)] lg:min-h-[800px]">
-        <QueryBuilder />
+        <QueryBuilder enableSharing={true} />
       </div>
     </div>
   )

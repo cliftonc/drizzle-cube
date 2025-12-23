@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon, ShareIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
@@ -35,7 +35,10 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   showSettings,
   onSettingsClick,
   onAIAssistantClick,
-  onSchemaClick
+  onSchemaClick,
+  onShareClick,
+  shareButtonState = 'idle',
+  isViewingShared = false
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
@@ -404,6 +407,36 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   <ClipboardDocumentIcon className="w-3 h-3" />
                   <span className="hidden sm:inline">Copy Query</span>
                 </button>
+                {onShareClick && (
+                  <button
+                    onClick={onShareClick}
+                    className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 transition-colors ${
+                      shareButtonState === 'idle'
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50 focus:ring-blue-500'
+                        : 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 focus:ring-green-500'
+                    }`}
+                    title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
+                    disabled={shareButtonState !== 'idle'}
+                  >
+                    {shareButtonState === 'idle' ? (
+                      <>
+                        <ShareIcon className="w-3 h-3" />
+                        <span className="hidden sm:inline">Share</span>
+                      </>
+                    ) : shareButtonState === 'copied' ? (
+                      <>
+                        <CheckIcon className="w-3 h-3" />
+                        <span className="hidden sm:inline">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckIcon className="w-3 h-3" />
+                        <span className="hidden sm:inline">Copied!</span>
+                        <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
+                      </>
+                    )}
+                  </button>
+                )}
                 {onClearQuery && (
                   <button
                     onClick={onClearQuery}
@@ -428,6 +461,14 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Viewing Shared Indicator */}
+      {isViewingShared && (
+        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+          <ShareIcon className="w-4 h-4" />
+          <span>Viewing shared analysis</span>
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-4">
