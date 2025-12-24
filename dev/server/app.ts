@@ -172,13 +172,7 @@ app.get('/api/docs', (c) => {
       'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
       'GET /cubejs-api/v1/sql': 'Generate SQL via query string'
     },
-    cubes: metadata.map(cube => ({
-      name: cube.name,
-      title: cube.title,
-      description: cube.description,
-      dimensions: Object.keys(cube.dimensions || {}),
-      measures: Object.keys(cube.measures || {})
-    })),
+    cubes: metadata,
     examples: {
       'Employee count by department': {
         measures: ['Employees.count'],

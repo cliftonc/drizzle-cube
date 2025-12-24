@@ -28,9 +28,10 @@ vi.mock('next/server', () => ({
 import { NextRequest } from 'next/server'
 import {
   createLoadHandler,
-  createMetaHandler, 
+  createMetaHandler,
   createSqlHandler,
   createDryRunHandler,
+  createBatchHandler,
   createCubeHandlers,
   createOptionsHandler,
   type NextAdapterOptions,
@@ -558,7 +559,7 @@ describe('Next.js Adapter', () => {
         ...adapterOptions,
         runtime: 'edge'
       }
-      
+
       const handler = createLoadHandler(edgeOptions)
       expect(typeof handler).toBe('function')
     })
@@ -566,6 +567,96 @@ describe('Next.js Adapter', () => {
     it('should default to nodejs runtime', () => {
       const handler = createLoadHandler(adapterOptions)
       expect(typeof handler).toBe('function')
+    })
+  })
+
+  describe('Batch Handler', () => {
+    it('should create batch handler', () => {
+      const handler = createBatchHandler(adapterOptions)
+      expect(typeof handler).toBe('function')
+    })
+
+    it('should include batch handler in createCubeHandlers', () => {
+      const handlers = createCubeHandlers(adapterOptions)
+      expect(handlers).toHaveProperty('batch')
+      expect(typeof handlers.batch).toBe('function')
+    })
+
+    it('should handle POST with multiple valid queries', async () => {
+      const handler = createBatchHandler(adapterOptions)
+      const body = {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.totalSalary'] }
+        ]
+      }
+
+      const request = createMockNextRequest('POST', body)
+      const response = await handler(request)
+
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(data.results).toBeDefined()
+      expect(Array.isArray(data.results)).toBe(true)
+      expect(data.results.length).toBe(2)
+      expect(data.results[0].success).toBe(true)
+      expect(data.results[1].success).toBe(true)
+    })
+
+    it('should handle partial failure in batch', async () => {
+      const handler = createBatchHandler(adapterOptions)
+      const body = {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['NonExistent.count'] }
+        ]
+      }
+
+      const request = createMockNextRequest('POST', body)
+      const response = await handler(request)
+
+      expect(response.status).toBe(200)
+
+      const data = await response.json()
+      expect(data.results).toBeDefined()
+      expect(data.results.length).toBe(2)
+      expect(data.results[0].success).toBe(true)
+      expect(data.results[1].success).toBe(false)
+      expect(data.results[1].error).toBeDefined()
+    })
+
+    it('should return 405 for non-POST methods', async () => {
+      const handler = createBatchHandler(adapterOptions)
+      const request = createMockNextRequest('GET')
+      const response = await handler(request)
+
+      expect(response.status).toBe(405)
+
+      const data = await response.json()
+      expect(data.error).toContain('Method not allowed')
+    })
+
+    it('should return 400 for missing queries array', async () => {
+      const handler = createBatchHandler(adapterOptions)
+      const request = createMockNextRequest('POST', {})
+      const response = await handler(request)
+
+      expect(response.status).toBe(400)
+
+      const data = await response.json()
+      expect(data.error).toContain('queries')
+    })
+
+    it('should return 400 for empty queries array', async () => {
+      const handler = createBatchHandler(adapterOptions)
+      const request = createMockNextRequest('POST', { queries: [] })
+      const response = await handler(request)
+
+      expect(response.status).toBe(400)
+
+      const data = await response.json()
+      expect(data.error).toContain('empty')
     })
   })
 })

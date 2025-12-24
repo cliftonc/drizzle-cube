@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import express, { Express } from 'express'
 import request from 'supertest'
-import { createCubeRouter } from '../../src/adapters/express'
+import { createCubeRouter, mountCubeRoutes, createCubeApp } from '../../src/adapters/express'
 import { 
   createTestSemanticLayer,
   getTestSchema,
@@ -324,7 +324,105 @@ describe('Express Adapter', () => {
         measures: ['Employees.count']
       })
       .expect(200)
-    
+
     expect(response.body.results).toBeDefined()
+  })
+
+  // Batch endpoint tests
+  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+    const response = await request(app)
+      .post('/cubejs-api/v1/batch')
+      .send({
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.totalSalary'] }
+        ]
+      })
+      .expect(200)
+
+    const data = response.body
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(true)
+  })
+
+  it('should handle POST /batch with partial failure', async () => {
+    const response = await request(app)
+      .post('/cubejs-api/v1/batch')
+      .send({
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['NonExistent.count'] }
+        ]
+      })
+      .expect(200)
+
+    const data = response.body
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(false)
+    expect(data.results[1].error).toBeDefined()
+  })
+
+  it('should return 400 for POST /batch without queries array', async () => {
+    const response = await request(app)
+      .post('/cubejs-api/v1/batch')
+      .send({})
+      .expect(400)
+
+    const data = response.body
+    expect(data.error).toContain('queries')
+  })
+
+  it('should return 400 for POST /batch with empty queries array', async () => {
+    const response = await request(app)
+      .post('/cubejs-api/v1/batch')
+      .send({ queries: [] })
+      .expect(400)
+
+    const data = response.body
+    expect(data.error).toContain('empty')
+  })
+
+  // Helper function tests
+  it('should work with mountCubeRoutes helper', async () => {
+    const existingApp = express()
+    existingApp.get('/health', (_req, res) => res.json({ status: 'ok' }))
+
+    const mountedApp = mountCubeRoutes(existingApp, createRouterOptions())
+
+    // Test original route still works
+    const healthRes = await request(mountedApp).get('/health').expect(200)
+    expect(healthRes.body.status).toBe('ok')
+
+    // Test cube routes work
+    const metaRes = await request(mountedApp).get('/cubejs-api/v1/meta').expect(200)
+    expect(metaRes.body.cubes).toBeDefined()
+  })
+
+  it('should work with createCubeApp helper', async () => {
+    const standaloneApp = createCubeApp(createRouterOptions())
+
+    const response = await request(standaloneApp)
+      .get('/cubejs-api/v1/meta')
+      .expect(200)
+
+    expect(response.body.cubes).toBeDefined()
+    expect(Array.isArray(response.body.cubes)).toBe(true)
+  })
+
+  // Empty cubes validation
+  it('should throw error when creating router with empty cubes array', () => {
+    expect(() => {
+      createCubeRouter({
+        cubes: [],
+        drizzle: drizzleDb,
+        extractSecurityContext: mockGetSecurityContext
+      })
+    }).toThrow('At least one cube must be provided')
   })
 })

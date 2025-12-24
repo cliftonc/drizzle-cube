@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Hono } from 'hono'
-import { createCubeRoutes } from '../../src/adapters/hono'
+import { createCubeRoutes, mountCubeRoutes, createCubeApp } from '../../src/adapters/hono'
 import { 
   createTestSemanticLayer,
   getTestSchema,
@@ -263,16 +263,217 @@ describe('Hono Adapter', () => {
 
     const res = await app.request(req)
     expect(res.status).toBe(200)
-    
+
     const data = await res.json()
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(data.results[0].data.length).toBe(1)
-    
+
     const row = data.results[0].data[0]
     expect(typeof row['Employees.avgSalary']).toBe('number')
     expect(typeof row['Employees.totalSalary']).toBe('number')
     expect(row['Employees.avgSalary']).toBeGreaterThan(0)
     expect(row['Employees.totalSalary']).toBeGreaterThan(0)
+  })
+
+  // Dry-run endpoint tests
+  it('should handle POST /cubejs-api/v1/dry-run', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/dry-run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        measures: ['Employees.count'],
+        dimensions: ['Employees.name']
+      })
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(200)
+
+    const data = await res.json()
+    expect(data.valid).toBe(true)
+    expect(data.sql).toBeDefined()
+    expect(data.sql.sql).toBeDefined()
+    expect(Array.isArray(data.sql.sql)).toBe(true)
+    expect(data.complexity).toBeDefined()
+    expect(data.cubesUsed).toBeDefined()
+    expect(data.cubesUsed).toContain('Employees')
+  })
+
+  it('should handle GET /cubejs-api/v1/dry-run', async () => {
+    const query = {
+      measures: ['Employees.count'],
+      dimensions: ['Employees.name']
+    }
+
+    const req = new Request(`http://localhost/cubejs-api/v1/dry-run?query=${encodeURIComponent(JSON.stringify(query))}`)
+    const res = await app.request(req)
+
+    expect(res.status).toBe(200)
+
+    const data = await res.json()
+    expect(data.valid).toBe(true)
+    expect(data.sql).toBeDefined()
+    expect(data.sql.sql).toBeDefined()
+    expect(Array.isArray(data.sql.sql)).toBe(true)
+    expect(data.complexity).toBeDefined()
+    expect(data.cubesUsed).toBeDefined()
+    expect(data.cubesUsed).toContain('Employees')
+  })
+
+  it('should return 400 for GET /dry-run without query param', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/dry-run')
+    const res = await app.request(req)
+
+    expect(res.status).toBe(400)
+
+    const data = await res.json()
+    expect(data.error).toBe('Query parameter is required')
+    expect(data.valid).toBe(false)
+  })
+
+  it('should handle dry-run with invalid query', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/dry-run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        measures: ['NonExistent.count']
+      })
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(400)
+
+    const data = await res.json()
+    expect(data.valid).toBe(false)
+    expect(data.error).toBeDefined()
+  })
+
+  // Batch endpoint tests
+  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.totalSalary'] }
+        ]
+      })
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(200)
+
+    const data = await res.json()
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(true)
+  })
+
+  it('should handle POST /batch with partial failure', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['NonExistent.count'] }
+        ]
+      })
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(200)
+
+    const data = await res.json()
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(false)
+    expect(data.results[1].error).toBeDefined()
+  })
+
+  it('should return 400 for POST /batch without queries array', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(400)
+
+    const data = await res.json()
+    expect(data.error).toContain('queries')
+  })
+
+  it('should return 400 for POST /batch with empty queries array', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queries: [] })
+    })
+
+    const res = await app.request(req)
+    expect(res.status).toBe(400)
+
+    const data = await res.json()
+    expect(data.error).toContain('empty')
+  })
+
+  // GET /sql missing query param
+  it('should return 400 for GET /sql without query param', async () => {
+    const req = new Request('http://localhost/cubejs-api/v1/sql')
+    const res = await app.request(req)
+
+    expect(res.status).toBe(400)
+
+    const data = await res.json()
+    expect(data.error).toBe('Query parameter is required')
+  })
+
+  // Helper function tests
+  it('should work with mountCubeRoutes helper', async () => {
+    const existingApp = new Hono()
+    existingApp.get('/health', (c) => c.json({ status: 'ok' }))
+
+    const mountedApp = mountCubeRoutes(existingApp, createRoutesOptions())
+
+    // Test original route still works
+    const healthRes = await mountedApp.request(new Request('http://localhost/health'))
+    expect(healthRes.status).toBe(200)
+
+    // Test cube routes work
+    const metaRes = await mountedApp.request(new Request('http://localhost/cubejs-api/v1/meta'))
+    expect(metaRes.status).toBe(200)
+    const data = await metaRes.json()
+    expect(data.cubes).toBeDefined()
+  })
+
+  it('should work with createCubeApp helper', async () => {
+    const standaloneApp = createCubeApp(createRoutesOptions())
+
+    const req = new Request('http://localhost/cubejs-api/v1/meta')
+    const res = await standaloneApp.request(req)
+
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.cubes).toBeDefined()
+    expect(Array.isArray(data.cubes)).toBe(true)
+  })
+
+  // Empty cubes validation
+  it('should throw error when creating routes with empty cubes array', () => {
+    expect(() => {
+      createCubeRoutes({
+        cubes: [],
+        drizzle: drizzleDb,
+        extractSecurityContext: mockGetSecurityContext
+      })
+    }).toThrow('At least one cube must be provided')
   })
 })

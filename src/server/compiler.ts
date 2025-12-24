@@ -623,17 +623,3 @@ function validateFilter(
   }
 }
 
-/**
- * Create a new semantic layer compiler with type inference
- */
-export function createSemanticLayer(options?: {
-  drizzle?: DatabaseExecutor['db']
-  schema?: any
-  databaseExecutor?: DatabaseExecutor
-  engineType?: 'postgres' | 'mysql' | 'sqlite'
-}): SemanticLayerCompiler {
-  return new SemanticLayerCompiler(options)
-}
-
-// Export singleton instance (for backward compatibility)
-export const semanticLayer = new SemanticLayerCompiler()

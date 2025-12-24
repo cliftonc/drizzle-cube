@@ -420,10 +420,94 @@ describe('Fastify Adapter', () => {
         }
       }
     })
-    
+
     expect(response.statusCode).toBe(200)
     const data = JSON.parse(response.payload)
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
+  })
+
+  // Batch endpoint tests
+  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cubejs-api/v1/batch',
+      payload: {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.totalSalary'] }
+        ]
+      }
+    })
+
+    expect(response.statusCode).toBe(200)
+    const data = JSON.parse(response.payload)
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(true)
+  })
+
+  it('should handle POST /batch with partial failure', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cubejs-api/v1/batch',
+      payload: {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['NonExistent.count'] }
+        ]
+      }
+    })
+
+    expect(response.statusCode).toBe(200)
+    const data = JSON.parse(response.payload)
+    expect(data.results).toBeDefined()
+    expect(Array.isArray(data.results)).toBe(true)
+    expect(data.results.length).toBe(2)
+    expect(data.results[0].success).toBe(true)
+    expect(data.results[1].success).toBe(false)
+    expect(data.results[1].error).toBeDefined()
+  })
+
+  it('should return error for POST /batch without queries array', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cubejs-api/v1/batch',
+      payload: {}
+    })
+
+    // Fastify may return 400 or 500 depending on error handling
+    expect([400, 500]).toContain(response.statusCode)
+    const data = JSON.parse(response.payload)
+    expect(data.error).toBeDefined()
+  })
+
+  it('should return 400 for POST /batch with empty queries array', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/cubejs-api/v1/batch',
+      payload: { queries: [] }
+    })
+
+    expect(response.statusCode).toBe(400)
+    const data = JSON.parse(response.payload)
+    expect(data.error).toContain('empty')
+  })
+
+  // Empty cubes validation
+  it('should throw error when creating plugin with empty cubes array', async () => {
+    const testApp = require('fastify')({ logger: false })
+
+    await expect(
+      testApp.register(cubePlugin as any, {
+        cubes: [],
+        drizzle: drizzleDb,
+        extractSecurityContext: mockGetSecurityContext
+      })
+    ).rejects.toThrow('At least one cube must be provided')
+
+    await testApp.close()
   })
 })

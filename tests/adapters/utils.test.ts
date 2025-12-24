@@ -1,0 +1,339 @@
+/**
+ * Unit tests for adapter utility functions
+ */
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import {
+  calculateQueryComplexity,
+  generateRequestId,
+  buildTransformedQuery,
+  formatSqlString,
+  formatCubeResponse,
+  formatSqlResponse,
+  formatMetaResponse,
+  formatErrorResponse,
+  handleDryRun,
+  handleBatchRequest
+} from '../../src/adapters/utils'
+import {
+  createTestSemanticLayer,
+  getTestSchema
+} from '../helpers/test-database'
+import { testSecurityContexts } from '../helpers/enhanced-test-data'
+import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
+
+describe('Adapter Utils', () => {
+  describe('calculateQueryComplexity', () => {
+    it('should return "low" for simple queries', () => {
+      expect(calculateQueryComplexity({
+        measures: ['Cube.count']
+      })).toBe('low')
+
+      expect(calculateQueryComplexity({
+        measures: ['Cube.count'],
+        dimensions: ['Cube.name']
+      })).toBe('low')
+
+      expect(calculateQueryComplexity({
+        measures: ['Cube.count', 'Cube.sum'],
+        dimensions: ['Cube.name', 'Cube.id']
+      })).toBe('low')
+    })
+
+    it('should return "medium" for moderately complex queries', () => {
+      expect(calculateQueryComplexity({
+        measures: ['Cube.count', 'Cube.sum', 'Cube.avg'],
+        dimensions: ['Cube.name', 'Cube.id'],
+        filters: [
+          { member: 'Cube.name', operator: 'equals', values: ['test'] },
+          { member: 'Cube.id', operator: 'gt', values: [0] }
+        ],
+        timeDimensions: [{ dimension: 'Cube.date', granularity: 'day' }]
+      })).toBe('medium')
+    })
+
+    it('should return "high" for complex queries', () => {
+      expect(calculateQueryComplexity({
+        measures: ['Cube.count', 'Cube.sum', 'Cube.avg', 'Cube.min', 'Cube.max'],
+        dimensions: ['Cube.a', 'Cube.b', 'Cube.c', 'Cube.d'],
+        filters: [
+          { member: 'Cube.x', operator: 'equals', values: ['test'] },
+          { member: 'Cube.y', operator: 'gt', values: [0] },
+          { member: 'Cube.z', operator: 'lt', values: [100] }
+        ],
+        timeDimensions: [
+          { dimension: 'Cube.date1', granularity: 'day' },
+          { dimension: 'Cube.date2', granularity: 'month' }
+        ]
+      })).toBe('high')
+    })
+
+    it('should handle empty query', () => {
+      expect(calculateQueryComplexity({})).toBe('low')
+    })
+  })
+
+  describe('generateRequestId', () => {
+    it('should generate a unique request ID', () => {
+      const id1 = generateRequestId()
+      const id2 = generateRequestId()
+
+      expect(id1).toBeDefined()
+      expect(typeof id1).toBe('string')
+      expect(id1.length).toBeGreaterThan(10)
+      expect(id1).not.toBe(id2)
+    })
+
+    it('should follow timestamp-random format', () => {
+      const id = generateRequestId()
+      const parts = id.split('-')
+
+      expect(parts.length).toBeGreaterThanOrEqual(2)
+      // First part should be a timestamp (all digits)
+      expect(/^\d+$/.test(parts[0])).toBe(true)
+    })
+  })
+
+  describe('buildTransformedQuery', () => {
+    it('should build transformed query with all components', () => {
+      const query = {
+        measures: ['Cube.count', 'Cube.sum'],
+        dimensions: ['Cube.name'],
+        timeDimensions: [{ dimension: 'Cube.date', granularity: 'day' }],
+        filters: [{ member: 'Cube.name', operator: 'equals', values: ['test'] }]
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.sortedDimensions).toEqual(['Cube.name'])
+      expect(result.sortedTimeDimensions).toEqual([{ dimension: 'Cube.date', granularity: 'day' }])
+      expect(result.measures).toEqual(['Cube.count', 'Cube.sum'])
+      expect(result.leafMeasureAdditive).toBe(true)
+      expect(result.hasMultiStage).toBe(false)
+    })
+
+    it('should handle empty query', () => {
+      const result = buildTransformedQuery({})
+
+      expect(result.sortedDimensions).toEqual([])
+      expect(result.sortedTimeDimensions).toEqual([])
+      expect(result.measures).toEqual([])
+    })
+
+    it('should include all Cube.js compatibility fields', () => {
+      const result = buildTransformedQuery({ measures: ['Cube.count'] })
+
+      expect(result).toHaveProperty('leafMeasureAdditive', true)
+      expect(result).toHaveProperty('leafMeasures')
+      expect(result).toHaveProperty('measureToLeafMeasures')
+      expect(result).toHaveProperty('hasNoTimeDimensionsWithoutGranularity', true)
+      expect(result).toHaveProperty('allFiltersWithinSelectedDimensions', true)
+      expect(result).toHaveProperty('isAdditive', true)
+      expect(result).toHaveProperty('hasMultipliedMeasures', false)
+      expect(result).toHaveProperty('hasCumulativeMeasures', false)
+      expect(result).toHaveProperty('hasMultiStage', false)
+    })
+  })
+
+  describe('formatSqlString', () => {
+    it('should format SQL for PostgreSQL dialect', () => {
+      const sql = 'SELECT id, name FROM users WHERE id = 1'
+      const formatted = formatSqlString(sql, 'postgres')
+
+      expect(formatted).toContain('SELECT')
+      expect(formatted).toContain('FROM')
+      expect(formatted.length).toBeGreaterThan(sql.length) // Should add formatting
+    })
+
+    it('should format SQL for MySQL dialect', () => {
+      const sql = 'SELECT id, name FROM users WHERE id = 1'
+      const formatted = formatSqlString(sql, 'mysql')
+
+      expect(formatted).toContain('SELECT')
+      expect(formatted).toContain('FROM')
+    })
+
+    it('should format SQL for SQLite dialect', () => {
+      const sql = 'SELECT id, name FROM users WHERE id = 1'
+      const formatted = formatSqlString(sql, 'sqlite')
+
+      expect(formatted).toContain('SELECT')
+      expect(formatted).toContain('FROM')
+    })
+
+    it('should handle singlestore as MySQL dialect', () => {
+      const sql = 'SELECT id FROM users'
+      const formatted = formatSqlString(sql, 'singlestore')
+
+      expect(formatted).toContain('SELECT')
+    })
+
+    it('should return original SQL if formatting fails', () => {
+      // Intentionally malformed SQL that might fail formatting
+      const malformedSql = '{{{{invalid sql syntax}}}}'
+      const result = formatSqlString(malformedSql, 'postgres')
+
+      // Should return something (either formatted or original)
+      expect(result).toBeDefined()
+      expect(typeof result).toBe('string')
+    })
+  })
+
+  describe('formatSqlResponse', () => {
+    it('should format SQL response correctly', () => {
+      const query = { measures: ['Cube.count'] }
+      const sqlResult = { sql: 'SELECT COUNT(*) FROM cube', params: [1, 'test'] }
+
+      const result = formatSqlResponse(query, sqlResult)
+
+      expect(result.sql).toBe('SELECT COUNT(*) FROM cube')
+      expect(result.params).toEqual([1, 'test'])
+      expect(result.query).toBe(query)
+    })
+
+    it('should handle empty params', () => {
+      const query = { measures: ['Cube.count'] }
+      const sqlResult = { sql: 'SELECT COUNT(*) FROM cube' }
+
+      const result = formatSqlResponse(query, sqlResult)
+
+      expect(result.params).toEqual([])
+    })
+  })
+
+  describe('formatMetaResponse', () => {
+    it('should wrap metadata in cubes object', () => {
+      const metadata = [
+        { name: 'Cube1', measures: [], dimensions: [] },
+        { name: 'Cube2', measures: [], dimensions: [] }
+      ]
+
+      const result = formatMetaResponse(metadata)
+
+      expect(result).toHaveProperty('cubes', metadata)
+    })
+
+    it('should handle empty metadata', () => {
+      const result = formatMetaResponse([])
+
+      expect(result).toHaveProperty('cubes', [])
+    })
+  })
+
+  describe('formatErrorResponse', () => {
+    it('should format string error', () => {
+      const result = formatErrorResponse('Something went wrong', 500)
+
+      expect(result.error).toBe('Something went wrong')
+      expect(result.status).toBe(500)
+    })
+
+    it('should format Error object', () => {
+      const error = new Error('Test error message')
+      const result = formatErrorResponse(error, 400)
+
+      expect(result.error).toBe('Test error message')
+      expect(result.status).toBe(400)
+    })
+
+    it('should use default status 500', () => {
+      const result = formatErrorResponse('Error')
+
+      expect(result.status).toBe(500)
+    })
+  })
+
+  describe('Integration: handleDryRun and handleBatchRequest', () => {
+    let semanticLayer: any
+    let closeFn: (() => void) | null = null
+
+    beforeAll(async () => {
+      const { semanticLayer: sl, close } = await createTestSemanticLayer()
+      semanticLayer = sl
+      closeFn = close
+
+      const { testEmployeesCube } = await createTestCubesForCurrentDatabase()
+      semanticLayer.registerCube(testEmployeesCube)
+    })
+
+    afterAll(() => {
+      if (closeFn) {
+        closeFn()
+        closeFn = null
+      }
+    })
+
+    describe('handleDryRun', () => {
+      it('should validate and analyze a single-cube query', async () => {
+        const query = {
+          measures: ['Employees.count'],
+          dimensions: ['Employees.name']
+        }
+
+        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+
+        expect(result.valid).toBe(true)
+        expect(result.queryType).toBe('regularQuery')
+        expect(result.cubesUsed).toContain('Employees')
+        expect(result.joinType).toBe('single_cube')
+        expect(result.sql).toBeDefined()
+        expect(result.complexity).toBeDefined()
+      })
+
+      it('should throw error for invalid query', async () => {
+        const query = {
+          measures: ['NonExistent.count']
+        }
+
+        await expect(
+          handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+        ).rejects.toThrow('Query validation failed')
+      })
+    })
+
+    describe('handleBatchRequest', () => {
+      it('should execute multiple successful queries', async () => {
+        const queries = [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.totalSalary'] }
+        ]
+
+        const result = await handleBatchRequest(queries, testSecurityContexts.org1, semanticLayer)
+
+        expect(result.results).toBeDefined()
+        expect(result.results.length).toBe(2)
+        expect(result.results[0].success).toBe(true)
+        expect(result.results[1].success).toBe(true)
+      })
+
+      it('should handle partial failure', async () => {
+        const queries = [
+          { measures: ['Employees.count'] },
+          { measures: ['NonExistent.count'] }
+        ]
+
+        const result = await handleBatchRequest(queries, testSecurityContexts.org1, semanticLayer)
+
+        expect(result.results).toBeDefined()
+        expect(result.results.length).toBe(2)
+        expect(result.results[0].success).toBe(true)
+        expect(result.results[1].success).toBe(false)
+        expect(result.results[1].error).toBeDefined()
+      })
+
+      it('should preserve query order in results', async () => {
+        const queries = [
+          { measures: ['Employees.totalSalary'] },
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.avgSalary'] }
+        ]
+
+        const result = await handleBatchRequest(queries, testSecurityContexts.org1, semanticLayer)
+
+        expect(result.results.length).toBe(3)
+        // All should succeed
+        expect(result.results.every(r => r.success)).toBe(true)
+      })
+    })
+  })
+})

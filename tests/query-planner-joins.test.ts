@@ -295,9 +295,316 @@ describe('QueryPlanner - New Join System', () => {
       const plan1HasCTEs = plan1.preAggregationCTEs && plan1.preAggregationCTEs.length > 0
       const plan2HasCTEs = plan2.preAggregationCTEs && plan2.preAggregationCTEs.length > 0
 
-      expect(plan1HasCTEs).toBe(true) 
+      expect(plan1HasCTEs).toBe(true)
       expect(plan2HasCTEs).toBe(true)
       expect(plan1.preAggregationCTEs!.length).toBe(plan2.preAggregationCTEs!.length)
+    })
+  })
+
+  describe('analyzeQueryPlan() - Query Analysis', () => {
+    describe('Primary Cube Selection Analysis', () => {
+      it('should return single_cube reason for single cube queries', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+
+        const query = {
+          measures: ['Employees.count'],
+          dimensions: ['Employees.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        expect(analysis.primaryCube.reason).toBe('single_cube')
+        expect(analysis.primaryCube.selectedCube).toBe('Employees')
+        expect(analysis.primaryCube.explanation).toBe('Only one cube is used in this query')
+        expect(analysis.cubeCount).toBe(1)
+        expect(analysis.cubesInvolved).toEqual(['Employees'])
+      })
+
+      it('should return most_dimensions when one cube has more dimensions in query', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Departments', testCubes.testDepartmentsCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        // Query with 2 dimensions from Employees, 1 from Departments
+        const query = {
+          measures: ['Employees.count', 'Departments.count'],
+          dimensions: ['Employees.name', 'Employees.email', 'Departments.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Employees has 2 dimensions, Departments has 1 - Employees should be primary
+        expect(analysis.primaryCube.selectedCube).toBe('Employees')
+        expect(analysis.primaryCube.reason).toBe('most_dimensions')
+        expect(analysis.primaryCube.explanation).toContain('dimension')
+        expect(analysis.primaryCube.candidates).toBeDefined()
+        expect(analysis.primaryCube.candidates!.length).toBeGreaterThan(0)
+      })
+
+      it('should return alphabetical_fallback when no cube can reach all others', () => {
+        // Create isolated cubes with no joins between them
+        const isolatedCube1 = {
+          name: 'ZetaCube',
+          sql: () => eq(schema.employees.organisationId, 1),
+          measures: {
+            count: { type: 'count' as const, sql: () => schema.employees.id }
+          },
+          dimensions: {}
+        }
+        const isolatedCube2 = {
+          name: 'AlphaCube',
+          sql: () => eq(schema.departments.organisationId, 1),
+          measures: {
+            count: { type: 'count' as const, sql: () => schema.departments.id }
+          },
+          dimensions: {}
+        }
+
+        const cubes = new Map()
+        cubes.set('ZetaCube', isolatedCube1)
+        cubes.set('AlphaCube', isolatedCube2)
+
+        const query = {
+          measures: ['ZetaCube.count', 'AlphaCube.count']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Should fall back to alphabetical (AlphaCube before ZetaCube)
+        expect(analysis.primaryCube.selectedCube).toBe('AlphaCube')
+        expect(analysis.primaryCube.reason).toBe('alphabetical_fallback')
+        expect(analysis.primaryCube.explanation).toContain('alphabetically')
+      })
+
+      it('should include candidate analysis details', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        const query = {
+          measures: ['Employees.count', 'Productivity.totalLinesOfCode'],
+          dimensions: ['Employees.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Should have candidate info when multiple cubes are considered
+        if (analysis.primaryCube.candidates) {
+          for (const candidate of analysis.primaryCube.candidates) {
+            expect(candidate.cubeName).toBeDefined()
+            expect(typeof candidate.dimensionCount).toBe('number')
+            expect(typeof candidate.joinCount).toBe('number')
+            expect(typeof candidate.canReachAll).toBe('boolean')
+          }
+        }
+      })
+    })
+
+    describe('Join Path Analysis', () => {
+      it('should return path steps with joinType and joinColumns', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        const query = {
+          measures: ['Employees.count', 'Productivity.totalLinesOfCode'],
+          dimensions: ['Employees.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Should have join path from Employees to Productivity
+        expect(analysis.joinPaths.length).toBeGreaterThan(0)
+
+        const joinPath = analysis.joinPaths[0]
+        expect(joinPath.targetCube).toBeDefined()
+        expect(joinPath.pathFound).toBe(true)
+        expect(joinPath.path).toBeDefined()
+        expect(joinPath.pathLength).toBeGreaterThan(0)
+
+        // Verify path step structure
+        if (joinPath.path && joinPath.path.length > 0) {
+          const step = joinPath.path[0]
+          expect(step.fromCube).toBeDefined()
+          expect(step.toCube).toBeDefined()
+          expect(step.relationship).toBeDefined()
+          expect(step.joinType).toBeDefined()
+          expect(step.joinColumns).toBeDefined()
+          expect(Array.isArray(step.joinColumns)).toBe(true)
+        }
+      })
+
+      it('should track visitedCubes during BFS traversal', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        const query = {
+          measures: ['Employees.count', 'Productivity.totalLinesOfCode']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        const joinPath = analysis.joinPaths[0]
+        expect(joinPath.visitedCubes).toBeDefined()
+        expect(Array.isArray(joinPath.visitedCubes)).toBe(true)
+        expect(joinPath.visitedCubes!.length).toBeGreaterThan(0)
+      })
+
+      it('should return pathFound=false with error when no path exists', () => {
+        // Create cubes with no relationship between them
+        const disconnectedCube = {
+          name: 'DisconnectedCube',
+          sql: () => eq(schema.employees.organisationId, 1),
+          measures: {
+            count: { type: 'count' as const, sql: () => schema.employees.id }
+          },
+          dimensions: {}
+          // No joins defined
+        }
+
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('DisconnectedCube', disconnectedCube)
+
+        const query = {
+          measures: ['Employees.count', 'DisconnectedCube.count']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Should have a failed join path
+        const failedPath = analysis.joinPaths.find(p => !p.pathFound)
+        expect(failedPath).toBeDefined()
+        expect(failedPath!.pathFound).toBe(false)
+        expect(failedPath!.error).toBeDefined()
+        expect(failedPath!.error).toContain('No join path found')
+
+        // Should have warning in analysis
+        expect(analysis.warnings).toBeDefined()
+        expect(analysis.warnings!.length).toBeGreaterThan(0)
+      })
+    })
+
+    describe('Pre-aggregation Analysis', () => {
+      it('should detect hasMany relationships requiring pre-aggregation', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        const query = {
+          measures: ['Employees.count', 'Productivity.totalLinesOfCode'],
+          dimensions: ['Employees.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Employees hasMany Productivity - should require pre-aggregation
+        expect(analysis.preAggregations.length).toBeGreaterThan(0)
+        expect(analysis.querySummary.hasPreAggregation).toBe(true)
+        expect(analysis.querySummary.queryType).toBe('multi_cube_cte')
+      })
+
+      it('should extract join keys for CTE generation', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        const query = {
+          measures: ['Employees.count', 'Productivity.avgLinesOfCode']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        if (analysis.preAggregations.length > 0) {
+          const preAgg = analysis.preAggregations[0]
+          expect(preAgg.cubeName).toBeDefined()
+          expect(preAgg.cteAlias).toBeDefined()
+          expect(preAgg.reason).toContain('hasMany')
+          expect(preAgg.measures).toBeDefined()
+          expect(Array.isArray(preAgg.measures)).toBe(true)
+          expect(preAgg.joinKeys).toBeDefined()
+          expect(Array.isArray(preAgg.joinKeys)).toBe(true)
+
+          // Verify join key structure
+          if (preAgg.joinKeys.length > 0) {
+            expect(preAgg.joinKeys[0].sourceColumn).toBeDefined()
+            expect(preAgg.joinKeys[0].targetColumn).toBeDefined()
+          }
+        }
+      })
+
+      it('should skip cubes without measures in query', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Productivity', testCubes.testProductivityCube)
+
+        // Query with only dimensions from Productivity, no measures
+        const query = {
+          measures: ['Employees.count'],
+          dimensions: ['Employees.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Should not have pre-aggregations since only one cube has measures
+        expect(analysis.preAggregations.length).toBe(0)
+        expect(analysis.querySummary.hasPreAggregation).toBe(false)
+      })
+    })
+
+    describe('Query Summary', () => {
+      it('should return single_cube query type for single cube queries', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+
+        const query = {
+          measures: ['Employees.count']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        expect(analysis.querySummary.queryType).toBe('single_cube')
+        expect(analysis.querySummary.joinCount).toBe(0)
+        expect(analysis.querySummary.cteCount).toBe(0)
+      })
+
+      it('should return multi_cube_join for multi-cube without pre-aggregation', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+        cubes.set('Departments', testCubes.testDepartmentsCube)
+
+        // belongsTo relationship doesn't need pre-aggregation
+        const query = {
+          measures: ['Employees.count'],
+          dimensions: ['Departments.name']
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        // Only Employees has measures, so no CTE needed
+        expect(analysis.querySummary.queryType).toBe('multi_cube_join')
+        expect(analysis.querySummary.hasPreAggregation).toBe(false)
+      })
+
+      it('should handle empty query gracefully', () => {
+        const cubes = new Map()
+        cubes.set('Employees', testCubes.testEmployeesCube)
+
+        const query = {
+          measures: [],
+          dimensions: []
+        }
+
+        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+
+        expect(analysis.cubeCount).toBe(0)
+        expect(analysis.cubesInvolved).toEqual([])
+        expect(analysis.warnings).toBeDefined()
+        expect(analysis.warnings!.length).toBeGreaterThan(0)
+      })
     })
   })
 })
