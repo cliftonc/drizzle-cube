@@ -7,6 +7,7 @@
 
 // Providers and context
 export { CubeProvider, useCubeContext } from './providers/CubeProvider'
+export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
 
 // Client creation utilities
 export { createCubeClient } from './client/CubeClient'
