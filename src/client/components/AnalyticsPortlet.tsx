@@ -9,25 +9,8 @@ import { useCubeQuery } from '../hooks/useCubeQuery'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
-import { chartConfigRegistry } from '../charts/chartConfigRegistry'
-import { getChartConfig } from '../charts/chartConfigs'
-import {
-  RechartsBarChart,
-  RechartsLineChart,
-  RechartsAreaChart,
-  RechartsPieChart,
-  RechartsScatterChart,
-  RechartsRadarChart,
-  RechartsRadialBarChart,
-  RechartsTreeMapChart,
-  BubbleChart,
-  DataTable,
-  ActivityGridChart,
-  KpiNumber,
-  KpiDelta,
-  KpiText,
-  MarkdownChart
-} from './charts'
+import { LazyChart, isValidChartType } from '../charts/ChartLoader'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry'
 import type { AnalyticsPortletProps } from '../types'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 
@@ -74,11 +57,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
     onDebugDataReadyRef.current = onDebugDataReady
   }, [onDebugDataReady])
 
-  // Check if this chart type skips queries
-  const chartTypeConfig = useMemo(() =>
-    getChartConfig(chartType, chartConfigRegistry),
-    [chartType]
-  )
+  // Check if this chart type skips queries (using lazy-loaded config)
+  const { config: chartTypeConfig } = useChartConfig(chartType)
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
   // Parse query from JSON string, merge dashboard filters, and include refresh counter to force re-query
@@ -277,190 +257,46 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
 
   const data = getData()
 
-  // Render appropriate chart component
-  // Note: ChartContainer now handles dimension validation to prevent Recharts -1 errors
+  // Render appropriate chart component using lazy loading
+  // Each chart type is dynamically imported for code splitting
   const renderChart = () => {
     try {
-      // Pass height directly to charts - let ChartContainer handle it
       const chartHeight = height
-      
-      switch (chartType) {
-        case 'bar':
-          return (
-            <RechartsBarChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'line':
-          return (
-            <RechartsLineChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'area':
-          return (
-            <RechartsAreaChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'pie':
-          return (
-            <RechartsPieChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'scatter':
-          return (
-            <RechartsScatterChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'radar':
-          return (
-            <RechartsRadarChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'radialBar':
-          return (
-            <RechartsRadialBarChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'treemap':
-          return (
-            <RechartsTreeMapChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'bubble':
-          return (
-            <BubbleChart
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'table':
-          return (
-            <DataTable
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'activityGrid':
-          return (
-            <ActivityGridChart
-              key={`activityGrid-${colorPalette?.name || 'default'}`}
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'kpiNumber':
-          return (
-            <KpiNumber
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'kpiDelta':
-          return (
-            <KpiDelta
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'kpiText':
-          return (
-            <KpiText
-              data={data}
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        case 'markdown':
-          return (
-            <MarkdownChart
-              data={[]} // Markdown chart doesn't use query data
-              chartConfig={chartConfig}
-              displayConfig={displayConfig}
-              queryObject={queryObject}
-              height={chartHeight}
-              colorPalette={colorPalette}
-            />
-          )
-        default:
-          return (
-            <div className="flex items-center justify-center w-full" style={{ height }}>
-              <div className="text-center text-dc-text-muted">
-                <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
-                <div className="text-xs">{chartType}</div>
-              </div>
+
+      // Handle unsupported chart types
+      if (!isValidChartType(chartType)) {
+        return (
+          <div className="flex items-center justify-center w-full" style={{ height }}>
+            <div className="text-center text-dc-text-muted">
+              <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
+              <div className="text-xs">{chartType}</div>
             </div>
-          )
+          </div>
+        )
       }
+
+      // For markdown chart, use empty data array
+      const chartData = chartType === 'markdown' ? [] : data
+
+      return (
+        <LazyChart
+          chartType={chartType}
+          data={chartData}
+          chartConfig={chartConfig}
+          displayConfig={displayConfig}
+          queryObject={queryObject ?? undefined}
+          height={chartHeight}
+          colorPalette={colorPalette}
+          fallback={
+            <div
+              className="flex items-center justify-center w-full"
+              style={{ height: typeof chartHeight === 'number' ? `${chartHeight}px` : chartHeight }}
+            >
+              <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full min-h-[100px]" />
+            </div>
+          }
+        />
+      )
     } catch (error) {
       console.error('Chart rendering error:', error)
       return (

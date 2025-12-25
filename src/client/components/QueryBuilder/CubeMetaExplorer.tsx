@@ -5,12 +5,16 @@
  * Users can click on dimensions, measures, and time dimensions to add them to their query.
  */
 
-import React, { useState } from 'react'
+import React, { useState, Suspense, lazy } from 'react'
 import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline'
 import { ChartBarIcon, TagIcon, CalendarIcon, RectangleGroupIcon, ListBulletIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
-import { CubeRelationshipDiagram } from '../CubeRelationshipDiagram'
 import { getMeasureIcon } from '../../utils/measureIcons'
+
+// Lazy load the relationship diagram (imports reactflow which is large)
+const CubeRelationshipDiagram = lazy(() =>
+  import('../CubeRelationshipDiagram').then(mod => ({ default: mod.CubeRelationshipDiagram }))
+)
 
 type SchemaViewType = 'tree' | 'diagram'
 
@@ -542,6 +546,11 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
         {viewType === 'diagram' ? (
           /* Diagram View - schema relationship diagram */
           <div className="h-full">
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-pulse text-dc-text-muted">Loading diagram...</div>
+              </div>
+            }>
             <CubeRelationshipDiagram
               className="h-full"
               onCubeClick={(cubeName) => {
@@ -593,6 +602,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
               ]}
               searchTerm={searchTerm}
             />
+            </Suspense>
           </div>
         ) : (
           /* Tree View - existing field list */

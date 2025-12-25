@@ -10,10 +10,10 @@
  * - 'drizzle-cube/client/providers' - Context providers only
  * - 'drizzle-cube/client/components' - UI components (no charts)
  * - 'drizzle-cube/client/utils' - Utility functions only
+ *
+ * IMPORTANT: CSS is NOT auto-imported. Add to your app entry:
+ *   import 'drizzle-cube/client/styles.css'
  */
-
-// Import styles to include in build
-import './styles.css'
 
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
@@ -21,18 +21,16 @@ export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
 export { default as LoadingIndicator } from './components/LoadingIndicator'
 export type { LoadingIndicatorProps } from './components/LoadingIndicator'
 
-// Chart components
+// Lazy chart loading (for code splitting)
+// For static chart imports, use 'drizzle-cube/client/charts' instead
 export {
-  RechartsBarChart,
-  RechartsLineChart,
-  RechartsAreaChart,
-  RechartsPieChart,
-  RechartsScatterChart,
-  RechartsRadarChart,
-  RechartsRadialBarChart,
-  RechartsTreeMapChart,
-  DataTable
-} from './components/charts'
+  LazyChart,
+  preloadChart,
+  preloadCharts,
+  isValidChartType,
+  getAvailableChartTypes
+} from './charts/ChartLoader'
+export type { LazyChartProps } from './charts/ChartLoader'
 
 // Layout components
 export { default as DashboardGrid } from './components/DashboardGrid'

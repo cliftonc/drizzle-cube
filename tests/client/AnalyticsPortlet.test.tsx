@@ -33,23 +33,40 @@ vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)
 }))
 
-// Mock chart components
-vi.mock('../../src/client/components/charts', () => ({
-  RechartsBarChart: (props: any) => <div data-testid="bar-chart" data-config={JSON.stringify(props.chartConfig)} />,
-  RechartsLineChart: (props: any) => <div data-testid="line-chart" />,
-  RechartsAreaChart: (props: any) => <div data-testid="area-chart" />,
-  RechartsPieChart: (props: any) => <div data-testid="pie-chart" />,
-  RechartsScatterChart: (props: any) => <div data-testid="scatter-chart" />,
-  RechartsRadarChart: (props: any) => <div data-testid="radar-chart" />,
-  RechartsRadialBarChart: (props: any) => <div data-testid="radial-bar-chart" />,
-  RechartsTreeMapChart: (props: any) => <div data-testid="treemap-chart" />,
-  BubbleChart: (props: any) => <div data-testid="bubble-chart" />,
-  DataTable: (props: any) => <div data-testid="data-table" />,
-  ActivityGridChart: (props: any) => <div data-testid="activity-grid-chart" />,
-  KpiNumber: (props: any) => <div data-testid="kpi-number" />,
-  KpiDelta: (props: any) => <div data-testid="kpi-delta" />,
-  KpiText: (props: any) => <div data-testid="kpi-text" />,
-  MarkdownChart: (props: any) => <div data-testid="markdown-chart" />
+// Mock ChartLoader (LazyChart renders the chart based on chartType)
+vi.mock('../../src/client/charts/ChartLoader', () => ({
+  LazyChart: ({ chartType, ...props }: any) => (
+    <div data-testid={`${chartType}-chart`} data-config={JSON.stringify(props.chartConfig)} />
+  ),
+  isValidChartType: (chartType: string) => [
+    'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'radialBar', 'treemap',
+    'bubble', 'table', 'activityGrid', 'kpiNumber', 'kpiDelta', 'kpiText', 'markdown'
+  ].includes(chartType),
+  preloadChart: vi.fn(),
+  preloadCharts: vi.fn(),
+  getAvailableChartTypes: vi.fn(() => [
+    'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'radialBar', 'treemap',
+    'bubble', 'table', 'activityGrid', 'kpiNumber', 'kpiDelta', 'kpiText', 'markdown'
+  ])
+}))
+
+// Mock lazyChartConfigRegistry
+vi.mock('../../src/client/charts/lazyChartConfigRegistry', () => ({
+  useChartConfig: vi.fn((chartType: string) => ({
+    config: {
+      skipQuery: chartType === 'markdown',
+      dropZones: [
+        { key: 'yAxis', mandatory: true, label: 'Measures' }
+      ]
+    },
+    loading: false,
+    loaded: true
+  })),
+  getChartConfigAsync: vi.fn(),
+  getChartConfigSync: vi.fn(),
+  preloadChartConfig: vi.fn(),
+  preloadChartConfigs: vi.fn(),
+  loadAllChartConfigs: vi.fn()
 }))
 
 // Mock ChartErrorBoundary
@@ -60,21 +77,6 @@ vi.mock('../../src/client/components/ChartErrorBoundary', () => ({
 // Mock LoadingIndicator
 vi.mock('../../src/client/components/LoadingIndicator', () => ({
   default: () => <div data-testid="loading-indicator">Loading...</div>
-}))
-
-// Mock chartConfigRegistry
-vi.mock('../../src/client/charts/chartConfigRegistry', () => ({
-  chartConfigRegistry: {}
-}))
-
-// Mock chartConfigs
-vi.mock('../../src/client/charts/chartConfigs', () => ({
-  getChartConfig: vi.fn((chartType: string) => ({
-    skipQuery: chartType === 'markdown',
-    dropZones: [
-      { key: 'yAxis', mandatory: true, label: 'Measures' }
-    ]
-  }))
 }))
 
 // Mock filterUtils
@@ -322,7 +324,7 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      expect(getByTestId('data-table')).toBeInTheDocument()
+      expect(getByTestId('table-chart')).toBeInTheDocument()
     })
 
     it('should pass chartConfig to chart component', () => {
@@ -440,13 +442,9 @@ describe('AnalyticsPortlet', () => {
   describe('skip query charts', () => {
     it('should not execute query for markdown charts', async () => {
       const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
-      const { getChartConfig } = await import('../../src/client/charts/chartConfigs')
 
-      // Make markdown return skipQuery: true
-      ;(getChartConfig as any).mockImplementation((chartType: string) => ({
-        skipQuery: chartType === 'markdown',
-        dropZones: []
-      }))
+      // The mock for useChartConfig already returns skipQuery: true for markdown
+      // (see mock at top of file)
 
       render(
         <AnalyticsPortlet

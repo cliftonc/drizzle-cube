@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react'
 import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronUpIcon, TableCellsIcon, ChartBarIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline'
-import { DataTable, RechartsBarChart, RechartsLineChart, RechartsAreaChart, RechartsPieChart, RechartsScatterChart, RechartsRadarChart, RechartsRadialBarChart, RechartsTreeMapChart, BubbleChart, ActivityGridChart, KpiNumber, KpiDelta, KpiText, MarkdownChart } from '../../components/charts'
+import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import ChartTypeSelector from '../ChartTypeSelector'
 import ChartConfigPanel from '../ChartConfigPanel'
 import type { ResultsPanelProps } from './types'
@@ -80,7 +80,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
     </div>
   )
 
-  // Render the appropriate chart component
+  // Render the appropriate chart component using lazy loading
   const renderChart = () => {
     if (!executionResults || executionResults.length === 0) {
       return (
@@ -98,39 +98,37 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
     const data = executionResults
 
     try {
-      switch (chartType) {
-        case 'bar':
-          return <RechartsBarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'line':
-          return <RechartsLineChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'area':
-          return <RechartsAreaChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'pie':
-          return <RechartsPieChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'scatter':
-          return <RechartsScatterChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'radar':
-          return <RechartsRadarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'radialBar':
-          return <RechartsRadialBarChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'treemap':
-          return <RechartsTreeMapChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'bubble':
-          return <BubbleChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'activityGrid':
-          return <ActivityGridChart data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'kpiNumber':
-          return <KpiNumber data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'kpiDelta':
-          return <KpiDelta data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'kpiText':
-          return <KpiText data={data} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'markdown':
-          return <MarkdownChart data={[]} chartConfig={chartConfig} displayConfig={displayConfig} queryObject={query} height={chartHeight} />
-        case 'table':
-        default:
-          return <DataTable data={data} height="100%" />
+      // Check if it's a valid chart type for lazy loading
+      if (!isValidChartType(chartType)) {
+        return (
+          <div className="flex items-center justify-center h-full text-dc-text-muted">
+            <div className="text-center">
+              <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
+              <div className="text-xs">{chartType}</div>
+            </div>
+          </div>
+        )
       }
+
+      // For markdown chart, use empty data array
+      const chartData = chartType === 'markdown' ? [] : data
+
+      return (
+        <LazyChart
+          chartType={chartType}
+          data={chartData}
+          chartConfig={chartConfig}
+          displayConfig={displayConfig}
+          queryObject={query}
+          height={chartHeight}
+          fallback={
+            <div className="flex items-center justify-center" style={{ height: chartHeight }}>
+              <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full" />
+            </div>
+          }
+        />
+      )
     } catch (error) {
       console.error('Chart rendering error:', error)
       return (
@@ -292,9 +290,15 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
         {/* Results Content - Table or Chart based on active view */}
         <div className="flex-1 min-h-0">
           {activeView === 'table' ? (
-            <DataTable
+            <LazyChart
+              chartType="table"
               data={executionResults}
               height="100%"
+              fallback={
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full" />
+                </div>
+              }
             />
           ) : (
             <div className="p-4 h-full overflow-auto">

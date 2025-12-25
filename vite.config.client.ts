@@ -70,7 +70,21 @@ export default defineConfig({
           return assetInfo.name
         },
         manualChunks(id) {
-          // Group chart-related dependencies
+          // Each chart component gets its own chunk for code splitting
+          // Match patterns like /charts/BarChart.tsx or /charts/BarChart.config.tsx
+          if (id.includes('/components/charts/') && !id.includes('index')) {
+            // Extract chart name from path (e.g., BarChart, LineChart)
+            const match = id.match(/\/charts\/([A-Za-z]+)(?:\.config)?\.tsx?$/)
+            if (match) {
+              const chartName = match[1].toLowerCase()
+              // Config files go with their chart
+              if (id.includes('.config.')) {
+                return `chart-${chartName}-config`
+              }
+              return `chart-${chartName}`
+            }
+          }
+          // Group chart-related external dependencies
           if (id.includes('recharts')) {
             return 'recharts'
           }
@@ -78,7 +92,7 @@ export default defineConfig({
           if (id.includes('react-grid-layout') || id.includes('react-resizable')) {
             return 'layout'
           }
-          // Group icon dependencies  
+          // Group icon dependencies
           if (id.includes('@heroicons') || id.includes('@iconify')) {
             return 'icons'
           }

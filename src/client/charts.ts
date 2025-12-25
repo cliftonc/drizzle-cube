@@ -1,11 +1,14 @@
 /**
  * Drizzle Cube Chart Components
- * 
+ *
  * Chart components only - optimized for applications that only need charts
  * without the full dashboard or query builder functionality.
+ *
+ * For code splitting, use LazyChart instead of direct chart imports:
+ *   import { LazyChart, preloadCharts } from 'drizzle-cube/client/charts'
  */
 
-// Chart components only
+// Direct chart component exports (static imports)
 export {
   RechartsBarChart,
   RechartsLineChart,
@@ -18,11 +21,34 @@ export {
   DataTable
 } from './components/charts'
 
+// Lazy loading utilities for code splitting
+export {
+  LazyChart,
+  preloadChart,
+  preloadCharts,
+  isValidChartType,
+  getAvailableChartTypes
+} from './charts/ChartLoader'
+
+export type { LazyChartProps } from './charts/ChartLoader'
+
+// Lazy chart config registry
+export {
+  getChartConfigAsync,
+  getChartConfigSync,
+  useChartConfig,
+  isChartConfigLoaded,
+  preloadChartConfig,
+  preloadChartConfigs,
+  loadAllChartConfigs,
+  clearChartConfigCache
+} from './charts/lazyChartConfigRegistry'
+
 // Chart utilities and constants
 export { formatChartData } from './utils/index'
 export {
   CHART_COLORS,
-  POSITIVE_COLOR, 
+  POSITIVE_COLOR,
   NEGATIVE_COLOR,
   CHART_MARGINS
 } from './utils/chartConstants'

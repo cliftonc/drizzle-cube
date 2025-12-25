@@ -5,6 +5,10 @@
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
   "type": "module",
+  "sideEffects": [
+    "*.css",
+    "./dist/client/styles.css"
+  ],
   "exports": {
     "./server": {
       "types": "./dist/server/index.d.ts",
