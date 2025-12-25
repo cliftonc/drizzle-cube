@@ -1,9 +1,9 @@
 /**
  * Drizzle Cube Client Components
- * 
+ *
  * React components for building analytics dashboards with minimal dependencies.
  * Designed to be embedded in existing applications with their own auth/navigation.
- * 
+ *
  * For modular imports, consider using:
  * - 'drizzle-cube/client/charts' - Chart components only
  * - 'drizzle-cube/client/hooks' - React hooks only
@@ -14,6 +14,9 @@
  * IMPORTANT: CSS is NOT auto-imported. Add to your app entry:
  *   import 'drizzle-cube/client/styles.css'
  */
+
+// Import styles to ensure they are processed and bundled
+import './styles.css'
 
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
