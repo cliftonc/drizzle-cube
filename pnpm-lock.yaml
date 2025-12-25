@@ -50,7 +50,7 @@ importers:
         version: 2.2.0(react@18.3.1)
       '@hono/node-server':
         specifier: ^1.19.0
-        version: 1.19.7(hono@4.11.1)
+        version: 1.19.7(hono@4.11.2)
       '@iconify-icons/tabler':
         specifier: ^1.2.95
         version: 1.2.95
@@ -142,8 +142,8 @@ importers:
         specifier: ^16.3.0
         version: 16.5.0
       hono:
-        specifier: ^4.0.0
-        version: 4.11.1
+        specifier: ^4.11.2
+        version: 4.11.2
       jsdom:
         specifier: ^27.0.0
         version: 27.3.0
@@ -2723,8 +2723,8 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
-  hono@4.11.1:
-    resolution: {integrity: sha512-KsFcH0xxHes0J4zaQgWbYwmz3UPOOskdqZmItstUG93+Wk1ePBLkLGwbP9zlmh1BFUiL8Qp+Xfu9P7feJWpGNg==}
+  hono@4.11.2:
+    resolution: {integrity: sha512-o+avdUAD1v94oHkjGBhiMhBV4WBHxhbu0+CUVH78hhphKy/OKQLxtKjkmmNcrMlbYAhAbsM/9F+l3KnYxyD3Lg==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -4581,9 +4581,9 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  '@hono/node-server@1.19.7(hono@4.11.1)':
+  '@hono/node-server@1.19.7(hono@4.11.2)':
     dependencies:
-      hono: 4.11.1
+      hono: 4.11.2
 
   '@humanfs/core@0.19.1': {}
 
@@ -6535,7 +6535,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  hono@4.11.1: {}
+  hono@4.11.2: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
