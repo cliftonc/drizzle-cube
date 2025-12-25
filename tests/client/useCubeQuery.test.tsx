@@ -15,12 +15,15 @@ const mockLoad = vi.fn()
 const mockCubeClient = {
   load: mockLoad,
   sql: vi.fn(),
-  meta: vi.fn()
+  meta: vi.fn(),
+  batchLoad: vi.fn() // Required for BatchCoordinator
 }
 
-// Mock the CubeProvider to provide our mocked client
+// Mock the CubeProvider to provide our mocked client with batching disabled
+// We disable batching to test the basic query behavior directly
+// BatchCoordinator has its own dedicated tests
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <CubeProvider cubeApi={mockCubeClient as any}>
+  <CubeProvider cubeApi={mockCubeClient as any} enableBatching={false}>
     {children}
   </CubeProvider>
 )
@@ -312,6 +315,9 @@ describe('useCubeQuery', () => {
 
       const firstPromise = new Promise((_, reject) => { rejectFirst = reject })
       const secondPromise = new Promise(resolve => { resolveSecond = resolve })
+
+      // Add catch handler to prevent unhandled rejection warning
+      firstPromise.catch(() => {})
 
       const firstError = new Error('First query error')
       const secondResult = mockResultSet
