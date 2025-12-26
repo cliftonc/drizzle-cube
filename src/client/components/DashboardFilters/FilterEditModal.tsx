@@ -194,25 +194,31 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
   }, [filter, onClose])
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
-      <div className="rounded-lg shadow-xl max-w-7xl w-full h-[95vh] overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+    <div
+      className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-2"
+      style={{ backgroundColor: 'var(--dc-overlay)' }}
+    >
+      <div
+        className="rounded-lg max-w-7xl w-full h-[95vh] overflow-hidden flex flex-col bg-dc-surface border border-dc-border"
+        style={{ boxShadow: 'var(--dc-shadow-2xl)' }}
+      >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-dc-border flex items-center justify-between">
           <div className="flex-1">
-            <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">
+            <label className="block text-sm font-medium mb-2 text-dc-text">
               Filter Label
             </label>
             <input
               type="text"
               value={localLabel}
               onChange={(e) => handleLabelChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 border border-dc-border rounded-md text-sm bg-dc-surface-secondary text-dc-text"
               placeholder="Enter filter label"
             />
           </div>
           <button
             onClick={handleCancel}
-            className="ml-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors text-gray-700 dark:text-gray-300"
+            className="ml-4 p-2 hover:bg-dc-surface-hover rounded-md transition-colors text-dc-text-secondary"
           >
             <CloseIcon className="w-5 h-5" />
           </button>
@@ -222,15 +228,15 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
         <div className="flex-1 overflow-hidden flex">
           {/* Left Column - Schema Explorer (hidden for universal time filters) */}
           {!filter.isUniversalTime && (
-            <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-auto">
+            <div className="w-80 border-r border-dc-border bg-dc-surface overflow-auto">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <h3 className="text-sm font-semibold text-dc-text">
                     Available Fields
                   </h3>
                   <button
                     onClick={() => setShowAllFields(!showAllFields)}
-                    className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-dc-surface-hover text-dc-text-muted"
                     title={showAllFields ? 'Show dashboard fields only' : 'Show all fields'}
                   >
                     {showAllFields ? (
@@ -248,7 +254,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
                 </div>
 
                 {!showAllFields && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                  <div className="text-xs text-dc-info mb-3 p-2 bg-dc-info-bg rounded border border-dc-info-border">
                     Showing only fields used in this dashboard
                   </div>
                 )}
@@ -267,7 +273,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
                     onFieldDeselect={() => {}}
                   />
                 ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+                  <div className="text-center py-8 text-dc-text-muted text-sm">
                     {showAllFields ? (
                       <div>
                         <p className="mb-2">No schema available</p>
@@ -286,15 +292,15 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
           )}
 
           {/* Right Column - Filter Builder or Date Range Selector */}
-          <div className="flex-1 overflow-auto px-6 py-4 bg-gray-50 dark:bg-gray-800">
+          <div className="flex-1 overflow-auto px-6 py-4 bg-dc-surface-secondary">
             {filter.isUniversalTime ? (
               /* Universal time filter - show DateRangeSelector */
               <div>
-                <div className="mb-4 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                  <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+                <div className="mb-4 p-3 rounded-md bg-dc-info-bg border border-dc-info-border">
+                  <div className="text-sm font-medium text-dc-info mb-1">
                     Universal Time Filter
                   </div>
-                  <div className="text-xs text-blue-600 dark:text-blue-300">
+                  <div className="text-xs text-dc-text-secondary">
                     This filter applies to all time dimensions in portlets it&apos;s mapped to.
                     Select a date range below to filter data across all time-based charts.
                   </div>
@@ -337,16 +343,16 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-900">
+        <div className="px-6 py-4 border-t border-dc-border flex items-center justify-between bg-dc-surface">
           <button
             onClick={onDelete}
-            className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+            className="px-4 py-2 text-sm font-medium text-dc-danger hover:bg-dc-danger-bg rounded-md transition-colors"
           >
             Delete Filter
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium rounded-md transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+            className="px-4 py-2 text-sm font-medium rounded-md transition-colors bg-dc-primary hover:bg-dc-primary-hover text-dc-primary-content"
           >
             Done
           </button>
