@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import chartAreaLineIcon from '@iconify-icons/tabler/chart-area-line'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the area chart type
  */
 export const areaChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={chartAreaLineIcon} className={className} />,
+  icon: getChartTypeIcon('area'),
   description: 'Emphasize magnitude of change over time',
   useCase: 'Best for showing cumulative totals, volume changes, or stacked comparisons over time',
   dropZones: [

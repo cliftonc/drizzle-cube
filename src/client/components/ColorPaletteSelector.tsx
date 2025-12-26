@@ -5,7 +5,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { COLOR_PALETTES, getColorPalette } from '../utils/colorPalettes'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
+
+const ChevronDownIcon = getIcon('chevronDown')
 
 interface ColorPaletteSelectorProps {
   currentPalette?: string

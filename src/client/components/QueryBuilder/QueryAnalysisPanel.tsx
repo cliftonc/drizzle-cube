@@ -4,15 +4,7 @@
  */
 
 import React from 'react'
-import {
-  InformationCircleIcon,
-  ArrowRightIcon,
-  ExclamationTriangleIcon,
-  TableCellsIcon,
-  LinkIcon,
-  CheckCircleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import type { QueryAnalysis } from './types'
 
 interface QueryAnalysisPanelProps {
@@ -45,12 +37,20 @@ function getReasonBadgeClasses(reason: string): string {
 }
 
 const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => {
+  const InfoIcon = getIcon('info')
+  const ArrowRightIcon = getIcon('chevronRight')
+  const WarningIcon = getIcon('warning')
+  const TableIcon = getIcon('table')
+  const LinkIcon = getIcon('link')
+  const SuccessIcon = getIcon('success')
+  const ErrorIcon = getIcon('error')
+
   return (
     <div className="bg-dc-surface-secondary border border-dc-border rounded-lg p-4 space-y-4">
       {/* Query Summary Section */}
       <div className="border-b border-dc-border pb-3">
         <h4 className="text-sm font-semibold text-dc-text mb-2 flex items-center">
-          <InformationCircleIcon className="w-4 h-4 mr-2" />
+          <InfoIcon className="w-4 h-4 mr-2" />
           Query Summary
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
@@ -78,7 +78,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       {/* Primary Cube Section */}
       <div className="border-b border-dc-border pb-3">
         <h4 className="text-sm font-semibold text-dc-text mb-2 flex items-center">
-          <TableCellsIcon className="w-4 h-4 mr-2" />
+          <TableIcon className="w-4 h-4 mr-2" />
           Primary Cube (FROM table)
         </h4>
         <div className="bg-dc-surface p-3 rounded text-sm">
@@ -109,12 +109,12 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                     </span>
                     {c.canReachAll ? (
                       <span className="text-green-600 dark:text-green-400 flex items-center gap-0.5">
-                        <CheckCircleIcon className="w-3 h-3" />
+                        <SuccessIcon className="w-3 h-3" />
                         reachable
                       </span>
                     ) : (
                       <span className="text-red-600 dark:text-red-400 flex items-center gap-0.5">
-                        <XCircleIcon className="w-3 h-3" />
+                        <ErrorIcon className="w-3 h-3" />
                         cannot reach all
                       </span>
                     )}
@@ -192,7 +192,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       {analysis.preAggregations.length > 0 && (
         <div className="border-b border-dc-border pb-3">
           <h4 className="text-sm font-semibold text-dc-text mb-2 flex items-center">
-            <TableCellsIcon className="w-4 h-4 mr-2" />
+            <TableIcon className="w-4 h-4 mr-2" />
             Pre-Aggregation CTEs
           </h4>
           <div className="space-y-2">
@@ -222,7 +222,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       {analysis.warnings && analysis.warnings.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center">
-            <ExclamationTriangleIcon className="w-4 h-4 mr-2" />
+            <WarningIcon className="w-4 h-4 mr-2" />
             Warnings
           </h4>
           <ul className="list-disc list-inside text-xs text-amber-600 dark:text-amber-400 space-y-1">

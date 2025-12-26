@@ -5,8 +5,11 @@
  */
 
 import React, { useCallback } from 'react'
-import { FunnelIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import FilterItem from '../QueryBuilder/FilterItem'
+
+const FilterIcon = getIcon('filter')
+const ClockIcon = getIcon('timeDimension')
 import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../QueryBuilder/types'
@@ -119,7 +122,7 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-2 mb-3">
-        <FunnelIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
+        <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
         <h3 className="text-sm font-semibold" style={{ color: 'var(--dc-text)' }}>
           Filters
         </h3>

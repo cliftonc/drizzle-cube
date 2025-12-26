@@ -6,22 +6,25 @@
  */
 
 import React from 'react'
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import FilterItem from './FilterItem'
 import FilterGroup from './FilterGroup'
 import type { FilterBuilderProps } from './types'
 import type { SimpleFilter, GroupFilter } from '../../types'
-import { 
-  isSimpleFilter, 
+import {
+  isSimpleFilter,
   isGroupFilter,
-  isAndFilter, 
-  isOrFilter, 
-  createSimpleFilter, 
-  createAndFilter, 
+  isAndFilter,
+  isOrFilter,
+  createSimpleFilter,
+  createAndFilter,
   createOrFilter,
   countFilters,
   getAllFilterableFields
 } from './utils'
+
+const AddIcon = getIcon('add')
+const FilterIcon = getIcon('filter')
 
 const FilterBuilder: React.FC<FilterBuilderProps> = ({
   filters,
@@ -123,7 +126,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
       {!hideFieldSelector && (
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <FunnelIcon className="w-4 h-4 text-dc-text-muted mr-2" />
+            <FilterIcon className="w-4 h-4 text-dc-text-muted mr-2" />
             <h4 className="text-sm font-semibold text-dc-text-secondary">
               Filters ({totalFilterCount})
             </h4>
@@ -150,7 +153,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                   : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
               }`}
             >
-              <PlusIcon className="w-3 h-3" />
+              <AddIcon className="w-3 h-3" />
               <span>Add Filter</span>
             </button>
           </div>

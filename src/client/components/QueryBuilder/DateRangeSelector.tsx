@@ -6,9 +6,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { XMarkIcon, CalendarIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
 import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
+
+const CloseIcon = getIcon('close')
+const CalendarIcon = getIcon('timeDimension')
+const ChevronDownIcon = getIcon('chevronDown')
 
 interface DateRangeSelectorProps {
   timeDimension: string
@@ -294,7 +298,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
               className="text-dc-text-muted hover:text-red-600 focus:outline-hidden shrink-0 p-1"
               title="Remove date range"
             >
-              <XMarkIcon className="w-4 h-4" />
+              <CloseIcon className="w-4 h-4" />
             </button>
           )}
         </div>

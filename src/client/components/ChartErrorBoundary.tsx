@@ -1,5 +1,7 @@
 import React, { Component, ReactNode } from 'react'
-import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
+
+const RefreshIcon = getIcon('refresh')
 
 interface Props {
   children: ReactNode
@@ -126,7 +128,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               backgroundColor: 'var(--dc-primary)'
             }}
           >
-            <ArrowPathIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
+            <RefreshIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
           </button>
         </div>
       )

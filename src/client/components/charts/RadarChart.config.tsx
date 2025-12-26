@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import chartRadarIcon from '@iconify-icons/tabler/chart-radar'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the radar chart type
  */
 export const radarChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={chartRadarIcon} className={className} />,
+  icon: getChartTypeIcon('radar'),
   description: 'Compare multiple metrics across categories',
   useCase: 'Best for multivariate comparisons, performance metrics, strengths/weaknesses analysis',
   dropZones: [

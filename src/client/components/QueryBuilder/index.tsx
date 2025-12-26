@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import { useCubeContext } from '../../providers/CubeProvider'
 import CubeMetaExplorer from './CubeMetaExplorer'
 import QueryPanel from './QueryPanel'
@@ -754,6 +754,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     timeDimensions: (state.query.timeDimensions || []).map(td => td.dimension)
   }
 
+  const MenuIcon = getIcon('menu')
+  const CloseIcon = getIcon('close')
+
   return (
     <div className={`h-full flex flex-col ${className}`} style={{ minHeight: '100%' }}>
       {/* Setup Panel - only show when not in modal and not hidden */}
@@ -768,7 +771,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             />
           </div>
         )}
-        
+
         {/* Mobile Schema Toggle Button */}
         <div className="md:hidden shrink-0 px-4 pb-2">
           <button
@@ -776,9 +779,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface-secondary hover:bg-dc-surface-hover rounded-md transition-colors"
           >
             {showSchemaMobile ? (
-              <><XMarkIcon className="w-4 h-4" /> Hide Schema</>
+              <><CloseIcon className="w-4 h-4" /> Hide Schema</>
             ) : (
-              <><Bars3Icon className="w-4 h-4" /> Show Schema</>
+              <><MenuIcon className="w-4 h-4" /> Show Schema</>
             )}
           </button>
         </div>
@@ -792,7 +795,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
                   onClick={() => setShowSchemaMobile(false)}
                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface-secondary hover:bg-dc-surface-hover rounded-md transition-colors"
                 >
-                  <XMarkIcon className="w-4 h-4" /> Close Schema
+                  <CloseIcon className="w-4 h-4" /> Close Schema
                 </button>
               </div>
               <div className="p-4">

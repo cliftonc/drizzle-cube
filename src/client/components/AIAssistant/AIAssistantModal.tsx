@@ -8,8 +8,12 @@
  */
 
 import React, { useState } from 'react'
-import { ExclamationCircleIcon, CheckCircleIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import Modal from '../Modal'
+
+const ErrorIcon = getIcon('error')
+const SuccessIcon = getIcon('success')
+const SparklesIcon = getIcon('sparkles')
 import type { AIAssistantState } from './types'
 import {
   sendGeminiMessage,
@@ -225,7 +229,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             <div className="flex items-center space-x-2">
               {state.response ? (
                 <>
-                  <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                  <SuccessIcon className="w-5 h-5 text-green-500" />
                   <span className="text-sm font-medium text-green-700">AI Generated Query</span>
                 </>
               ) : (
@@ -264,7 +268,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       <div className="shrink-0">
         {state.responseError && (
           <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+            <ErrorIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div className="text-sm text-red-700">{state.responseError}</div>
           </div>
         )}
@@ -278,14 +282,14 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         
         {state.validationResult === 'valid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-green-50 border border-green-200 rounded-md">
-            <CheckCircleIcon className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+            <SuccessIcon className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
             <div className="text-sm text-green-700">Query is valid and ready to use!</div>
           </div>
         )}
         
         {state.validationResult === 'invalid' && !state.isValidating && (
           <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ExclamationCircleIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+            <ErrorIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
             <div className="text-sm text-red-700">
               <div className="font-medium mb-1">Query validation failed:</div>
               <div className="text-xs">{state.validationError}</div>
@@ -325,7 +329,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           disabled={!state.response || !onQueryLoad}
           className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
-          <CheckCircleIcon className="w-4 h-4 mr-2" />
+          <SuccessIcon className="w-4 h-4 mr-2" />
           Use Query
         </button>
       </div>

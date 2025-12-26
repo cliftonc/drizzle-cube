@@ -6,13 +6,19 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { XMarkIcon, FunnelIcon, ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
-import { TagIcon, CalendarIcon } from '@heroicons/react/24/solid'
+import { getIcon } from '../../icons'
 import FilterValueSelector from './FilterValueSelector'
 import type { FilterItemProps, MetaField, DateRangeType } from './types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { DATE_RANGE_OPTIONS } from './types'
+
+const CloseIcon = getIcon('close')
+const FilterIcon = getIcon('filter')
+const ChevronDownIcon = getIcon('chevronDown')
+const SearchIcon = getIcon('search')
+const DimensionIcon = getIcon('dimension')
+const TimeDimensionIcon = getIcon('timeDimension')
 
 const FilterItem: React.FC<FilterItemProps> = ({
   filter,
@@ -143,13 +149,13 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Helper function to get field type icon
   const getFieldTypeIcon = (field: MetaField) => {
     if (field.type === 'time') {
-      return <CalendarIcon className="w-3 h-3 text-blue-500" />
+      return <TimeDimensionIcon className="w-3 h-3 text-blue-500" />
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'countDistinctApprox', 'runningTotal', 'calculated', 'number'].includes(field.type)) {
       // Use dynamic icon based on measure type, with amber color
       const icon = getMeasureIcon(field.type, 'w-3 h-3 text-amber-500')
       return icon
     } else {
-      return <TagIcon className="w-3 h-3 text-green-500" />
+      return <DimensionIcon className="w-3 h-3 text-green-500" />
     }
   }
 
@@ -258,7 +264,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
         {/* Row 1 on mobile: Filter icon and field selection - conditionally hidden */}
         {!hideFieldSelector && (
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <FunnelIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+            <FilterIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
 
             {/* Field selection */}
             <div className="relative flex-1 min-w-0">
@@ -283,7 +289,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                 {/* Search input */}
                 <div className="p-2 border-b border-dc-border">
                   <div className="relative">
-                    <MagnifyingGlassIcon className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-dc-text-muted" />
+                    <SearchIcon className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-dc-text-muted" />
                     <input
                       ref={searchInputRef}
                       type="text"
@@ -502,7 +508,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
               className="text-dc-text-muted hover:text-red-600 focus:outline-none shrink-0"
               title="Remove filter"
             >
-              <XMarkIcon className="w-4 h-4" />
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
         )}

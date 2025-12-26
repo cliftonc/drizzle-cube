@@ -6,11 +6,11 @@
  */
 
 import React, { useState } from 'react'
-import { ExclamationCircleIcon, ClockIcon, CheckCircleIcon, ExclamationTriangleIcon, ChevronDownIcon, ChevronUpIcon, TableCellsIcon, ChartBarIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import ChartTypeSelector from '../ChartTypeSelector'
 import ChartConfigPanel from '../ChartConfigPanel'
 import type { ResultsPanelProps } from './types'
+import { getIcon } from '../../icons'
 
 const ResultsPanel: React.FC<ResultsPanelProps> = ({
   executionStatus,
@@ -33,6 +33,17 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   activeView: activeViewProp = 'table',
   onActiveViewChange
 }) => {
+  // Get icons
+  const ErrorIcon = getIcon('error')
+  const TimeIcon = getIcon('timeDimension')
+  const SuccessIcon = getIcon('success')
+  const WarningIcon = getIcon('warning')
+  const ChevronDownIcon = getIcon('chevronDown')
+  const ChevronUpIcon = getIcon('chevronUp')
+  const TableIcon = getIcon('table')
+  const MeasureIcon = getIcon('measure')
+  const AdjustmentsIcon = getIcon('adjustments')
+
   // Use prop if provided, otherwise use local state for backwards compatibility
   const [localActiveView, setLocalActiveView] = useState<'table' | 'chart'>('table')
   const activeView = onActiveViewChange ? activeViewProp : localActiveView
@@ -54,7 +65,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   const ErrorState = () => (
     <div className="h-full flex items-center justify-center p-4">
       <div className="text-center max-w-md">
-        <ExclamationCircleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+        <ErrorIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
         <div className="text-sm font-semibold text-dc-text mb-2">Query Execution Failed</div>
         <div className="text-sm text-dc-text-secondary mb-4">
           There was an error executing your query. Please check the query and try again.
@@ -73,7 +84,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   const EmptyState = () => (
     <div className="h-full flex items-center justify-center">
       <div className="text-center mb-16">
-        <ClockIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
+        <TimeIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
         <div className="text-sm font-semibold text-dc-text-secondary mb-1">No Results Yet</div>
         <div className="text-xs text-dc-text-muted">Build and run a query to see results here</div>
       </div>
@@ -86,7 +97,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       return (
         <div className="flex items-center justify-center h-full text-dc-text-muted">
           <div className="text-center">
-            <ChartBarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <MeasureIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <div className="text-sm font-semibold mb-1">No data to display</div>
             <div className="text-xs">Run a query to see chart visualization</div>
           </div>
@@ -103,7 +114,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
         return (
           <div className="flex items-center justify-center h-full text-dc-text-muted">
             <div className="text-center">
-              <ExclamationTriangleIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <WarningIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
               <div className="text-xs">{chartType}</div>
             </div>
@@ -134,7 +145,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       return (
         <div className="flex items-center justify-center h-full text-dc-text-muted p-4">
           <div className="text-center">
-            <ExclamationCircleIcon className="w-12 h-12 mx-auto mb-3 text-red-400" />
+            <ErrorIcon className="w-12 h-12 mx-auto mb-3 text-red-400" />
             <div className="text-sm font-semibold mb-1">Unable to render chart</div>
             <div className="text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
           </div>
@@ -148,7 +159,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       return (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
-            <CheckCircleIcon className="w-12 h-12 mx-auto text-green-500 mb-3" />
+            <SuccessIcon className="w-12 h-12 mx-auto text-green-500 mb-3" />
             <div className="text-sm font-semibold text-gray-700 mb-1">Query Successful</div>
             <div className="text-xs text-gray-500">No data returned from the query</div>
           </div>
@@ -163,7 +174,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             {/* Left side: Status and row count */}
             <div className="flex items-center">
-              <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
+              <SuccessIcon className="w-5 h-5 text-green-500 mr-2" />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-dc-text-secondary">
                   Query Results ({executionResults.length} row{executionResults.length !== 1 ? 's' : ''} shown)
@@ -193,7 +204,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                   }`}
                 >
-                  <TableCellsIcon className="w-3.5 h-3.5" />
+                  <TableIcon className="w-3.5 h-3.5" />
                   Table
                 </button>
                 <button
@@ -204,7 +215,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                   }`}
                 >
-                  <ChartBarIcon className="w-3.5 h-3.5" />
+                  <MeasureIcon className="w-3.5 h-3.5" />
                   Chart
                 </button>
               </div>
@@ -249,7 +260,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                       : 'text-dc-text-secondary bg-dc-surface hover:bg-dc-surface-hover border border-dc-border'
                   }`}
                 >
-                  <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                  <AdjustmentsIcon className="w-4 h-4" />
                   {showChartConfig ? 'Hide Config' : 'Configure'}
                   {showChartConfig ? (
                     <ChevronUpIcon className="w-3.5 h-3.5" />
@@ -264,7 +275,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           {/* Performance Warning */}
           {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && totalRowCount > 500 && (
             <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start">
-              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mr-2 shrink-0 mt-0.5" />
+              <WarningIcon className="w-5 h-5 text-yellow-600 mr-2 shrink-0 mt-0.5" />
               <div className="text-sm text-yellow-800">
                 <span className="font-semibold">Performance Warning:</span> This query returns {totalRowCount.toLocaleString()} rows,
                 which may impact performance. Consider adding filters to reduce the dataset size.

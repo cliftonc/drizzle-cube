@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import chartDots2Icon from '@iconify-icons/tabler/chart-dots-2'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the scatter chart type
  */
 export const scatterChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={chartDots2Icon} className={className} />,
+  icon: getChartTypeIcon('scatter'),
   description: 'Reveal correlations between variables',
   useCase: 'Best for identifying patterns, correlations, outliers, and relationships between two measures',
   dropZones: [

@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import documentTextIcon from '@iconify-icons/tabler/file-text'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the Markdown chart type
  */
 export const markdownConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={documentTextIcon} className={className} />,
+  icon: getChartTypeIcon('markdown'),
   description: 'Display custom markdown content with formatting',
   useCase: 'Perfect for adding documentation, notes, instructions, or formatted text to dashboards',
   skipQuery: true, // This chart doesn't require a valid query

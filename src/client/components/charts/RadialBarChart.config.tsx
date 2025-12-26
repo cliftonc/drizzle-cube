@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import chartRadarIcon from '@iconify-icons/tabler/radar-2'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the radial bar chart type
  */
 export const radialBarChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={chartRadarIcon} className={className} />,
+  icon: getChartTypeIcon('radialBar'),
   description: 'Circular progress and KPI visualization',
   useCase: 'Best for showing progress toward goals, KPIs, or comparing percentages in a compact form',
   dropZones: [

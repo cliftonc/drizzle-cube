@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import textIcon from '@iconify-icons/tabler/typography'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the KPI Text chart type
  */
 export const kpiTextConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={textIcon} className={className} />,
+  icon: getChartTypeIcon('kpiText'),
   description: 'Display key performance indicators as customizable text',
   useCase: 'Perfect for showing metrics with custom formatting, combining multiple values, or displaying contextual KPI information using templates',
   dropZones: [

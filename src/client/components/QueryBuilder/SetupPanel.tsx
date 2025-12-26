@@ -6,8 +6,13 @@
  */
 
 import React, { useState } from 'react'
-import { ChevronDownIcon, ChevronUpIcon, CogIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import type { ApiConfig } from './types'
+
+const ChevronDownIcon = getIcon('chevronDown')
+const ChevronUpIcon = getIcon('chevronUp')
+const SettingsIcon = getIcon('settings')
+const RefreshIcon = getIcon('refresh')
 
 interface SetupPanelProps {
   isOpen: boolean
@@ -58,7 +63,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
         className="w-full px-4 py-3 flex items-center justify-between text-left bg-dc-surface-secondary rounded-t-lg hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       >
         <div className="flex items-center space-x-2">
-          <CogIcon className="w-5 h-5 text-dc-text-secondary" />
+          <SettingsIcon className="w-5 h-5 text-dc-text-secondary" />
           <h3 className="text-sm font-semibold text-dc-text">API Configuration</h3>
           {!isUsingDefaults && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-dc-info text-dc-text">
@@ -133,7 +138,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                     className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-sm hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     title="Reset to defaults"
                   >
-                    <ArrowPathIcon className="w-3 h-3" />
+                    <RefreshIcon className="w-3 h-3" />
                     <span>Reset</span>
                   </button>
                 )}

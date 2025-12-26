@@ -165,8 +165,8 @@ describe('DashboardGrid', () => {
       render(<DashboardGrid config={config} />)
 
       expect(capturedGridLayoutProps.layout[0]).toMatchObject({
-        minW: 3,
-        minH: 3
+        minW: 2,
+        minH: 2
       })
     })
   })

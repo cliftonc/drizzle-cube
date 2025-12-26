@@ -6,11 +6,13 @@
  */
 
 import React from 'react'
-import { PlusIcon } from '@heroicons/react/24/outline'
-import { CalendarIcon } from '@heroicons/react/24/solid'
+import { getIcon } from '../../icons'
 import DateRangeSelector from './DateRangeSelector'
 import type { DateRangeFilterProps } from './types'
 import { getTimeDimensionsWithDateRanges } from './utils'
+
+const AddIcon = getIcon('add')
+const CalendarIcon = getIcon('timeDimension')
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   timeDimensions,
@@ -79,7 +81,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             }`}
             title={availableTimeDimensions.length === 0 ? 'All time dimensions already have date ranges' : 'Add date range'}
           >
-            <PlusIcon className="w-3 h-3" />
+            <AddIcon className="w-3 h-3" />
             <span>Add Date Range</span>
           </button>
         </div>

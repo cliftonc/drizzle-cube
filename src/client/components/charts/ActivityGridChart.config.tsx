@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import calendarIcon from '@iconify-icons/tabler/calendar-stats'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the activity grid chart type
  */
 export const activityGridChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={calendarIcon} className={className} />,
+  icon: getChartTypeIcon('activityGrid'),
   description: 'GitHub-style activity grid showing temporal patterns across different time scales',
   useCase: 'Best for visualizing activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities',
   dropZones: [

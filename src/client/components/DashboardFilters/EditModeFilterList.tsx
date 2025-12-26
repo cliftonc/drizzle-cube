@@ -5,8 +5,15 @@
  */
 
 import React from 'react'
-import { FunnelIcon, PlusIcon, XMarkIcon, PencilIcon, ChevronDownIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import type { DashboardFilter } from '../../types'
+
+const FilterIcon = getIcon('filter')
+const AddIcon = getIcon('add')
+const CloseIcon = getIcon('close')
+const EditIcon = getIcon('edit')
+const ChevronDownIcon = getIcon('chevronDown')
+const ClockIcon = getIcon('timeDimension')
 
 interface EditModeFilterListProps {
   dashboardFilters: DashboardFilter[]
@@ -35,7 +42,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
     const isSelected = selectedFilterId === id
 
     // Use calendar icon for universal time filters, funnel for regular filters
-    const IconComponent = isUniversalTime ? ClockIcon : FunnelIcon
+    const IconComponent = isUniversalTime ? ClockIcon : FilterIcon
 
     return (
       <div
@@ -69,14 +76,14 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               className="p-0.5 hover:bg-dc-hover rounded transition-colors"
               title="Edit filter"
             >
-              <PencilIcon className="w-3 h-3" />
+              <EditIcon className="w-3 h-3" />
             </button>
             <button
               onClick={() => onRemoveFilter(id)}
               className="p-0.5 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
               title="Remove filter"
             >
-              <XMarkIcon className="w-3 h-3" />
+              <CloseIcon className="w-3 h-3" />
             </button>
           </div>
         )}
@@ -94,7 +101,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           <div className="flex items-center gap-2">
-            <FunnelIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
+            <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--dc-text)' }}>
               Filters
             </h3>
@@ -131,7 +138,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 }}
                 title="Add date range filter (applies to all time dimensions)"
               >
-                <PlusIcon className="w-3.5 h-3.5" />
+                <AddIcon className="w-3.5 h-3.5" />
                 <ClockIcon className="w-3.5 h-3.5" />
               </button>
             )}
@@ -146,7 +153,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 color: 'white'
               }}
             >
-              <PlusIcon className="w-3.5 h-3.5" />
+              <AddIcon className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -178,7 +185,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
       <div className="hidden md:flex md:items-center md:gap-3 px-4 py-2">
         {/* Header Section */}
         <div className="flex items-center gap-2 shrink-0">
-          <FunnelIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
+          <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
           <h3 className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--dc-text)' }}>
             Filters
           </h3>
@@ -228,7 +235,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               }}
               title="Add date range filter (applies to all time dimensions)"
             >
-              <PlusIcon className="w-3.5 h-3.5" />
+              <AddIcon className="w-3.5 h-3.5" />
               <span>Date Range</span>
             </button>
           )}
@@ -240,7 +247,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               color: 'white'
             }}
           >
-            <PlusIcon className="w-3.5 h-3.5" />
+            <AddIcon className="w-3.5 h-3.5" />
             <span>Filter</span>
           </button>
         </div>

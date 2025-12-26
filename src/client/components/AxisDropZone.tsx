@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
 import type { AxisDropZoneConfig } from '../charts/chartConfigs'
+
+const CloseIcon = getIcon('close')
 
 interface FieldStyling {
   IconComponent: React.ComponentType<{ className?: string }>
@@ -275,7 +277,7 @@ export default function AxisDropZone({
                       className="text-dc-text-secondary hover:text-red-600 ml-1.5 leading-none"
                       title={`Remove from ${label}`}
                     >
-                      <XMarkIcon className="w-3 h-3" />
+                      <CloseIcon className="w-3 h-3" />
                     </button>
                   </div>
                 </div>

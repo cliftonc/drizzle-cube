@@ -9,11 +9,14 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
 import type { FilterValueSelectorProps } from './types'
 import { FILTER_OPERATORS } from './types'
+
+const ChevronDownIcon = getIcon('chevronDown')
+const CloseIcon = getIcon('close')
 
 const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   fieldName,
@@ -273,7 +276,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                     onClick={() => handleValueRemove(value)}
                     className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
                   >
-                    <XMarkIcon className="w-3 h-3" />
+                    <CloseIcon className="w-3 h-3" />
                   </button>
                 </div>
               ))}
@@ -324,7 +327,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                   onClick={() => handleValueRemove(value)}
                   className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
                 >
-                  <XMarkIcon className="w-3 h-3" />
+                  <CloseIcon className="w-3 h-3" />
                 </button>
               </div>
             ))}
@@ -340,7 +343,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 onClick={() => onValuesChange([])}
                 className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
               >
-                <XMarkIcon className="w-3 h-3" />
+                <CloseIcon className="w-3 h-3" />
               </button>
             </div>
           </div>

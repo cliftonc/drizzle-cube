@@ -88,3 +88,27 @@ export {
   THEME_PRESETS
 } from './theme'
 export type { ThemeColorTokens, ThemeConfig, Theme } from './theme'
+
+// Icon system
+export {
+  getIcon,
+  getIconData,
+  setIcon,
+  registerIcons,
+  resetIcons,
+  getIconRegistry,
+  getIconsByCategory,
+  getMeasureTypeIcon,
+  getChartTypeIcon,
+  getFieldTypeIcon,
+  DEFAULT_ICONS
+} from './icons'
+export type {
+  IconCategory,
+  IconProps,
+  IconComponent,
+  IconDefinition,
+  IconRegistry,
+  IconName,
+  PartialIconRegistry
+} from './icons'

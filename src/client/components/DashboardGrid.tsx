@@ -6,8 +6,17 @@
 
 import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
-import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
 import AnalyticsPortlet from './AnalyticsPortlet'
+
+const ChartBarIcon = getIcon('measure')
+const RefreshIcon = getIcon('refresh')
+const EditIcon = getIcon('edit')
+const DeleteIcon = getIcon('delete')
+const AddIcon = getIcon('add')
+const CopyIcon = getIcon('copy')
+const FilterIcon = getIcon('filter')
+const DesktopIcon = getIcon('desktop')
 import PortletEditModal from './PortletEditModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
 import DebugModal from './DebugModal'
@@ -715,7 +724,7 @@ export default function DashboardGrid({
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
               >
-                <PlusIcon className="w-5 h-5 mr-2" />
+                <AddIcon className="w-5 h-5 mr-2" />
                 Add Portlet
               </button>
             )}
@@ -869,7 +878,7 @@ export default function DashboardGrid({
                     }`}
                     title="Refresh portlet data"
                   >
-                    <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    <RefreshIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                   </button>
 
                   {editable && isEditMode && !isInSelectionMode && (
@@ -893,7 +902,7 @@ export default function DashboardGrid({
                             : 'var(--dc-text-secondary)'
                         }}
                       >
-                        <FunnelIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                        <FilterIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                       </button>
 
                       <button
@@ -909,7 +918,7 @@ export default function DashboardGrid({
                         className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                         title="Duplicate portlet"
                       >
-                        <DocumentDuplicateIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                        <CopyIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -924,7 +933,7 @@ export default function DashboardGrid({
                         className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                         title="Edit portlet"
                       >
-                        <PencilIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                        <EditIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -940,7 +949,7 @@ export default function DashboardGrid({
                         style={{ color: '#ef4444' }}
                         title="Delete portlet"
                       >
-                        <TrashIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                        <DeleteIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                       </button>
                     </>
                   )}
@@ -1005,12 +1014,12 @@ export default function DashboardGrid({
                 borderColor: !isResponsiveEditable ? 'var(--dc-border)' : isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
               }}
             >
-              <PencilIcon className="w-4 h-4 mr-1.5" />
+              <EditIcon className="w-4 h-4 mr-1.5" />
               {isEditMode ? 'Finished Editing' : 'Edit'}
             </button>
             {!isResponsiveEditable && (
               <div className="flex items-center gap-2 text-sm text-dc-text-secondary">
-                <ComputerDesktopIcon className="w-4 h-4" />
+                <DesktopIcon className="w-4 h-4" />
                 <span>Desktop view required for editing</span>
               </div>
             )}
@@ -1044,7 +1053,7 @@ export default function DashboardGrid({
                 borderColor: isEditMode ? 'var(--dc-primary)' : 'var(--dc-border)'
               }}
           >
-            <PlusIcon className="w-5 h-5 mr-2" />
+            <AddIcon className="w-5 h-5 mr-2" />
             Add Portlet
           </button>
           </div>
@@ -1082,7 +1091,7 @@ export default function DashboardGrid({
         >
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <FunnelIcon className="w-5 h-5 shrink-0" />
+              <FilterIcon className="w-5 h-5 shrink-0" />
               <span className="font-medium">
                 Filter Selection Mode - Click portlets to toggle '{selectedFilter.label}'
               </span>

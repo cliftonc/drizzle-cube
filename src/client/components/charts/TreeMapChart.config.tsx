@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import chartTreemapIcon from '@iconify-icons/tabler/chart-treemap'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the treemap chart type
  */
 export const treemapChartConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={chartTreemapIcon} className={className} />,
+  icon: getChartTypeIcon('treemap'),
   description: 'Visualize hierarchical data with nested rectangles',
   useCase: 'Best for showing part-to-whole relationships in hierarchical data, disk usage, budget allocation',
   dropZones: [

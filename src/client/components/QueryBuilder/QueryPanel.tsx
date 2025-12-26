@@ -6,8 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { XMarkIcon, CheckCircleIcon, ExclamationCircleIcon, TrashIcon, ClipboardDocumentIcon, CogIcon, FunnelIcon, SparklesIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon, ShareIcon } from '@heroicons/react/24/outline'
-import { ChartBarIcon, TagIcon, CalendarIcon, PlayIcon, CheckIcon } from '@heroicons/react/24/solid'
+import { getIcon } from '../../icons'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
 import QueryAnalysisPanel from './QueryAnalysisPanel'
@@ -60,7 +59,25 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
   const hasContent = hasQueryContent(query)
   const selectedCount = getSelectedFieldsCount(query)
-  
+
+  const CloseIcon = getIcon('close')
+  const SuccessIcon = getIcon('success')
+  const ErrorIcon = getIcon('error')
+  const DeleteIcon = getIcon('delete')
+  const CopyIcon = getIcon('copy')
+  const SettingsIcon = getIcon('settings')
+  const FilterIcon = getIcon('filter')
+  const SparklesIcon = getIcon('sparkles')
+  const ChevronUpIcon = getIcon('chevronUp')
+  const ChevronDownIcon = getIcon('chevronDown')
+  const ChevronUpDownIcon = getIcon('chevronUpDown')
+  const ShareIcon = getIcon('share')
+  const MeasureIcon = getIcon('measure')
+  const DimensionIcon = getIcon('dimension')
+  const TimeDimensionIcon = getIcon('timeDimension')
+  const RunIcon = getIcon('run')
+  const CheckIcon = getIcon('check')
+
   const handleCopyQuery = async () => {
     const cleanedQuery = cleanQueryForServer(query)
     try {
@@ -248,11 +265,11 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   }`}
                   title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
                 >
-                  <FunnelIcon className={`w-4 h-4 ${hasFilters ? 'stroke-3' : ''}`} />
+                  <FilterIcon className={`w-4 h-4 ${hasFilters ? 'stroke-3' : ''}`} />
                 </button>
               )
             })()}
-            
+
             {/* Sort button */}
             <button
               onClick={() => handleToggleSort(fieldName)}
@@ -262,13 +279,13 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               {getSortIcon(getSortDirection(fieldName, query.order))}
             </button>
           </div>
-          
+
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(fieldName, fieldType)}
             className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden shrink-0"
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -283,7 +300,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       {/* Top row with icon, label, filter button, sort button, and remove button */}
       <div className="flex items-center mb-1">
         <div className="mr-2">
-          <CalendarIcon className="w-4 h-4" />
+          <TimeDimensionIcon className="w-4 h-4" />
         </div>
         <span className="flex-1 flex flex-col min-w-0">
           <span className="text-xs font-medium truncate">{getFieldTitle(timeDimension.dimension, schema)}</span>
@@ -305,11 +322,11 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   }`}
                   title="Add date range"
                 >
-                  <FunnelIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-3' : ''}`} />
+                  <FilterIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-3' : ''}`} />
                 </button>
               )
             })()}
-            
+
             {/* Sort button */}
             <button
               onClick={() => handleToggleSort(timeDimension.dimension)}
@@ -319,13 +336,13 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               {getSortIcon(getSortDirection(timeDimension.dimension, query.order))}
             </button>
           </div>
-          
+
           {/* Remove button */}
           <button
             onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
             className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden"
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -355,9 +372,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
         )
       case 'valid':
-        return <CheckCircleIcon className="w-5 h-5 text-green-600" />
+        return <SuccessIcon className="w-5 h-5 text-green-600" />
       case 'invalid':
-        return <ExclamationCircleIcon className="w-5 h-5 text-red-600" />
+        return <ErrorIcon className="w-5 h-5 text-red-600" />
       default:
         return null
     }
@@ -404,7 +421,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-sm hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                   title="Copy query to clipboard"
                 >
-                  <ClipboardDocumentIcon className="w-3 h-3" />
+                  <CopyIcon className="w-3 h-3" />
                   <span className="hidden sm:inline">Copy Query</span>
                 </button>
                 {onShareClick && (
@@ -443,7 +460,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     className="text-dc-text-muted hover:text-red-600 focus:outline-hidden p-2"
                     title="Clear all fields"
                   >
-                    <TrashIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <DeleteIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 )}
               </>
@@ -454,7 +471,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden p-2"
                 title="API Configuration"
               >
-                <CogIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
               </button>
             )}
             <ValidationStatusIcon />
@@ -475,7 +492,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         {!hasContent ? (
           <div className="py-8 flex items-center justify-center text-dc-text-muted">
             <div className="text-center">
-              <ChartBarIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
+              <MeasureIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
               <div className="text-sm font-semibold mb-1">No fields selected</div>
               <div className="text-xs">Select measures, dimensions, or time dimensions from the schema explorer</div>
             </div>
@@ -487,7 +504,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               {/* Dimensions Column */}
               <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-dc-dimension mb-3 flex items-center">
-                  <TagIcon className="w-4 h-4 mr-2" />
+                  <DimensionIcon className="w-4 h-4 mr-2" />
                   Dimensions ({(query.dimensions || []).length})
                 </h4>
                 <div className="flex flex-col gap-2">
@@ -497,7 +514,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                       label={dimension}
                       fieldName={dimension}
                       fieldType="dimensions"
-                      icon={<TagIcon className="w-4 h-4" />}
+                      icon={<DimensionIcon className="w-4 h-4" />}
                     />
                   ))}
                 </div>
@@ -506,7 +523,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               {/* Time Dimensions Column */}
               <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-dc-time-dimension mb-3 flex items-center">
-                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  <TimeDimensionIcon className="w-4 h-4 mr-2" />
                   Time Dimensions ({(query.timeDimensions || []).length})
                 </h4>
                 <div className="flex flex-col gap-2">
@@ -523,7 +540,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               {/* Measures Column */}
               <div className="min-h-24">
                 <h4 className="text-sm font-semibold text-dc-measure mb-3 flex items-center">
-                  <ChartBarIcon className="w-4 h-4 mr-2" />
+                  <MeasureIcon className="w-4 h-4 mr-2" />
                   Measures ({(query.measures || []).length})
                 </h4>
                 <div className="flex flex-col gap-2">
@@ -568,7 +585,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
             {validationError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-start">
-                  <ExclamationCircleIcon className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+                  <ErrorIcon className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
                   <div>
                     <h5 className="text-sm font-semibold text-red-800">Validation Error</h5>
                     <p className="text-sm text-red-700 mt-1">{validationError}</p>
@@ -688,7 +705,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 </>
               ) : validationStatus === 'invalid' ? (
                 <>
-                  <ExclamationCircleIcon className="w-4 h-4 mr-2" />
+                  <ErrorIcon className="w-4 h-4 mr-2" />
                   Validate Again
                 </>
               ) : (
@@ -709,7 +726,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               }`}
               style={validationStatus === 'valid' ? { backgroundColor: 'var(--dc-primary)' } : undefined}
             >
-              <PlayIcon className="w-4 h-4 mr-2" />
+              <RunIcon className="w-4 h-4 mr-2" />
               Run Query
             </button>
           </div>

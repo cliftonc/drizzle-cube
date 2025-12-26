@@ -32,7 +32,8 @@ export default defineConfig({
         hooks: resolve(__dirname, 'src/client/hooks.ts'),
         providers: resolve(__dirname, 'src/client/providers.ts'),
         components: resolve(__dirname, 'src/client/components.ts'),
-        utils: resolve(__dirname, 'src/client/utils.ts')
+        utils: resolve(__dirname, 'src/client/utils.ts'),
+        icons: resolve(__dirname, 'src/client/icons/index.ts')
       },
       formats: ['es']
     },
@@ -94,8 +95,8 @@ export default defineConfig({
           if (id.includes('react-grid-layout') || id.includes('react-resizable')) {
             return 'layout'
           }
-          // Group icon dependencies
-          if (id.includes('@heroicons') || id.includes('@iconify')) {
+          // Group icon dependencies (Iconify only - @heroicons removed)
+          if (id.includes('@iconify')) {
             return 'icons'
           }
         }

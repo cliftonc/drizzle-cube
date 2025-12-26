@@ -1,12 +1,11 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { Icon } from '@iconify/react'
-import tableIcon from '@iconify-icons/tabler/table'
+import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the data table type
  */
 export const dataTableConfig: ChartTypeConfig = {
-  icon: ({ className }) => <Icon icon={tableIcon} className={className} />,
+  icon: getChartTypeIcon('table'),
   description: 'Display detailed tabular data',
   useCase: 'Best for precise values, detailed analysis, sortable/filterable data exploration',
   dropZones: [

@@ -10,8 +10,12 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import FilterBuilder from '../QueryBuilder/FilterBuilder'
+
+const CloseIcon = getIcon('close')
+const EyeIcon = getIcon('eye')
+const EyeOffIcon = getIcon('eyeOff')
 import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
 import CubeMetaExplorer from '../QueryBuilder/CubeMetaExplorer'
 import { extractDashboardFields } from '../../utils/filterUtils'
@@ -210,7 +214,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
             onClick={handleCancel}
             className="ml-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors text-gray-700 dark:text-gray-300"
           >
-            <XMarkIcon className="w-5 h-5" />
+            <CloseIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -231,7 +235,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
                   >
                     {showAllFields ? (
                       <>
-                        <EyeSlashIcon className="w-3.5 h-3.5" />
+                        <EyeOffIcon className="w-3.5 h-3.5" />
                         <span>Dashboard</span>
                       </>
                     ) : (

@@ -1,6 +1,10 @@
 import React, { useMemo, useEffect, useState } from 'react'
-import { ChartBarIcon, TagIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
 import AxisDropZone from './AxisDropZone'
+
+const MeasureIcon = getIcon('measure')
+const DimensionIcon = getIcon('dimension')
+const TimeDimensionIcon = getIcon('timeDimension')
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { getChartConfig } from '../charts/chartConfigs'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig, ColorPalette } from '../types'
@@ -104,19 +108,19 @@ export default function ChartConfigPanel({
     switch (fieldType) {
       case 'measure':
         return {
-          IconComponent: ChartBarIcon,
+          IconComponent: MeasureIcon,
           baseClasses: 'bg-dc-measure text-dc-measure border border-dc-measure',
           hoverClasses: 'hover:opacity-80'
         }
       case 'timeDimension':
         return {
-          IconComponent: CalendarIcon,
+          IconComponent: TimeDimensionIcon,
           baseClasses: 'bg-dc-time-dimension text-dc-time-dimension border border-dc-time-dimension',
           hoverClasses: 'hover:opacity-80'
         }
       default:
         return {
-          IconComponent: TagIcon,
+          IconComponent: DimensionIcon,
           baseClasses: 'bg-dc-dimension text-dc-dimension border border-dc-dimension',
           hoverClasses: 'hover:opacity-80'
         }
@@ -259,7 +263,7 @@ export default function ChartConfigPanel({
                 {/* Dimensions Column */}
                 <div className="pb-2 sm:pb-0">
                   <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <TagIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                    <DimensionIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
                     Dimensions
                   </div>
                   <div className="space-y-1">
@@ -287,7 +291,7 @@ export default function ChartConfigPanel({
                 {/* Time Dimensions Column */}
                 <div className="pb-2 sm:pb-0">
                   <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <CalendarIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                    <TimeDimensionIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
                     Time Dimensions
                   </div>
                   <div className="space-y-1">
@@ -315,7 +319,7 @@ export default function ChartConfigPanel({
                 {/* Measures Column */}
                 <div className="pb-2 sm:pb-0">
                   <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <ChartBarIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                    <MeasureIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
                     Measures
                   </div>
                   <div className="space-y-1">

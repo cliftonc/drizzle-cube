@@ -39,6 +39,10 @@
       "types": "./dist/client/utils.d.ts",
       "import": "./dist/client/utils.js"
     },
+    "./client/icons": {
+      "types": "./dist/client/icons.d.ts",
+      "import": "./dist/client/icons.js"
+    },
     "./client/styles.css": "./dist/client/styles.css",
     "./adapters/hono": {
       "types": "./dist/adapters/hono/index.d.ts",
@@ -200,8 +204,9 @@
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.34.0",
     "@fastify/cors": "^11.1.0",
-    "@heroicons/react": "^2.2.0",
     "@hono/node-server": "^1.19.0",
+    "@iconify-icons/heroicons-outline": "^1.2.5",
+    "@iconify-icons/heroicons-solid": "^1.2.6",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
     "@neondatabase/serverless": "^1.0.1",

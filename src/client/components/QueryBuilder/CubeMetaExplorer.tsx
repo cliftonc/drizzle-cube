@@ -6,11 +6,10 @@
  */
 
 import React, { useState, Suspense, lazy } from 'react'
-import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIcon, CogIcon } from '@heroicons/react/24/outline'
-import { ChartBarIcon, TagIcon, CalendarIcon, RectangleGroupIcon, ListBulletIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { useCubeContext } from '../../providers/CubeProvider'
+import { getIcon } from '../../icons'
 
 // Lazy load the relationship diagram (imports reactflow which is large)
 const CubeRelationshipDiagram = lazy(() =>
@@ -31,6 +30,18 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   onViewTypeChange,
   isExpanded = false
 }) => {
+  // Get icons
+  const ChevronDownIcon = getIcon('chevronDown')
+  const ChevronRightIcon = getIcon('chevronRight')
+  const WarningIcon = getIcon('warning')
+  const RefreshIcon = getIcon('refresh')
+  const SettingsIcon = getIcon('settings')
+  const MeasureIcon = getIcon('measure')
+  const DimensionIcon = getIcon('dimension')
+  const TimeDimensionIcon = getIcon('timeDimension')
+  const SegmentIcon = getIcon('segment')
+  const MenuIcon = getIcon('menu')
+
   // Get features from context to check if schema diagram is enabled
   const { features } = useCubeContext()
   const showSchemaDiagram = features?.showSchemaDiagram === true
@@ -148,7 +159,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-sm p-6">
-          <ExclamationTriangleIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <WarningIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
           <div className="text-sm font-semibold text-dc-text mb-2">
             Failed to Load Schema
           </div>
@@ -170,17 +181,17 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 onClick={onRetrySchema}
                 className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
-                <ArrowPathIcon className="w-4 h-4" />
+                <RefreshIcon className="w-4 h-4" />
                 <span>Retry</span>
               </button>
             )}
-            
+
             {onOpenSettings && (
               <button
                 onClick={onOpenSettings}
                 className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
-                <CogIcon className="w-4 h-4" />
+                <SettingsIcon className="w-4 h-4" />
                 <span>Check API Settings</span>
               </button>
             )}
@@ -483,7 +494,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                   className="p-1 text-dc-text-muted hover:text-dc-text-secondary transition-colors"
                   title="Open settings"
                 >
-                  <CogIcon className="w-4 h-4" />
+                  <SettingsIcon className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -506,7 +517,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                     }
                   `}
                 >
-                  <ListBulletIcon className="w-3 h-3 mr-1.5" />
+                  <MenuIcon className="w-3 h-3 mr-1.5" />
                   Fields
                 </button>
                 <button
@@ -522,7 +533,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                     }
                   `}
                 >
-                  <RectangleGroupIcon className="w-3 h-3 mr-1.5" />
+                  <SegmentIcon className="w-3 h-3 mr-1.5" />
                   Schema
                 </button>
               </div>
@@ -658,7 +669,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Dimensions"
                               count={filterFields(regularDimensions).length}
                               sectionKey={`${cube.name}-dimensions`}
-                              icon={<TagIcon className="w-4 h-4 text-green-600" />}
+                              icon={<DimensionIcon className="w-4 h-4 text-green-600" />}
                             />
                             {expandedSections.has(`${cube.name}-dimensions`) && (
                               <div className="ml-5 space-y-1 mt-1">
@@ -667,7 +678,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                                     key={dimension.name}
                                     field={dimension}
                                     fieldType="dimensions"
-                                    icon={<TagIcon className="w-4 h-4" />}
+                                    icon={<DimensionIcon className="w-4 h-4" />}
                                   />
                                 ))}
                               </div>
@@ -682,7 +693,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Time Dimensions"
                               count={filterFields(timeDimensions).length}
                               sectionKey={`${cube.name}-timeDimensions`}
-                              icon={<CalendarIcon className="w-4 h-4 text-blue-600" />}
+                              icon={<TimeDimensionIcon className="w-4 h-4 text-blue-600" />}
                             />
                             {expandedSections.has(`${cube.name}-timeDimensions`) && (
                               <div className="ml-5 space-y-1 mt-1">
@@ -691,7 +702,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                                     key={timeDimension.name}
                                     field={timeDimension}
                                     fieldType="timeDimensions"
-                                    icon={<CalendarIcon className="w-4 h-4" />}
+                                    icon={<TimeDimensionIcon className="w-4 h-4" />}
                                   />
                                 ))}
                               </div>
@@ -706,7 +717,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Measures"
                               count={filterFields(cube.measures).length}
                               sectionKey={`${cube.name}-measures`}
-                              icon={<ChartBarIcon className="w-4 h-4 text-amber-600" />}
+              icon={<MeasureIcon className="w-4 h-4 text-amber-600" />}
                             />
                             {expandedSections.has(`${cube.name}-measures`) && (
                               <div className="ml-5 space-y-1 mt-1">

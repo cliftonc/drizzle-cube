@@ -7,7 +7,7 @@
 
 import React from 'react'
 import Modal from '../Modal'
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 
 export interface ShareWarningModalProps {
   isOpen: boolean
@@ -24,6 +24,8 @@ const ShareWarningModal: React.FC<ShareWarningModalProps> = ({
 }) => {
   const percentUsed = Math.min(Math.round((size / maxSize) * 100), 100)
 
+  const WarningIcon = getIcon('warning')
+
   return (
     <Modal
       isOpen={isOpen}
@@ -35,7 +37,7 @@ const ShareWarningModal: React.FC<ShareWarningModalProps> = ({
         {/* Warning icon and message */}
         <div className="flex items-start gap-3">
           <div className="shrink-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-            <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
           </div>
           <div className="text-sm text-dc-text-secondary">
             Your query is too large to fit in a shareable URL. Even after removing chart settings,

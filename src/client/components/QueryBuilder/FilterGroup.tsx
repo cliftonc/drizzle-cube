@@ -6,18 +6,21 @@
  */
 
 import React, { useState } from 'react'
-import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../../icons'
 import FilterItem from './FilterItem'
 import type { FilterGroupProps } from './types'
 import type { SimpleFilter, GroupFilter } from '../../types'
-import { 
-  isSimpleFilter, 
+import {
+  isSimpleFilter,
   isGroupFilter,
-  createSimpleFilter, 
-  createAndFilter, 
+  createSimpleFilter,
+  createAndFilter,
   createOrFilter,
   getFilterableFields
 } from './utils'
+
+const CloseIcon = getIcon('close')
+const AddIcon = getIcon('add')
 
 const FilterGroup: React.FC<FilterGroupProps> = ({
   group,
@@ -180,7 +183,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
               className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden"
               title="Add condition"
             >
-              <PlusIcon className="w-4 h-4" />
+              <AddIcon className="w-4 h-4" />
             </button>
 
             {showAddMenu && (
@@ -213,7 +216,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
             className="text-dc-text-muted hover:text-red-600 focus:outline-hidden"
             title="Remove group"
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
       </div>

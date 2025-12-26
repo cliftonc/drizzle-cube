@@ -5,8 +5,10 @@
  */
 
 import { useMemo, useRef, useState, useCallback } from 'react'
-import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { getIcon } from '../icons'
 import AnalyticsPortlet from './AnalyticsPortlet'
+
+const RefreshIcon = getIcon('refresh')
 import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
 import type { DashboardFilter, DashboardConfig } from '../types'
 import type { ColorPalette } from '../utils/colorPalettes'
@@ -121,7 +123,7 @@ export default function MobileStackedLayout({
                     className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                     title="Refresh portlet data"
                   >
-                    <ArrowPathIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                    <RefreshIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
                   </button>
                 </div>
               </div>
