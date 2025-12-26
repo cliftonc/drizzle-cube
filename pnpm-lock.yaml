@@ -11,15 +11,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.12
         version: 5.90.12(react@18.3.1)
-      '@types/dagre':
-        specifier: ^0.7.53
-        version: 0.7.53
       d3:
         specifier: ^7.9.0
         version: 7.9.0
-      dagre:
-        specifier: ^0.8.5
-        version: 0.8.5
       lz-string:
         specifier: ^1.5.0
         version: 1.5.0
@@ -32,9 +26,6 @@ importers:
       react-router-dom:
         specifier: ^7.10.1
         version: 7.11.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      reactflow:
-        specifier: ^11.11.4
-        version: 11.11.4(@types/react@18.3.27)(immer@11.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.1
@@ -45,12 +36,15 @@ importers:
       '@fastify/cors':
         specifier: ^11.1.0
         version: 11.2.0
-      '@heroicons/react':
-        specifier: ^2.2.0
-        version: 2.2.0(react@18.3.1)
       '@hono/node-server':
         specifier: ^1.19.0
-        version: 1.19.7(hono@4.11.2)
+        version: 1.19.7(hono@4.11.3)
+      '@iconify-icons/heroicons-outline':
+        specifier: ^1.2.5
+        version: 1.2.5
+      '@iconify-icons/heroicons-solid':
+        specifier: ^1.2.6
+        version: 1.2.6
       '@iconify-icons/tabler':
         specifier: ^1.2.95
         version: 1.2.95
@@ -81,6 +75,9 @@ importers:
       '@types/d3':
         specifier: ^7.4.3
         version: 7.4.3
+      '@types/dagre':
+        specifier: ^0.7.53
+        version: 0.7.53
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
@@ -93,9 +90,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.0.0
         version: 18.3.7(@types/react@18.3.27)
-      '@types/react-grid-layout':
-        specifier: ^1.3.5
-        version: 1.3.6
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
@@ -123,6 +117,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.5
+      dagre:
+        specifier: ^0.8.5
+        version: 0.8.5
       drizzle-kit:
         specifier: ^0.31.8
         version: 0.31.8
@@ -142,8 +139,8 @@ importers:
         specifier: ^16.3.0
         version: 16.5.0
       hono:
-        specifier: ^4.11.2
-        version: 4.11.2
+        specifier: ^4.11.3
+        version: 4.11.3
       jsdom:
         specifier: ^27.0.0
         version: 27.3.0
@@ -151,7 +148,7 @@ importers:
         specifier: ^3.14.3
         version: 3.16.0
       next:
-        specifier: ^15.0.0
+        specifier: ^15.5.9
         version: 15.5.9(@babel/core@7.28.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       postcss:
         specifier: ^8.5.6
@@ -166,14 +163,17 @@ importers:
         specifier: ^18.0.0
         version: 18.3.1(react@18.3.1)
       react-grid-layout:
-        specifier: ^1.4.0
-        version: 1.5.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^2.1.1
+        version: 2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-hook-form:
         specifier: ^7.68.0
         version: 7.69.0(react@18.3.1)
       react-resizable:
         specifier: ^3.0.5
         version: 3.0.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      reactflow:
+        specifier: ^11.11.4
+        version: 11.11.4(@types/react@18.3.27)(immer@11.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       recharts:
         specifier: ^3.5.1
         version: 3.6.0(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react-is@19.2.3)(react@18.3.1)(redux@5.0.1)
@@ -869,11 +869,6 @@ packages:
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
 
-  '@heroicons/react@2.2.0':
-    resolution: {integrity: sha512-LMcepvRaS9LYHJGsF0zzmgKCUim/X3N/DQKc4jepAXJ7l8QxJ1PmxJzqplF2Z3FE4PqBAIGyJAQ/w4B5dsqbtQ==}
-    peerDependencies:
-      react: '>= 16 || ^19.0.0-rc'
-
   '@hono/node-server@1.19.7':
     resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
     engines: {node: '>=18.14.1'}
@@ -895,6 +890,12 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@iconify-icons/heroicons-outline@1.2.5':
+    resolution: {integrity: sha512-yVrIpqpUzP78i/1RsbPPyb6yPvYHOme6t376Hj91bVUDKf0yim/bCVfnh7ZqdLiV2kAgqgpLegKpjW7XxWQCkw==}
+
+  '@iconify-icons/heroicons-solid@1.2.6':
+    resolution: {integrity: sha512-eD1qhMBkOq+7DekwjQojWoM3IKf00QrMUbFIPf4vd5HBD3YJwimvvXphVwYNOTERd3DR195wPBmFWT1N3KkMhg==}
 
   '@iconify-icons/tabler@1.2.95':
     resolution: {integrity: sha512-d7bcyNs/AHWcdTwN+2/yohPeU0Kg5jvzt9JiLFnTnx9HYc54q2cU08rSEF0rIVHB5PEP9M8dTN/ZFxquAFCamw==}
@@ -1660,9 +1661,6 @@ packages:
     resolution: {integrity: sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ==}
     peerDependencies:
       '@types/react': ^18.0.0
-
-  '@types/react-grid-layout@1.3.6':
-    resolution: {integrity: sha512-Cw7+sb3yyjtmxwwJiXtEXcu5h4cgs+sCGkHwHXsFmPyV30bf14LeD/fa2LwQovuD2HWxCcjIdNhDlcYGj95qGA==}
 
   '@types/react@18.3.27':
     resolution: {integrity: sha512-cisd7gxkzjBKU2GgdYrTdtQx1SORymWyaAFhaxQPK9bYO9ot3Y5OikQRvY0VYQtvwjeQnizCINJAenh/V7MK2w==}
@@ -2723,8 +2721,8 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
-  hono@4.11.2:
-    resolution: {integrity: sha512-o+avdUAD1v94oHkjGBhiMhBV4WBHxhbu0+CUVH78hhphKy/OKQLxtKjkmmNcrMlbYAhAbsM/9F+l3KnYxyD3Lg==}
+  hono@4.11.3:
+    resolution: {integrity: sha512-PmQi306+M/ct/m5s66Hrg+adPnkD5jiO6IjA7WhWw0gSBSo1EcRegwuI1deZ+wd5pzCGynCcn2DprnE4/yEV4w==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -3385,8 +3383,8 @@ packages:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
 
-  react-grid-layout@1.5.3:
-    resolution: {integrity: sha512-KaG6IbjD6fYhagUtIvOzhftXG+ViKZjCjADe86X1KHl7C/dsBN2z0mi14nbvZKTkp0RKiil9RPcJBgq3LnoA8g==}
+  react-grid-layout@2.1.1:
+    resolution: {integrity: sha512-yIB96q80oUIDcZeML4arNAC8/0Bam9odjdnQwiAhtyL6DpUy69wyLpG0SSTf5oH69FbQn9VlXn6tNbBqBxZROA==}
     peerDependencies:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
@@ -4577,13 +4575,9 @@ snapshots:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.3.0
 
-  '@heroicons/react@2.2.0(react@18.3.1)':
+  '@hono/node-server@1.19.7(hono@4.11.3)':
     dependencies:
-      react: 18.3.1
-
-  '@hono/node-server@1.19.7(hono@4.11.2)':
-    dependencies:
-      hono: 4.11.2
+      hono: 4.11.3
 
   '@humanfs/core@0.19.1': {}
 
@@ -4595,6 +4589,14 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@iconify-icons/heroicons-outline@1.2.5':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-icons/heroicons-solid@1.2.6':
+    dependencies:
+      '@iconify/types': 2.0.0
 
   '@iconify-icons/tabler@1.2.95':
     dependencies:
@@ -5343,10 +5345,6 @@ snapshots:
   '@types/range-parser@1.2.7': {}
 
   '@types/react-dom@18.3.7(@types/react@18.3.27)':
-    dependencies:
-      '@types/react': 18.3.27
-
-  '@types/react-grid-layout@1.3.6':
     dependencies:
       '@types/react': 18.3.27
 
@@ -6535,7 +6533,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  hono@4.11.2: {}
+  hono@4.11.3: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
@@ -7167,7 +7165,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  react-grid-layout@1.5.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-grid-layout@2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       clsx: 2.1.1
       fast-equals: 4.0.3
