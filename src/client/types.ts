@@ -113,9 +113,32 @@ export interface PortletConfig {
   y: number // Grid y position
 }
 
+export type DashboardLayoutMode = 'grid' | 'rows'
+
+export interface DashboardGridSettings {
+  cols: number
+  rowHeight: number
+  minW: number
+  minH: number
+}
+
+export interface RowLayoutColumn {
+  portletId: string
+  w: number
+}
+
+export interface RowLayout {
+  id: string
+  h: number
+  columns: RowLayoutColumn[]
+}
+
 // Dashboard configuration
 export interface DashboardConfig {
   portlets: PortletConfig[]
+  layoutMode?: DashboardLayoutMode
+  grid?: DashboardGridSettings
+  rows?: RowLayout[]
   layouts?: { [key: string]: any } // react-grid-layout layouts
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets

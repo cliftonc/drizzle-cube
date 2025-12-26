@@ -20,7 +20,7 @@ export default function AnalyticsDashboard({
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
   // Get cube metadata for filter building
-  const { meta } = useCubeContext()
+  const { meta, dashboardModes } = useCubeContext()
 
   // Track initial config to prevent saves during initial load
   const initialConfigRef = useRef(config)
@@ -147,6 +147,7 @@ export default function AnalyticsDashboard({
         onSave={handleSaveWithDirtyTracking}
         colorPalette={colorPalette}
         schema={meta}
+        dashboardModes={dashboardModes}
         onDashboardFiltersChange={handleDashboardFiltersChange}
       />
     </div>

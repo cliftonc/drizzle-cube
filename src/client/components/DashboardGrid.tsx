@@ -4,10 +4,22 @@
  * Simplified version without app-specific dependencies
  */
 
-import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  type ReactNode,
+  type HTMLAttributes,
+  type DragEvent,
+  type MouseEvent,
+  type Ref
+} from 'react'
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { getIcon } from '../icons'
-import AnalyticsPortlet from './AnalyticsPortlet'
+import DashboardPortletCard from './DashboardPortletCard'
+import RowManagedLayout from './RowManagedLayout'
 
 const ChartBarIcon = getIcon('measure')
 const RefreshIcon = getIcon('refresh')
@@ -17,9 +29,10 @@ const AddIcon = getIcon('add')
 const CopyIcon = getIcon('copy')
 const FilterIcon = getIcon('filter')
 const DesktopIcon = getIcon('desktop')
+const GridIcon = getIcon('segment')
+const RowsIcon = getIcon('table')
 import PortletEditModal from './PortletEditModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
-import DebugModal from './DebugModal'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
 import ScaledGridWrapper from './ScaledGridWrapper'
@@ -60,7 +73,16 @@ function findScrollableAncestor(element: HTMLElement | null): HTMLElement | null
 
   return null // Use viewport
 }
-import type { DashboardConfig, PortletConfig, DashboardFilter, CubeMeta } from '../types'
+import type {
+  DashboardConfig,
+  PortletConfig,
+  DashboardFilter,
+  CubeMeta,
+  DashboardLayoutMode,
+  DashboardGridSettings,
+  RowLayout,
+  RowLayoutColumn
+} from '../types'
 
 // CSS for react-grid-layout should be imported by the consuming app
 // import 'react-grid-layout/css/styles.css'
@@ -76,6 +98,179 @@ interface DashboardGridProps {
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   schema?: CubeMeta | null  // Cube metadata for filter panel
   onDashboardFiltersChange?: (filters: DashboardFilter[]) => void  // Handler for filter changes
+  dashboardModes?: DashboardLayoutMode[]
+}
+
+const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
+  cols: 12,
+  rowHeight: 80,
+  minW: 2,
+  minH: 2
+}
+
+const createRowId = () => `row-${Date.now()}`
+
+const getGridSettings = (config: DashboardConfig): DashboardGridSettings => ({
+  cols: config.grid?.cols ?? DEFAULT_GRID_SETTINGS.cols,
+  rowHeight: config.grid?.rowHeight ?? DEFAULT_GRID_SETTINGS.rowHeight,
+  minW: config.grid?.minW ?? DEFAULT_GRID_SETTINGS.minW,
+  minH: config.grid?.minH ?? DEFAULT_GRID_SETTINGS.minH
+})
+
+const equalizeRowColumns = (
+  portletIds: string[],
+  gridSettings: DashboardGridSettings
+): RowLayoutColumn[] => {
+  const count = portletIds.length
+  if (count === 0) return []
+
+  const { cols, minW } = gridSettings
+  const minTotal = minW * count
+
+  if (minTotal > cols) {
+    const base = Math.floor(cols / count)
+    const remainder = cols % count
+    return portletIds.map((id, index) => ({
+      portletId: id,
+      w: base + (index < remainder ? 1 : 0)
+    }))
+  }
+
+  const remaining = cols - minTotal
+  const extra = Math.floor(remaining / count)
+  const remainder = remaining % count
+
+  return portletIds.map((id, index) => ({
+    portletId: id,
+    w: minW + extra + (index < remainder ? 1 : 0)
+  }))
+}
+
+const adjustRowWidths = (
+  columns: RowLayoutColumn[],
+  gridSettings: DashboardGridSettings
+): RowLayoutColumn[] => {
+  if (columns.length === 0) return []
+
+  const { cols, minW } = gridSettings
+  const adjusted = columns.map(column => ({
+    ...column,
+    w: Math.max(minW, column.w)
+  }))
+
+  let total = adjusted.reduce((sum, column) => sum + column.w, 0)
+  if (total === cols) return adjusted
+
+  if (total < cols) {
+    let remaining = cols - total
+    let index = 0
+    while (remaining > 0) {
+      adjusted[index % adjusted.length].w += 1
+      remaining -= 1
+      index += 1
+    }
+    return adjusted
+  }
+
+  let overflow = total - cols
+  for (let index = adjusted.length - 1; index >= 0 && overflow > 0; index -= 1) {
+    const column = adjusted[index]
+    const reducible = Math.max(0, column.w - minW)
+    if (reducible === 0) continue
+    const delta = Math.min(reducible, overflow)
+    column.w -= delta
+    overflow -= delta
+  }
+
+  return adjusted
+}
+
+const convertPortletsToRows = (
+  portlets: PortletConfig[],
+  gridSettings: DashboardGridSettings
+): RowLayout[] => {
+  if (portlets.length === 0) return []
+
+  const sorted = [...portlets].sort((a, b) => {
+    if (a.y !== b.y) return a.y - b.y
+    return a.x - b.x
+  })
+
+  const rowsByY = new Map<number, PortletConfig[]>()
+  sorted.forEach(portlet => {
+    const row = rowsByY.get(portlet.y) ?? []
+    row.push(portlet)
+    rowsByY.set(portlet.y, row)
+  })
+
+  return Array.from(rowsByY.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([rowY, rowPortlets]) => {
+      const rowHeight = Math.max(
+        gridSettings.minH,
+        ...rowPortlets.map(portlet => portlet.h)
+      )
+      const portletIds = rowPortlets.map(portlet => portlet.id)
+      return {
+        id: `row-${rowY}`,
+        h: rowHeight,
+        columns: equalizeRowColumns(portletIds, gridSettings)
+      }
+    })
+}
+
+const normalizeRows = (
+  rows: RowLayout[],
+  portlets: PortletConfig[],
+  gridSettings: DashboardGridSettings
+): RowLayout[] => {
+  const portletIds = new Set(portlets.map(portlet => portlet.id))
+  return rows
+    .map(row => ({
+      ...row,
+      h: Math.max(gridSettings.minH, row.h),
+      columns: adjustRowWidths(
+        row.columns.filter(column => portletIds.has(column.portletId)),
+        gridSettings
+      )
+    }))
+    .filter(row => row.columns.length > 0)
+}
+
+const convertRowsToPortlets = (
+  rows: RowLayout[],
+  portlets: PortletConfig[],
+  gridSettings: DashboardGridSettings
+): PortletConfig[] => {
+  const portletMap = new Map(portlets.map(portlet => [portlet.id, portlet]))
+  let currentY = 0
+
+  const updated: PortletConfig[] = []
+  rows.forEach(row => {
+    let currentX = 0
+    row.columns.forEach(column => {
+      const portlet = portletMap.get(column.portletId)
+      if (!portlet) return
+      updated.push({
+        ...portlet,
+        x: currentX,
+        y: currentY,
+        w: column.w,
+        h: row.h
+      })
+      currentX += column.w
+    })
+    currentY += row.h
+  })
+
+  const updatedIds = new Set(updated.map(portlet => portlet.id))
+  portlets.forEach(portlet => {
+    if (!updatedIds.has(portlet.id)) {
+      updated.push(portlet)
+    }
+  })
+
+  return updated
 }
 
 export default function DashboardGrid({
@@ -88,7 +283,8 @@ export default function DashboardGrid({
   onSave,
   colorPalette,
   schema,
-  onDashboardFiltersChange
+  onDashboardFiltersChange,
+  dashboardModes
 }: DashboardGridProps) {
   // Responsive dashboard hook for three-tier layout strategy
   const {
@@ -99,6 +295,15 @@ export default function DashboardGrid({
     isEditable: isResponsiveEditable,
     designWidth
   } = useResponsiveDashboard()
+
+  const allowedModes = dashboardModes && dashboardModes.length > 0
+    ? dashboardModes
+    : ['rows', 'grid']
+  const fallbackMode = allowedModes.includes('rows') ? 'rows' : allowedModes[0] ?? 'grid'
+  const layoutMode: DashboardLayoutMode = allowedModes.includes(config.layoutMode ?? 'grid')
+    ? (config.layoutMode ?? fallbackMode)
+    : fallbackMode
+  const gridSettings = useMemo(() => getGridSettings(config), [config])
 
   // Scroll container detection for lazy loading
   // Null = viewport, element = scrolling container
@@ -125,6 +330,10 @@ export default function DashboardGrid({
   // Desktop: use actual container width (allows wider than 1200px)
   // Scaled: use design width (1200px) and apply CSS scaling
   const gridWidth = displayMode === 'desktop' ? containerWidth : designWidth
+  const [draftRows, setDraftRows] = useState<RowLayout[] | null>(null)
+  const draftRowsRef = useRef<RowLayout[] | null>(null)
+  const dragStateRef = useRef<{ rowIndex: number; colIndex: number; portletId: string } | null>(null)
+  const [isDraggingPortlet, setIsDraggingPortlet] = useState(false)
 
   // Refs to store portlet refs for refresh functionality
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
@@ -139,6 +348,10 @@ export default function DashboardGrid({
 
   // Filter selection mode state
   const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null)
+
+  // Determine if editing is allowed (only in desktop mode)
+  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
+  const canChangeLayoutMode = editable && isEditMode && isResponsiveEditable && !selectedFilterId && allowedModes.length > 1
 
   // Exit filter selection mode when leaving edit mode or when switching to non-desktop mode
   useEffect(() => {
@@ -171,6 +384,44 @@ export default function DashboardGrid({
     data: any[]
     chartType: string
   } }>({})
+
+  useEffect(() => {
+    draftRowsRef.current = draftRows
+  }, [draftRows])
+
+  const resolvedRows = useMemo(() => {
+    if (layoutMode !== 'rows') return []
+    const baseRows = draftRows ?? config.rows ?? convertPortletsToRows(config.portlets, gridSettings)
+    return normalizeRows(baseRows, config.portlets, gridSettings)
+  }, [layoutMode, draftRows, config.rows, config.portlets, gridSettings])
+
+  const updateRowLayout = useCallback(async (
+    rows: RowLayout[],
+    save = true,
+    portletsOverride?: PortletConfig[]
+  ) => {
+    if (!onConfigChange) return
+    const portlets = portletsOverride ?? config.portlets
+    const normalizedRows = normalizeRows(rows, portlets, gridSettings)
+    const updatedPortlets = convertRowsToPortlets(normalizedRows, portlets, gridSettings)
+    const updatedConfig = {
+      ...config,
+      layoutMode: 'rows' as const,
+      rows: normalizedRows,
+      portlets: updatedPortlets
+    }
+
+    setDraftRows(null)
+    onConfigChange(updatedConfig)
+
+    if (save && onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed after row layout change:', error)
+      }
+    }
+  }, [config, gridSettings, onConfigChange, onSave])
 
   // Set up initialization tracking
   useEffect(() => {
@@ -351,6 +602,249 @@ export default function DashboardGrid({
     }
   }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
+  const handleLayoutModeChange = useCallback(async (mode: DashboardLayoutMode) => {
+    if (!onConfigChange || mode === layoutMode || !canChangeLayoutMode || !allowedModes.includes(mode)) return
+
+    const baseRows = normalizeRows(
+      config.rows && config.rows.length > 0
+        ? config.rows
+        : convertPortletsToRows(config.portlets, gridSettings),
+      config.portlets,
+      gridSettings
+    )
+
+    const updatedPortlets = convertRowsToPortlets(baseRows, config.portlets, gridSettings)
+    const updatedConfig = {
+      ...config,
+      layoutMode: mode,
+      rows: baseRows,
+      portlets: updatedPortlets
+    }
+
+    setDraftRows(null)
+    onConfigChange(updatedConfig)
+
+    if (onSave) {
+      try {
+        await onSave(updatedConfig)
+      } catch (error) {
+        console.error('Auto-save failed after layout mode switch:', error)
+      }
+    }
+  }, [allowedModes, canChangeLayoutMode, config, gridSettings, layoutMode, onConfigChange, onSave])
+
+  const startRowResize = useCallback((rowIndex: number, event: MouseEvent<HTMLDivElement>) => {
+    if (!canEdit) return
+    event.preventDefault()
+
+    const startY = event.clientY
+    const startRows = resolvedRows.map(row => ({
+      ...row,
+      columns: row.columns.map(column => ({ ...column }))
+    }))
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientY - startY
+      const deltaUnits = Math.round(delta / gridSettings.rowHeight)
+      const nextRows = startRows.map((row, index) => {
+        if (index !== rowIndex) return row
+        return {
+          ...row,
+          h: Math.max(gridSettings.minH, row.h + deltaUnits)
+        }
+      })
+      setDraftRows(nextRows)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      const finalRows = draftRowsRef.current ?? startRows
+      updateRowLayout(finalRows)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [canEdit, gridSettings, resolvedRows, updateRowLayout])
+
+  const startColumnResize = useCallback((rowIndex: number, columnIndex: number, event: MouseEvent<HTMLDivElement>) => {
+    if (!canEdit) return
+    event.preventDefault()
+
+    const startX = event.clientX
+    const startRows = resolvedRows.map(row => ({
+      ...row,
+      columns: row.columns.map(column => ({ ...column }))
+    }))
+
+    const row = startRows[rowIndex]
+    const leftColumn = row?.columns[columnIndex]
+    const rightColumn = row?.columns[columnIndex + 1]
+    if (!row || !leftColumn || !rightColumn) return
+
+    const columnGap = 16
+    const rowContentWidth = gridWidth - (row.columns.length - 1) * columnGap
+    const unitWidth = rowContentWidth / gridSettings.cols
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX
+      const deltaUnits = Math.round(delta / unitWidth)
+      if (deltaUnits === 0) {
+        setDraftRows(startRows)
+        return
+      }
+
+      let nextLeft = leftColumn.w + deltaUnits
+      let nextRight = rightColumn.w - deltaUnits
+
+      if (nextLeft < gridSettings.minW) {
+        const diff = gridSettings.minW - nextLeft
+        nextLeft = gridSettings.minW
+        nextRight -= diff
+      }
+
+      if (nextRight < gridSettings.minW) {
+        const diff = gridSettings.minW - nextRight
+        nextRight = gridSettings.minW
+        nextLeft -= diff
+      }
+
+      if (nextLeft < gridSettings.minW || nextRight < gridSettings.minW) return
+
+      const nextRows = startRows.map((rowItem, index) => {
+        if (index !== rowIndex) return rowItem
+        const nextColumns = rowItem.columns.map((column, colIndex) => {
+          if (colIndex === columnIndex) {
+            return { ...column, w: nextLeft }
+          }
+          if (colIndex === columnIndex + 1) {
+            return { ...column, w: nextRight }
+          }
+          return column
+        })
+        return {
+          ...rowItem,
+          columns: adjustRowWidths(nextColumns, gridSettings)
+        }
+      })
+      setDraftRows(nextRows)
+    }
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      const finalRows = draftRowsRef.current ?? startRows
+      updateRowLayout(finalRows)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [canEdit, gridSettings, gridWidth, resolvedRows, updateRowLayout])
+
+  const handlePortletDragStart = useCallback((rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => {
+    if (!canEdit) return
+    dragStateRef.current = { rowIndex, colIndex, portletId }
+    setIsDraggingPortlet(true)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', portletId)
+  }, [canEdit])
+
+  const handlePortletDragEnd = useCallback(() => {
+    dragStateRef.current = null
+    setIsDraggingPortlet(false)
+  }, [])
+
+  const handleRowDrop = useCallback((rowIndex: number, insertIndex: number | null) => {
+    const dragState = dragStateRef.current
+    if (!dragState) return
+
+    const nextRows = resolvedRows.map(row => ({
+      ...row,
+      columns: row.columns.map(column => ({ ...column }))
+    }))
+
+    const sourceRowIndex = dragState.rowIndex
+    const sourceRow = nextRows[sourceRowIndex]
+    if (!sourceRow) return
+
+    const [movedColumn] = sourceRow.columns.splice(dragState.colIndex, 1)
+    let sourceRowRemoved = false
+    if (sourceRow.columns.length === 0) {
+      nextRows.splice(sourceRowIndex, 1)
+      sourceRowRemoved = true
+    }
+
+    let targetRowIndex = rowIndex
+    if (sourceRowRemoved && sourceRowIndex < rowIndex) {
+      targetRowIndex -= 1
+    }
+
+    const targetRow = nextRows[targetRowIndex]
+    if (!targetRow) return
+
+    let targetIndex = insertIndex ?? targetRow.columns.length
+    if (!sourceRowRemoved && sourceRowIndex === targetRowIndex && insertIndex !== null) {
+      if (insertIndex > dragState.colIndex) {
+        targetIndex -= 1
+      }
+    }
+    targetRow.columns.splice(targetIndex, 0, movedColumn)
+
+    const movedBetweenRows = sourceRowIndex !== targetRowIndex || sourceRowRemoved
+    if (movedBetweenRows) {
+      if (!sourceRowRemoved) {
+        nextRows[sourceRowIndex] = {
+          ...nextRows[sourceRowIndex],
+          columns: equalizeRowColumns(
+            nextRows[sourceRowIndex].columns.map(column => column.portletId),
+            gridSettings
+          )
+        }
+      }
+      nextRows[targetRowIndex] = {
+        ...nextRows[targetRowIndex],
+        columns: equalizeRowColumns(
+          nextRows[targetRowIndex].columns.map(column => column.portletId),
+          gridSettings
+        )
+      }
+    }
+
+    updateRowLayout(nextRows)
+  }, [gridSettings, resolvedRows, updateRowLayout])
+
+  const handleNewRowDrop = useCallback((insertIndex: number) => {
+    const dragState = dragStateRef.current
+    if (!dragState) return
+
+    const nextRows = resolvedRows.map(row => ({
+      ...row,
+      columns: row.columns.map(column => ({ ...column }))
+    }))
+
+    const sourceRow = nextRows[dragState.rowIndex]
+    if (!sourceRow) return
+
+    const [movedColumn] = sourceRow.columns.splice(dragState.colIndex, 1)
+    if (sourceRow.columns.length === 0) {
+      nextRows.splice(dragState.rowIndex, 1)
+    } else {
+      sourceRow.columns = equalizeRowColumns(
+        sourceRow.columns.map(column => column.portletId),
+        gridSettings
+      )
+    }
+
+    const newRow: RowLayout = {
+      id: createRowId(),
+      h: Math.max(gridSettings.minH, 5),
+      columns: equalizeRowColumns([movedColumn.portletId], gridSettings)
+    }
+    nextRows.splice(insertIndex, 0, newRow)
+
+    updateRowLayout(nextRows)
+  }, [gridSettings, resolvedRows, updateRowLayout])
+
   // Handle portlet refresh
   const handlePortletRefresh = useCallback((portletId: string) => {
     const portletComponent = portletComponentRefs.current[portletId]
@@ -413,19 +907,45 @@ export default function DashboardGrid({
       updatedPortlets.push(newPortlet)
     }
 
-    const updatedConfig = {
-      ...config,
-      portlets: updatedPortlets
-    }
+    if (layoutMode === 'rows') {
+      const baseRows = resolvedRows.length > 0
+        ? resolvedRows.map(row => ({
+          ...row,
+          columns: row.columns.map(column => ({ ...column }))
+        }))
+        : normalizeRows(
+          config.rows ?? convertPortletsToRows(config.portlets, gridSettings),
+          updatedPortlets,
+          gridSettings
+        )
 
-    onConfigChange(updatedConfig)
+      const nextRows = isNewPortlet && newPortletId
+        ? [
+          ...baseRows,
+          {
+            id: createRowId(),
+            h: Math.max(gridSettings.minH, 5),
+            columns: equalizeRowColumns([newPortletId], gridSettings)
+          }
+        ]
+        : baseRows
 
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
+      await updateRowLayout(nextRows, true, updatedPortlets)
+    } else {
+      const updatedConfig = {
+        ...config,
+        portlets: updatedPortlets
+      }
+
+      onConfigChange(updatedConfig)
+
+      // Auto-save if handler is provided
+      if (onSave) {
+        try {
+          await onSave(updatedConfig)
+        } catch (error) {
+          console.error('Auto-save failed:', error)
+        }
       }
     }
 
@@ -465,7 +985,7 @@ export default function DashboardGrid({
         }
       }, 200)
     }
-  }, [config, editingPortlet, onConfigChange, onSave])
+  }, [config, editingPortlet, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
 
   // Handle deleting portlet
   const handleDeletePortlet = useCallback(async (portletId: string) => {
@@ -473,23 +993,42 @@ export default function DashboardGrid({
     
     if (window.confirm('Are you sure you want to delete this portlet?')) {
       const updatedPortlets = config.portlets.filter(p => p.id !== portletId)
-      const updatedConfig = {
-        ...config,
-        portlets: updatedPortlets
-      }
-      
-      onConfigChange(updatedConfig)
 
-      // Auto-save if handler is provided
-      if (onSave) {
-        try {
-          await onSave(updatedConfig)
-        } catch (error) {
-          console.error('Auto-save failed:', error)
+      if (layoutMode === 'rows') {
+        const nextRows = resolvedRows
+          .map(row => ({
+            ...row,
+            columns: row.columns.filter(column => column.portletId !== portletId)
+          }))
+          .filter(row => row.columns.length > 0)
+          .map(row => ({
+            ...row,
+            columns: equalizeRowColumns(
+              row.columns.map(column => column.portletId),
+              gridSettings
+            )
+          }))
+
+        await updateRowLayout(nextRows, true, updatedPortlets)
+      } else {
+        const updatedConfig = {
+          ...config,
+          portlets: updatedPortlets
+        }
+        
+        onConfigChange(updatedConfig)
+
+        // Auto-save if handler is provided
+        if (onSave) {
+          try {
+            await onSave(updatedConfig)
+          } catch (error) {
+            console.error('Auto-save failed:', error)
+          }
         }
       }
     }
-  }, [config, onConfigChange, onSave])
+  }, [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
 
   // Handle duplicating portlet
   const handleDuplicatePortlet = useCallback(async (portletId: string) => {
@@ -518,19 +1057,35 @@ export default function DashboardGrid({
     duplicatedPortlet.y = maxY
 
     const updatedPortlets = [...config.portlets, duplicatedPortlet]
-    const updatedConfig = {
-      ...config,
-      portlets: updatedPortlets
-    }
-    
-    onConfigChange(updatedConfig)
+    if (layoutMode === 'rows') {
+      const baseRows = resolvedRows.map(row => ({
+        ...row,
+        columns: row.columns.map(column => ({ ...column }))
+      }))
+      const nextRows = [
+        ...baseRows,
+        {
+          id: createRowId(),
+          h: Math.max(gridSettings.minH, 5),
+          columns: equalizeRowColumns([duplicatedPortlet.id], gridSettings)
+        }
+      ]
+      await updateRowLayout(nextRows, true, updatedPortlets)
+    } else {
+      const updatedConfig = {
+        ...config,
+        portlets: updatedPortlets
+      }
+      
+      onConfigChange(updatedConfig)
 
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
+      // Auto-save if handler is provided
+      if (onSave) {
+        try {
+          await onSave(updatedConfig)
+        } catch (error) {
+          console.error('Auto-save failed:', error)
+        }
       }
     }
 
@@ -565,7 +1120,7 @@ export default function DashboardGrid({
         }, 200)
       }
     }, 200)
-  }, [config, onConfigChange, onSave])
+  }, [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
 
   // Handle color palette changes
   const handlePaletteChange = useCallback(async (paletteName: string) => {
@@ -748,9 +1303,6 @@ export default function DashboardGrid({
     )
   }
 
-  // Determine if editing is allowed (only in desktop mode)
-  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
-
   // Generate grid layout from portlets - only use for lg (desktop) breakpoint
   // Let react-grid-layout handle responsive adjustments automatically
   const baseLayout: LayoutItem[] = config.portlets.map(portlet => ({
@@ -759,13 +1311,52 @@ export default function DashboardGrid({
     y: portlet.y,
     w: portlet.w,
     h: portlet.h,
-    minW: 2,
-    minH: 2,  // 2 rows at 80px = 160px minimum
+    minW: gridSettings.minW,
+    minH: gridSettings.minH,  // 2 rows at 80px = 160px minimum
     // Only enable drag/resize in edit mode
     isDraggable: canEdit,
     isResizable: canEdit,
     ...(canEdit ? { resizeHandles: ['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw'] as const } : {})
   }))
+
+  const renderPortletCard = (
+    portlet: PortletConfig,
+    containerProps?: HTMLAttributes<HTMLDivElement>,
+    headerProps?: HTMLAttributes<HTMLDivElement>
+  ) => (
+    <DashboardPortletCard
+      portlet={portlet}
+      editable={editable}
+      isEditMode={isEditMode}
+      selectedFilterId={selectedFilterId}
+      debugData={debugData[portlet.id]}
+      dashboardFilters={dashboardFilters}
+      configEagerLoad={config.eagerLoad}
+      loadingComponent={loadingComponent}
+      colorPalette={colorPalette}
+      containerProps={containerProps}
+      headerProps={headerProps}
+      onToggleFilter={handleToggleFilterForPortlet}
+      onRefresh={handlePortletRefresh}
+      onDuplicate={handleDuplicatePortlet}
+      onEdit={handleEditPortlet}
+      onDelete={handleDeletePortlet}
+      onOpenFilterConfig={handleOpenFilterConfig}
+      onDebugDataReady={(portletId, data) => {
+        setDebugData(prev => ({
+          ...prev,
+          [portletId]: data
+        }))
+      }}
+      setPortletRef={(portletId, element) => {
+        portletRefs.current[portletId] = element
+      }}
+      setPortletComponentRef={(portletId, element) => {
+        portletComponentRefs.current[portletId] = element
+      }}
+      icons={{ RefreshIcon, EditIcon, DeleteIcon, CopyIcon, FilterIcon }}
+    />
+  )
 
   // Render the portlet grid content (shared between desktop and scaled modes)
   const renderGridContent = () => (
@@ -777,8 +1368,8 @@ export default function DashboardGrid({
       onResizeStop={handleResizeStop}
       width={gridWidth}
       gridConfig={{
-        cols: 12,
-        rowHeight: 80,
+        cols: gridSettings.cols,
+        rowHeight: gridSettings.rowHeight,
         margin: [16, 16],
         containerPadding: [0, 0]
       }}
@@ -792,7 +1383,7 @@ export default function DashboardGrid({
         // Invisible but functional resize handles
         handleComponent: (axis, ref) => (
           <div
-            ref={ref as React.Ref<HTMLDivElement>}
+            ref={ref as Ref<HTMLDivElement>}
             className={`react-resizable-handle react-resizable-handle-${axis}`}
             style={{ opacity: 0 }}
           />
@@ -800,191 +1391,34 @@ export default function DashboardGrid({
       }}
       compactor={verticalCompactor}
     >
-      {config.portlets.map(portlet => {
-        const hasSelectedFilter = selectedFilterId
-          ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
-          : false
-        const isInSelectionMode = !!selectedFilterId
-
-        return (
-          <div
-            key={portlet.id}
-            data-portlet-id={portlet.id}
-            ref={el => { portletRefs.current[portlet.id] = el }}
-            className={`bg-dc-surface border rounded-lg flex flex-col h-full transition-all ${
-              isInSelectionMode ? 'cursor-pointer' : ''
-            }`}
-            style={{
-              boxShadow: 'var(--dc-shadow-sm)',
-              borderColor: isInSelectionMode && hasSelectedFilter
-                ? 'var(--dc-primary)'
-                : 'var(--dc-border)',
-              borderWidth: isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
-              backgroundColor: isInSelectionMode && hasSelectedFilter
-                ? 'rgba(var(--dc-primary-rgb), 0.05)'
-                : 'var(--dc-surface)',
-              opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1'
-            }}
-            onClick={(e) => {
-              if (isInSelectionMode && selectedFilterId) {
-                e.stopPropagation()
-                handleToggleFilterForPortlet(portlet.id, selectedFilterId)
-              }
-            }}
-          >
-            {/* Portlet Header - Conditionally rendered based on displayConfig.hideHeader */}
-            {(!portlet.displayConfig?.hideHeader || isEditMode) && (
-              <div className={`flex items-center justify-between px-3 py-1.5 md:px-4 md:py-1 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg portlet-drag-handle ${isEditMode ? 'cursor-move' : 'cursor-default'}`}>
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
-                  {/* Debug button - only show in edit mode */}
-                  {editable && isEditMode && debugData[portlet.id] && (
-                    <div
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      onTouchEnd={(e) => e.stopPropagation()}
-                    >
-                      <DebugModal
-                        chartConfig={debugData[portlet.id].chartConfig}
-                        displayConfig={debugData[portlet.id].displayConfig}
-                        queryObject={debugData[portlet.id].queryObject}
-                        data={debugData[portlet.id].data}
-                        chartType={debugData[portlet.id].chartType}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handlePortletRefresh(portlet.id)
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      handlePortletRefresh(portlet.id)
-                    }}
-                    disabled={isInSelectionMode}
-                    className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
-                      isInSelectionMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-dc-surface-hover'
-                    }`}
-                    title="Refresh portlet data"
-                  >
-                    <RefreshIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                  </button>
-
-                  {editable && isEditMode && !isInSelectionMode && (
-                    <>
-                      {/* Filter configuration button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenFilterConfig(portlet)
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          handleOpenFilterConfig(portlet)
-                        }}
-                        className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
-                        title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
-                        style={{
-                          color: portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0
-                            ? 'var(--dc-primary)'
-                            : 'var(--dc-text-secondary)'
-                        }}
-                      >
-                        <FilterIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDuplicatePortlet(portlet.id)
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          handleDuplicatePortlet(portlet.id)
-                        }}
-                        className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
-                        title="Duplicate portlet"
-                      >
-                        <CopyIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditPortlet(portlet)
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          handleEditPortlet(portlet)
-                        }}
-                        className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
-                        title="Edit portlet"
-                      >
-                        <EditIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeletePortlet(portlet.id)
-                        }}
-                        onTouchEnd={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          handleDeletePortlet(portlet.id)
-                        }}
-                        className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
-                        style={{ color: '#ef4444' }}
-                        title="Delete portlet"
-                      >
-                        <DeleteIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Portlet Content */}
-            <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
-              <AnalyticsPortlet
-                ref={el => { portletComponentRefs.current[portlet.id] = el }}
-                query={portlet.query}
-                chartType={portlet.chartType}
-                chartConfig={portlet.chartConfig}
-                displayConfig={portlet.displayConfig}
-                dashboardFilters={dashboardFilters}
-                dashboardFilterMapping={portlet.dashboardFilterMapping}
-                eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
-                title={portlet.title}
-                height="100%"
-                colorPalette={colorPalette}
-                loadingComponent={loadingComponent}
-                onDebugDataReady={(data) => {
-                  setDebugData(prev => ({
-                    ...prev,
-                    [portlet.id]: data
-                  }))
-                }}
-              />
-            </div>
-          </div>
-        )
-      })}
+      {config.portlets.map(portlet => (
+        <div key={portlet.id}>
+          {renderPortletCard(portlet)}
+        </div>
+      ))}
     </ReactGridLayout>
   )
+
+  const renderRowContent = () => (
+    <RowManagedLayout
+      rows={resolvedRows}
+      portlets={config.portlets}
+      gridSettings={gridSettings}
+      gridWidth={gridWidth}
+      canEdit={canEdit}
+      isDragging={isDraggingPortlet}
+      onRowResize={startRowResize}
+      onColumnResize={startColumnResize}
+      onPortletDragStart={handlePortletDragStart}
+      onPortletDragEnd={handlePortletDragEnd}
+      onRowDrop={handleRowDrop}
+      onNewRowDrop={handleNewRowDrop}
+      renderPortlet={renderPortletCard}
+    />
+  )
+
+  const renderActiveLayout = layoutMode === 'rows' ? renderRowContent() : renderGridContent()
+  const editModeHint = 'Drag • Resize • Auto-save'
 
   return (
     <ScrollContainerProvider value={scrollContainer}>
@@ -1017,6 +1451,34 @@ export default function DashboardGrid({
               <EditIcon className="w-4 h-4 mr-1.5" />
               {isEditMode ? 'Finished Editing' : 'Edit'}
             </button>
+            {isEditMode && allowedModes.length > 1 && (
+              <div className="inline-flex rounded-md border border-dc-border overflow-hidden whitespace-nowrap">
+                <button
+                  onClick={() => handleLayoutModeChange('grid')}
+                  disabled={!canChangeLayoutMode}
+                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
+                    layoutMode === 'grid'
+                      ? 'bg-dc-surface-secondary text-dc-text shadow-inner'
+                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
+                  } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                >
+                  <GridIcon className="w-4 h-4 shrink-0" />
+                  Grid
+                </button>
+                <button
+                  onClick={() => handleLayoutModeChange('rows')}
+                  disabled={!canChangeLayoutMode}
+                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
+                    layoutMode === 'rows'
+                      ? 'bg-dc-surface-secondary text-dc-text shadow-inner'
+                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
+                  } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                >
+                  <RowsIcon className="w-4 h-4 shrink-0" />
+                  Rows
+                </button>
+              </div>
+            )}
             {!isResponsiveEditable && (
               <div className="flex items-center gap-2 text-sm text-dc-text-secondary">
                 <DesktopIcon className="w-4 h-4" />
@@ -1025,7 +1487,7 @@ export default function DashboardGrid({
             )}
             {isEditMode && isResponsiveEditable && (
               <p className="hidden md:block text-sm text-dc-text-secondary">
-                Drag to rearrange • Resize from corners • Changes save automatically
+                {editModeHint}
               </p>
             )}
           </div>
@@ -1137,10 +1599,10 @@ export default function DashboardGrid({
         />
       ) : displayMode === 'scaled' ? (
         <ScaledGridWrapper scaleFactor={scaleFactor} designWidth={designWidth}>
-          {renderGridContent()}
+          {renderActiveLayout}
         </ScaledGridWrapper>
       ) : (
-        renderGridContent()
+        renderActiveLayout
       )}
       
       {/* Portlet Modal */}

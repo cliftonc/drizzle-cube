@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useMemo, useState } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
-import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig } from '../types'
+import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutMode } from '../types'
 import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
 import { BatchCoordinator } from '../client/BatchCoordinator'
 
@@ -22,6 +22,7 @@ interface CubeContextValue {
   features: FeaturesConfig
   batchCoordinator: BatchCoordinator | null
   enableBatching: boolean
+  dashboardModes: DashboardLayoutMode[]
 }
 
 const CubeContext = createContext<CubeContextValue | null>(null)
@@ -32,6 +33,7 @@ interface CubeProviderProps {
   token?: string
   options?: CubeQueryOptions
   features?: FeaturesConfig
+  dashboardModes?: DashboardLayoutMode[]
   enableBatching?: boolean
   batchDelayMs?: number  // Delay in ms to collect queries before batching (default: 100)
   children: React.ReactNode
@@ -43,6 +45,7 @@ export function CubeProvider({
   token: initialToken,
   options = {},
   features = { enableAI: true, aiEndpoint: '/api/ai/generate', showSchemaDiagram: false }, // Default to AI enabled, schema diagram disabled
+  dashboardModes = ['rows', 'grid'],
   enableBatching = true, // Default to batching enabled
   batchDelayMs = 100, // Default 100ms batch window
   children
@@ -100,7 +103,8 @@ export function CubeProvider({
     updateApiConfig,
     features,
     batchCoordinator,
-    enableBatching
+    enableBatching,
+    dashboardModes
   }
   
   return (

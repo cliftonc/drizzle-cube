@@ -8,7 +8,6 @@ import {
   generateRequestId,
   buildTransformedQuery,
   formatSqlString,
-  formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
   formatErrorResponse,
@@ -16,8 +15,7 @@ import {
   handleBatchRequest
 } from '../../src/adapters/utils'
 import {
-  createTestSemanticLayer,
-  getTestSchema
+  createTestSemanticLayer
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'

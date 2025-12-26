@@ -102,7 +102,7 @@ function createTestConfig(portletCount = 2): DashboardConfig {
       h: 4
     })
   }
-  return { portlets }
+  return { portlets, layoutMode: 'grid' }
 }
 
 describe('DashboardGrid', () => {
