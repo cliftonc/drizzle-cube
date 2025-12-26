@@ -239,8 +239,7 @@ const normalizeRows = (
 
 const convertRowsToPortlets = (
   rows: RowLayout[],
-  portlets: PortletConfig[],
-  gridSettings: DashboardGridSettings
+  portlets: PortletConfig[]
 ): PortletConfig[] => {
   const portletMap = new Map(portlets.map(portlet => [portlet.id, portlet]))
   let currentY = 0
@@ -296,12 +295,13 @@ export default function DashboardGrid({
     designWidth
   } = useResponsiveDashboard()
 
-  const allowedModes = dashboardModes && dashboardModes.length > 0
+  const allowedModes: DashboardLayoutMode[] = dashboardModes && dashboardModes.length > 0
     ? dashboardModes
     : ['rows', 'grid']
-  const fallbackMode = allowedModes.includes('rows') ? 'rows' : allowedModes[0] ?? 'grid'
-  const layoutMode: DashboardLayoutMode = allowedModes.includes(config.layoutMode ?? 'grid')
-    ? (config.layoutMode ?? fallbackMode)
+  const fallbackMode: DashboardLayoutMode = allowedModes.includes('rows') ? 'rows' : allowedModes[0] ?? 'grid'
+  const configMode = config.layoutMode ?? 'grid'
+  const layoutMode: DashboardLayoutMode = allowedModes.includes(configMode)
+    ? configMode
     : fallbackMode
   const gridSettings = useMemo(() => getGridSettings(config), [config])
 
@@ -403,7 +403,7 @@ export default function DashboardGrid({
     if (!onConfigChange) return
     const portlets = portletsOverride ?? config.portlets
     const normalizedRows = normalizeRows(rows, portlets, gridSettings)
-    const updatedPortlets = convertRowsToPortlets(normalizedRows, portlets, gridSettings)
+    const updatedPortlets = convertRowsToPortlets(normalizedRows, portlets)
     const updatedConfig = {
       ...config,
       layoutMode: 'rows' as const,
@@ -613,7 +613,7 @@ export default function DashboardGrid({
       gridSettings
     )
 
-    const updatedPortlets = convertRowsToPortlets(baseRows, config.portlets, gridSettings)
+    const updatedPortlets = convertRowsToPortlets(baseRows, config.portlets)
     const updatedConfig = {
       ...config,
       layoutMode: mode,
@@ -643,7 +643,7 @@ export default function DashboardGrid({
       columns: row.columns.map(column => ({ ...column }))
     }))
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientY - startY
       const deltaUnits = Math.round(delta / gridSettings.rowHeight)
       const nextRows = startRows.map((row, index) => {
@@ -686,7 +686,7 @@ export default function DashboardGrid({
     const rowContentWidth = gridWidth - (row.columns.length - 1) * columnGap
     const unitWidth = rowContentWidth / gridSettings.cols
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientX - startX
       const deltaUnits = Math.round(delta / unitWidth)
       if (deltaUnits === 0) {
