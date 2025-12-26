@@ -427,17 +427,19 @@ export async function GET(request: NextRequest, { params }: { params: { endpoint
     case 'meta': return handlers.meta(request)
     case 'sql': return handlers.sql(request)
     case 'dry-run': return handlers.dryRun(request)
+    case 'batch': return handlers.batch(request)
     default: return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 }
 
 export async function POST(request: NextRequest, { params }: { params: { endpoint: string[] } }) {
   const endpoint = params.endpoint[0]
-  
+
   switch (endpoint) {
     case 'load': return handlers.load(request)
     case 'sql': return handlers.sql(request)
     case 'dry-run': return handlers.dryRun(request)
+    case 'batch': return handlers.batch(request)
     default: return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
   }
 }
