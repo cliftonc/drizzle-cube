@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useRef, useState, useEffect, type ReactNode } from 'react'
-import GridLayout from 'react-grid-layout'
+import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { ChartBarIcon, ArrowPathIcon, PencilIcon, TrashIcon, PlusIcon, DocumentDuplicateIcon, FunnelIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import PortletEditModal from './PortletEditModal'
@@ -231,7 +231,7 @@ export default function DashboardGrid({
     return false
   }, [isInitialized, lastKnownLayout])
 
-  const handleLayoutChange = useCallback((_layout: any[]) => {
+  const handleLayoutChange = useCallback((_layout: Layout) => {
     // This function is called for ALL layout changes
     // We should NOT save here - only update internal state if needed
     // Actual saving only happens in handleDragStop and handleResizeStop for explicit user actions
@@ -241,17 +241,19 @@ export default function DashboardGrid({
   }, [])  // No dependencies since we're not doing anything
 
   // Handle drag stop - save when user finishes dragging (only if layout actually changed)
-  const handleDragStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+  const handleDragStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | undefined) => {
     if (!editable || !isEditMode || !onSave || !isInitialized) return
 
     // Only save if the layout actually changed from user interaction
-    if (!hasLayoutActuallyChanged(layout)) {
+    // Convert readonly Layout to mutable array for comparison
+    const mutableLayout = [...layout]
+    if (!hasLayoutActuallyChanged(mutableLayout)) {
       return // No actual change, don't save
     }
 
     // Get the current updated config (only called in desktop mode)
     const updatedPortlets = config.portlets.map(portlet => {
-      const layoutItem = layout.find(item => item.i === portlet.id)
+      const layoutItem = mutableLayout.find(item => item.i === portlet.id)
       if (layoutItem) {
         return {
           ...portlet,
@@ -270,12 +272,12 @@ export default function DashboardGrid({
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
-        lg: layout // Only save the large layout, let RGL handle responsive adjustments
+        lg: mutableLayout // Only save the large layout, let RGL handle responsive adjustments
       }
     }
 
     // Update our tracking of the last known layout
-    setLastKnownLayout(layout)
+    setLastKnownLayout(mutableLayout)
 
     // Update config state first
     onConfigChange?.(updatedConfig)
@@ -289,17 +291,19 @@ export default function DashboardGrid({
   }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
 
   // Handle resize stop - update config and save (resize is user interaction)
-  const handleResizeStop = useCallback(async (layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+  const handleResizeStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | undefined) => {
     if (!editable || !isEditMode || !onConfigChange || !isInitialized) return
 
     // Only proceed if the layout actually changed from user interaction
-    if (!hasLayoutActuallyChanged(layout)) {
+    // Convert readonly Layout to mutable array for comparison
+    const mutableLayout = [...layout]
+    if (!hasLayoutActuallyChanged(mutableLayout)) {
       return // No actual change, don't save
     }
 
     // Get the current updated config (only called in desktop mode)
     const updatedPortlets = config.portlets.map(portlet => {
-      const layoutItem = layout.find(item => item.i === portlet.id)
+      const layoutItem = mutableLayout.find(item => item.i === portlet.id)
       if (layoutItem) {
         return {
           ...portlet,
@@ -318,12 +322,12 @@ export default function DashboardGrid({
       portlets: updatedPortlets,
       layouts: {
         ...config.layouts,
-        lg: layout // Only save the large layout, let RGL handle responsive adjustments
+        lg: mutableLayout // Only save the large layout, let RGL handle responsive adjustments
       }
     }
 
     // Update our tracking of the last known layout
-    setLastKnownLayout(layout)
+    setLastKnownLayout(mutableLayout)
 
     // Update config state
     onConfigChange(updatedConfig)
@@ -735,39 +739,57 @@ export default function DashboardGrid({
     )
   }
 
+  // Determine if editing is allowed (only in desktop mode)
+  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
+
   // Generate grid layout from portlets - only use for lg (desktop) breakpoint
   // Let react-grid-layout handle responsive adjustments automatically
-  const baseLayout = config.portlets.map(portlet => ({
+  const baseLayout: LayoutItem[] = config.portlets.map(portlet => ({
     i: portlet.id,
     x: portlet.x,
     y: portlet.y,
     w: portlet.w,
     h: portlet.h,
-    minW: 3,
-    minH: 3
+    minW: 2,
+    minH: 2,  // 2 rows at 80px = 160px minimum
+    // Only enable drag/resize in edit mode
+    isDraggable: canEdit,
+    isResizable: canEdit,
+    ...(canEdit ? { resizeHandles: ['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw'] as const } : {})
   }))
-
-  // Determine if editing is allowed (only in desktop mode)
-  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
 
   // Render the portlet grid content (shared between desktop and scaled modes)
   const renderGridContent = () => (
-    <GridLayout
+    <ReactGridLayout
       className="layout"
       layout={baseLayout}
       onLayoutChange={handleLayoutChange}
       onDragStop={handleDragStop}
       onResizeStop={handleResizeStop}
-      cols={12}
       width={gridWidth}
-      isDraggable={canEdit}
-      isResizable={canEdit}
-      draggableHandle=".portlet-drag-handle"
-      margin={[16, 16]}
-      containerPadding={[0, 0]}
-      rowHeight={80}
-      compactType="vertical"
-      preventCollision={false}
+      gridConfig={{
+        cols: 12,
+        rowHeight: 80,
+        margin: [16, 16],
+        containerPadding: [0, 0]
+      }}
+      dragConfig={{
+        enabled: canEdit,
+        handle: '.portlet-drag-handle'
+      }}
+      resizeConfig={{
+        enabled: canEdit,
+        handles: ['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw'],
+        // Invisible but functional resize handles
+        handleComponent: (axis, ref) => (
+          <div
+            ref={ref as React.Ref<HTMLDivElement>}
+            className={`react-resizable-handle react-resizable-handle-${axis}`}
+            style={{ opacity: 0 }}
+          />
+        )
+      }}
+      compactor={verticalCompactor}
     >
       {config.portlets.map(portlet => {
         const hasSelectedFilter = selectedFilterId
@@ -914,7 +936,7 @@ export default function DashboardGrid({
                           e.preventDefault()
                           handleDeletePortlet(portlet.id)
                         }}
-                        className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
+                        className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
                         style={{ color: '#ef4444' }}
                         title="Delete portlet"
                       >
@@ -952,7 +974,7 @@ export default function DashboardGrid({
           </div>
         )
       })}
-    </GridLayout>
+    </ReactGridLayout>
   )
 
   return (

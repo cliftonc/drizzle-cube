@@ -10,6 +10,7 @@ import { ChevronDownIcon, ChevronRightIcon, ExclamationTriangleIcon, ArrowPathIc
 import { ChartBarIcon, TagIcon, CalendarIcon, RectangleGroupIcon, ListBulletIcon } from '@heroicons/react/24/solid'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
 import { getMeasureIcon } from '../../utils/measureIcons'
+import { useCubeContext } from '../../providers/CubeProvider'
 
 // Lazy load the relationship diagram (imports reactflow which is large)
 const CubeRelationshipDiagram = lazy(() =>
@@ -30,21 +31,25 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   onViewTypeChange,
   isExpanded = false
 }) => {
+  // Get features from context to check if schema diagram is enabled
+  const { features } = useCubeContext()
+  const showSchemaDiagram = features?.showSchemaDiagram === true
+
   const [expandedCubes, setExpandedCubes] = useState<Set<string>>(new Set())
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [viewType, setViewType] = useState<SchemaViewType>('tree')
-  
+
   // Track the original expansion state before search
   const [preSearchExpandedCubes, setPreSearchExpandedCubes] = useState<Set<string> | null>(null)
   const [preSearchExpandedSections, setPreSearchExpandedSections] = useState<Set<string> | null>(null)
 
-  // Auto-switch to diagram view when expanded
+  // Auto-switch to diagram view when expanded (only if schema diagram is enabled)
   React.useEffect(() => {
-    if (isExpanded) {
+    if (isExpanded && showSchemaDiagram) {
       setViewType('diagram')
     }
-  }, [isExpanded])
+  }, [isExpanded, showSchemaDiagram])
 
   // Auto-expand cubes and sections that contain search matches
   React.useEffect(() => {
@@ -486,40 +491,42 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
 
           {/* View Type Tabs and Search */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="flex space-x-1 bg-dc-surface-secondary p-1 rounded-md">
-              <button
-                onClick={() => {
-                  setViewType('tree')
-                  onViewTypeChange?.('tree')
-                }}
-                className={`
-                  flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
-                  ${viewType === 'tree'
-                    ? 'bg-dc-surface text-dc-text shadow-xs'
-                    : 'text-dc-text-secondary hover:text-dc-text'
-                  }
-                `}
-              >
-                <ListBulletIcon className="w-3 h-3 mr-1.5" />
-                Fields
-              </button>
-              <button
-                onClick={() => {
-                  setViewType('diagram')
-                  onViewTypeChange?.('diagram')
-                }}
-                className={`
-                  flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
-                  ${viewType === 'diagram'
-                    ? 'bg-dc-surface text-dc-text shadow-xs'
-                    : 'text-dc-text-secondary hover:text-dc-text'
-                  }
-                `}
-              >
-                <RectangleGroupIcon className="w-3 h-3 mr-1.5" />
-                Schema
-              </button>
-            </div>
+            {showSchemaDiagram ? (
+              <div className="flex space-x-1 bg-dc-surface-secondary p-1 rounded-md">
+                <button
+                  onClick={() => {
+                    setViewType('tree')
+                    onViewTypeChange?.('tree')
+                  }}
+                  className={`
+                    flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
+                    ${viewType === 'tree'
+                      ? 'bg-dc-surface text-dc-text shadow-xs'
+                      : 'text-dc-text-secondary hover:text-dc-text'
+                    }
+                  `}
+                >
+                  <ListBulletIcon className="w-3 h-3 mr-1.5" />
+                  Fields
+                </button>
+                <button
+                  onClick={() => {
+                    setViewType('diagram')
+                    onViewTypeChange?.('diagram')
+                  }}
+                  className={`
+                    flex items-center px-3 py-1.5 rounded text-xs font-medium transition-colors
+                    ${viewType === 'diagram'
+                      ? 'bg-dc-surface text-dc-text shadow-xs'
+                      : 'text-dc-text-secondary hover:text-dc-text'
+                    }
+                  `}
+                >
+                  <RectangleGroupIcon className="w-3 h-3 mr-1.5" />
+                  Schema
+                </button>
+              </div>
+            ) : null}
 
             {/* Search input - visible for both views */}
             <div className="flex-1 relative min-w-0">
@@ -543,8 +550,8 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {viewType === 'diagram' ? (
-          /* Diagram View - schema relationship diagram */
+        {viewType === 'diagram' && showSchemaDiagram ? (
+          /* Diagram View - schema relationship diagram (only when enabled) */
           <div className="h-full">
             <Suspense fallback={
               <div className="flex items-center justify-center h-full">

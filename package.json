@@ -143,14 +143,16 @@
     "@neondatabase/serverless": "^1.0.1",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
+    "dagre": "^0.8.5",
     "drizzle-orm": "^0.45.0",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
     "hono": "^4.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-grid-layout": "^1.4.0",
+    "react-grid-layout": "^2.1.1",
     "react-is": "^19.2.3",
+    "reactflow": "^11.11.4",
     "recharts": "^3.5.1"
   },
   "peerDependenciesMeta": {
@@ -164,6 +166,12 @@
       "optional": true
     },
     "react-is": {
+      "optional": true
+    },
+    "reactflow": {
+      "optional": true
+    },
+    "dagre": {
       "optional": true
     },
     "drizzle-orm": {
@@ -204,11 +212,11 @@
     "@types/better-sqlite3": "^7.6.0",
     "@types/cors": "^2.8.17",
     "@types/d3": "^7.4.3",
+    "@types/dagre": "^0.7.53",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@types/react-grid-layout": "^1.3.5",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
@@ -218,6 +226,7 @@
     "better-sqlite3": "^12.0.0",
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",
+    "dagre": "^0.8.5",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
     "eslint": "^9.34.0",
@@ -232,9 +241,10 @@
     "postgres": "^3.4.7",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-grid-layout": "^1.4.0",
+    "react-grid-layout": "^2.1.1",
     "react-hook-form": "^7.68.0",
     "react-resizable": "^3.0.5",
+    "reactflow": "^11.11.4",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^6.0.3",
     "sql-formatter": "^15.6.6",
@@ -249,11 +259,8 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.12",
-    "@types/dagre": "^0.7.53",
-    "dagre": "^0.8.5",
     "lz-string": "^1.5.0",
     "react-intersection-observer": "^10.0.0",
-    "react-router-dom": "^7.10.1",
-    "reactflow": "^11.11.4"
+    "react-router-dom": "^7.10.1"
   }
 }

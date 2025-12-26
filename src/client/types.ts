@@ -247,6 +247,7 @@ export interface ChartProps {
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
+  showSchemaDiagram?: boolean // Show schema diagram in QueryBuilder (default: false, requires reactflow/dagre)
 }
 
 // Grid layout types (simplified)

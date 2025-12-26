@@ -46,12 +46,14 @@ export default defineConfig({
         unknownGlobalSideEffects: false
       },
       external: [
-        'react', 
-        'react-dom', 
+        'react',
+        'react-dom',
         'react/jsx-runtime',
         'react-grid-layout',
         'react-resizable',
-        'recharts'
+        'recharts',
+        'reactflow',
+        'dagre'
       ],
       output: {
         entryFileNames: '[name].js',

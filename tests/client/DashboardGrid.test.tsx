@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
 import type { DashboardConfig, PortletConfig, DashboardFilter } from '../../src/client/types'
 
-// Mock react-grid-layout
+// Mock react-grid-layout (v2 API)
 let capturedGridLayoutProps: any = null
 vi.mock('react-grid-layout', () => ({
   default: (props: any) => {
@@ -19,7 +19,8 @@ vi.mock('react-grid-layout', () => ({
         {props.children}
       </div>
     )
-  }
+  },
+  verticalCompactor: { compact: () => [] } // Mock the compactor export
 }))
 
 // Mock useResponsiveDashboard
@@ -155,7 +156,7 @@ describe('DashboardGrid', () => {
 
       render(<DashboardGrid config={config} />)
 
-      expect(capturedGridLayoutProps.cols).toBe(12)
+      expect(capturedGridLayoutProps.gridConfig.cols).toBe(12)
     })
 
     it('should set minW and minH for portlets', () => {
@@ -199,8 +200,8 @@ describe('DashboardGrid', () => {
 
       render(<DashboardGrid config={config} editable={true} />)
 
-      expect(capturedGridLayoutProps.isDraggable).toBe(false)
-      expect(capturedGridLayoutProps.isResizable).toBe(false)
+      expect(capturedGridLayoutProps.dragConfig.enabled).toBe(false)
+      expect(capturedGridLayoutProps.resizeConfig.enabled).toBe(false)
     })
 
     it('should allow dragging when in edit mode', async () => {
@@ -221,8 +222,8 @@ describe('DashboardGrid', () => {
         await vi.advanceTimersByTimeAsync(250)
       })
 
-      expect(capturedGridLayoutProps.isDraggable).toBe(true)
-      expect(capturedGridLayoutProps.isResizable).toBe(true)
+      expect(capturedGridLayoutProps.dragConfig.enabled).toBe(true)
+      expect(capturedGridLayoutProps.resizeConfig.enabled).toBe(true)
     })
 
     it('should show edit toolbar when editable prop is true', () => {

@@ -42,7 +42,7 @@ export function CubeProvider({
   apiOptions: initialApiOptions,
   token: initialToken,
   options = {},
-  features = { enableAI: true, aiEndpoint: '/api/ai/generate' }, // Default to AI enabled for backward compatibility
+  features = { enableAI: true, aiEndpoint: '/api/ai/generate', showSchemaDiagram: false }, // Default to AI enabled, schema diagram disabled
   enableBatching = true, // Default to batching enabled
   batchDelayMs = 100, // Default 100ms batch window
   children
