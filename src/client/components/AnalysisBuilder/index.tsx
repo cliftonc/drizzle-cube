@@ -881,11 +881,11 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     return (
       <div
-        className={`flex flex-col lg:flex-row bg-dc-surface border-x border-b border-dc-border ${className}`}
-        style={maxHeight ? { height: maxHeight, maxHeight, overflow: 'hidden' } : { height: '100%' }}
+        className={`flex flex-col lg:flex-row bg-dc-surface border-x border-b border-dc-border ${maxHeight ? 'lg:h-[var(--dc-max-h)] lg:max-h-[var(--dc-max-h)] lg:overflow-hidden' : 'lg:h-full'} ${className}`}
+        style={maxHeight ? { ['--dc-max-h' as string]: maxHeight } : undefined}
       >
-        {/* Left Panel - Results (takes most space) */}
-        <div className="flex-1 min-w-0 border-r border-dc-border overflow-auto">
+        {/* Top/Left Panel - Results */}
+        <div className="h-[60vh] lg:h-auto lg:flex-1 min-w-0 border-b lg:border-b-0 lg:border-r border-dc-border overflow-auto">
           <AnalysisResultsPanel
             executionStatus={executionStatus}
             executionResults={executionResults}
@@ -915,8 +915,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           />
         </div>
 
-        {/* Right Panel - Query Builder */}
-        <div className="w-full lg:w-96 flex-shrink-0 h-full overflow-hidden">
+        {/* Bottom/Right Panel - Query Builder */}
+        <div className="w-full lg:w-96 flex-shrink-0 lg:h-full overflow-auto lg:overflow-hidden">
           <AnalysisQueryPanel
             metrics={state.metrics}
             breakdowns={state.breakdowns}
