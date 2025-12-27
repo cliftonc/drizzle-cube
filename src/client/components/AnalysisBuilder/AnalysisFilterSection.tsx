@@ -13,6 +13,7 @@ import type { MetaResponse, MetaField } from '../../shared/types'
 import FieldSearchModal from './FieldSearchModal'
 import AnalysisFilterItem from './AnalysisFilterItem'
 import AnalysisFilterGroup from './AnalysisFilterGroup'
+import { convertDateRangeTypeToValue } from '../../shared/utils'
 
 const AddIcon = getIcon('add')
 
@@ -171,11 +172,16 @@ export default function AnalysisFilterSection({
       const isTime = field.type === 'time'
       const defaultOperator = isTime ? 'inDateRange' : 'equals'
 
-      // Create new filter
+      // Create new filter with appropriate defaults
       const newFilter: SimpleFilter = {
         member: field.name,
         operator: defaultOperator,
         values: []
+      }
+
+      // For time fields with inDateRange, set a default dateRange so the filter is immediately active
+      if (isTime && defaultOperator === 'inDateRange') {
+        (newFilter as any).dateRange = convertDateRangeTypeToValue('this_month')
       }
 
       // Add filter at the pending path

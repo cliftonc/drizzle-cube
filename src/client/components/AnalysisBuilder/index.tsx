@@ -589,6 +589,17 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
                 resultsStale: true
               }
             }
+
+            // Check if we already have a time dimension breakdown (only allow one)
+            if (isTimeDimension) {
+              const hasExistingTimeDimension = prev.breakdowns.some((b) => b.isTimeDimension)
+              if (hasExistingTimeDimension) {
+                // Don't add - already have a time dimension breakdown
+                // Could show a notification here in the future
+                return prev
+              }
+            }
+
             // Add new breakdown
             const newBreakdown: BreakdownItem = {
               id: generateId(),
