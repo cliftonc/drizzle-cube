@@ -11,7 +11,7 @@ services:
       - "54333:5432"  # Use 54333 to avoid conflicts with other projects
 
   mysql:
-    image: mysql:8.4
+    image: mysql:9.5
     environment:
       MYSQL_ROOT_PASSWORD: test
       MYSQL_DATABASE: drizzle_cube_test
