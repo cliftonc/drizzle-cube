@@ -68,7 +68,10 @@ export interface ChartDisplayConfig {
   // Activity grid specific display options
   showLabels?: boolean
   fitToWidth?: boolean
-  
+
+  // DataTable specific display options
+  pivotTimeDimension?: boolean // Pivot time dimension as columns (default: true when time dimension present)
+
   // Target functionality
   target?: string // Target values as string (single value or comma-separated for spread)
   

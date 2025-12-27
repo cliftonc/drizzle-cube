@@ -8,9 +8,9 @@ import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
-export default function BarChart({ 
-  data, 
-  chartConfig, 
+export default function BarChart({
+  data,
+  chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
@@ -18,19 +18,73 @@ export default function BarChart({
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const { labelMap, getFieldLabel: contextGetFieldLabel } = useCubeContext()
-  
-  try {
-    // Determine stacking from stackType (new) or stacked (legacy)
-    const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
-    const shouldStack = stackType !== 'none'
-    const isPercentStack = stackType === 'percent'
 
-    const safeDisplayConfig = {
-      showLegend: displayConfig?.showLegend ?? true,
-      showGrid: displayConfig?.showGrid ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true
+  // Determine stacking from stackType (new) or stacked (legacy)
+  const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
+  const shouldStack = stackType !== 'none'
+  const isPercentStack = stackType === 'percent'
+
+  const safeDisplayConfig = {
+    showLegend: displayConfig?.showLegend ?? true,
+    showGrid: displayConfig?.showGrid ?? true,
+    showTooltip: displayConfig?.showTooltip ?? true
+  }
+
+  // Validate chartConfig - support both legacy and new formats
+  // Do validation but don't early return yet (hooks must come first)
+  let xAxisField: string | undefined
+  let yAxisFields: string[] = []
+  let seriesFields: string[] = []
+  let configError: string | null = null
+
+  if (chartConfig?.xAxis && chartConfig?.yAxis) {
+    // New format
+    xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
+    yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
+    seriesFields = chartConfig.series || []
+  } else if (chartConfig?.x && chartConfig?.y) {
+    // Legacy format
+    xAxisField = chartConfig.x
+    yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
+  } else {
+    configError = 'Invalid or missing chart axis configuration'
+  }
+
+  if (!configError && (!xAxisField || !yAxisFields || yAxisFields.length === 0)) {
+    configError = 'Missing required X-axis or Y-axis fields'
+  }
+
+  // Transform data (will be empty arrays if config is invalid)
+  const { data: transformedData, seriesKeys } = useMemo(() => {
+    if (configError || !data || data.length === 0 || !xAxisField) {
+      return { data: [], seriesKeys: [] }
     }
+    return transformChartDataWithSeries(
+      data,
+      xAxisField,
+      yAxisFields,
+      queryObject,
+      seriesFields,
+      labelMap
+    )
+  }, [data, xAxisField, yAxisFields, queryObject, seriesFields, labelMap, configError])
 
+  // Null handling: Filter out data points where ALL measure values are null
+  // This prevents rendering empty bars and makes the chart clearer
+  const { chartData, skippedCount } = useMemo(() => {
+    if (transformedData.length === 0 || seriesKeys.length === 0) {
+      return { chartData: [], skippedCount: 0 }
+    }
+    const filtered = transformedData.filter(row => {
+      // Keep the row if at least one series has a valid numeric value
+      return seriesKeys.some(key => isValidNumericValue(row[key]))
+    })
+    const skipped = transformedData.length - filtered.length
+    return { chartData: filtered, skippedCount: skipped }
+  }, [transformedData, seriesKeys])
+
+  // Now handle early returns AFTER all hooks
+  try {
     if (!data || data.length === 0) {
       return (
         <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
@@ -42,62 +96,16 @@ export default function BarChart({
       )
     }
 
-    // Validate chartConfig - support both legacy and new formats
-    let xAxisField: string
-    let yAxisFields: string[]
-    let seriesFields: string[] = []
-    
-    if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format
-      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
-      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
-      seriesFields = chartConfig.series || []
-    } else if (chartConfig?.x && chartConfig?.y) {
-      // Legacy format
-      xAxisField = chartConfig.x
-      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
-    } else {
+    if (configError) {
       return (
         <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">Invalid or missing chart axis configuration</div>
+            <div className="text-xs">{configError}</div>
           </div>
         </div>
       )
     }
-
-    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
-      return (
-        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
-          <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
-          </div>
-        </div>
-      )
-    }
-
-    // Use shared function to transform data and handle series
-    const { data: transformedData, seriesKeys } = transformChartDataWithSeries(
-      data,
-      xAxisField,
-      yAxisFields,
-      queryObject,
-      seriesFields,
-      labelMap
-    )
-
-    // Null handling: Filter out data points where ALL measure values are null
-    // This prevents rendering empty bars and makes the chart clearer
-    const { chartData, skippedCount } = useMemo(() => {
-      const filtered = transformedData.filter(row => {
-        // Keep the row if at least one series has a valid numeric value
-        return seriesKeys.some(key => isValidNumericValue(row[key]))
-      })
-      const skipped = transformedData.length - filtered.length
-      return { chartData: filtered, skippedCount: skipped }
-    }, [transformedData, seriesKeys])
 
     // Determine stack offset for percentage stacking
     const stackOffset = isPercentStack ? 'expand' as const : undefined

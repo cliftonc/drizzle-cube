@@ -9,6 +9,7 @@ export * from './chartUtils'
 export * from './chartConstants'
 export * from './measureIcons'
 export * from './periodUtils'
+export * from './pivotUtils'
 
 /**
  * Create a dashboard layout from portlet configurations

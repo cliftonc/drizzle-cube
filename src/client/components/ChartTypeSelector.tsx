@@ -1,39 +1,53 @@
 import { useState } from 'react'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import type { ChartType } from '../types'
+import type { ChartAvailabilityMap } from '../shared/chartDefaults'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType
   onTypeChange: (type: ChartType) => void
   className?: string
+  /** Compact mode for narrow containers - uses 2 columns and constrains width */
+  compact?: boolean
+  /** Map of chart type availability - when provided, unavailable charts are disabled */
+  availability?: ChartAvailabilityMap
 }
 
-export default function ChartTypeSelector({ 
-  selectedType, 
-  onTypeChange, 
-  className = '' 
+// Chart type display names (defined outside component to avoid recreation)
+const chartTypeLabels: Record<ChartType, string> = {
+  activityGrid: 'Activity Grid',
+  area: 'Area Chart',
+  bar: 'Bar Chart',
+  bubble: 'Bubble Chart',
+  kpiDelta: 'KPI Delta',
+  kpiNumber: 'KPI Number',
+  kpiText: 'KPI Text',
+  line: 'Line Chart',
+  markdown: 'Markdown',
+  pie: 'Pie Chart',
+  radar: 'Radar Chart',
+  radialBar: 'Radial Bar Chart',
+  scatter: 'Scatter Plot',
+  table: 'Data Table',
+  treemap: 'TreeMap'
+}
+
+export default function ChartTypeSelector({
+  selectedType,
+  onTypeChange,
+  className = '',
+  compact = false,
+  availability
 }: ChartTypeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const chartTypes = Object.entries(chartConfigRegistry) as [ChartType, typeof chartConfigRegistry[keyof typeof chartConfigRegistry]][]
 
-  // Chart type display names (fallback if not in config)
-  const chartTypeLabels: Record<ChartType, string> = {
-    bar: 'Bar Chart',
-    line: 'Line Chart', 
-    area: 'Area Chart',
-    pie: 'Pie Chart',
-    scatter: 'Scatter Plot',
-    bubble: 'Bubble Chart',
-    radar: 'Radar Chart',
-    radialBar: 'Radial Bar Chart',
-    treemap: 'TreeMap',
-    table: 'Data Table',
-    activityGrid: 'Activity Grid',
-    kpiNumber: 'KPI Number',
-    kpiDelta: 'KPI Delta',
-    kpiText: 'KPI Text',
-    markdown: 'Markdown'
-  }
+  // Get chart types and sort alphabetically by label
+  const chartTypes = (Object.entries(chartConfigRegistry) as [ChartType, typeof chartConfigRegistry[keyof typeof chartConfigRegistry]][])
+    .sort((a, b) => {
+      const labelA = chartTypeLabels[a[0]] || a[0]
+      const labelB = chartTypeLabels[b[0]] || b[0]
+      return labelA.localeCompare(labelB)
+    })
 
   const selectedConfig = chartConfigRegistry[selectedType]
   const SelectedIcon = selectedConfig?.icon
@@ -65,37 +79,48 @@ export default function ChartTypeSelector({
 
       {/* Dropdown Menu - Grid Layout */}
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full min-w-max bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-auto">
+        <div className={`absolute z-10 mt-1 w-full bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-auto ${compact ? '' : 'min-w-max'}`}>
           <div className="p-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+            <div className={`grid gap-1.5 ${compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
               {chartTypes.map(([type, config]) => {
                 const IconComponent = config.icon
                 const label = chartTypeLabels[type]
                 const isSelected = selectedType === type
                 const description = config.description
                 const useCase = config.useCase
-                
-                // Combine description and use case for tooltip
-                const tooltipText = [description, useCase].filter(Boolean).join('. ')
-                
+
+                // Check availability if provided
+                const chartAvailability = availability?.[type]
+                const isAvailable = chartAvailability?.available ?? true
+                const unavailableReason = chartAvailability?.reason
+
+                // Build tooltip text - show unavailable reason if not available, otherwise show description
+                const tooltipText = !isAvailable && unavailableReason
+                  ? unavailableReason
+                  : [description, useCase].filter(Boolean).join('. ')
+
                 return (
                   <button
                     key={type}
                     type="button"
                     onClick={() => {
+                      if (!isAvailable) return // Don't allow clicking disabled charts
                       onTypeChange(type)
                       setIsOpen(false)
                     }}
+                    disabled={!isAvailable}
                     className={`
                       relative p-1.5 rounded border transition-colors duration-150
                       text-left group min-h-[30px] flex items-center justify-start
-                      ${isSelected
-                        ? 'bg-dc-surface-secondary'
-                        : 'bg-dc-surface hover:bg-dc-surface-hover'
+                      ${!isAvailable
+                        ? 'opacity-50 cursor-not-allowed bg-dc-surface'
+                        : isSelected
+                          ? 'bg-dc-surface-secondary'
+                          : 'bg-dc-surface hover:bg-dc-surface-hover'
                       }
                     `}
                     style={{
-                      borderColor: isSelected ? 'var(--dc-primary)' : 'var(--dc-border)'
+                      borderColor: isSelected && isAvailable ? 'var(--dc-primary)' : 'var(--dc-border)'
                     }}
                     title={tooltipText}
                   >
@@ -103,21 +128,31 @@ export default function ChartTypeSelector({
                       {/* Icon */}
                       {IconComponent && (
                         <IconComponent
-                          className={`h-4 w-4 shrink-0 ${isSelected ? 'text-dc-text' : 'text-dc-text-secondary'}`}
+                          className={`h-4 w-4 shrink-0 ${
+                            !isAvailable
+                              ? 'text-dc-text-muted'
+                              : isSelected
+                                ? 'text-dc-text'
+                                : 'text-dc-text-secondary'
+                          }`}
                         />
                       )}
 
                       {/* Chart name */}
                       <span className={`text-xs font-medium leading-tight truncate ${
-                        isSelected ? '' : 'text-dc-text'
+                        !isAvailable
+                          ? 'text-dc-text-muted'
+                          : isSelected
+                            ? ''
+                            : 'text-dc-text'
                       }`}
-                      style={isSelected ? { color: 'var(--dc-primary)' } : undefined}>
+                      style={isSelected && isAvailable ? { color: 'var(--dc-primary)' } : undefined}>
                         {label}
                       </span>
                     </div>
 
                     {/* Selected indicator - smaller dot */}
-                    {isSelected && (
+                    {isSelected && isAvailable && (
                       <div className="absolute top-0.5 right-0.5">
                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--dc-primary)' }}></div>
                       </div>

@@ -335,6 +335,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
             <LazyChart
               chartType="table"
               data={executionResults}
+              queryObject={query}
               height="100%"
               fallback={
                 <div className="flex items-center justify-center h-full">

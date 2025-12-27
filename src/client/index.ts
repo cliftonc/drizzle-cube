@@ -47,6 +47,9 @@ export { default as Modal } from './components/Modal'
 // Query Builder
 export { default as QueryBuilder } from './components/QueryBuilder'
 
+// Analysis Builder (search-based query builder)
+export { default as AnalysisBuilder } from './components/AnalysisBuilder'
+
 // Data provider and hooks
 export { CubeProvider, useCubeContext } from './providers/CubeProvider'
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
