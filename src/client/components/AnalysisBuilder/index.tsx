@@ -870,7 +870,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     return (
       <div
-        className={`flex flex-col lg:flex-row bg-dc-surface ${className}`}
+        className={`flex flex-col lg:flex-row bg-dc-surface border-x border-b border-dc-border ${className}`}
         style={maxHeight ? { height: maxHeight, maxHeight, overflow: 'hidden' } : { height: '100%' }}
       >
         {/* Left Panel - Results (takes most space) */}

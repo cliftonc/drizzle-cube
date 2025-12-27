@@ -487,7 +487,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const hasResults = executionResults !== null
 
   return (
-    <div className="h-full min-h-[400px] flex flex-col bg-dc-surface rounded-lg border border-dc-border relative">
+    <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
       {/* Main content */}
       {executionStatus === 'idle' && !hasQueryContent && renderEmpty()}
       {executionStatus === 'idle' && hasQueryContent && !hasResults && renderWaiting()}

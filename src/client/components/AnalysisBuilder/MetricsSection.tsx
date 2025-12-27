@@ -4,11 +4,14 @@
  * Displays the Metrics section in the query panel with expandable list of metrics.
  */
 
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, memo } from 'react'
 import type { MetricsSectionProps } from './types'
 import type { MetaField } from '../../shared/types'
 import MetricItemCard from './MetricItemCard'
 import { getIcon } from '../../icons'
+
+// Get icon once at module level to avoid recreating
+const AddIcon = getIcon('add')
 
 /**
  * Find field metadata by field name
@@ -45,7 +48,7 @@ function getNextSortDirection(current: 'asc' | 'desc' | null): 'asc' | 'desc' | 
  * - List of selected metrics (using MetricItemCard)
  * - Drag/drop reordering support
  */
-export default function MetricsSection({
+const MetricsSection = memo(function MetricsSection({
   metrics,
   schema,
   onAdd,
@@ -54,7 +57,6 @@ export default function MetricsSection({
   onOrderChange,
   onReorder
 }: MetricsSectionProps) {
-  const AddIcon = getIcon('add')
 
   // Drag/drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -241,4 +243,6 @@ export default function MetricsSection({
       </div>
     </div>
   )
-}
+})
+
+export default MetricsSection

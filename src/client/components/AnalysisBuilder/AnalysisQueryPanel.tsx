@@ -5,7 +5,7 @@
  * Metrics, Filters, and Breakdowns.
  */
 
-import { useEffect } from 'react'
+import { useEffect, memo } from 'react'
 import type { AnalysisQueryPanelProps } from './types'
 import MetricsSection from './MetricsSection'
 import BreakdownSection from './BreakdownSection'
@@ -20,7 +20,7 @@ import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
  * - Breakdown section (dimensions)
  * - Chart configuration (in Chart tab)
  */
-export default function AnalysisQueryPanel({
+const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   metrics,
   breakdowns,
   filters,
@@ -138,4 +138,6 @@ export default function AnalysisQueryPanel({
       </div>
     </div>
   )
-}
+})
+
+export default AnalysisQueryPanel

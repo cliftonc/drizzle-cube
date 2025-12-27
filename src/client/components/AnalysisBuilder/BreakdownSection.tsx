@@ -4,11 +4,14 @@
  * Displays the Breakdown section in the query panel with expandable list of breakdowns.
  */
 
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, memo } from 'react'
 import type { BreakdownSectionProps } from './types'
 import type { MetaField } from '../../shared/types'
 import BreakdownItemCard from './BreakdownItemCard'
 import { getIcon } from '../../icons'
+
+// Get icon once at module level to avoid recreating
+const AddIcon = getIcon('add')
 
 /**
  * Find field metadata by field name
@@ -46,7 +49,7 @@ function getNextSortDirection(current: 'asc' | 'desc' | null): 'asc' | 'desc' | 
  * - List of selected breakdowns (using BreakdownItemCard)
  * - Drag/drop reordering support
  */
-export default function BreakdownSection({
+const BreakdownSection = memo(function BreakdownSection({
   breakdowns,
   schema,
   onAdd,
@@ -56,7 +59,6 @@ export default function BreakdownSection({
   onOrderChange,
   onReorder
 }: BreakdownSectionProps) {
-  const AddIcon = getIcon('add')
 
   // Drag/drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -248,4 +250,6 @@ export default function BreakdownSection({
       </div>
     </div>
   )
-}
+})
+
+export default BreakdownSection
