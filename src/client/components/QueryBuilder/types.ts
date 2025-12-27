@@ -28,14 +28,11 @@ export interface MetaResponse {
 
 // Query builder state types
 export type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid'
-export type ExecutionStatus = 'idle' | 'loading' | 'success' | 'error'
+export type ExecutionStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error'
 export type SchemaStatus = 'idle' | 'loading' | 'success' | 'error'
 
 export interface QueryBuilderState {
   query: CubeQuery                 // Current query being built
-  schema: MetaResponse | null      // Schema from /meta endpoint
-  schemaStatus: SchemaStatus       // Status of schema loading
-  schemaError: string | null       // Error from schema loading
   validationStatus: ValidationStatus
   validationError: string | null
   validationSql: { sql: string[], params: any[] } | null     // Generated SQL from validation
@@ -44,6 +41,7 @@ export interface QueryBuilderState {
   executionError: string | null
   totalRowCount: number | null     // Total rows without limit
   totalRowCountStatus: 'idle' | 'loading' | 'success' | 'error'
+  resultsStale: boolean
 }
 
 // Query analysis types for debugging transparency
@@ -192,7 +190,6 @@ export interface QueryPanelProps {
   validationError: string | null
   validationSql: { sql: string[], params: any[] } | null
   validationAnalysis?: QueryAnalysis | null  // Query analysis for debugging transparency
-  onValidate: () => void
   onExecute: () => void
   onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
   onTimeDimensionGranularityChange: (dimensionName: string, granularity: string) => void
@@ -206,6 +203,7 @@ export interface QueryPanelProps {
   onAIAssistantClick?: () => void  // Handler for AI Assistant button click
   onSchemaClick?: () => void       // Handler for Schema button click
   onShareClick?: () => void        // Handler for share button click
+  canShare?: boolean               // Whether share action is enabled
   shareButtonState?: ShareButtonState  // Current state of share button
   isViewingShared?: boolean        // Whether viewing a shared analysis
 }
@@ -221,6 +219,7 @@ export interface ResultsPanelProps {
   executionStatus: ExecutionStatus
   executionResults: any[] | null
   executionError: string | null
+  resultsStale?: boolean
   query: CubeQuery
   displayLimit?: number
   onDisplayLimitChange?: (limit: number) => void

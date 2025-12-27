@@ -5,7 +5,7 @@
  * Includes validation status, JSON preview, and action buttons.
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo, useMemo, useRef, useCallback } from 'react'
 import { getIcon } from '../../icons'
 import FilterBuilder from './FilterBuilder'
 import DateRangeFilter from './DateRangeFilter'
@@ -15,6 +15,410 @@ import { TIME_GRANULARITIES } from './types'
 import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection, getFieldType } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
 
+type IconComponent = React.ComponentType<{ className?: string }>
+
+interface QueryPanelHeaderProps {
+  hasContent: boolean
+  selectedCount: number
+  copyButtonState: 'idle' | 'copied'
+  shareButtonState: QueryPanelProps['shareButtonState']
+  canShare: boolean
+  onShareClick?: () => void
+  onClearQuery?: () => void
+  onSettingsClick?: () => void
+  onAIAssistantClick?: () => void
+  onSchemaClick?: () => void
+  showSettings?: boolean
+  handleCopyQuery: () => void
+  icons: {
+    SettingsIcon: ReturnType<typeof getIcon>
+    CopyIcon: ReturnType<typeof getIcon>
+    ShareIcon: ReturnType<typeof getIcon>
+    CheckIcon: ReturnType<typeof getIcon>
+    DeleteIcon: ReturnType<typeof getIcon>
+    SparklesIcon: ReturnType<typeof getIcon>
+  }
+}
+
+const QueryPanelHeader = memo(({
+  hasContent,
+  selectedCount,
+  copyButtonState,
+  shareButtonState,
+  canShare,
+  onShareClick,
+  onClearQuery,
+  onSettingsClick,
+  onAIAssistantClick,
+  onSchemaClick,
+  showSettings,
+  handleCopyQuery,
+  icons
+}: QueryPanelHeaderProps) => {
+  const {
+    SettingsIcon,
+    CopyIcon,
+    ShareIcon,
+    CheckIcon,
+    DeleteIcon,
+    SparklesIcon
+  } = icons
+
+  return (
+    <div className="p-3 sm:p-4 border-b border-dc-border">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+          <h3 className="text-sm sm:text-lg font-semibold text-dc-text truncate">Query Builder</h3>
+          {onSchemaClick && (
+            <button
+              onClick={onSchemaClick}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
+              title="Schema Explorer - View cube relationships and fields"
+            >
+              <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clipRule="evenodd" />
+              </svg>
+              <span>Schema</span>
+            </button>
+          )}
+          {onAIAssistantClick && (
+            <button
+              onClick={onAIAssistantClick}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
+              title="AI Assistant - Generate queries with AI"
+            >
+              <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>AI Assistant</span>
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="hidden lg:inline text-xs text-dc-text-muted mr-1">
+            {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            onClick={handleCopyQuery}
+            className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 ${
+              hasContent
+                ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:ring-purple-500'
+                : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+            }`}
+            title={copyButtonState === 'idle' ? 'Copy query to clipboard' : 'Copied!'}
+            disabled={!hasContent}
+          >
+            {copyButtonState === 'idle' ? (
+              <>
+                <CopyIcon className="w-3 h-3" />
+                <span className="hidden sm:inline">Copy Query</span>
+              </>
+            ) : (
+              <>
+                <CheckIcon className="w-3 h-3" />
+                <span className="hidden sm:inline">Copied!</span>
+              </>
+            )}
+          </button>
+          {onShareClick && (
+            <button
+              onClick={onShareClick}
+              className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 transition-colors ${
+                shareButtonState === 'idle' && canShare
+                  ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50 focus:ring-blue-500'
+                  : shareButtonState !== 'idle'
+                  ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 focus:ring-green-500'
+                  : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+              }`}
+              title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
+              disabled={!canShare || shareButtonState !== 'idle'}
+            >
+              {shareButtonState === 'idle' ? (
+                <>
+                  <ShareIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Share</span>
+                </>
+              ) : shareButtonState === 'copied' ? (
+                <>
+                  <CheckIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Copied!</span>
+                  <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
+                </>
+              )}
+            </button>
+          )}
+          {onClearQuery && (
+            <button
+              onClick={onClearQuery}
+              className={`p-2 focus:outline-hidden ${
+                hasContent ? 'text-dc-text-muted hover:text-red-600' : 'text-dc-text-muted opacity-40 cursor-not-allowed'
+              }`}
+              title="Clear all fields"
+              disabled={!hasContent}
+            >
+              <DeleteIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          )}
+          {showSettings && onSettingsClick && (
+            <button
+              onClick={onSettingsClick}
+              className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden p-2"
+              title="API Configuration"
+            >
+              <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
+
+interface RemovableChipProps {
+  fieldName: string
+  fieldType: 'measures' | 'dimensions' | 'timeDimensions'
+  schema: QueryPanelProps['schema']
+  icon: React.ReactNode
+  hasFilters: boolean
+  sortDirection: 'asc' | 'desc' | null
+  sortTooltip: string
+  onAddFilter: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
+  onToggleSort: (fieldName: string) => void
+  onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
+  FilterIcon: IconComponent
+  ChevronUpIcon: IconComponent
+  ChevronDownIcon: IconComponent
+  ChevronUpDownIcon: IconComponent
+  CloseIcon: IconComponent
+}
+
+const RemovableChip = memo(({
+  fieldName,
+  fieldType,
+  schema,
+  icon,
+  hasFilters,
+  sortDirection,
+  sortTooltip,
+  onAddFilter,
+  onToggleSort,
+  onRemoveField,
+  FilterIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ChevronUpDownIcon,
+  CloseIcon
+}: RemovableChipProps) => {
+  const getChipClasses = () => {
+    switch (fieldType) {
+      case 'measures':
+        return 'bg-dc-measure text-dc-measure border-dc-measure'
+      case 'dimensions':
+        return 'bg-dc-dimension text-dc-dimension border-dc-dimension'
+      case 'timeDimensions':
+        return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
+      default:
+        return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
+    }
+  }
+
+  const getSortIcon = () => {
+    switch (sortDirection) {
+      case 'asc':
+        return <ChevronUpIcon className="w-4 h-4 stroke-3" />
+      case 'desc':
+        return <ChevronDownIcon className="w-4 h-4 stroke-3" />
+      default:
+        return <ChevronUpDownIcon className="w-4 h-4" />
+    }
+  }
+
+  const getSortButtonClasses = () => {
+    const baseClasses = 'focus:outline-hidden shrink-0 p-0.5 transition-colors'
+    if (sortDirection) {
+      switch (fieldType) {
+        case 'measures':
+          return `${baseClasses} text-dc-measure hover:opacity-80`
+        case 'dimensions':
+          return `${baseClasses} text-dc-dimension hover:opacity-80`
+        case 'timeDimensions':
+          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
+        default:
+          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
+      }
+    }
+    return `${baseClasses} text-dc-text-muted hover:text-dc-text-secondary`
+  }
+
+  const filterColorClasses = () => {
+    switch (fieldType) {
+      case 'measures':
+        return 'text-dc-measure hover:opacity-80'
+      case 'dimensions':
+        return 'text-dc-dimension hover:opacity-80'
+      case 'timeDimensions':
+        return 'text-dc-time-dimension hover:opacity-80'
+      default:
+        return 'text-dc-time-dimension hover:opacity-80'
+    }
+  }
+
+  return (
+    <div className={`inline-flex items-center text-sm px-3 py-2 rounded-lg border w-full ${getChipClasses()}`}>
+      <div className="mr-2 shrink-0">
+        {icon}
+      </div>
+      <span className="flex-1 flex flex-col min-w-0">
+        <span className="text-xs font-medium truncate">{getFieldTitle(fieldName, schema)}</span>
+        <span className="text-[10px] text-dc-text-muted truncate">{fieldName}</span>
+      </span>
+      <div className="flex items-center gap-2 ml-2">
+        <div className="flex flex-col items-center">
+          <button
+            onClick={() => onAddFilter(fieldName, fieldType)}
+            className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
+              hasFilters
+                ? filterColorClasses()
+                : 'text-dc-text-muted hover:text-dc-text-secondary'
+            }`}
+            title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
+          >
+            <FilterIcon className={`w-4 h-4 ${hasFilters ? 'stroke-3' : ''}`} />
+          </button>
+          <button
+            onClick={() => onToggleSort(fieldName)}
+            className={getSortButtonClasses()}
+            title={sortTooltip}
+          >
+            {getSortIcon()}
+          </button>
+        </div>
+        <button
+          onClick={() => onRemoveField(fieldName, fieldType)}
+          className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden shrink-0"
+        >
+          <CloseIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+})
+
+interface TimeDimensionChipProps {
+  timeDimension: { dimension: string; granularity?: string }
+  schema: QueryPanelProps['schema']
+  hasDateRange: boolean
+  sortDirection: 'asc' | 'desc' | null
+  sortTooltip: string
+  onAddFilter: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
+  onToggleSort: (fieldName: string) => void
+  onRemoveField: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
+  onGranularityChange: (dimensionName: string, granularity: string) => void
+  TimeDimensionIcon: IconComponent
+  FilterIcon: IconComponent
+  ChevronUpIcon: IconComponent
+  ChevronDownIcon: IconComponent
+  ChevronUpDownIcon: IconComponent
+  CloseIcon: IconComponent
+}
+
+const TimeDimensionChip = memo(({
+  timeDimension,
+  schema,
+  hasDateRange,
+  sortDirection,
+  sortTooltip,
+  onAddFilter,
+  onToggleSort,
+  onRemoveField,
+  onGranularityChange,
+  TimeDimensionIcon,
+  FilterIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ChevronUpDownIcon,
+  CloseIcon
+}: TimeDimensionChipProps) => {
+  const getSortIcon = () => {
+    switch (sortDirection) {
+      case 'asc':
+        return <ChevronUpIcon className="w-4 h-4 stroke-3" />
+      case 'desc':
+        return <ChevronDownIcon className="w-4 h-4 stroke-3" />
+      default:
+        return <ChevronUpDownIcon className="w-4 h-4" />
+    }
+  }
+
+  const getSortButtonClasses = () => {
+    const baseClasses = 'focus:outline-hidden shrink-0 p-0.5 transition-colors'
+    if (sortDirection) {
+      return `${baseClasses} text-dc-time-dimension hover:opacity-80`
+    }
+    return `${baseClasses} text-dc-text-muted hover:text-dc-text-secondary`
+  }
+
+  return (
+    <div className="bg-dc-time-dimension text-dc-time-dimension text-sm px-3 py-2 rounded-lg border border-dc-time-dimension w-full">
+      <div className="flex items-center mb-1">
+        <div className="mr-2">
+          <TimeDimensionIcon className="w-4 h-4" />
+        </div>
+        <span className="flex-1 flex flex-col min-w-0">
+          <span className="text-xs font-medium truncate">{getFieldTitle(timeDimension.dimension, schema)}</span>
+          <span className="text-[10px] text-dc-text-muted truncate">{timeDimension.dimension}</span>
+        </span>
+        <div className="flex items-center gap-2 ml-2">
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => onAddFilter(timeDimension.dimension, 'timeDimensions')}
+              className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
+                hasDateRange
+                  ? 'text-dc-time-dimension hover:opacity-80'
+                  : 'text-dc-text-muted hover:text-dc-text-secondary'
+              }`}
+              title="Add date range"
+            >
+              <FilterIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-3' : ''}`} />
+            </button>
+            <button
+              onClick={() => onToggleSort(timeDimension.dimension)}
+              className={getSortButtonClasses()}
+              title={sortTooltip}
+            >
+              {getSortIcon()}
+            </button>
+          </div>
+          <button
+            onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
+            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden"
+          >
+            <CloseIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <div className="ml-6 flex items-center">
+        <span className="text-xs text-dc-time-dimension mr-2">Granularity:</span>
+        <select
+          value={timeDimension.granularity || 'month'}
+          onChange={(e) => onGranularityChange(timeDimension.dimension, e.target.value)}
+          className="bg-dc-time-dimension border-none text-dc-time-dimension text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {TIME_GRANULARITIES.map(granularity => (
+            <option key={granularity.value} value={granularity.value}>
+              {granularity.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+})
+
 const QueryPanel: React.FC<QueryPanelProps> = ({
   query,
   schema,
@@ -22,7 +426,6 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   validationError,
   validationSql,
   validationAnalysis,
-  onValidate,
   onExecute,
   onRemoveField,
   onTimeDimensionGranularityChange,
@@ -36,12 +439,19 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   onAIAssistantClick,
   onSchemaClick,
   onShareClick,
+  canShare = false,
   shareButtonState = 'idle',
   isViewingShared = false
 }) => {
   const [showJsonPreview, setShowJsonPreview] = useState(false)
   const [showSqlPreview, setShowSqlPreview] = useState(false)
   const [showAnalysisPreview, setShowAnalysisPreview] = useState(false)
+  const [copyButtonState, setCopyButtonState] = useState<'idle' | 'copied'>('idle')
+  const queryRef = useRef(query)
+
+  useEffect(() => {
+    queryRef.current = query
+  }, [query])
 
   // Trigger Prism highlighting when preview content changes
   useEffect(() => {
@@ -60,26 +470,25 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   const hasContent = hasQueryContent(query)
   const selectedCount = getSelectedFieldsCount(query)
 
-  const CloseIcon = getIcon('close')
-  const SuccessIcon = getIcon('success')
-  const ErrorIcon = getIcon('error')
-  const DeleteIcon = getIcon('delete')
-  const CopyIcon = getIcon('copy')
-  const SettingsIcon = getIcon('settings')
-  const FilterIcon = getIcon('filter')
-  const SparklesIcon = getIcon('sparkles')
-  const ChevronUpIcon = getIcon('chevronUp')
-  const ChevronDownIcon = getIcon('chevronDown')
-  const ChevronUpDownIcon = getIcon('chevronUpDown')
-  const ShareIcon = getIcon('share')
-  const MeasureIcon = getIcon('measure')
-  const DimensionIcon = getIcon('dimension')
-  const TimeDimensionIcon = getIcon('timeDimension')
-  const RunIcon = getIcon('run')
-  const CheckIcon = getIcon('check')
+  const CloseIcon = useMemo(() => getIcon('close'), [])
+  const ErrorIcon = useMemo(() => getIcon('error'), [])
+  const DeleteIcon = useMemo(() => getIcon('delete'), [])
+  const CopyIcon = useMemo(() => getIcon('copy'), [])
+  const SettingsIcon = useMemo(() => getIcon('settings'), [])
+  const FilterIcon = useMemo(() => getIcon('filter'), [])
+  const SparklesIcon = useMemo(() => getIcon('sparkles'), [])
+  const ChevronUpIcon = useMemo(() => getIcon('chevronUp'), [])
+  const ChevronDownIcon = useMemo(() => getIcon('chevronDown'), [])
+  const ChevronUpDownIcon = useMemo(() => getIcon('chevronUpDown'), [])
+  const ShareIcon = useMemo(() => getIcon('share'), [])
+  const MeasureIcon = useMemo(() => getIcon('measure'), [])
+  const DimensionIcon = useMemo(() => getIcon('dimension'), [])
+  const TimeDimensionIcon = useMemo(() => getIcon('timeDimension'), [])
+  const RunIcon = useMemo(() => getIcon('run'), [])
+  const CheckIcon = useMemo(() => getIcon('check'), [])
 
-  const handleCopyQuery = async () => {
-    const cleanedQuery = cleanQueryForServer(query)
+  const handleCopyQuery = useCallback(async () => {
+    const cleanedQuery = cleanQueryForServer(queryRef.current)
     try {
       await navigator.clipboard.writeText(JSON.stringify(cleanedQuery, null, 2))
       // You could add a toast notification here if desired
@@ -93,10 +502,14 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       document.execCommand('copy')
       document.body.removeChild(textArea)
     }
-  }
+    setCopyButtonState('copied')
+    setTimeout(() => {
+      setCopyButtonState('idle')
+    }, 1500)
+  }, [])
 
   // Helper function to check if a field has filters applied
-  const hasFiltersApplied = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions'): boolean => {
+  const hasFiltersApplied = useCallback((fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions'): boolean => {
     if (fieldType === 'timeDimensions') {
       // Check if time dimension has a date range
       return Boolean(query.timeDimensions?.some(td => td.dimension === fieldName && td.dateRange))
@@ -119,9 +532,9 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       
       return hasFieldInFilters(currentFilters)
     }
-  }
+  }, [query.timeDimensions, query.filters])
 
-  const handleAddFilterFromField = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
+  const handleAddFilterFromField = useCallback((fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
     if (fieldType === 'timeDimensions') {
       // For time dimensions, add a date range instead of a regular filter
       onDateRangeChange(fieldName, 'this month')
@@ -166,318 +579,40 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
         onFiltersChange([...currentFilters, newFilter])
       }
     }
-  }
+  }, [onDateRangeChange, onFiltersChange, query.filters])
 
-  // Sorting helper functions
-  const getSortIcon = (direction: 'asc' | 'desc' | null) => {
-    switch (direction) {
-      case 'asc':
-        return <ChevronUpIcon className={`w-4 h-4 ${direction ? 'stroke-3' : ''}`} />
-      case 'desc':
-        return <ChevronDownIcon className={`w-4 h-4 ${direction ? 'stroke-3' : ''}`} />
-      default:
-        return <ChevronUpDownIcon className="w-4 h-4" />
-    }
-  }
-
-  const handleToggleSort = (fieldName: string) => {
+  const handleToggleSort = useCallback((fieldName: string) => {
     const current = getSortDirection(fieldName, query.order)
     const next = getNextSortDirection(current)
     onOrderChange(fieldName, next)
-  }
+  }, [query.order, onOrderChange])
 
-  const getSortButtonClasses = (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => {
-    const sortDirection = getSortDirection(fieldName, query.order)
-    const baseClasses = 'focus:outline-hidden shrink-0 p-1 transition-colors'
-
-    if (sortDirection) {
-      // Active sort - use field type colors
-      switch (fieldType) {
-        case 'measures':
-          return `${baseClasses} text-dc-measure hover:opacity-80`
-        case 'dimensions':
-          return `${baseClasses} text-dc-dimension hover:opacity-80`
-        case 'timeDimensions':
-          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
-        default:
-          return `${baseClasses} text-dc-time-dimension hover:opacity-80`
-      }
-    } else {
-      // No sort - gray
-      return `${baseClasses} text-dc-text-muted hover:text-dc-text-secondary`
-    }
-  }
-
-  const RemovableChip: React.FC<{ 
-    label: string
-    fieldName: string
-    fieldType: 'measures' | 'dimensions' | 'timeDimensions'
-    icon: React.ReactNode
-  }> = ({ fieldName, fieldType, icon }) => {
-    const getChipClasses = () => {
-      switch (fieldType) {
-        case 'measures':
-          return 'bg-dc-measure text-dc-measure border-dc-measure'
-        case 'dimensions':
-          return 'bg-dc-dimension text-dc-dimension border-dc-dimension'
-        case 'timeDimensions':
-          return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
-        default:
-          return 'bg-dc-time-dimension text-dc-time-dimension border-dc-time-dimension'
-      }
-    }
-
-    return (
-      <div className={`inline-flex items-center text-sm px-3 py-2 rounded-lg border w-full ${getChipClasses()}`}>
-        <div className="mr-2 shrink-0">
-          {icon}
-        </div>
-        <span className="flex-1 flex flex-col min-w-0">
-          <span className="text-xs font-medium truncate">{getFieldTitle(fieldName, schema)}</span>
-          <span className="text-[10px] text-dc-text-muted truncate">{fieldName}</span>
-        </span>
-        <div className="flex items-center gap-2 ml-2">
-          {/* Filter and Sort buttons - stacked vertically */}
-          <div className="flex flex-col items-center">
-            {/* Filter button */}
-            {(() => {
-              const hasFilters = hasFiltersApplied(fieldName, fieldType)
-              const getActiveColorClasses = () => {
-                switch (fieldType) {
-                  case 'measures':
-                    return 'text-dc-measure hover:opacity-80'
-                  case 'dimensions':
-                    return 'text-dc-dimension hover:opacity-80'
-                  case 'timeDimensions':
-                    return 'text-dc-time-dimension hover:opacity-80'
-                  default:
-                    return 'text-dc-time-dimension hover:opacity-80'
-                }
-              }
-
-              return (
-                <button
-                  onClick={() => handleAddFilterFromField(fieldName, fieldType)}
-                  className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
-                    hasFilters
-                      ? getActiveColorClasses()
-                      : 'text-dc-text-muted hover:text-dc-text-secondary'
-                  }`}
-                  title={fieldType === 'timeDimensions' ? 'Add date range' : 'Add filter'}
-                >
-                  <FilterIcon className={`w-4 h-4 ${hasFilters ? 'stroke-3' : ''}`} />
-                </button>
-              )
-            })()}
-
-            {/* Sort button */}
-            <button
-              onClick={() => handleToggleSort(fieldName)}
-              className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${getSortButtonClasses(fieldName, fieldType).replace('p-1', 'p-0.5')}`}
-              title={getSortTooltip(getSortDirection(fieldName, query.order))}
-            >
-              {getSortIcon(getSortDirection(fieldName, query.order))}
-            </button>
-          </div>
-
-          {/* Remove button */}
-          <button
-            onClick={() => onRemoveField(fieldName, fieldType)}
-            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden shrink-0"
-          >
-            <CloseIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const TimeDimensionChip: React.FC<{
-    timeDimension: { dimension: string; granularity?: string }
-    label: string
-  }> = ({ timeDimension }) => (
-    <div className="bg-dc-time-dimension text-dc-time-dimension text-sm px-3 py-2 rounded-lg border border-dc-time-dimension w-full">
-      {/* Top row with icon, label, filter button, sort button, and remove button */}
-      <div className="flex items-center mb-1">
-        <div className="mr-2">
-          <TimeDimensionIcon className="w-4 h-4" />
-        </div>
-        <span className="flex-1 flex flex-col min-w-0">
-          <span className="text-xs font-medium truncate">{getFieldTitle(timeDimension.dimension, schema)}</span>
-          <span className="text-[10px] text-dc-text-muted truncate">{timeDimension.dimension}</span>
-        </span>
-        <div className="flex items-center gap-2 ml-2">
-          {/* Filter and Sort buttons - stacked vertically */}
-          <div className="flex flex-col items-center">
-            {/* Filter button */}
-            {(() => {
-              const hasDateRange = hasFiltersApplied(timeDimension.dimension, 'timeDimensions')
-              return (
-                <button
-                  onClick={() => handleAddFilterFromField(timeDimension.dimension, 'timeDimensions')}
-                  className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${
-                    hasDateRange
-                      ? 'text-dc-time-dimension hover:opacity-80'
-                      : 'text-dc-text-muted hover:text-dc-text-secondary'
-                  }`}
-                  title="Add date range"
-                >
-                  <FilterIcon className={`w-4 h-4 ${hasDateRange ? 'stroke-3' : ''}`} />
-                </button>
-              )
-            })()}
-
-            {/* Sort button */}
-            <button
-              onClick={() => handleToggleSort(timeDimension.dimension)}
-              className={`focus:outline-hidden shrink-0 p-0.5 transition-colors ${getSortButtonClasses(timeDimension.dimension, 'timeDimensions').replace('p-1', 'p-0.5')}`}
-              title={getSortTooltip(getSortDirection(timeDimension.dimension, query.order))}
-            >
-              {getSortIcon(getSortDirection(timeDimension.dimension, query.order))}
-            </button>
-          </div>
-
-          {/* Remove button */}
-          <button
-            onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden"
-          >
-            <CloseIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-      {/* Bottom row with granularity dropdown */}
-      <div className="ml-6 flex items-center">
-        <span className="text-xs text-dc-time-dimension mr-2">Granularity:</span>
-        <select
-          value={timeDimension.granularity || 'month'}
-          onChange={(e) => onTimeDimensionGranularityChange(timeDimension.dimension, e.target.value)}
-          className="bg-dc-time-dimension border-none text-dc-time-dimension text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {TIME_GRANULARITIES.map(granularity => (
-            <option key={granularity.value} value={granularity.value}>
-              {granularity.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  )
-
-  const ValidationStatusIcon = () => {
-    switch (validationStatus) {
-      case 'validating':
-        return (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-        )
-      case 'valid':
-        return <SuccessIcon className="w-5 h-5 text-green-600" />
-      case 'invalid':
-        return <ErrorIcon className="w-5 h-5 text-red-600" />
-      default:
-        return null
-    }
-  }
+  const headerIcons = useMemo(() => ({
+    SettingsIcon,
+    CopyIcon,
+    ShareIcon,
+    CheckIcon,
+    DeleteIcon,
+    SparklesIcon
+  }), [SettingsIcon, CopyIcon, ShareIcon, CheckIcon, DeleteIcon, SparklesIcon])
 
   return (
     <div className="flex flex-col bg-dc-surface border border-dc-border rounded-lg">
-      {/* Header */}
-      <div className="p-3 sm:p-4 border-b border-dc-border">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-            <h3 className="text-sm sm:text-lg font-semibold text-dc-text truncate">Query Builder</h3>
-            {onSchemaClick && (
-              <button
-                onClick={onSchemaClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
-                title="Schema Explorer - View cube relationships and fields"
-              >
-                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clipRule="evenodd" />
-                </svg>
-                <span>Schema</span>
-              </button>
-            )}
-            {onAIAssistantClick && (
-              <button
-                onClick={onAIAssistantClick}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
-                title="AI Assistant - Generate queries with AI"
-              >
-                <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>AI Assistant</span>
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {hasContent && (
-              <>
-                <span className="hidden lg:inline text-xs text-dc-text-muted mr-1">
-                  {selectedCount} field{selectedCount !== 1 ? 's' : ''} selected
-                </span>
-                <button
-                  onClick={handleCopyQuery}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-sm hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-                  title="Copy query to clipboard"
-                >
-                  <CopyIcon className="w-3 h-3" />
-                  <span className="hidden sm:inline">Copy Query</span>
-                </button>
-                {onShareClick && (
-                  <button
-                    onClick={onShareClick}
-                    className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 transition-colors ${
-                      shareButtonState === 'idle'
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50 focus:ring-blue-500'
-                        : 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 focus:ring-green-500'
-                    }`}
-                    title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
-                    disabled={shareButtonState !== 'idle'}
-                  >
-                    {shareButtonState === 'idle' ? (
-                      <>
-                        <ShareIcon className="w-3 h-3" />
-                        <span className="hidden sm:inline">Share</span>
-                      </>
-                    ) : shareButtonState === 'copied' ? (
-                      <>
-                        <CheckIcon className="w-3 h-3" />
-                        <span className="hidden sm:inline">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckIcon className="w-3 h-3" />
-                        <span className="hidden sm:inline">Copied!</span>
-                        <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
-                      </>
-                    )}
-                  </button>
-                )}
-                {onClearQuery && (
-                  <button
-                    onClick={onClearQuery}
-                    className="text-dc-text-muted hover:text-red-600 focus:outline-hidden p-2"
-                    title="Clear all fields"
-                  >
-                    <DeleteIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </button>
-                )}
-              </>
-            )}
-            {showSettings && onSettingsClick && (
-              <button
-                onClick={onSettingsClick}
-                className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden p-2"
-                title="API Configuration"
-              >
-                <SettingsIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-              </button>
-            )}
-            <ValidationStatusIcon />
-          </div>
-        </div>
-      </div>
+      <QueryPanelHeader
+        hasContent={hasContent}
+        selectedCount={selectedCount}
+        copyButtonState={copyButtonState}
+        shareButtonState={shareButtonState}
+        canShare={canShare}
+        onShareClick={onShareClick}
+        onClearQuery={onClearQuery}
+        onSettingsClick={onSettingsClick}
+        onAIAssistantClick={onAIAssistantClick}
+        onSchemaClick={onSchemaClick}
+        showSettings={showSettings}
+        handleCopyQuery={handleCopyQuery}
+        icons={headerIcons}
+      />
 
       {/* Viewing Shared Indicator */}
       {isViewingShared && (
@@ -511,10 +646,21 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                   {(query.dimensions || []).map(dimension => (
                     <RemovableChip
                       key={dimension}
-                      label={dimension}
                       fieldName={dimension}
                       fieldType="dimensions"
+                      schema={schema}
                       icon={<DimensionIcon className="w-4 h-4" />}
+                      hasFilters={hasFiltersApplied(dimension, 'dimensions')}
+                      sortDirection={getSortDirection(dimension, query.order)}
+                      sortTooltip={getSortTooltip(getSortDirection(dimension, query.order))}
+                      onAddFilter={handleAddFilterFromField}
+                      onToggleSort={handleToggleSort}
+                      onRemoveField={onRemoveField}
+                      FilterIcon={FilterIcon}
+                      ChevronUpIcon={ChevronUpIcon}
+                      ChevronDownIcon={ChevronDownIcon}
+                      ChevronUpDownIcon={ChevronUpDownIcon}
+                      CloseIcon={CloseIcon}
                     />
                   ))}
                 </div>
@@ -531,7 +677,20 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     <TimeDimensionChip
                       key={timeDimension.dimension}
                       timeDimension={timeDimension}
-                      label={timeDimension.dimension}
+                      schema={schema}
+                      hasDateRange={hasFiltersApplied(timeDimension.dimension, 'timeDimensions')}
+                      sortDirection={getSortDirection(timeDimension.dimension, query.order)}
+                      sortTooltip={getSortTooltip(getSortDirection(timeDimension.dimension, query.order))}
+                      onAddFilter={handleAddFilterFromField}
+                      onToggleSort={handleToggleSort}
+                      onRemoveField={onRemoveField}
+                      onGranularityChange={onTimeDimensionGranularityChange}
+                      TimeDimensionIcon={TimeDimensionIcon}
+                      FilterIcon={FilterIcon}
+                      ChevronUpIcon={ChevronUpIcon}
+                      ChevronDownIcon={ChevronDownIcon}
+                      ChevronUpDownIcon={ChevronUpDownIcon}
+                      CloseIcon={CloseIcon}
                     />
                   ))}
                 </div>
@@ -549,10 +708,21 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                     return (
                       <RemovableChip
                         key={measure}
-                        label={measure}
                         fieldName={measure}
                         fieldType="measures"
+                        schema={schema}
                         icon={getMeasureIcon(measureType, 'w-4 h-4')}
+                        hasFilters={hasFiltersApplied(measure, 'measures')}
+                        sortDirection={getSortDirection(measure, query.order)}
+                        sortTooltip={getSortTooltip(getSortDirection(measure, query.order))}
+                        onAddFilter={handleAddFilterFromField}
+                        onToggleSort={handleToggleSort}
+                        onRemoveField={onRemoveField}
+                        FilterIcon={FilterIcon}
+                        ChevronUpIcon={ChevronUpIcon}
+                        ChevronDownIcon={ChevronDownIcon}
+                        ChevronUpDownIcon={ChevronUpDownIcon}
+                        CloseIcon={CloseIcon}
                       />
                     )
                   })}
@@ -610,36 +780,46 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
                 >
                   {showJsonPreview ? 'Hide' : 'Show'} JSON Query
                 </button>
-                {validationSql && (
-                  <button
-                    onClick={() => {
-                      const newSqlState = !showSqlPreview
-                      setShowSqlPreview(newSqlState)
-                      if (newSqlState) {
-                        setShowJsonPreview(false)
-                        setShowAnalysisPreview(false)
-                      }
-                    }}
-                    className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
-                  >
-                    {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
-                  </button>
-                )}
-                {validationAnalysis && (
-                  <button
-                    onClick={() => {
-                      const newAnalysisState = !showAnalysisPreview
-                      setShowAnalysisPreview(newAnalysisState)
-                      if (newAnalysisState) {
-                        setShowJsonPreview(false)
-                        setShowSqlPreview(false)
-                      }
-                    }}
-                    className="text-sm text-dc-text-secondary hover:text-dc-text focus:outline-hidden focus:underline"
-                  >
-                    {showAnalysisPreview ? 'Hide' : 'Show'} Query Analysis
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (!validationSql) return
+                    const newSqlState = !showSqlPreview
+                    setShowSqlPreview(newSqlState)
+                    if (newSqlState) {
+                      setShowJsonPreview(false)
+                      setShowAnalysisPreview(false)
+                    }
+                  }}
+                  className={`text-sm focus:outline-hidden focus:underline ${
+                    validationSql
+                      ? 'text-dc-text-secondary hover:text-dc-text'
+                      : 'text-dc-text-muted cursor-not-allowed'
+                  }`}
+                  disabled={!validationSql}
+                  title={validationSql ? 'Toggle SQL preview' : 'Run a query to view SQL'}
+                >
+                  {showSqlPreview ? 'Hide' : 'Show'} SQL Generated
+                </button>
+                <button
+                  onClick={() => {
+                    if (!validationAnalysis) return
+                    const newAnalysisState = !showAnalysisPreview
+                    setShowAnalysisPreview(newAnalysisState)
+                    if (newAnalysisState) {
+                      setShowJsonPreview(false)
+                      setShowSqlPreview(false)
+                    }
+                  }}
+                  className={`text-sm focus:outline-hidden focus:underline ${
+                    validationAnalysis
+                      ? 'text-dc-text-secondary hover:text-dc-text'
+                      : 'text-dc-text-muted cursor-not-allowed'
+                  }`}
+                  disabled={!validationAnalysis}
+                  title={validationAnalysis ? 'Toggle analysis preview' : 'Run a query to view analysis'}
+                >
+                  {showAnalysisPreview ? 'Hide' : 'Show'} Query Analysis
+                </button>
               </div>
 
               {showJsonPreview && (
@@ -677,54 +857,18 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       </div>
 
       {/* Actions */}
-      {(hasContent || validationStatus === 'valid' || validationStatus === 'invalid') && (
+      {hasContent && (
         <div className="border-t border-dc-border p-4">
-          <div className="flex space-x-3">
-            <button
-              onClick={onValidate}
-              disabled={validationStatus === 'validating'}
-              className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                validationStatus === 'validating'
-                  ? 'bg-dc-surface-secondary text-dc-text-muted cursor-not-allowed'
-                  : validationStatus === 'valid'
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/50'
-                  : validationStatus === 'invalid'
-                  ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50'
-                  : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50'
-              }`}
-            >
-              {validationStatus === 'validating' ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                  Validating...
-                </>
-              ) : validationStatus === 'valid' ? (
-                <>
-                  <CheckIcon className="w-4 h-4 mr-2" />
-                  Re-validate Query
-                </>
-              ) : validationStatus === 'invalid' ? (
-                <>
-                  <ErrorIcon className="w-4 h-4 mr-2" />
-                  Validate Again
-                </>
-              ) : (
-                <>
-                  <CheckIcon className="w-4 h-4 mr-2" />
-                  Validate Query
-                </>
-              )}
-            </button>
-
+          <div className="flex">
             <button
               onClick={onExecute}
-              disabled={validationStatus !== 'valid'}
+              disabled={validationStatus === 'validating' || !hasContent}
               className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                validationStatus !== 'valid'
+                validationStatus === 'validating' || !hasContent
                   ? 'bg-dc-surface-secondary text-dc-text-muted cursor-not-allowed border border-dc-border'
                   : 'text-white border border-green-700 hover:bg-green-700 focus:ring-2 focus:ring-green-500'
               }`}
-              style={validationStatus === 'valid' ? { backgroundColor: 'var(--dc-primary)' } : undefined}
+              style={!hasContent || validationStatus === 'validating' ? undefined : { backgroundColor: 'var(--dc-primary)' }}
             >
               <RunIcon className="w-4 h-4 mr-2" />
               Run Query
@@ -736,4 +880,4 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
   )
 }
 
-export default QueryPanel
+export default memo(QueryPanel)

@@ -16,6 +16,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   executionStatus,
   executionResults,
   executionError,
+  resultsStale = false,
   query,
   displayLimit = 10,
   onDisplayLimitChange,
@@ -81,8 +82,28 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
     </div>
   )
 
+  const OverlaySpinner = () => (
+    <div className="absolute inset-0 flex items-center justify-center bg-dc-surface-secondary bg-opacity-80">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 mx-auto mb-2" style={{ borderBottomColor: 'var(--dc-primary)' }}></div>
+        <div className="text-xs text-dc-text-secondary">Refreshing results...</div>
+      </div>
+    </div>
+  )
+
+  const OverlayError = () => (
+    <div className="absolute inset-x-4 top-4 bg-red-50 border border-red-200 rounded-lg p-3 text-left shadow">
+      <div className="flex items-start gap-2">
+        <ErrorIcon className="w-4 h-4 text-red-600 mt-0.5" />
+        <div className="text-xs text-red-800">
+          {executionError || 'Query execution failed'}
+        </div>
+      </div>
+    </div>
+  )
+
   const EmptyState = () => (
-    <div className="h-full flex items-center justify-center">
+    <div className="h-full flex items-center justify-center pt-6">
       <div className="text-center mb-16">
         <TimeIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
         <div className="text-sm font-semibold text-dc-text-secondary mb-1">No Results Yet</div>
@@ -174,11 +195,21 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             {/* Left side: Status and row count */}
             <div className="flex items-center">
-              <SuccessIcon className="w-5 h-5 text-green-500 mr-2" />
+              {executionStatus === 'refreshing' ? (
+                <div
+                  className="w-5 h-5 mr-2 rounded-full border-b-2 animate-spin"
+                  style={{ borderBottomColor: 'var(--dc-primary)' }}
+                />
+              ) : (
+                <SuccessIcon className="w-5 h-5 text-green-500 mr-2" />
+              )}
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-dc-text-secondary">
                   Query Results ({executionResults.length} row{executionResults.length !== 1 ? 's' : ''} shown)
                 </span>
+                {resultsStale && (
+                  <span className="text-xs text-dc-text-muted">Showing previous results while updating.</span>
+                )}
                 {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && (
                   <span className="text-xs text-dc-text-muted">
                     Total: {totalRowCount.toLocaleString()} row{totalRowCount !== 1 ? 's' : ''}
@@ -329,11 +360,17 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0">
-        {executionStatus === 'loading' && <LoadingState />}
-        {executionStatus === 'error' && <ErrorState />}
-        {executionStatus === 'success' && <SuccessState />}
+      <div className="flex-1 min-h-0 relative">
         {executionStatus === 'idle' && <EmptyState />}
+        {(executionStatus === 'loading' || executionStatus === 'refreshing') && executionResults === null && (
+          <LoadingState />
+        )}
+        {executionStatus === 'error' && executionResults === null && <ErrorState />}
+        {(executionStatus === 'success' || executionResults !== null) && <SuccessState />}
+        {(executionStatus === 'loading' || executionStatus === 'refreshing') && executionResults !== null && (
+          <OverlaySpinner />
+        )}
+        {executionStatus === 'error' && executionResults !== null && <OverlayError />}
       </div>
     </div>
   )

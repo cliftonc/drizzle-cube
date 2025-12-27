@@ -39,7 +39,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
   onShare
 }, ref) => {
   // Get cube client, update function, and features from context
-  const { cubeApi, updateApiConfig, features } = useCubeContext()
+  const { cubeApi, updateApiConfig, features, meta, metaLoading, metaError, refetchMeta } = useCubeContext()
   
   // Load initial API configuration from localStorage
   const getInitialApiConfig = (): ApiConfig => {
@@ -65,9 +65,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     if (initialQuery) {
       return {
         query: transformQueryForUI(initialQuery),
-        schema: null,
-        schemaStatus: 'idle',
-        schemaError: null,
         validationStatus: 'idle',
         validationError: null,
         validationSql: null,
@@ -75,7 +72,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         executionResults: null,
         executionError: null,
         totalRowCount: null,
-        totalRowCountStatus: 'idle'
+        totalRowCountStatus: 'idle',
+        resultsStale: false
       }
     }
 
@@ -87,9 +85,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           const parsedState = JSON.parse(saved)
           return {
             query: transformQueryForUI(parsedState.query) || createEmptyQuery(),
-            schema: null, // Schema is always loaded fresh
-            schemaStatus: 'idle', // Reset schema status
-            schemaError: null,
             validationStatus: 'idle', // Reset validation status
             validationError: null,
             validationSql: null,
@@ -97,7 +92,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             executionResults: null,
             executionError: null,
             totalRowCount: null,
-            totalRowCountStatus: 'idle'
+            totalRowCountStatus: 'idle',
+            resultsStale: false
           }
         }
       } catch (error) {
@@ -107,9 +103,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     
     return {
       query: createEmptyQuery(),
-      schema: null,
-      schemaStatus: 'idle',
-      schemaError: null,
       validationStatus: 'idle',
       validationError: null,
       validationSql: null,
@@ -117,7 +110,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       executionResults: null,
       executionError: null,
       totalRowCount: null,
-      totalRowCountStatus: 'idle'
+      totalRowCountStatus: 'idle',
+      resultsStale: false
     }
   }
 
@@ -180,8 +174,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       setState(prev => ({
         ...prev,
         query: transformQueryForUI(initialQuery),
-        schemaStatus: 'idle',
-        schemaError: null,
         validationStatus: 'idle',
         validationError: null,
         validationSql: null,
@@ -189,7 +181,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         executionResults: null,
         executionError: null,
         totalRowCount: null,
-        totalRowCountStatus: 'idle'
+        totalRowCountStatus: 'idle',
+        resultsStale: false
       }))
     }
   }, [initialQuery])
@@ -202,16 +195,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   // Store the full validation result for access via ref
   const [fullValidationResult, setFullValidationResult] = useState<ValidationResult | null>(null)
-
-  // Compute available fields for chart configuration from validation result
-  const availableFields = useMemo(() => {
-    if (!fullValidationResult?.pivotQuery?.query) return null
-    return {
-      dimensions: fullValidationResult.pivotQuery.query.dimensions || [],
-      timeDimensions: fullValidationResult.pivotQuery.query.timeDimensions?.map((td: { dimension: string }) => td.dimension) || [],
-      measures: fullValidationResult.pivotQuery.query.measures || []
-    }
-  }, [fullValidationResult])
 
   // Expose query and validation state to parent via ref (only called when Apply is clicked)
   useImperativeHandle(ref, () => ({
@@ -228,38 +211,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     }),
     getValidationResult: () => fullValidationResult
   }), [state.query, state.validationStatus, state.validationError, state.validationSql, fullValidationResult])
-
-  // Load schema on mount and when API config changes
-  useEffect(() => {
-    const loadSchema = async () => {
-      setState(prev => ({
-        ...prev,
-        schemaStatus: 'loading',
-        schemaError: null
-      }))
-
-      try {
-        const metaResponse: MetaResponse = await cubeApi.meta()
-        setState(prev => ({
-          ...prev,
-          schema: metaResponse,
-          schemaStatus: 'success',
-          schemaError: null
-        }))
-      } catch (error) {
-        // Failed to load schema
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
-        setState(prev => ({
-          ...prev,
-          schema: null,
-          schemaStatus: 'error',
-          schemaError: errorMessage
-        }))
-      }
-    }
-
-    loadSchema()
-  }, [apiConfig.baseApiUrl, apiConfig.apiToken])
 
   // Save query and chart config to localStorage whenever they change (if not disabled)
   useEffect(() => {
@@ -312,7 +263,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         executionResults: null,
         executionError: null,
         totalRowCount: null,
-        totalRowCountStatus: 'idle'
+        totalRowCountStatus: 'idle',
+        resultsStale: false
       }))
 
       // Apply chart config if present, otherwise use defaults
@@ -331,7 +283,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
 
   // Auto re-run query when displayLimit or activeView changes
   useEffect(() => {
-    if (state.executionStatus === 'success' && hasQueryContent(state.query) && state.validationStatus === 'valid') {
+    if (state.executionStatus === 'success' && hasQueryContent(state.query)) {
       handleExecuteQuery()
     }
   }, [displayLimit, activeView]) // Re-run on limit or view change
@@ -348,6 +300,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       }
       
       const queryChanged = JSON.stringify(cleanedQuery) !== JSON.stringify(prev.query)
+      const shouldMarkStale = queryChanged && !!prev.executionResults
       
       return {
         ...prev,
@@ -356,11 +309,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         validationStatus: queryChanged ? 'idle' : prev.validationStatus,
         validationError: queryChanged ? null : prev.validationError,
         validationSql: queryChanged ? null : prev.validationSql,
-        executionStatus: 'idle',
-        executionResults: null,
-        executionError: null,
-        totalRowCount: null,
-        totalRowCountStatus: 'idle'
+        executionStatus: queryChanged
+          ? (prev.executionResults ? 'success' : 'idle')
+          : prev.executionStatus,
+        executionError: queryChanged ? null : prev.executionError,
+        resultsStale: shouldMarkStale ? true : prev.resultsStale
       }
     })
   }, [])
@@ -495,79 +448,115 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     })
   }, [updateQuery])
 
-  const handleValidateQuery = useCallback(async () => {
-    if (!hasQueryContent(state.query)) return
+  const validateQuery = useCallback(async (silent: boolean) => {
+    if (!hasQueryContent(state.query)) return null
 
-    // Store the query being validated (cleaned and server-formatted)
     const queryToValidate = cleanQueryForServer(state.query)
     const queryStr = JSON.stringify(queryToValidate)
-    
 
-    setState(prev => ({
-      ...prev,
-      validationStatus: 'validating',
-      validationError: null,
-      validationSql: null
-    }))
-
-    try {
-      const result: ValidationResult = await cubeApi.dryRun(queryToValidate)
-      
-      // Store the full validation result for parent access
-      setFullValidationResult(result)
-      
-      // Check if validation is successful:
-      // 1. Must have queryType (always present in successful Cube.js responses)
-      // 2. Must not have an error
-      // 3. For compatibility, also check result.valid if present
-      const isValid = !result.error && result.queryType && (result.valid !== false)
-      
-      // Store the validated query to prevent reset
-      if (isValid) {
-        lastValidatedQueryRef.current = queryStr
-      }
-      
-      setState(prev => {
-        return {
-          ...prev,
-          validationStatus: isValid ? 'valid' : 'invalid',
-          validationError: result.error || null,
-          validationSql: result.sql || null
-        }
-      })
-    } catch (error) {
-      // Validation error
-      setFullValidationResult(null)
+    if (!silent) {
       setState(prev => ({
         ...prev,
-        validationStatus: 'invalid',
-        validationError: error instanceof Error ? error.message : 'Network error during validation',
+        validationStatus: 'validating',
+        validationError: null,
         validationSql: null
       }))
     }
+
+    try {
+      const result: ValidationResult = await cubeApi.dryRun(queryToValidate)
+      const isValid = !result.error && result.queryType && (result.valid !== false)
+
+      if (isValid) {
+        lastValidatedQueryRef.current = queryStr
+      }
+
+      if (silent) {
+        if (!isValid) {
+          setState(prev => ({
+            ...prev,
+            validationStatus: 'invalid',
+            validationError: result.error || 'Validation failed',
+            validationSql: result.sql || null
+          }))
+        } else {
+          setState(prev => ({
+            ...prev,
+            validationError: null,
+            validationSql: result.sql || null
+          }))
+        }
+        setFullValidationResult(result)
+      } else {
+        if (!isValid) {
+          setState(prev => ({
+            ...prev,
+            validationStatus: 'invalid',
+            validationError: result.error || 'Validation failed',
+            validationSql: result.sql || null
+          }))
+        } else {
+          setState(prev => ({
+            ...prev,
+            validationStatus: 'valid',
+            validationError: null,
+            validationSql: result.sql || null
+          }))
+        }
+        setFullValidationResult(result)
+      }
+
+      return isValid ? result : null
+    } catch (error) {
+      setFullValidationResult(null)
+      if (!silent) {
+        setState(prev => ({
+          ...prev,
+          validationStatus: 'invalid',
+          validationError: error instanceof Error ? error.message : 'Network error during validation',
+          validationSql: null
+        }))
+      } else {
+        setState(prev => ({
+          ...prev,
+          validationStatus: 'invalid',
+          validationError: error instanceof Error ? error.message : 'Network error during validation',
+          validationSql: null
+        }))
+      }
+      return null
+    }
   }, [state.query, cubeApi])
 
-  // Auto re-validate query when query changes (with 1s debounce)
+  // Auto re-validate query when query changes (silent, no UI updates)
   useEffect(() => {
-    // Only auto-validate if query has content and validation was previously cleared
-    if (!hasQueryContent(state.query) || state.validationStatus !== 'idle') {
+    if (!hasQueryContent(state.query)) {
       return
     }
 
     const debounceTimer = setTimeout(() => {
-      handleValidateQuery()
+      validateQuery(true)
     }, 200) // 200ms debounce - fast but prevents excessive API calls
 
     return () => clearTimeout(debounceTimer)
-  }, [state.query, state.validationStatus, handleValidateQuery]) // Trigger when query changes and validation status is idle
+  }, [state.query, validateQuery])
 
   const handleExecuteQuery = useCallback(async () => {
-    if (!hasQueryContent(state.query) || state.validationStatus !== 'valid') return
+    if (!hasQueryContent(state.query)) return
+
+    const cleanedQuery = cleanQueryForServer(state.query)
+    const queryStr = JSON.stringify(cleanedQuery)
+
+    if (lastValidatedQueryRef.current !== queryStr) {
+      const result = await validateQuery(false)
+      if (!result) {
+        return
+      }
+    }
 
     setState(prev => ({
       ...prev,
-      executionStatus: 'loading',
-      executionResults: null,
+      executionStatus: prev.executionResults ? 'refreshing' : 'loading',
       executionError: null,
       totalRowCountStatus: 'loading'
     }))
@@ -576,7 +565,6 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       // Run both queries in parallel: one with limit and one without for total count
       // Chart view: no limit (show all data for visualization)
       // Table view: apply displayLimit for pagination
-      const cleanedQuery = cleanQueryForServer(state.query)
       const effectiveLimit = activeView === 'chart' ? undefined : displayLimit
 
       const [limitedResultSet, totalResultSet] = await Promise.all([
@@ -594,28 +582,58 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         executionResults: limitedData,
         executionError: null,
         totalRowCount: totalCount,
-        totalRowCountStatus: 'success'
+        totalRowCountStatus: 'success',
+        resultsStale: false
       }))
+      lastExecutedQueryRef.current = queryStr
+      if (lastAutoRunQueryRef.current === queryStr) {
+        lastAutoRunQueryRef.current = ''
+      }
     } catch (error) {
       // Query execution error
       setState(prev => ({
         ...prev,
         executionStatus: 'error',
-        executionResults: null,
         executionError: error instanceof Error ? error.message : 'Query execution failed',
-        totalRowCount: null,
-        totalRowCountStatus: 'error'
+        totalRowCountStatus: prev.totalRowCount !== null ? 'success' : 'error'
       }))
     }
-  }, [state.query, state.validationStatus, cubeApi, displayLimit, activeView])
+  }, [state.query, cubeApi, displayLimit, activeView, validateQuery])
+
+  useEffect(() => {
+    if (!state.executionResults) return
+    if (!hasQueryContent(state.query)) return
+
+    const cleanedQuery = cleanQueryForServer(state.query)
+    const queryStr = JSON.stringify(cleanedQuery)
+
+    if (queryStr === lastExecutedQueryRef.current || queryStr === lastAutoRunQueryRef.current) {
+      return
+    }
+
+    if (autoRunTimerRef.current) {
+      clearTimeout(autoRunTimerRef.current)
+    }
+
+    lastAutoRunQueryRef.current = queryStr
+    autoRunTimerRef.current = setTimeout(() => {
+      handleExecuteQuery()
+    }, 250)
+
+    return () => {
+      if (autoRunTimerRef.current) {
+        clearTimeout(autoRunTimerRef.current)
+      }
+    }
+  }, [state.query, state.executionResults, handleExecuteQuery])
 
   // Auto-execute query after loading from shared link once validation succeeds
   useEffect(() => {
-    if (pendingSharedExecution.current && state.validationStatus === 'valid' && state.executionStatus === 'idle') {
+    if (pendingSharedExecution.current && state.executionStatus === 'idle') {
       pendingSharedExecution.current = false
       handleExecuteQuery()
     }
-  }, [state.validationStatus, state.executionStatus, handleExecuteQuery])
+  }, [state.executionStatus, handleExecuteQuery])
 
   const handleClearQuery = useCallback(() => {
     setState(prev => ({
@@ -628,20 +646,38 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       executionResults: null,
       executionError: null,
       totalRowCount: null,
-      totalRowCountStatus: 'idle'
+      totalRowCountStatus: 'idle',
+      resultsStale: false
     }))
   }, [])
 
-  const handleShare = useCallback(async () => {
-    if (!enableSharing) return
+  const shareStateRef = useRef<ShareableState>({
+    query: cleanQueryForServer(state.query),
+    chartType,
+    chartConfig,
+    displayConfig,
+    activeView
+  })
+  const onShareRef = useRef<typeof onShare>(onShare)
 
-    const shareableState: ShareableState = {
+  useEffect(() => {
+    shareStateRef.current = {
       query: cleanQueryForServer(state.query),
       chartType,
       chartConfig,
       displayConfig,
       activeView
     }
+  }, [state.query, chartType, chartConfig, displayConfig, activeView])
+
+  useEffect(() => {
+    onShareRef.current = onShare
+  }, [onShare])
+
+  const handleShare = useCallback(async () => {
+    if (!enableSharing) return
+
+    const shareableState = shareStateRef.current
 
     // Try full state first, fall back to query-only if too large
     const { encoded, queryOnly } = compressWithFallback(shareableState)
@@ -673,13 +709,13 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     setShareButtonState(queryOnly ? 'copied-no-chart' : 'copied')
 
     // Call onShare callback if provided
-    onShare?.(url)
+    onShareRef.current?.(url)
 
     // Reset button state after 2 seconds
     setTimeout(() => {
       setShareButtonState('idle')
     }, 2000)
-  }, [enableSharing, state.query, chartType, chartConfig, displayConfig, activeView, onShare])
+  }, [enableSharing])
 
   const handleApiConfigChange = useCallback((newConfig: ApiConfig) => {
     setApiConfig(newConfig)
@@ -690,12 +726,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       newConfig.apiToken || undefined
     )
     
-    // Reset all state when API config changes
+    // Reset query-related state when API config changes
     setState(prev => ({
       ...prev,
-      schema: null,
-      schemaStatus: 'idle',
-      schemaError: null,
       validationStatus: 'idle',
       validationError: null,
       validationSql: null,
@@ -703,7 +736,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
       executionResults: null,
       executionError: null,
       totalRowCount: null,
-      totalRowCountStatus: 'idle'
+      totalRowCountStatus: 'idle',
+      resultsStale: false
     }))
   }, [updateApiConfig])
 
@@ -721,38 +755,44 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     )
   }, [updateApiConfig])
 
-  const handleRetrySchema = useCallback(async () => {
-    setState(prev => ({
-      ...prev,
-      schemaStatus: 'loading',
-      schemaError: null
-    }))
+  const handleRetrySchema = useCallback(() => {
+    refetchMeta()
+  }, [refetchMeta])
 
-    try {
-      const metaResponse: MetaResponse = await cubeApi.meta()
-      setState(prev => ({
-        ...prev,
-        schema: metaResponse,
-        schemaStatus: 'success',
-        schemaError: null
-      }))
-    } catch (error) {
-      // Failed to retry schema
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load schema'
-      setState(prev => ({
-        ...prev,
-        schema: null,
-        schemaStatus: 'error',
-        schemaError: errorMessage
-      }))
-    }
-  }, [cubeApi])
-
-  const selectedFields = {
+  const selectedFields = useMemo(() => ({
     measures: state.query.measures || [],
     dimensions: state.query.dimensions || [],
     timeDimensions: (state.query.timeDimensions || []).map(td => td.dimension)
-  }
+  }), [state.query.measures, state.query.dimensions, state.query.timeDimensions])
+
+  const schemaStatus = metaLoading ? 'loading' : metaError ? 'error' : meta ? 'success' : 'idle'
+  const schema = meta ? (meta as unknown as MetaResponse) : null
+  const schemaError = metaError
+
+  const availableFields = useMemo(() => {
+    const sourceQuery = fullValidationResult?.pivotQuery?.query ?? state.query
+    return {
+      dimensions: sourceQuery.dimensions || [],
+      timeDimensions: sourceQuery.timeDimensions?.map((td: { dimension: string }) => td.dimension) || [],
+      measures: sourceQuery.measures || []
+    }
+  }, [fullValidationResult, state.query])
+
+  const handleToggleSetupPanel = useCallback(() => {
+    setShowSetupPanel(prev => !prev)
+  }, [])
+
+  const handleOpenAIAssistant = useCallback(() => {
+    setShowAIAssistant(true)
+  }, [])
+
+  const handleViewTypeChange = useCallback((viewType: 'tree' | 'diagram') => {
+    setSchemaViewType(viewType)
+  }, [])
+
+  const lastExecutedQueryRef = useRef<string>('')
+  const lastAutoRunQueryRef = useRef<string>('')
+  const autoRunTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const MenuIcon = getIcon('menu')
   const CloseIcon = getIcon('close')
@@ -764,7 +804,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           <div className="shrink-0 p-4 pb-0">
             <SetupPanel
               isOpen={showSetupPanel}
-              onToggle={() => setShowSetupPanel(!showSetupPanel)}
+              onToggle={handleToggleSetupPanel}
               config={apiConfig}
               onConfigChange={handleApiConfigChange}
               onReset={handleResetApiConfig}
@@ -800,9 +840,9 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               </div>
               <div className="p-4">
                 <CubeMetaExplorer
-                  schema={state.schema}
-                  schemaStatus={state.schemaStatus}
-                  schemaError={state.schemaError}
+                  schema={schema}
+                  schemaStatus={schemaStatus}
+                  schemaError={schemaError}
                   selectedFields={selectedFields}
                   onFieldSelect={(field, type) => {
                     handleFieldSelect(field, type)
@@ -825,16 +865,16 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         {/* Schema Explorer with dynamic width based on view type */}
         <div className={`hidden md:flex shrink-0 flex-col min-w-0 ${schemaViewType === 'diagram' ? 'w-full' : 'md:w-1/3 max-w-[500px]'}`}>
           <CubeMetaExplorer
-            schema={state.schema}
-            schemaStatus={state.schemaStatus}
-            schemaError={state.schemaError}
+            schema={schema}
+            schemaStatus={schemaStatus}
+            schemaError={schemaError}
             selectedFields={selectedFields}
             onFieldSelect={handleFieldSelect}
             onFieldDeselect={handleFieldDeselect}
             onRetrySchema={handleRetrySchema}
             onOpenSettings={!hideSettings ? () => setShowSetupPanel(true) : undefined}
             onExpandSchema={undefined} // No expand/collapse needed
-            onViewTypeChange={setSchemaViewType}
+            onViewTypeChange={handleViewTypeChange}
             isExpanded={false} // Always false, handled by tab switching
           />
         </div>
@@ -846,12 +886,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           <div className="shrink-0">
             <QueryPanel
               query={state.query}
-              schema={state.schema}
+              schema={schema}
               validationStatus={state.validationStatus}
               validationError={state.validationError}
               validationSql={state.validationSql}
               validationAnalysis={fullValidationResult?.analysis}
-              onValidate={handleValidateQuery}
               onExecute={handleExecuteQuery}
               onRemoveField={handleFieldDeselect}
               onTimeDimensionGranularityChange={handleTimeDimensionGranularityChange}
@@ -861,20 +900,22 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               onOrderChange={handleOrderChange}
               onClearQuery={handleClearQuery}
               showSettings={!hideSettings}
-              onSettingsClick={() => setShowSetupPanel(!showSetupPanel)}
-              onAIAssistantClick={features?.enableAI !== false ? () => setShowAIAssistant(true) : undefined}
-              onShareClick={enableSharing && hasQueryContent(state.query) ? handleShare : undefined}
+              onSettingsClick={handleToggleSetupPanel}
+              onAIAssistantClick={features?.enableAI !== false ? handleOpenAIAssistant : undefined}
+              onShareClick={enableSharing ? handleShare : undefined}
+              canShare={enableSharing && hasQueryContent(state.query)}
               shareButtonState={shareButtonState}
               isViewingShared={isViewingShared}
             />
           </div>
 
           {/* Results Panel */}
-          <div className={`${state.executionStatus === 'idle' ? 'shrink-0 h-48' : 'flex-1 min-h-0'}`}>
+          <div className="flex-1 min-h-0">
             <ResultsPanel
               executionStatus={state.executionStatus}
               executionResults={state.executionResults}
               executionError={state.executionError}
+              resultsStale={state.resultsStale}
               query={state.query}
               displayLimit={displayLimit}
               onDisplayLimitChange={setDisplayLimit}
@@ -902,7 +943,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           <AIAssistantModal
             isOpen={showAIAssistant}
             onClose={() => setShowAIAssistant(false)}
-            schema={state.schema}
+            schema={schema}
             aiEndpoint={features?.aiEndpoint}
             onQueryLoad={(query) => {
             // Update the query in the builder
@@ -916,7 +957,8 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
               executionResults: null,
               executionError: null,
               totalRowCount: null,
-              totalRowCountStatus: 'idle'
+              totalRowCountStatus: 'idle',
+              resultsStale: false
             }))
             
             // Auto-validate the loaded query after a short delay

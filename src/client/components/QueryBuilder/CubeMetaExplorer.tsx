@@ -5,7 +5,7 @@
  * Users can click on dimensions, measures, and time dimensions to add them to their query.
  */
 
-import React, { useState, Suspense, lazy } from 'react'
+import React, { useState, Suspense, lazy, memo } from 'react'
 import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { useCubeContext } from '../../providers/CubeProvider'
@@ -61,6 +61,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       setViewType('diagram')
     }
   }, [isExpanded, showSchemaDiagram])
+
 
   // Auto-expand cubes and sections that contain search matches
   React.useEffect(() => {
@@ -746,4 +747,4 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
   )
 }
 
-export default CubeMetaExplorer
+export default memo(CubeMetaExplorer)
