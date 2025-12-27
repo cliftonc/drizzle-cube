@@ -4,6 +4,7 @@
  * Displays a single breakdown (dimension) item with optional granularity selector.
  */
 
+import { memo } from 'react'
 import type { BreakdownItemCardProps, TimeGranularity } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { getIcon } from '../../icons'
@@ -15,15 +16,20 @@ import { getIcon } from '../../icons'
  * - Granularity dropdown (for time dimensions)
  * - Sort toggle button (visible on hover, or always visible when sorted)
  * - Remove button (visible on hover)
+ * - Drag handle for reordering
  */
-export default function BreakdownItemCard({
+const BreakdownItemCard = memo(function BreakdownItemCard({
   breakdown,
   fieldMeta,
   onRemove,
   onGranularityChange,
   sortDirection,
   sortPriority,
-  onToggleSort
+  onToggleSort,
+  index,
+  isDragging,
+  onDragStart,
+  onDragEnd
 }: BreakdownItemCardProps) {
   const DimensionIcon = getIcon('dimension')
   const TimeIcon = getIcon('timeDimension')
@@ -65,8 +71,18 @@ export default function BreakdownItemCard({
     }
   }
 
+  // Check if drag/drop is enabled
+  const isDraggable = typeof index === 'number' && onDragStart && onDragEnd
+
   return (
-    <div className="flex items-center gap-2 p-2 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-colors">
+    <div
+      className={`flex items-center gap-2 p-2 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150 ${
+        isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${isDragging ? 'opacity-30' : ''}`}
+      draggable={isDraggable ? true : undefined}
+      onDragStart={isDraggable ? (e) => onDragStart(e, index) : undefined}
+      onDragEnd={isDraggable ? onDragEnd : undefined}
+    >
       {/* Icon */}
       <Icon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
 
@@ -124,4 +140,6 @@ export default function BreakdownItemCard({
       </button>
     </div>
   )
-}
+})
+
+export default BreakdownItemCard

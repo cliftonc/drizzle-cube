@@ -29,10 +29,13 @@ export default function AnalysisQueryPanel({
   onActiveTabChange,
   onAddMetric,
   onRemoveMetric,
+  onReorderMetrics,
   onAddBreakdown,
   onRemoveBreakdown,
   onBreakdownGranularityChange,
+  onReorderBreakdowns,
   onFiltersChange,
+  onDropFieldToFilter,
   // Sorting
   order,
   onOrderChange,
@@ -94,13 +97,7 @@ export default function AnalysisQueryPanel({
               onRemove={onRemoveMetric}
               order={order}
               onOrderChange={onOrderChange}
-            />
-
-            {/* Filter Section */}
-            <AnalysisFilterSection
-              filters={filters}
-              schema={schema}
-              onFiltersChange={onFiltersChange}
+              onReorder={onReorderMetrics}
             />
 
             {/* Breakdown Section */}
@@ -112,6 +109,15 @@ export default function AnalysisQueryPanel({
               onGranularityChange={onBreakdownGranularityChange}
               order={order}
               onOrderChange={onOrderChange}
+              onReorder={onReorderBreakdowns}
+            />
+
+            {/* Filter Section */}
+            <AnalysisFilterSection
+              filters={filters}
+              schema={schema}
+              onFiltersChange={onFiltersChange}
+              onFieldDropped={onDropFieldToFilter}
             />
           </div>
         ) : activeTab === 'chart' ? (

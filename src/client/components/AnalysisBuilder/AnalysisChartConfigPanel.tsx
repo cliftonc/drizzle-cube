@@ -324,13 +324,39 @@ export default function AnalysisChartConfigPanel({
         />
       </div>
 
+      {/* Chart Axis Configuration - Dynamic Drop Zones */}
+      {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (
+        <div>
+          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">
+            Chart Configuration
+          </h4>
+          <div className="space-y-1">
+            {chartTypeConfig.dropZones.map((dropZone) => (
+              <AnalysisAxisDropZone
+                key={dropZone.key}
+                config={dropZone}
+                fields={getFieldsForDropZone(dropZone.key)}
+                onDrop={handleDrop}
+                onRemove={handleRemoveFromAxis}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onReorder={handleReorder}
+                draggedItem={draggedItem}
+                getFieldMeta={getFieldMeta}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Unassigned Fields - Show fields from Query tab that haven't been assigned yet */}
       {!shouldSkipQuery && hasUnassignedFields && (
         <div>
           <div className="mb-2">
             <h4 className="text-sm font-medium text-dc-text">Unassigned Fields</h4>
             <div className="text-xs text-dc-text-muted mt-0.5">
-              Drag fields to chart axes below
+              Drag fields to chart axes above
             </div>
           </div>
           <div className="border-2 border-dashed border-dc-border rounded-lg p-2 bg-dc-surface-secondary">
@@ -407,32 +433,6 @@ export default function AnalysisChartConfigPanel({
                 )
               })}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Chart Axis Configuration - Dynamic Drop Zones */}
-      {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (
-        <div>
-          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">
-            Chart Configuration
-          </h4>
-          <div className="space-y-1">
-            {chartTypeConfig.dropZones.map((dropZone) => (
-              <AnalysisAxisDropZone
-                key={dropZone.key}
-                config={dropZone}
-                fields={getFieldsForDropZone(dropZone.key)}
-                onDrop={handleDrop}
-                onRemove={handleRemoveFromAxis}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onReorder={handleReorder}
-                draggedItem={draggedItem}
-                getFieldMeta={getFieldMeta}
-              />
-            ))}
           </div>
         </div>
       )}

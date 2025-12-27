@@ -30,12 +30,13 @@ import AnalysisQueryPanel from './AnalysisQueryPanel'
 import type { MetaField, MetaResponse } from '../../shared/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../../shared/chartDefaults'
+import { compressWithFallback } from '../QueryBuilder/shareUtils'
 
 // Storage key for localStorage persistence
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
 
 // Debounce delay for auto-execute (ms)
-const AUTO_EXECUTE_DELAY = 500
+const AUTO_EXECUTE_DELAY = 300
 
 /**
  * Generate a unique ID for items
@@ -254,6 +255,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const [showFieldModal, setShowFieldModal] = useState(false)
     const [fieldModalMode, setFieldModalMode] = useState<'metrics' | 'breakdown'>('metrics')
 
+    // Share state
+    const [shareButtonState, setShareButtonState] = useState<'idle' | 'copied' | 'copied-no-chart'>('idle')
+
     // Build current query - memoized to prevent infinite loops
     const currentQuery = useMemo(
       () => buildCubeQuery(state.metrics, state.breakdowns, state.filters, order),
@@ -267,6 +271,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const [debouncedQuery, setDebouncedQuery] = useState<CubeQuery | null>(null)
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastQueryStringRef = useRef<string>('')
+
+    // Track previous metrics/breakdowns for smart chart defaulting (avoid re-runs when chartConfig changes)
+    const prevMetricsBreakdownsRef = useRef<string>('')
+    const chartConfigRef = useRef<ChartAxisConfig>(chartConfig)
 
     // Determine if query is valid (has at least one measure OR one dimension)
     const isValidQuery =
@@ -312,10 +320,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [debouncedQuery])
 
     // Execute query using useCubeQuery hook
-    // resetResultSetOnChange: true ensures we don't show stale results while loading
+    // Keep showing old results with a "refreshing" overlay for smoother transitions
     const { resultSet, isLoading, error } = useCubeQuery(serverQuery, {
-      skip: !serverQuery,
-      resetResultSetOnChange: true
+      skip: !serverQuery
     })
 
     // Derive execution status
@@ -359,11 +366,33 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       })
     }, [])
 
-    // Smart chart defaulting - auto-configure chart type and axes when metrics/breakdowns change
+    // Keep chartConfigRef in sync with chartConfig state
+    chartConfigRef.current = chartConfig
+
+    // Smart chart defaulting - auto-configure chart type and axes when debouncedQuery changes
+    // This runs AFTER the debounce fires, so chart config changes are synchronized with data updates
+    // This prevents the "double refresh" visual where chart updates before data arrives
     useEffect(() => {
+      // Only run when we have a debounced query (after debounce timer fires)
+      if (!debouncedQuery) {
+        return
+      }
+
       if (state.metrics.length === 0 && state.breakdowns.length === 0) {
         return // Nothing to configure
       }
+
+      // Create a key from metrics/breakdowns fields to detect actual changes
+      const currentKey = JSON.stringify({
+        metrics: state.metrics.map(m => m.field),
+        breakdowns: state.breakdowns.map(b => ({ field: b.field, isTime: b.isTimeDimension }))
+      })
+
+      // Skip if metrics/breakdowns haven't actually changed
+      if (currentKey === prevMetricsBreakdownsRef.current) {
+        return
+      }
+      prevMetricsBreakdownsRef.current = currentKey
 
       // Check if we should auto-switch chart type
       const newChartType = shouldAutoSwitchChartType(
@@ -387,7 +416,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       } else if (state.metrics.length > 0 || state.breakdowns.length > 0) {
         // Only apply smart defaults if the chart config is COMPLETELY empty
         // Once user has configured ANY axis, don't auto-fill (respects user removals)
-        if (isChartConfigEmpty(chartConfig)) {
+        // Use ref to get current value without adding to dependencies
+        if (isChartConfigEmpty(chartConfigRef.current)) {
           const { chartConfig: smartDefaults } = getSmartChartDefaults(
             state.metrics,
             state.breakdowns,
@@ -396,11 +426,15 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           setChartConfig(smartDefaults)
         }
       }
-    }, [state.metrics, state.breakdowns, chartType, userManuallySelectedChart, chartConfig, isChartConfigEmpty])
+    }, [debouncedQuery, state.metrics, state.breakdowns, chartType, userManuallySelectedChart, isChartConfigEmpty])
 
     // Save state to localStorage whenever it changes (if not disabled)
+    // Deferred to avoid blocking renders
     useEffect(() => {
-      if (!disableLocalStorage) {
+      if (disableLocalStorage) return
+
+      // Defer to next tick to avoid blocking renders
+      const timeoutId = setTimeout(() => {
         try {
           const storageState: AnalysisBuilderStorageState = {
             metrics: state.metrics,
@@ -416,7 +450,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         } catch {
           // Failed to save to localStorage
         }
-      }
+      }, 0)
+
+      return () => clearTimeout(timeoutId)
     }, [
       state.metrics,
       state.breakdowns,
@@ -619,6 +655,42 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     )
 
     // ========================================================================
+    // Reorder Handlers
+    // ========================================================================
+
+    const handleReorderMetrics = useCallback(
+      (fromIndex: number, toIndex: number) => {
+        setState((prev) => {
+          const newMetrics = [...prev.metrics]
+          const [movedItem] = newMetrics.splice(fromIndex, 1)
+          newMetrics.splice(toIndex, 0, movedItem)
+          return {
+            ...prev,
+            metrics: newMetrics,
+            resultsStale: true
+          }
+        })
+      },
+      []
+    )
+
+    const handleReorderBreakdowns = useCallback(
+      (fromIndex: number, toIndex: number) => {
+        setState((prev) => {
+          const newBreakdowns = [...prev.breakdowns]
+          const [movedItem] = newBreakdowns.splice(fromIndex, 1)
+          newBreakdowns.splice(toIndex, 0, movedItem)
+          return {
+            ...prev,
+            breakdowns: newBreakdowns,
+            resultsStale: true
+          }
+        })
+      },
+      []
+    )
+
+    // ========================================================================
     // Filter Handlers
     // ========================================================================
 
@@ -629,6 +701,56 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         filters,
         resultsStale: true
       }))
+    }, [])
+
+    // Handle dropping a field from metrics/breakdowns onto the filter section
+    const handleDropFieldToFilter = useCallback((field: string) => {
+      // Create a new filter with 'set' operator (checks if field exists/is not null)
+      const newFilter: Filter = {
+        member: field,
+        operator: 'set',
+        values: []
+      }
+
+      setState((prev) => {
+        // Add to existing filters or create new array
+        const existingFilters = prev.filters || []
+
+        // Check if we already have a filter for this field
+        const hasFilterForField = existingFilters.some((f) =>
+          'member' in f && f.member === field
+        )
+
+        if (hasFilterForField) {
+          // Don't add duplicate filter
+          return prev
+        }
+
+        // If we have existing filters, wrap in an AND group or add to existing group
+        let updatedFilters: Filter[]
+        if (existingFilters.length === 0) {
+          updatedFilters = [newFilter]
+        } else if (existingFilters.length === 1 && 'type' in existingFilters[0]) {
+          // Already a group, add to it
+          const group = existingFilters[0] as { type: 'and' | 'or'; filters: Filter[] }
+          updatedFilters = [{
+            ...group,
+            filters: [...group.filters, newFilter]
+          }]
+        } else {
+          // Wrap all in AND group
+          updatedFilters = [{
+            type: 'and' as const,
+            filters: [...existingFilters, newFilter]
+          }]
+        }
+
+        return {
+          ...prev,
+          filters: updatedFilters,
+          resultsStale: true
+        }
+      })
     }, [])
 
     // ========================================================================
@@ -680,6 +802,52 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [state.metrics, state.breakdowns])
 
     // ========================================================================
+    // Share Handler
+    // ========================================================================
+
+    const handleShare = useCallback(async () => {
+      if (!isValidQuery || !serverQuery) return
+
+      const shareableState = {
+        query: serverQuery,
+        chartType,
+        chartConfig,
+        displayConfig,
+        activeView
+      }
+
+      // Try full state first, fall back to query-only if too large
+      const { encoded, queryOnly } = compressWithFallback(shareableState)
+
+      // If even query-only is too large, don't share
+      if (!encoded) {
+        return
+      }
+
+      const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`
+
+      try {
+        await navigator.clipboard.writeText(url)
+      } catch {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
+
+      // Update button state
+      setShareButtonState(queryOnly ? 'copied-no-chart' : 'copied')
+
+      // Reset button state after 2 seconds
+      setTimeout(() => {
+        setShareButtonState('idle')
+      }, 2000)
+    }, [isValidQuery, serverQuery, chartType, chartConfig, displayConfig, activeView])
+
+    // ========================================================================
     // Expose API via ref
     // ========================================================================
 
@@ -706,7 +874,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         style={maxHeight ? { height: maxHeight, maxHeight, overflow: 'hidden' } : { height: '100%' }}
       >
         {/* Left Panel - Results (takes most space) */}
-        <div className="flex-1 min-w-0 border-r border-dc-border p-4 overflow-auto">
+        <div className="flex-1 min-w-0 border-r border-dc-border overflow-auto">
           <AnalysisResultsPanel
             executionStatus={executionStatus}
             executionResults={executionResults}
@@ -729,6 +897,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             debugAnalysis={debugData.analysis}
             debugLoading={debugData.loading}
             debugError={debugData.error}
+            // Share props
+            onShareClick={handleShare}
+            canShare={isValidQuery}
+            shareButtonState={shareButtonState}
           />
         </div>
 
@@ -743,10 +915,13 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             onActiveTabChange={setActiveTab}
             onAddMetric={handleAddMetric}
             onRemoveMetric={handleRemoveMetric}
+            onReorderMetrics={handleReorderMetrics}
             onAddBreakdown={handleAddBreakdown}
             onRemoveBreakdown={handleRemoveBreakdown}
             onBreakdownGranularityChange={handleBreakdownGranularityChange}
+            onReorderBreakdowns={handleReorderBreakdowns}
             onFiltersChange={handleFiltersChange}
+            onDropFieldToFilter={handleDropFieldToFilter}
             order={order}
             onOrderChange={handleOrderChange}
             chartType={chartType}

@@ -5,7 +5,7 @@
  * Used in the left panel of AnalysisBuilder.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
@@ -21,7 +21,7 @@ import { QueryAnalysisPanel } from '../../shared'
  * - Stale results indicator
  * - Display limit control for tables
  */
-export default function AnalysisResultsPanel({
+const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   executionStatus,
   executionResults,
   executionError,
@@ -41,7 +41,11 @@ export default function AnalysisResultsPanel({
   debugSql,
   debugAnalysis,
   debugLoading,
-  debugError
+  debugError,
+  // Share props
+  onShareClick,
+  canShare = false,
+  shareButtonState = 'idle'
 }: AnalysisResultsPanelProps) {
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
@@ -59,6 +63,8 @@ export default function AnalysisResultsPanel({
   const ChartIcon = getIcon('measure')
   const TimeIcon = getIcon('timeDimension')
   const CodeIcon = getIcon('codeBracket')
+  const ShareIcon = getIcon('share')
+  const CheckIcon = getIcon('check')
 
   // Loading state - initial load
   const renderLoading = () => (
@@ -363,6 +369,40 @@ export default function AnalysisResultsPanel({
                 </select>
               )}
 
+              {/* Share Button */}
+              {onShareClick && (
+                <button
+                  onClick={onShareClick}
+                  className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    shareButtonState === 'idle' && canShare
+                      ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                      : shareButtonState !== 'idle'
+                      ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                      : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+                  }`}
+                  title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
+                  disabled={!canShare || shareButtonState !== 'idle'}
+                >
+                  {shareButtonState === 'idle' ? (
+                    <>
+                      <ShareIcon className="w-3 h-3" />
+                      <span className="hidden sm:inline">Share</span>
+                    </>
+                  ) : shareButtonState === 'copied' ? (
+                    <>
+                      <CheckIcon className="w-3 h-3" />
+                      <span className="hidden sm:inline">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="w-3 h-3" />
+                      <span className="hidden sm:inline">Copied!</span>
+                      <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Debug Toggle Button */}
               <button
                 onClick={() => setShowDebug(!showDebug)}
@@ -459,4 +499,6 @@ export default function AnalysisResultsPanel({
       {(executionStatus === 'loading' || executionStatus === 'refreshing') && hasResults && renderOverlaySpinner()}
     </div>
   )
-}
+})
+
+export default AnalysisResultsPanel

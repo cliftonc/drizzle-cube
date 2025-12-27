@@ -195,14 +195,17 @@ export interface AnalysisQueryPanelProps {
   // Metric actions
   onAddMetric: () => void
   onRemoveMetric: (id: string) => void
+  onReorderMetrics?: (fromIndex: number, toIndex: number) => void
 
   // Breakdown actions
   onAddBreakdown: () => void
   onRemoveBreakdown: (id: string) => void
   onBreakdownGranularityChange: (id: string, granularity: string) => void
+  onReorderBreakdowns?: (fromIndex: number, toIndex: number) => void
 
   // Filter actions
   onFiltersChange: (filters: Filter[]) => void
+  onDropFieldToFilter?: (field: string) => void
 
   // Sorting
   /** Current sort order */
@@ -271,6 +274,11 @@ export interface AnalysisResultsPanelProps {
   debugAnalysis?: QueryAnalysis | null
   debugLoading?: boolean
   debugError?: string | null
+
+  // Share functionality
+  onShareClick?: () => void
+  canShare?: boolean
+  shareButtonState?: 'idle' | 'copied' | 'copied-no-chart'
 }
 
 // ============================================================================
@@ -297,6 +305,10 @@ export interface MetricsSectionProps {
   order?: Record<string, 'asc' | 'desc'>
   /** Callback when sort order changes */
   onOrderChange?: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+  /** Callback when metrics are reordered via drag/drop */
+  onReorder?: (fromIndex: number, toIndex: number) => void
+  /** Callback when a metric is dragged to the filter section */
+  onDragToFilter?: (field: string) => void
 }
 
 /**
@@ -321,6 +333,10 @@ export interface BreakdownSectionProps {
   order?: Record<string, 'asc' | 'desc'>
   /** Callback when sort order changes */
   onOrderChange?: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+  /** Callback when breakdowns are reordered via drag/drop */
+  onReorder?: (fromIndex: number, toIndex: number) => void
+  /** Callback when a breakdown is dragged to the filter section */
+  onDragToFilter?: (field: string) => void
 }
 
 /**
@@ -339,6 +355,20 @@ export interface MetricItemCardProps {
   sortPriority?: number
   /** Toggle sort handler */
   onToggleSort?: () => void
+  /** Index in the list (for drag/drop) */
+  index?: number
+  /** Whether this item is being dragged */
+  isDragging?: boolean
+  /** Whether dragging over this item */
+  isDragOver?: boolean
+  /** Drag start handler */
+  onDragStart?: (e: React.DragEvent, index: number) => void
+  /** Drag over handler */
+  onDragOver?: (e: React.DragEvent, index: number) => void
+  /** Drop handler */
+  onDrop?: (e: React.DragEvent, index: number) => void
+  /** Drag end handler */
+  onDragEnd?: () => void
 }
 
 /**
@@ -359,6 +389,20 @@ export interface BreakdownItemCardProps {
   sortPriority?: number
   /** Toggle sort handler */
   onToggleSort?: () => void
+  /** Index in the list (for drag/drop) */
+  index?: number
+  /** Whether this item is being dragged */
+  isDragging?: boolean
+  /** Whether dragging over this item */
+  isDragOver?: boolean
+  /** Drag start handler */
+  onDragStart?: (e: React.DragEvent, index: number) => void
+  /** Drag over handler */
+  onDragOver?: (e: React.DragEvent, index: number) => void
+  /** Drop handler */
+  onDrop?: (e: React.DragEvent, index: number) => void
+  /** Drag end handler */
+  onDragEnd?: () => void
 }
 
 // ============================================================================

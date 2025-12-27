@@ -23,6 +23,8 @@ interface AnalysisFilterSectionProps {
   schema: MetaResponse | null
   /** Callback when filters change */
   onFiltersChange: (filters: Filter[]) => void
+  /** Callback when a field is dropped from another section */
+  onFieldDropped?: (field: string) => void
 }
 
 /**
@@ -120,14 +122,44 @@ function addFilterAtPath(filters: Filter[], path: number[], newFilter: SimpleFil
 export default function AnalysisFilterSection({
   filters,
   schema,
-  onFiltersChange
+  onFiltersChange,
+  onFieldDropped
 }: AnalysisFilterSectionProps) {
   const [showFieldModal, setShowFieldModal] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   // Track which group we're adding a filter to (path of indices, empty = root)
   const pendingAddPath = useRef<number[]>([])
 
   // Get total filter count for display
   const totalFilterCount = countFilters(filters)
+
+  // Handle drag over for drop zone
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+      if (data.field && onFieldDropped) {
+        onFieldDropped(data.field)
+      }
+    } catch {
+      // Ignore invalid drop data
+    }
+  }, [onFieldDropped])
 
   // Get selected field names for the modal
   const selectedFields = getSelectedFields(filters)
@@ -236,7 +268,12 @@ export default function AnalysisFilterSection({
   }
 
   return (
-    <div>
+    <div
+      onDragOver={onFieldDropped ? handleDragOver : undefined}
+      onDragLeave={onFieldDropped ? handleDragLeave : undefined}
+      onDrop={onFieldDropped ? handleDrop : undefined}
+      className={`transition-colors rounded-lg ${isDragOver ? 'bg-dc-primary/10 ring-2 ring-dc-primary ring-dashed' : ''}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-dc-text">
@@ -268,7 +305,9 @@ export default function AnalysisFilterSection({
 
       {/* Filter List - Hierarchical Rendering */}
       {filters.length === 0 ? (
-        <p className="text-sm text-dc-text-muted">No filters applied</p>
+        <p className={`text-sm ${isDragOver ? 'text-dc-primary' : 'text-dc-text-muted'}`}>
+          {isDragOver ? 'Drop to add filter' : 'No filters applied'}
+        </p>
       ) : (
         <div className="space-y-2">
           {filters.map((filter, index) => renderFilter(filter, index))}

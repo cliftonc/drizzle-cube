@@ -12,6 +12,10 @@ import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, P
 // Internal mutable registry - starts with defaults
 let _registry: IconRegistry = { ...DEFAULT_ICONS }
 
+// Cache for icon components to avoid recreating on every getIcon() call
+// This prevents React from unmounting/remounting icons on each render
+const _iconComponentCache = new Map<IconName, ComponentType<IconProps>>()
+
 /**
  * Get the full icon registry
  */
@@ -22,20 +26,31 @@ export function getIconRegistry(): IconRegistry {
 /**
  * Get a specific icon as a React component
  * @param name The icon name from the registry
- * @returns A React component that renders the icon
+ * @returns A React component that renders the icon (cached for stable references)
  */
 export function getIcon(name: IconName): ComponentType<IconProps> {
+  // Check cache first for stable component references
+  const cached = _iconComponentCache.get(name)
+  if (cached) {
+    return cached
+  }
+
   const iconDef = _registry[name]
   if (!iconDef) {
     console.warn(`Icon "${name}" not found in registry, using fallback`)
-    return ({ className, ...props }: IconProps) => (
+    // Create and cache fallback component
+    const FallbackIcon = ({ className, ...props }: IconProps) => (
       <Icon icon={_registry.info.icon} className={className} {...props} />
     )
+    return FallbackIcon
   }
 
-  return ({ className, ...props }: IconProps) => (
+  // Create and cache the icon component
+  const IconComponent = ({ className, ...props }: IconProps) => (
     <Icon icon={iconDef.icon} className={className} {...props} />
   )
+  _iconComponentCache.set(name, IconComponent)
+  return IconComponent
 }
 
 /**
@@ -58,6 +73,8 @@ export function setIcon(name: IconName, icon: IconifyIcon): void {
       ..._registry[name],
       icon
     }
+    // Clear cache for this icon so it gets recreated with new definition
+    _iconComponentCache.delete(name)
   }
 }
 
@@ -86,6 +103,8 @@ export function registerIcons(overrides: PartialIconRegistry): void {
           icon: partial.icon ?? _registry[iconKey].icon
         }
       }
+      // Clear cache for this icon so it gets recreated with new definition
+      _iconComponentCache.delete(iconKey)
     }
   }
 }
@@ -95,6 +114,8 @@ export function registerIcons(overrides: PartialIconRegistry): void {
  */
 export function resetIcons(): void {
   _registry = { ...DEFAULT_ICONS }
+  // Clear all cached icon components
+  _iconComponentCache.clear()
 }
 
 /**
