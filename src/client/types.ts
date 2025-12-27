@@ -274,6 +274,7 @@ export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
   showSchemaDiagram?: boolean // Show schema diagram in QueryBuilder (default: false, requires reactflow/dagre)
+  useAnalysisBuilder?: boolean // Use new AnalysisBuilder modal for portlet editing (default: false)
 }
 
 // Grid layout types (simplified)

@@ -10,6 +10,7 @@ import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
 import { QueryAnalysisPanel } from '../../shared'
+import ColorPaletteSelector from '../ColorPaletteSelector'
 
 /**
  * AnalysisResultsPanel displays query results with chart/table toggle.
@@ -30,6 +31,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   chartType = 'line',
   chartConfig = {},
   displayConfig = {},
+  colorPalette,
+  currentPaletteName,
+  onColorPaletteChange,
   query,
   activeView = 'chart',
   onActiveViewChange,
@@ -193,6 +197,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         data={executionResults}
         chartConfig={chartConfig}
         displayConfig={displayConfig}
+        colorPalette={colorPalette}
         queryObject={query}
         height="100%"
         fallback={
@@ -297,6 +302,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       <LazyChart
         chartType="table"
         data={limitedData}
+        colorPalette={colorPalette}
         queryObject={query}
         height="100%"
         fallback={
@@ -367,6 +373,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   <option value={250}>250 rows</option>
                   <option value={500}>500 rows</option>
                 </select>
+              )}
+
+              {/* Color Palette Selector (only when callback is provided, i.e., standalone mode) */}
+              {onColorPaletteChange && (
+                <ColorPaletteSelector
+                  currentPalette={currentPaletteName || 'default'}
+                  onPaletteChange={onColorPaletteChange}
+                />
               )}
 
               {/* Share Button */}

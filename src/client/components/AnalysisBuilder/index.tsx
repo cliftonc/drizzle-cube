@@ -31,6 +31,7 @@ import type { MetaField, MetaResponse } from '../../shared/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../../shared/chartDefaults'
 import { compressWithFallback } from '../QueryBuilder/shareUtils'
+import { getColorPalette } from '../../utils/colorPalettes'
 
 // Storage key for localStorage persistence
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
@@ -131,6 +132,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       className = '',
       maxHeight,
       initialQuery,
+      initialChartConfig,
+      initialData,
+      colorPalette: externalColorPalette,
       disableLocalStorage: disableLocalStorageProp = false,
       hideSettings: _hideSettings = false,
       onQueryChange,
@@ -195,8 +199,12 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       return createInitialState()
     })
 
-    // Chart configuration state - load from cached localStorage or defaults
+    // Chart configuration state - load from initialChartConfig, cached localStorage, or defaults
     const [chartType, setChartType] = useState<ChartType>(() => {
+      // Priority: initialChartConfig > cached localStorage > default
+      if (initialChartConfig?.chartType) {
+        return initialChartConfig.chartType
+      }
       if (!initialQuery && cachedStorage?.chartType) {
         return cachedStorage.chartType
       }
@@ -204,6 +212,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     })
 
     const [chartConfig, setChartConfig] = useState<ChartAxisConfig>(() => {
+      // Priority: initialChartConfig > cached localStorage > default
+      if (initialChartConfig?.chartConfig) {
+        return initialChartConfig.chartConfig
+      }
       if (!initialQuery && cachedStorage?.chartConfig) {
         return cachedStorage.chartConfig
       }
@@ -211,11 +223,24 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     })
 
     const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>(() => {
+      // Priority: initialChartConfig > cached localStorage > default
+      if (initialChartConfig?.displayConfig) {
+        return initialChartConfig.displayConfig
+      }
       if (!initialQuery && cachedStorage?.displayConfig) {
         return cachedStorage.displayConfig
       }
       return { showLegend: true, showGrid: true, showTooltip: true }
     })
+
+    // Local color palette state (only used when externalColorPalette is not provided)
+    const [localPaletteName, setLocalPaletteName] = useState<string>('default')
+
+    // Compute effective color palette
+    const effectiveColorPalette = useMemo(() => {
+      if (externalColorPalette) return externalColorPalette
+      return getColorPalette(localPaletteName)
+    }, [externalColorPalette, localPaletteName])
 
     // Sort order state
     const [order, setOrder] = useState<Record<string, 'asc' | 'desc'> | undefined>(() => {
@@ -241,7 +266,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const [displayLimit, setDisplayLimit] = useState<number>(100)
 
     // Track whether user manually selected a chart type (vs auto-selection)
-    const [userManuallySelectedChart, setUserManuallySelectedChart] = useState(false)
+    // If initialChartConfig is provided, treat it as a manual selection to prevent auto-switching
+    const [userManuallySelectedChart, setUserManuallySelectedChart] = useState(
+      () => !!initialChartConfig?.chartType
+    )
 
     // Debug data state (from dry-run API)
     const [debugData, setDebugData] = useState<{
@@ -272,6 +300,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastQueryStringRef = useRef<string>('')
 
+    // Track if we should skip the first auto-execute (when initialData is provided)
+    const hasInitialDataRef = useRef<boolean>(!!initialData && initialData.length > 0)
+    const initialQueryStringRef = useRef<string>(initialQuery ? JSON.stringify(initialQuery) : '')
+
     // Track previous metrics/breakdowns for smart chart defaulting (avoid re-runs when chartConfig changes)
     const prevMetricsBreakdownsRef = useRef<string>('')
     const chartConfigRef = useRef<ChartAxisConfig>(chartConfig)
@@ -286,6 +318,16 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     useEffect(() => {
       // Skip if query hasn't actually changed
       if (currentQueryString === lastQueryStringRef.current) {
+        return
+      }
+
+      // Skip initial auto-execution if initialData was provided and query hasn't changed from initial
+      // This prevents re-fetching data that was already provided
+      if (hasInitialDataRef.current && currentQueryString === initialQueryStringRef.current) {
+        // Mark the query as "seen" so we don't skip future executions
+        lastQueryStringRef.current = currentQueryString
+        // Clear the flag so subsequent changes will execute
+        hasInitialDataRef.current = false
         return
       }
 
@@ -325,25 +367,35 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       skip: !serverQuery
     })
 
-    // Derive execution status
+    // Derive execution status - show success with initialData even before first query
     const executionStatus: ExecutionStatus = useMemo(() => {
+      // If we have initialData and haven't started querying yet, show success
+      if (initialData && initialData.length > 0 && !debouncedQuery && !resultSet) {
+        return 'success'
+      }
       if (!debouncedQuery) return 'idle'
       if (isLoading && !resultSet) return 'loading'
       if (isLoading && resultSet) return 'refreshing'
       if (error) return 'error'
       if (resultSet) return 'success'
       return 'idle'
-    }, [debouncedQuery, isLoading, error, resultSet])
+    }, [debouncedQuery, isLoading, error, resultSet, initialData])
 
-    // Get execution results
+    // Get execution results - use initialData if no resultSet yet
     const executionResults = useMemo(() => {
-      if (!resultSet) return null
-      try {
-        return resultSet.rawData()
-      } catch {
-        return null
+      if (resultSet) {
+        try {
+          return resultSet.rawData()
+        } catch {
+          return null
+        }
       }
-    }, [resultSet])
+      // Use initialData if provided and no resultSet yet
+      if (initialData && initialData.length > 0) {
+        return initialData
+      }
+      return null
+    }, [resultSet, initialData])
 
     // Note: We pass executionStatus, executionResults, error directly to PortletResultsPanel
     // instead of storing in state, to avoid render loops
@@ -895,6 +947,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             chartType={chartType}
             chartConfig={chartConfig}
             displayConfig={displayConfig}
+            colorPalette={effectiveColorPalette}
+            // Only show palette selector in standalone mode (not when editing portlet)
+            currentPaletteName={!externalColorPalette ? localPaletteName : undefined}
+            onColorPaletteChange={!externalColorPalette ? setLocalPaletteName : undefined}
             query={currentQuery}
             schema={meta as MetaResponse | null}
             activeView={activeView}
@@ -938,6 +994,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             chartType={chartType}
             chartConfig={chartConfig}
             displayConfig={displayConfig}
+            colorPalette={effectiveColorPalette}
             chartAvailability={chartAvailability}
             onChartTypeChange={handleChartTypeChange}
             onChartConfigChange={setChartConfig}

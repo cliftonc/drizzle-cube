@@ -32,7 +32,9 @@ const DesktopIcon = getIcon('desktop')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 import PortletEditModal from './PortletEditModal'
+import PortletAnalysisModal from './PortletAnalysisModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
+import { useCubeContext } from '../providers/CubeProvider'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
 import ScaledGridWrapper from './ScaledGridWrapper'
@@ -285,6 +287,9 @@ export default function DashboardGrid({
   onDashboardFiltersChange,
   dashboardModes
 }: DashboardGridProps) {
+  // Get features from context for conditional modal rendering
+  const { features } = useCubeContext()
+
   // Responsive dashboard hook for three-tier layout strategy
   const {
     containerRef,
@@ -1286,19 +1291,34 @@ export default function DashboardGrid({
           </div>
         </div>
         
-        {/* Portlet Modal */}
-        <PortletEditModal
-          isOpen={isPortletModalOpen}
-          onClose={() => {
-            setIsPortletModalOpen(false)
-            setEditingPortlet(null)
-          }}
-          onSave={handlePortletSave}
-          portlet={editingPortlet}
-          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-          colorPalette={colorPalette}
-        />
+        {/* Portlet Modal - conditionally render new or old modal based on feature flag */}
+        {features.useAnalysisBuilder ? (
+          <PortletAnalysisModal
+            isOpen={isPortletModalOpen}
+            onClose={() => {
+              setIsPortletModalOpen(false)
+              setEditingPortlet(null)
+            }}
+            onSave={handlePortletSave}
+            portlet={editingPortlet}
+            title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+            submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+            colorPalette={colorPalette}
+          />
+        ) : (
+          <PortletEditModal
+            isOpen={isPortletModalOpen}
+            onClose={() => {
+              setIsPortletModalOpen(false)
+              setEditingPortlet(null)
+            }}
+            onSave={handlePortletSave}
+            portlet={editingPortlet}
+            title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+            submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+            colorPalette={colorPalette}
+          />
+        )}
       </>
     )
   }
@@ -1605,19 +1625,34 @@ export default function DashboardGrid({
         renderActiveLayout
       )}
       
-      {/* Portlet Modal */}
-      <PortletEditModal
-        isOpen={isPortletModalOpen}
-        onClose={() => {
-          setIsPortletModalOpen(false)
-          setEditingPortlet(null)
-        }}
-        onSave={handlePortletSave}
-        portlet={editingPortlet}
-        title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-        submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-        colorPalette={colorPalette}
-      />
+      {/* Portlet Modal - conditionally render new or old modal based on feature flag */}
+      {features.useAnalysisBuilder ? (
+        <PortletAnalysisModal
+          isOpen={isPortletModalOpen}
+          onClose={() => {
+            setIsPortletModalOpen(false)
+            setEditingPortlet(null)
+          }}
+          onSave={handlePortletSave}
+          portlet={editingPortlet}
+          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+          colorPalette={colorPalette}
+        />
+      ) : (
+        <PortletEditModal
+          isOpen={isPortletModalOpen}
+          onClose={() => {
+            setIsPortletModalOpen(false)
+            setEditingPortlet(null)
+          }}
+          onSave={handlePortletSave}
+          portlet={editingPortlet}
+          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+          colorPalette={colorPalette}
+        />
+      )}
 
       {/* Filter Configuration Modal */}
       <PortletFilterConfigModal

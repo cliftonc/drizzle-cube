@@ -43,6 +43,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   chartType,
   chartConfig,
   displayConfig,
+  colorPalette,
   chartAvailability,
   onChartTypeChange,
   onChartConfigChange,
@@ -126,6 +127,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             chartType={chartType}
             chartConfig={chartConfig}
             displayConfig={displayConfig}
+            colorPalette={colorPalette}
             metrics={metrics}
             breakdowns={breakdowns}
             schema={schema}

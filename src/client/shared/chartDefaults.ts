@@ -160,13 +160,13 @@ export function getChartAvailability(
       }
       return { available: true }
 
-    // Bubble - needs 2+ measures and 1+ dimension
+    // Bubble - needs 2+ measures and 1+ breakdown (dimension or time dimension for series)
     case 'bubble':
       if (measureCount < 2) {
         return { available: false, reason: 'Requires at least 2 measures' }
       }
-      if (dimensionCount < 1) {
-        return { available: false, reason: 'Requires at least 1 dimension' }
+      if (totalBreakdowns < 1) {
+        return { available: false, reason: 'Requires at least 1 breakdown for series grouping' }
       }
       return { available: true }
 
@@ -400,12 +400,12 @@ function buildChartConfig(
 
     case 'bubble':
       // Bubble: xAxis = first measure, yAxis = second measure, sizeField = third measure (or second if only 2)
-      // series = first dimension for grouping/coloring
+      // series = first breakdown (dimension or time dimension) for grouping/coloring
       return {
         xAxis: metrics.length > 0 ? [metrics[0].field] : [],
         yAxis: metrics.length > 1 ? [metrics[1].field] : [],
         sizeField: metrics.length > 2 ? metrics[2].field : metrics.length > 1 ? metrics[1].field : undefined,
-        series: dimension ? [dimension.field] : []
+        series: dimension ? [dimension.field] : timeDimension ? [timeDimension.field] : []
       }
 
     case 'radar':

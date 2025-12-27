@@ -16,6 +16,7 @@ import type {
   ChartAxisConfig,
   ChartDisplayConfig
 } from '../../types'
+import type { ColorPalette } from '../../utils/colorPalettes'
 import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 
@@ -217,6 +218,8 @@ export interface AnalysisQueryPanelProps {
   chartType: ChartType
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
+  /** Color palette for display config options */
+  colorPalette?: ColorPalette
   /** Map of chart type availability for disabling unavailable chart types */
   chartAvailability?: ChartAvailabilityMap
   onChartTypeChange: (type: ChartType) => void
@@ -249,6 +252,12 @@ export interface AnalysisResultsPanelProps {
   chartConfig: ChartAxisConfig
   /** Chart display configuration */
   displayConfig: ChartDisplayConfig
+  /** Color palette for charts */
+  colorPalette?: ColorPalette
+  /** Current palette name (for selector) */
+  currentPaletteName?: string
+  /** Callback when color palette changes (shows selector when provided) */
+  onColorPaletteChange?: (paletteName: string) => void
 
   /** Current query object (for annotation/metadata) */
   query: CubeQuery
@@ -419,6 +428,16 @@ export interface AnalysisBuilderProps {
   maxHeight?: string
   /** Initial query to load */
   initialQuery?: CubeQuery
+  /** Initial chart configuration (for editing existing portlets) */
+  initialChartConfig?: {
+    chartType?: ChartType
+    chartConfig?: ChartAxisConfig
+    displayConfig?: ChartDisplayConfig
+  }
+  /** Initial data to display (avoids re-fetching when editing existing portlets) */
+  initialData?: any[]
+  /** Color palette for chart visualization */
+  colorPalette?: ColorPalette
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
   /** Hide settings button */

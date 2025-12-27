@@ -44,7 +44,7 @@ export function CubeProvider({
   apiOptions: initialApiOptions,
   token: initialToken,
   options = {},
-  features = { enableAI: true, aiEndpoint: '/api/ai/generate', showSchemaDiagram: false }, // Default to AI enabled, schema diagram disabled
+  features = { enableAI: true, aiEndpoint: '/api/ai/generate', showSchemaDiagram: false, useAnalysisBuilder: false }, // Default to AI enabled, schema diagram disabled, old portlet edit modal
   dashboardModes = ['rows', 'grid'],
   enableBatching = true, // Default to batching enabled
   batchDelayMs = 100, // Default 100ms batch window

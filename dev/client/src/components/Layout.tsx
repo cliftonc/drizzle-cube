@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
+import { useAnalysisBuilderToggle } from '../App'
 
 const DocumentTextIcon = getIcon('documentText')
 const Bars3Icon = getIcon('menu')
@@ -58,6 +59,30 @@ const FloatingGitHubButton = () => {
 
 interface LayoutProps {
   children: React.ReactNode
+}
+
+// Toggle component for switching between old/new portlet edit modal
+function AnalysisBuilderToggle() {
+  const { useAnalysisBuilder, setUseAnalysisBuilder } = useAnalysisBuilderToggle()
+
+  return (
+    <div className="flex items-center space-x-2">
+      <span className="text-xs text-dc-text-muted whitespace-nowrap">New Builder:</span>
+      <button
+        onClick={() => setUseAnalysisBuilder(!useAnalysisBuilder)}
+        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+          useAnalysisBuilder ? 'bg-dc-accent' : 'bg-dc-surface-tertiary'
+        }`}
+        title={useAnalysisBuilder ? 'Using new Analysis Builder modal' : 'Using old portlet edit modal'}
+      >
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+            useAnalysisBuilder ? 'translate-x-4.5' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  )
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -133,6 +158,8 @@ export default function Layout({ children }: LayoutProps) {
             
             {/* Desktop external links */}
             <div className="hidden md:flex md:items-center md:space-x-4">
+              <AnalysisBuilderToggle />
+              <div className="h-4 w-px bg-dc-border" /> {/* Divider */}
               <a
                 href="https://www.drizzle-cube.dev"
                 target="_blank"
