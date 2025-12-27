@@ -31,6 +31,12 @@ import computerDesktop from '@iconify-icons/heroicons-outline/computer-desktop'
 import tableCells from '@iconify-icons/heroicons-outline/table-cells'
 import link from '@iconify-icons/heroicons-outline/link'
 import arrowRight from '@iconify-icons/heroicons-outline/arrow-right'
+import sun from '@iconify-icons/heroicons-outline/sun'
+import moon from '@iconify-icons/heroicons-outline/moon'
+import ellipsisHorizontal from '@iconify-icons/heroicons-outline/ellipsis-horizontal'
+import documentText from '@iconify-icons/heroicons-outline/document-text'
+import bookOpen from '@iconify-icons/heroicons-outline/book-open'
+import codeBracket from '@iconify-icons/heroicons-outline/code-bracket'
 
 // HeroIcons Solid (for field type indicators and measures)
 import chartBarSolid from '@iconify-icons/heroicons-solid/chart-bar'
@@ -98,6 +104,12 @@ export const DEFAULT_ICONS: IconRegistry = {
   adjustments: { icon: adjustmentsHorizontal, category: 'action' },
   desktop: { icon: computerDesktop, category: 'action' },
   table: { icon: tableCells, category: 'action' },
+  sun: { icon: sun, category: 'action' },
+  moon: { icon: moon, category: 'action' },
+  ellipsisHorizontal: { icon: ellipsisHorizontal, category: 'action' },
+  documentText: { icon: documentText, category: 'action' },
+  bookOpen: { icon: bookOpen, category: 'action' },
+  codeBracket: { icon: codeBracket, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },

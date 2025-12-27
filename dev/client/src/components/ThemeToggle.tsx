@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { SunIcon, MoonIcon, SparklesIcon } from '@heroicons/react/24/outline'
-import { getTheme, setTheme, watchThemeChanges, type Theme } from '@drizzle-cube/client'
+import { getTheme, setTheme, watchThemeChanges, type Theme, getIcon } from '@drizzle-cube/client'
+
+const SunIcon = getIcon('sun')
+const MoonIcon = getIcon('moon')
+const SparklesIcon = getIcon('sparkles')
 
 interface ThemeToggleProps {
   className?: string

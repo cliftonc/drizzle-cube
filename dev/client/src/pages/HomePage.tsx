@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
-import { 
-  ChartBarIcon, 
-  MagnifyingGlassIcon, 
-  BookOpenIcon, 
-  CodeBracketIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline'
+import { getIcon } from '@drizzle-cube/client'
+
+const ChartBarIcon = getIcon('chartBar')
+const MagnifyingGlassIcon = getIcon('search')
+const BookOpenIcon = getIcon('bookOpen')
+const CodeBracketIcon = getIcon('codeBracket')
+const SparklesIcon = getIcon('sparkles')
 
 export default function HomePage() {
   // Apply Prism.js syntax highlighting after component mounts

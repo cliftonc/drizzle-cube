@@ -1,9 +1,12 @@
 import { useParams, Link } from 'react-router-dom'
 import { useCallback, useState, useEffect } from 'react'
-import { AnalyticsDashboard, DashboardEditModal } from '@drizzle-cube/client'
+import { AnalyticsDashboard, DashboardEditModal, getIcon } from '@drizzle-cube/client'
 import { useAnalyticsPage, useUpdateAnalyticsPage, useResetAnalyticsPage } from '../hooks/useAnalyticsPages'
 import type { DashboardConfig } from '../types'
-import { ArrowPathIcon, PencilIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
+
+const ArrowPathIcon = getIcon('refresh')
+const PencilIcon = getIcon('edit')
+const EllipsisHorizontalIcon = getIcon('ellipsisHorizontal')
 
 // Custom loading indicator using the drizzle-cube logo
 const DrizzleCubeLoader = () => (

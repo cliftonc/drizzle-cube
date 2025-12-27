@@ -65,6 +65,12 @@ export interface IconRegistry {
   adjustments: IconDefinition
   desktop: IconDefinition
   table: IconDefinition
+  sun: IconDefinition
+  moon: IconDefinition
+  ellipsisHorizontal: IconDefinition
+  documentText: IconDefinition
+  bookOpen: IconDefinition
+  codeBracket: IconDefinition
 
   // Field type icons
   measure: IconDefinition

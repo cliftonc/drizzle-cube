@@ -1,8 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { DocumentTextIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
+import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
+
+const DocumentTextIcon = getIcon('documentText')
+const Bars3Icon = getIcon('menu')
+const XMarkIcon = getIcon('close')
 
 // GitHub icon component
 const GitHubIcon = ({ className }: { className?: string }) => (
