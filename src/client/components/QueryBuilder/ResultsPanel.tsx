@@ -66,14 +66,14 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   const ErrorState = () => (
     <div className="h-full flex items-center justify-center p-4">
       <div className="text-center max-w-md">
-        <ErrorIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+        <ErrorIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
         <div className="text-sm font-semibold text-dc-text mb-2">Query Execution Failed</div>
         <div className="text-sm text-dc-text-secondary mb-4">
           There was an error executing your query. Please check the query and try again.
         </div>
         {executionError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-left">
-            <div className="text-xs font-mono text-red-800 break-words">
+          <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left">
+            <div className="text-xs font-mono text-dc-error break-words">
               {executionError}
             </div>
           </div>
@@ -92,10 +92,10 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   )
 
   const OverlayError = () => (
-    <div className="absolute inset-x-4 top-4 bg-red-50 border border-red-200 rounded-lg p-3 text-left shadow">
+    <div className="absolute inset-x-4 top-4 bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left shadow">
       <div className="flex items-start gap-2">
-        <ErrorIcon className="w-4 h-4 text-red-600 mt-0.5" />
-        <div className="text-xs text-red-800">
+        <ErrorIcon className="w-4 h-4 text-dc-error mt-0.5" />
+        <div className="text-xs text-dc-error">
           {executionError || 'Query execution failed'}
         </div>
       </div>
@@ -166,7 +166,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       return (
         <div className="flex items-center justify-center h-full text-dc-text-muted p-4">
           <div className="text-center">
-            <ErrorIcon className="w-12 h-12 mx-auto mb-3 text-red-400" />
+            <ErrorIcon className="w-12 h-12 mx-auto mb-3 text-dc-error" />
             <div className="text-sm font-semibold mb-1">Unable to render chart</div>
             <div className="text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
           </div>
@@ -180,9 +180,9 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
       return (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
-            <SuccessIcon className="w-12 h-12 mx-auto text-green-500 mb-3" />
-            <div className="text-sm font-semibold text-gray-700 mb-1">Query Successful</div>
-            <div className="text-xs text-gray-500">No data returned from the query</div>
+            <SuccessIcon className="w-12 h-12 mx-auto text-dc-success mb-3" />
+            <div className="text-sm font-semibold text-dc-text-secondary mb-1">Query Successful</div>
+            <div className="text-xs text-dc-text-muted">No data returned from the query</div>
           </div>
         </div>
       )
@@ -201,7 +201,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                   style={{ borderBottomColor: 'var(--dc-primary)' }}
                 />
               ) : (
-                <SuccessIcon className="w-5 h-5 text-green-500 mr-2" />
+                <SuccessIcon className="w-5 h-5 text-dc-success mr-2" />
               )}
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-dc-text-secondary">
@@ -258,7 +258,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
                   <select
                     value={displayLimit}
                     onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-                    className="text-xs border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                    className="text-xs border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:outline-hidden focus:ring-1 focus:ring-dc-accent"
                   >
                     <option value={10}>10 rows</option>
                     <option value={50}>50 rows</option>
@@ -305,9 +305,9 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
           {/* Performance Warning */}
           {totalRowCountStatus === 'success' && totalRowCount !== null && totalRowCount !== undefined && totalRowCount > 500 && (
-            <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start">
-              <WarningIcon className="w-5 h-5 text-yellow-600 mr-2 shrink-0 mt-0.5" />
-              <div className="text-sm text-yellow-800">
+            <div className="mt-3 bg-dc-warning-bg border border-dc-warning rounded-lg p-3 flex items-start">
+              <WarningIcon className="w-5 h-5 text-dc-warning mr-2 shrink-0 mt-0.5" />
+              <div className="text-sm text-dc-warning">
                 <span className="font-semibold">Performance Warning:</span> This query returns {totalRowCount.toLocaleString()} rows,
                 which may impact performance. Consider adding filters to reduce the dataset size.
               </div>

@@ -247,8 +247,7 @@ export default function DashboardPortletCard({
                     event.preventDefault()
                     onDelete(portlet.id)
                   }}
-                  className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-red-50 transition-colors"
-                  style={{ color: '#ef4444' }}
+                  className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-danger-bg text-dc-danger transition-colors"
                   title="Delete portlet"
                 >
                   <icons.DeleteIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />

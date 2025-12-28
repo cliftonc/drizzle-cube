@@ -43,10 +43,10 @@ function VarianceHistogram({
   if (range === 0 || variances.length === 0) {
     return (
       <div
-        className="flex items-center justify-center bg-gray-50 rounded-sm border"
+        className="flex items-center justify-center bg-dc-bg-secondary rounded-sm border border-dc-border"
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        <span className="text-xs text-gray-500">No variance data</span>
+        <span className="text-xs text-dc-text-muted">No variance data</span>
       </div>
     );
   }

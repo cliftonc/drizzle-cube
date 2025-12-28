@@ -60,7 +60,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between text-left bg-dc-surface-secondary rounded-t-lg hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-3 flex items-center justify-between text-left bg-dc-surface-secondary rounded-t-lg hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
       >
         <div className="flex items-center space-x-2">
           <SettingsIcon className="w-5 h-5 text-dc-text-secondary" />
@@ -91,7 +91,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 type="text"
                 value={localConfig.baseApiUrl}
                 onChange={(e) => handleInputChange('baseApiUrl', e.target.value)}
-                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:border-dc-accent text-sm"
                 placeholder="/cubejs-api/v1"
               />
               <p className="text-xs text-dc-text-muted mt-1">
@@ -108,7 +108,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 type="password"
                 value={localConfig.apiToken}
                 onChange={(e) => handleInputChange('apiToken', e.target.value)}
-                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-dc-border rounded-md bg-dc-surface text-dc-text focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:border-dc-accent text-sm"
                 placeholder="Leave empty for no authentication"
               />
               <p className="text-xs text-dc-text-muted mt-1">
@@ -126,7 +126,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                   </p>
                   <p className="text-xs text-dc-text-secondary">
                     Token: {config.apiToken ? (
-                      <span className="text-green-600">Configured</span>
+                      <span className="text-dc-success">Configured</span>
                     ) : (
                       <span className="text-dc-text-muted">Not set</span>
                     )}
@@ -135,7 +135,7 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
                 {!isUsingDefaults && (
                   <button
                     onClick={handleReset}
-                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-sm hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="flex items-center space-x-1 px-2 py-1 text-xs font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-sm hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
                     title="Reset to defaults"
                   >
                     <RefreshIcon className="w-3 h-3" />
@@ -150,13 +150,13 @@ const SetupPanel: React.FC<SetupPanelProps> = ({
               <div className="flex justify-end space-x-2 pt-2 border-t border-dc-border">
                 <button
                   onClick={() => setLocalConfig(config)}
-                  className="px-3 py-1.5 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleApply}
-                  className="px-3 py-1.5 text-sm font-medium text-white border border-transparent rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm font-medium text-white border border-transparent rounded-md focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
                   style={{ backgroundColor: 'var(--dc-primary)' }}
                 >
                   Apply Changes

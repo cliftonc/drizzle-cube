@@ -149,13 +149,13 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Helper function to get field type icon
   const getFieldTypeIcon = (field: MetaField) => {
     if (field.type === 'time') {
-      return <TimeDimensionIcon className="w-3 h-3 text-blue-500" />
+      return <TimeDimensionIcon className="w-3 h-3 text-dc-accent" />
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'countDistinctApprox', 'runningTotal', 'calculated', 'number'].includes(field.type)) {
       // Use dynamic icon based on measure type, with amber color
-      const icon = getMeasureIcon(field.type, 'w-3 h-3 text-amber-500')
+      const icon = getMeasureIcon(field.type, 'w-3 h-3 text-dc-warning')
       return icon
     } else {
-      return <DimensionIcon className="w-3 h-3 text-green-500" />
+      return <DimensionIcon className="w-3 h-3 text-dc-success" />
     }
   }
 
@@ -270,7 +270,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
             <div className="relative flex-1 min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+              className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent min-w-0"
             >
               <span className="truncate">
                 {selectedField ? (
@@ -296,7 +296,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       placeholder="Search fields..."
                       value={fieldSearchTerm}
                       onChange={(e) => setFieldSearchTerm(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text focus:ring-1 focus:ring-dc-accent focus:border-dc-accent"
                     />
                   </div>
                 </div>
@@ -314,7 +314,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
                           className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
-                            field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                            field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -346,7 +346,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
                         className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
-                          field.name === filter.member ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                          field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -386,7 +386,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
               <div className="relative shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
               >
                 <span className="truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
@@ -403,7 +403,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
-                        operator.operator === filter.operator ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                        operator.operator === filter.operator ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
                       {operator.label}
@@ -426,7 +426,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         setIsOperatorDropdownOpen(false)
                         setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
                       }}
-                      className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                     >
                       <span className="truncate">{selectedRangeLabel}</span>
                       <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
@@ -441,7 +441,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                             key={option.value}
                             onClick={() => handleRangeTypeChange(option.value)}
                             className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
-                              option.value === rangeType ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                              option.value === rangeType ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                             }`}
                           >
                             {option.label}
@@ -459,14 +459,14 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         value={customDates.startDate}
                         onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
                         placeholder="Start date"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
                       <input
                         type="date"
                         value={customDates.endDate}
                         onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
                         placeholder="End date"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
                     </>
                   ) : requiresNumberInput(rangeType) ? (
@@ -478,7 +478,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         value={numberValue}
                         onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
                         placeholder="Number"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
                       <div className="shrink-0 text-sm text-dc-text-secondary">
                         {rangeType.replace('last_n_', '').replace('_', ' ')}
@@ -505,7 +505,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
           <div className="flex justify-end sm:justify-start">
             <button
               onClick={() => onFilterRemove(index)}
-              className="text-dc-text-muted hover:text-red-600 focus:outline-none shrink-0"
+              className="text-dc-text-muted hover:text-dc-error focus:outline-none shrink-0"
               title="Remove filter"
             >
               <CloseIcon className="w-4 h-4" />

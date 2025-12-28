@@ -181,7 +181,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
             <div className="relative flex-1 min-w-0">
               <button
                 onClick={handleTimeDimensionDropdownToggle}
-                className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
+                className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent min-w-0"
               >
                 <span className="truncate">{timeDimension}</span>
                 <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 transition-transform ${
@@ -196,7 +196,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                       key={td}
                       onClick={() => handleTimeDimensionChange(td)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
-                        td === timeDimension ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-dc-text-secondary'
+                        td === timeDimension ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
                       {td}
@@ -214,7 +214,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           <div className="relative shrink-0">
             <button
               onClick={handleRangeDropdownToggle}
-              className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             >
               <span className="truncate">{selectedRangeLabel}</span>
               <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
@@ -229,7 +229,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                     key={option.value}
                     onClick={() => handleRangeTypeChange(option.value)}
                     className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
-                      option.value === rangeType ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-dc-text-secondary'
+                      option.value === rangeType ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                     }`}
                   >
                     {option.label}
@@ -251,7 +251,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={customDates.startDate}
                   onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
 
@@ -262,7 +262,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={customDates.endDate}
                   onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
             </>
@@ -277,7 +277,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={numberValue}
                   onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
                   placeholder="Number"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
 
@@ -295,7 +295,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           {!hideRemoveButton && (
             <button
               onClick={() => onRemove(timeDimension)}
-              className="text-dc-text-muted hover:text-red-600 focus:outline-hidden shrink-0 p-1"
+              className="text-dc-text-muted hover:text-dc-error focus:outline-hidden shrink-0 p-1"
               title="Remove date range"
             >
               <CloseIcon className="w-4 h-4" />

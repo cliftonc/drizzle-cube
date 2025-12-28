@@ -228,7 +228,8 @@ export default function FieldSearchModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'var(--dc-overlay)' }}
       onClick={onClose}
       role="presentation"
     >

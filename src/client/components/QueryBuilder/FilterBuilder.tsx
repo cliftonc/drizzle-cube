@@ -137,7 +137,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
             {filters.length > 0 && (
               <button
                 onClick={handleClearAllFilters}
-                className="text-xs text-dc-text-muted hover:text-red-600 focus:outline-hidden underline"
+                className="text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden underline"
               >
                 Clear all
               </button>
@@ -149,7 +149,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
               disabled={!hasFilterableFields}
               className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-hidden focus:ring-2 ${
                 hasFilterableFields
-                  ? 'text-purple-700 bg-purple-100 border border-purple-200 hover:bg-purple-200 focus:ring-purple-500'
+                  ? 'text-dc-accent bg-dc-accent-bg border border-dc-accent hover:bg-dc-accent-bg focus:ring-dc-accent'
                   : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
               }`}
             >

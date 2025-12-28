@@ -58,7 +58,7 @@ export default function ScatterChart({
       yAxisField = Array.isArray(chartConfig.y) ? chartConfig.y[0] : chartConfig.y
     } else {
       return (
-        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">Configuration Error</div>
             <div className="text-xs">Invalid or missing chart axis configuration</div>
@@ -69,7 +69,7 @@ export default function ScatterChart({
 
     if (!xAxisField || !yAxisField) {
       return (
-        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">Configuration Error</div>
             <div className="text-xs">Missing required X-axis or Y-axis fields</div>
@@ -276,7 +276,7 @@ export default function ScatterChart({
   } catch (error) {
     // 'ScatterChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
+      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Scatter Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>

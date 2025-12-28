@@ -237,7 +237,7 @@ export function CubeRelationshipDiagram({
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dc-accent mx-auto mb-2"></div>
           <p className="text-dc-text-muted">Loading cube schema...</p>
         </div>
       </div>
@@ -248,7 +248,7 @@ export function CubeRelationshipDiagram({
   if (metaError) {
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-center text-red-500">
+        <div className="text-center text-dc-error">
           <p className="font-medium">Failed to load cube schema</p>
           <p className="text-sm mt-1">{metaError}</p>
         </div>

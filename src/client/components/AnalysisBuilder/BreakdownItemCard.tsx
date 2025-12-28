@@ -83,8 +83,14 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
       onDragStart={isDraggable ? (e) => onDragStart(e, index) : undefined}
       onDragEnd={isDraggable ? onDragEnd : undefined}
     >
-      {/* Icon */}
-      <Icon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
+      {/* Icon - colored background matching field selector */}
+      <span className={`w-6 h-6 flex items-center justify-center rounded flex-shrink-0 ${
+        breakdown.isTimeDimension
+          ? 'bg-dc-time-dimension text-dc-time-dimension-text'
+          : 'bg-dc-dimension text-dc-dimension-text'
+      }`}>
+        <Icon className="w-4 h-4" />
+      </span>
 
       {/* Field Info */}
       <div className="flex-1 min-w-0">

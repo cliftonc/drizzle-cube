@@ -36,8 +36,8 @@ const ShareWarningModal: React.FC<ShareWarningModalProps> = ({
       <div className="space-y-4">
         {/* Warning icon and message */}
         <div className="flex items-start gap-3">
-          <div className="shrink-0 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-            <WarningIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          <div className="shrink-0 p-2 bg-dc-warning-bg dark:bg-dc-warning-bg rounded-full">
+            <WarningIcon className="w-5 h-5 text-dc-warning dark:text-dc-warning" />
           </div>
           <div className="text-sm text-dc-text-secondary">
             Your query is too large to fit in a shareable URL. Even after removing chart settings,
@@ -49,13 +49,13 @@ const ShareWarningModal: React.FC<ShareWarningModalProps> = ({
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-dc-text-muted">
             <span>Compressed size</span>
-            <span className="text-red-600 dark:text-red-400 font-medium">
+            <span className="text-dc-error dark:text-dc-error font-medium">
               {size.toLocaleString()} / {maxSize.toLocaleString()} chars
             </span>
           </div>
           <div className="h-2 bg-dc-surface-secondary rounded-full overflow-hidden">
             <div
-              className="h-full bg-red-500 dark:bg-red-400 transition-all duration-300"
+              className="h-full bg-dc-danger-bg0 dark:bg-dc-error transition-all duration-300"
               style={{ width: `${percentUsed}%` }}
             />
           </div>

@@ -54,7 +54,7 @@ export default function PieChart({
       yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
     } else {
       return (
-        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">Configuration Error</div>
             <div className="text-xs">chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart</div>
@@ -65,7 +65,7 @@ export default function PieChart({
 
     if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
             <div className="text-sm font-semibold mb-1">Configuration Error</div>
             <div className="text-xs">Missing required X-axis or Y-axis fields</div>
@@ -190,7 +190,7 @@ export default function PieChart({
   } catch (error) {
     // 'PieChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
+      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Pie Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>

@@ -126,7 +126,7 @@ export default function AnalysisFilterGroup({
     if (depth % 2 === 0) {
       return 'border-dc-border'
     }
-    return 'border-slate-300 dark:border-slate-600'
+    return 'border-dc-border dark:border-dc-border'
   }
 
   // Get background color based on group type

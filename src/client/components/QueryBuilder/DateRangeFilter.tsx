@@ -64,7 +64,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           {dateRangeCount > 0 && (
             <button
               onClick={handleClearAllDateRanges}
-              className="text-xs text-dc-text-muted hover:text-red-600 focus:outline-hidden underline"
+              className="text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden underline"
             >
               Clear all
             </button>
@@ -76,7 +76,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             disabled={availableTimeDimensions.length === 0}
             className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-hidden focus:ring-2 ${
               availableTimeDimensions.length > 0
-                ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:ring-purple-500'
+                ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
                 : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
             }`}
             title={availableTimeDimensions.length === 0 ? 'All time dimensions already have date ranges' : 'Add date range'}

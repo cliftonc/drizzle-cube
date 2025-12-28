@@ -196,14 +196,14 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
         <span className="text-sm text-dc-text-muted">to</span>
         <input
           type="date"
           value={values[1] || ''}
           onChange={handleDateRangeEndInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       </div>
     )
@@ -218,7 +218,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
           onChange={handleBetweenStartInput}
           placeholder="Min"
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
         <span className="text-sm text-dc-text-muted">to</span>
         <input
@@ -226,7 +226,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           value={values[1] !== undefined && values[1] !== null ? values[1] : ''}
           onChange={handleBetweenEndInput}
           placeholder="Max"
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       </div>
     )
@@ -239,7 +239,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         type="date"
         value={values[0] || ''}
         onChange={handleDateInput}
-        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       />
     )
   }
@@ -252,7 +252,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
-        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       />
     )
   }
@@ -274,7 +274,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                   <span className="mr-1">{String(value)}</span>
                   <button
                     onClick={() => handleValueRemove(value)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
+                    className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
                   >
                     <CloseIcon className="w-3 h-3" />
                   </button>
@@ -292,7 +292,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 e.target.value = '' // Clear the input
               }
             }}
-            className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             placeholder="Add date..."
           />
         </div>
@@ -304,7 +304,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       )
     }
@@ -325,7 +325,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 <span className="mr-1">{String(value)}</span>
                 <button
                   onClick={() => handleValueRemove(value)}
-                  className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
+                  className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
                 >
                   <CloseIcon className="w-3 h-3" />
                 </button>
@@ -341,7 +341,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
               <span className="mr-1">{String(values[0])}</span>
               <button
                 onClick={() => onValuesChange([])}
-                className="text-blue-600 hover:text-blue-800 focus:outline-hidden"
+                className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
               >
                 <CloseIcon className="w-3 h-3" />
               </button>
@@ -352,7 +352,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Dropdown trigger */}
         <button
           onClick={handleDropdownToggle}
-          className="w-full text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface hover:bg-dc-surface-hover focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between min-w-0"
+          className="w-full text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent flex items-center justify-between min-w-0"
         >
           <span className="text-dc-text-muted truncate">
             {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
@@ -370,7 +370,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 value={searchText}
                 onChange={handleSearchChange}
                 placeholder="Search values..."
-                className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 autoFocus
               />
             </div>
@@ -382,7 +382,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                   {searchText ? 'Searching...' : 'Loading values...'}
                 </div>
               ) : valuesError ? (
-                <div className="p-2 text-sm text-red-600">
+                <div className="p-2 text-sm text-dc-error">
                   Error loading values: {valuesError}
                 </div>
               ) : distinctValues.length === 0 ? (
@@ -398,12 +398,12 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                       key={`${value}-${index}`}
                       onClick={() => handleValueSelect(value)}
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
-                        isSelected ? 'bg-blue-50 text-blue-700' : 'text-dc-text-secondary'
+                        isSelected ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
                       {String(value)}
                       {isSelected && (
-                        <span className="float-right text-blue-600">✓</span>
+                        <span className="float-right text-dc-accent">✓</span>
                       )}
                     </button>
                   )
@@ -423,7 +423,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
       onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
-      className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
     />
   )
 }

@@ -147,7 +147,7 @@ export default function AxisDropZone({
         <h4 className="text-xs font-semibold text-dc-text-secondary flex items-center">
           {IconComponent && <IconComponent className="w-3 h-3 mr-1 text-dc-text-muted" />}
           {label}
-          {mandatory && <span className="text-red-500 ml-1">*</span>}
+          {mandatory && <span className="text-dc-error ml-1">*</span>}
           {maxItems && (
             <span className="text-dc-text-muted ml-1 font-normal">
               ({fields.length}/{maxItems})
@@ -274,7 +274,7 @@ export default function AxisDropZone({
                     <button
                       type="button"
                       onClick={() => onRemove(field, key)}
-                      className="text-dc-text-secondary hover:text-red-600 ml-1.5 leading-none"
+                      className="text-dc-text-secondary hover:text-dc-danger ml-1.5 leading-none"
                       title={`Remove from ${label}`}
                     >
                       <CloseIcon className="w-3 h-3" />
@@ -288,7 +288,7 @@ export default function AxisDropZone({
       </div>
       
       {mandatory && fields.length === 0 && (
-        <div className="text-xs text-red-500 mt-0.5">
+        <div className="text-xs text-dc-error mt-0.5">
           This field is required
         </div>
       )}

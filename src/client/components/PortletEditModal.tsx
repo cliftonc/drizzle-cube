@@ -438,7 +438,7 @@ export default function PortletEditModal({
       <button
         type="button"
         onClick={handleApplyQueryBuilderQuery}
-        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-dc-accent"
         style={{ backgroundColor: 'var(--dc-primary)', color: '#ffffff' }}
         title="Apply query to form"
         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-primary-hover)'}
@@ -459,7 +459,7 @@ export default function PortletEditModal({
       <button
         type="submit"
         form="portlet-form"
-        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-4 py-2 text-sm font-medium border border-transparent rounded-md disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-dc-accent"
         style={{ backgroundColor: 'var(--dc-primary)', color: '#ffffff' }}
         disabled={shouldSkipQuery ? !formTitle.trim() : (!formTitle.trim() || !query.trim() || (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')))}
         title={!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '')) ? "Please validate your query before saving" : ""}
@@ -532,7 +532,7 @@ export default function PortletEditModal({
                     <button
                       type="button"
                       onClick={handleOpenQueryBuilder}
-                      className="text-xs px-2 py-1 text-purple-600 dark:text-purple-300 bg-dc-surface hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-sm border border-purple-600 dark:border-purple-700 hover:border-purple-700 dark:hover:border-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="text-xs px-2 py-1 text-dc-accent bg-dc-surface hover:bg-dc-accent-bg rounded-sm border border-dc-accent hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-dc-accent"
                     >
                       Edit in Query Builder
                     </button>
@@ -599,32 +599,32 @@ export default function PortletEditModal({
         {!shouldSkipQuery && (hasQueryChanged || (lastValidatedQuery === '' && query.trim() !== '') || (validationResult && query.trim() === lastValidatedQuery.trim() && validationResult.message !== 'Loaded query (assumed valid)')) && (
           <div className={`rounded-lg p-4 ${
             validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-              ? 'bg-green-50 dark:bg-green-900/30'
+              ? 'bg-dc-success-bg'
               : validationResult && !validationResult.isValid
-              ? 'bg-red-50 dark:bg-red-900/30'
+              ? 'bg-dc-error-bg'
               : hasQueryChanged
-              ? 'bg-amber-50 dark:bg-amber-900/30'
+              ? 'bg-dc-warning-bg'
               : 'bg-dc-surface-secondary'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className={`w-2 h-2 rounded-full ${
                   validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-                    ? 'bg-green-500'
+                    ? 'bg-dc-success'
                     : validationResult && !validationResult.isValid
-                    ? 'bg-red-500'
+                    ? 'bg-dc-error'
                     : hasQueryChanged
-                    ? 'bg-amber-500'
-                    : 'bg-gray-400'
+                    ? 'bg-dc-warning'
+                    : 'bg-dc-muted'
                 }`}></div>
                 <div>
                   <h3 className={`text-sm font-medium ${
                     validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-                      ? 'text-green-800 dark:text-green-300'
+                      ? 'text-dc-success'
                       : validationResult && !validationResult.isValid
-                      ? 'text-red-800 dark:text-red-300'
+                      ? 'text-dc-error'
                       : hasQueryChanged
-                      ? 'text-amber-800 dark:text-amber-300'
+                      ? 'text-dc-warning'
                       : 'text-dc-text-secondary'
                   }`}>
                     {validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
@@ -638,7 +638,7 @@ export default function PortletEditModal({
                   </h3>
                   {validationResult && (
                     <p className={`text-xs mt-1 ${
-                      validationResult.isValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      validationResult.isValid ? 'text-dc-success' : 'text-dc-error'
                     }`}>
                       {validationResult.message}
                     </p>
@@ -652,9 +652,9 @@ export default function PortletEditModal({
                 disabled={isValidating || !query.trim()}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center space-x-1.5 ${
                   validationResult?.isValid && query.trim() === lastValidatedQuery.trim()
-                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    ? 'bg-dc-success text-white hover:opacity-80'
                     : validationResult && !validationResult.isValid
-                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    ? 'bg-dc-error text-white hover:opacity-80'
                     : 'bg-dc-primary text-white hover:bg-dc-primary-hover'
                 } disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-dc-primary`}
               >

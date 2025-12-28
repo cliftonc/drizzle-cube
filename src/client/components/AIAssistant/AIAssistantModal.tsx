@@ -199,7 +199,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       <div className="shrink-0 p-3 bg-dc-surface-secondary border border-dc-border rounded-md">
         <div className="text-sm text-dc-text-muted">
           Using: <span className="font-medium">AI Query Generation</span>
-          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-sm">
+          <span className="ml-2 px-2 py-1 bg-dc-accent-bg text-dc-accent text-xs rounded-sm">
             Server-provided AI (Rate Limited)
           </span>
         </div>
@@ -218,7 +218,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             onChange={(e) => setState(prev => ({ ...prev, userPrompt: e.target.value }))}
             onKeyDown={handleKeyDown}
             placeholder="e.g., Show me the total revenue by month for the last year (Press Enter to generate, Shift+Enter for new line)"
-            className="flex-1 w-full px-3 py-2 border border-dc-border rounded-md shadow-xs focus:outline-none focus:ring-blue-500 focus:border-blue-500 resize-none bg-dc-surface text-dc-text"
+            className="flex-1 w-full px-3 py-2 border border-dc-border rounded-md shadow-xs focus:outline-none focus:ring-dc-accent focus:border-dc-accent resize-none bg-dc-surface text-dc-text"
             required
           />
         </div>
@@ -229,8 +229,8 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
             <div className="flex items-center space-x-2">
               {state.response ? (
                 <>
-                  <SuccessIcon className="w-5 h-5 text-green-500" />
-                  <span className="text-sm font-medium text-green-700">AI Generated Query</span>
+                  <SuccessIcon className="w-5 h-5 text-dc-success" />
+                  <span className="text-sm font-medium text-dc-success">AI Generated Query</span>
                 </>
               ) : (
                 <span className="text-sm font-medium text-dc-text-muted">Generated Query</span>
@@ -240,7 +240,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
               <button
                 onClick={handleValidate}
                 disabled={state.isValidating}
-                className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                className="text-xs text-dc-accent hover:text-dc-accent disabled:opacity-50"
                 title="Click to re-validate query"
               >
                 {state.isValidating ? 'Validating...' : 'Re-validate'}
@@ -249,7 +249,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           </div>
 
           {state.response ? (
-            <div className="flex-1 bg-green-50 border border-green-200 rounded-md p-3">
+            <div className="flex-1 bg-dc-success-bg border border-dc-success rounded-md p-3">
               <pre className="text-sm text-dc-text whitespace-pre-wrap overflow-auto bg-dc-surface p-3 rounded-sm border h-full">
                 {state.response}
               </pre>
@@ -267,30 +267,30 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       {/* Status Messages - Fixed height */}
       <div className="shrink-0">
         {state.responseError && (
-          <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ErrorIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-            <div className="text-sm text-red-700">{state.responseError}</div>
+          <div className="flex items-start space-x-2 p-3 bg-dc-danger-bg border border-dc-error rounded-md">
+            <ErrorIcon className="w-5 h-5 text-dc-error mt-0.5 shrink-0" />
+            <div className="text-sm text-dc-error">{state.responseError}</div>
           </div>
         )}
         
         {state.isValidating && (
-          <div className="flex items-start space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mt-0.5 shrink-0"></div>
-            <div className="text-sm text-blue-700">Validating query...</div>
+          <div className="flex items-start space-x-2 p-3 bg-dc-accent-bg border border-dc-accent rounded-md">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-dc-accent mt-0.5 shrink-0"></div>
+            <div className="text-sm text-dc-accent">Validating query...</div>
           </div>
         )}
         
         {state.validationResult === 'valid' && !state.isValidating && (
-          <div className="flex items-start space-x-2 p-3 bg-green-50 border border-green-200 rounded-md">
-            <SuccessIcon className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
-            <div className="text-sm text-green-700">Query is valid and ready to use!</div>
+          <div className="flex items-start space-x-2 p-3 bg-dc-success-bg border border-dc-success rounded-md">
+            <SuccessIcon className="w-5 h-5 text-dc-success mt-0.5 shrink-0" />
+            <div className="text-sm text-dc-success">Query is valid and ready to use!</div>
           </div>
         )}
         
         {state.validationResult === 'invalid' && !state.isValidating && (
-          <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-md">
-            <ErrorIcon className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-            <div className="text-sm text-red-700">
+          <div className="flex items-start space-x-2 p-3 bg-dc-danger-bg border border-dc-error rounded-md">
+            <ErrorIcon className="w-5 h-5 text-dc-error mt-0.5 shrink-0" />
+            <div className="text-sm text-dc-error">
               <div className="font-medium mb-1">Query validation failed:</div>
               <div className="text-xs">{state.validationError}</div>
             </div>
@@ -304,7 +304,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
           type="submit"
           disabled={!state.userPrompt.trim() || state.isSubmitting}
           onClick={handleQuerySubmit}
-          className="px-4 py-2 text-white text-sm rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 text-white text-sm rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-dc-accent focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           style={{
             backgroundColor: 'var(--dc-primary)'
           }}
@@ -327,7 +327,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
         <button
           onClick={handleUseQuery}
           disabled={!state.response || !onQueryLoad}
-          className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          className="px-4 py-2 bg-dc-success text-white text-sm rounded-md hover:bg-dc-success focus:outline-none focus:ring-2 focus:ring-dc-success focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           <SuccessIcon className="w-4 h-4 mr-2" />
           Use Query

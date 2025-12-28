@@ -59,7 +59,7 @@ export default function ChartTypeSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-dc-border rounded-md bg-dc-surface hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full flex items-center justify-between px-3 py-2 border border-dc-border rounded-md bg-dc-surface hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       >
         <div className="flex items-center space-x-2">
           {SelectedIcon && (

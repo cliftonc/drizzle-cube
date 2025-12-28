@@ -305,7 +305,7 @@ export default function AnalysisFilterSection({
                   handleClearAll()
                 }
               }}
-              className="text-xs text-dc-text-muted hover:text-red-600 underline cursor-pointer"
+              className="text-xs text-dc-text-muted hover:text-dc-error underline cursor-pointer"
             >
               Clear all
             </span>

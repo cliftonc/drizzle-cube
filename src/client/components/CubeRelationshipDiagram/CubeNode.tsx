@@ -63,12 +63,12 @@ export function CubeNode({ data }: CubeNodeProps) {
       // Still show selected field highlighting even in faded cubes
       if (isHighlighted) {
         if (fieldType === 'measure') {
-          return `${baseClasses} bg-amber-100 text-amber-800`
+          return `${baseClasses} bg-dc-warning-bg text-dc-warning`
         } else if (fieldType === 'dimension') {
           if (field.type === 'time') {
-            return `${baseClasses} bg-blue-100 text-blue-800`
+            return `${baseClasses} bg-dc-accent-bg text-dc-accent`
           } else {
-            return `${baseClasses} bg-green-100 text-green-800`
+            return `${baseClasses} bg-dc-success-bg text-dc-success`
           }
         }
       }
@@ -82,19 +82,19 @@ export function CubeNode({ data }: CubeNodeProps) {
 
     // If searching and this field matches, make it prominent with bold purple text
     if (searchTerm?.trim() && isSearchMatch && !isHighlighted) {
-      return `${baseClasses} font-bold hover:bg-purple-50`
+      return `${baseClasses} font-bold hover:bg-dc-accent-bg`
     }
 
     // Normal highlighting behavior for selected fields (takes priority over search match styling)
     if (isHighlighted) {
       if (fieldType === 'measure') {
-        return `${baseClasses} bg-amber-100 text-amber-800 font-semibold`
+        return `${baseClasses} bg-dc-warning-bg text-dc-warning font-semibold`
       } else if (fieldType === 'dimension') {
         // Check if this is a time dimension
         if (field.type === 'time') {
-          return `${baseClasses} bg-blue-100 text-blue-800 font-semibold` // time dimensions
+          return `${baseClasses} bg-dc-accent-bg text-dc-accent font-semibold` // time dimensions
         } else {
-          return `${baseClasses} bg-green-100 text-green-800 font-semibold` // regular dimensions
+          return `${baseClasses} bg-dc-success-bg text-dc-success font-semibold` // regular dimensions
         }
       }
     }
@@ -107,7 +107,7 @@ export function CubeNode({ data }: CubeNodeProps) {
       className={`
         border-2 rounded-lg shadow-lg min-w-[280px] overflow-hidden transition-all
         ${!hasCubeMatches && searchTerm?.trim() ? 'opacity-30 grayscale' : ''}
-        ${isHighlighted ? 'border-purple-500 ring-2 ring-purple-200' : 'border-dc-border'}
+        ${isHighlighted ? 'border-dc-accent ring-2 ring-dc-accent' : 'border-dc-border'}
       `}
       style={{
         backgroundColor: 'var(--dc-surface)'
@@ -117,7 +117,7 @@ export function CubeNode({ data }: CubeNodeProps) {
       <div
         className={`
           px-4 py-3 cursor-pointer transition-colors
-          ${isHighlighted ? 'bg-purple-100 hover:bg-purple-200' : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'}
+          ${isHighlighted ? 'bg-dc-accent-bg hover:bg-dc-accent-bg' : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'}
         `}
         onClick={handleCubeHeaderClick}
       >
@@ -142,9 +142,9 @@ export function CubeNode({ data }: CubeNodeProps) {
       {/* Measures Section */}
       {cube.measures.length > 0 && (
         <div className="border-t border-dc-border">
-          <div className="px-4 py-2 bg-amber-50 border-b border-dc-border">
-            <h4 className="text-xs font-medium text-amber-800 flex items-center">
-              <span className="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
+          <div className="px-4 py-2 bg-dc-warning-bg border-b border-dc-border">
+            <h4 className="text-xs font-medium text-dc-warning flex items-center">
+              <span className="w-2 h-2 bg-dc-warning-bg0 rounded-full mr-2"></span>
               Measures ({cube.measures.length})
             </h4>
           </div>
@@ -177,9 +177,9 @@ export function CubeNode({ data }: CubeNodeProps) {
       {/* Time Dimensions Section */}
       {cube.dimensions.filter(d => d.type === 'time').length > 0 && (
         <div className="border-t border-dc-border">
-          <div className="px-4 py-2 bg-blue-50 border-b border-dc-border">
-            <h4 className="text-xs font-medium text-blue-800 flex items-center">
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+          <div className="px-4 py-2 bg-dc-accent-bg border-b border-dc-border">
+            <h4 className="text-xs font-medium text-dc-accent flex items-center">
+              <span className="w-2 h-2 bg-dc-accent-bg0 rounded-full mr-2"></span>
               Time Dimensions ({cube.dimensions.filter(d => d.type === 'time').length})
             </h4>
           </div>
@@ -212,9 +212,9 @@ export function CubeNode({ data }: CubeNodeProps) {
       {/* Dimensions Section (non-time) */}
       {cube.dimensions.filter(d => d.type !== 'time').length > 0 && (
         <div className="border-t border-dc-border">
-          <div className="px-4 py-2 bg-green-50 border-b border-dc-border">
-            <h4 className="text-xs font-medium text-green-800 flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+          <div className="px-4 py-2 bg-dc-success-bg border-b border-dc-border">
+            <h4 className="text-xs font-medium text-dc-success flex items-center">
+              <span className="w-2 h-2 bg-dc-success-bg0 rounded-full mr-2"></span>
               Dimensions ({cube.dimensions.filter(d => d.type !== 'time').length})
             </h4>
           </div>

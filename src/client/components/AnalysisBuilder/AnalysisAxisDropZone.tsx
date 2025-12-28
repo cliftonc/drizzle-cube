@@ -299,11 +299,19 @@ export default function AnalysisAxisDropZone({
         </span>
       )
     } else if (meta.type === 'timeDimension') {
-      // Time dimensions get plain icon
-      return <TimeDimensionIcon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
+      // Time dimensions get colored background matching field selector
+      return (
+        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-time-dimension text-dc-time-dimension-text flex-shrink-0">
+          <TimeDimensionIcon className="w-4 h-4" />
+        </span>
+      )
     } else {
-      // Regular dimensions get plain icon
-      return <DimensionIcon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
+      // Regular dimensions get colored background matching field selector
+      return (
+        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-dimension text-dc-dimension-text flex-shrink-0">
+          <DimensionIcon className="w-4 h-4" />
+        </span>
+      )
     }
   }
 

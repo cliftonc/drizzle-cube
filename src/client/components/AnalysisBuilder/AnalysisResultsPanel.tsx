@@ -100,7 +100,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderError = () => (
     <div className="h-full flex items-center justify-center p-4">
       <div className="text-center max-w-md">
-        <ErrorIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+        <ErrorIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
         <div className="text-sm font-semibold text-dc-text mb-2">
           Query Execution Failed
         </div>
@@ -108,8 +108,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           There was an error executing your query. Please check the query and try again.
         </div>
         {executionError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-left">
-            <div className="text-xs font-mono text-red-800 break-words">
+          <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left">
+            <div className="text-xs font-mono text-dc-error break-words">
               {executionError}
             </div>
           </div>
@@ -158,7 +158,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {enableAI && onAIToggle && (
           <button
             onClick={onAIToggle}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:bg-dc-accent rounded-lg transition-colors shadow-sm"
           >
             <SparklesIcon className="w-4 h-4" />
             Analyse with AI
@@ -172,7 +172,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderNoData = () => (
     <div className="h-full flex items-center justify-center">
       <div className="text-center">
-        <SuccessIcon className="w-12 h-12 mx-auto text-green-500 mb-3" />
+        <SuccessIcon className="w-12 h-12 mx-auto text-dc-success mb-3" />
         <div className="text-sm font-semibold text-dc-text mb-1">
           Query Successful
         </div>
@@ -232,11 +232,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     <div className="p-4 space-y-4 overflow-auto h-full">
       {/* Execution Error Banner (if any) */}
       {executionError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-          <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">
+        <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
+          <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
             Execution Error
           </h4>
-          <p className="text-sm text-red-600 dark:text-red-300">{executionError}</p>
+          <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
         </div>
       )}
 
@@ -258,7 +258,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               Loading...
             </div>
           ) : debugError ? (
-            <div className="text-red-500 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
+            <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error">
               {debugError}
             </div>
           ) : debugSql ? (
@@ -364,7 +364,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   style={{ borderBottomColor: 'var(--dc-primary)' }}
                 />
               ) : (
-                <SuccessIcon className="w-4 h-4 text-green-500 mr-2" />
+                <SuccessIcon className="w-4 h-4 text-dc-success mr-2" />
               )}
               <span className="text-sm text-dc-text-secondary">
                 {executionResults.length} row{executionResults.length !== 1 ? 's' : ''}
@@ -399,8 +399,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   onClick={onAIToggle}
                   className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
                     isAIOpen
-                      ? 'text-white bg-purple-600 border border-purple-600'
-                      : 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                      ? 'text-white bg-dc-accent border border-dc-accent'
+                      : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
                   }`}
                   title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
                 >
@@ -423,9 +423,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   onClick={onShareClick}
                   className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
                     shareButtonState === 'idle' && canShare
-                      ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                      ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
                       : shareButtonState !== 'idle'
-                      ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800'
+                      ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg border border-dc-success dark:border-dc-success'
                       : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
                   }`}
                   title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
@@ -476,7 +476,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 <CodeIcon className="w-4 h-4" />
                 {/* Error indicator dot */}
                 {(executionError || debugError) && !showDebug && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-dc-danger-bg0 rounded-full" />
                 )}
               </button>
             </div>
@@ -484,9 +484,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
           {/* Performance Warning */}
           {totalRowCount !== null && totalRowCount > 1000 && (
-            <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2 flex items-start">
-              <WarningIcon className="w-4 h-4 text-yellow-600 mr-2 shrink-0 mt-0.5" />
-              <div className="text-xs text-yellow-800">
+            <div className="mt-2 bg-dc-warning-bg border border-dc-warning rounded-lg p-2 flex items-start">
+              <WarningIcon className="w-4 h-4 text-dc-warning mr-2 shrink-0 mt-0.5" />
+              <div className="text-xs text-dc-warning">
                 <span className="font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
                 Consider adding filters to improve performance.
               </div>

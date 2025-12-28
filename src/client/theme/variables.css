@@ -61,18 +61,18 @@
   --dc-danger-hover: #b91c1c;
   --dc-danger-bg: #fee2e2;
 
-  /* Field Type Colors - For semantic field type badges */
-  --dc-dimension-bg: #dcfce7;
-  --dc-dimension-text: #166534;
-  --dc-dimension-border: #bbf7d0;
+  /* Field Type Colors - For semantic field type badges (brighter, more visible) */
+  --dc-dimension-bg: #bbf7d0;
+  --dc-dimension-text: #15803d;
+  --dc-dimension-border: #86efac;
 
-  --dc-time-dimension-bg: #dbeafe;
-  --dc-time-dimension-text: #1e40af;
-  --dc-time-dimension-border: #93c5fd;
+  --dc-time-dimension-bg: #bfdbfe;
+  --dc-time-dimension-text: #1d4ed8;
+  --dc-time-dimension-border: #60a5fa;
 
-  --dc-measure-bg: #fef3c7;
-  --dc-measure-text: #92400e;
-  --dc-measure-border: #fde68a;
+  --dc-measure-bg: #fde68a;
+  --dc-measure-text: #b45309;
+  --dc-measure-border: #fbbf24;
 
   /* Overlay Colors - Modal backdrops, overlays */
   --dc-overlay: rgba(0, 0, 0, 0.75);
@@ -158,18 +158,18 @@ html.dark {
   --dc-danger-hover: #dc2626;
   --dc-danger-bg: #7f1d1d;
 
-  /* Field Type Colors - Dark mode versions */
-  --dc-dimension-bg: rgba(34, 197, 94, 0.3);
-  --dc-dimension-text: #86efac;
-  --dc-dimension-border: #16a34a;
+  /* Field Type Colors - Dark mode versions (brighter, more visible) */
+  --dc-dimension-bg: rgba(34, 197, 94, 0.4);
+  --dc-dimension-text: #4ade80;
+  --dc-dimension-border: #22c55e;
 
-  --dc-time-dimension-bg: rgba(59, 130, 246, 0.3);
-  --dc-time-dimension-text: #93c5fd;
-  --dc-time-dimension-border: #2563eb;
+  --dc-time-dimension-bg: rgba(59, 130, 246, 0.4);
+  --dc-time-dimension-text: #60a5fa;
+  --dc-time-dimension-border: #3b82f6;
 
-  --dc-measure-bg: rgba(245, 158, 11, 0.3);
-  --dc-measure-text: #fcd34d;
-  --dc-measure-border: #d97706;
+  --dc-measure-bg: rgba(245, 158, 11, 0.4);
+  --dc-measure-text: #fbbf24;
+  --dc-measure-border: #f59e0b;
 
   /* Overlay Colors */
   --dc-overlay: rgba(0, 0, 0, 0.85);
@@ -254,16 +254,16 @@ html.neon {
   --dc-danger-hover: #cc1077;
   --dc-danger-bg: rgba(255, 20, 147, 0.15);
 
-  /* Field Type Colors - Neon versions */
-  --dc-dimension-bg: rgba(0, 255, 0, 0.2);
+  /* Field Type Colors - Neon versions (bright, glowing) */
+  --dc-dimension-bg: rgba(0, 255, 0, 0.35);
   --dc-dimension-text: #00ff00;
   --dc-dimension-border: #00ff00;
 
-  --dc-time-dimension-bg: rgba(0, 255, 255, 0.2);
+  --dc-time-dimension-bg: rgba(0, 255, 255, 0.35);
   --dc-time-dimension-text: #00ffff;
   --dc-time-dimension-border: #00ffff;
 
-  --dc-measure-bg: rgba(255, 0, 255, 0.2);
+  --dc-measure-bg: rgba(255, 0, 255, 0.35);
   --dc-measure-text: #ff00ff;
   --dc-measure-border: #ff00ff;
 
@@ -358,14 +358,14 @@ html.neon {
 
   /* Field Type utilities */
   .bg-dc-dimension { background-color: var(--dc-dimension-bg); }
-  .text-dc-dimension { color: var(--dc-dimension-text); }
+  .text-dc-dimension, .text-dc-dimension-text { color: var(--dc-dimension-text); }
   .border-dc-dimension { border-color: var(--dc-dimension-border); }
 
   .bg-dc-time-dimension { background-color: var(--dc-time-dimension-bg); }
-  .text-dc-time-dimension { color: var(--dc-time-dimension-text); }
+  .text-dc-time-dimension, .text-dc-time-dimension-text { color: var(--dc-time-dimension-text); }
   .border-dc-time-dimension { border-color: var(--dc-time-dimension-border); }
 
   .bg-dc-measure { background-color: var(--dc-measure-bg); }
-  .text-dc-measure { color: var(--dc-measure-text); }
+  .text-dc-measure, .text-dc-measure-text { color: var(--dc-measure-text); }
   .border-dc-measure { border-color: var(--dc-measure-border); }
 }

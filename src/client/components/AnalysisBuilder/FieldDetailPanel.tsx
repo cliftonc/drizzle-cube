@@ -32,14 +32,14 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
     }
   }
 
-  // Get icon background color
+  // Get icon background color - use field type specific colors for consistency
   const getIconBgStyle = () => {
     if (field.fieldType === 'measure') {
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+      return 'bg-dc-measure text-dc-measure-text'
     } else if (field.fieldType === 'timeDimension') {
-      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+      return 'bg-dc-time-dimension text-dc-time-dimension-text'
     } else {
-      return 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+      return 'bg-dc-dimension text-dc-dimension-text'
     }
   }
 
@@ -114,10 +114,10 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
           <span
             className={`text-xs px-2 py-0.5 rounded font-medium ${
               field.fieldType === 'measure'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                ? 'bg-dc-measure text-dc-measure-text'
                 : field.fieldType === 'timeDimension'
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                  : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                  ? 'bg-dc-time-dimension text-dc-time-dimension-text'
+                  : 'bg-dc-dimension text-dc-dimension-text'
             }`}
           >
             {field.fieldType === 'measure'

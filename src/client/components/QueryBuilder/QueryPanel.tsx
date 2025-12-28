@@ -72,7 +72,7 @@ const QueryPanelHeader = memo(({
           {onSchemaClick && (
             <button
               onClick={onSchemaClick}
-              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all duration-200 shrink-0"
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent rounded-lg hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:outline-hidden focus:ring-2 focus:ring-dc-accent transition-all duration-200 shrink-0"
               title="Schema Explorer - View cube relationships and fields"
             >
               <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -84,7 +84,7 @@ const QueryPanelHeader = memo(({
           {onAIAssistantClick && (
             <button
               onClick={onAIAssistantClick}
-              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 focus:outline-hidden focus:ring-2 focus:ring-purple-500 transition-all duration-200 shrink-0"
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent rounded-lg hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:outline-hidden focus:ring-2 focus:ring-dc-accent transition-all duration-200 shrink-0"
               title="AI Assistant - Generate queries with AI"
             >
               <SparklesIcon className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -100,7 +100,7 @@ const QueryPanelHeader = memo(({
             onClick={handleCopyQuery}
             className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 ${
               hasContent
-                ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50 focus:ring-purple-500'
+                ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
                 : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
             }`}
             title={copyButtonState === 'idle' ? 'Copy query to clipboard' : 'Copied!'}
@@ -123,9 +123,9 @@ const QueryPanelHeader = memo(({
               onClick={onShareClick}
               className={`flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-sm focus:outline-hidden focus:ring-2 transition-colors ${
                 shareButtonState === 'idle' && canShare
-                  ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50 focus:ring-blue-500'
+                  ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
                   : shareButtonState !== 'idle'
-                  ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 focus:ring-green-500'
+                  ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg border border-dc-success dark:border-dc-success focus:ring-dc-success'
                   : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
               }`}
               title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
@@ -154,7 +154,7 @@ const QueryPanelHeader = memo(({
             <button
               onClick={onClearQuery}
               className={`p-2 focus:outline-hidden ${
-                hasContent ? 'text-dc-text-muted hover:text-red-600' : 'text-dc-text-muted opacity-40 cursor-not-allowed'
+                hasContent ? 'text-dc-text-muted hover:text-dc-error' : 'text-dc-text-muted opacity-40 cursor-not-allowed'
               }`}
               title="Clear all fields"
               disabled={!hasContent}
@@ -298,7 +298,7 @@ const RemovableChip = memo(({
         </div>
         <button
           onClick={() => onRemoveField(fieldName, fieldType)}
-          className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden shrink-0"
+          className="text-dc-text-secondary hover:text-dc-error focus:outline-hidden shrink-0"
         >
           <CloseIcon className="w-4 h-4" />
         </button>
@@ -394,7 +394,7 @@ const TimeDimensionChip = memo(({
           </div>
           <button
             onClick={() => onRemoveField(timeDimension.dimension, 'timeDimensions')}
-            className="text-dc-text-secondary hover:text-red-600 focus:outline-hidden"
+            className="text-dc-text-secondary hover:text-dc-error focus:outline-hidden"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -405,7 +405,7 @@ const TimeDimensionChip = memo(({
         <select
           value={timeDimension.granularity || 'month'}
           onChange={(e) => onGranularityChange(timeDimension.dimension, e.target.value)}
-          className="bg-dc-time-dimension border-none text-dc-time-dimension text-xs rounded-sm focus:ring-2 focus:ring-blue-500 flex-1"
+          className="bg-dc-time-dimension border-none text-dc-time-dimension text-xs rounded-sm focus:ring-2 focus:ring-dc-accent flex-1"
           onClick={(e) => e.stopPropagation()}
         >
           {TIME_GRANULARITIES.map(granularity => (
@@ -616,7 +616,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
       {/* Viewing Shared Indicator */}
       {isViewingShared && (
-        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+        <div className="px-4 py-2 bg-dc-accent-bg dark:bg-dc-accent-bg border-b border-dc-accent dark:border-dc-accent flex items-center gap-2 text-sm text-dc-accent dark:text-dc-accent">
           <ShareIcon className="w-4 h-4" />
           <span>Viewing shared analysis</span>
         </div>
@@ -753,12 +753,12 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
 
             {/* Validation Error */}
             {validationError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-4">
                 <div className="flex items-start">
-                  <ErrorIcon className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+                  <ErrorIcon className="w-5 h-5 text-dc-error mr-2 mt-0.5" />
                   <div>
-                    <h5 className="text-sm font-semibold text-red-800">Validation Error</h5>
-                    <p className="text-sm text-red-700 mt-1">{validationError}</p>
+                    <h5 className="text-sm font-semibold text-dc-error">Validation Error</h5>
+                    <p className="text-sm text-dc-error mt-1">{validationError}</p>
                   </div>
                 </div>
               </div>
@@ -866,7 +866,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
               className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                 validationStatus === 'validating' || !hasContent
                   ? 'bg-dc-surface-secondary text-dc-text-muted cursor-not-allowed border border-dc-border'
-                  : 'text-white border border-green-700 hover:bg-green-700 focus:ring-2 focus:ring-green-500'
+                  : 'text-white border border-dc-success hover:bg-dc-success focus:ring-2 focus:ring-dc-success'
               }`}
               style={!hasContent || validationStatus === 'validating' ? undefined : { backgroundColor: 'var(--dc-primary)' }}
             >

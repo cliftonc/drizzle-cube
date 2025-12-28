@@ -322,6 +322,7 @@ interface Variables {
 // Extended interface to support both Node.js and Worker environments
 interface AiAppEnv {
   GEMINI_API_KEY?: string
+  GEMINI_MODEL?: string
   MAX_GEMINI_CALLS?: string
 }
 

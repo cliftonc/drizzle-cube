@@ -50,7 +50,7 @@ export default function ColorPaletteSelector({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-2 px-3 py-1.5 bg-dc-surface border border-dc-border rounded-md shadow-xs text-sm font-medium text-dc-text-secondary hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        className="inline-flex items-center gap-2 px-3 py-1.5 bg-dc-surface border border-dc-border rounded-md shadow-xs text-sm font-medium text-dc-text-secondary hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-dc-accent"
       >
         {/* Current Palette Preview - Hidden on mobile */}
         <div className="hidden md:flex items-center gap-1.5">

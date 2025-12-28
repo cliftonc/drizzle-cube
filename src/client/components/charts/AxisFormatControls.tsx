@@ -94,7 +94,7 @@ export function AxisFormatControls({
           value={config.label || ''}
           onChange={(e) => handleChange({ label: e.target.value || undefined })}
           placeholder="Auto-generated label"
-          className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
+          className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       </div>
 
@@ -129,7 +129,7 @@ export function AxisFormatControls({
               value={config.customPrefix || ''}
               onChange={(e) => handleChange({ customPrefix: e.target.value || undefined })}
               placeholder="e.g., $"
-              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
+              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
           <div className="flex-1 space-y-1">
@@ -139,7 +139,7 @@ export function AxisFormatControls({
               value={config.customSuffix || ''}
               onChange={(e) => handleChange({ customSuffix: e.target.value || undefined })}
               placeholder="e.g., units"
-              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
+              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
         </div>

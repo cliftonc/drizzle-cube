@@ -24,15 +24,15 @@ function formatReason(reason: string): string {
 function getReasonBadgeClasses(reason: string): string {
   switch (reason) {
     case 'most_dimensions':
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+      return 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent'
     case 'most_connected':
-      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+      return 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent'
     case 'alphabetical_fallback':
-      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+      return 'bg-dc-warning-bg dark:bg-dc-warning-bg text-dc-warning dark:text-dc-warning'
     case 'single_cube':
-      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+      return 'bg-dc-success-bg dark:bg-dc-success-bg text-dc-success dark:text-dc-success'
     default:
-      return 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'
+      return 'bg-dc-bg-secondary dark:bg-dc-bg-secondary text-dc-text-secondary dark:text-dc-text-muted'
   }
 }
 
@@ -108,12 +108,12 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                       dims: {c.dimensionCount}, joins: {c.joinCount}
                     </span>
                     {c.canReachAll ? (
-                      <span className="text-green-600 dark:text-green-400 flex items-center gap-0.5">
+                      <span className="text-dc-success dark:text-dc-success flex items-center gap-0.5">
                         <SuccessIcon className="w-3 h-3" />
                         reachable
                       </span>
                     ) : (
-                      <span className="text-red-600 dark:text-red-400 flex items-center gap-0.5">
+                      <span className="text-dc-error dark:text-dc-error flex items-center gap-0.5">
                         <ErrorIcon className="w-3 h-3" />
                         cannot reach all
                       </span>
@@ -141,11 +141,11 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                   <ArrowRightIcon className="w-4 h-4 text-dc-text-muted" />
                   <span className="font-mono font-medium text-dc-text">{jp.targetCube}</span>
                   {jp.pathFound ? (
-                    <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                    <span className="text-xs px-2 py-0.5 bg-dc-success-bg dark:bg-dc-success-bg text-dc-success dark:text-dc-success rounded">
                       {jp.pathLength} step{jp.pathLength !== 1 ? 's' : ''}
                     </span>
                   ) : (
-                    <span className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded">
+                    <span className="text-xs px-2 py-0.5 bg-dc-danger-bg dark:bg-dc-danger-bg text-dc-error dark:text-dc-error rounded">
                       No path
                     </span>
                   )}
@@ -170,7 +170,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                   </div>
                 )}
                 {!jp.pathFound && jp.error && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{jp.error}</p>
+                  <p className="text-xs text-dc-error dark:text-dc-error mt-1">{jp.error}</p>
                 )}
                 {jp.visitedCubes && jp.visitedCubes.length > 0 && !jp.pathFound && (
                   <details className="mt-1">
@@ -221,11 +221,11 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       {/* Warnings Section */}
       {analysis.warnings && analysis.warnings.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center">
+          <h4 className="text-sm font-semibold text-dc-warning dark:text-dc-warning mb-2 flex items-center">
             <WarningIcon className="w-4 h-4 mr-2" />
             Warnings
           </h4>
-          <ul className="list-disc list-inside text-xs text-amber-600 dark:text-amber-400 space-y-1">
+          <ul className="list-disc list-inside text-xs text-dc-warning dark:text-dc-warning space-y-1">
             {analysis.warnings.map((w, i) => (
               <li key={i}>{w}</li>
             ))}

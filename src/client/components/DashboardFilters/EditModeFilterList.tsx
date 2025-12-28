@@ -80,7 +80,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
             </button>
             <button
               onClick={() => onRemoveFilter(id)}
-              className="p-0.5 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
+              className="p-0.5 hover:bg-dc-danger-bg hover:text-dc-danger rounded transition-colors"
               title="Remove filter"
             >
               <CloseIcon className="w-3 h-3" />

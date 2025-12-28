@@ -647,7 +647,7 @@ export default function BubbleChart({
   const hasValidConfig = chartConfig?.xAxis && chartConfig?.yAxis && chartConfig?.series
   if (!hasValidConfig) {
     return (
-      <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+      <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Configuration Required</div>
           <div className="text-xs">Bubble chart requires xAxis, yAxis, series, and sizeField dimensions</div>

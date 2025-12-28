@@ -69,7 +69,7 @@ export default function RadialBarChart({
 
       if (!valueField) {
         return (
-          <div className="flex items-center justify-center w-full text-yellow-600" style={{ height }}>
+          <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
             <div className="text-center">
               <div className="text-sm font-semibold mb-1">Configuration Error</div>
               <div className="text-xs">No numeric field found for radial bar chart values</div>
@@ -167,7 +167,7 @@ export default function RadialBarChart({
   } catch (error) {
     // 'RadialBarChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-red-500 p-4" style={{ height }}>
+      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
         <div className="text-center">
           <div className="text-sm font-semibold mb-1">Radial Bar Chart Error</div>
           <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>

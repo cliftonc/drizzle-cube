@@ -40,9 +40,9 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   
   // Style based on depth for visual nesting
   const indentClass = depth > 0 ? `ml-${Math.min(depth * 4, 16)}` : ''
-  const borderColor = 'border-slate-200'
-  const bgColor = 'bg-slate-50'
-  const textColor = 'text-slate-700'
+  const borderColor = 'border-dc-border'
+  const bgColor = 'bg-dc-bg-secondary'
+  const textColor = 'text-dc-text-secondary'
   
   const handleGroupTypeToggle = () => {
     if (isAndGroup) {
@@ -213,7 +213,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
           {/* Remove group button */}
           <button
             onClick={() => onGroupRemove(index)}
-            className="text-dc-text-muted hover:text-red-600 focus:outline-hidden"
+            className="text-dc-text-muted hover:text-dc-error focus:outline-hidden"
             title="Remove group"
           >
             <CloseIcon className="w-4 h-4" />
@@ -259,7 +259,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
             No conditions in this group.
             <button
               onClick={handleAddSimpleFilter}
-              className="ml-2 text-purple-600 hover:text-purple-800 focus:outline-hidden underline"
+              className="ml-2 text-dc-accent hover:text-dc-accent focus:outline-hidden underline"
             >
               Add a filter
             </button>

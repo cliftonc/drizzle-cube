@@ -160,7 +160,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-sm p-6">
-          <WarningIcon className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <WarningIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
           <div className="text-sm font-semibold text-dc-text mb-2">
             Failed to Load Schema
           </div>
@@ -180,7 +180,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             {onRetrySchema && (
               <button
                 onClick={onRetrySchema}
-                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-dc-accent bg-dc-accent-bg border border-dc-accent rounded-md hover:bg-dc-accent-bg focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
               >
                 <RefreshIcon className="w-4 h-4" />
                 <span>Retry</span>
@@ -190,7 +190,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
             {onOpenSettings && (
               <button
                 onClick={onOpenSettings}
-                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
               >
                 <SettingsIcon className="w-4 h-4" />
                 <span>Check API Settings</span>
@@ -199,8 +199,8 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
           </div>
           
           {isCorsError && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <div className="text-xs text-amber-800">
+            <div className="mt-4 p-3 bg-dc-warning-bg border border-dc-warning rounded-md">
+              <div className="text-xs text-dc-warning">
                 <div className="font-medium mb-1">Common solutions:</div>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Verify the Base API URL is correct</li>
@@ -337,13 +337,13 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
 
       switch (fieldType) {
         case 'measures':
-          return 'bg-amber-100 text-amber-800 border border-amber-200'
+          return 'bg-dc-warning-bg text-dc-warning border border-dc-warning'
         case 'dimensions':
-          return 'bg-green-100 text-green-800 border border-green-200'
+          return 'bg-dc-success-bg text-dc-success border border-dc-success'
         case 'timeDimensions':
-          return 'bg-blue-100 text-blue-800 border border-blue-200'
+          return 'bg-dc-accent-bg text-dc-accent border border-dc-accent'
         default:
-          return 'bg-blue-100 text-blue-800 border border-blue-200'
+          return 'bg-dc-accent-bg text-dc-accent border border-dc-accent'
       }
     }
 
@@ -352,26 +352,26 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       
       switch (fieldType) {
         case 'measures':
-          return 'text-amber-600'
+          return 'text-dc-warning'
         case 'dimensions':
-          return 'text-green-600'
+          return 'text-dc-success'
         case 'timeDimensions':
-          return 'text-blue-600'
+          return 'text-dc-accent'
         default:
-          return 'text-blue-600'
+          return 'text-dc-accent'
       }
     }
 
     const getCheckmarkColor = () => {
       switch (fieldType) {
         case 'measures':
-          return 'text-amber-600'
+          return 'text-dc-warning'
         case 'dimensions':
-          return 'text-green-600'
+          return 'text-dc-success'
         case 'timeDimensions':
-          return 'text-blue-600'
+          return 'text-dc-accent'
         default:
-          return 'text-blue-600'
+          return 'text-dc-accent'
       }
     }
 
@@ -422,13 +422,13 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
       const sectionType = getSectionType()
       switch (sectionType) {
         case 'dimensions':
-          return 'text-green-800'
+          return 'text-dc-success'
         case 'timeDimensions':
-          return 'text-blue-800'
+          return 'text-dc-accent'
         case 'measures':
-          return 'text-amber-800'
+          return 'text-dc-warning'
         default:
-          return 'text-gray-700'
+          return 'text-dc-text-secondary'
       }
     }
     
@@ -469,7 +469,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
         </div>
         <button
           onClick={() => setSearchTerm('')}
-          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-dc-accent bg-dc-accent-bg border border-dc-accent rounded-md hover:bg-dc-accent-bg focus:outline-hidden focus:ring-2 focus:ring-dc-accent"
         >
           Clear search
         </button>
@@ -547,7 +547,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                 placeholder="Search fields..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-2 py-1.5 border border-dc-border rounded-md text-sm bg-dc-surface text-dc-text focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-2 py-1.5 border border-dc-border rounded-md text-sm bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <svg className="h-4 w-4 text-dc-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -670,7 +670,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Dimensions"
                               count={filterFields(regularDimensions).length}
                               sectionKey={`${cube.name}-dimensions`}
-                              icon={<DimensionIcon className="w-4 h-4 text-green-600" />}
+                              icon={<DimensionIcon className="w-4 h-4 text-dc-success" />}
                             />
                             {expandedSections.has(`${cube.name}-dimensions`) && (
                               <div className="ml-5 space-y-1 mt-1">
@@ -694,7 +694,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Time Dimensions"
                               count={filterFields(timeDimensions).length}
                               sectionKey={`${cube.name}-timeDimensions`}
-                              icon={<TimeDimensionIcon className="w-4 h-4 text-blue-600" />}
+                              icon={<TimeDimensionIcon className="w-4 h-4 text-dc-accent" />}
                             />
                             {expandedSections.has(`${cube.name}-timeDimensions`) && (
                               <div className="ml-5 space-y-1 mt-1">
@@ -718,7 +718,7 @@ const CubeMetaExplorer: React.FC<CubeMetaExplorerProps> = ({
                               title="Measures"
                               count={filterFields(cube.measures).length}
                               sectionKey={`${cube.name}-measures`}
-              icon={<MeasureIcon className="w-4 h-4 text-amber-600" />}
+              icon={<MeasureIcon className="w-4 h-4 text-dc-warning" />}
                             />
                             {expandedSections.has(`${cube.name}-measures`) && (
                               <div className="ml-5 space-y-1 mt-1">

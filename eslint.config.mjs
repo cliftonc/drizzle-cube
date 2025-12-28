@@ -8,6 +8,23 @@ export default [
     ignores: ["**/dist/**", "**/.eslintrc.cjs", "**/node_modules/**"]
   },
   js.configs.recommended,
+  // Theming rule for client components - detect raw Tailwind colors
+  {
+    files: ["src/client/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/\\b(text|bg|border|ring|from|to|via|fill|stroke|outline|shadow|accent|caret|divide|placeholder|decoration)-(red|green|blue|yellow|orange|purple|pink|indigo|teal|cyan|emerald|lime|amber|violet|fuchsia|rose|sky|slate|gray|zinc|neutral|stone)-\\d{2,3}\\b/]",
+          message: "Use dc- prefixed theme variables instead of raw Tailwind colors. See .claude/rules/theming.md for mappings."
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\b(text|bg|border|ring|from|to|via|fill|stroke|outline|shadow|accent|caret|divide|placeholder|decoration)-(red|green|blue|yellow|orange|purple|pink|indigo|teal|cyan|emerald|lime|amber|violet|fuchsia|rose|sky|slate|gray|zinc|neutral|stone)-\\d{2,3}\\b/]",
+          message: "Use dc- prefixed theme variables instead of raw Tailwind colors. See .claude/rules/theming.md for mappings."
+        }
+      ]
+    }
+  },
   {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {

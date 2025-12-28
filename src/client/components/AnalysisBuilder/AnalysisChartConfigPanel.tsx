@@ -433,7 +433,9 @@ export default function AnalysisChartConfigPanel({
                     className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <DimensionIcon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
+                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-dimension text-dc-dimension-text flex-shrink-0">
+                      <DimensionIcon className="w-4 h-4" />
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-dc-text truncate">{meta.shortTitle}</div>
                       <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
@@ -456,7 +458,9 @@ export default function AnalysisChartConfigPanel({
                     className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <TimeDimensionIcon className="w-4 h-4 text-dc-text-secondary flex-shrink-0" />
+                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-time-dimension text-dc-time-dimension-text flex-shrink-0">
+                      <TimeDimensionIcon className="w-4 h-4" />
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-dc-text truncate">{meta.shortTitle}</div>
                       <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
