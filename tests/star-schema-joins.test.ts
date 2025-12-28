@@ -31,20 +31,11 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube>
   let close: () => void
-  let products: any
-  let sales: any
-  let inventory: any
 
   beforeAll(async () => {
     // Get database executor and schema
     const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
     close = cleanup
-
-    // Get schema tables for the current database type
-    const schema = await getTestSchema()
-    products = schema.products
-    sales = schema.sales
-    inventory = schema.inventory
 
     // Create cubes for testing
     cubes = await createStarSchemaCubes()

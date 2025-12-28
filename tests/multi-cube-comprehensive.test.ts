@@ -13,11 +13,10 @@ import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../../src/server/types'
 
-import { 
-  TestQueryBuilder, 
-  TestExecutor, 
-  QueryValidator, 
-  PerformanceMeasurer 
+import {
+  TestQueryBuilder,
+  TestExecutor,
+  PerformanceMeasurer
 } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
@@ -459,7 +458,7 @@ describe('Comprehensive Multi-Cube Queries', () => {
         .dimensions(['Employees.departmentId'])
         .build()
 
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Productivity.recordCount', 'Employees.departmentId']
       )

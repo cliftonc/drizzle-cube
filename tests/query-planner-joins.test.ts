@@ -2,7 +2,7 @@
  * Tests for QueryPlanner join functionality with new array-based joins
  */
 import { describe, it, expect, beforeAll } from 'vitest'
-import { eq, gte, sql } from 'drizzle-orm'
+import { eq, gte } from 'drizzle-orm'
 import { QueryPlanner } from '../src/server/query-planner'
 import { getTestSchema } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'

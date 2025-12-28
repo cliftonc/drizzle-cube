@@ -25,7 +25,6 @@ describe('Calculated Measures - Comprehensive Tests', () => {
   let executor: QueryExecutor
   let cubes: Map<string, Cube>
   let securityContext: SecurityContext
-  let schema: any
   let tables: any
   let close: () => void
 
@@ -42,7 +41,6 @@ describe('Calculated Measures - Comprehensive Tests', () => {
 
   beforeAll(async () => {
     const testData = await getTestSchema()
-    schema = testData.schema
     tables = {
       employees: testData.employees,
       departments: testData.departments,
@@ -80,7 +78,7 @@ describe('Calculated Measures - Comprehensive Tests', () => {
             name: 'highProductivity',
             type: 'count',
             sql: () => tables.productivity.id,
-            filters: [(ctx) => eq(tables.productivity.linesOfCode, 100)]
+            filters: [(_ctx) => eq(tables.productivity.linesOfCode, 100)]
           },
           completionRatio: {
             name: 'completionRatio',

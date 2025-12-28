@@ -11,9 +11,8 @@ import {
   SemanticLayerCompiler
 } from '../src/server'
 import { QueryExecutor } from '../src/server/executor'
-import type { 
-  Cube, 
-  SemanticQuery
+import type {
+  Cube
 } from '../src/server/types'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
@@ -341,7 +340,7 @@ describe('Error Handling - Resource Limits', () => {
         expect(executionTime).toBeLessThan(20000) // 20 seconds for all concurrent queries
         
         // All queries should complete successfully
-        results.forEach((result, index) => {
+        results.forEach((result) => {
           expect(result.data).toBeDefined()
           expect(Array.isArray(result.data)).toBe(true)
         })

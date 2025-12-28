@@ -4,28 +4,16 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, and } from 'drizzle-orm'
-import { 
+import {
   createTestDatabaseExecutor
 } from './helpers/test-database'
 
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
+import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import { defineCube } from '../src/server/cube-utils'
-import type { 
-  Cube, 
-  QueryContext,
-  BaseQueryDefinition 
-} from '../../src/server/types'
+import type { Cube } from '../../src/server/types'
 
-import { 
-  TestQueryBuilder, 
-  TestExecutor, 
-  QueryValidator, 
-  TestDataGenerator,
-  PerformanceMeasurer 
-} from './helpers/test-utilities'
+import { TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
 describe('Time Dimension Auto-Sorting', () => {
@@ -154,8 +142,7 @@ describe('Time Dimension Auto-Sorting', () => {
     // Time dimension should still be auto-sorted in ascending order
     // while the regular dimension follows explicit desc order
     const timeData = result.data.map(row => new Date(row['Productivity.date']).getTime())
-    const employeeData = result.data.map(row => row['Productivity.employeeId'])
-    
+
     // Check that time dimension is sorted ascending (auto-sort)
     if (timeData.length > 1) {
       const timeSorted = [...timeData].sort((a, b) => a - b)

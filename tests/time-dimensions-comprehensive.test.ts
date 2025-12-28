@@ -4,20 +4,14 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, and } from 'drizzle-orm'
-import { 
+import {
   createTestDatabaseExecutor
 } from './helpers/test-database'
 
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
+import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import { defineCube } from '../src/server/cube-utils'
-import type { 
-  Cube, 
-  QueryContext,
-  BaseQueryDefinition 
-} from '../../src/server/types'
+import type { Cube } from '../../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -55,7 +49,7 @@ describe('Comprehensive Time Dimensions', () => {
   describe('Time Granularity Testing', () => {
     const granularityTestCases = TestDataGenerator.generateTimeGranularityTestCases()
 
-    granularityTestCases.forEach(({ name, granularity, description, expectedPattern }) => {
+    granularityTestCases.forEach(({ granularity, description, expectedPattern }) => {
       it(`should handle ${granularity} granularity: ${description}`, async () => {
         const query = TestQueryBuilder.create()
           .measures(['Productivity.recordCount', 'Productivity.totalLinesOfCode'])

@@ -4,19 +4,15 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, and } from 'drizzle-orm'
-import { 
+import {
   createTestDatabaseExecutor
 } from './helpers/test-database'
 
-import { enhancedDepartments, enhancedEmployees, generateComprehensiveProductivityData, testSecurityContexts } from './helpers/enhanced-test-data'
+import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import { defineCube } from '../src/server/cube-utils'
-import type { 
-  Cube, 
-  QueryContext,
-  BaseQueryDefinition 
+import type {
+  Cube
 } from '../../src/server/types'
 
 import { 
@@ -560,7 +556,7 @@ describe('Comprehensive Filter Operations', () => {
   describe('SQL Injection Prevention', () => {
     const injectionTestCases = SecurityTestUtils.generateSQLInjectionTestCases()
 
-    injectionTestCases.forEach(({ name, maliciousInput, description }) => {
+    injectionTestCases.forEach(({ maliciousInput, description }) => {
       it(`should prevent SQL injection: ${description}`, async () => {
         const query = TestQueryBuilder.create()
           .measures(['Employees.count'])

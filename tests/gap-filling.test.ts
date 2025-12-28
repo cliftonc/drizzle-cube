@@ -455,7 +455,7 @@ describe('Gap Filling', () => {
       }
 
       // Each department should have exactly 3 days of data
-      for (const [deptId, rows] of byDepartment) {
+      for (const [, rows] of byDepartment) {
         expect(rows).toHaveLength(3)
       }
     })

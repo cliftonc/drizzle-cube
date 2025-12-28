@@ -104,12 +104,7 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      
-      // Generate SQL to debug
-      const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
-      
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -138,17 +133,12 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      
-      // Generate SQL to debug
-      const generatedSQL = await executor.generateMultiCubeSQL(cubes, query, testSecurityContexts.org1)
-
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
-      
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
-      
+
       // The filter should limit results to Alex Chen in the date range
       if (result.data.length > 0) {
         for (const row of result.data) {
@@ -252,21 +242,6 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      
-      // First, let's see all data without filters
-      const noFilterQuery = {
-        measures: ["Productivity.avgLinesOfCode"],
-        dimensions: ["Employees.name"],
-        timeDimensions: [
-          {
-            dimension: "Productivity.date",
-            granularity: "quarter"
-          }
-        ]
-      }
-
-      const unfilteredResult = await executor.execute(cubes, noFilterQuery, testSecurityContexts.org1)
-
       // Now test with just the name filter
       const nameOnlyQuery = {
         measures: ["Productivity.avgLinesOfCode"],
@@ -295,8 +270,7 @@ describe('Time Dimension Filters', () => {
       expect(Array.isArray(result.data)).toBe(true)
       
       // Compare record counts to see if date filter is actually working
-      const unfilteredCount = unfilteredResult.data.length
-      const nameOnlyCount = nameFilterResult.data.length  
+      const nameOnlyCount = nameFilterResult.data.length
       const bothFiltersCount = result.data.length
       
       

@@ -12,9 +12,8 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { 
-  Cube, 
-  QueryContext
+import type {
+  Cube
 } from '../../src/server/types'
 
 import { 
@@ -44,24 +43,6 @@ describe('Comprehensive Date Range Tests', () => {
       close()
     }
   })
-
-  // Test all 14 DATE_RANGE_OPTIONS from the client
-  const dateRangeOptions = [
-    { value: 'custom', label: 'Custom' },
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'this_week', label: 'This week' },
-    { value: 'this_month', label: 'This month' },
-    { value: 'this_quarter', label: 'This quarter' },
-    { value: 'this_year', label: 'This year' },
-    { value: 'last_7_days', label: 'Last 7 days' },
-    { value: 'last_30_days', label: 'Last 30 days' },
-    { value: 'last_week', label: 'Last week' },
-    { value: 'last_month', label: 'Last month' },
-    { value: 'last_quarter', label: 'Last quarter' },
-    { value: 'last_year', label: 'Last year' },
-    { value: 'last_12_months', label: 'Last 12 months' }
-  ]
 
   describe('Single Day Ranges', () => {
     it('should handle "today" dateRange', async () => {

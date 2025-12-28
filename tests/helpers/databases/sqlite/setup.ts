@@ -4,7 +4,6 @@
 
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
-import { sql } from 'drizzle-orm'
 import Database from 'better-sqlite3'
 import { sqliteTestSchema, employees, departments, productivity, timeEntries, analyticsPages, teams, employeeTeams, products, sales, inventory } from './schema'
 import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployeeTeams, generateComprehensiveProductivityData, generateComprehensiveTimeEntriesData, enhancedProducts, enhancedSales, enhancedInventory } from '../../enhanced-test-data'
@@ -57,7 +56,7 @@ export function cleanupSQLiteTestDatabase() {
 /**
  * Run SQLite migrations using Drizzle
  */
-export async function runSQLiteMigrations(db: ReturnType<typeof drizzle>, client: Database) {
+export async function runSQLiteMigrations(db: ReturnType<typeof drizzle>, _client: Database) {
   console.log('Running SQLite migrations...')
   
   try {

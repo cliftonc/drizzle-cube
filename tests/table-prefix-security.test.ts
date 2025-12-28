@@ -12,25 +12,23 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll } from 'vitest'
-import { TestExecutor, TestQueryBuilder } from './helpers/test-utilities'
+import { TestQueryBuilder } from './helpers/test-utilities'
 import { createTestDatabaseExecutor } from './helpers/test-database'
 import { getTestCubes } from './helpers/test-cubes'
 import { QueryExecutor } from '../src/server/executor'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 describe('Table Prefix Security', () => {
-  let testExecutor: TestExecutor
   let executor: QueryExecutor
   let cubes: Map<string, any>
   let close: () => void
 
   beforeAll(async () => {
     const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
-    
+
     executor = new QueryExecutor(dbExecutor)
     close = cleanup
     cubes = await getTestCubes(['Employees', 'Departments', 'Productivity'])
-    testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
   })
   
   afterAll(() => {

@@ -89,7 +89,7 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('avg(')
       
       // Verify query executes correctly
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )
@@ -120,7 +120,7 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('lines_of_code')
       
       // Verify query executes correctly
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )
@@ -149,7 +149,7 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('avg(')
       
       // Verify query executes correctly
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )
@@ -186,7 +186,7 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('avg(')
       
       // Verify query executes correctly
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )
@@ -218,8 +218,8 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('where')
       expect(sqlResult.sql.toLowerCase()).toContain('having')
       
-      // Verify query executes correctly  
-      const { result, validation } = await testExecutor.validateQuery(
+      // Verify query executes correctly
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )
@@ -246,7 +246,7 @@ describe('HAVING Clause for Measure Filters', () => {
       expect(sqlResult.sql.toLowerCase()).toContain('having')
       expect(sqlResult.sql.toLowerCase()).toContain('sum(')
       
-      const { result, validation } = await testExecutor.validateQuery(
+      const { validation } = await testExecutor.validateQuery(
         query,
         ['Employees.count', 'Employees.departmentId']
       )

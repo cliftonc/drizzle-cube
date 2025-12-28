@@ -7,9 +7,6 @@ import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { 
   createTestDatabaseExecutor
 } from './helpers/test-database'
-import { 
-  SemanticLayerCompiler
-} from '../src/server'
 import { QueryExecutor } from '../src/server/executor'
 import type { 
   Cube, 
@@ -270,8 +267,6 @@ describe('Error Handling - Database Failures', () => {
 
   describe('Recovery and Resilience', () => {
     it('should allow query execution to continue after handling errors', async () => {
-      const originalExecute = testExecutor.executeQuery
-
       // First query fails
       vi.spyOn(testExecutor, 'executeQuery').mockRejectedValueOnce(
         new Error('Temporary database error')

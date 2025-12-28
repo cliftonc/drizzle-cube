@@ -29,7 +29,7 @@ describe('Query Validation', () => {
 
   beforeAll(async () => {
     // Create database and executor using the unified database utilities
-    const { executor, close } = await createTestDatabaseExecutor()
+    const { executor } = await createTestDatabaseExecutor()
     
     // Use the standard test cubes
     const { testEmployeesCube, testDepartmentsCube } = await createTestCubesForCurrentDatabase()

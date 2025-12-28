@@ -4,7 +4,7 @@
  * Extended with productivity metrics and analytics pages for comprehensive testing
  */
 
-import { sqliteTable, integer, text, real, blob } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 
 // Employee table - SQLite version
