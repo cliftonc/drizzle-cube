@@ -88,6 +88,31 @@ export interface AnalysisBuilderState {
   resultsStale: boolean
 }
 
+/**
+ * State for the AI query generation panel
+ */
+export interface AIState {
+  /** Whether the AI panel is open */
+  isOpen: boolean
+  /** User's natural language prompt */
+  userPrompt: string
+  /** Whether a query is being generated */
+  isGenerating: boolean
+  /** Error message from generation */
+  error: string | null
+  /** Whether the AI has generated a query that's been loaded */
+  hasGeneratedQuery: boolean
+  /** Snapshot of state before AI was opened (for undo) */
+  previousState: {
+    metrics: MetricItem[]
+    breakdowns: BreakdownItem[]
+    filters: Filter[]
+    chartType: ChartType
+    chartConfig: ChartAxisConfig
+    displayConfig: ChartDisplayConfig
+  } | null
+}
+
 // ============================================================================
 // Field Search Modal Types
 // ============================================================================
@@ -173,7 +198,7 @@ export interface FieldDetailPanelProps {
 /**
  * Tab options for the query panel
  */
-export type QueryPanelTab = 'query' | 'chart'
+export type QueryPanelTab = 'query' | 'chart' | 'display'
 
 /**
  * Props for the AnalysisQueryPanel component
@@ -288,6 +313,15 @@ export interface AnalysisResultsPanelProps {
   onShareClick?: () => void
   canShare?: boolean
   shareButtonState?: 'idle' | 'copied' | 'copied-no-chart'
+
+  // Clear functionality
+  onClearClick?: () => void
+  canClear?: boolean
+
+  // AI functionality
+  enableAI?: boolean
+  isAIOpen?: boolean
+  onAIToggle?: () => void
 }
 
 // ============================================================================

@@ -37,5 +37,19 @@ export const scatterChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a dimension to color points'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'xAxisFormat',
+      label: 'X-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for X-axis'
+    },
+    {
+      key: 'leftYAxisFormat',
+      label: 'Y-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for Y-axis'
+    }
+  ]
 }

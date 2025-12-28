@@ -27,5 +27,13 @@ export const radialBarChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a measure for values'
     }
   ],
-  displayOptions: ['showLegend', 'showTooltip', 'hideHeader']
+  displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'leftYAxisFormat',
+      label: 'Value Format',
+      type: 'axisFormat',
+      description: 'Number formatting for values'
+    }
+  ]
 }

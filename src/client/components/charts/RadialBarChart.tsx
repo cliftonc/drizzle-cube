@@ -3,7 +3,7 @@ import { RadialBarChart as RechartsRadialBarChart, RadialBar, Legend, Cell } fro
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
 export default function RadialBarChart({ 
@@ -19,7 +19,8 @@ export default function RadialBarChart({
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true
+      showTooltip: displayConfig?.showTooltip ?? true,
+      leftYAxisFormat: displayConfig?.leftYAxisFormat
     }
 
     if (!data || data.length === 0) {
@@ -121,7 +122,12 @@ export default function RadialBarChart({
           margin={{ top: 20, right: 30, bottom: 20, left: 30 }}
         >
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip />
+            <ChartTooltip
+              formatter={safeDisplayConfig.leftYAxisFormat
+                ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+                : undefined
+              }
+            />
           )}
           {safeDisplayConfig.showLegend && (
             <Legend 
@@ -135,10 +141,17 @@ export default function RadialBarChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          <RadialBar 
-            dataKey="value" 
+          <RadialBar
+            dataKey="value"
             cornerRadius={4}
-            label={{ position: 'insideStart', fill: '#fff', fontSize: 12 }}
+            label={{
+              position: 'insideStart',
+              fill: '#fff',
+              fontSize: 12,
+              formatter: safeDisplayConfig.leftYAxisFormat
+                ? (value: any) => formatAxisValue(value, safeDisplayConfig.leftYAxisFormat)
+                : undefined
+            }}
           >
             {radialData.map((entry, index) => (
               <Cell 

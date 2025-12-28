@@ -49,7 +49,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Share props
   onShareClick,
   canShare = false,
-  shareButtonState = 'idle'
+  shareButtonState = 'idle',
+  // Clear functionality
+  onClearClick,
+  canClear = false,
+  // AI functionality
+  enableAI = false,
+  isAIOpen = false,
+  onAIToggle
 }: AnalysisResultsPanelProps) {
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
@@ -69,6 +76,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const CodeIcon = getIcon('codeBracket')
   const ShareIcon = getIcon('share')
   const CheckIcon = getIcon('check')
+  const TrashIcon = getIcon('delete')
+  const SparklesIcon = getIcon('sparkles')
 
   // Loading state - initial load
   const renderLoading = () => (
@@ -139,13 +148,23 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderEmpty = () => (
     <div className="h-full flex items-center justify-center pt-6">
       <div className="text-center mb-16">
-        <TimeIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
+        <ChartIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
         <div className="text-sm font-semibold text-dc-text-secondary mb-1">
           No Results Yet
         </div>
-        <div className="text-xs text-dc-text-muted">
+        <div className="text-xs text-dc-text-muted mb-4">
           Add metrics or breakdowns from the panel on the right to see results
         </div>
+        {/* Prominent AI button when enabled */}
+        {enableAI && onAIToggle && (
+          <button
+            onClick={onAIToggle}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Analyse with AI
+          </button>
+        )}
       </div>
     </div>
   )
@@ -375,6 +394,22 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 </select>
               )}
 
+              {/* AI Button - positioned before palette selector */}
+              {enableAI && onAIToggle && (
+                <button
+                  onClick={onAIToggle}
+                  className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    isAIOpen
+                      ? 'text-white bg-purple-600 border border-purple-600'
+                      : 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                  }`}
+                  title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
+                >
+                  <SparklesIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Analyse with AI</span>
+                </button>
+              )}
+
               {/* Color Palette Selector (only when callback is provided, i.e., standalone mode) */}
               {onColorPaletteChange && (
                 <ColorPaletteSelector
@@ -414,6 +449,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                       <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
                     </>
                   )}
+                </button>
+              )}
+
+              {/* Clear Button */}
+              {onClearClick && canClear && (
+                <button
+                  onClick={onClearClick}
+                  className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover border border-dc-border rounded transition-colors"
+                  title="Clear all query data"
+                >
+                  <TrashIcon className="w-3 h-3" />
+                  <span className="hidden sm:inline">Clear</span>
                 </button>
               )}
 
@@ -500,6 +547,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Determine what to render based on execution status
   const hasResults = executionResults !== null
 
+  // Don't show results if we're in idle state with no query content (cleared state)
+  const shouldShowResults = hasResults && (executionStatus !== 'idle' || hasQueryContent)
+
   return (
     <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
       {/* Main content */}
@@ -507,7 +557,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       {executionStatus === 'idle' && hasQueryContent && !hasResults && renderWaiting()}
       {executionStatus === 'loading' && !hasResults && renderLoading()}
       {executionStatus === 'error' && !hasResults && renderError()}
-      {(executionStatus === 'success' || hasResults) && renderSuccess()}
+      {(executionStatus === 'success' || shouldShowResults) && renderSuccess()}
 
       {/* Overlay states */}
       {(executionStatus === 'loading' || executionStatus === 'refreshing') && hasResults && renderOverlaySpinner()}

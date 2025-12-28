@@ -34,5 +34,13 @@ export const radarChartConfig: ChartTypeConfig = {
       emptyText: 'Drop dimensions for multiple shapes'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'leftYAxisFormat',
+      label: 'Value Format',
+      type: 'axisFormat',
+      description: 'Number formatting for values'
+    }
+  ]
 }

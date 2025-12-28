@@ -3,7 +3,7 @@ import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiu
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
 export default function RadarChart({ 
@@ -20,7 +20,8 @@ export default function RadarChart({
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showTooltip: displayConfig?.showTooltip ?? true,
-      showGrid: displayConfig?.showGrid ?? true
+      showGrid: displayConfig?.showGrid ?? true,
+      leftYAxisFormat: displayConfig?.leftYAxisFormat
     }
 
     if (!data || data.length === 0) {
@@ -141,9 +142,18 @@ export default function RadarChart({
           <PolarRadiusAxis
             tick={{ fontSize: 10 }}
             className="text-dc-text-muted"
+            tickFormatter={safeDisplayConfig.leftYAxisFormat
+              ? (value: any) => formatAxisValue(value, safeDisplayConfig.leftYAxisFormat)
+              : undefined
+            }
           />
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip />
+            <ChartTooltip
+              formatter={safeDisplayConfig.leftYAxisFormat
+                ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+                : undefined
+              }
+            />
           )}
           {(safeDisplayConfig.showLegend && seriesKeys.length > 1) && (
             <Legend 

@@ -1,4 +1,5 @@
 import type { FieldLabelMap } from '../hooks/useCubeMeta'
+import type { AxisFormatConfig } from '../types'
 
 // Utility function to check if a value is a valid numeric value (not null, undefined, or NaN)
 // This is used to preserve null values instead of converting them to 0
@@ -23,6 +24,212 @@ export function formatNumericValue(value: any): string {
   if (Number.isInteger(num)) return num.toLocaleString()
   // Round to at most 2 decimal places, remove trailing zeros
   return parseFloat(num.toFixed(2)).toLocaleString()
+}
+
+/**
+ * Format a numeric value for axis/tooltip display with configurable formatting
+ *
+ * @param value - The numeric value to format
+ * @param config - Optional formatting configuration
+ * @param locale - Optional locale string (defaults to browser locale)
+ * @returns Formatted string representation of the value
+ *
+ * @example
+ * formatAxisValue(1250000, { unit: 'currency', abbreviate: true }) // "$1.25M"
+ * formatAxisValue(0.75, { unit: 'percent', decimals: 1 }) // "75.0%"
+ * formatAxisValue(1234567, { abbreviate: true, decimals: 2 }) // "1.23M"
+ */
+export function formatAxisValue(
+  value: number | null | undefined,
+  config?: AxisFormatConfig,
+  locale?: string
+): string {
+  // Handle null/undefined
+  if (value === null || value === undefined) {
+    return 'No data'
+  }
+
+  // Handle non-numeric values
+  const num = typeof value === 'number' ? value : parseFloat(String(value))
+  if (isNaN(num)) {
+    return String(value)
+  }
+
+  // Handle special cases
+  if (!isFinite(num)) {
+    return num > 0 ? '∞' : '-∞'
+  }
+
+  // Get locale (default to browser locale)
+  const effectiveLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US')
+
+  // If no config provided, use default formatting
+  if (!config) {
+    return formatNumericValue(value)
+  }
+
+  const { unit, abbreviate = true, decimals, customPrefix, customSuffix } = config
+
+  // Calculate the display value and suffix for abbreviation
+  // Default to true for abbreviation when config is provided
+  let displayValue = num
+  let abbreviationSuffix = ''
+
+  if (abbreviate) {
+    const absNum = Math.abs(num)
+    if (absNum >= 1_000_000_000) {
+      displayValue = num / 1_000_000_000
+      abbreviationSuffix = 'B'
+    } else if (absNum >= 1_000_000) {
+      displayValue = num / 1_000_000
+      abbreviationSuffix = 'M'
+    } else if (absNum >= 1_000) {
+      displayValue = num / 1_000
+      abbreviationSuffix = 'K'
+    }
+  }
+
+  // Determine decimal places
+  // If decimals is undefined, use auto (2 for non-integers, 0 for integers after abbreviation)
+  const effectiveDecimals = decimals !== undefined
+    ? decimals
+    : (Number.isInteger(displayValue) ? 0 : 2)
+
+  // Format based on unit type
+  switch (unit) {
+    case 'currency': {
+      // Use Intl.NumberFormat for currency
+      // Currency code is determined by locale (USD for en-US, EUR for de-DE, etc.)
+      const currencyCode = getCurrencyCodeForLocale(effectiveLocale)
+
+      if (abbreviate && abbreviationSuffix) {
+        // For abbreviated currency, format the number part and add suffix
+        const formatted = new Intl.NumberFormat(effectiveLocale, {
+          style: 'currency',
+          currency: currencyCode,
+          minimumFractionDigits: effectiveDecimals,
+          maximumFractionDigits: effectiveDecimals,
+        }).format(displayValue)
+        // Insert abbreviation suffix before any trailing currency symbol or at end
+        // Handle both "$1.25" -> "$1.25M" and "1.25 €" -> "1.25M €"
+        const parts = new Intl.NumberFormat(effectiveLocale, {
+          style: 'currency',
+          currency: currencyCode,
+        }).formatToParts(displayValue)
+        const hasTrailingCurrency = parts[parts.length - 1]?.type === 'currency'
+        if (hasTrailingCurrency) {
+          // Currency symbol is at the end (e.g., "1.25 €")
+          return formatted.replace(/(\s*[^\d\s]+)$/, abbreviationSuffix + '$1')
+        }
+        return formatted + abbreviationSuffix
+      }
+
+      return new Intl.NumberFormat(effectiveLocale, {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: effectiveDecimals,
+        maximumFractionDigits: effectiveDecimals,
+      }).format(displayValue)
+    }
+
+    case 'percent': {
+      // Format as percentage (multiply by 100 if value is 0-1 range, otherwise use as-is)
+      // Assume values > 1 are already percentages, values <= 1 need multiplication
+      const percentValue = Math.abs(displayValue) <= 1 && !abbreviate ? displayValue * 100 : displayValue
+      const formatted = new Intl.NumberFormat(effectiveLocale, {
+        minimumFractionDigits: effectiveDecimals,
+        maximumFractionDigits: effectiveDecimals,
+      }).format(percentValue)
+      return formatted + abbreviationSuffix + '%'
+    }
+
+    case 'custom': {
+      // Apply custom prefix/suffix
+      const prefix = customPrefix || ''
+      const suffix = customSuffix || ''
+      const formatted = new Intl.NumberFormat(effectiveLocale, {
+        minimumFractionDigits: effectiveDecimals,
+        maximumFractionDigits: effectiveDecimals,
+      }).format(displayValue)
+      return prefix + formatted + abbreviationSuffix + suffix
+    }
+
+    case 'number':
+    default: {
+      // Standard number formatting with locale-aware grouping
+      const formatted = new Intl.NumberFormat(effectiveLocale, {
+        minimumFractionDigits: effectiveDecimals,
+        maximumFractionDigits: effectiveDecimals,
+      }).format(displayValue)
+      return formatted + abbreviationSuffix
+    }
+  }
+}
+
+/**
+ * Get the currency code for a given locale
+ * Maps common locales to their default currency
+ */
+function getCurrencyCodeForLocale(locale: string): string {
+  // Extract language and region from locale (e.g., "en-US" -> ["en", "US"])
+  const parts = locale.split('-')
+  const region = parts[1]?.toUpperCase()
+
+  // Map regions to currencies
+  const currencyMap: Record<string, string> = {
+    'US': 'USD',
+    'CA': 'CAD',
+    'GB': 'GBP',
+    'UK': 'GBP',
+    'AU': 'AUD',
+    'NZ': 'NZD',
+    'EU': 'EUR',
+    'DE': 'EUR',
+    'FR': 'EUR',
+    'IT': 'EUR',
+    'ES': 'EUR',
+    'NL': 'EUR',
+    'BE': 'EUR',
+    'AT': 'EUR',
+    'IE': 'EUR',
+    'PT': 'EUR',
+    'FI': 'EUR',
+    'JP': 'JPY',
+    'CN': 'CNY',
+    'KR': 'KRW',
+    'IN': 'INR',
+    'BR': 'BRL',
+    'MX': 'MXN',
+    'CH': 'CHF',
+    'SE': 'SEK',
+    'NO': 'NOK',
+    'DK': 'DKK',
+    'PL': 'PLN',
+    'RU': 'RUB',
+    'ZA': 'ZAR',
+    'SG': 'SGD',
+    'HK': 'HKD',
+    'TW': 'TWD',
+    'TH': 'THB',
+    'MY': 'MYR',
+    'PH': 'PHP',
+    'ID': 'IDR',
+    'VN': 'VND',
+    'AE': 'AED',
+    'SA': 'SAR',
+    'IL': 'ILS',
+    'TR': 'TRY',
+  }
+
+  return currencyMap[region] || 'USD'
+}
+
+/**
+ * Create a tick formatter function for Recharts axes
+ * Returns a function that can be used as tickFormatter prop
+ */
+export function createAxisTickFormatter(config?: AxisFormatConfig): (value: any) => string {
+  return (value: any) => formatAxisValue(value, config)
 }
 
 // Utility function to get field label from field name

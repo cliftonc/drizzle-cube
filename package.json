@@ -232,6 +232,7 @@
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",
     "dagre": "^0.8.5",
+    "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
     "eslint": "^9.34.0",

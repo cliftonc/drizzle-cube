@@ -55,5 +55,19 @@ export const bubbleChartConfig: ChartTypeConfig = {
       emptyText: 'Drop a field for bubble color (optional)'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'minBubbleSize', 'maxBubbleSize', 'bubbleOpacity', 'hideHeader']
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'minBubbleSize', 'maxBubbleSize', 'bubbleOpacity', 'hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'xAxisFormat',
+      label: 'X-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for X-axis'
+    },
+    {
+      key: 'leftYAxisFormat',
+      label: 'Y-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for Y-axis and values'
+    }
+  ]
 }

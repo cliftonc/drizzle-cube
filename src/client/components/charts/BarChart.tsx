@@ -3,7 +3,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } f
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, isValidNumericValue, formatNumericValue } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
@@ -29,6 +29,10 @@ export default function BarChart({
     showGrid: displayConfig?.showGrid ?? true,
     showTooltip: displayConfig?.showTooltip ?? true
   }
+
+  // Extract axis format configs
+  const leftYAxisFormat = displayConfig?.leftYAxisFormat
+  const rightYAxisFormat = displayConfig?.rightYAxisFormat
 
   // Validate chartConfig - support both legacy and new formats
   // Do validation but don't early return yet (hooks must come first)
@@ -69,6 +73,26 @@ export default function BarChart({
     )
   }, [data, xAxisField, yAxisFields, queryObject, seriesFields, labelMap, configError])
 
+  // Dual Y-axis support: extract yAxisAssignment from chartConfig
+  const yAxisAssignment = chartConfig?.yAxisAssignment || {}
+
+  // Build mapping from series key (label) to original field name
+  const seriesKeyToField: Record<string, string> = useMemo(() => {
+    const mapping: Record<string, string> = {}
+    yAxisFields.forEach((field) => {
+      const label = contextGetFieldLabel(field)
+      mapping[label] = field
+    })
+    return mapping
+  }, [yAxisFields, contextGetFieldLabel])
+
+  // Determine if we need a right Y-axis
+  const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
+
+  // Get fields for left and right axes for labels
+  const leftAxisFields = yAxisFields.filter((f) => (yAxisAssignment[f] || 'left') === 'left')
+  const rightAxisFields = yAxisFields.filter((f) => yAxisAssignment[f] === 'right')
+
   // Null handling: Filter out data points where ALL measure values are null
   // This prevents rendering empty bars and makes the chart clearer
   const { chartData, skippedCount } = useMemo(() => {
@@ -108,22 +132,26 @@ export default function BarChart({
     }
 
     // Determine stack offset for percentage stacking
-    const stackOffset = isPercentStack ? 'expand' as const : undefined
-    
+    // Disable stacking when dual Y-axis is used (bars on different axes can't be stacked)
+    const effectiveShouldStack = shouldStack && !hasRightAxis
+    const effectiveIsPercentStack = isPercentStack && !hasRightAxis
+    const stackOffset = effectiveIsPercentStack ? 'expand' as const : undefined
+
     // Check if we should use positive/negative coloring
     // This is enabled when we have single series data with mixed positive/negative values
     const usePositiveNegativeColoring = seriesKeys.length === 1 && chartData.some(row => {
       const value = row[seriesKeys[0]]
       return typeof value === 'number' && value < 0
     })
-    
+
     // Determine if legend will be shown
     const showLegend = safeDisplayConfig.showLegend
-    
-    // Use custom chart margins with extra left space for Y-axis label
+
+    // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = {
       ...CHART_MARGINS,
-      left: 40 // Increased from 20 to 40 for Y-axis label space
+      left: 40, // Space for left Y-axis label
+      right: hasRightAxis ? 40 : 20 // Extra space for right Y-axis label if needed
     }
     
     // Process target values and add to chart data
@@ -166,11 +194,48 @@ export default function BarChart({
             height={60}
           />
           <YAxis
+            yAxisId="left"
+            orientation="left"
             tick={{ fontSize: 12 }}
-            tickFormatter={isPercentStack ? (v) => `${(v * 100).toFixed(0)}%` : undefined}
-            domain={isPercentStack ? [0, 1] : undefined}
-            label={isPercentStack ? undefined : { value: contextGetFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+            tickFormatter={
+              effectiveIsPercentStack
+                ? (v) => `${(v * 100).toFixed(0)}%`
+                : leftYAxisFormat
+                  ? (value) => formatAxisValue(value, leftYAxisFormat)
+                  : undefined
+            }
+            domain={effectiveIsPercentStack ? [0, 1] : undefined}
+            label={
+              effectiveIsPercentStack
+                ? undefined
+                : leftAxisFields.length > 0
+                  ? {
+                      value: leftYAxisFormat?.label || contextGetFieldLabel(leftAxisFields[0]),
+                      angle: -90,
+                      position: 'left',
+                      style: { textAnchor: 'middle', fontSize: '12px' }
+                    }
+                  : undefined
+            }
           />
+          {hasRightAxis && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 12 }}
+              tickFormatter={rightYAxisFormat ? (value) => formatAxisValue(value, rightYAxisFormat) : undefined}
+              label={
+                rightAxisFields.length > 0
+                  ? {
+                      value: rightYAxisFormat?.label || contextGetFieldLabel(rightAxisFields[0]),
+                      angle: 90,
+                      position: 'right',
+                      style: { textAnchor: 'middle', fontSize: '12px' }
+                    }
+                  : undefined
+              }
+            />
+          )}
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
               formatter={(value: any, name: any) => {
@@ -179,13 +244,18 @@ export default function BarChart({
                   return ['No data', name]
                 }
                 if (name === 'Target') {
-                  return [formatNumericValue(value), 'Target Value']
+                  // Use left Y-axis format for target values
+                  return [formatAxisValue(value, leftYAxisFormat), 'Target Value']
                 }
                 // Format as percentage when using percent stacking
-                if (isPercentStack && typeof value === 'number') {
+                if (effectiveIsPercentStack && typeof value === 'number') {
                   return [`${(value * 100).toFixed(1)}%`, name]
                 }
-                return [formatNumericValue(value), name]
+                // Determine which axis format to use based on series name
+                const originalField = seriesKeyToField[name]
+                const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+                const formatConfig = axisId === 'right' ? rightYAxisFormat : leftYAxisFormat
+                return [formatAxisValue(value, formatConfig), name]
               }}
             />
           )}
@@ -201,33 +271,46 @@ export default function BarChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          {seriesKeys.map((seriesKey, index) => (
-            <Bar
-              key={seriesKey}
-              dataKey={seriesKey}
-              stackId={shouldStack ? "stack" : undefined}
-              fill={usePositiveNegativeColoring ? POSITIVE_COLOR : ((colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length])}
-              fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-            >
-              {usePositiveNegativeColoring && chartData.map((entry, entryIndex) => {
-                const value = entry[seriesKey]
-                const fillColor = typeof value === 'number' && value < 0 ? NEGATIVE_COLOR : POSITIVE_COLOR
-                return (
-                  <Cell 
-                    key={`cell-${entryIndex}`} 
-                    fill={fillColor}
-                    fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-                  />
-                )
-              })}
-            </Bar>
-          ))}
+          {seriesKeys.map((seriesKey, index) => {
+            // Look up the original field name to get its axis assignment
+            const originalField = seriesKeyToField[seriesKey]
+            const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+            return (
+              <Bar
+                key={seriesKey}
+                dataKey={seriesKey}
+                yAxisId={axisId}
+                stackId={effectiveShouldStack ? 'stack' : undefined}
+                fill={
+                  usePositiveNegativeColoring
+                    ? POSITIVE_COLOR
+                    : (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
+                      CHART_COLORS[index % CHART_COLORS.length]
+                }
+                fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+              >
+                {usePositiveNegativeColoring &&
+                  chartData.map((entry, entryIndex) => {
+                    const value = entry[seriesKey]
+                    const fillColor = typeof value === 'number' && value < 0 ? NEGATIVE_COLOR : POSITIVE_COLOR
+                    return (
+                      <Cell
+                        key={`cell-${entryIndex}`}
+                        fill={fillColor}
+                        fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                      />
+                    )
+                  })}
+              </Bar>
+            )
+          })}
           {spreadTargets.length > 0 && (
             <>
               {/* White background line */}
               <Line
                 type="monotone"
                 dataKey="__target"
+                yAxisId="left"
                 stroke="#ffffff"
                 strokeWidth={2}
                 dot={false}
@@ -238,6 +321,7 @@ export default function BarChart({
               <Line
                 type="monotone"
                 dataKey="__target"
+                yAxisId="left"
                 name="Target"
                 stroke="#8B5CF6"
                 strokeWidth={2}

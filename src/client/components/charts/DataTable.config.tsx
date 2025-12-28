@@ -18,5 +18,13 @@ export const dataTableConfig: ChartTypeConfig = {
       emptyText: 'Drop fields to display as columns (or leave empty for all)'
     }
   ],
-  displayOptions: ['hideHeader']
+  displayOptions: ['hideHeader'],
+  displayOptionsConfig: [
+    {
+      key: 'leftYAxisFormat',
+      label: 'Value Format',
+      type: 'axisFormat',
+      description: 'Number formatting for numeric values'
+    }
+  ]
 }

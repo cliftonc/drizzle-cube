@@ -37,7 +37,7 @@ function App() {
       <AnalysisBuilderToggleContext.Provider value={{ useAnalysisBuilder, setUseAnalysisBuilder }}>
         <CubeProvider
           apiOptions={{ apiUrl: '/cubejs-api/v1' }}
-          features={{ enableAI: false, useAnalysisBuilder }}
+          features={{ enableAI: true, aiEndpoint: '/api/ai/generate', useAnalysisBuilder }}
         >
           <Layout>
             <Routes>

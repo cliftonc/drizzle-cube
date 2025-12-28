@@ -4,7 +4,7 @@ import { scaleQuantize, scaleOrdinal } from 'd3'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -22,7 +22,8 @@ export default function TreeMapChart({
   try {
     const safeDisplayConfig = {
       showTooltip: displayConfig?.showTooltip ?? true,
-      showLegend: displayConfig?.showLegend ?? true
+      showLegend: displayConfig?.showLegend ?? true,
+      leftYAxisFormat: displayConfig?.leftYAxisFormat
     }
 
     if (!data || data.length === 0) {
@@ -237,14 +238,17 @@ export default function TreeMapChart({
                 </div>
               )}
               {width > 60 && height > 45 && (
-                <div 
+                <div
                   style={{
                     fontSize: `${Math.max(8, Math.min(width / 10, height / 10, 14))}px`,
                     textAlign: 'center',
                     opacity: 0.9
                   }}
                 >
-                  {typeof size === 'number' ? size.toLocaleString() : size}
+                  {safeDisplayConfig.leftYAxisFormat
+                    ? formatAxisValue(size, safeDisplayConfig.leftYAxisFormat)
+                    : (typeof size === 'number' ? size.toLocaleString() : size)
+                  }
                 </div>
               )}
             </div>
@@ -280,7 +284,9 @@ export default function TreeMapChart({
           const ratio = index / (CHART_COLORS_GRADIENT.length - 1)
           const value = minValue + (maxValue - minValue) * ratio
           return {
-            value: value.toFixed(2),
+            value: safeDisplayConfig.leftYAxisFormat
+              ? formatAxisValue(value, safeDisplayConfig.leftYAxisFormat)
+              : value.toFixed(2),
             type: 'rect',
             color: color
           }
@@ -317,7 +323,12 @@ export default function TreeMapChart({
             content={<CustomizedContent />}
           >
             {safeDisplayConfig.showTooltip && (
-              <ChartTooltip />
+              <ChartTooltip
+                formatter={safeDisplayConfig.leftYAxisFormat
+                  ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+                  : undefined
+                }
+              />
             )}
           </Treemap>
         </ChartContainer>
@@ -333,10 +344,16 @@ export default function TreeMapChart({
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-dc-text-muted">
-                    {Math.min(...data.map(item => {
-                      const value = item[seriesField!]
-                      return typeof value === 'string' ? parseFloat(value) : value
-                    })).toFixed(2)}
+                    {safeDisplayConfig.leftYAxisFormat
+                      ? formatAxisValue(Math.min(...data.map(item => {
+                          const value = item[seriesField!]
+                          return typeof value === 'string' ? parseFloat(value) : value
+                        })), safeDisplayConfig.leftYAxisFormat)
+                      : Math.min(...data.map(item => {
+                          const value = item[seriesField!]
+                          return typeof value === 'string' ? parseFloat(value) : value
+                        })).toFixed(2)
+                    }
                   </span>
                   <div
                     className="h-4 rounded-sm"
@@ -346,10 +363,16 @@ export default function TreeMapChart({
                     }}
                   />
                   <span className="text-xs text-dc-text-muted">
-                    {Math.max(...data.map(item => {
-                      const value = item[seriesField!]
-                      return typeof value === 'string' ? parseFloat(value) : value
-                    })).toFixed(2)}
+                    {safeDisplayConfig.leftYAxisFormat
+                      ? formatAxisValue(Math.max(...data.map(item => {
+                          const value = item[seriesField!]
+                          return typeof value === 'string' ? parseFloat(value) : value
+                        })), safeDisplayConfig.leftYAxisFormat)
+                      : Math.max(...data.map(item => {
+                          const value = item[seriesField!]
+                          return typeof value === 'string' ? parseFloat(value) : value
+                        })).toFixed(2)
+                    }
                   </span>
                 </div>
               </div>

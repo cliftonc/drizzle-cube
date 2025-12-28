@@ -16,6 +16,7 @@ import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
   AnalysisBuilderState,
+  AIState,
   MetricItem,
   BreakdownItem,
   QueryPanelTab,
@@ -30,8 +31,10 @@ import AnalysisQueryPanel from './AnalysisQueryPanel'
 import type { MetaField, MetaResponse } from '../../shared/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../../shared/chartDefaults'
-import { compressWithFallback } from '../QueryBuilder/shareUtils'
+import { compressWithFallback, parseShareHash, decodeAndDecompress, clearShareHash } from '../QueryBuilder/shareUtils'
 import { getColorPalette } from '../../utils/colorPalettes'
+import { sendGeminiMessage, extractTextFromResponse } from '../AIAssistant/utils'
+import AnalysisAIPanel from './AnalysisAIPanel'
 
 // Storage key for localStorage persistence
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
@@ -286,6 +289,79 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     // Share state
     const [shareButtonState, setShareButtonState] = useState<'idle' | 'copied' | 'copied-no-chart'>('idle')
 
+    // AI state
+    const { features } = useCubeContext()
+    const [aiState, setAIState] = useState<AIState>({
+      isOpen: false,
+      userPrompt: '',
+      isGenerating: false,
+      error: null,
+      hasGeneratedQuery: false,
+      previousState: null
+    })
+
+    // Load shared state from URL on mount
+    useEffect(() => {
+      // Skip if initialQuery is provided (parent manages state)
+      if (initialQuery) return
+
+      const encoded = parseShareHash()
+      if (!encoded) return
+
+      const sharedState = decodeAndDecompress(encoded)
+      if (!sharedState || !sharedState.query) return
+
+      const query = sharedState.query
+
+      // Set metrics and breakdowns from shared query
+      setState({
+        ...createInitialState(),
+        metrics: (query.measures || []).map((field, index) => ({
+          id: generateId(),
+          field,
+          label: generateMetricLabel(index)
+        })),
+        breakdowns: [
+          ...(query.dimensions || []).map((field) => ({
+            id: generateId(),
+            field,
+            isTimeDimension: false
+          })),
+          ...(query.timeDimensions || []).map((td) => ({
+            id: generateId(),
+            field: td.dimension,
+            granularity: td.granularity,
+            isTimeDimension: true
+          }))
+        ],
+        filters: query.filters || []
+      })
+
+      // Set order if present
+      if (query.order) {
+        setOrder(query.order)
+      }
+
+      // Apply chart config if present
+      if (sharedState.chartType) {
+        setChartType(sharedState.chartType)
+        setUserManuallySelectedChart(true)
+      }
+      if (sharedState.chartConfig) {
+        setChartConfig(sharedState.chartConfig)
+      }
+      if (sharedState.displayConfig) {
+        setDisplayConfig(sharedState.displayConfig)
+      }
+      if (sharedState.activeView) {
+        setActiveView(sharedState.activeView)
+      }
+
+      // Clear the share hash from URL
+      clearShareHash()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Run once on mount
+
     // Build current query - memoized to prevent infinite loops
     const currentQuery = useMemo(
       () => buildCubeQuery(state.metrics, state.breakdowns, state.filters, order),
@@ -362,9 +438,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [debouncedQuery])
 
     // Execute query using useCubeQuery hook
-    // Keep showing old results with a "refreshing" overlay for smoother transitions
+    // Reset resultSet when query changes to avoid showing stale data after clearing
     const { resultSet, isLoading, error } = useCubeQuery(serverQuery, {
-      skip: !serverQuery
+      skip: !serverQuery,
+      resetResultSetOnChange: true
     })
 
     // Derive execution status - show success with initialData even before first query
@@ -848,7 +925,168 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       setState(createInitialState())
       setOrder(undefined)
       setUserManuallySelectedChart(false)
+      // Also reset chart type, config, and display config
+      setChartType('line')
+      setChartConfig({})
+      setDisplayConfig({ showLegend: true, showGrid: true, showTooltip: true })
+      // Clear the debounced query immediately to stop showing old results
+      setDebouncedQuery(null)
+      // Also clear any pending debounce timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
     }, [])
+
+    // ========================================================================
+    // AI Query Generation
+    // ========================================================================
+
+    const handleOpenAI = useCallback(() => {
+      // Snapshot current state for undo
+      setAIState({
+        isOpen: true,
+        userPrompt: '',
+        isGenerating: false,
+        error: null,
+        hasGeneratedQuery: false,
+        previousState: {
+          metrics: [...state.metrics],
+          breakdowns: [...state.breakdowns],
+          filters: [...state.filters],
+          chartType,
+          chartConfig: { ...chartConfig },
+          displayConfig: { ...displayConfig }
+        }
+      })
+    }, [state.metrics, state.breakdowns, state.filters, chartType, chartConfig, displayConfig])
+
+    const handleCloseAI = useCallback(() => {
+      setAIState(prev => ({
+        ...prev,
+        isOpen: false,
+        userPrompt: '',
+        error: null,
+        hasGeneratedQuery: false
+      }))
+    }, [])
+
+    const handleAIPromptChange = useCallback((prompt: string) => {
+      setAIState(prev => ({ ...prev, userPrompt: prompt }))
+    }, [])
+
+    const handleGenerateAI = useCallback(async () => {
+      if (!aiState.userPrompt.trim()) return
+
+      setAIState(prev => ({ ...prev, isGenerating: true, error: null }))
+
+      try {
+        const response = await sendGeminiMessage(
+          '', // API key not needed for server-side AI
+          aiState.userPrompt,
+          features?.aiEndpoint || '/api/ai'
+        )
+
+        const responseText = extractTextFromResponse(response)
+        const parsed = JSON.parse(responseText) as {
+          query?: CubeQuery
+          chartType?: ChartType
+          chartConfig?: ChartAxisConfig
+        } | CubeQuery
+
+        // Support both new format (with query/chartType/chartConfig) and legacy format (just query)
+        const query = ('query' in parsed && parsed.query) ? parsed.query : parsed as CubeQuery
+        const aiChartType = ('chartType' in parsed) ? parsed.chartType : undefined
+        const aiChartConfig = ('chartConfig' in parsed) ? parsed.chartConfig : undefined
+
+        // Load query into builder state (same pattern as initialQuery)
+        setState(prev => ({
+          ...prev,
+          metrics: (query.measures || []).map((field, index) => ({
+            id: generateId(),
+            field,
+            label: generateMetricLabel(index)
+          })),
+          breakdowns: [
+            ...(query.dimensions || []).map((field) => ({
+              id: generateId(),
+              field,
+              isTimeDimension: false
+            })),
+            ...(query.timeDimensions || []).map((td) => ({
+              id: generateId(),
+              field: td.dimension,
+              granularity: td.granularity,
+              isTimeDimension: true
+            }))
+          ],
+          filters: query.filters || []
+        }))
+
+        // Apply chart type if provided by AI
+        if (aiChartType) {
+          setChartType(aiChartType)
+          setUserManuallySelectedChart(true) // Prevent auto-switching
+        }
+
+        // Apply chart config if provided by AI
+        if (aiChartConfig) {
+          setChartConfig(aiChartConfig)
+        }
+
+        // Switch to chart view so user can see the visualization
+        setActiveView('chart')
+
+        setAIState(prev => ({
+          ...prev,
+          isGenerating: false,
+          hasGeneratedQuery: true
+        }))
+      } catch (error) {
+        setAIState(prev => ({
+          ...prev,
+          isGenerating: false,
+          error: error instanceof Error ? error.message : 'Failed to generate query'
+        }))
+      }
+    }, [aiState.userPrompt, features?.aiEndpoint])
+
+    const handleAcceptAI = useCallback(() => {
+      // Close panel and clear previous state (keep the changes)
+      setAIState({
+        isOpen: false,
+        userPrompt: '',
+        isGenerating: false,
+        error: null,
+        hasGeneratedQuery: false,
+        previousState: null
+      })
+    }, [])
+
+    const handleCancelAI = useCallback(() => {
+      // Restore previous state
+      if (aiState.previousState) {
+        setState(prev => ({
+          ...prev,
+          metrics: aiState.previousState!.metrics,
+          breakdowns: aiState.previousState!.breakdowns,
+          filters: aiState.previousState!.filters
+        }))
+        setChartType(aiState.previousState.chartType)
+        setChartConfig(aiState.previousState.chartConfig)
+        setDisplayConfig(aiState.previousState.displayConfig)
+      }
+
+      // Close panel
+      setAIState({
+        isOpen: false,
+        userPrompt: '',
+        isGenerating: false,
+        error: null,
+        hasGeneratedQuery: false,
+        previousState: null
+      })
+    }, [aiState.previousState])
 
     // Handle chart type change - track that user manually selected this
     const handleChartTypeChange = useCallback((type: ChartType) => {
@@ -862,7 +1100,23 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         type
       )
       setChartConfig(newChartConfig)
+      // Switch to chart view so user can see the changes
+      setActiveView('chart')
     }, [state.metrics, state.breakdowns])
+
+    // Handle chart config change - also switch to chart view
+    const handleChartConfigChange = useCallback((config: ChartAxisConfig) => {
+      setChartConfig(config)
+      // Switch to chart view so user can see the changes
+      setActiveView('chart')
+    }, [])
+
+    // Handle display config change - also switch to chart view
+    const handleDisplayConfigChange = useCallback((config: ChartDisplayConfig) => {
+      setDisplayConfig(config)
+      // Switch to chart view so user can see the changes
+      setActiveView('chart')
+    }, [])
 
     // ========================================================================
     // Share Handler
@@ -937,38 +1191,62 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         style={maxHeight ? { ['--dc-max-h' as string]: maxHeight } : undefined}
       >
         {/* Top/Left Panel - Results */}
-        <div className="h-[60vh] lg:h-auto lg:flex-1 min-w-0 border-b lg:border-b-0 lg:border-r border-dc-border overflow-auto">
-          <AnalysisResultsPanel
-            executionStatus={executionStatus}
-            executionResults={executionResults}
-            executionError={error?.message || null}
-            totalRowCount={null}
-            resultsStale={isLoading && executionResults !== null}
-            chartType={chartType}
-            chartConfig={chartConfig}
-            displayConfig={displayConfig}
-            colorPalette={effectiveColorPalette}
-            // Only show palette selector in standalone mode (not when editing portlet)
-            currentPaletteName={!externalColorPalette ? localPaletteName : undefined}
-            onColorPaletteChange={!externalColorPalette ? setLocalPaletteName : undefined}
-            query={currentQuery}
-            schema={meta as MetaResponse | null}
-            activeView={activeView}
-            onActiveViewChange={setActiveView}
-            displayLimit={displayLimit}
-            onDisplayLimitChange={setDisplayLimit}
-            hasMetrics={state.metrics.length > 0}
-            // Debug props (serverQuery is the cleaned/transformed version sent to server)
-            debugQuery={serverQuery}
-            debugSql={debugData.sql}
-            debugAnalysis={debugData.analysis}
-            debugLoading={debugData.loading}
-            debugError={debugData.error}
-            // Share props
-            onShareClick={handleShare}
-            canShare={isValidQuery}
-            shareButtonState={shareButtonState}
-          />
+        <div className="h-[60vh] lg:h-auto lg:flex-1 min-w-0 border-b lg:border-b-0 lg:border-r border-dc-border overflow-auto flex flex-col">
+          {/* AI Panel - expands above results when open */}
+          {aiState.isOpen && (
+            <AnalysisAIPanel
+              userPrompt={aiState.userPrompt}
+              onPromptChange={handleAIPromptChange}
+              isGenerating={aiState.isGenerating}
+              error={aiState.error}
+              hasGeneratedQuery={aiState.hasGeneratedQuery}
+              onGenerate={handleGenerateAI}
+              onAccept={handleAcceptAI}
+              onCancel={handleCancelAI}
+            />
+          )}
+
+          {/* Results Panel */}
+          <div className="flex-1 overflow-auto">
+            <AnalysisResultsPanel
+              executionStatus={executionStatus}
+              executionResults={executionResults}
+              executionError={error?.message || null}
+              totalRowCount={null}
+              resultsStale={isLoading && executionResults !== null}
+              chartType={chartType}
+              chartConfig={chartConfig}
+              displayConfig={displayConfig}
+              colorPalette={effectiveColorPalette}
+              // Only show palette selector in standalone mode (not when editing portlet)
+              currentPaletteName={!externalColorPalette ? localPaletteName : undefined}
+              onColorPaletteChange={!externalColorPalette ? setLocalPaletteName : undefined}
+              query={currentQuery}
+              schema={meta as MetaResponse | null}
+              activeView={activeView}
+              onActiveViewChange={setActiveView}
+              displayLimit={displayLimit}
+              onDisplayLimitChange={setDisplayLimit}
+              hasMetrics={state.metrics.length > 0}
+              // Debug props (serverQuery is the cleaned/transformed version sent to server)
+              debugQuery={serverQuery}
+              debugSql={debugData.sql}
+              debugAnalysis={debugData.analysis}
+              debugLoading={debugData.loading}
+              debugError={debugData.error}
+              // Share props
+              onShareClick={handleShare}
+              canShare={isValidQuery}
+              shareButtonState={shareButtonState}
+              // Clear props
+              onClearClick={handleClearQuery}
+              canClear={state.metrics.length > 0 || state.breakdowns.length > 0 || state.filters.length > 0}
+              // AI props
+              enableAI={features?.enableAI !== false}
+              isAIOpen={aiState.isOpen}
+              onAIToggle={aiState.isOpen ? handleCloseAI : handleOpenAI}
+            />
+          </div>
         </div>
 
         {/* Bottom/Right Panel - Query Builder */}
@@ -997,8 +1275,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             colorPalette={effectiveColorPalette}
             chartAvailability={chartAvailability}
             onChartTypeChange={handleChartTypeChange}
-            onChartConfigChange={setChartConfig}
-            onDisplayConfigChange={setDisplayConfig}
+            onChartConfigChange={handleChartConfigChange}
+            onDisplayConfigChange={handleDisplayConfigChange}
             validationStatus={state.validationStatus}
             validationError={state.validationError}
           />

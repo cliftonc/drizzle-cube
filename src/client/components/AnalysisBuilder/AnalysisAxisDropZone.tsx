@@ -11,7 +11,7 @@
  * - Hidden-on-hover remove buttons
  */
 
-import React, { useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
 import type { AxisDropZoneConfig } from '../../charts/chartConfigs'
 
@@ -44,6 +44,9 @@ interface AnalysisAxisDropZoneProps {
   onReorder?: (fromIndex: number, toIndex: number, axisKey: string) => void
   draggedItem?: { field: string; fromAxis: string; fromIndex?: number } | null
   getFieldMeta?: (field: string) => FieldMeta
+  // Dual Y-axis support
+  yAxisAssignment?: Record<string, 'left' | 'right'>
+  onYAxisAssignmentChange?: (field: string, axis: 'left' | 'right') => void
 }
 
 export default function AnalysisAxisDropZone({
@@ -56,12 +59,23 @@ export default function AnalysisAxisDropZone({
   onDragOver,
   onReorder,
   draggedItem,
-  getFieldMeta
+  getFieldMeta,
+  yAxisAssignment,
+  onYAxisAssignmentChange
 }: AnalysisAxisDropZoneProps) {
   const { key, label, description, mandatory, maxItems, emptyText } = config
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const [isDraggedOver, setIsDraggedOver] = useState(false)
   const [isReorderDraggedOver, setIsReorderDraggedOver] = useState(false)
+
+  // Track the field being dragged from this axis for drag-out-to-remove
+  const draggingFieldRef = useRef<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  // Keep fields in a ref to avoid stale closure issues
+  const fieldsRef = useRef(fields)
+  fieldsRef.current = fields
+  // Keep dropTargetIndex in a ref to avoid stale closure issues in drop handler
+  const dropTargetIndexRef = useRef<number | null>(null)
 
   // Calculate acceptance considering what's being dragged
   const getCanAcceptMore = () => {
@@ -92,9 +106,11 @@ export default function AnalysisAxisDropZone({
   // Add a global drag end listener to reset visual state
   React.useEffect(() => {
     const handleGlobalDragEnd = () => {
-      setDragOverIndex(null)
+      setDropTargetIndex(null)
+      dropTargetIndexRef.current = null
       setIsDraggedOver(false)
       setIsReorderDraggedOver(false)
+      draggingFieldRef.current = null
     }
 
     document.addEventListener('dragend', handleGlobalDragEnd)
@@ -109,7 +125,8 @@ export default function AnalysisAxisDropZone({
       // If we have a dragged item but it's not from this axis, clear reorder state
       if (draggedItem.fromAxis !== key) {
         setIsReorderDraggedOver(false)
-        setDragOverIndex(null)
+        setDropTargetIndex(null)
+        dropTargetIndexRef.current = null
       }
       // If we have a dragged item from this axis, clear regular drag state
       else if (draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
@@ -117,54 +134,145 @@ export default function AnalysisAxisDropZone({
       }
     } else {
       // No dragged item, clear all states
-      setDragOverIndex(null)
+      setDropTargetIndex(null)
+      dropTargetIndexRef.current = null
       setIsDraggedOver(false)
       setIsReorderDraggedOver(false)
     }
   }, [draggedItem, key])
 
-  const handleReorderDragOver = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
-    // Check if this is a reorder operation (same axis) using the draggedItem prop
-    if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
-      e.preventDefault()
-      e.stopPropagation()
-      setDragOverIndex(targetIndex)
-      setIsReorderDraggedOver(true)
-    }
-  }
+  // Handle drag over an item - determine drop position based on mouse position
+  const handleItemDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, itemIndex: number) => {
+    // Check if this is a reorder operation (same axis)
+    if (!draggedItem || draggedItem.fromAxis !== key || draggedItem.fromIndex === undefined) return
 
-  const handleReorderDragLeave = () => {
-    // Clear the individual item drag over index
-    setDragOverIndex(null)
-  }
-
-  const handleReorderDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
     e.preventDefault()
     e.stopPropagation()
-    setDragOverIndex(null)
-    setIsReorderDraggedOver(false)
 
-    // Handle reordering using either drag data or the draggedItem prop
-    if (
-      draggedItem &&
+    // Determine if we're in the top or bottom half of the item
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mouseY = e.clientY - rect.top
+    const isTopHalf = mouseY < rect.height / 2
+
+    // Calculate target index based on position
+    const fromIndex = draggedItem.fromIndex
+    let targetIndex = isTopHalf ? itemIndex : itemIndex + 1
+
+    // Don't set drop target if it would result in no movement
+    if (targetIndex === fromIndex || targetIndex === fromIndex + 1) {
+      setDropTargetIndex(null)
+      dropTargetIndexRef.current = null
+    } else {
+      setDropTargetIndex(targetIndex)
+      dropTargetIndexRef.current = targetIndex
+      setIsReorderDraggedOver(true)
+    }
+  }, [draggedItem, key])
+
+  // Handle drop on an item for reordering
+  const handleItemDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    // DON'T stopPropagation here yet - only stop if this is a reorder operation
+
+    // Use ref to get current dropTargetIndex (avoids stale closure)
+    const currentDropTargetIndex = dropTargetIndexRef.current
+
+    // Check if this is a reorder operation (same axis with valid indices)
+    const isReorderOperation = draggedItem &&
       draggedItem.fromAxis === key &&
       draggedItem.fromIndex !== undefined &&
-      onReorder
-    ) {
-      onReorder(draggedItem.fromIndex, targetIndex, key)
-      return
+      currentDropTargetIndex !== null
+
+    if (!isReorderOperation) {
+      // Let the event bubble up to container for external drops
+      setDropTargetIndex(null)
+      dropTargetIndexRef.current = null
+      setIsReorderDraggedOver(false)
+      return  // Don't stop propagation - container will handle external drops
     }
 
-    // Fallback to parsing drag data
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-      if (data.fromAxis === key && onReorder && data.fromIndex !== undefined) {
-        onReorder(data.fromIndex, targetIndex, key)
-      }
-    } catch {
-      // If we can't parse the data, ignore
+    // This IS a reorder operation - stop propagation and handle it
+    e.stopPropagation()
+
+    // Adjust target index when dragging down (after splice, indices shift)
+    const fromIndex = draggedItem!.fromIndex!
+    const adjustedTarget = currentDropTargetIndex > fromIndex
+      ? currentDropTargetIndex - 1
+      : currentDropTargetIndex
+
+    if (onReorder && adjustedTarget !== fromIndex) {
+      onReorder(fromIndex, adjustedTarget, key)
     }
-  }
+
+    setDropTargetIndex(null)
+    dropTargetIndexRef.current = null
+    setIsReorderDraggedOver(false)
+  }, [draggedItem, key, onReorder])
+
+  // Handle drag end - check if dropped outside container to remove
+  const handleFieldDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>, field: string) => {
+    const container = containerRef.current
+    if (container && draggingFieldRef.current === field) {
+      const rect = container.getBoundingClientRect()
+      const isInside =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+
+      // If dropped outside the container
+      if (!isInside) {
+        // Use a small delay to let other drop handlers fire first
+        // Then check if the field is still in this axis (wasn't moved elsewhere)
+        setTimeout(() => {
+          // Check using ref to get current fields, avoiding stale closure
+          if (fieldsRef.current.includes(field)) {
+            onRemove(field, key)
+          }
+        }, 0)
+      }
+    }
+
+    draggingFieldRef.current = null
+    setDropTargetIndex(null)
+    dropTargetIndexRef.current = null
+    setIsReorderDraggedOver(false)
+
+    onDragEnd?.(e)
+  }, [key, onRemove, onDragEnd])
+
+  // Calculate transform for gap animation
+  const getItemTransform = useCallback((itemIndex: number): string => {
+    if (!draggedItem || draggedItem.fromAxis !== key || draggedItem.fromIndex === undefined || dropTargetIndex === null) {
+      return ''
+    }
+
+    const fromIndex = draggedItem.fromIndex
+    const gapSize = 40
+
+    // If this is the dragged item, no transform needed
+    if (itemIndex === fromIndex) return ''
+
+    if (fromIndex < dropTargetIndex) {
+      // Dragging down
+      if (itemIndex >= dropTargetIndex) {
+        return `translateY(${gapSize / 2}px)`
+      }
+    } else {
+      // Dragging up
+      if (itemIndex >= dropTargetIndex && itemIndex < fromIndex) {
+        return `translateY(${gapSize / 2}px)`
+      }
+    }
+
+    return ''
+  }, [draggedItem, key, dropTargetIndex])
+
+  // Determine if gap indicator should show
+  const shouldShowGapIndicator = useCallback((itemIndex: number): boolean => {
+    if (!draggedItem || draggedItem.fromAxis !== key || dropTargetIndex === null) return false
+    return itemIndex === dropTargetIndex
+  }, [draggedItem, key, dropTargetIndex])
 
   // Get default field meta from field name
   const getDefaultFieldMeta = (field: string): FieldMeta => {
@@ -212,10 +320,11 @@ export default function AnalysisAxisDropZone({
 
       {/* Drop Zone Container */}
       <div
+        ref={containerRef}
         data-axis-container={key}
-        className={`min-h-[48px] border-2 border-dashed rounded-lg p-2 transition-all duration-300 ${
+        className={`min-h-[48px] border-2 border-dashed rounded-lg p-2 transition-all duration-200 ${
           (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
-            ? 'shadow-lg border-solid animate-pulse'
+            ? 'shadow-sm border-solid'
             : isFull
               ? 'bg-dc-surface-secondary'
               : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'
@@ -290,35 +399,56 @@ export default function AnalysisAxisDropZone({
             {isFull ? 'Maximum items reached' : emptyText || `Drop fields here`}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div
+            className="space-y-2"
+            onDragOver={(e) => {
+              // Allow dropping for reorder operations
+              if (draggedItem && draggedItem.fromAxis === key) {
+                e.preventDefault()
+              }
+            }}
+            onDrop={(e) => {
+              // Handle reorder drops at container level
+              if (draggedItem && draggedItem.fromAxis === key && draggedItem.fromIndex !== undefined) {
+                handleItemDrop(e)
+              }
+            }}
+          >
             {fields.map((field, index) => {
               const meta = getFieldMeta ? getFieldMeta(field) : getDefaultFieldMeta(field)
-              const isDragOver = dragOverIndex === index
               const isBeingDragged =
                 draggedItem && draggedItem.field === field && draggedItem.fromAxis === key
+              const transform = getItemTransform(index)
+              const showGapBefore = shouldShowGapIndicator(index)
 
               return (
-                <div key={`${field}-${index}`} className={`relative ${isDragOver ? '' : ''}`}>
-                  {/* Drop indicator line for reordering */}
-                  {isDragOver && (
-                    <div
-                      className="absolute -top-1 left-0 right-0 h-0.5 rounded-full z-10"
-                      style={{ backgroundColor: 'var(--dc-primary)' }}
-                    />
+                <div
+                  key={`${field}-${index}`}
+                  className="relative"
+                  style={{
+                    transform,
+                    transition: draggedItem && draggedItem.fromAxis === key ? 'transform 0.15s ease-out' : 'none'
+                  }}
+                >
+                  {/* Gap indicator line - shows where item will be inserted */}
+                  {showGapBefore && (
+                    <div className="absolute -top-5 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
+                      <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+                    </div>
                   )}
 
                   <div
                     draggable
                     onDragStart={(e) => {
+                      draggingFieldRef.current = field
                       onDragStart(e, field, key, index)
                     }}
-                    onDragEnd={onDragEnd}
-                    onDragOver={(e) => handleReorderDragOver(e, index)}
-                    onDragLeave={handleReorderDragLeave}
-                    onDrop={(e) => handleReorderDrop(e, index)}
+                    onDragEnd={(e) => handleFieldDragEnd(e, field)}
+                    onDragOver={(e) => handleItemDragOver(e, index)}
+                    onDrop={handleItemDrop}
                     className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg group hover:bg-dc-surface-tertiary transition-colors cursor-move ${
-                      isBeingDragged ? 'opacity-50 cursor-grabbing' : ''
-                    } ${isDragOver ? 'mt-1' : ''}`}
+                      isBeingDragged ? 'opacity-30 cursor-grabbing' : ''
+                    }`}
                   >
                     {/* Icon */}
                     {renderFieldIcon(meta)}
@@ -330,6 +460,26 @@ export default function AnalysisAxisDropZone({
                       </div>
                       <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
                     </div>
+
+                    {/* L/R Axis Toggle - only for yAxis with dual axis enabled */}
+                    {config.enableDualAxis && onYAxisAssignmentChange && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const currentAxis = yAxisAssignment?.[field] || 'left'
+                          onYAxisAssignmentChange(field, currentAxis === 'left' ? 'right' : 'left')
+                        }}
+                        className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-shrink-0 ${
+                          (yAxisAssignment?.[field] || 'left') === 'left'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                            : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                        }`}
+                        title={`Y-Axis: ${(yAxisAssignment?.[field] || 'left') === 'left' ? 'Left' : 'Right'} (click to toggle)`}
+                      >
+                        {(yAxisAssignment?.[field] || 'left') === 'left' ? 'L' : 'R'}
+                      </button>
+                    )}
 
                     {/* Remove Button - hidden until hover */}
                     <button
@@ -344,6 +494,32 @@ export default function AnalysisAxisDropZone({
                 </div>
               )
             })}
+            {/* Gap indicator after the last item - shows when dropping at end */}
+            {draggedItem && draggedItem.fromAxis === key && dropTargetIndex === fields.length && (
+              <div className="relative h-2">
+                <div className="absolute top-0 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+                </div>
+              </div>
+            )}
+            {/* Handle drop at the end of the list for reordering */}
+            {draggedItem && draggedItem.fromAxis === key && fields.length > 1 && (
+              <div
+                className="h-6"
+                onDragOver={(e) => {
+                  if (draggedItem.fromIndex !== undefined) {
+                    e.preventDefault()
+                    const lastIndex = fields.length
+                    if (dropTargetIndexRef.current !== lastIndex && draggedItem.fromIndex !== lastIndex - 1) {
+                      setDropTargetIndex(lastIndex)
+                      dropTargetIndexRef.current = lastIndex
+                      setIsReorderDraggedOver(true)
+                    }
+                  }
+                }}
+                onDrop={handleItemDrop}
+              />
+            )}
           </div>
         )}
       </div>

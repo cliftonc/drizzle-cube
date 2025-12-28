@@ -3,7 +3,7 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Lege
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatNumericValue } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
@@ -26,6 +26,10 @@ export default function LineChart({
       showTooltip: displayConfig?.showTooltip ?? true,
       connectNulls: displayConfig?.connectNulls ?? false
     }
+
+    // Extract axis format configs
+    const leftYAxisFormat = displayConfig?.leftYAxisFormat
+    const rightYAxisFormat = displayConfig?.rightYAxisFormat
 
     if (!data || data.length === 0) {
       return (
@@ -76,21 +80,40 @@ export default function LineChart({
 
     // Use shared function to transform data and handle series
     const { data: chartData, seriesKeys } = transformChartDataWithSeries(
-      data, 
-      xAxisField, 
-      yAxisFields, 
+      data,
+      xAxisField,
+      yAxisFields,
       queryObject,
       seriesFields,
       labelMap
     )
-    
+
+    // Dual Y-axis support: extract yAxisAssignment from chartConfig
+    const yAxisAssignment = chartConfig?.yAxisAssignment || {}
+
+    // Build mapping from series key (label) to original field name
+    // This is needed because seriesKeys use display labels, not field names
+    const seriesKeyToField: Record<string, string> = {}
+    yAxisFields.forEach((field) => {
+      const label = getFieldLabel(field)
+      seriesKeyToField[label] = field
+    })
+
+    // Determine if we need a right Y-axis
+    const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
+
+    // Get fields for left and right axes for labels
+    const leftAxisFields = yAxisFields.filter((f) => (yAxisAssignment[f] || 'left') === 'left')
+    const rightAxisFields = yAxisFields.filter((f) => yAxisAssignment[f] === 'right')
+
     // Determine if legend will be shown
     const showLegend = safeDisplayConfig.showLegend
-    
-    // Use custom chart margins with extra left space for Y-axis label
+
+    // Use custom chart margins with extra space for Y-axis labels
     const chartMargins = {
       ...CHART_MARGINS,
-      left: 40 // Increased from 20 to 40 for Y-axis label space
+      left: 40, // Space for left Y-axis label
+      right: hasRightAxis ? 40 : 20 // Extra space for right Y-axis label if needed
     }
     
     // Process target values and add to chart data
@@ -131,10 +154,40 @@ export default function LineChart({
             textAnchor="end"
             height={60}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }} 
-            label={{ value: getFieldLabel(yAxisFields[0]), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+          <YAxis
+            yAxisId="left"
+            orientation="left"
+            tick={{ fontSize: 12 }}
+            tickFormatter={leftYAxisFormat ? (value) => formatAxisValue(value, leftYAxisFormat) : undefined}
+            label={
+              leftAxisFields.length > 0
+                ? {
+                    value: leftYAxisFormat?.label || getFieldLabel(leftAxisFields[0]),
+                    angle: -90,
+                    position: 'left',
+                    style: { textAnchor: 'middle', fontSize: '12px' }
+                  }
+                : undefined
+            }
           />
+          {hasRightAxis && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 12 }}
+              tickFormatter={rightYAxisFormat ? (value) => formatAxisValue(value, rightYAxisFormat) : undefined}
+              label={
+                rightAxisFields.length > 0
+                  ? {
+                      value: rightYAxisFormat?.label || getFieldLabel(rightAxisFields[0]),
+                      angle: 90,
+                      position: 'right',
+                      style: { textAnchor: 'middle', fontSize: '12px' }
+                    }
+                  : undefined
+              }
+            />
+          )}
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
               formatter={(value: any, name: any) => {
@@ -143,9 +196,14 @@ export default function LineChart({
                   return ['No data', name]
                 }
                 if (name === 'Target') {
-                  return [formatNumericValue(value), 'Target Value']
+                  // Use left Y-axis format for target values
+                  return [formatAxisValue(value, leftYAxisFormat), 'Target Value']
                 }
-                return [formatNumericValue(value), name]
+                // Determine which axis format to use based on series name
+                const originalField = seriesKeyToField[name]
+                const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+                const formatConfig = axisId === 'right' ? rightYAxisFormat : leftYAxisFormat
+                return [formatAxisValue(value, formatConfig), name]
               }}
             />
           )}
@@ -161,25 +219,35 @@ export default function LineChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          {seriesKeys.map((seriesKey, index) => (
-            <Line
-              key={seriesKey}
-              type="monotone"
-              dataKey={seriesKey}
-              stroke={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-              strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-              connectNulls={safeDisplayConfig.connectNulls}
-            />
-          ))}
+          {seriesKeys.map((seriesKey, index) => {
+            // Look up the original field name to get its axis assignment
+            const originalField = seriesKeyToField[seriesKey]
+            const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+            return (
+              <Line
+                key={seriesKey}
+                type="monotone"
+                dataKey={seriesKey}
+                yAxisId={axisId}
+                stroke={
+                  (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
+                  CHART_COLORS[index % CHART_COLORS.length]
+                }
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                connectNulls={safeDisplayConfig.connectNulls}
+              />
+            )
+          })}
           {spreadTargets.length > 0 && (
             <>
               {/* White background line */}
               <Line
                 type="monotone"
                 dataKey="__target"
+                yAxisId="left"
                 stroke="#ffffff"
                 strokeWidth={2}
                 dot={false}
@@ -190,6 +258,7 @@ export default function LineChart({
               <Line
                 type="monotone"
                 dataKey="__target"
+                yAxisId="left"
                 name="Target"
                 stroke="#8B5CF6"
                 strokeWidth={2}

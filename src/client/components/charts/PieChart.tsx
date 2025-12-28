@@ -3,7 +3,7 @@ import { PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -21,7 +21,8 @@ export default function PieChart({
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
-      showTooltip: displayConfig?.showTooltip ?? true
+      showTooltip: displayConfig?.showTooltip ?? true,
+      leftYAxisFormat: displayConfig?.leftYAxisFormat
     }
 
     if (!data || data.length === 0) {
@@ -164,7 +165,12 @@ export default function PieChart({
             ))}
           </Pie>
           {safeDisplayConfig.showTooltip && (
-            <ChartTooltip />
+            <ChartTooltip
+              formatter={safeDisplayConfig.leftYAxisFormat
+                ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+                : undefined
+              }
+            />
           )}
           {safeDisplayConfig.showLegend && (
             <Legend 

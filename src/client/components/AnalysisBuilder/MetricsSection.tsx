@@ -8,6 +8,7 @@ import { useMemo, useState, useCallback, useRef, memo } from 'react'
 import type { MetricsSectionProps } from './types'
 import type { MetaField } from '../../shared/types'
 import MetricItemCard from './MetricItemCard'
+import SectionHeading from './SectionHeading'
 import { getIcon } from '../../icons'
 
 // Get icon once at module level to avoid recreating
@@ -62,6 +63,10 @@ const MetricsSection = memo(function MetricsSection({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null) // Index where item will be inserted
 
+  // Use refs to track current values for use in drop handler (avoids stale closure issues)
+  const draggedIndexRef = useRef<number | null>(null)
+  const dropTargetIndexRef = useRef<number | null>(null)
+
   // Get the ordered keys to calculate priority
   const orderKeys = useMemo(() => order ? Object.keys(order) : [], [order])
 
@@ -86,6 +91,7 @@ const MetricsSection = memo(function MetricsSection({
   // Drag handlers
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index)
+    draggedIndexRef.current = index
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'metric', index, field: metrics[index].field }))
 
@@ -115,6 +121,8 @@ const MetricsSection = memo(function MetricsSection({
   const handleDragEnd = useCallback(() => {
     setDraggedIndex(null)
     setDropTargetIndex(null)
+    draggedIndexRef.current = null
+    dropTargetIndexRef.current = null
     // Clean up the drag clone
     if (dragCloneRef.current) {
       document.body.removeChild(dragCloneRef.current)
@@ -122,45 +130,62 @@ const MetricsSection = memo(function MetricsSection({
     }
   }, [])
 
-  // Handle drag over a drop zone (the gaps between items)
-  const handleDropZoneDragOver = useCallback((e: React.DragEvent, targetIndex: number) => {
+  // Handle drag over an item - determine drop position based on mouse position
+  const handleItemDragOver = useCallback((e: React.DragEvent, itemIndex: number) => {
     e.preventDefault()
     e.stopPropagation()
-    // Only show if we're dragging from this section
-    if (draggedIndex !== null) {
-      setDropTargetIndex(targetIndex)
-    }
-  }, [draggedIndex])
 
-  const handleDropZoneDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Only clear if leaving to outside the drop zone
-    const relatedTarget = e.relatedTarget as HTMLElement | null
-    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+    // Only process if we're dragging from this section
+    const currentDraggedIndex = draggedIndexRef.current
+    if (currentDraggedIndex === null) return
+
+    // Determine if we're in the top or bottom half of the item
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mouseY = e.clientY - rect.top
+    const isTopHalf = mouseY < rect.height / 2
+
+    // Calculate target index based on position
+    let targetIndex = isTopHalf ? itemIndex : itemIndex + 1
+
+    // Don't set drop target if it would result in no movement
+    if (targetIndex === currentDraggedIndex || targetIndex === currentDraggedIndex + 1) {
       setDropTargetIndex(null)
+      dropTargetIndexRef.current = null
+    } else {
+      setDropTargetIndex(targetIndex)
+      dropTargetIndexRef.current = targetIndex
     }
   }, [])
 
-  const handleDropZoneDrop = useCallback((e: React.DragEvent, targetIndex: number) => {
+  // Handle drop on an item
+  const handleItemDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-      // Only accept drops from metrics
-      if (data.type === 'metric' && draggedIndex !== null && onReorder) {
-        // Adjust target index if dropping after the dragged item
-        const adjustedTarget = targetIndex > draggedIndex ? targetIndex - 1 : targetIndex
-        if (adjustedTarget !== draggedIndex) {
-          onReorder(draggedIndex, adjustedTarget)
-        }
-      }
-    } catch {
-      // Ignore invalid data
-    }
+
+    // Use refs to get current values (avoids stale closure issues)
+    const currentDraggedIndex = draggedIndexRef.current
+    const currentDropTargetIndex = dropTargetIndexRef.current
+
+    // Reset visual state immediately
     setDraggedIndex(null)
     setDropTargetIndex(null)
-  }, [draggedIndex, onReorder])
+    draggedIndexRef.current = null
+    dropTargetIndexRef.current = null
+
+    // Validate and reorder - use refs directly, no dataTransfer parsing needed
+    if (currentDraggedIndex === null || currentDropTargetIndex === null || !onReorder) {
+      return
+    }
+
+    // Adjust target index when dragging down (after splice, indices shift)
+    const adjustedTarget = currentDropTargetIndex > currentDraggedIndex
+      ? currentDropTargetIndex - 1
+      : currentDropTargetIndex
+
+    if (adjustedTarget !== currentDraggedIndex) {
+      onReorder(currentDraggedIndex, adjustedTarget)
+    }
+  }, [onReorder])
 
   // Clear drop target when leaving the section
   const handleSectionDragLeave = useCallback((e: React.DragEvent) => {
@@ -170,76 +195,131 @@ const MetricsSection = memo(function MetricsSection({
     }
   }, [])
 
-  // Render a drop zone indicator - positioned absolutely to not disrupt layout
-  const renderDropZone = (targetIndex: number, isFirst: boolean = false) => {
-    const isActive = dropTargetIndex === targetIndex && draggedIndex !== null
-    const isValidDrop = draggedIndex !== null && targetIndex !== draggedIndex && targetIndex !== draggedIndex + 1
+  // Calculate if an item should be shifted to make room for the drop
+  const getItemTransform = useCallback((itemIndex: number): string => {
+    if (draggedIndex === null || dropTargetIndex === null) return ''
 
-    if (draggedIndex === null) return null
+    // Gap size in pixels
+    const gapSize = 40
 
-    return (
-      <div
-        key={`drop-${targetIndex}`}
-        className={`absolute left-0 right-0 z-10 ${isFirst ? '-top-1' : '-bottom-1'}`}
-        style={{ height: '16px', transform: isFirst ? 'translateY(-50%)' : 'translateY(50%)' }}
-        onDragOver={(e) => handleDropZoneDragOver(e, targetIndex)}
-        onDragLeave={handleDropZoneDragLeave}
-        onDrop={(e) => handleDropZoneDrop(e, targetIndex)}
-      >
-        {isValidDrop && (
-          <div
-            className={`absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-md border-2 border-dashed flex items-center justify-center transition-all ${
-              isActive
-                ? 'border-dc-primary bg-dc-primary/10 h-8'
-                : 'border-transparent h-1'
-            }`}
-          >
-            {isActive && <span className="text-xs text-dc-primary font-medium">Drop here</span>}
-          </div>
-        )}
-      </div>
-    )
-  }
+    // If this is the dragged item, no transform needed (it's already faded)
+    if (itemIndex === draggedIndex) return ''
+
+    // Items at or after drop target need to shift down
+    // But we need to account for the dragged item's position
+    if (draggedIndex < dropTargetIndex) {
+      // Dragging down: items between dragged+1 and dropTarget-1 shift up
+      if (itemIndex > draggedIndex && itemIndex < dropTargetIndex) {
+        return '' // No gap needed, item stays in place
+      }
+      // Item at dropTarget-1 position should show gap after it
+      if (itemIndex === dropTargetIndex - 1) {
+        return `translateY(-${gapSize / 2}px)` // Shift up to make room
+      }
+      if (itemIndex >= dropTargetIndex) {
+        return `translateY(${gapSize / 2}px)` // Shift down
+      }
+    } else {
+      // Dragging up: items from dropTarget to draggedIndex-1 shift down
+      if (itemIndex >= dropTargetIndex && itemIndex < draggedIndex) {
+        return `translateY(${gapSize / 2}px)` // Shift down to make room
+      }
+    }
+
+    return ''
+  }, [draggedIndex, dropTargetIndex])
+
+  // Determine if gap indicator should show at a position
+  const shouldShowGapIndicator = useCallback((itemIndex: number): boolean => {
+    if (draggedIndex === null || dropTargetIndex === null) return false
+
+    // Show indicator before the item that matches dropTargetIndex
+    return itemIndex === dropTargetIndex
+  }, [draggedIndex, dropTargetIndex])
 
   return (
     <div>
-      {/* Section Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-dc-text">Metrics</h3>
-        <button
-          onClick={onAdd}
-          className="p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-secondary rounded transition-colors"
-          title="Add metric"
-        >
-          <AddIcon className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Section Header - entire row is clickable */}
+      <button
+        onClick={onAdd}
+        className="flex items-center justify-between mb-3 w-full py-1 px-2 -ml-2 rounded-lg hover:bg-dc-primary/10 transition-colors group"
+        title="Add metric"
+      >
+        <SectionHeading>Metrics</SectionHeading>
+        <AddIcon className="w-5 h-5 text-dc-text-secondary group-hover:text-dc-primary transition-colors" />
+      </button>
 
       {/* Metrics List */}
-      <div className="space-y-2" onDragLeave={onReorder ? handleSectionDragLeave : undefined}>
-        {metricsWithMeta.map(({ metric, fieldMeta, sortDirection, sortPriority, index }) => (
-          <div key={metric.id} className="relative">
-            {/* Drop zone before first item */}
-            {index === 0 && onReorder && renderDropZone(0, true)}
-            <MetricItemCard
-              metric={metric}
-              fieldMeta={fieldMeta}
-              onRemove={() => onRemove(metric.id)}
-              sortDirection={sortDirection}
-              sortPriority={sortPriority}
-              onToggleSort={onOrderChange ? () => {
-                const nextDirection = getNextSortDirection(sortDirection)
-                onOrderChange(metric.field, nextDirection)
-              } : undefined}
-              index={index}
-              isDragging={draggedIndex === index}
-              onDragStart={onReorder ? handleDragStart : undefined}
-              onDragEnd={onReorder ? handleDragEnd : undefined}
-            />
-            {/* Drop zone after each item */}
-            {onReorder && renderDropZone(index + 1)}
+      <div
+        className="space-y-2"
+        onDragLeave={onReorder ? handleSectionDragLeave : undefined}
+        onDragOver={onReorder ? (e) => e.preventDefault() : undefined}
+        onDrop={onReorder ? handleItemDrop : undefined}
+      >
+        {metricsWithMeta.map(({ metric, fieldMeta, sortDirection, sortPriority, index }) => {
+          const transform = getItemTransform(index)
+          const showGapBefore = shouldShowGapIndicator(index)
+
+          return (
+            <div
+              key={metric.id}
+              className="relative"
+              style={{
+                transform,
+                transition: draggedIndex !== null ? 'transform 0.15s ease-out' : 'none'
+              }}
+              onDragOver={onReorder ? (e) => handleItemDragOver(e, index) : undefined}
+              onDrop={onReorder ? handleItemDrop : undefined}
+            >
+              {/* Gap indicator line - shows where item will be inserted */}
+              {showGapBefore && (
+                <div className="absolute -top-5 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+                </div>
+              )}
+              <MetricItemCard
+                metric={metric}
+                fieldMeta={fieldMeta}
+                onRemove={() => onRemove(metric.id)}
+                sortDirection={sortDirection}
+                sortPriority={sortPriority}
+                onToggleSort={onOrderChange ? () => {
+                  const nextDirection = getNextSortDirection(sortDirection)
+                  onOrderChange(metric.field, nextDirection)
+                } : undefined}
+                index={index}
+                isDragging={draggedIndex === index}
+                onDragStart={onReorder ? handleDragStart : undefined}
+                onDragEnd={onReorder ? handleDragEnd : undefined}
+              />
+            </div>
+          )
+        })}
+        {/* Gap indicator after the last item - shows when dropping at end */}
+        {onReorder && draggedIndex !== null && dropTargetIndex === metrics.length && (
+          <div className="relative h-2">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+            </div>
           </div>
-        ))}
+        )}
+        {/* Handle drop at the end of the list */}
+        {onReorder && metrics.length > 0 && draggedIndex !== null && (
+          <div
+            className="h-8"
+            onDragOver={(e) => {
+              e.preventDefault()
+              // Set drop target to end of list
+              const lastIndex = metrics.length
+              const currentDraggedIndex = draggedIndexRef.current
+              if (dropTargetIndexRef.current !== lastIndex && currentDraggedIndex !== lastIndex - 1) {
+                setDropTargetIndex(lastIndex)
+                dropTargetIndexRef.current = lastIndex
+              }
+            }}
+            onDrop={handleItemDrop}
+          />
+        )}
       </div>
     </div>
   )

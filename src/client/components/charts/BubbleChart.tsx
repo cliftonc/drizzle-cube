@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, type ScaleOrdinal, type ScaleQuantize } from 'd3'
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { getTheme, watchThemeChanges, type Theme } from '../../theme'
 import type { ChartProps } from '../../types'
@@ -47,7 +47,9 @@ export default function BubbleChart({
     showTooltip: displayConfig?.showTooltip ?? true,
     minBubbleSize: displayConfig?.minBubbleSize ?? 5,
     maxBubbleSize: displayConfig?.maxBubbleSize ?? 50,
-    bubbleOpacity: displayConfig?.bubbleOpacity ?? 0.7
+    bubbleOpacity: displayConfig?.bubbleOpacity ?? 0.7,
+    xAxisFormat: displayConfig?.xAxisFormat,
+    leftYAxisFormat: displayConfig?.leftYAxisFormat
   }
 
   // Enhanced dimension measurement with retry mechanism
@@ -375,6 +377,9 @@ export default function BubbleChart({
             return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
         }
       })
+    } else if (safeDisplayConfig.xAxisFormat) {
+      // Apply custom formatting for non-time X-axis
+      xAxisGenerator.tickFormat((d) => formatAxisValue(d as number, safeDisplayConfig.xAxisFormat))
     }
 
     const xAxis = g.append('g')
@@ -393,11 +398,15 @@ export default function BubbleChart({
       .attr('fill', textColor)
       .style('text-anchor', 'middle')
       .style('font-size', '12px')
-      .text(getFieldLabel(xAxisField))
+      .text(safeDisplayConfig.xAxisFormat?.label || getFieldLabel(xAxisField))
 
-    // Add Y axis
+    // Add Y axis with optional formatting
+    const yAxisGenerator = axisLeft(yScale)
+    if (safeDisplayConfig.leftYAxisFormat) {
+      yAxisGenerator.tickFormat((d) => formatAxisValue(d as number, safeDisplayConfig.leftYAxisFormat))
+    }
     const yAxis = g.append('g')
-      .call(axisLeft(yScale))
+      .call(yAxisGenerator)
 
     yAxis.selectAll('text')
       .style('fill', textColor)
@@ -412,7 +421,7 @@ export default function BubbleChart({
       .attr('fill', textColor)
       .style('text-anchor', 'middle')
       .style('font-size', '12px')
-      .text(getFieldLabel(yAxisField))
+      .text(safeDisplayConfig.leftYAxisFormat?.label || getFieldLabel(yAxisField))
 
     // Create tooltip
     const tooltip = select('body').append('div')
@@ -460,9 +469,9 @@ export default function BubbleChart({
 
           const tooltipContent = [
             `<strong>${d.series || 'Unknown'}</strong>`,
-            `${getFieldLabel(xAxisField)}: ${d.xLabel || d.x}`,
-            `${getFieldLabel(yAxisField)}: ${d.y}`,
-            `${getFieldLabel(sizeFieldName)}: ${d.size}`,
+            `${getFieldLabel(xAxisField)}: ${d.xLabel || (safeDisplayConfig.xAxisFormat ? formatAxisValue(d.x, safeDisplayConfig.xAxisFormat) : d.x)}`,
+            `${getFieldLabel(yAxisField)}: ${safeDisplayConfig.leftYAxisFormat ? formatAxisValue(d.y, safeDisplayConfig.leftYAxisFormat) : d.y}`,
+            `${getFieldLabel(sizeFieldName)}: ${safeDisplayConfig.leftYAxisFormat ? formatAxisValue(d.size, safeDisplayConfig.leftYAxisFormat) : d.size}`,
             colorFieldName && d.color ? `${getFieldLabel(colorFieldName)}: ${d.color}` : ''
           ].filter(Boolean).join('<br>')
 
@@ -542,7 +551,7 @@ export default function BubbleChart({
           .attr('text-anchor', 'start')
           .style('font-size', '11px')
           .style('fill', textColor)
-          .text(minValue.toFixed(2))
+          .text(safeDisplayConfig.leftYAxisFormat ? formatAxisValue(minValue, safeDisplayConfig.leftYAxisFormat) : minValue.toFixed(2))
 
         // Add max value label
         legend.append('text')
@@ -551,7 +560,7 @@ export default function BubbleChart({
           .attr('text-anchor', 'end')
           .style('font-size', '11px')
           .style('fill', textColor)
-          .text(maxValue.toFixed(2))
+          .text(safeDisplayConfig.leftYAxisFormat ? formatAxisValue(maxValue, safeDisplayConfig.leftYAxisFormat) : maxValue.toFixed(2))
 
         // Add field name label
         legend.append('text')

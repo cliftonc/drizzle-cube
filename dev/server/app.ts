@@ -16,6 +16,7 @@ import { schema } from './schema.js'
 import { allCubes } from './cubes.js'
 import type { Schema } from './schema.js'
 import analyticsApp from './analytics-routes.js'
+import aiApp from './ai-routes.js'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -134,7 +135,9 @@ app.get('/', (c) => {
       'POST /cubejs-api/v1/sql': 'Generate SQL without execution',
       'GET /api/analytics-pages': 'List all dashboards',
       'POST /api/analytics-pages': 'Create new dashboard',
-      'POST /api/analytics-pages/create-example': 'Create example dashboard'
+      'POST /api/analytics-pages/create-example': 'Create example dashboard',
+      'POST /api/ai/generate': 'Generate query with AI',
+      'GET /api/ai/health': 'AI health check'
     },
     frontend: {
       'React Dashboard': 'http://localhost:3000'
@@ -222,6 +225,13 @@ app.use('/api/analytics-pages/*', async (c, next) => {
   await next()
 })
 app.route('/api/analytics-pages', analyticsApp)
+
+// Mount AI routes with database access
+app.use('/api/ai/*', async (c, next) => {
+  c.set('db', db)
+  await next()
+})
+app.route('/api/ai', aiApp)
 
 // Example protected endpoint showing how to use the same security context
 app.get('/api/user-info', async (c) => {

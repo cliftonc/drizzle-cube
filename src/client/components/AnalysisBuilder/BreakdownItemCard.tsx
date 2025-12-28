@@ -119,7 +119,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
           className={`p-1 transition-opacity flex-shrink-0 flex items-center gap-0.5 ${
             sortDirection
               ? 'opacity-100 text-dc-primary'
-              : 'opacity-0 group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
+              : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
           }`}
           title={getSortTooltip()}
         >
@@ -133,7 +133,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
       {/* Remove Button */}
       <button
         onClick={onRemove}
-        className="p-1 text-dc-text-muted hover:text-dc-danger opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0"
         title="Remove breakdown"
       >
         <CloseIcon className="w-4 h-4" />

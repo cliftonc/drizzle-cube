@@ -6,13 +6,14 @@
  * Renders axis drop zones and display options based on chart type.
  */
 
-import React, { useMemo, useEffect, useState } from 'react'
+import React, { useMemo, useEffect, useState, useCallback } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
+import SectionHeading from './SectionHeading'
 import AnalysisAxisDropZone from './AnalysisAxisDropZone'
 import ChartTypeSelector from '../ChartTypeSelector'
 import { chartConfigRegistry } from '../../charts/chartConfigRegistry'
 import { getChartConfig } from '../../charts/chartConfigs'
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig, ColorPalette } from '../../types'
+import type { ChartType, ChartAxisConfig } from '../../types'
 import type { MetricItem, BreakdownItem } from './types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 import type { MetaResponse } from '../../shared/types'
@@ -24,31 +25,25 @@ const TimeDimensionIcon = getIcon('timeDimension')
 interface AnalysisChartConfigPanelProps {
   chartType: ChartType
   chartConfig: ChartAxisConfig
-  displayConfig: ChartDisplayConfig
   metrics: MetricItem[]
   breakdowns: BreakdownItem[]
-  colorPalette?: ColorPalette
   /** Schema metadata for resolving field titles */
   schema?: MetaResponse | null
   /** Map of chart type availability for disabling unavailable chart types */
   chartAvailability?: ChartAvailabilityMap
   onChartTypeChange: (type: ChartType) => void
   onChartConfigChange: (config: ChartAxisConfig) => void
-  onDisplayConfigChange: (config: ChartDisplayConfig) => void
 }
 
 export default function AnalysisChartConfigPanel({
   chartType,
   chartConfig,
-  displayConfig,
   metrics,
   breakdowns,
-  colorPalette,
   schema,
   chartAvailability,
   onChartTypeChange,
-  onChartConfigChange,
-  onDisplayConfigChange
+  onChartConfigChange
 }: AnalysisChartConfigPanelProps) {
   // Track currently dragging item for immediate state updates
   const [draggedItem, setDraggedItem] = useState<{
@@ -248,6 +243,19 @@ export default function AnalysisChartConfigPanel({
       }
     }
 
+    // Apply default yAxisAssignment when adding to yAxis with dual axis enabled
+    if (toAxis === 'yAxis' && dropZoneConfig?.enableDualAxis) {
+      const currentYAxisFields = Array.isArray(newConfig.yAxis) ? newConfig.yAxis : [field]
+      const fieldIndex = currentYAxisFields.indexOf(field)
+      // Default: 1st field = left, 2nd field = right, 3rd+ = left
+      if (!newConfig.yAxisAssignment?.[field]) {
+        newConfig.yAxisAssignment = {
+          ...newConfig.yAxisAssignment,
+          [field]: fieldIndex === 1 ? 'right' : 'left'
+        }
+      }
+    }
+
     setDraggedItem(null)
     onChartConfigChange(newConfig)
   }
@@ -265,6 +273,12 @@ export default function AnalysisChartConfigPanel({
       }
     } else if (value === field) {
       delete newConfig[fromAxis as keyof ChartAxisConfig]
+    }
+
+    // Clean up yAxisAssignment when removing from yAxis
+    if (fromAxis === 'yAxis' && newConfig.yAxisAssignment?.[field]) {
+      const { [field]: _removed, ...rest } = newConfig.yAxisAssignment
+      newConfig.yAxisAssignment = Object.keys(rest).length > 0 ? rest : undefined
     }
 
     onChartConfigChange(newConfig)
@@ -285,6 +299,20 @@ export default function AnalysisChartConfigPanel({
       onChartConfigChange(newConfig)
     }
   }
+
+  // Handler for Y-axis assignment changes (dual Y-axis support)
+  const handleYAxisAssignmentChange = useCallback(
+    (field: string, axis: 'left' | 'right') => {
+      onChartConfigChange({
+        ...chartConfig,
+        yAxisAssignment: {
+          ...chartConfig.yAxisAssignment,
+          [field]: axis
+        }
+      })
+    },
+    [chartConfig, onChartConfigChange]
+  )
 
   // Get unassigned fields (fields selected in Query tab but not yet assigned to chart axes)
   const getUnassignedFields = () => {
@@ -315,7 +343,7 @@ export default function AnalysisChartConfigPanel({
     <div className="space-y-6">
       {/* Chart Type Selector */}
       <div>
-        <label className="block text-sm font-medium text-dc-text mb-2">Chart Type</label>
+        <SectionHeading className="mb-2">Chart Type</SectionHeading>
         <ChartTypeSelector
           selectedType={chartType}
           onTypeChange={onChartTypeChange}
@@ -327,9 +355,9 @@ export default function AnalysisChartConfigPanel({
       {/* Chart Axis Configuration - Dynamic Drop Zones */}
       {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">
+          <SectionHeading className="mb-2">
             Chart Configuration
-          </h4>
+          </SectionHeading>
           <div className="space-y-1">
             {chartTypeConfig.dropZones.map((dropZone) => (
               <AnalysisAxisDropZone
@@ -344,6 +372,10 @@ export default function AnalysisChartConfigPanel({
                 onReorder={handleReorder}
                 draggedItem={draggedItem}
                 getFieldMeta={getFieldMeta}
+                yAxisAssignment={chartConfig.yAxisAssignment}
+                onYAxisAssignmentChange={
+                  dropZone.enableDualAxis ? handleYAxisAssignmentChange : undefined
+                }
               />
             ))}
           </div>
@@ -354,7 +386,7 @@ export default function AnalysisChartConfigPanel({
       {!shouldSkipQuery && hasUnassignedFields && (
         <div>
           <div className="mb-2">
-            <h4 className="text-sm font-medium text-dc-text">Unassigned Fields</h4>
+            <SectionHeading>Unassigned Fields</SectionHeading>
             <div className="text-xs text-dc-text-muted mt-0.5">
               Drag fields to chart axes above
             </div>
@@ -433,342 +465,6 @@ export default function AnalysisChartConfigPanel({
                 )
               })}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Display Options */}
-      {((chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0) ||
-        (chartTypeConfig.displayOptionsConfig &&
-          chartTypeConfig.displayOptionsConfig.length > 0)) && (
-        <div>
-          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">Display Options</h4>
-          <div className="space-y-2">
-            {/* Backward compatibility: Simple boolean display options */}
-            {chartTypeConfig.displayOptions?.includes('showLegend') && (
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={displayConfig.showLegend ?? true}
-                  onChange={(e) =>
-                    onDisplayConfigChange({
-                      ...displayConfig,
-                      showLegend: e.target.checked
-                    })
-                  }
-                  className="rounded border-dc-border focus:ring-blue-500"
-                  style={{ color: 'var(--dc-primary)' }}
-                />
-                <span className="text-sm text-dc-text">Show Legend</span>
-              </label>
-            )}
-
-            {chartTypeConfig.displayOptions?.includes('showGrid') && (
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={displayConfig.showGrid ?? true}
-                  onChange={(e) =>
-                    onDisplayConfigChange({
-                      ...displayConfig,
-                      showGrid: e.target.checked
-                    })
-                  }
-                  className="rounded border-dc-border focus:ring-blue-500"
-                  style={{ color: 'var(--dc-primary)' }}
-                />
-                <span className="text-sm text-dc-text">Show Grid</span>
-              </label>
-            )}
-
-            {chartTypeConfig.displayOptions?.includes('showTooltip') && (
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={displayConfig.showTooltip ?? true}
-                  onChange={(e) =>
-                    onDisplayConfigChange({
-                      ...displayConfig,
-                      showTooltip: e.target.checked
-                    })
-                  }
-                  className="rounded border-dc-border focus:ring-blue-500"
-                  style={{ color: 'var(--dc-primary)' }}
-                />
-                <span className="text-sm text-dc-text">Show Tooltip</span>
-              </label>
-            )}
-
-            {chartTypeConfig.displayOptions?.includes('stacked') && (
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={displayConfig.stacked ?? false}
-                  onChange={(e) =>
-                    onDisplayConfigChange({
-                      ...displayConfig,
-                      stacked: e.target.checked
-                    })
-                  }
-                  className="rounded border-dc-border focus:ring-blue-500"
-                  style={{ color: 'var(--dc-primary)' }}
-                />
-                <span className="text-sm text-dc-text">Stacked</span>
-              </label>
-            )}
-
-            {chartTypeConfig.displayOptions?.includes('hideHeader') && (
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={displayConfig.hideHeader ?? false}
-                  onChange={(e) =>
-                    onDisplayConfigChange({
-                      ...displayConfig,
-                      hideHeader: e.target.checked
-                    })
-                  }
-                  className="rounded border-dc-border focus:ring-blue-500"
-                  style={{ color: 'var(--dc-primary)' }}
-                />
-                <span className="text-sm text-dc-text">Hide Header</span>
-              </label>
-            )}
-
-            {/* New structured display options */}
-            {chartTypeConfig.displayOptionsConfig?.map((option) => (
-              <div key={option.key} className="space-y-1">
-                {option.type === 'boolean' && (
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={
-                        (displayConfig[option.key as keyof ChartDisplayConfig] as boolean) ??
-                        option.defaultValue ??
-                        false
-                      }
-                      onChange={(e) =>
-                        onDisplayConfigChange({
-                          ...displayConfig,
-                          [option.key]: e.target.checked
-                        })
-                      }
-                      className="rounded border-dc-border focus:ring-blue-500"
-                      style={{ color: 'var(--dc-primary)' }}
-                    />
-                    <span className="text-sm text-dc-text">{option.label}</span>
-                  </label>
-                )}
-
-                {option.type === 'string' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">
-                      {option.label}
-                      {option.key === 'content' && (
-                        <span className="text-xs text-dc-text-muted ml-1">
-                          (only headers, lists and links)
-                        </span>
-                      )}
-                    </label>
-                    {option.key === 'content' ? (
-                      <textarea
-                        value={
-                          (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                          option.defaultValue ??
-                          ''
-                        }
-                        onChange={(e) =>
-                          onDisplayConfigChange({
-                            ...displayConfig,
-                            [option.key]: e.target.value
-                          })
-                        }
-                        placeholder={option.placeholder}
-                        rows={8}
-                        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 font-mono resize-y bg-dc-surface text-dc-text"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={
-                          (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                          option.defaultValue ??
-                          ''
-                        }
-                        onChange={(e) =>
-                          onDisplayConfigChange({
-                            ...displayConfig,
-                            [option.key]: e.target.value
-                          })
-                        }
-                        placeholder={option.placeholder}
-                        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
-                      />
-                    )}
-                    {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
-                    )}
-                  </div>
-                )}
-
-                {option.type === 'paletteColor' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {colorPalette?.colors.map((color, index) => {
-                        const isSelected =
-                          ((displayConfig[option.key as keyof ChartDisplayConfig] as number) ??
-                            option.defaultValue ??
-                            0) === index
-                        return (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() =>
-                              onDisplayConfigChange({
-                                ...displayConfig,
-                                [option.key]: index
-                              })
-                            }
-                            className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
-                              isSelected
-                                ? 'ring-2 ring-offset-1 scale-110'
-                                : 'hover:border-dc-text-muted'
-                            }`}
-                            style={{
-                              backgroundColor: color,
-                              borderColor: isSelected ? 'var(--dc-primary)' : 'var(--dc-border)'
-                            }}
-                            title={`Color ${index + 1}: ${color}`}
-                          />
-                        )
-                      }) || [
-                        // Fallback if no palette available
-                        <button
-                          key={0}
-                          type="button"
-                          onClick={() =>
-                            onDisplayConfigChange({
-                              ...displayConfig,
-                              [option.key]: 0
-                            })
-                          }
-                          className="w-8 h-8 rounded-sm border-2 ring-2 ring-offset-1"
-                          style={{
-                            backgroundColor: '#8884d8',
-                            borderColor: 'var(--dc-primary)',
-                            boxShadow: '0 0 0 2px var(--dc-primary)'
-                          }}
-                          title="Default Color"
-                        />
-                      ]}
-                    </div>
-                    {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
-                    )}
-                  </div>
-                )}
-
-                {option.type === 'number' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <input
-                      type="number"
-                      value={
-                        (displayConfig[option.key as keyof ChartDisplayConfig] as number) ??
-                        option.defaultValue ??
-                        0
-                      }
-                      onChange={(e) =>
-                        onDisplayConfigChange({
-                          ...displayConfig,
-                          [option.key]: e.target.value === '' ? undefined : Number(e.target.value)
-                        })
-                      }
-                      placeholder={option.placeholder}
-                      min={option.min}
-                      max={option.max}
-                      step={option.step}
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
-                    />
-                    {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
-                    )}
-                  </div>
-                )}
-
-                {option.type === 'select' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <select
-                      value={
-                        (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                        option.defaultValue ??
-                        ''
-                      }
-                      onChange={(e) =>
-                        onDisplayConfigChange({
-                          ...displayConfig,
-                          [option.key]: e.target.value
-                        })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
-                    >
-                      {option.options?.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
-                    )}
-                  </div>
-                )}
-
-                {option.type === 'color' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={
-                          (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                          option.defaultValue ??
-                          '#8884d8'
-                        }
-                        onChange={(e) =>
-                          onDisplayConfigChange({
-                            ...displayConfig,
-                            [option.key]: e.target.value
-                          })
-                        }
-                        className="w-12 h-8 border border-dc-border rounded-sm cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={
-                          (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                          option.defaultValue ??
-                          '#8884d8'
-                        }
-                        onChange={(e) =>
-                          onDisplayConfigChange({
-                            ...displayConfig,
-                            [option.key]: e.target.value
-                          })
-                        }
-                        placeholder={option.placeholder || '#8884d8'}
-                        className="flex-1 px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-blue-500 focus:border-blue-500 bg-dc-surface text-dc-text"
-                      />
-                    </div>
-                    {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       )}

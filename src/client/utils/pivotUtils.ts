@@ -10,6 +10,40 @@ import type { CubeMeta } from '../hooks/useCubeMeta'
 import { formatTimeValue } from './chartUtils'
 
 /**
+ * Derives ordered column list from a CubeQuery object.
+ * Order: dimensions, timeDimensions (as field names), measures
+ *
+ * @param queryObject The CubeQuery object
+ * @returns Array of field names in order
+ */
+export function getOrderedColumnsFromQuery(queryObject?: CubeQuery): string[] {
+  if (!queryObject) return []
+
+  const columns: string[] = []
+
+  // Add regular dimensions first
+  if (queryObject.dimensions) {
+    columns.push(...queryObject.dimensions)
+  }
+
+  // Add time dimensions
+  if (queryObject.timeDimensions) {
+    queryObject.timeDimensions.forEach(td => {
+      if (!columns.includes(td.dimension)) {
+        columns.push(td.dimension)
+      }
+    })
+  }
+
+  // Add measures last
+  if (queryObject.measures) {
+    columns.push(...queryObject.measures)
+  }
+
+  return columns
+}
+
+/**
  * Configuration for pivoting based on query structure
  */
 export interface PivotConfig {
@@ -68,9 +102,14 @@ export interface PivotedTableData {
 /**
  * Determines if a query has a time dimension with granularity that should trigger pivoting
  * @param queryObject The CubeQuery object
+ * @param xAxisOverride Optional array of fields to use for filtering dimensions and measures
+ *                      (for respecting chartConfig.xAxis configuration)
  * @returns PivotConfig if pivoting should occur, null otherwise
  */
-export function hasTimeDimensionForPivot(queryObject?: CubeQuery): PivotConfig | null {
+export function hasTimeDimensionForPivot(
+  queryObject?: CubeQuery,
+  xAxisOverride?: string[]
+): PivotConfig | null {
   if (!queryObject?.timeDimensions?.length) return null
 
   // Find the first time dimension with granularity
@@ -80,11 +119,38 @@ export function hasTimeDimensionForPivot(queryObject?: CubeQuery): PivotConfig |
   // Must have at least one measure to pivot
   if (!queryObject.measures?.length) return null
 
+  let dimensions: string[]
+  let measures: string[]
+
+  if (xAxisOverride && xAxisOverride.length > 0) {
+    // Filter dimensions from xAxisOverride (excluding time dimension and measures)
+    dimensions = xAxisOverride.filter(field => {
+      // Exclude the time dimension being pivoted (it becomes columns)
+      if (field === timeDim.dimension) return false
+      // Exclude measures (they become row values, not dimension columns)
+      if (queryObject.measures?.includes(field)) return false
+      return true
+    })
+
+    // Filter measures from xAxisOverride - only show measures that are in xAxis
+    const measuresInXAxis = xAxisOverride.filter(field =>
+      queryObject.measures?.includes(field)
+    )
+    // If xAxis contains measures, use only those; otherwise fall back to all measures
+    measures = measuresInXAxis.length > 0 ? measuresInXAxis : queryObject.measures
+  } else {
+    dimensions = queryObject.dimensions || []
+    measures = queryObject.measures
+  }
+
+  // Must have at least one measure after filtering
+  if (measures.length === 0) return null
+
   return {
     timeDimension: timeDim.dimension,
     granularity: timeDim.granularity,
-    dimensions: queryObject.dimensions || [],
-    measures: queryObject.measures
+    dimensions,
+    measures
   }
 }
 

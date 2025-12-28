@@ -29,6 +29,16 @@ export type ChartType =
   | 'kpiText'
   | 'markdown'
 
+// Axis formatting configuration
+export interface AxisFormatConfig {
+  label?: string              // Custom axis label (overrides auto-generated)
+  unit?: 'currency' | 'percent' | 'number' | 'custom'  // Unit type for formatting
+  abbreviate?: boolean        // Use K, M, B suffixes for large numbers
+  decimals?: number           // Decimal places (0-4, undefined = auto)
+  customPrefix?: string       // Prefix for 'custom' unit type
+  customSuffix?: string       // Suffix for 'custom' unit type
+}
+
 // Chart configuration
 export interface ChartAxisConfig {
   // New format (for advanced portlet editor)
@@ -46,7 +56,11 @@ export interface ChartAxisConfig {
   
   // Legacy format (for backward compatibility)
   x?: string // Single dimension field for X axis
-  y?: string[] // Measure fields for Y axis  
+  y?: string[] // Measure fields for Y axis
+
+  // Dual Y-axis support: per-measure axis assignment (left or right)
+  // Default: 'left' for all measures (backward compatible)
+  yAxisAssignment?: Record<string, 'left' | 'right'>
 }
 
 export interface ChartDisplayConfig {
@@ -98,6 +112,11 @@ export interface ChartDisplayConfig {
   accentColorIndex?: number // Index of color from dashboard palette for headers, bullets, links
   fontSize?: 'small' | 'medium' | 'large' // Text size for markdown content
   alignment?: 'left' | 'center' | 'right' // Text alignment for markdown content
+
+  // Axis formatting options (for Line, Area, Bar, Scatter charts)
+  xAxisFormat?: AxisFormatConfig       // Formatting for X-axis values
+  leftYAxisFormat?: AxisFormatConfig   // Formatting for left Y-axis values
+  rightYAxisFormat?: AxisFormatConfig  // Formatting for right Y-axis values (dual-axis charts)
 }
 
 // Portlet configuration

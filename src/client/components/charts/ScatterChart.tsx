@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue, formatNumericValue } from '../../utils/chartUtils'
+import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
 import { useCubeContext } from '../../providers/CubeProvider'
 import type { ChartProps } from '../../types'
 
@@ -23,6 +23,11 @@ export default function ScatterChart({
       showGrid: displayConfig?.showGrid ?? true,
       showTooltip: displayConfig?.showTooltip ?? true
     }
+
+    // Extract axis format configs
+    // For scatter charts, xAxis uses xAxisFormat, yAxis uses leftYAxisFormat
+    const xAxisFormat = displayConfig?.xAxisFormat
+    const yAxisFormat = displayConfig?.leftYAxisFormat
 
     if (!data || data.length === 0) {
       return (
@@ -184,18 +189,20 @@ export default function ScatterChart({
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
-          <XAxis 
+          <XAxis
             type="number"
             dataKey="x"
-            name={getFieldLabel(xAxisField)}
+            name={xAxisFormat?.label || getFieldLabel(xAxisField)}
             tick={{ fontSize: 12 }}
+            tickFormatter={xAxisFormat ? (value) => formatAxisValue(value, xAxisFormat) : undefined}
           />
-          <YAxis 
+          <YAxis
             type="number"
             dataKey="y"
-            name={getFieldLabel(yAxisField)}
+            name={yAxisFormat?.label || getFieldLabel(yAxisField)}
             tick={{ fontSize: 12 }}
-            label={{ value: getFieldLabel(yAxisField), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
+            tickFormatter={yAxisFormat ? (value) => formatAxisValue(value, yAxisFormat) : undefined}
+            label={{ value: yAxisFormat?.label || getFieldLabel(yAxisField), angle: -90, position: 'left', style: { textAnchor: 'middle', fontSize: '12px' } }}
           />
           {safeDisplayConfig.showTooltip && (
             <Tooltip
@@ -225,8 +232,8 @@ export default function ScatterChart({
                         ))}
                       </div>
                     )}
-                    <div>{getFieldLabel(xAxisField)}: {formatNumericValue(point.x)}</div>
-                    <div>{getFieldLabel(yAxisField)}: {formatNumericValue(point.y)}</div>
+                    <div>{xAxisFormat?.label || getFieldLabel(xAxisField)}: {formatAxisValue(point.x, xAxisFormat)}</div>
+                    <div>{yAxisFormat?.label || getFieldLabel(yAxisField)}: {formatAxisValue(point.y, yAxisFormat)}</div>
                   </div>
                 )
               }}

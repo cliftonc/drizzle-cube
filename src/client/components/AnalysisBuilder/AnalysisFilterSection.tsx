@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { getIcon } from '../../icons'
+import SectionHeading from './SectionHeading'
 import type { Filter, SimpleFilter, GroupFilter } from '../../types'
 import type { MetaResponse, MetaField } from '../../shared/types'
 import FieldSearchModal from './FieldSearchModal'
@@ -274,51 +275,67 @@ export default function AnalysisFilterSection({
   }
 
   return (
-    <div
-      onDragOver={onFieldDropped ? handleDragOver : undefined}
-      onDragLeave={onFieldDropped ? handleDragLeave : undefined}
-      onDrop={onFieldDropped ? handleDrop : undefined}
-      className={`transition-colors rounded-lg ${isDragOver ? 'bg-dc-primary/10 ring-2 ring-dc-primary ring-dashed' : ''}`}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-dc-text">
+    <div>
+      {/* Header - entire row is clickable to add filter */}
+      <button
+        onClick={handleAddFilterClick}
+        className="flex items-center justify-between mb-3 w-full py-1 px-2 -ml-2 rounded-lg hover:bg-dc-primary/10 transition-colors group"
+        title="Add filter"
+      >
+        <SectionHeading>
           Filter
           {totalFilterCount > 0 && (
-            <span className="ml-1.5 text-xs font-normal text-dc-text-muted">
+            <span className="ml-1.5 text-xs font-normal text-dc-text-muted normal-case tracking-normal">
               ({totalFilterCount})
             </span>
           )}
-        </h3>
+        </SectionHeading>
         <div className="flex items-center gap-2">
           {totalFilterCount > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="text-xs text-dc-text-muted hover:text-red-600 underline"
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleClearAll()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation()
+                  handleClearAll()
+                }
+              }}
+              className="text-xs text-dc-text-muted hover:text-red-600 underline cursor-pointer"
             >
               Clear all
-            </button>
+            </span>
           )}
-          <button
-            onClick={handleAddFilterClick}
-            className="p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-secondary rounded transition-colors"
-            title="Add filter"
-          >
-            <AddIcon className="w-5 h-5" />
-          </button>
+          <AddIcon className="w-5 h-5 text-dc-text-secondary group-hover:text-dc-primary transition-colors" />
         </div>
-      </div>
+      </button>
 
-      {/* Filter List - Hierarchical Rendering */}
-      {filters.length === 0 ? (
-        <p className={`text-sm ${isDragOver ? 'text-dc-primary' : 'text-dc-text-muted'}`}>
-          {isDragOver ? 'Drop to add filter' : 'No filters applied'}
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {filters.map((filter, index) => renderFilter(filter, index))}
-        </div>
-      )}
+      {/* Drop Zone Container - Only wraps content, not header */}
+      <div
+        onDragOver={onFieldDropped ? handleDragOver : undefined}
+        onDragLeave={onFieldDropped ? handleDragLeave : undefined}
+        onDrop={onFieldDropped ? handleDrop : undefined}
+        className={`p-2 -mx-2 rounded-lg border-2 border-dashed transition-all ${
+          isDragOver
+            ? 'border-dc-primary bg-dc-primary/5'
+            : 'border-transparent'
+        }`}
+      >
+        {/* Filter List - Hierarchical Rendering */}
+        {filters.length === 0 ? (
+          <p className={`text-sm ${isDragOver ? 'text-dc-primary font-medium' : 'text-dc-text-muted'}`}>
+            {isDragOver ? 'Drop to add filter' : 'No filters applied'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {filters.map((filter, index) => renderFilter(filter, index))}
+          </div>
+        )}
+      </div>
 
       {/* Field Search Modal - mode 'filter' shows all fields (measures + dimensions) */}
       <FieldSearchModal

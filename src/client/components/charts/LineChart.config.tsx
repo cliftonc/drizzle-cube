@@ -23,7 +23,8 @@ export const lineChartConfig: ChartTypeConfig = {
       description: 'Measures for line values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures here'
+      emptyText: 'Drop measures here',
+      enableDualAxis: true
     },
     {
       key: 'series',
@@ -49,6 +50,18 @@ export const lineChartConfig: ChartTypeConfig = {
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
       description: 'Single value or comma-separated values to spread across X-axis'
+    },
+    {
+      key: 'leftYAxisFormat',
+      label: 'Left Y-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for left Y-axis'
+    },
+    {
+      key: 'rightYAxisFormat',
+      label: 'Right Y-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for right Y-axis'
     }
   ]
 }

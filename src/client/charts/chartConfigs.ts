@@ -24,9 +24,12 @@ export interface AxisDropZoneConfig {
   
   /** Optional icon component to display */
   icon?: ComponentType<{ className?: string }>
-  
+
   /** Placeholder text when drop zone is empty */
   emptyText?: string
+
+  /** Enable L/R axis toggle for items in this drop zone (for dual Y-axis support) */
+  enableDualAxis?: boolean
 }
 
 /**
@@ -40,7 +43,7 @@ export interface DisplayOptionConfig {
   label: string
   
   /** Type of input control to render */
-  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor'
+  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat'
   
   /** Default value for the option */
   defaultValue?: any

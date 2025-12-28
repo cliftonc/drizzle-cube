@@ -11,6 +11,7 @@ import MetricsSection from './MetricsSection'
 import BreakdownSection from './BreakdownSection'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
+import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 
 /**
  * AnalysisQueryPanel displays the right-side query builder with:
@@ -51,7 +52,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 }: AnalysisQueryPanelProps) {
   // Force query tab when no metrics are selected
   useEffect(() => {
-    if (metrics.length === 0 && activeTab === 'chart') {
+    if (metrics.length === 0 && (activeTab === 'chart' || activeTab === 'display')) {
       onActiveTabChange('query')
     }
   }, [metrics.length, activeTab, onActiveTabChange])
@@ -83,6 +84,20 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           title={metrics.length === 0 ? 'Add metrics to configure chart' : 'Chart configuration'}
         >
           Chart
+        </button>
+        <button
+          onClick={() => metrics.length > 0 && onActiveTabChange('display')}
+          disabled={metrics.length === 0}
+          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'display'
+              ? 'text-dc-primary border-b-2 border-dc-primary'
+              : metrics.length === 0
+                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                : 'text-dc-text-secondary hover:text-dc-text'
+          }`}
+          title={metrics.length === 0 ? 'Add metrics to configure display' : 'Display options'}
+        >
+          Display
         </button>
       </div>
 
@@ -126,14 +141,19 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           <AnalysisChartConfigPanel
             chartType={chartType}
             chartConfig={chartConfig}
-            displayConfig={displayConfig}
-            colorPalette={colorPalette}
             metrics={metrics}
             breakdowns={breakdowns}
             schema={schema}
             chartAvailability={chartAvailability}
             onChartTypeChange={onChartTypeChange}
             onChartConfigChange={onChartConfigChange}
+          />
+        ) : activeTab === 'display' ? (
+          /* Display Tab Content */
+          <AnalysisDisplayConfigPanel
+            chartType={chartType}
+            displayConfig={displayConfig}
+            colorPalette={colorPalette}
             onDisplayConfigChange={onDisplayConfigChange}
           />
         ) : null}

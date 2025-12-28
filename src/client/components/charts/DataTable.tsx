@@ -12,11 +12,13 @@ import {
   hasTimeDimensionForPivot,
   pivotTableData,
   getMeasureType,
+  getOrderedColumnsFromQuery,
   type PivotedTableData,
   type PivotColumn,
   type PivotRow
 } from '../../utils/pivotUtils'
-import type { ChartProps } from '../../types'
+import { formatAxisValue } from '../../utils/chartUtils'
+import type { ChartProps, AxisFormatConfig } from '../../types'
 
 export default function DataTable({
   data,
@@ -28,9 +30,10 @@ export default function DataTable({
   const { getFieldLabel, meta } = useCubeContext()
 
   // Detect if we should pivot based on query structure
+  // Pass chartConfig.xAxis to respect user-configured column ordering
   const pivotConfig = useMemo(
-    () => hasTimeDimensionForPivot(queryObject),
-    [queryObject]
+    () => hasTimeDimensionForPivot(queryObject, chartConfig?.xAxis),
+    [queryObject, chartConfig?.xAxis]
   )
 
   // Check if pivoting is enabled (default: true when time dimension present)
@@ -64,6 +67,7 @@ export default function DataTable({
         pivotedData={pivotedData}
         height={height}
         meta={meta}
+        leftYAxisFormat={displayConfig?.leftYAxisFormat}
       />
     )
   }
@@ -73,8 +77,10 @@ export default function DataTable({
     <FlatTable
       data={data}
       chartConfig={chartConfig}
+      queryObject={queryObject}
       height={height}
       getFieldLabel={getFieldLabel}
+      leftYAxisFormat={displayConfig?.leftYAxisFormat}
     />
   )
 }
@@ -85,11 +91,13 @@ export default function DataTable({
 function PivotedTable({
   pivotedData,
   height,
-  meta
+  meta,
+  leftYAxisFormat
 }: {
   pivotedData: PivotedTableData
   height: number | string
   meta: any
+  leftYAxisFormat?: AxisFormatConfig
 }) {
   const { columns, rows } = pivotedData
 
@@ -131,6 +139,7 @@ function PivotedTable({
               row={row}
               columns={columns}
               meta={meta}
+              leftYAxisFormat={leftYAxisFormat}
             />
           ))}
         </tbody>
@@ -146,11 +155,13 @@ function PivotedTable({
 function PivotedTableRow({
   row,
   columns,
-  meta
+  meta,
+  leftYAxisFormat
 }: {
   row: PivotRow
   columns: PivotColumn[]
   meta: any
+  leftYAxisFormat?: AxisFormatConfig
 }) {
   // Get measure icon for this row
   const measureType = getMeasureType(row.measureField, meta)
@@ -182,19 +193,19 @@ function PivotedTableRow({
           )
         }
 
-        // Time column - right-aligned, formatted values
+        // Time column - right-aligned, formatted values (these are measure values)
         if (col.isTimeColumn) {
           return (
             <td
               key={col.key}
               className="px-3 py-2 whitespace-nowrap text-sm text-right text-dc-text"
             >
-              {formatPivotCellValue(value)}
+              {formatPivotCellValue(value, leftYAxisFormat)}
             </td>
           )
         }
 
-        // Dimension column - left-aligned (no row spanning)
+        // Dimension column - left-aligned (no row spanning) - no number formatting
         return (
           <td
             key={col.key}
@@ -212,9 +223,13 @@ function PivotedTableRow({
  * Format cell value for pivoted table display
  * Shows "-" for null/undefined values
  */
-function formatPivotCellValue(value: any): string {
+function formatPivotCellValue(value: any, formatConfig?: AxisFormatConfig): string {
   if (value === null || value === undefined) return '-'
   if (typeof value === 'number') {
+    // Use formatAxisValue if config provided
+    if (formatConfig) {
+      return formatAxisValue(value, formatConfig)
+    }
     // Format with locale and up to 2 decimal places
     if (Number.isInteger(value)) {
       return value.toLocaleString()
@@ -233,19 +248,44 @@ function formatPivotCellValue(value: any): string {
 function FlatTable({
   data,
   chartConfig,
+  queryObject,
   height,
-  getFieldLabel
+  getFieldLabel,
+  leftYAxisFormat
 }: {
   data: any[]
   chartConfig?: { xAxis?: string[] }
+  queryObject?: ChartProps['queryObject']
   height: number | string
   getFieldLabel: (field: string) => string
+  leftYAxisFormat?: AxisFormatConfig
 }) {
-  // Use chartConfig.xAxis to filter columns, or show all if not specified
+  // Get all columns available in data
   const allColumns = Object.keys(data[0] || {})
-  const columns = chartConfig?.xAxis && chartConfig.xAxis.length > 0
-    ? chartConfig.xAxis.filter(col => allColumns.includes(col))
-    : allColumns
+
+  // Determine column order with proper fallback:
+  // 1. If xAxis is configured, use that order
+  // 2. Otherwise, derive order from queryObject (dimensions + timeDimensions + measures)
+  // 3. Fallback: Object.keys order
+  const columns = useMemo(() => {
+    // If xAxis is configured, use that order (filtered to existing columns)
+    if (chartConfig?.xAxis && chartConfig.xAxis.length > 0) {
+      return chartConfig.xAxis.filter(col => allColumns.includes(col))
+    }
+
+    // Derive order from queryObject
+    const queryOrder = getOrderedColumnsFromQuery(queryObject)
+    if (queryOrder.length > 0) {
+      // Filter to only columns that exist in data
+      const ordered = queryOrder.filter(col => allColumns.includes(col))
+      // Add any columns in data that weren't in query (edge case)
+      const remaining = allColumns.filter(col => !ordered.includes(col))
+      return [...ordered, ...remaining]
+    }
+
+    // Final fallback: Object.keys order
+    return allColumns
+  }, [chartConfig?.xAxis, queryObject, allColumns])
 
   if (columns.length === 0) {
     return (
@@ -284,7 +324,7 @@ function FlatTable({
                   key={column}
                   className="px-3 py-2 whitespace-nowrap text-sm text-dc-text"
                 >
-                  {formatCellValue(row[column])}
+                  {formatCellValue(row[column], leftYAxisFormat)}
                 </td>
               ))}
             </tr>
@@ -298,9 +338,13 @@ function FlatTable({
 /**
  * Format cell value for flat table display
  */
-function formatCellValue(value: any): string {
+function formatCellValue(value: any, formatConfig?: AxisFormatConfig): string {
   if (value == null) return ''
   if (typeof value === 'number') {
+    // Use formatAxisValue if config provided
+    if (formatConfig) {
+      return formatAxisValue(value, formatConfig)
+    }
     return value.toLocaleString()
   }
   if (typeof value === 'boolean') {
