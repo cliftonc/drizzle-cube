@@ -51,14 +51,17 @@ export default function AnalysisAIPanel({
   )
 
   return (
-    <div className="border-b border-dc-border bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+    <div
+      className="border-b border-dc-border"
+      style={{ background: 'linear-gradient(to right, var(--dc-ai-gradient-start), var(--dc-ai-gradient-end))' }}
+    >
       {/* Header */}
       <div className="px-4 py-2 flex items-center justify-between border-b border-dc-border bg-dc-surface-secondary">
         <div className="flex items-center gap-2">
-          <SparklesIcon className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          <SparklesIcon className="w-4 h-4 text-dc-accent" />
           <span className="text-sm font-medium text-dc-text">AI Query Generator</span>
           {isGenerating && (
-            <span className="text-xs text-purple-600 dark:text-purple-400 animate-pulse">
+            <span className="text-xs text-dc-accent animate-pulse">
               Generating...
             </span>
           )}
@@ -67,7 +70,7 @@ export default function AnalysisAIPanel({
           {hasGeneratedQuery && (
             <button
               onClick={onAccept}
-              className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+              className="px-3 py-1 text-xs font-medium text-white bg-dc-success hover:opacity-80 rounded transition-colors"
             >
               Accept
             </button>
@@ -91,7 +94,7 @@ export default function AnalysisAIPanel({
               onChange={(e) => onPromptChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe your query in natural language... (e.g., 'Show total sales by month for the last year')"
-              className="w-full px-3 py-2 text-sm border border-dc-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none bg-dc-surface text-dc-text placeholder-dc-text-muted"
+              className="w-full px-3 py-2 text-sm border border-dc-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-dc-accent focus:border-dc-accent resize-none bg-dc-surface text-dc-text placeholder-dc-text-muted"
               rows={2}
               disabled={isGenerating}
             />
@@ -107,8 +110,8 @@ export default function AnalysisAIPanel({
               disabled={isGenerating || !userPrompt.trim()}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-2 ${
                 isGenerating || !userPrompt.trim()
-                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  ? 'bg-dc-surface-tertiary text-dc-text-disabled cursor-not-allowed'
+                  : 'bg-dc-accent hover:bg-dc-accent-hover text-white'
               }`}
             >
               {isGenerating ? (
@@ -128,16 +131,16 @@ export default function AnalysisAIPanel({
 
         {/* Error message */}
         {error && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-            <ErrorIcon className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-red-700 dark:text-red-300">{error}</div>
+          <div className="mt-3 flex items-start gap-2 p-3 bg-dc-error-bg border border-dc-error-border rounded-md">
+            <ErrorIcon className="w-4 h-4 text-dc-error mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-dc-error">{error}</div>
           </div>
         )}
 
         {/* Success message */}
         {hasGeneratedQuery && !error && (
-          <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-            <div className="text-sm text-green-700 dark:text-green-300">
+          <div className="mt-3 p-3 bg-dc-success-bg border border-dc-success-border rounded-md">
+            <div className="text-sm text-dc-success">
               Query generated and loaded! Check the results below, then click{' '}
               <strong>Accept</strong> to keep or <strong>Cancel</strong> to revert.
             </div>

@@ -36,11 +36,11 @@ function FieldSearchItem({
   // Get badge color based on field type
   const getBadgeStyle = () => {
     if (field.fieldType === 'measure') {
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+      return 'bg-dc-measure text-dc-measure-text'
     } else if (field.fieldType === 'timeDimension') {
-      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+      return 'bg-dc-time-dimension text-dc-time-dimension-text'
     } else {
-      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+      return 'bg-dc-dimension text-dc-dimension-text'
     }
   }
 
@@ -72,10 +72,10 @@ function FieldSearchItem({
       <span
         className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-md ${
           field.fieldType === 'measure'
-            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+            ? 'bg-dc-measure text-dc-measure-text'
             : field.fieldType === 'timeDimension'
-              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-              : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+              ? 'bg-dc-time-dimension text-dc-time-dimension-text'
+              : 'bg-dc-dimension text-dc-dimension-text'
         }`}
       >
         {getFieldIcon()}

@@ -237,7 +237,7 @@ export default function FieldSearchModal({
         role="dialog"
         aria-modal="true"
         aria-label={modalTitle}
-        className="bg-dc-surface shadow-xl w-full h-full md:rounded-lg md:w-auto md:max-w-5xl md:h-[80vh] md:max-h-[700px] flex flex-col overflow-hidden"
+        className="bg-dc-surface shadow-xl w-full h-full md:rounded-lg md:w-[900px] md:max-w-[900px] md:h-[80vh] md:max-h-[700px] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >

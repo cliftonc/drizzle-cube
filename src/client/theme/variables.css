@@ -102,6 +102,10 @@
   --dc-muted: #6b7280;
   --dc-muted-bg: #f3f4f6;
   --dc-muted-border: #e5e7eb;
+
+  /* AI Panel Gradient - Special gradient for AI features */
+  --dc-ai-gradient-start: #faf5ff;
+  --dc-ai-gradient-end: #eef2ff;
 }
 
 /* ============================================================================
@@ -195,6 +199,10 @@ html.dark {
   --dc-muted: #94a3b8;
   --dc-muted-bg: #334155;
   --dc-muted-border: #475569;
+
+  /* AI Panel Gradient - Dark mode versions */
+  --dc-ai-gradient-start: rgba(139, 92, 246, 0.15);
+  --dc-ai-gradient-end: rgba(99, 102, 241, 0.15);
 }
 
 /* ============================================================================
@@ -287,6 +295,10 @@ html.neon {
   --dc-muted: #b0b0d0;
   --dc-muted-bg: #2a1f3e;
   --dc-muted-border: #ff00ff;
+
+  /* AI Panel Gradient - Neon versions */
+  --dc-ai-gradient-start: rgba(0, 255, 255, 0.1);
+  --dc-ai-gradient-end: rgba(255, 0, 255, 0.1);
 }
 
 /* ============================================================================

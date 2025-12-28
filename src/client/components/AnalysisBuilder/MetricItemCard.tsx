@@ -80,7 +80,7 @@ const MetricItemCard = memo(function MetricItemCard({
       onDragEnd={isDraggable ? onDragEnd : undefined}
     >
       {/* Icon - colored background matching field selector */}
-      <span className="w-6 h-6 flex items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">
+      <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
         {MeasureIcon && <MeasureIcon className="w-4 h-4" />}
       </span>
 

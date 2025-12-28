@@ -166,6 +166,7 @@ export default function PortletAnalysisModal({
               value={formTitle}
               onChange={(e) => setFormTitle(e.target.value)}
               placeholder="Enter portlet title..."
+              autoComplete="off"
               className="flex-1 px-3 py-1.5 text-sm bg-dc-surface border border-dc-border rounded-md text-dc-text placeholder-dc-text-muted focus:outline-none focus:ring-2 focus:ring-dc-accent focus:border-transparent"
               autoFocus
             />

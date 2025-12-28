@@ -408,7 +408,7 @@ export default function AnalysisChartConfigPanel({
                     className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
                       <IconComponent className="w-4 h-4" />
                     </span>
                     <div className="flex-1 min-w-0">

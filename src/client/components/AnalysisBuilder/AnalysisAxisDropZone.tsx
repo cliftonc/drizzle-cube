@@ -294,7 +294,7 @@ export default function AnalysisAxisDropZone({
       // Measures get colored icon box with type-specific icon
       const IconComponent = getMeasureTypeIcon(meta.measureType || 'count') || MeasureIcon
       return (
-        <span className="w-6 h-6 flex items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">
+        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
           <IconComponent className="w-4 h-4" />
         </span>
       )
@@ -313,7 +313,7 @@ export default function AnalysisAxisDropZone({
       <div className="mb-2">
         <h4 className="text-sm font-medium text-dc-text flex items-center">
           {label}
-          {mandatory && <span className="text-red-500 ml-1">*</span>}
+          {mandatory && <span className="text-dc-error ml-1">*</span>}
         </h4>
         {description && <div className="text-xs text-dc-text-muted mt-0.5">{description}</div>}
       </div>
@@ -472,8 +472,8 @@ export default function AnalysisAxisDropZone({
                         }}
                         className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-shrink-0 ${
                           (yAxisAssignment?.[field] || 'left') === 'left'
-                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
-                            : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50'
+                            ? 'bg-dc-info-bg text-dc-info hover:opacity-80'
+                            : 'bg-dc-accent-bg text-dc-accent hover:opacity-80'
                         }`}
                         title={`Y-Axis: ${(yAxisAssignment?.[field] || 'left') === 'left' ? 'Left' : 'Right'} (click to toggle)`}
                       >
@@ -525,7 +525,7 @@ export default function AnalysisAxisDropZone({
       </div>
 
       {mandatory && fields.length === 0 && (
-        <div className="text-xs text-red-500 mt-1">This field is required</div>
+        <div className="text-xs text-dc-error mt-1">This field is required</div>
       )}
     </div>
   )

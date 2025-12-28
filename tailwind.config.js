@@ -62,6 +62,19 @@ export default {
         'dc-muted': 'var(--dc-muted)',
         'dc-muted-bg': 'var(--dc-muted-bg)',
         'dc-muted-border': 'var(--dc-muted-border)',
+
+        // Field type colors - for semantic field type badges
+        'dc-dimension': 'var(--dc-dimension-bg)',
+        'dc-dimension-text': 'var(--dc-dimension-text)',
+        'dc-dimension-border': 'var(--dc-dimension-border)',
+
+        'dc-time-dimension': 'var(--dc-time-dimension-bg)',
+        'dc-time-dimension-text': 'var(--dc-time-dimension-text)',
+        'dc-time-dimension-border': 'var(--dc-time-dimension-border)',
+
+        'dc-measure': 'var(--dc-measure-bg)',
+        'dc-measure-text': 'var(--dc-measure-text)',
+        'dc-measure-border': 'var(--dc-measure-border)',
       },
     },
   },

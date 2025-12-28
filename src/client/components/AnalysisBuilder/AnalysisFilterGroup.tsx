@@ -131,7 +131,7 @@ export default function AnalysisFilterGroup({
 
   // Get background color based on group type
   const getGroupBgColor = () => {
-    return group.type === 'and' ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-amber-50/50 dark:bg-amber-900/10'
+    return group.type === 'and' ? 'bg-dc-info-bg/50' : 'bg-dc-warning-bg/50'
   }
 
   const conditionCount = group.filters.length
@@ -147,8 +147,8 @@ export default function AnalysisFilterGroup({
             onClick={handleToggleType}
             className={`px-2 py-0.5 text-xs font-semibold rounded transition-colors ${
               group.type === 'and'
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800/50 dark:text-blue-300'
-                : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-800/50 dark:text-amber-300'
+                ? 'bg-dc-info-bg text-dc-info hover:opacity-80'
+                : 'bg-dc-warning-bg text-dc-warning hover:opacity-80'
             }`}
             title={`Click to switch to ${group.type === 'and' ? 'OR' : 'AND'}`}
           >
@@ -200,7 +200,7 @@ export default function AnalysisFilterGroup({
           {!hideRemoveButton && (
             <button
               onClick={onRemove}
-              className="p-1 text-dc-text-muted hover:text-red-600 transition-colors"
+              className="p-1 text-dc-text-muted hover:text-dc-danger transition-colors"
               title="Remove group"
             >
               <CloseIcon className="w-4 h-4" />

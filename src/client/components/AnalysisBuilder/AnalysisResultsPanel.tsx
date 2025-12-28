@@ -516,7 +516,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   activeView === 'chart'
                     ? 'bg-dc-primary text-white'
                     : !hasMetrics
-                      ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                      ? 'text-dc-text-disabled bg-dc-surface-tertiary cursor-not-allowed'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                 }`}
                 title={hasMetrics ? 'Chart view' : 'Add metrics to enable chart view'}
