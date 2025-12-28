@@ -38,13 +38,14 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
       case 'week':
         // Get start of week (Monday) using MySQL's week functions
         return sql`DATE_SUB(${fieldExpr}, INTERVAL WEEKDAY(${fieldExpr}) DAY)`
-      default:
+      default: {
         const format = formatMap[granularity]
         if (!format) {
           // Fallback to original expression if granularity not recognized
           return fieldExpr as SQL
         }
         return sql`STR_TO_DATE(DATE_FORMAT(${fieldExpr}, ${format}), '%Y-%m-%d %H:%i:%s')`
+      }
     }
   }
 

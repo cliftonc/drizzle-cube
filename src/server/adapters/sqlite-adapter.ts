@@ -29,12 +29,13 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       case 'year':
         // Start of year: 2023-01-01 00:00:00
         return sql`datetime(${fieldExpr}, 'unixepoch', 'start of year')`
-      case 'quarter':
+      case 'quarter': {
         // Calculate quarter start date using SQLite's date arithmetic
         // First convert to datetime, then calculate quarter
         const dateForQuarter = sql`datetime(${fieldExpr}, 'unixepoch')`
         return sql`datetime(${dateForQuarter}, 'start of year',
           '+' || (((CAST(strftime('%m', ${dateForQuarter}) AS INTEGER) - 1) / 3) * 3) || ' months')`
+      }
       case 'month':
         // Start of month: 2023-05-01 00:00:00
         return sql`datetime(${fieldExpr}, 'unixepoch', 'start of month')`
@@ -45,18 +46,21 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       case 'day':
         // Start of day: 2023-05-15 00:00:00
         return sql`datetime(${fieldExpr}, 'unixepoch', 'start of day')`
-      case 'hour':
+      case 'hour': {
         // Truncate to hour: 2023-05-15 14:00:00
         const dateForHour = sql`datetime(${fieldExpr}, 'unixepoch')`
         return sql`datetime(strftime('%Y-%m-%d %H:00:00', ${dateForHour}))`
-      case 'minute':
+      }
+      case 'minute': {
         // Truncate to minute: 2023-05-15 14:30:00
         const dateForMinute = sql`datetime(${fieldExpr}, 'unixepoch')`
         return sql`datetime(strftime('%Y-%m-%d %H:%M:00', ${dateForMinute}))`
-      case 'second':
+      }
+      case 'second': {
         // Already at second precision: 2023-05-15 14:30:25
         const dateForSecond = sql`datetime(${fieldExpr}, 'unixepoch')`
         return sql`datetime(strftime('%Y-%m-%d %H:%M:%S', ${dateForSecond}))`
+      }
       default:
         // Fallback to converting the timestamp to datetime without truncation
         return sql`datetime(${fieldExpr}, 'unixepoch')`

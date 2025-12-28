@@ -229,7 +229,7 @@ export default function KpiText({
         }
         return match
       })
-    } catch (error) {
+    } catch {
       // Error processing template
       return String(value)
     }

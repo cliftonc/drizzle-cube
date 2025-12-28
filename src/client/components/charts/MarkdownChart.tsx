@@ -219,16 +219,16 @@ export default function MarkdownChart({
           </a>
         )
 
-      case 'header':
+      case 'header': {
         // Header classes that scale with fontSize setting
         const getHeaderClasses = (level: number, fontSize: string) => {
           const baseClasses = 'font-bold'
           const marginClasses = {
             1: 'mb-4',
-            2: 'mb-3', 
+            2: 'mb-3',
             3: 'mb-2'
           }
-          
+
           let sizeClasses = ''
           if (fontSize === 'small') {
             sizeClasses = { 1: 'text-lg', 2: 'text-base', 3: 'text-sm' }[level] || 'text-sm'
@@ -237,20 +237,21 @@ export default function MarkdownChart({
           } else { // medium (default)
             sizeClasses = { 1: 'text-3xl', 2: 'text-2xl', 3: 'text-xl' }[level] || 'text-xl'
           }
-          
+
           return `${baseClasses} ${sizeClasses} ${marginClasses[level as keyof typeof marginClasses]}`
         }
-        
-        const HeaderTag = `h${node.level}` as keyof JSX.IntrinsicElements
+
+        const HeaderTag = `h${node.level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
         return (
-          <HeaderTag 
-            key={key} 
+          <HeaderTag
+            key={key}
             className={getHeaderClasses(node.level as number, fontSize)}
             style={{ color: accentColor }}
           >
             {node.content}
           </HeaderTag>
         )
+      }
 
       case 'paragraph':
         return (
@@ -259,10 +260,10 @@ export default function MarkdownChart({
           </p>
         )
 
-      case 'list':
+      case 'list': {
         const ListTag = node.ordered ? 'ol' : 'ul'
         let listClasses = 'mb-3'
-        
+
         if (alignment === 'center') {
           listClasses += ' list-none flex flex-col items-center'
         } else if (alignment === 'right') {
@@ -270,12 +271,13 @@ export default function MarkdownChart({
         } else {
           listClasses += ' list-none ml-6'
         }
-        
+
         return (
           <ListTag key={key} className={listClasses}>
             {node.children?.map((child, i) => renderNode(child, i, node.ordered ? i + 1 : undefined))}
           </ListTag>
         )
+      }
 
       case 'listItem':
         if (node.children) {

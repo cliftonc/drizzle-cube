@@ -4,7 +4,7 @@
  * Displays the Metrics section in the query panel with expandable list of metrics.
  */
 
-import { useMemo, useState, useCallback, useRef, memo } from 'react'
+import { useMemo, useState, useCallback, useRef, memo, DragEvent } from 'react'
 import type { MetricsSectionProps } from './types'
 import type { MetaField } from '../../shared/types'
 import MetricItemCard from './MetricItemCard'
@@ -89,7 +89,7 @@ const MetricsSection = memo(function MetricsSection({
   const dragCloneRef = useRef<HTMLElement | null>(null)
 
   // Drag handlers
-  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+  const handleDragStart = useCallback((e: DragEvent, index: number) => {
     setDraggedIndex(index)
     draggedIndexRef.current = index
     e.dataTransfer.effectAllowed = 'move'
@@ -131,7 +131,7 @@ const MetricsSection = memo(function MetricsSection({
   }, [])
 
   // Handle drag over an item - determine drop position based on mouse position
-  const handleItemDragOver = useCallback((e: React.DragEvent, itemIndex: number) => {
+  const handleItemDragOver = useCallback((e: DragEvent, itemIndex: number) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -158,7 +158,7 @@ const MetricsSection = memo(function MetricsSection({
   }, [])
 
   // Handle drop on an item
-  const handleItemDrop = useCallback((e: React.DragEvent) => {
+  const handleItemDrop = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -188,7 +188,7 @@ const MetricsSection = memo(function MetricsSection({
   }, [onReorder])
 
   // Clear drop target when leaving the section
-  const handleSectionDragLeave = useCallback((e: React.DragEvent) => {
+  const handleSectionDragLeave = useCallback((e: DragEvent) => {
     const relatedTarget = e.relatedTarget as HTMLElement | null
     if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
       setDropTargetIndex(null)

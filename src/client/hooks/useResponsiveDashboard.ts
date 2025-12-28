@@ -6,7 +6,7 @@
  * - Mobile (<768px): Single-column stacked layout, read-only
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, RefCallback } from 'react'
 
 export type DashboardDisplayMode = 'desktop' | 'scaled' | 'mobile'
 
@@ -14,7 +14,7 @@ const DESIGN_WIDTH = 1200
 const MOBILE_THRESHOLD = 768
 
 export interface UseResponsiveDashboardResult {
-  containerRef: React.RefCallback<HTMLDivElement>
+  containerRef: RefCallback<HTMLDivElement>
   containerWidth: number
   displayMode: DashboardDisplayMode
   scaleFactor: number

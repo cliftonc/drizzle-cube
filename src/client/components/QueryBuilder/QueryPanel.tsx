@@ -460,7 +460,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
       setTimeout(() => {
         try {
           ;(window as any).Prism.highlightAll()
-        } catch (error) {
+        } catch {
           // Silently fail if Prism is not available or encounters an error
         }
       }, 0)
@@ -492,7 +492,7 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     try {
       await navigator.clipboard.writeText(JSON.stringify(cleanedQuery, null, 2))
       // You could add a toast notification here if desired
-    } catch (error) {
+    } catch {
       // Failed to copy query
       // Fallback for older browsers
       const textArea = document.createElement('textarea')

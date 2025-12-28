@@ -280,9 +280,10 @@ export function formatTimeValue(value: any, granularity?: string): string {
       switch (granularity.toLowerCase()) {
         case 'year':
           return `${year}`
-        case 'quarter':
+        case 'quarter': {
           const quarter = Math.floor(date.getUTCMonth() / 3) + 1
           return `${year}-Q${quarter}`
+        }
         case 'month':
           return `${year}-${month}`
         case 'week':
@@ -362,7 +363,7 @@ export function getFieldGranularity(queryObject: any, fieldName: string): string
     }
     
     return undefined
-  } catch (e) {
+  } catch {
     return undefined
   }
 }

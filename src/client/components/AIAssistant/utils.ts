@@ -70,13 +70,13 @@ export async function sendGeminiMessage(
           errorMessage += `\n\n💡 ${errorData.suggestion}`
         }
       }
-    } catch (parseError) {
+    } catch {
       // Fallback to text if JSON parsing fails
       try {
         const errorText = await response.text()
         console.error('❌ Client: Proxy text error:', errorText)
         errorMessage = errorText || errorMessage
-      } catch (textError) {
+      } catch {
         console.error('❌ Client: Could not parse error response')
       }
     }

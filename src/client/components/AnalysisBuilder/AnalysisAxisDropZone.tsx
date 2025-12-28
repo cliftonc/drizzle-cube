@@ -11,7 +11,7 @@
  * - Hidden-on-hover remove buttons
  */
 
-import React, { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect, DragEvent } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
 import type { AxisDropZoneConfig } from '../../charts/chartConfigs'
 
@@ -31,16 +31,16 @@ interface FieldMeta {
 interface AnalysisAxisDropZoneProps {
   config: AxisDropZoneConfig
   fields: string[]
-  onDrop: (e: React.DragEvent<HTMLDivElement>, toKey: string) => void
+  onDrop: (e: DragEvent<HTMLDivElement>, toKey: string) => void
   onRemove: (field: string, fromKey: string) => void
   onDragStart: (
-    e: React.DragEvent<HTMLDivElement>,
+    e: DragEvent<HTMLDivElement>,
     field: string,
     fromKey: string,
     fromIndex?: number
   ) => void
-  onDragEnd?: (e: React.DragEvent<HTMLDivElement>) => void
-  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
+  onDragOver: (e: DragEvent<HTMLDivElement>) => void
   onReorder?: (fromIndex: number, toIndex: number, axisKey: string) => void
   draggedItem?: { field: string; fromAxis: string; fromIndex?: number } | null
   getFieldMeta?: (field: string) => FieldMeta
@@ -104,7 +104,7 @@ export default function AnalysisAxisDropZone({
   const isFull = getIsFull()
 
   // Add a global drag end listener to reset visual state
-  React.useEffect(() => {
+  useEffect(() => {
     const handleGlobalDragEnd = () => {
       setDropTargetIndex(null)
       dropTargetIndexRef.current = null
@@ -120,7 +120,7 @@ export default function AnalysisAxisDropZone({
   }, [])
 
   // Clear states when transitioning between different drag operations
-  React.useEffect(() => {
+  useEffect(() => {
     if (draggedItem) {
       // If we have a dragged item but it's not from this axis, clear reorder state
       if (draggedItem.fromAxis !== key) {
@@ -142,7 +142,7 @@ export default function AnalysisAxisDropZone({
   }, [draggedItem, key])
 
   // Handle drag over an item - determine drop position based on mouse position
-  const handleItemDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, itemIndex: number) => {
+  const handleItemDragOver = useCallback((e: DragEvent<HTMLDivElement>, itemIndex: number) => {
     // Check if this is a reorder operation (same axis)
     if (!draggedItem || draggedItem.fromAxis !== key || draggedItem.fromIndex === undefined) return
 
@@ -170,7 +170,7 @@ export default function AnalysisAxisDropZone({
   }, [draggedItem, key])
 
   // Handle drop on an item for reordering
-  const handleItemDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleItemDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     // DON'T stopPropagation here yet - only stop if this is a reorder operation
 
@@ -210,7 +210,7 @@ export default function AnalysisAxisDropZone({
   }, [draggedItem, key, onReorder])
 
   // Handle drag end - check if dropped outside container to remove
-  const handleFieldDragEnd = useCallback((e: React.DragEvent<HTMLDivElement>, field: string) => {
+  const handleFieldDragEnd = useCallback((e: DragEvent<HTMLDivElement>, field: string) => {
     const container = containerRef.current
     if (container && draggingFieldRef.current === field) {
       const rect = container.getBoundingClientRect()

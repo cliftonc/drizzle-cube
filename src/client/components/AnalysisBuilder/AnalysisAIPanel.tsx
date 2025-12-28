@@ -5,7 +5,7 @@
  * Appears above the results panel when activated.
  */
 
-import React, { useCallback } from 'react'
+import { useCallback, KeyboardEvent } from 'react'
 import { getIcon } from '../../icons'
 
 const SparklesIcon = getIcon('sparkles')
@@ -41,7 +41,7 @@ export default function AnalysisAIPanel({
   onCancel
 }: AnalysisAIPanelProps) {
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         onGenerate()

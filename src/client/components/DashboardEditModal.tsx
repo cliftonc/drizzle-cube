@@ -47,7 +47,7 @@ export default function DashboardEditModal({
         description: description.trim() || undefined
       })
       handleClose()
-    } catch (error) {
+    } catch {
       // Failed to save dashboard
       // Don't close modal on error so user can retry
     } finally {

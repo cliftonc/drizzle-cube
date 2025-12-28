@@ -21,11 +21,11 @@ import type {
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 
 // Cubes will be created using the standard test helper
-let employeesCube: Cube<TestSchema>
-let departmentsCube: Cube<TestSchema>
+let employeesCube: Cube<any>
+let departmentsCube: Cube<any>
 
 describe('Query Validation', () => {
-  let compiler: SemanticLayerCompiler<TestSchema>
+  let compiler: SemanticLayerCompiler<any>
 
   beforeAll(async () => {
     // Create database and executor using the unified database utilities

@@ -6,7 +6,7 @@
  * Uses FieldSearchModal for field selection.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, DragEvent } from 'react'
 import { getIcon } from '../../icons'
 import SectionHeading from './SectionHeading'
 import type { Filter, SimpleFilter, GroupFilter } from '../../types'
@@ -136,19 +136,19 @@ export default function AnalysisFilterSection({
   const totalFilterCount = countFilters(filters)
 
   // Handle drag over for drop zone
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(true)
   }, [])
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)

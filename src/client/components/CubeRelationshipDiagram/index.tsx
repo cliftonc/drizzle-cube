@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from 'react'
+import { useCallback, useMemo, useEffect, useState, MouseEvent } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -58,7 +58,7 @@ export function CubeRelationshipDiagram({
       if (savedPos) {
         setSavedPositions(JSON.parse(savedPos))
       }
-    } catch (error) {
+    } catch {
       // Ignore localStorage errors
     }
   }, [])
@@ -153,7 +153,7 @@ export function CubeRelationshipDiagram({
       setSavedPositions({})
       try {
         localStorage.removeItem('drizzle-cube-erd-node-positions')
-      } catch (error) {
+      } catch {
         // Ignore localStorage errors
       }
       setAutoLayoutRequested(false)
@@ -192,7 +192,7 @@ export function CubeRelationshipDiagram({
         // Save to localStorage
         try {
           localStorage.setItem('drizzle-cube-erd-node-positions', JSON.stringify(newPositions))
-        } catch (error) {
+        } catch {
           // Ignore localStorage errors
         }
         
@@ -208,7 +208,7 @@ export function CubeRelationshipDiagram({
   )
 
   // Handle right-click context menu
-  const handleContextMenu = useCallback((event: React.MouseEvent) => {
+  const handleContextMenu = useCallback((event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
     console.log('Context menu triggered at:', event.clientX, event.clientY) // Debug

@@ -5,14 +5,14 @@
  * This enables code splitting - each chart type loads only when needed.
  */
 
-import { lazy, Suspense, ComponentType, ReactNode } from 'react'
+import { lazy, Suspense, ComponentType, ReactNode, LazyExoticComponent } from 'react'
 import type { ChartType, ChartProps } from '../types'
 
 // Type for lazy-loaded chart components
 type LazyChartComponent = ComponentType<ChartProps>
 
 // Chart loader cache to prevent re-creating lazy components
-const chartLoaderCache = new Map<ChartType, React.LazyExoticComponent<LazyChartComponent>>()
+const chartLoaderCache = new Map<ChartType, LazyExoticComponent<LazyChartComponent>>()
 
 // Dynamic import functions for each chart type
 const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartComponent }>> = {
@@ -36,7 +36,7 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
 /**
  * Get or create a lazy component for a chart type
  */
-function getLazyChart(chartType: ChartType): React.LazyExoticComponent<LazyChartComponent> {
+function getLazyChart(chartType: ChartType): LazyExoticComponent<LazyChartComponent> {
   if (!chartLoaderCache.has(chartType)) {
     const importFn = chartImportMap[chartType]
     if (!importFn) {

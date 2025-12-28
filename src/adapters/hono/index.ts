@@ -179,7 +179,7 @@ export function createCubeRoutes(
       let query: SemanticQuery
       try {
         query = JSON.parse(queryParam)
-      } catch (parseError) {
+      } catch {
         return c.json({
           error: 'Invalid JSON in query parameter'
         }, 400)

@@ -190,7 +190,7 @@ export function createCubeRouter(
       let query: SemanticQuery
       try {
         query = JSON.parse(queryParam)
-      } catch (parseError) {
+      } catch {
         return res.status(400).json(formatErrorResponse(
           'Invalid JSON in query parameter',
           400

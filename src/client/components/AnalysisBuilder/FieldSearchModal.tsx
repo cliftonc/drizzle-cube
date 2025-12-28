@@ -10,7 +10,7 @@
  * - Recent fields tracking
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, KeyboardEvent } from 'react'
 import { getIcon } from '../../icons'
 import type { FieldSearchModalProps, FieldOption } from './types'
 import type { MetaField } from '../../shared/types'
@@ -166,7 +166,7 @@ export default function FieldSearchModal({
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (flatFieldsList.length === 0) return
 
       switch (e.key) {
@@ -233,7 +233,6 @@ export default function FieldSearchModal({
       onClick={onClose}
       role="presentation"
     >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
         role="dialog"
         aria-modal="true"

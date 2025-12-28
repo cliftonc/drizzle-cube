@@ -5,8 +5,10 @@
  * Provides consistent styling that can be easily adjusted in one place.
  */
 
+import type { ReactNode } from 'react'
+
 interface SectionHeadingProps {
-  children: React.ReactNode
+  children: ReactNode
   /** Optional className to add additional styles */
   className?: string
 }

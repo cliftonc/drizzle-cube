@@ -57,7 +57,7 @@ export default function BubbleChart({
     let retryCount = 0
     const maxRetries = 10
     let rafId: number
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: ReturnType<typeof setTimeout>
     
     const updateDimensions = () => {
       if (containerRef.current) {

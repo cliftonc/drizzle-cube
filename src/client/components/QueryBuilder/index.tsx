@@ -49,7 +49,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
         if (saved) {
           return JSON.parse(saved)
         }
-      } catch (error) {
+      } catch {
         // Failed to load API config from localStorage
       }
     }
@@ -96,11 +96,11 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             resultsStale: false
           }
         }
-      } catch (error) {
+      } catch {
         // Failed to load query from localStorage
       }
     }
-    
+
     return {
       query: createEmptyQuery(),
       validationStatus: 'idle',
@@ -134,7 +134,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
             activeView: parsed.activeView || 'table'
           }
         }
-      } catch (error) {
+      } catch {
         // Failed to load chart config from localStorage
       }
     }
@@ -223,7 +223,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
           displayConfig,
           activeView
         }))
-      } catch (error) {
+      } catch {
         // Failed to save state to localStorage
       }
     }
@@ -234,7 +234,7 @@ const QueryBuilder = forwardRef<QueryBuilderRef, QueryBuilderProps>(({
     if (!disableLocalStorage) {
       try {
         localStorage.setItem(API_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig))
-      } catch (error) {
+      } catch {
         // Failed to save API config to localStorage
       }
     }

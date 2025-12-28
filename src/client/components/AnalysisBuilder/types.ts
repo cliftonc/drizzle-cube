@@ -8,7 +8,7 @@
  * - Sections: Metrics (measures), Breakdown (dimensions), Filters
  */
 
-import type React from 'react'
+import type { MouseEvent, DragEvent } from 'react'
 import type {
   CubeQuery,
   Filter,
@@ -178,7 +178,7 @@ export interface FieldSearchItemProps {
   /** Whether this field is focused/highlighted */
   isFocused: boolean
   /** Click handler - receives mouse event for shift-click multi-select */
-  onClick: (e: React.MouseEvent) => void
+  onClick: (e: MouseEvent) => void
   /** Mouse enter handler (for detail panel) */
   onMouseEnter: () => void
 }
@@ -405,11 +405,11 @@ export interface MetricItemCardProps {
   /** Whether dragging over this item */
   isDragOver?: boolean
   /** Drag start handler */
-  onDragStart?: (e: React.DragEvent, index: number) => void
+  onDragStart?: (e: DragEvent, index: number) => void
   /** Drag over handler */
-  onDragOver?: (e: React.DragEvent, index: number) => void
+  onDragOver?: (e: DragEvent, index: number) => void
   /** Drop handler */
-  onDrop?: (e: React.DragEvent, index: number) => void
+  onDrop?: (e: DragEvent, index: number) => void
   /** Drag end handler */
   onDragEnd?: () => void
 }
@@ -439,11 +439,11 @@ export interface BreakdownItemCardProps {
   /** Whether dragging over this item */
   isDragOver?: boolean
   /** Drag start handler */
-  onDragStart?: (e: React.DragEvent, index: number) => void
+  onDragStart?: (e: DragEvent, index: number) => void
   /** Drag over handler */
-  onDragOver?: (e: React.DragEvent, index: number) => void
+  onDragOver?: (e: DragEvent, index: number) => void
   /** Drop handler */
-  onDrop?: (e: React.DragEvent, index: number) => void
+  onDrop?: (e: DragEvent, index: number) => void
   /** Drag end handler */
   onDragEnd?: () => void
 }

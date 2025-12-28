@@ -165,7 +165,7 @@ const AIAssistantModal: React.FC<AIAssistantModalProps> = ({
       const query = JSON.parse(state.response)
       onQueryLoad(query)
       handleClose()
-    } catch (error) {
+    } catch {
       setState(prev => ({
         ...prev,
         validationError: 'Invalid JSON format'

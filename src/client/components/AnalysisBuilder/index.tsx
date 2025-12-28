@@ -155,7 +155,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const { meta, cubeApi } = useCubeContext()
 
     // Load localStorage once on mount (before useState calls) to avoid repeated parsing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const cachedStorage = useMemo(
       () => loadInitialStateFromStorage(disableLocalStorageProp),
       [] // Only run once on mount
@@ -359,7 +358,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
       // Clear the share hash from URL
       clearShareHash()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []) // Run once on mount
 
     // Build current query - memoized to prevent infinite loops

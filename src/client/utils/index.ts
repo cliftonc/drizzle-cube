@@ -111,7 +111,7 @@ export function validateCubeQuery(queryString: string): { valid: boolean; error?
     }
 
     return { valid: true, query }
-  } catch (error) {
+  } catch {
     return { valid: false, error: 'Invalid JSON format' }
   }
 }

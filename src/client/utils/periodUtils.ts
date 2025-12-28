@@ -17,13 +17,14 @@ export function getPeriodEndDate(date: Date, granularity: string): Date {
       endDate.setHours(23, 59, 59, 999)
       break
 
-    case 'week':
+    case 'week': {
       // End of the week (Saturday, assuming week starts Sunday)
       const dayOfWeek = endDate.getDay()
       const daysUntilSaturday = 6 - dayOfWeek
       endDate.setDate(endDate.getDate() + daysUntilSaturday)
       endDate.setHours(23, 59, 59, 999)
       break
+    }
 
     case 'month':
       // Last day of the month
@@ -31,13 +32,14 @@ export function getPeriodEndDate(date: Date, granularity: string): Date {
       endDate.setHours(23, 59, 59, 999)
       break
 
-    case 'quarter':
+    case 'quarter': {
       // Last day of the quarter
       const currentMonth = endDate.getMonth()
       const quarterEndMonth = Math.floor(currentMonth / 3) * 3 + 2 // 0->2, 3->5, 6->8, 9->11
       endDate.setMonth(quarterEndMonth + 1, 0) // Last day of quarter end month
       endDate.setHours(23, 59, 59, 999)
       break
+    }
 
     case 'year':
       // December 31st

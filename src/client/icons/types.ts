@@ -1,5 +1,5 @@
 import type { IconifyIcon } from '@iconify/types'
-import type { ComponentType } from 'react'
+import type { ComponentType, CSSProperties } from 'react'
 
 /**
  * Icon categories for organization and filtering
@@ -18,7 +18,7 @@ export type IconCategory =
 export interface IconProps {
   className?: string
   'aria-hidden'?: boolean
-  style?: React.CSSProperties
+  style?: CSSProperties
 }
 
 /**

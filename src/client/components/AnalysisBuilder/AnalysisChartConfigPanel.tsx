@@ -6,7 +6,7 @@
  * Renders axis drop zones and display options based on chart type.
  */
 
-import React, { useMemo, useEffect, useState, useCallback } from 'react'
+import { useMemo, useEffect, useState, useCallback, DragEvent } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
 import SectionHeading from './SectionHeading'
 import AnalysisAxisDropZone from './AnalysisAxisDropZone'
@@ -186,7 +186,7 @@ export default function AnalysisChartConfigPanel({
 
   // Drag and drop handlers
   const handleDragStart = (
-    e: React.DragEvent<HTMLDivElement>,
+    e: DragEvent<HTMLDivElement>,
     field: string,
     fromAxis: string,
     fromIndex?: number
@@ -195,7 +195,7 @@ export default function AnalysisChartConfigPanel({
     setDraggedItem({ field, fromAxis, fromIndex })
   }
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
   }
 
@@ -203,7 +203,7 @@ export default function AnalysisChartConfigPanel({
     setDraggedItem(null)
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, toAxis: string) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, toAxis: string) => {
     e.preventDefault()
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     const { field, fromAxis } = data

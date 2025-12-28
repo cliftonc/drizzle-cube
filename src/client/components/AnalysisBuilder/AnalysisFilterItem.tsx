@@ -10,7 +10,7 @@
  * - Date range selector with predefined options
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
 import { getIcon } from '../../icons'
 import type { SimpleFilter, FilterOperator } from '../../types'
 import type { MetaResponse, DateRangeType } from '../../shared/types'
@@ -186,7 +186,7 @@ export default function AnalysisFilterItem({
   }, [filter, onUpdate])
 
   // Handle direct text/number input
-  const handleDirectInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDirectInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (operatorMeta?.valueType === 'number') {
       const numValue = parseFloat(value)
@@ -201,14 +201,14 @@ export default function AnalysisFilterItem({
   }, [filter, operatorMeta?.valueType, onUpdate])
 
   // Handle between range inputs
-  const handleBetweenStartInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBetweenStartInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value)
     const currentValues = filter.values?.length >= 2 ? filter.values : ['', '']
     const newValues = [!isNaN(value) ? value : '', currentValues[1]].filter(v => v !== '')
     onUpdate({ ...filter, values: newValues })
   }, [filter, onUpdate])
 
-  const handleBetweenEndInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBetweenEndInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value)
     const currentValues = filter.values?.length >= 2 ? filter.values : ['', '']
     const newValues = [currentValues[0], !isNaN(value) ? value : ''].filter(v => v !== '')
@@ -216,7 +216,7 @@ export default function AnalysisFilterItem({
   }, [filter, onUpdate])
 
   // Handle date input
-  const handleDateInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDateInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     onUpdate({ ...filter, values: value ? [value] : [] })
   }, [filter, onUpdate])
@@ -249,14 +249,14 @@ export default function AnalysisFilterItem({
   }, [filter, rangeType, onUpdate])
 
   // Handle custom date range inputs
-  const handleCustomStartDate = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomStartDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const start = e.target.value
     const currentRange = Array.isArray(filter.dateRange) ? filter.dateRange : [filter.dateRange || '', '']
     const end = currentRange[1] || start
     onUpdate({ ...filter, dateRange: [start, end] } as SimpleFilter)
   }, [filter, onUpdate])
 
-  const handleCustomEndDate = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomEndDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const end = e.target.value
     const currentRange = Array.isArray(filter.dateRange) ? filter.dateRange : ['', filter.dateRange || '']
     const start = currentRange[0] || end

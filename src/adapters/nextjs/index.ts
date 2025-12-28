@@ -156,9 +156,9 @@ function createSemanticLayer(
 /**
  * Generate CORS headers for Next.js responses
  */
-function getCorsHeaders(request: NextRequest, corsOptions: NextCorsOptions): HeadersInit {
+function getCorsHeaders(request: NextRequest, corsOptions: NextCorsOptions): Record<string, string> {
   const origin = request.headers.get('origin')
-  const headers: HeadersInit = {}
+  const headers: Record<string, string> = {}
 
   // Handle origin
   if (corsOptions.origin) {
@@ -234,7 +234,7 @@ export function createLoadHandler(
         }
         try {
           query = JSON.parse(queryParam)
-        } catch (parseError) {
+        } catch {
           return NextResponse.json(
             formatErrorResponse('Invalid JSON in query parameter', 400),
             { status: 400 }
@@ -346,7 +346,7 @@ export function createSqlHandler(
         }
         try {
           query = JSON.parse(queryParam)
-        } catch (parseError) {
+        } catch {
           return NextResponse.json(
             formatErrorResponse('Invalid JSON in query parameter', 400),
             { status: 400 }
@@ -432,7 +432,7 @@ export function createDryRunHandler(
         }
         try {
           query = JSON.parse(queryParam)
-        } catch (parseError) {
+        } catch {
           return NextResponse.json(
             { error: 'Invalid JSON in query parameter', valid: false },
             { status: 400 }

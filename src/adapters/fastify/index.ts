@@ -202,7 +202,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       let query: SemanticQuery
       try {
         query = JSON.parse(queryParam)
-      } catch (parseError) {
+      } catch {
         return reply.status(400).send(formatErrorResponse(
           'Invalid JSON in query parameter',
           400

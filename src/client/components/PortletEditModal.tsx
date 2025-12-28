@@ -183,7 +183,7 @@ export default function PortletEditModal({
       // Validate JSON
       try {
         JSON.parse(query)
-      } catch (e) {
+      } catch {
         alert('Invalid JSON in query. Please check your syntax.')
         return
       }
@@ -250,7 +250,7 @@ export default function PortletEditModal({
     let parsedQuery
     try {
       parsedQuery = JSON.parse(queryToValidate)
-    } catch (e) {
+    } catch {
       if (!silent) {
         setValidationResult({ isValid: false, message: 'Invalid JSON syntax' })
       }
