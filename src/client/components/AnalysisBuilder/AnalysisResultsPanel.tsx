@@ -72,7 +72,6 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const WarningIcon = getIcon('warning')
   const TableIcon = getIcon('table')
   const ChartIcon = getIcon('measure')
-  const TimeIcon = getIcon('timeDimension')
   const CodeIcon = getIcon('codeBracket')
   const ShareIcon = getIcon('share')
   const CheckIcon = getIcon('check')
