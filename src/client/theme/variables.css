@@ -335,28 +335,119 @@ html.neon {
 /* ============================================================================
    Tailwind Utilities for Theme Variables
    ============================================================================
-   These utility class definitions allow using theme variables with Tailwind
+   These utility class definitions allow using theme variables with Tailwind.
+   All utilities are explicitly defined to guarantee inclusion in distributed CSS.
 */
 @layer utilities {
-  /* Background utilities */
+  /* -------------------------------------------------------------------------
+     Surface/Background Utilities
+     ------------------------------------------------------------------------- */
   .bg-dc-surface { background-color: var(--dc-surface); }
   .bg-dc-surface-secondary { background-color: var(--dc-surface-secondary); }
   .bg-dc-surface-tertiary { background-color: var(--dc-surface-tertiary); }
+  .bg-dc-surface-hover { background-color: var(--dc-surface-hover); }
 
-  /* Text utilities */
+  /* -------------------------------------------------------------------------
+     Text Utilities
+     ------------------------------------------------------------------------- */
   .text-dc-text { color: var(--dc-text); }
   .text-dc-text-secondary { color: var(--dc-text-secondary); }
   .text-dc-text-muted { color: var(--dc-text-muted); }
+  .text-dc-text-disabled { color: var(--dc-text-disabled); }
 
-  /* Border utilities */
+  /* -------------------------------------------------------------------------
+     Border Utilities
+     ------------------------------------------------------------------------- */
   .border-dc-border { border-color: var(--dc-border); }
   .border-dc-border-secondary { border-color: var(--dc-border-secondary); }
+  .border-dc-border-hover { border-color: var(--dc-border-hover); }
 
-  /* Hover utilities */
-  .hover\:bg-dc-surface-hover:hover { background-color: var(--dc-surface-hover); }
-  .hover\:border-dc-border-hover:hover { border-color: var(--dc-border-hover); }
+  /* -------------------------------------------------------------------------
+     Primary Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-primary { background-color: var(--dc-primary); }
+  .bg-dc-primary-hover { background-color: var(--dc-primary-hover); }
+  .text-dc-primary { color: var(--dc-primary); }
+  .text-dc-primary-content { color: var(--dc-primary-content); }
+  .border-dc-primary { border-color: var(--dc-primary); }
+  .ring-dc-primary { --tw-ring-color: var(--dc-primary); }
 
-  /* Field Type utilities */
+  /* -------------------------------------------------------------------------
+     Success Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-success { background-color: var(--dc-success); }
+  .bg-dc-success-bg { background-color: var(--dc-success-bg); }
+  .text-dc-success { color: var(--dc-success); }
+  .border-dc-success { border-color: var(--dc-success); }
+  .border-dc-success-border { border-color: var(--dc-success-border); }
+
+  /* -------------------------------------------------------------------------
+     Warning Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-warning { background-color: var(--dc-warning); }
+  .bg-dc-warning-bg { background-color: var(--dc-warning-bg); }
+  .text-dc-warning { color: var(--dc-warning); }
+  .border-dc-warning { border-color: var(--dc-warning); }
+  .border-dc-warning-border { border-color: var(--dc-warning-border); }
+
+  /* -------------------------------------------------------------------------
+     Error Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-error { background-color: var(--dc-error); }
+  .bg-dc-error-bg { background-color: var(--dc-error-bg); }
+  .text-dc-error { color: var(--dc-error); }
+  .border-dc-error { border-color: var(--dc-error); }
+  .border-dc-error-border { border-color: var(--dc-error-border); }
+
+  /* -------------------------------------------------------------------------
+     Info Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-info { background-color: var(--dc-info); }
+  .bg-dc-info-bg { background-color: var(--dc-info-bg); }
+  .text-dc-info { color: var(--dc-info); }
+  .border-dc-info { border-color: var(--dc-info); }
+  .border-dc-info-border { border-color: var(--dc-info-border); }
+
+  /* -------------------------------------------------------------------------
+     Danger Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-danger { background-color: var(--dc-danger); }
+  .bg-dc-danger-bg { background-color: var(--dc-danger-bg); }
+  .bg-dc-danger-hover { background-color: var(--dc-danger-hover); }
+  .text-dc-danger { color: var(--dc-danger); }
+  .border-dc-danger { border-color: var(--dc-danger); }
+
+  /* -------------------------------------------------------------------------
+     Accent Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-accent { background-color: var(--dc-accent); }
+  .bg-dc-accent-bg { background-color: var(--dc-accent-bg); }
+  .bg-dc-accent-hover { background-color: var(--dc-accent-hover); }
+  .text-dc-accent { color: var(--dc-accent); }
+  .border-dc-accent { border-color: var(--dc-accent); }
+  .border-dc-accent-border { border-color: var(--dc-accent-border); }
+  .ring-dc-accent { --tw-ring-color: var(--dc-accent); }
+
+  /* -------------------------------------------------------------------------
+     Card Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-card-bg { background-color: var(--dc-card-bg); }
+  .bg-dc-card-bg-hover { background-color: var(--dc-card-bg-hover); }
+  .border-dc-card-border { border-color: var(--dc-card-border); }
+  .border-dc-card-border-hover { border-color: var(--dc-card-border-hover); }
+
+  /* -------------------------------------------------------------------------
+     Muted Color Utilities
+     ------------------------------------------------------------------------- */
+  .bg-dc-muted { background-color: var(--dc-muted); }
+  .bg-dc-muted-bg { background-color: var(--dc-muted-bg); }
+  .text-dc-muted { color: var(--dc-muted); }
+  .border-dc-muted { border-color: var(--dc-muted); }
+  .border-dc-muted-border { border-color: var(--dc-muted-border); }
+
+  /* -------------------------------------------------------------------------
+     Field Type Utilities
+     ------------------------------------------------------------------------- */
   .bg-dc-dimension { background-color: var(--dc-dimension-bg); }
   .text-dc-dimension, .text-dc-dimension-text { color: var(--dc-dimension-text); }
   .border-dc-dimension { border-color: var(--dc-dimension-border); }
@@ -368,4 +459,33 @@ html.neon {
   .bg-dc-measure { background-color: var(--dc-measure-bg); }
   .text-dc-measure, .text-dc-measure-text { color: var(--dc-measure-text); }
   .border-dc-measure { border-color: var(--dc-measure-border); }
+
+  /* -------------------------------------------------------------------------
+     Hover State Utilities
+     ------------------------------------------------------------------------- */
+  .hover\:bg-dc-surface-hover:hover { background-color: var(--dc-surface-hover); }
+  .hover\:border-dc-border-hover:hover { border-color: var(--dc-border-hover); }
+  .hover\:bg-dc-primary-hover:hover { background-color: var(--dc-primary-hover); }
+  .hover\:bg-dc-danger-hover:hover { background-color: var(--dc-danger-hover); }
+  .hover\:bg-dc-accent-hover:hover { background-color: var(--dc-accent-hover); }
+  .hover\:border-dc-accent:hover { border-color: var(--dc-accent); }
+  .hover\:bg-dc-card-bg-hover:hover { background-color: var(--dc-card-bg-hover); }
+  .hover\:border-dc-card-border-hover:hover { border-color: var(--dc-card-border-hover); }
+  .hover\:text-dc-primary:hover { color: var(--dc-primary); }
+  .hover\:text-dc-accent:hover { color: var(--dc-accent); }
+  .hover\:text-dc-danger:hover { color: var(--dc-danger); }
+
+  /* -------------------------------------------------------------------------
+     Focus State Utilities
+     ------------------------------------------------------------------------- */
+  .focus\:ring-dc-primary:focus { --tw-ring-color: var(--dc-primary); }
+  .focus\:ring-dc-accent:focus { --tw-ring-color: var(--dc-accent); }
+  .focus\:border-dc-primary:focus { border-color: var(--dc-primary); }
+  .focus\:border-dc-accent:focus { border-color: var(--dc-accent); }
+
+  /* -------------------------------------------------------------------------
+     Placeholder Utilities
+     ------------------------------------------------------------------------- */
+  .placeholder-dc-text-muted::placeholder { color: var(--dc-text-muted); }
+  .placeholder-dc-text-disabled::placeholder { color: var(--dc-text-disabled); }
 }
