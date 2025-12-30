@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { CubeClient } from '../client/CubeClient'
 
 export interface CubeMetaField {
@@ -90,15 +90,25 @@ export function clearMetaCache() {
 
 export function useCubeMeta(cubeApi: CubeClient): UseCubeMetaResult {
   const [meta, setMeta] = useState<CubeMeta | null>(null)
-  const [labelMap, setLabelMap] = useState<FieldLabelMap>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Use ref for stable labelMap reference to prevent context re-renders
+  // The ref holds the actual data, updated when meta changes
+  const labelMapRef = useRef<FieldLabelMap>({})
+
+  // Keep a stable object reference for labelMap that we return
+  // This object is mutated in place rather than recreated
+  const [stableLabelMap] = useState<FieldLabelMap>(() => ({}))
 
   const fetchMeta = useCallback(async () => {
     // Check cache first
     if (isCacheValid() && cachedMeta) {
       setMeta(cachedMeta.data)
-      setLabelMap(cachedMeta.labelMap)
+      // Update ref and stable object with cached labelMap
+      labelMapRef.current = cachedMeta.labelMap
+      Object.keys(stableLabelMap).forEach(key => delete stableLabelMap[key])
+      Object.assign(stableLabelMap, cachedMeta.labelMap)
       setLoading(false)
       setError(null)
       return
@@ -107,19 +117,23 @@ export function useCubeMeta(cubeApi: CubeClient): UseCubeMetaResult {
     try {
       setLoading(true)
       setError(null)
-      
+
       const metaData: CubeMeta = await cubeApi.meta()
       const newLabelMap = buildLabelMap(metaData)
-      
+
       // Cache the result
       cachedMeta = {
         data: metaData,
         labelMap: newLabelMap,
         timestamp: Date.now()
       }
-      
+
+      // Update ref and stable object
+      labelMapRef.current = newLabelMap
+      Object.keys(stableLabelMap).forEach(key => delete stableLabelMap[key])
+      Object.assign(stableLabelMap, newLabelMap)
+
       setMeta(metaData)
-      setLabelMap(newLabelMap)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch metadata'
       setError(errorMessage)
@@ -127,15 +141,16 @@ export function useCubeMeta(cubeApi: CubeClient): UseCubeMetaResult {
     } finally {
       setLoading(false)
     }
-  }, [cubeApi])
+  }, [cubeApi, stableLabelMap])
 
   useEffect(() => {
     fetchMeta()
   }, [fetchMeta])
 
+  // Stable callback that reads from ref - no dependencies means stable reference
   const getFieldLabel = useCallback((fieldName: string): string => {
-    return labelMap[fieldName] || fieldName
-  }, [labelMap])
+    return labelMapRef.current[fieldName] || fieldName
+  }, [])
 
   const refetch = useCallback(() => {
     // Clear cache and refetch
@@ -145,7 +160,7 @@ export function useCubeMeta(cubeApi: CubeClient): UseCubeMetaResult {
 
   return {
     meta,
-    labelMap,
+    labelMap: stableLabelMap, // Return stable reference
     loading,
     error,
     refetch,

@@ -1,13 +1,13 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 import infoCircleIcon from '@iconify-icons/tabler/info-circle'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import DataHistogram from '../DataHistogram'
 import { parseTargetValues, calculateVariance, formatVariance } from '../../utils/targetUtils'
 import { filterIncompletePeriod } from '../../utils/periodUtils'
 import type { ChartProps } from '../../types'
 
-export default function KpiNumber({
+const KpiNumber = React.memo(function KpiNumber({
   data,
   chartConfig,
   displayConfig = {},
@@ -19,7 +19,9 @@ export default function KpiNumber({
   const [textWidth, setTextWidth] = useState(250)
   const containerRef = useRef<HTMLDivElement>(null)
   const valueRef = useRef<HTMLDivElement>(null)
-  const { getFieldLabel } = useCubeContext()
+
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
 
   // Calculate font size and text width based on container dimensions
   useEffect(() => {
@@ -126,52 +128,61 @@ export default function KpiNumber({
   // Get time dimension field if present (for incomplete period filtering)
   const timeDimensionField = queryObject?.timeDimensions?.[0]?.dimension || undefined
 
-  // Sort data by time dimension if available (for proper filtering)
-  let sortedData = [...data]
-  if (timeDimensionField) {
-    sortedData = sortedData.sort((a, b) => {
-      const aVal = a[timeDimensionField]
-      const bVal = b[timeDimensionField]
-      if (aVal < bVal) return -1
-      if (aVal > bVal) return 1
-      return 0
-    })
-  }
+  // Memoize sorted data to prevent recalculation on every render
+  const sortedData = useMemo(() => {
+    let sorted = [...data]
+    if (timeDimensionField) {
+      sorted = sorted.sort((a, b) => {
+        const aVal = a[timeDimensionField]
+        const bVal = b[timeDimensionField]
+        if (aVal < bVal) return -1
+        if (aVal > bVal) return 1
+        return 0
+      })
+    }
+    return sorted
+  }, [data, timeDimensionField])
 
   // Filter out incomplete or last period if enabled
   const { useLastCompletePeriod = true, skipLastPeriod = false } = displayConfig
+
+  // Memoize filtered data
   const {
     filteredData,
     excludedIncompletePeriod,
     skippedLastPeriod,
     granularity
-  } = filterIncompletePeriod(sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
+  } = useMemo(() => {
+    return filterIncompletePeriod(sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
+  }, [sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod])
 
   // Use filtered data for calculations
   const dataToUse = filteredData
 
-  // Extract values for the selected field
-  const rawValues = dataToUse.map(row => {
-    // Try direct field access first
-    if (row[valueField] !== undefined) {
-      return row[valueField]
-    }
-    
-    // If not found, try finding the first numeric field as fallback
-    const numericFields = Object.keys(row).filter(key => 
-      typeof row[key] === 'number' && !isNaN(row[key])
-    )
-    
-    if (numericFields.length > 0) {
-      return row[numericFields[0]]
-    }
-    
-    return undefined
-  })
-  
-  const values = rawValues
-    .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
-    .map(val => Number(val))
+  // Memoize value extraction to prevent recalculation
+  const values = useMemo(() => {
+    const rawValues = dataToUse.map(row => {
+      // Try direct field access first
+      if (row[valueField] !== undefined) {
+        return row[valueField]
+      }
+
+      // If not found, try finding the first numeric field as fallback
+      const numericFields = Object.keys(row).filter(key =>
+        typeof row[key] === 'number' && !isNaN(row[key])
+      )
+
+      if (numericFields.length > 0) {
+        return row[numericFields[0]]
+      }
+
+      return undefined
+    })
+
+    return rawValues
+      .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
+      .map(val => Number(val))
+  }, [dataToUse, valueField])
   
 
   // Null handling: If all values are null, show placeholder instead of error
@@ -211,14 +222,17 @@ export default function KpiNumber({
     )
   }
 
-  // Calculate statistics
-  const sum = values.reduce((acc, val) => acc + val, 0)
-  const avg = sum / values.length
-  const min = Math.min(...values)
-  const max = Math.max(...values)
+  // Memoize statistics calculations
+  const { avg, min, max } = useMemo(() => {
+    const sum = values.reduce((acc, val) => acc + val, 0)
+    const avg = sum / values.length
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    return { avg, min, max }
+  }, [values])
 
-  // Format number with appropriate units and decimals (no prefix/suffix here, handled separately)
-  const formatNumber = (value: number | null | undefined): string => {
+  // Memoize format function to prevent re-creating on every render
+  const formatNumber = useCallback((value: number | null | undefined): string => {
     // If custom formatValue is provided, use it exclusively
     if (displayConfig.formatValue) {
       return displayConfig.formatValue(value)
@@ -245,13 +259,13 @@ export default function KpiNumber({
     }
 
     return prefix + formattedValue
-  }
+  }, [displayConfig.formatValue, displayConfig.decimals, displayConfig.prefix])
 
   const mainValue = values.length === 1 ? values[0] : avg
   const showStats = values.length > 1
 
-  // Get color from palette by index, default to first color in palette
-  const getValueColor = (): string => {
+  // Memoize color calculation to prevent re-creating function on every render
+  const valueColor = useMemo((): string => {
     if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
       const colorIndex = displayConfig.valueColorIndex
       if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
@@ -260,29 +274,27 @@ export default function KpiNumber({
     }
     // Default to first color in palette if available, otherwise fallback to dark gray
     return colorPalette?.colors?.[0] || '#1f2937'
-  }
+  }, [displayConfig.valueColorIndex, colorPalette?.colors])
 
-  const valueColor = getValueColor()
-  
   // Process target values for variance calculation
-  const targetValues = parseTargetValues(displayConfig?.target || '')
+  const targetValues = useMemo(() => parseTargetValues(displayConfig?.target || ''), [displayConfig?.target])
   const targetValue = targetValues.length > 0 ? targetValues[0] : null // Use first target value
   const variance = targetValue !== null ? calculateVariance(mainValue, targetValue) : null
-  
-  // Get colors for variance display (similar to KpiDelta)
-  const getVarianceColor = (): string => {
+
+  // Memoize variance color calculation
+  const varianceColor = useMemo((): string => {
     if (variance === null) return '#6B7280' // Gray for no target
-    
+
     if (variance >= 0) {
       // Positive variance - use positive color from palette
       const positiveIndex = displayConfig.positiveColorIndex ?? 1
       return colorPalette?.colors?.[positiveIndex] || '#10B981' // Green fallback
     } else {
-      // Negative variance - use negative color from palette  
+      // Negative variance - use negative color from palette
       const negativeIndex = displayConfig.negativeColorIndex ?? 7
       return colorPalette?.colors?.[negativeIndex] || '#EF4444' // Red fallback
     }
-  }
+  }, [variance, displayConfig.positiveColorIndex, displayConfig.negativeColorIndex, colorPalette?.colors])
 
   return (
     <div 
@@ -341,7 +353,7 @@ export default function KpiNumber({
                 className="font-semibold"
                 style={{ 
                   fontSize: `${Math.max(12, fontSize * 0.3)}px`,
-                  color: getVarianceColor(),
+                  color: varianceColor,
                   lineHeight: '1.2'
                 }}
               >
@@ -391,4 +403,6 @@ export default function KpiNumber({
         )}
     </div>
   )
-}
+})
+
+export default KpiNumber

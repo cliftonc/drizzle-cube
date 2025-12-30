@@ -1,14 +1,23 @@
 /**
- * Lightweight CubeProvider implementation
- * Replaces @cubejs-client/react provider
+ * CubeProvider - Backward Compatibility Wrapper
+ *
+ * This provider wraps the three specialized context providers (API, Meta, Features)
+ * to maintain 100% backward compatibility with existing code using useCubeContext().
+ *
+ * New code should use the specialized hooks (useCubeApi, useCubeMeta, useCubeFeatures)
+ * for better performance and selective re-rendering.
  */
 
-import React, { createContext, useContext, useMemo, useState } from 'react'
-import { createCubeClient, type CubeClient } from '../client/CubeClient'
+import { useMemo, type ReactNode } from 'react'
+import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
+import { CubeMetaProvider, useCubeMeta } from './CubeMetaProvider'
+import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider'
 import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutMode } from '../types'
-import { useCubeMeta, type CubeMeta, type FieldLabelMap } from '../hooks/useCubeMeta'
-import { BatchCoordinator } from '../client/BatchCoordinator'
+import type { CubeMeta, FieldLabelMap } from '../hooks/useCubeMeta'
+import type { CubeClient } from '../client/CubeClient'
+import type { BatchCoordinator } from '../client/BatchCoordinator'
 
+// Backward compatible interface - merges all three contexts
 interface CubeContextValue {
   cubeApi: CubeClient
   options?: CubeQueryOptions
@@ -25,8 +34,6 @@ interface CubeContextValue {
   dashboardModes: DashboardLayoutMode[]
 }
 
-const CubeContext = createContext<CubeContextValue | null>(null)
-
 interface CubeProviderProps {
   cubeApi?: CubeClient
   apiOptions?: CubeApiOptions
@@ -36,89 +43,68 @@ interface CubeProviderProps {
   dashboardModes?: DashboardLayoutMode[]
   enableBatching?: boolean
   batchDelayMs?: number  // Delay in ms to collect queries before batching (default: 100)
-  children: React.ReactNode
+  children: ReactNode
 }
 
+/**
+ * CubeProvider - Three-layer context wrapper
+ *
+ * Wraps children in three isolated context providers for optimal performance:
+ * 1. CubeApiProvider - Stable API layer (changes only on auth)
+ * 2. CubeMetaProvider - Metadata layer (changes on metadata load)
+ * 3. CubeFeaturesProvider - Feature flags layer (changes on feature updates)
+ */
 export function CubeProvider({
-  cubeApi: initialCubeApi,
-  apiOptions: initialApiOptions,
-  token: initialToken,
-  options = {},
-  features = { enableAI: true, aiEndpoint: '/api/ai/generate', showSchemaDiagram: false, useAnalysisBuilder: false }, // Default to AI enabled, schema diagram disabled, old portlet edit modal
-  dashboardModes = ['rows', 'grid'],
-  enableBatching = true, // Default to batching enabled
-  batchDelayMs = 100, // Default 100ms batch window
+  cubeApi: _initialCubeApi, // Intentionally unused - for backward compatibility
+  apiOptions,
+  token,
+  options,
+  features,
+  dashboardModes,
+  enableBatching,
+  batchDelayMs,
   children
 }: CubeProviderProps) {
-  // State for dynamic API configuration (only for updates via updateApiConfig)
-  const [dynamicConfig, setDynamicConfig] = useState<{ apiOptions: CubeApiOptions; token?: string } | null>(null)
-
-  // Determine current config: dynamic config takes precedence over props
-  const currentConfig = dynamicConfig || {
-    apiOptions: initialApiOptions || { apiUrl: '/cubejs-api/v1' },
-    token: initialToken
-  }
-
-  // Create or use the provided CubeClient, recreating when config changes
-  const cubeApi = useMemo(() => {
-    if (initialCubeApi && !initialApiOptions && !initialToken) {
-      // Use provided client if no initial config specified
-      return initialCubeApi
-    }
-
-    // Create client with current config
-    return createCubeClient(currentConfig.token, currentConfig.apiOptions)
-  }, [initialCubeApi, initialApiOptions, initialToken, currentConfig.apiOptions, currentConfig.token])
-
-  // Create BatchCoordinator if batching is enabled
-  const batchCoordinator = useMemo(() => {
-    if (!enableBatching) {
-      return null
-    }
-
-    // Create batch executor function that uses cubeApi.batchLoad
-    const batchExecutor = (queries: any[]) => cubeApi.batchLoad(queries)
-
-    return new BatchCoordinator(batchExecutor, batchDelayMs)
-  }, [enableBatching, cubeApi, batchDelayMs])
-
-  const { meta, labelMap, loading: metaLoading, error: metaError, getFieldLabel, refetch: refetchMeta } = useCubeMeta(cubeApi)
-  
-  const updateApiConfig = (newApiOptions: CubeApiOptions, newToken?: string) => {
-    setDynamicConfig({
-      apiOptions: newApiOptions,
-      token: newToken
-    })
-  }
-  
-  const contextValue = {
-    cubeApi,
-    options,
-    meta,
-    labelMap,
-    metaLoading,
-    metaError,
-    getFieldLabel,
-    refetchMeta,
-    updateApiConfig,
-    features,
-    batchCoordinator,
-    enableBatching,
-    dashboardModes
-  }
-  
   return (
-    <CubeContext.Provider value={contextValue}>
-      {children}
-    </CubeContext.Provider>
+    <CubeApiProvider
+      apiOptions={apiOptions || { apiUrl: '/cubejs-api/v1' }}
+      token={token}
+      options={options}
+      enableBatching={enableBatching}
+      batchDelayMs={batchDelayMs}
+    >
+      <CubeMetaProvider>
+        <CubeFeaturesProvider features={features} dashboardModes={dashboardModes}>
+          {children}
+        </CubeFeaturesProvider>
+      </CubeMetaProvider>
+    </CubeApiProvider>
   )
 }
 
-export function useCubeContext() {
-  const context = useContext(CubeContext)
-  
-  if (!context) {
-    throw new Error('useCubeContext must be used within a CubeProvider')
-  }
-  return context
+/**
+ * useCubeContext - Backward compatible hook
+ *
+ * Merges all three contexts into a single object for backward compatibility.
+ * Components using this hook will re-render when ANY context changes.
+ *
+ * For better performance, use specialized hooks:
+ * - useCubeApi() - Only re-renders on API changes
+ * - useCubeMeta() - Only re-renders on metadata changes
+ * - useCubeFeatures() - Only re-renders on feature changes
+ */
+export function useCubeContext(): CubeContextValue {
+  const api = useCubeApi()
+  const meta = useCubeMeta()
+  const featuresCtx = useCubeFeatures()
+
+  return useMemo(() => ({
+    ...api,
+    ...meta,
+    features: featuresCtx.features,
+    dashboardModes: featuresCtx.dashboardModes
+  }), [api, meta, featuresCtx])
 }
+
+// Re-export specialized hooks for better tree-shaking and performance
+export { useCubeApi, useCubeMeta, useCubeFeatures }

@@ -11,7 +11,7 @@ interface MarkdownNode {
   parentOrdered?: boolean // For list items to know if parent list is ordered
 }
 
-export default function MarkdownChart({ 
+const MarkdownChart = React.memo(function MarkdownChart({ 
   displayConfig = {},
   height = "100%",
   colorPalette
@@ -409,4 +409,6 @@ export default function MarkdownChart({
       {parsedNodes.map((node, index) => renderNode(node, index))}
     </div>
   )
-}
+})
+
+export default MarkdownChart

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -6,7 +6,7 @@ import { CHART_COLORS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
-export default function RadarChart({ 
+const RadarChart = React.memo(function RadarChart({ 
   data, 
   chartConfig,
   displayConfig = {},
@@ -194,4 +194,6 @@ export default function RadarChart({
       </div>
     )
   }
-}
+})
+
+export default RadarChart

@@ -1,9 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
-import { useAnalysisBuilderToggle } from '../App'
 
 const DocumentTextIcon = getIcon('documentText')
 const Bars3Icon = getIcon('menu')
@@ -16,8 +15,27 @@ const GitHubIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-// Floating GitHub source button component
-const FloatingGitHubButton = () => {
+/**
+ * LogoLink - Memoized logo link component
+ *
+ * Extracted and memoized to prevent re-renders when parent Layout updates.
+ * Has no props, so it's perfectly stable.
+ */
+const LogoLink = memo(function LogoLink() {
+  return (
+    <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-dc-text hover:text-dc-primary transition-colors">
+      <DrizzleCubeIcon className="text-dc-primary" size={28} />
+      <span>Drizzle Cube</span>
+    </Link>
+  )
+})
+
+/**
+ * FloatingGitHubButton - Memoized floating button
+ *
+ * Only depends on location.pathname, so only re-renders on route changes.
+ */
+const FloatingGitHubButton = memo(function FloatingGitHubButton() {
   const location = useLocation()
   
   // Map routes to their source files
@@ -55,47 +73,30 @@ const FloatingGitHubButton = () => {
       </a>
     </div>
   )
-}
+})
 
 interface LayoutProps {
   children: React.ReactNode
 }
 
-// Toggle component for switching between old/new portlet edit modal
-function AnalysisBuilderToggle() {
-  const { useAnalysisBuilder, setUseAnalysisBuilder } = useAnalysisBuilderToggle()
-
-  return (
-    <div className="flex items-center space-x-2">
-      <span className="text-xs text-dc-text-muted whitespace-nowrap">New Builder:</span>
-      <button
-        onClick={() => setUseAnalysisBuilder(!useAnalysisBuilder)}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-          useAnalysisBuilder ? 'bg-dc-accent' : 'bg-dc-surface-tertiary'
-        }`}
-        title={useAnalysisBuilder ? 'Using new Analysis Builder modal' : 'Using old portlet edit modal'}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-            useAnalysisBuilder ? 'translate-x-4.5' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    </div>
-  )
-}
-
+/**
+ * Layout - Main application layout
+ *
+ * NOT memoized because it needs to respond to route changes (children prop changes).
+ * However, stable child components (LogoLink, FloatingGitHubButton, ThemeToggle)
+ * are memoized to prevent unnecessary re-renders.
+ */
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  const isActive = (path: string) => {
+  const isActive = useCallback((path: string) => {
     if (path === '/') {
       return location.pathname === '/'
     }
     return location.pathname.startsWith(path)
-  }
+  }, [location.pathname])
 
   return (
     <div className="h-screen flex flex-col bg-dc-surface-secondary transition-colors overflow-hidden">
@@ -106,10 +107,7 @@ export default function Layout({ children }: LayoutProps) {
             {/* Desktop layout */}
             <div className="flex">
               <div className="shrink-0 flex items-center">
-                <Link to="/" className="flex items-center space-x-3 text-xl font-bold text-dc-text hover:text-dc-primary transition-colors">
-                  <DrizzleCubeIcon className="text-dc-primary" size={28} />
-                  <span>Drizzle Cube</span>
-                </Link>
+                <LogoLink />
               </div>
               {/* Desktop navigation */}
               <div className="hidden md:ml-6 md:flex md:space-x-8">
@@ -158,8 +156,6 @@ export default function Layout({ children }: LayoutProps) {
             
             {/* Desktop external links */}
             <div className="hidden md:flex md:items-center md:space-x-4">
-              <AnalysisBuilderToggle />
-              <div className="h-4 w-px bg-dc-border" /> {/* Divider */}
               <a
                 href="https://www.drizzle-cube.dev"
                 target="_blank"

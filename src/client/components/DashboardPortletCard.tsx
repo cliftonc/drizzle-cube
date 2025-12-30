@@ -1,8 +1,11 @@
-import { type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
+import React, { useCallback, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
 import type { DashboardFilter, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
+
+// Constant style object to prevent re-renders from inline object recreation
+const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 
 interface DashboardPortletCardProps {
   portlet: PortletConfig
@@ -46,7 +49,81 @@ interface DashboardPortletCardProps {
   }
 }
 
-export default function DashboardPortletCard({
+// Custom comparison function to handle containerProps/headerProps object recreation
+function arePropsEqual(
+  prevProps: DashboardPortletCardProps,
+  nextProps: DashboardPortletCardProps
+): boolean {
+  // Fast path: if object references are the same, props are equal
+  if (prevProps === nextProps) return true
+
+  // Check all scalar props
+  if (
+    prevProps.editable !== nextProps.editable ||
+    prevProps.isEditMode !== nextProps.isEditMode ||
+    prevProps.selectedFilterId !== nextProps.selectedFilterId ||
+    prevProps.configEagerLoad !== nextProps.configEagerLoad
+  ) {
+    return false
+  }
+
+  // Check object/array props by reference (React.memo default behavior)
+  if (
+    prevProps.portlet !== nextProps.portlet ||
+    prevProps.debugData !== nextProps.debugData ||
+    prevProps.dashboardFilters !== nextProps.dashboardFilters ||
+    prevProps.colorPalette !== nextProps.colorPalette ||
+    prevProps.loadingComponent !== nextProps.loadingComponent ||
+    prevProps.icons !== nextProps.icons
+  ) {
+    return false
+  }
+
+  // Check function props by reference
+  if (
+    prevProps.onToggleFilter !== nextProps.onToggleFilter ||
+    prevProps.onRefresh !== nextProps.onRefresh ||
+    prevProps.onDuplicate !== nextProps.onDuplicate ||
+    prevProps.onEdit !== nextProps.onEdit ||
+    prevProps.onDelete !== nextProps.onDelete ||
+    prevProps.onOpenFilterConfig !== nextProps.onOpenFilterConfig ||
+    prevProps.onDebugDataReady !== nextProps.onDebugDataReady ||
+    prevProps.setPortletRef !== nextProps.setPortletRef ||
+    prevProps.setPortletComponentRef !== nextProps.setPortletComponentRef
+  ) {
+    return false
+  }
+
+  // Special handling for containerProps and headerProps - compare properties shallowly
+  // These objects may be recreated but with the same values (especially function references)
+  const containerPropsEqual = shallowEqualObjects(prevProps.containerProps, nextProps.containerProps)
+  const headerPropsEqual = shallowEqualObjects(prevProps.headerProps, nextProps.headerProps)
+
+  return containerPropsEqual && headerPropsEqual
+}
+
+// Shallow comparison for objects - compares keys and values by reference
+function shallowEqualObjects(
+  a: Record<string, any> | undefined,
+  b: Record<string, any> | undefined
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return a === b
+
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+
+  if (keysA.length !== keysB.length) return false
+
+  for (const key of keysA) {
+    if (a[key] !== b[key]) return false
+  }
+
+  return true
+}
+
+// Memoize component to prevent re-renders when props haven't changed
+const DashboardPortletCard = React.memo(function DashboardPortletCard({
   portlet,
   editable,
   isEditMode,
@@ -103,6 +180,17 @@ export default function DashboardPortletCard({
     style: headerStyle,
     ...restHeaderProps
   } = headerProps ?? {}
+
+  // Memoize debug data callback to prevent AnalyticsPortlet re-renders
+  const handleDebugDataReady = useCallback((data: {
+    chartConfig: any
+    displayConfig: any
+    queryObject: any
+    data: any[]
+    chartType: string
+  }) => {
+    onDebugDataReady(portlet.id, data)
+  }, [portlet.id, onDebugDataReady])
 
   return (
     <div
@@ -181,7 +269,7 @@ export default function DashboardPortletCard({
               }`}
               title="Refresh portlet data"
             >
-              <icons.RefreshIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+              <icons.RefreshIcon style={ICON_STYLE} />
             </button>
 
             {editable && isEditMode && !isInSelectionMode && (
@@ -204,7 +292,7 @@ export default function DashboardPortletCard({
                       : 'var(--dc-text-secondary)'
                   }}
                 >
-                  <icons.FilterIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  <icons.FilterIcon style={ICON_STYLE} />
                 </button>
 
                 <button
@@ -220,7 +308,7 @@ export default function DashboardPortletCard({
                   className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                   title="Duplicate portlet"
                 >
-                  <icons.CopyIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  <icons.CopyIcon style={ICON_STYLE} />
                 </button>
                 <button
                   onClick={(event) => {
@@ -235,7 +323,7 @@ export default function DashboardPortletCard({
                   className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                   title="Edit portlet"
                 >
-                  <icons.EditIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  <icons.EditIcon style={ICON_STYLE} />
                 </button>
                 <button
                   onClick={(event) => {
@@ -250,7 +338,7 @@ export default function DashboardPortletCard({
                   className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-danger-bg text-dc-danger transition-colors"
                   title="Delete portlet"
                 >
-                  <icons.DeleteIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
+                  <icons.DeleteIcon style={ICON_STYLE} />
                 </button>
               </>
             )}
@@ -272,9 +360,11 @@ export default function DashboardPortletCard({
           height="100%"
           colorPalette={colorPalette}
           loadingComponent={loadingComponent}
-          onDebugDataReady={(data) => onDebugDataReady(portlet.id, data)}
+          onDebugDataReady={handleDebugDataReady}
         />
       </div>
     </div>
   )
-}
+}, arePropsEqual)
+
+export default DashboardPortletCard

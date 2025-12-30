@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import infoCircleIcon from "@iconify-icons/tabler/info-circle";
-import { useCubeContext } from "../../providers/CubeProvider";
+import { useCubeFieldLabel } from "../../hooks/useCubeFieldLabel";
 import { filterIncompletePeriod } from "../../utils/periodUtils";
 import type { ChartProps } from "../../types";
 
@@ -131,7 +131,7 @@ function VarianceHistogram({
   );
 }
 
-export default function KpiDelta({
+const KpiDelta = React.memo(function KpiDelta({
   data,
   chartConfig,
   displayConfig = {},
@@ -143,7 +143,8 @@ export default function KpiDelta({
   const [textWidth, setTextWidth] = useState(250);
   const containerRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLDivElement>(null);
-  const { getFieldLabel } = useCubeContext();
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel();
 
   // Calculate font size and text width based on container dimensions
   useEffect(() => {
@@ -508,4 +509,6 @@ export default function KpiDelta({
       )}
     </div>
   );
-}
+})
+
+export default KpiDelta

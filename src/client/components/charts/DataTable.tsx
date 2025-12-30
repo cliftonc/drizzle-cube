@@ -5,7 +5,7 @@
  * automatically pivots to show time periods as columns.
  */
 
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { getMeasureTypeIcon } from '../../icons'
 import {
@@ -20,7 +20,7 @@ import {
 import { formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps, AxisFormatConfig } from '../../types'
 
-export default function DataTable({
+const DataTable = React.memo(function DataTable({
   data,
   chartConfig,
   displayConfig = {},
@@ -83,7 +83,9 @@ export default function DataTable({
       leftYAxisFormat={displayConfig?.leftYAxisFormat}
     />
   )
-}
+})
+
+export default DataTable
 
 /**
  * Pivoted table component - renders time dimension as columns

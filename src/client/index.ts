@@ -52,10 +52,22 @@ export { default as QueryBuilder } from './components/QueryBuilder'
 export { default as AnalysisBuilder } from './components/AnalysisBuilder'
 
 // Data provider and hooks
-export { CubeProvider, useCubeContext } from './providers/CubeProvider'
+export {
+  CubeProvider,
+  useCubeContext,
+  // Specialized context hooks for performance (only re-render on specific changes)
+  useCubeApi,      // Only re-renders on API/auth changes
+  useCubeMeta,     // Only re-renders on metadata changes
+  useCubeFeatures  // Only re-renders on feature flag changes
+} from './providers/CubeProvider'
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
 export { useCubeQuery } from './hooks/useCubeQuery'
+export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
 export { createCubeClient } from './client/CubeClient'
+
+// Performance hooks
+export { useTheme } from './hooks/useTheme'
+export { useScrollDetection } from './hooks/useScrollDetection'
 
 // Types
 export type {

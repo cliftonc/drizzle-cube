@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function BarChart({
+const BarChart = React.memo(function BarChart({
   data,
   chartConfig,
   displayConfig = {},
@@ -17,7 +17,8 @@ export default function BarChart({
   colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  const { labelMap, getFieldLabel: contextGetFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
 
   // Determine stacking from stackType (new) or stacked (legacy)
   const stackType = displayConfig?.stackType ?? (displayConfig?.stacked ? 'normal' : 'none')
@@ -69,22 +70,25 @@ export default function BarChart({
       yAxisFields,
       queryObject,
       seriesFields,
-      labelMap
+      getFieldLabel
     )
-  }, [data, xAxisField, yAxisFields, queryObject, seriesFields, labelMap, configError])
+  }, [data, xAxisField, yAxisFields, queryObject, seriesFields, getFieldLabel, configError])
 
-  // Dual Y-axis support: extract yAxisAssignment from chartConfig
-  const yAxisAssignment = chartConfig?.yAxisAssignment || {}
+  // Dual Y-axis support: extract yAxisAssignment from chartConfig (memoized to prevent object recreation)
+  const yAxisAssignment = useMemo(() =>
+    chartConfig?.yAxisAssignment || {},
+    [chartConfig?.yAxisAssignment]
+  )
 
   // Build mapping from series key (label) to original field name
   const seriesKeyToField: Record<string, string> = useMemo(() => {
     const mapping: Record<string, string> = {}
     yAxisFields.forEach((field) => {
-      const label = contextGetFieldLabel(field)
+      const label = getFieldLabel(field)
       mapping[label] = field
     })
     return mapping
-  }, [yAxisFields, contextGetFieldLabel])
+  }, [yAxisFields, getFieldLabel])
 
   // Determine if we need a right Y-axis
   const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
@@ -210,7 +214,7 @@ export default function BarChart({
                 ? undefined
                 : leftAxisFields.length > 0
                   ? {
-                      value: leftYAxisFormat?.label || contextGetFieldLabel(leftAxisFields[0]),
+                      value: leftYAxisFormat?.label || getFieldLabel(leftAxisFields[0]),
                       angle: -90,
                       position: 'left',
                       style: { textAnchor: 'middle', fontSize: '12px' }
@@ -227,7 +231,7 @@ export default function BarChart({
               label={
                 rightAxisFields.length > 0
                   ? {
-                      value: rightYAxisFormat?.label || contextGetFieldLabel(rightAxisFields[0]),
+                      value: rightYAxisFormat?.label || getFieldLabel(rightAxisFields[0]),
                       angle: 90,
                       position: 'right',
                       style: { textAnchor: 'middle', fontSize: '12px' }
@@ -353,4 +357,6 @@ export default function BarChart({
       </div>
     )
   }
-}
+})
+
+export default BarChart

@@ -1,4 +1,4 @@
-import { useState, type HTMLAttributes, type ReactNode, type MouseEvent, type DragEvent } from 'react'
+import { useState, useCallback, type HTMLAttributes, type ReactNode, type MouseEvent, type DragEvent } from 'react'
 import type { DashboardGridSettings, PortletConfig, RowLayout } from '../types'
 
 interface RowManagedLayoutProps {
@@ -42,6 +42,19 @@ export default function RowManagedLayout({
   }
 
   const isDragActive = isDragging || activeDropKey !== null
+
+  // Stable drag event handlers using data attributes to prevent containerProps recreation
+  const handlePortletDragStart = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const rowIndex = parseInt(event.currentTarget.dataset.rowIndex || '0', 10)
+    const columnIndex = parseInt(event.currentTarget.dataset.columnIndex || '0', 10)
+    const portletId = event.currentTarget.dataset.portletId || ''
+    onPortletDragStart(rowIndex, columnIndex, portletId, event)
+  }, [onPortletDragStart])
+
+  const handlePortletDragEnd = useCallback(() => {
+    setDropActive(null)
+    onPortletDragEnd()
+  }, [onPortletDragEnd])
 
   const topDropActive = activeDropKey === 'row-insert-0'
   const bottomDropActive = activeDropKey === 'row-bottom'
@@ -90,15 +103,15 @@ export default function RowManagedLayout({
                 if (!portlet) return null
                 const width = column.w * unitWidth
 
-                const containerProps: HTMLAttributes<HTMLDivElement> = {
+                const containerProps = {
                   draggable: canEdit,
-                  onDragStart: (event) => onPortletDragStart(rowIndex, columnIndex, portlet.id, event),
-                  onDragEnd: () => {
-                    setDropActive(null)
-                    onPortletDragEnd()
-                  },
+                  'data-row-index': rowIndex.toString(),
+                  'data-column-index': columnIndex.toString(),
+                  'data-portlet-id': portlet.id,
+                  onDragStart: handlePortletDragStart,
+                  onDragEnd: handlePortletDragEnd,
                   className: 'dc-row-layout-column'
-                }
+                } as HTMLAttributes<HTMLDivElement>
 
                 return (
                   <div

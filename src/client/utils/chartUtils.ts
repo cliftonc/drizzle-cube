@@ -370,7 +370,13 @@ export function getFieldGranularity(queryObject: any, fieldName: string): string
 
 // Transform data for charts with proper type handling
 // NOTE: Preserves null values to allow charts to handle gaps/missing data appropriately
-export function transformChartData(data: any[], xAxisField: string, yAxisFields: string[], queryObject: any, labelMap: FieldLabelMap = {}) {
+export function transformChartData(
+  data: any[],
+  xAxisField: string,
+  yAxisFields: string[],
+  queryObject: any,
+  getFieldLabelFn: (fieldName: string) => string = (fieldName) => fieldName
+) {
   if (!data || data.length === 0) return []
 
   const granularity = getFieldGranularity(queryObject, xAxisField)
@@ -381,7 +387,7 @@ export function transformChartData(data: any[], xAxisField: string, yAxisFields:
     }
 
     yAxisFields.forEach(field => {
-      const displayName = getFieldLabel(field, labelMap)
+      const displayName = getFieldLabelFn(field)
       // Preserve null values instead of converting to 0
       transformed[displayName] = parseNumericValue(row[field])
     })
@@ -404,7 +410,7 @@ export function transformChartDataWithSeries(
   yAxisFields: string[],
   queryObject: any,
   seriesFields?: string[], // New optional parameter for explicit series fields
-  labelMap: FieldLabelMap = {} // Optional label map for field names
+  getFieldLabelFn: (fieldName: string) => string = (fieldName) => fieldName // Function to get field labels
 ): ChartSeriesResult {
   if (!data || data.length === 0) {
     return { data: [], seriesKeys: [], hasDimensions: false }
@@ -435,7 +441,7 @@ export function transformChartDataWithSeries(
 
       // Add measures - preserve nulls for individual measures
       yAxisMeasures.forEach(measure => {
-        const displayName = getFieldLabel(measure, labelMap)
+        const displayName = getFieldLabelFn(measure)
         const measureValue = parseNumericValue(row[measure])
 
         // For aggregation: sum non-null values, preserve null if all are null
@@ -502,8 +508,8 @@ export function transformChartDataWithSeries(
   }
   
   // Standard measures-only path
-  const chartData = transformChartData(data, xAxisField, yAxisFields, queryObject, labelMap)
-  const seriesKeys = yAxisFields.map(field => getFieldLabel(field, labelMap))
+  const chartData = transformChartData(data, xAxisField, yAxisFields, queryObject, getFieldLabelFn)
+  const seriesKeys = yAxisFields.map(field => getFieldLabelFn(field))
   
   return {
     data: chartData,

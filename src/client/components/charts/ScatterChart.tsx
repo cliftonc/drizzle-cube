@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function ScatterChart({ 
+const ScatterChart = React.memo(function ScatterChart({ 
   data, 
   chartConfig, 
   displayConfig = {},
@@ -15,7 +15,8 @@ export default function ScatterChart({
   colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  const { getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
   
   try {
     const safeDisplayConfig = {
@@ -285,4 +286,6 @@ export default function ScatterChart({
       </div>
     )
   }
-}
+})
+
+export default ScatterChart

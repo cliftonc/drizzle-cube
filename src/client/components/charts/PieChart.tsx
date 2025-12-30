@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function PieChart({ 
+const PieChart = React.memo(function PieChart({ 
   data, 
   chartConfig,
   displayConfig = {},
@@ -16,7 +16,8 @@ export default function PieChart({
   colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  const { labelMap } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
   
   try {
     const safeDisplayConfig = {
@@ -77,12 +78,12 @@ export default function PieChart({
     if (seriesFields.length > 0) {
       // Use series-based transformation for dimension-based pie slices
       const { data: chartData } = transformChartDataWithSeries(
-        data, 
-        xAxisField, 
-        yAxisFields, 
+        data,
+        xAxisField,
+        yAxisFields,
         queryObject,
         seriesFields,
-        labelMap
+        getFieldLabel
       )
       
       // Convert series data to pie format
@@ -199,4 +200,6 @@ export default function PieChart({
       </div>
     )
   }
-}
+})
+
+export default PieChart

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { RadialBarChart as RechartsRadialBarChart, RadialBar, Legend, Cell } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -6,7 +6,7 @@ import { CHART_COLORS } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
-export default function RadialBarChart({ 
+const RadialBarChart = React.memo(function RadialBarChart({ 
   data, 
   chartConfig,
   displayConfig = {},
@@ -176,4 +176,6 @@ export default function RadialBarChart({
       </div>
     )
   }
-}
+})
+
+export default RadialBarChart

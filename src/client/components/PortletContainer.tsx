@@ -3,7 +3,7 @@
  * Simple wrapper for individual portlets
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { PortletConfig } from '../types'
@@ -30,6 +30,17 @@ export default function PortletContainer({
     data: any[]
     chartType: string
   } | null>(null)
+
+  // Memoize debug data callback to prevent AnalyticsPortlet re-renders
+  const handleDebugDataReady = useCallback((data: {
+    chartConfig: any
+    displayConfig: any
+    queryObject: any
+    data: any[]
+    chartType: string
+  }) => {
+    setDebugData(data)
+  }, [])
 
   return (
     <div className="bg-dc-surface border border-dc-border rounded-lg flex flex-col h-full" style={{ boxShadow: 'var(--dc-shadow-sm)' }}>
@@ -97,9 +108,7 @@ export default function PortletContainer({
           displayConfig={portlet.displayConfig}
           title={portlet.title}
           height="100%"
-          onDebugDataReady={(data) => {
-            setDebugData(data)
-          }}
+          onDebugDataReady={handleDebugDataReady}
         />
       </div>
     </div>

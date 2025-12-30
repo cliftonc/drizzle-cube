@@ -3,7 +3,7 @@
  * Simplified version with minimal dependencies
  */
 
-import { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
+import React, { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useCubeQuery } from '../hooks/useCubeQuery'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
@@ -19,7 +19,8 @@ interface AnalyticsPortletRef {
   refresh: () => void
 }
 
-const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({
+// Memoize component to prevent re-renders when props haven't changed
+const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(({
   query,
   chartType,
   chartConfig,
@@ -42,7 +43,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   const scrollContainer = useScrollContainer()
   const { ref: inViewRef, inView } = useInView({
     root: scrollContainer,
-    rootMargin: '200px',      // Start loading 200px before entering viewport
+    rootMargin: '500px',      // Start loading 500px before entering viewport (about half screen)
     triggerOnce: true,        // Once visible, stay "visible" (don't unload data)
     initialInView: false,     // Start as not visible, let observer determine actual state
     skip: eagerLoad           // Skip observation entirely if eagerLoad is true
@@ -61,6 +62,11 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   const { config: chartTypeConfig } = useChartConfig(chartType)
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
+  // Memoize regular filters to prevent array recreation on every render
+  const regularFilters = useMemo(() => {
+    return dashboardFilters?.filter(df => !df.isUniversalTime)
+  }, [dashboardFilters])
+
   // Parse query from JSON string, merge dashboard filters, and include refresh counter to force re-query
   const queryObject = useMemo(() => {
     // Skip query parsing for charts that don't need queries
@@ -72,7 +78,6 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       const parsed = JSON.parse(query)
 
       // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
-      const regularFilters = dashboardFilters?.filter(df => !df.isUniversalTime)
       const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
 
       // Merge dashboard filters with portlet filters
@@ -95,7 +100,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return null
     }
-  }, [query, refreshCounter, shouldSkipQuery, dashboardFilters, dashboardFilterMapping])
+  }, [query, refreshCounter, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
   // Use the cube React hook (skip for charts that don't need queries or not visible for lazy loading)
   // Priority: shouldSkipQuery (chart type) > eagerLoad override > isVisible (lazy loading)
@@ -158,11 +163,8 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
   // Show placeholder for lazy-loaded portlets that aren't visible yet
   if (!shouldSkipQuery && !eagerLoad && !isVisible) {
     return (
-      <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
-        <div className="text-center">
-          <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-dc-surface-secondary animate-pulse" />
-          <div className="text-xs text-dc-text-secondary">Scroll to load</div>
-        </div>
+      <div ref={inViewRef} className="w-full h-full" style={{ height }}>
+        <div className="w-full h-full animate-pulse bg-dc-surface-secondary rounded" style={{ minHeight: '100px' }} />
       </div>
     )
   }
@@ -328,7 +330,7 @@ const AnalyticsPortlet = forwardRef<AnalyticsPortletRef, AnalyticsPortletProps>(
       </ChartErrorBoundary>
     </div>
   )
-})
+}))
 
 AnalyticsPortlet.displayName = 'AnalyticsPortlet'
 

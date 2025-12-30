@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function AreaChart({ 
+const AreaChart = React.memo(function AreaChart({ 
   data, 
   chartConfig, 
   displayConfig = {},
@@ -17,7 +17,8 @@ export default function AreaChart({
   colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  const { labelMap, getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
   
   try {
     // Determine stacking from stackType (new) or stacked (legacy)
@@ -90,7 +91,7 @@ export default function AreaChart({
       yAxisFields,
       queryObject,
       seriesFields,
-      labelMap
+      getFieldLabel
     )
 
     // Dual Y-axis support: extract yAxisAssignment from chartConfig
@@ -304,4 +305,6 @@ export default function AreaChart({
       </div>
     )
   }
-}
+})
+
+export default AreaChart

@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
-import { useCubeContext } from '../../providers/CubeProvider'
+import React, { useState, useRef, useEffect } from 'react'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import DataHistogram from '../DataHistogram'
 import type { ChartProps } from '../../types'
 
-export default function KpiText({ 
+const KpiText = React.memo(function KpiText({ 
   data, 
   chartConfig, 
   displayConfig = {},
@@ -14,7 +14,8 @@ export default function KpiText({
   const [textWidth, setTextWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
-  const { getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
 
   // Calculate font size and text width based on container dimensions
   useEffect(() => {
@@ -289,4 +290,6 @@ export default function KpiText({
         )}
     </div>
   )
-}
+})
+
+export default KpiText

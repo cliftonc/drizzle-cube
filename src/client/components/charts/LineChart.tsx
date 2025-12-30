@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function LineChart({ 
+const LineChart = React.memo(function LineChart({ 
   data, 
   chartConfig, 
   displayConfig = {},
@@ -17,7 +17,8 @@ export default function LineChart({
   colorPalette
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  const { labelMap, getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
   
   try {
     const safeDisplayConfig = {
@@ -85,19 +86,25 @@ export default function LineChart({
       yAxisFields,
       queryObject,
       seriesFields,
-      labelMap
+      getFieldLabel
     )
 
-    // Dual Y-axis support: extract yAxisAssignment from chartConfig
-    const yAxisAssignment = chartConfig?.yAxisAssignment || {}
+    // Dual Y-axis support: extract yAxisAssignment from chartConfig (memoized to prevent object recreation)
+    const yAxisAssignment = useMemo(() =>
+      chartConfig?.yAxisAssignment || {},
+      [chartConfig?.yAxisAssignment]
+    )
 
-    // Build mapping from series key (label) to original field name
+    // Build mapping from series key (label) to original field name (memoized to prevent object recreation)
     // This is needed because seriesKeys use display labels, not field names
-    const seriesKeyToField: Record<string, string> = {}
-    yAxisFields.forEach((field) => {
-      const label = getFieldLabel(field)
-      seriesKeyToField[label] = field
-    })
+    const seriesKeyToField = useMemo(() => {
+      const mapping: Record<string, string> = {}
+      yAxisFields.forEach((field) => {
+        const label = getFieldLabel(field)
+        mapping[label] = field
+      })
+      return mapping
+    }, [yAxisFields, getFieldLabel])
 
     // Determine if we need a right Y-axis
     const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
@@ -284,4 +291,6 @@ export default function LineChart({
       </div>
     )
   }
-}
+})
+
+export default LineChart

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { getTheme, setTheme, watchThemeChanges, type Theme, getIcon } from '@drizzle-cube/client'
+import { memo } from 'react'
+import { useTheme } from '../../../../src/client/hooks/useTheme'
+import { type Theme, getIcon } from '@drizzle-cube/client'
 
 const SunIcon = getIcon('sun')
 const MoonIcon = getIcon('moon')
@@ -9,38 +10,31 @@ interface ThemeToggleProps {
   className?: string
 }
 
-export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
-  const [currentTheme, setCurrentTheme] = useState<Theme>('light')
-
-  useEffect(() => {
-    // Initialize theme state
-    setCurrentTheme(getTheme())
-
-    // Watch for theme changes from other sources
-    const unwatch = watchThemeChanges((theme) => {
-      setCurrentTheme(theme)
-    })
-
-    return unwatch
-  }, [])
+/**
+ * ThemeToggle - Memoized theme toggle button
+ *
+ * Uses external theme state (useTheme hook with useSyncExternalStore)
+ * to prevent parent Layout re-renders when theme changes.
+ */
+export default memo(function ThemeToggle({ className = '' }: ThemeToggleProps) {
+  const { theme, setTheme } = useTheme()
 
   const cycleTheme = () => {
     // Cycle through: light → dark → neon → light
     let nextTheme: Theme
-    if (currentTheme === 'light') {
+    if (theme === 'light') {
       nextTheme = 'dark'
-    } else if (currentTheme === 'dark') {
+    } else if (theme === 'dark') {
       nextTheme = 'neon'
     } else {
       nextTheme = 'light'
     }
 
     setTheme(nextTheme)
-    setCurrentTheme(nextTheme)
   }
 
-  const getIcon = () => {
-    switch (currentTheme) {
+  const getThemeIcon = () => {
+    switch (theme) {
       case 'light':
         return <MoonIcon className="w-5 h-5" aria-hidden="true" />
       case 'dark':
@@ -53,7 +47,7 @@ export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
   }
 
   const getLabel = () => {
-    switch (currentTheme) {
+    switch (theme) {
       case 'light':
         return 'Switch to dark mode'
       case 'dark':
@@ -72,7 +66,7 @@ export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
       aria-label={getLabel()}
       title={getLabel()}
     >
-      {getIcon()}
+      {getThemeIcon()}
     </button>
   )
-}
+})

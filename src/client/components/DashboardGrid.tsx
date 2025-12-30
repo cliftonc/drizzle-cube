@@ -18,6 +18,7 @@ import {
 } from 'react'
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { getIcon } from '../icons'
+import { useScrollDetection } from '../hooks/useScrollDetection'
 import DashboardPortletCard from './DashboardPortletCard'
 import RowManagedLayout from './RowManagedLayout'
 
@@ -312,22 +313,19 @@ export default function DashboardGrid({
 
   // Scroll container detection for lazy loading
   // Null = viewport, element = scrolling container
+  // Detection happens once in the ref callback to avoid double state updates
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null)
   const containerElementRef = useRef<HTMLDivElement | null>(null)
-
-  // Detect scroll container after mount
-  useEffect(() => {
-    if (containerElementRef.current) {
-      setScrollContainer(findScrollableAncestor(containerElementRef.current))
-    }
-  }, [])
+  const scrollContainerRef = useRef<HTMLElement | null>(null)
 
   // Combined ref for container
   const combinedContainerRef = useCallback((node: HTMLDivElement | null) => {
     containerElementRef.current = node
     containerRef(node)
     if (node) {
-      setScrollContainer(findScrollableAncestor(node))
+      const foundScrollContainer = findScrollableAncestor(node)
+      setScrollContainer(foundScrollContainer)
+      scrollContainerRef.current = foundScrollContainer
     }
   }, [containerRef])
 
@@ -372,8 +370,12 @@ export default function DashboardGrid({
     }
   }, [isResponsiveEditable, isEditMode])
 
-  // Track scroll state for sticky header
-  const [isScrolled, setIsScrolled] = useState(false)
+  // Track scroll state for sticky header using debounced scroll detection
+  // Uses the actual scroll container (found via findScrollableAncestor) instead of window
+  const isScrolled = useScrollDetection(scrollContainerRef, {
+    threshold: 20,
+    debounceMs: 150
+  })
 
   // Modal states
   const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
@@ -447,22 +449,9 @@ export default function DashboardGrid({
     return () => clearTimeout(timer)
   }, [config.portlets])
 
-  // Set up scroll listener for sticky header
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      setIsScrolled(scrollTop > 20) // Add sticky styling after scrolling 20px
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-
-    // Check initial scroll position
-    handleScroll()
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
+  // Scroll detection now handled by useScrollDetection hook above (lines 373-378)
+  // This eliminates the old window.addEventListener('scroll') listener that was
+  // listening to the wrong element and causing performance issues
 
   // Set up ESC key listener for filter selection mode
   useEffect(() => {
@@ -1185,6 +1174,33 @@ export default function DashboardGrid({
     }
   }, [config, filterConfigPortlet, onConfigChange, onSave])
 
+  // Memoized callbacks for DashboardPortletCard to prevent re-renders
+  const handleDebugDataReady = useCallback((portletId: string, data: {
+    chartConfig: any
+    displayConfig: any
+    queryObject: any
+    data: any[]
+    chartType: string
+  }) => {
+    setDebugData(prev => ({
+      ...prev,
+      [portletId]: data
+    }))
+  }, [])
+
+  const handleSetPortletRef = useCallback((portletId: string, element: HTMLDivElement | null) => {
+    portletRefs.current[portletId] = element
+  }, [])
+
+  const handleSetPortletComponentRef = useCallback((portletId: string, element: { refresh: () => void } | null) => {
+    portletComponentRefs.current[portletId] = element
+  }, [])
+
+  // Memoized icons object to prevent re-renders
+  const portletIcons = useMemo(() => ({
+    RefreshIcon, EditIcon, DeleteIcon, CopyIcon, FilterIcon
+  }), [])
+
   // Handle toggling filter for a portlet (used in filter selection mode)
   const handleToggleFilterForPortlet = useCallback(async (portletId: string, filterId: string) => {
     if (!onConfigChange) return
@@ -1265,6 +1281,58 @@ export default function DashboardGrid({
     ? dashboardFilters?.find(f => f.id === selectedFilterId)
     : null
 
+  // Memoize renderPortletCard to prevent unnecessary re-renders of DashboardPortletCard
+  // IMPORTANT: Must be defined before any early returns to follow Rules of Hooks
+  // All callback props are already memoized with useCallback above
+  const renderPortletCard = useCallback((
+    portlet: PortletConfig,
+    containerProps?: HTMLAttributes<HTMLDivElement>,
+    headerProps?: HTMLAttributes<HTMLDivElement>
+  ) => (
+    <DashboardPortletCard
+      portlet={portlet}
+      editable={editable}
+      isEditMode={isEditMode}
+      selectedFilterId={selectedFilterId}
+      debugData={debugData[portlet.id]}
+      dashboardFilters={dashboardFilters}
+      configEagerLoad={config.eagerLoad}
+      loadingComponent={loadingComponent}
+      colorPalette={colorPalette}
+      containerProps={containerProps}
+      headerProps={headerProps}
+      onToggleFilter={handleToggleFilterForPortlet}
+      onRefresh={handlePortletRefresh}
+      onDuplicate={handleDuplicatePortlet}
+      onEdit={handleEditPortlet}
+      onDelete={handleDeletePortlet}
+      onOpenFilterConfig={handleOpenFilterConfig}
+      onDebugDataReady={handleDebugDataReady}
+      setPortletRef={handleSetPortletRef}
+      setPortletComponentRef={handleSetPortletComponentRef}
+      icons={portletIcons}
+    />
+  ), [
+    editable,
+    isEditMode,
+    selectedFilterId,
+    debugData,
+    dashboardFilters,
+    config.eagerLoad,
+    loadingComponent,
+    colorPalette,
+    handleToggleFilterForPortlet,
+    handlePortletRefresh,
+    handleDuplicatePortlet,
+    handleEditPortlet,
+    handleDeletePortlet,
+    handleOpenFilterConfig,
+    handleDebugDataReady,
+    handleSetPortletRef,
+    handleSetPortletComponentRef,
+    portletIcons
+  ])
+
   if (!config.portlets || config.portlets.length === 0) {
     return (
       <>
@@ -1338,45 +1406,6 @@ export default function DashboardGrid({
     isResizable: canEdit,
     ...(canEdit ? { resizeHandles: ['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw'] as const } : {})
   }))
-
-  const renderPortletCard = (
-    portlet: PortletConfig,
-    containerProps?: HTMLAttributes<HTMLDivElement>,
-    headerProps?: HTMLAttributes<HTMLDivElement>
-  ) => (
-    <DashboardPortletCard
-      portlet={portlet}
-      editable={editable}
-      isEditMode={isEditMode}
-      selectedFilterId={selectedFilterId}
-      debugData={debugData[portlet.id]}
-      dashboardFilters={dashboardFilters}
-      configEagerLoad={config.eagerLoad}
-      loadingComponent={loadingComponent}
-      colorPalette={colorPalette}
-      containerProps={containerProps}
-      headerProps={headerProps}
-      onToggleFilter={handleToggleFilterForPortlet}
-      onRefresh={handlePortletRefresh}
-      onDuplicate={handleDuplicatePortlet}
-      onEdit={handleEditPortlet}
-      onDelete={handleDeletePortlet}
-      onOpenFilterConfig={handleOpenFilterConfig}
-      onDebugDataReady={(portletId, data) => {
-        setDebugData(prev => ({
-          ...prev,
-          [portletId]: data
-        }))
-      }}
-      setPortletRef={(portletId, element) => {
-        portletRefs.current[portletId] = element
-      }}
-      setPortletComponentRef={(portletId, element) => {
-        portletComponentRefs.current[portletId] = element
-      }}
-      icons={{ RefreshIcon, EditIcon, DeleteIcon, CopyIcon, FilterIcon }}
-    />
-  )
 
   // Render the portlet grid content (shared between desktop and scaled modes)
   const renderGridContent = () => (

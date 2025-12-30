@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { select, scaleQuantize, max, min } from 'd3'
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue } from '../../utils/chartUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import { getTheme, watchThemeChanges, type Theme } from '../../theme'
 import type { ChartProps } from '../../types'
 
@@ -27,7 +27,7 @@ interface GridMapping {
   getYearFromX?: (value: number) => number
 }
 
-export default function ActivityGridChart({
+const ActivityGridChart = React.memo(function ActivityGridChart({
   data,
   chartConfig,
   displayConfig = {},
@@ -40,7 +40,8 @@ export default function ActivityGridChart({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [dimensionsReady, setDimensionsReady] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<Theme>('light')
-  const { getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
 
   // Watch for theme changes
   useEffect(() => {
@@ -758,4 +759,6 @@ export default function ActivityGridChart({
       </div>
     </div>
   )
-}
+})
+
+export default ActivityGridChart

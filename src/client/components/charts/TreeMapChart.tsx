@@ -1,14 +1,14 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Treemap } from 'recharts'
 import { scaleQuantize, scaleOrdinal } from 'd3'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_COLORS_GRADIENT } from '../../utils/chartConstants'
 import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-export default function TreeMapChart({ 
+const TreeMapChart = React.memo(function TreeMapChart({ 
   data, 
   chartConfig,
   displayConfig = {},
@@ -17,7 +17,8 @@ export default function TreeMapChart({
   colorPalette
 }: ChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const { getFieldLabel } = useCubeContext()
+  // Use specialized hook to avoid re-renders from unrelated context changes
+  const getFieldLabel = useCubeFieldLabel()
   
   try {
     const safeDisplayConfig = {
@@ -408,4 +409,6 @@ export default function TreeMapChart({
       </div>
     )
   }
-}
+})
+
+export default TreeMapChart
