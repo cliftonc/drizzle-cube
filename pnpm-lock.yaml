@@ -94,10 +94,10 @@ importers:
         specifier: ^6.0.2
         version: 6.0.3
       '@typescript-eslint/eslint-plugin':
-        specifier: ^8.51.0
+        specifier: ^8.0.0
         version: 8.51.0(@typescript-eslint/parser@8.51.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       '@typescript-eslint/parser':
-        specifier: ^8.51.0
+        specifier: ^8.0.0
         version: 8.51.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       '@vitejs/plugin-react':
         specifier: ^5.0.0
@@ -166,8 +166,8 @@ importers:
         specifier: ^18.0.0
         version: 18.3.1(react@18.3.1)
       react-grid-layout:
-        specifier: ^2.1.1
-        version: 2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^2.2.0
+        version: 2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-hook-form:
         specifier: ^7.68.0
         version: 7.69.0(react@18.3.1)
@@ -3399,8 +3399,8 @@ packages:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
 
-  react-grid-layout@2.1.1:
-    resolution: {integrity: sha512-yIB96q80oUIDcZeML4arNAC8/0Bam9odjdnQwiAhtyL6DpUy69wyLpG0SSTf5oH69FbQn9VlXn6tNbBqBxZROA==}
+  react-grid-layout@2.2.0:
+    resolution: {integrity: sha512-HWjul+CbbCUoNpTEy7IOLAjVHO2wlU8lobled8hQyjDATC5Mj3Qb0EHDJE36mnZw5IBKf6AevkRm0SwumAlRHg==}
     peerDependencies:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
@@ -7184,7 +7184,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  react-grid-layout@2.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-grid-layout@2.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       clsx: 2.1.1
       fast-equals: 4.0.3
