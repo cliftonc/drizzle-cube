@@ -262,10 +262,10 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     if (operatorMeta.supportsMultipleValues) {
       // Multi-select date picker (for notEquals that supports multiple values)
       return (
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 max-w-full">
           {/* Selected dates display */}
           {values.length > 0 && (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-full">
               {values.map((value, index) => (
                 <div
                   key={index}
@@ -313,10 +313,10 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (shouldShowComboBox) {
     // Combo box with API-fetched values
     return (
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative min-w-0 max-w-full" ref={dropdownRef}>
         {/* Selected values display (for multi-select) */}
         {operatorMeta.supportsMultipleValues && values.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
+          <div className="flex flex-wrap gap-1 mb-2 max-w-full">
             {values.map((value, index) => (
               <div
                 key={index}

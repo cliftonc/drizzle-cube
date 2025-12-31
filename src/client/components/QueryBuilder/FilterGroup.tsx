@@ -160,7 +160,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   }
   
   return (
-    <div className={`${indentClass} ${borderColor} border-2 ${bgColor} rounded-lg p-4 space-y-3`}>
+    <div className={`${indentClass} ${borderColor} border-2 ${bgColor} rounded-lg py-3 pr-3 pl-2 space-y-3`}>
       {/* Group header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">

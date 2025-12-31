@@ -28,16 +28,13 @@ interface AnalysisFilterItemProps {
   onRemove: () => void
   /** Callback to update this filter */
   onUpdate: (filter: SimpleFilter) => void
-  /** Optional depth for nested styling */
-  depth?: number
 }
 
 export default function AnalysisFilterItem({
   filter,
   schema,
   onRemove,
-  onUpdate,
-  depth = 0
+  onUpdate
 }: AnalysisFilterItemProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -66,12 +63,10 @@ export default function AnalysisFilterItem({
   return (
     <>
       <div
-        className={`flex items-center gap-2 px-2 py-1.5 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150 w-full ${
-          depth > 0 ? 'ml-3' : ''
-        }`}
+        className="flex items-start gap-2 px-2 py-1.5 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150 w-full"
       >
         {/* Field type icon with appropriate background color */}
-        <span className={`w-6 h-6 flex items-center justify-center rounded ${iconBgClass} ${iconTextClass} flex-shrink-0`}>
+        <span className={`w-6 h-6 flex items-center justify-center rounded ${iconBgClass} ${iconTextClass} flex-shrink-0 mt-0.5`}>
           {FieldIcon && <FieldIcon className="w-4 h-4" />}
         </span>
 
@@ -82,7 +77,7 @@ export default function AnalysisFilterItem({
           className="flex-1 min-w-0 text-left"
           title={`${fieldTitle} ${operatorLabel} ${valueDisplay}`}
         >
-          <div className="text-sm text-dc-text truncate">
+          <div className="text-sm text-dc-text break-words">
             <span className="font-medium">{fieldTitle}</span>
             <span className="text-dc-text-muted mx-1">{operatorLabel}</span>
             <span className="text-dc-primary">{valueDisplay}</span>
@@ -92,7 +87,7 @@ export default function AnalysisFilterItem({
         {/* Remove button */}
         <button
           onClick={onRemove}
-          className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0"
+          className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
           title="Remove filter"
         >
           {CloseIcon && <CloseIcon className="w-4 h-4" />}

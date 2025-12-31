@@ -127,7 +127,7 @@ const Modal: React.FC<ModalProps> = ({
         {/* Footer */}
         {footer && (
           <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-dc-border bg-dc-surface-secondary">
-            {footer}
+            {React.Children.toArray(footer)}
           </div>
         )}
       </div>
