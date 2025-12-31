@@ -25,7 +25,8 @@ import type {
   Cube,
   QueryContext,
   QueryPlan,
-  JoinKeyInfo
+  JoinKeyInfo,
+  PropagatingFilter
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
@@ -266,7 +267,7 @@ export class QueryExecutor {
         if (!('and' in filter) && !('or' in filter) && 'member' in filter && 'operator' in filter) {
           const filterCondition = filter as any
           const [filterCubeName, filterFieldName] = filterCondition.member.split('.')
-          
+
           // Check if this filter is for a time dimension of this cube
           if (filterCubeName === cubeName && cube.dimensions && cube.dimensions[filterFieldName]) {
             const dimension = cube.dimensions[filterFieldName]
@@ -282,7 +283,23 @@ export class QueryExecutor {
         }
       }
     }
-    
+
+    // Handle propagating filters from related cubes
+    // When cube A has filters and hasMany relationship to this CTE cube B,
+    // A's filters should propagate via subquery: B.FK IN (SELECT A.PK FROM A WHERE filters)
+    if (cteInfo.propagatingFilters && cteInfo.propagatingFilters.length > 0) {
+      for (const propFilter of cteInfo.propagatingFilters) {
+        const subqueryCondition = this.buildPropagatingFilterSubquery(
+          propFilter,
+          context,
+          query
+        )
+        if (subqueryCondition) {
+          cteTimeFilters.push(subqueryCondition)
+        }
+      }
+    }
+
     // Combine security context, regular WHERE conditions, and time dimension filters into one WHERE clause
     // IMPORTANT: Must combine all conditions in a single WHERE call to avoid overriding
     const allCteConditions = []
@@ -354,9 +371,9 @@ export class QueryExecutor {
     if (!cteInfo) {
       throw new Error(`CTE info not found for cube ${joinCube.cube.name}`)
     }
-    
+
     const conditions: SQL[] = []
-    
+
     // Build join conditions using join keys
     for (const joinKey of cteInfo.joinKeys) {
       // Use the stored source column object if available, otherwise fall back to identifier
@@ -364,8 +381,66 @@ export class QueryExecutor {
       const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
       conditions.push(eq(sourceCol as any, cteCol))
     }
-    
+
     return conditions.length === 1 ? conditions[0] : and(...conditions)!
+  }
+
+  /**
+   * Build a subquery filter for propagating filters from related cubes.
+   * This generates: cteCube.FK IN (SELECT sourceCube.PK FROM sourceCube WHERE filters...)
+   *
+   * Example: For Productivity CTE with Employees.createdAt filter:
+   * employee_id IN (SELECT id FROM employees WHERE organisation_id = $1 AND created_at >= $date)
+   */
+  private buildPropagatingFilterSubquery(
+    propFilter: PropagatingFilter,
+    context: QueryContext,
+    _query: SemanticQuery
+  ): SQL | null {
+    const sourceCube = propFilter.sourceCube
+    const cubeBase = sourceCube.sql(context) // Gets security context filtering
+
+    // Build filter conditions for the source cube
+    const filterConditions: SQL[] = []
+
+    // Add security context (already in cubeBase.where)
+    if (cubeBase.where) {
+      filterConditions.push(cubeBase.where)
+    }
+
+    // Create a synthetic query with just the propagating filters
+    // and use buildWhereConditions to process them
+    const syntheticQuery: SemanticQuery = {
+      filters: propFilter.filters
+    }
+    const cubeMap = new Map([[sourceCube.name, sourceCube]])
+    const filterSQL = this.queryBuilder.buildWhereConditions(
+      cubeMap,
+      syntheticQuery,
+      context
+    )
+    filterConditions.push(...filterSQL)
+
+    // If no filter conditions, no subquery needed
+    if (filterConditions.length === 0) {
+      return null
+    }
+
+    // Build: cteCube.FK IN (SELECT sourceCube.PK FROM sourceCube WHERE ...)
+    const { source: sourcePK, target: cteFK } = propFilter.joinCondition
+
+    // Build the combined WHERE condition
+    const combinedWhere = filterConditions.length === 1
+      ? filterConditions[0]
+      : and(...filterConditions)
+
+    // Build the subquery: SELECT pk FROM sourceTable WHERE conditions
+    const subquery = context.db
+      .select({ pk: sourcePK })
+      .from(cubeBase.from)
+      .where(combinedWhere!)
+
+    return sql`${cteFK} IN ${subquery}`
   }
 
   /**

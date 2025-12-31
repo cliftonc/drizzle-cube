@@ -15,7 +15,9 @@ import type {
   PrimaryCubeCandidate,
   JoinPathAnalysis,
   JoinPathStep,
-  PreAggregationAnalysis
+  PreAggregationAnalysis,
+  PropagatingFilter,
+  Filter
 } from './types'
 
 import {
@@ -498,12 +500,16 @@ export class QueryPlanner {
         targetColumnObj: joinOn.target
       }))
 
+      // Find propagating filters from related cubes that should apply to this CTE
+      const propagatingFilters = this.findPropagatingFilters(query, joinCube.cube, _cubes)
+
       preAggCTEs!.push({
         cube: joinCube.cube,
         alias: joinCube.alias,
         cteAlias: `${joinCube.cube.name.toLowerCase()}_agg`,
         joinKeys,
-        measures: expandedMeasures
+        measures: expandedMeasures,
+        propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined
       })
     }
 
@@ -590,6 +596,155 @@ export class QueryPlanner {
     }
 
     return null
+  }
+
+  /**
+   * Find filters that need to propagate from related cubes to a CTE cube.
+   * When cube A has filters and a hasMany relationship to cube B (the CTE cube),
+   * A's filters should propagate into B's CTE via a subquery.
+   *
+   * Example: Employees.createdAt filter should propagate to Productivity CTE
+   * via: employee_id IN (SELECT id FROM employees WHERE created_at >= $date)
+   */
+  private findPropagatingFilters(
+    query: SemanticQuery,
+    cteCube: Cube,
+    allCubes: Map<string, Cube>
+  ): PropagatingFilter[] {
+    const result: PropagatingFilter[] = []
+    if (!query.filters) return result
+
+    // Extract all cube names referenced in filters
+    const filterCubeNames = new Set<string>()
+    this.extractFilterCubeNamesToSet(query.filters, filterCubeNames)
+
+    // Also check time dimension filters which may have date ranges
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        if (timeDim.dateRange) {
+          const [cubeName] = timeDim.dimension.split('.')
+          if (cubeName) {
+            filterCubeNames.add(cubeName)
+          }
+        }
+      }
+    }
+
+    // For each filter cube, check if it has a hasMany relationship TO the CTE cube
+    for (const filterCubeName of filterCubeNames) {
+      if (filterCubeName === cteCube.name) continue // Same cube, handled elsewhere
+
+      const filterCube = allCubes.get(filterCubeName)
+      if (!filterCube?.joins) continue
+
+      // Check if filterCube has hasMany -> cteCube
+      for (const [, joinDef] of Object.entries(filterCube.joins)) {
+        const targetCube = resolveCubeReference(joinDef.targetCube)
+        if (targetCube.name === cteCube.name && joinDef.relationship === 'hasMany') {
+          // Found: filterCube hasMany -> cteCube
+          // Extract the filters for this cube
+          const filtersForCube = this.extractFiltersForCube(query.filters, filterCubeName)
+
+          // Also add time dimension date ranges as filters
+          const timeFilters = this.extractTimeDimensionFiltersForCube(query, filterCubeName)
+          const allFilters = [...filtersForCube, ...timeFilters]
+
+          if (allFilters.length > 0 && joinDef.on.length > 0) {
+            result.push({
+              sourceCube: filterCube,
+              filters: allFilters,
+              // source = filterCube PK (e.g., employees.id)
+              // target = cteCube FK (e.g., productivity.employeeId)
+              joinCondition: {
+                source: joinDef.on[0].source,
+                target: joinDef.on[0].target
+              }
+            })
+          }
+        }
+      }
+    }
+    return result
+  }
+
+  /**
+   * Extract cube names from filters into a Set (helper for findPropagatingFilters)
+   */
+  private extractFilterCubeNamesToSet(filters: Filter[], cubesSet: Set<string>): void {
+    for (const filter of filters) {
+      // Handle logical filters (AND/OR)
+      if ('and' in filter || 'or' in filter) {
+        const logicalFilters = (filter as any).and || (filter as any).or || []
+        this.extractFilterCubeNamesToSet(logicalFilters, cubesSet)
+        continue
+      }
+
+      // Handle simple filter condition
+      if ('member' in filter) {
+        const [cubeName] = (filter as any).member.split('.')
+        if (cubeName) {
+          cubesSet.add(cubeName)
+        }
+      }
+    }
+  }
+
+  /**
+   * Extract filters for a specific cube from the filter array
+   */
+  private extractFiltersForCube(filters: Filter[], targetCubeName: string): Filter[] {
+    const result: Filter[] = []
+
+    for (const filter of filters) {
+      // Handle logical filters (AND/OR) - recursively extract and reconstruct
+      if ('and' in filter) {
+        const subFilters = this.extractFiltersForCube((filter as any).and || [], targetCubeName)
+        if (subFilters.length > 0) {
+          result.push({ and: subFilters })
+        }
+        continue
+      }
+      if ('or' in filter) {
+        const subFilters = this.extractFiltersForCube((filter as any).or || [], targetCubeName)
+        if (subFilters.length > 0) {
+          result.push({ or: subFilters })
+        }
+        continue
+      }
+
+      // Handle simple filter condition
+      if ('member' in filter) {
+        const [cubeName] = (filter as any).member.split('.')
+        if (cubeName === targetCubeName) {
+          result.push(filter)
+        }
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Extract time dimension date range filters as regular filters for a specific cube
+   */
+  private extractTimeDimensionFiltersForCube(query: SemanticQuery, targetCubeName: string): Filter[] {
+    const result: Filter[] = []
+
+    if (!query.timeDimensions) return result
+
+    for (const timeDim of query.timeDimensions) {
+      const [cubeName] = timeDim.dimension.split('.')
+      if (cubeName === targetCubeName && timeDim.dateRange) {
+        // Convert time dimension dateRange to an inDateRange filter
+        result.push({
+          member: timeDim.dimension,
+          operator: 'inDateRange',
+          values: Array.isArray(timeDim.dateRange) ? timeDim.dateRange : [timeDim.dateRange]
+        })
+      }
+    }
+
+    return result
   }
 
   /**

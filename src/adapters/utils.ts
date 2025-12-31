@@ -20,10 +20,33 @@ export function calculateQueryComplexity(query: SemanticQuery): string {
   complexity += (query.dimensions?.length || 0) * 1
   complexity += (query.filters?.length || 0) * 2
   complexity += (query.timeDimensions?.length || 0) * 3
-  
+
   if (complexity <= 5) return 'low'
   if (complexity <= 15) return 'medium'
   return 'high'
+}
+
+/**
+ * Recursively extract cube names from filters (handles nested AND/OR logical filters)
+ * Similar to query-planner's extractCubeNamesFromFilter
+ */
+function extractCubeNamesFromFilter(filter: any, cubesSet: Set<string>): void {
+  // Handle logical filters (AND/OR) - Server format: { and: [...] } or { or: [...] }
+  if ('and' in filter || 'or' in filter) {
+    const logicalFilters = filter.and || filter.or || []
+    for (const subFilter of logicalFilters) {
+      extractCubeNamesFromFilter(subFilter, cubesSet)
+    }
+    return
+  }
+
+  // Handle simple filter condition
+  if ('member' in filter) {
+    const [cubeName] = filter.member.split('.')
+    if (cubeName) {
+      cubesSet.add(cubeName)
+    }
+  }
 }
 
 /**
@@ -114,11 +137,9 @@ export async function handleDryRun(
     referencedCubes.add(cubeName)
   })
 
+  // Extract cubes from filters using recursive extraction to handle nested AND/OR
   query.filters?.forEach(filter => {
-    if ('member' in filter) {
-      const cubeName = filter.member.split('.')[0]
-      referencedCubes.add(cubeName)
-    }
+    extractCubeNamesFromFilter(filter, referencedCubes)
   })
 
   // Determine if this is a multi-cube query

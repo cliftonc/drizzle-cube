@@ -251,6 +251,25 @@ export interface JoinKeyInfo {
 }
 
 /**
+ * Propagating filter information for cross-cube filter propagation
+ * When cube A has filters and cube B (with hasMany from A) needs a CTE,
+ * A's filters should propagate into B's CTE via a subquery
+ */
+export interface PropagatingFilter {
+  /** The source cube whose filters need to propagate */
+  sourceCube: Cube
+  /** Filters from the source cube to apply */
+  filters: import('./query').Filter[]
+  /** Join condition linking source cube PK to target cube FK */
+  joinCondition: {
+    /** Primary key column on source cube */
+    source: AnyColumn
+    /** Foreign key column on target cube (CTE cube) */
+    target: AnyColumn
+  }
+}
+
+/**
  * Pre-aggregation CTE information
  * Describes a Common Table Expression used for pre-aggregating hasMany relationships
  */
@@ -265,6 +284,8 @@ export interface PreAggregationCTEInfo {
   joinKeys: JoinKeyInfo[]
   /** List of measure names included in this CTE */
   measures: string[]
+  /** Propagating filters from related cubes (for cross-cube filter propagation) */
+  propagatingFilters?: PropagatingFilter[]
 }
 
 /**
