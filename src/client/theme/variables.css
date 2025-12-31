@@ -74,6 +74,10 @@
   --dc-measure-text: #b45309;
   --dc-measure-border: #fbbf24;
 
+  --dc-filter-bg: #e9d5ff;
+  --dc-filter-text: #7c3aed;
+  --dc-filter-border: #c084fc;
+
   /* Overlay Colors - Modal backdrops, overlays */
   --dc-overlay: rgba(0, 0, 0, 0.75);
   --dc-overlay-light: rgba(0, 0, 0, 0.5);
@@ -171,6 +175,10 @@ html.dark {
   --dc-measure-text: #fbbf24;
   --dc-measure-border: #f59e0b;
 
+  --dc-filter-bg: rgba(139, 92, 246, 0.4);
+  --dc-filter-text: #c084fc;
+  --dc-filter-border: #a855f7;
+
   /* Overlay Colors */
   --dc-overlay: rgba(0, 0, 0, 0.85);
   --dc-overlay-light: rgba(0, 0, 0, 0.6);
@@ -266,6 +274,10 @@ html.neon {
   --dc-measure-bg: rgba(255, 0, 255, 0.35);
   --dc-measure-text: #ff00ff;
   --dc-measure-border: #ff00ff;
+
+  --dc-filter-bg: rgba(168, 85, 247, 0.35);
+  --dc-filter-text: #a855f7;
+  --dc-filter-border: #a855f7;
 
   /* Overlay Colors - Deep purple overlay */
   --dc-overlay: rgba(10, 1, 24, 0.95);
@@ -460,6 +472,10 @@ html.neon {
   .text-dc-measure, .text-dc-measure-text { color: var(--dc-measure-text); }
   .border-dc-measure { border-color: var(--dc-measure-border); }
 
+  .bg-dc-filter { background-color: var(--dc-filter-bg); }
+  .text-dc-filter, .text-dc-filter-text { color: var(--dc-filter-text); }
+  .border-dc-filter { border-color: var(--dc-filter-border); }
+
   /* -------------------------------------------------------------------------
      Hover State Utilities
      ------------------------------------------------------------------------- */
@@ -488,4 +504,80 @@ html.neon {
      ------------------------------------------------------------------------- */
   .placeholder-dc-text-muted::placeholder { color: var(--dc-text-muted); }
   .placeholder-dc-text-disabled::placeholder { color: var(--dc-text-disabled); }
+}
+
+/* ============================================================================
+   Syntax Highlighting Theme Overrides
+   ============================================================================
+   Override highlight.js colors to integrate with drizzle-cube themes
+*/
+.hljs {
+  background-color: var(--dc-surface-secondary) !important;
+  color: var(--dc-text) !important;
+  padding: 0.5em !important;
+}
+
+/* Keywords, selectors, tags */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: var(--dc-primary);
+}
+
+/* Strings, attributes */
+.hljs-string,
+.hljs-attr {
+  color: var(--dc-success);
+}
+
+/* Numbers */
+.hljs-number {
+  color: var(--dc-warning);
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-quote {
+  color: var(--dc-text-muted);
+  font-style: italic;
+}
+
+/* Functions, classes */
+.hljs-title,
+.hljs-class .hljs-title,
+.hljs-function .hljs-title {
+  color: var(--dc-accent);
+}
+
+/* Variables, properties */
+.hljs-variable,
+.hljs-attribute,
+.hljs-property {
+  color: var(--dc-text-secondary);
+}
+
+/* Built-ins, constants */
+.hljs-built_in,
+.hljs-name {
+  color: var(--dc-info);
+}
+
+/* Meta, preprocessor */
+.hljs-meta,
+.hljs-meta-keyword {
+  color: var(--dc-muted);
+}
+
+/* Additions (diffs) */
+.hljs-addition {
+  color: var(--dc-success);
+  background-color: var(--dc-success-bg);
+}
+
+/* Deletions (diffs) */
+.hljs-deletion {
+  color: var(--dc-error);
+  background-color: var(--dc-error-bg);
 }

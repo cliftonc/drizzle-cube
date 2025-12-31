@@ -14,6 +14,7 @@ import type { QueryPanelProps } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { hasQueryContent, getSelectedFieldsCount, cleanQueryForServer, hasTimeDimensions, getFieldTitle, getSortDirection, getSortTooltip, getNextSortDirection, getFieldType } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
+import { highlightCodeBlocks } from '../../utils/syntaxHighlighting'
 
 type IconComponent = React.ComponentType<{ className?: string }>
 
@@ -453,16 +454,14 @@ const QueryPanel: React.FC<QueryPanelProps> = ({
     queryRef.current = query
   }, [query])
 
-  // Trigger Prism highlighting when preview content changes
+  // Trigger syntax highlighting when preview content changes
   useEffect(() => {
-    if ((showJsonPreview || showSqlPreview) && typeof window !== 'undefined' && (window as any).Prism) {
+    if (showJsonPreview || showSqlPreview) {
       // Use setTimeout to ensure DOM is updated before highlighting
       setTimeout(() => {
-        try {
-          ;(window as any).Prism.highlightAll()
-        } catch {
-          // Silently fail if Prism is not available or encounters an error
-        }
+        highlightCodeBlocks().catch((err) => {
+          console.debug('Syntax highlighting not available:', err)
+        })
       }, 0)
     }
   }, [showJsonPreview, showSqlPreview, query, validationSql])

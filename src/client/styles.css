@@ -3,6 +3,9 @@
 /* Import theme variables first */
 @import './theme/variables.css';
 
+/* Import syntax highlighting theme for code blocks */
+@import 'highlight.js/styles/github-dark.css';
+
 /* Import react-grid-layout and react-resizable styles */
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';

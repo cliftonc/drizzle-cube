@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { highlightCodeBlocks } from '../utils/syntaxHighlighting'
 
 interface DebugModalProps {
   chartConfig: any
@@ -29,14 +30,16 @@ export default function DebugModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
-  // Trigger Prism highlighting when modal opens and content is rendered
+  // Trigger syntax highlighting when modal opens and content is rendered
   useEffect(() => {
-    if (isOpen && typeof window !== 'undefined' && (window as any).Prism) {
+    if (isOpen) {
       // Small delay to ensure DOM is updated
       const timer = setTimeout(() => {
-        (window as any).Prism.highlightAll()
+        highlightCodeBlocks().catch((err) => {
+          console.debug('Syntax highlighting not available:', err)
+        })
       }, 10)
-      
+
       return () => clearTimeout(timer)
     }
   }, [isOpen])

@@ -138,9 +138,9 @@ export default function AnalysisFilterGroup({
   const conditionLabel = conditionCount === 1 ? 'condition' : 'conditions'
 
   return (
-    <div className={`border ${getBorderColor()} rounded-lg ${getGroupBgColor()} ${depth > 0 ? 'ml-3' : ''}`}>
+    <div className={`border ${getBorderColor()} rounded-lg bg-dc-surface ${depth > 0 ? 'ml-3' : ''}`}>
       {/* Group Header */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-dc-border/50">
+      <div className={`flex items-center justify-between px-2 py-1.5 border-b border-dc-border/50 rounded-t-lg ${getGroupBgColor()}`}>
         <div className="flex items-center gap-2">
           {/* AND/OR Toggle Button */}
           <button
@@ -210,7 +210,7 @@ export default function AnalysisFilterGroup({
       </div>
 
       {/* Group Body - Filter List */}
-      <div className="p-2 space-y-2">
+      <div className="p-2 flex flex-wrap gap-2">
         {group.filters.length === 0 ? (
           <div className="text-center py-3">
             <p className="text-xs text-dc-text-muted mb-1">No conditions in this group</p>

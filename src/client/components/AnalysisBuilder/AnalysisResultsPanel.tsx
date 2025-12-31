@@ -98,20 +98,29 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Error state - no previous results
   const renderError = () => (
-    <div className="h-full flex items-center justify-center p-4">
-      <div className="text-center max-w-md">
-        <ErrorIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
-        <div className="text-sm font-semibold text-dc-text mb-2">
-          Query Execution Failed
-        </div>
-        <div className="text-sm text-dc-text-secondary mb-4">
-          There was an error executing your query. Please check the query and try again.
-        </div>
-        {executionError && (
-          <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left">
-            <div className="text-xs font-mono text-dc-error break-words">
-              {executionError}
+    <div className="h-full flex flex-col">
+      {renderHeader()}
+      <div className="flex-1 flex items-center justify-center p-4">
+        {showDebug ? (
+          <div className="w-full h-full overflow-auto">
+            {renderDebug()}
+          </div>
+        ) : (
+          <div className="text-center max-w-md">
+            <ErrorIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
+            <div className="text-sm font-semibold text-dc-text mb-2">
+              Query Execution Failed
             </div>
+            <div className="text-sm text-dc-text-secondary mb-4">
+              There was an error executing your query. Please check the query and try again.
+            </div>
+            {executionError && (
+              <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left">
+                <div className="text-xs font-mono text-dc-error break-words">
+                  {executionError}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -345,154 +354,185 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
+  // Render header - shown whenever we have query content
+  const renderHeader = () => {
+    const hasResults = executionResults && executionResults.length > 0
+
+    return (
+      <div className="px-4 py-2 border-b border-dc-border bg-dc-surface-secondary flex-shrink-0">
+        <div className="flex items-center justify-between">
+          {/* Left side: Status and row count */}
+          <div className="flex items-center">
+            {executionStatus === 'refreshing' ? (
+              <div
+                className="w-4 h-4 mr-2 rounded-full border-b-2 animate-spin"
+                style={{ borderBottomColor: 'var(--dc-primary)' }}
+              />
+            ) : hasResults ? (
+              <SuccessIcon className="w-4 h-4 text-dc-success mr-2" />
+            ) : executionStatus === 'error' ? (
+              <ErrorIcon className="w-4 h-4 text-dc-error mr-2" />
+            ) : (
+              <WarningIcon className="w-4 h-4 text-dc-text-muted mr-2" />
+            )}
+            <span className="text-sm text-dc-text-secondary">
+              {hasResults ? (
+                <>
+                  {executionResults.length} row{executionResults.length !== 1 ? 's' : ''}
+                  {totalRowCount !== null && totalRowCount > executionResults.length && (
+                    <span className="text-dc-text-muted"> of {totalRowCount.toLocaleString()}</span>
+                  )}
+                  {resultsStale && (
+                    <span className="text-dc-warning ml-2">• Results may be outdated</span>
+                  )}
+                </>
+              ) : executionStatus === 'error' ? (
+                'Query failed'
+              ) : executionStatus === 'loading' ? (
+                'Executing...'
+              ) : (
+                'No results'
+              )}
+            </span>
+          </div>
+
+          {/* Right side: Display limit (table only) and Debug toggle */}
+          <div className="flex items-center gap-2">
+            {/* Display Limit (only for table view) */}
+            {hasResults && activeView === 'table' && !showDebug && onDisplayLimitChange && (
+              <select
+                value={displayLimit}
+                onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
+                className="text-xs border border-dc-border rounded px-2 py-1 bg-dc-surface text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
+              >
+                <option value={50}>50 rows</option>
+                <option value={100}>100 rows</option>
+                <option value={250}>250 rows</option>
+                <option value={500}>500 rows</option>
+              </select>
+            )}
+
+            {/* AI Button - positioned before palette selector */}
+            {enableAI && onAIToggle && (
+              <button
+                onClick={onAIToggle}
+                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                  isAIOpen
+                    ? 'text-white bg-dc-accent border border-dc-accent'
+                    : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
+                }`}
+                title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
+              >
+                <SparklesIcon className="w-3 h-3" />
+                <span className="hidden sm:inline">Analyse with AI</span>
+              </button>
+            )}
+
+            {/* Color Palette Selector (only when callback is provided, i.e., standalone mode) */}
+            {onColorPaletteChange && hasResults && (
+              <ColorPaletteSelector
+                currentPalette={currentPaletteName || 'default'}
+                onPaletteChange={onColorPaletteChange}
+              />
+            )}
+
+            {/* Share Button */}
+            {onShareClick && (
+              <button
+                onClick={onShareClick}
+                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                  shareButtonState === 'idle' && canShare
+                    ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
+                    : shareButtonState !== 'idle'
+                    ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg border border-dc-success dark:border-dc-success'
+                    : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+                }`}
+                title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
+                disabled={!canShare || shareButtonState !== 'idle'}
+              >
+                {shareButtonState === 'idle' ? (
+                  <>
+                    <ShareIcon className="w-3 h-3" />
+                    <span className="hidden sm:inline">Share</span>
+                  </>
+                ) : shareButtonState === 'copied' ? (
+                  <>
+                    <CheckIcon className="w-3 h-3" />
+                    <span className="hidden sm:inline">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="w-3 h-3" />
+                    <span className="hidden sm:inline">Copied!</span>
+                    <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Clear Button */}
+            {onClearClick && canClear && (
+              <button
+                onClick={onClearClick}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover border border-dc-border rounded transition-colors"
+                title="Clear all query data"
+              >
+                <TrashIcon className="w-3 h-3" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
+
+            {/* Debug Toggle Button */}
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className={`p-1.5 rounded transition-colors relative ${
+                showDebug
+                  ? 'bg-dc-primary text-white'
+                  : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
+              }`}
+              title={showDebug ? 'Hide debug info' : 'Show debug info'}
+            >
+              <CodeIcon className="w-4 h-4" />
+              {/* Error indicator dot */}
+              {(executionError || debugError) && !showDebug && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-dc-danger-bg0 rounded-full" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Performance Warning */}
+        {hasResults && totalRowCount !== null && totalRowCount > 1000 && (
+          <div className="mt-2 bg-dc-warning-bg border border-dc-warning rounded-lg p-2 flex items-start">
+            <WarningIcon className="w-4 h-4 text-dc-warning mr-2 shrink-0 mt-0.5" />
+            <div className="text-xs text-dc-warning">
+              <span className="font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
+              Consider adding filters to improve performance.
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // Success state with data
   const renderSuccess = () => {
-    if (!executionResults || executionResults.length === 0) {
-      return renderNoData()
+    const hasResults = executionResults && executionResults.length > 0
+
+    if (!hasResults) {
+      return (
+        <div className="h-full flex flex-col">
+          {renderHeader()}
+          <div className="flex-1 min-h-0 relative overflow-auto">
+            {showDebug ? renderDebug() : renderNoData()}
+          </div>
+        </div>
+      )
     }
 
     return (
       <div className="h-full flex flex-col">
-        {/* Results Header - Compact status bar */}
-        <div className="px-4 py-2 border-b border-dc-border bg-dc-surface-secondary flex-shrink-0">
-          <div className="flex items-center justify-between">
-            {/* Left side: Status and row count */}
-            <div className="flex items-center">
-              {executionStatus === 'refreshing' ? (
-                <div
-                  className="w-4 h-4 mr-2 rounded-full border-b-2 animate-spin"
-                  style={{ borderBottomColor: 'var(--dc-primary)' }}
-                />
-              ) : (
-                <SuccessIcon className="w-4 h-4 text-dc-success mr-2" />
-              )}
-              <span className="text-sm text-dc-text-secondary">
-                {executionResults.length} row{executionResults.length !== 1 ? 's' : ''}
-                {totalRowCount !== null && totalRowCount > executionResults.length && (
-                  <span className="text-dc-text-muted"> of {totalRowCount.toLocaleString()}</span>
-                )}
-                {resultsStale && (
-                  <span className="text-dc-warning ml-2">• Results may be outdated</span>
-                )}
-              </span>
-            </div>
-
-            {/* Right side: Display limit (table only) and Debug toggle */}
-            <div className="flex items-center gap-2">
-              {/* Display Limit (only for table view) */}
-              {activeView === 'table' && !showDebug && onDisplayLimitChange && (
-                <select
-                  value={displayLimit}
-                  onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-                  className="text-xs border border-dc-border rounded px-2 py-1 bg-dc-surface text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
-                >
-                  <option value={50}>50 rows</option>
-                  <option value={100}>100 rows</option>
-                  <option value={250}>250 rows</option>
-                  <option value={500}>500 rows</option>
-                </select>
-              )}
-
-              {/* AI Button - positioned before palette selector */}
-              {enableAI && onAIToggle && (
-                <button
-                  onClick={onAIToggle}
-                  className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    isAIOpen
-                      ? 'text-white bg-dc-accent border border-dc-accent'
-                      : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
-                  }`}
-                  title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
-                >
-                  <SparklesIcon className="w-3 h-3" />
-                  <span className="hidden sm:inline">Analyse with AI</span>
-                </button>
-              )}
-
-              {/* Color Palette Selector (only when callback is provided, i.e., standalone mode) */}
-              {onColorPaletteChange && (
-                <ColorPaletteSelector
-                  currentPalette={currentPaletteName || 'default'}
-                  onPaletteChange={onColorPaletteChange}
-                />
-              )}
-
-              {/* Share Button */}
-              {onShareClick && (
-                <button
-                  onClick={onShareClick}
-                  className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
-                    shareButtonState === 'idle' && canShare
-                      ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
-                      : shareButtonState !== 'idle'
-                      ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg border border-dc-success dark:border-dc-success'
-                      : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
-                  }`}
-                  title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
-                  disabled={!canShare || shareButtonState !== 'idle'}
-                >
-                  {shareButtonState === 'idle' ? (
-                    <>
-                      <ShareIcon className="w-3 h-3" />
-                      <span className="hidden sm:inline">Share</span>
-                    </>
-                  ) : shareButtonState === 'copied' ? (
-                    <>
-                      <CheckIcon className="w-3 h-3" />
-                      <span className="hidden sm:inline">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckIcon className="w-3 h-3" />
-                      <span className="hidden sm:inline">Copied!</span>
-                      <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
-                    </>
-                  )}
-                </button>
-              )}
-
-              {/* Clear Button */}
-              {onClearClick && canClear && (
-                <button
-                  onClick={onClearClick}
-                  className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover border border-dc-border rounded transition-colors"
-                  title="Clear all query data"
-                >
-                  <TrashIcon className="w-3 h-3" />
-                  <span className="hidden sm:inline">Clear</span>
-                </button>
-              )}
-
-              {/* Debug Toggle Button */}
-              <button
-                onClick={() => setShowDebug(!showDebug)}
-                className={`p-1.5 rounded transition-colors relative ${
-                  showDebug
-                    ? 'bg-dc-primary text-white'
-                    : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-                title={showDebug ? 'Hide debug info' : 'Show debug info'}
-              >
-                <CodeIcon className="w-4 h-4" />
-                {/* Error indicator dot */}
-                {(executionError || debugError) && !showDebug && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-dc-danger-bg0 rounded-full" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Performance Warning */}
-          {totalRowCount !== null && totalRowCount > 1000 && (
-            <div className="mt-2 bg-dc-warning-bg border border-dc-warning rounded-lg p-2 flex items-start">
-              <WarningIcon className="w-4 h-4 text-dc-warning mr-2 shrink-0 mt-0.5" />
-              <div className="text-xs text-dc-warning">
-                <span className="font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
-                Consider adding filters to improve performance.
-              </div>
-            </div>
-          )}
-        </div>
+        {renderHeader()}
 
         {/* Results Content */}
         <div className="flex-1 min-h-0 relative overflow-auto">

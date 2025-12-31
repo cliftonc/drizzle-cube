@@ -45,8 +45,8 @@ export { default as PortletAnalysisModal } from './components/PortletAnalysisMod
 export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 
-// Query Builder
-export { default as QueryBuilder } from './components/QueryBuilder'
+// Query Builder - Seamless shim that uses AnalysisBuilder internally
+export { default as QueryBuilder } from './components/QueryBuilderShim'
 
 // Analysis Builder (search-based query builder)
 export { default as AnalysisBuilder } from './components/AnalysisBuilder'
@@ -89,7 +89,7 @@ export type {
 } from './charts/chartConfigs'
 
 // Utilities
-export { createDashboardLayout, formatChartData } from './utils/index'
+export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'
 
 // Theme utilities
 export {

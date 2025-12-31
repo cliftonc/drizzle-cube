@@ -331,7 +331,7 @@ export default function AnalysisFilterSection({
             {isDragOver ? 'Drop to add filter' : 'No filters applied'}
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
             {filters.map((filter, index) => renderFilter(filter, index))}
           </div>
         )}
