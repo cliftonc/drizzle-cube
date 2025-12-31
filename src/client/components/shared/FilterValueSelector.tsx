@@ -12,8 +12,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { getIcon } from '../../icons'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
-import type { FilterValueSelectorProps } from './types'
-import { FILTER_OPERATORS } from './types'
+import type { FilterValueSelectorProps } from '../QueryBuilder/types'
+import { FILTER_OPERATORS } from '../QueryBuilder/types'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CloseIcon = getIcon('close')

@@ -11,16 +11,16 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { getIcon } from '../../icons'
-import FilterBuilder from '../QueryBuilder/FilterBuilder'
+import FilterBuilder from '../shared/FilterBuilder'
 
 const CloseIcon = getIcon('close')
 const EyeIcon = getIcon('eye')
 const EyeOffIcon = getIcon('eyeOff')
-import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
-import CubeMetaExplorer from '../QueryBuilder/CubeMetaExplorer'
+import DateRangeSelector from '../shared/DateRangeSelector'
+import CubeMetaExplorer from '../shared/CubeMetaExplorer'
 import { extractDashboardFields } from '../../utils/filterUtils'
 import type { DashboardFilter, CubeMeta, Filter, DashboardConfig, SimpleFilter } from '../../types'
-import type { MetaResponse } from '../QueryBuilder/types'
+import type { MetaResponse } from '../../shared/types'
 
 interface FilterEditModalProps {
   filter: DashboardFilter
@@ -225,7 +225,7 @@ const FilterEditModal: React.FC<FilterEditModalProps> = ({
         </div>
 
         {/* Modal Body - Two Column Layout (or single column for universal time filters) */}
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 flex">
           {/* Left Column - Schema Explorer (hidden for universal time filters) */}
           {!filter.isUniversalTime && (
             <div className="w-80 border-r border-dc-border bg-dc-surface overflow-auto">

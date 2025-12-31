@@ -6,7 +6,7 @@
  */
 
 import React, { useState, Suspense, lazy, memo } from 'react'
-import type { CubeMetaExplorerProps, MetaCube, MetaField } from './types'
+import type { CubeMetaExplorerProps, MetaCube, MetaField } from '../QueryBuilder/types'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { getIcon } from '../../icons'

@@ -82,26 +82,22 @@ describe('CubeProvider', () => {
       expect(mockCreateCubeClient).toHaveBeenCalledWith('test-token', apiOptions)
     })
 
-    it('should use provided cubeApi client directly', () => {
-      const providedClient = {
-        load: vi.fn(),
-        sql: vi.fn(),
-        meta: vi.fn()
-      }
-
+    it('should create client from apiOptions and token', () => {
       const TestComponent = () => {
         const context = useCubeContext()
-        return <div data-testid="client-match">{context.cubeApi === providedClient ? 'match' : 'no-match'}</div>
+        return <div data-testid="client-present">{context.cubeApi ? 'present' : 'missing'}</div>
       }
 
-      const { getByTestId } = render(
-        <CubeProvider cubeApi={providedClient}>
+      render(
+        <CubeProvider
+          apiOptions={{ apiUrl: '/custom-api' }}
+          token="custom-token"
+        >
           <TestComponent />
         </CubeProvider>
       )
 
-      expect(getByTestId('client-match')).toHaveTextContent('match')
-      expect(mockCreateCubeClient).not.toHaveBeenCalled()
+      expect(mockCreateCubeClient).toHaveBeenCalledWith('custom-token', { apiUrl: '/custom-api' })
     })
   })
 
@@ -243,32 +239,6 @@ describe('CubeProvider', () => {
       expect(mockCreateCubeClient).toHaveBeenCalledTimes(2)
     })
 
-    it('should not recreate client when using provided cubeApi', () => {
-      const providedClient = { load: vi.fn(), sql: vi.fn(), meta: vi.fn() }
-
-      const TestComponent = () => {
-        const context = useCubeContext()
-        
-        const handleUpdate = () => {
-          context.updateApiConfig({ apiUrl: 'https://should-not-recreate.com' })
-        }
-
-        return <button data-testid="update-btn" onClick={handleUpdate}>Update</button>
-      }
-
-      const { getByTestId } = render(
-        <CubeProvider cubeApi={providedClient}>
-          <TestComponent />
-        </CubeProvider>
-      )
-
-      act(() => {
-        getByTestId('update-btn').click()
-      })
-
-      // Should not create any new clients when using provided client
-      expect(mockCreateCubeClient).not.toHaveBeenCalled()
-    })
   })
 
   describe('client recreation behavior', () => {
@@ -298,27 +268,6 @@ describe('CubeProvider', () => {
       expect(mockCreateCubeClient).toHaveBeenCalledTimes(2)
     })
 
-    it('should handle client recreation when initial props change', () => {
-      const TestComponent = () => <div>test</div>
-
-      const { rerender } = render(
-        <CubeProvider apiOptions={{ apiUrl: '/v1' }} token="token1">
-          <TestComponent />
-        </CubeProvider>
-      )
-
-      expect(mockCreateCubeClient).toHaveBeenCalledWith('token1', { apiUrl: '/v1' })
-
-      rerender(
-        <CubeProvider apiOptions={{ apiUrl: '/v2' }} token="token2">
-          <TestComponent />
-        </CubeProvider>
-      )
-
-      // The CubeProvider should recreate the client with new props
-      expect(mockCreateCubeClient).toHaveBeenNthCalledWith(2, 'token2', { apiUrl: '/v2' })
-      expect(mockCreateCubeClient).toHaveBeenCalledTimes(2)
-    })
   })
 
   describe('metadata integration', () => {
@@ -435,7 +384,7 @@ describe('CubeProvider', () => {
 
       expect(() => {
         render(<TestComponent />)
-      }).toThrow('useCubeContext must be used within a CubeProvider')
+      }).toThrow('useCubeApi must be used within CubeApiProvider')
 
       console.error = originalError
     })

@@ -1,0 +1,129 @@
+/**
+ * Custom syntax highlighting styles that respect the theme
+ * Based on highlight.js structure but using theme colors
+ */
+
+/* Base styles */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  color: var(--dc-text);
+  background: transparent;
+}
+
+/* Comment */
+.hljs-comment,
+.hljs-quote {
+  color: var(--dc-text-muted);
+  font-style: italic;
+}
+
+/* Keyword, selector, operator */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-operator {
+  color: var(--dc-primary);
+  font-weight: 600;
+}
+
+/* String, attribute */
+.hljs-string,
+.hljs-attr {
+  color: var(--dc-success);
+}
+
+/* Number, literal */
+.hljs-number,
+.hljs-literal,
+.hljs-boolean {
+  color: var(--dc-warning);
+}
+
+/* Function, title */
+.hljs-title,
+.hljs-function {
+  color: var(--dc-accent);
+  font-weight: 600;
+}
+
+/* Builtin, type */
+.hljs-built_in,
+.hljs-type {
+  color: var(--dc-info);
+}
+
+/* Variable, property */
+.hljs-variable,
+.hljs-property {
+  color: var(--dc-text);
+}
+
+/* Meta (for preprocessor directives) */
+.hljs-meta {
+  color: var(--dc-text-muted);
+}
+
+/* Emphasis */
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/* Strong */
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* JSON-specific */
+.language-json .hljs-attr {
+  color: var(--dc-primary);
+}
+
+.language-json .hljs-string {
+  color: var(--dc-success);
+}
+
+.language-json .hljs-number {
+  color: var(--dc-warning);
+}
+
+.language-json .hljs-literal {
+  color: var(--dc-accent);
+  font-weight: 600;
+}
+
+/* SQL-specific */
+.language-sql .hljs-keyword {
+  color: var(--dc-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.language-sql .hljs-string {
+  color: var(--dc-success);
+}
+
+.language-sql .hljs-number {
+  color: var(--dc-warning);
+}
+
+.language-sql .hljs-comment {
+  color: var(--dc-text-muted);
+  font-style: italic;
+}
+
+.language-sql .hljs-function {
+  color: var(--dc-accent);
+  font-weight: 600;
+}
+
+/* Ensure good contrast in both light and dark modes */
+@media (prefers-color-scheme: dark) {
+  .hljs-string {
+    color: #7ee787;
+  }
+
+  .hljs-number,
+  .hljs-literal {
+    color: #f0883e;
+  }
+}

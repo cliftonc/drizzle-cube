@@ -1,8 +1,14 @@
 /**
  * Type definitions for QueryBuilder components
  *
- * Note: Core types are now in ../../shared/types.ts
- * This file re-exports them for backward compatibility
+ * DEPRECATED: QueryBuilder has been replaced by AnalysisBuilder
+ *
+ * This file is kept for backward compatibility with QueryBuilderShim only.
+ *
+ * - QueryBuilder UI components have been removed
+ * - Shared filter/schema components moved to ../shared/
+ * - Core types are in ../../shared/types.ts
+ * - New code should use AnalysisBuilder instead
  */
 
 import type { CubeQuery, FilterOperator, Filter, SimpleFilter, GroupFilter, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'

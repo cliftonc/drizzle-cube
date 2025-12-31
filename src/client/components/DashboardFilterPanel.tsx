@@ -16,7 +16,7 @@ import FilterEditModal from './DashboardFilters/FilterEditModal'
 import ReadOnlyFilterList from './DashboardFilters/ReadOnlyFilterList'
 import EditModeFilterList from './DashboardFilters/EditModeFilterList'
 import type { DashboardFilter, CubeMeta, DashboardConfig } from '../types'
-import type { MetaResponse } from './QueryBuilder/types'
+import type { MetaResponse } from '../shared/types'
 
 interface DashboardFilterPanelProps {
   dashboardFilters: DashboardFilter[]

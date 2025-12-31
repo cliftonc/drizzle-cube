@@ -250,7 +250,8 @@ describe('chartUtils', () => {
         { date: '2024-01-01T00:00:00.000', 'Sales.count': 10 }
       ]
       const labelMap: FieldLabelMap = { 'Sales.count': 'Total Sales' }
-      const result = transformChartData(data, 'date', ['Sales.count'], {}, labelMap)
+      const getFieldLabel = (field: string) => labelMap[field] || field
+      const result = transformChartData(data, 'date', ['Sales.count'], {}, getFieldLabel)
 
       expect(result[0]).toHaveProperty('Total Sales', 10)
     })
@@ -320,13 +321,14 @@ describe('chartUtils', () => {
         { date: '2024-01-01T00:00:00.000', 'Sales.count': 10 }
       ]
       const labelMap: FieldLabelMap = { 'Sales.count': 'Total Sales' }
+      const getFieldLabel = (field: string) => labelMap[field] || field
       const result = transformChartDataWithSeries(
         data,
         'date',
         ['Sales.count'],
         { measures: ['Sales.count'] },
         undefined,
-        labelMap
+        getFieldLabel
       )
 
       expect(result.seriesKeys).toEqual(['Total Sales'])

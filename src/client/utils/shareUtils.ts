@@ -6,7 +6,7 @@
  */
 
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
 
 /**
  * State that can be shared via URL

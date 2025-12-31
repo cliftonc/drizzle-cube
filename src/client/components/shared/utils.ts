@@ -3,8 +3,8 @@
  */
 
 import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../../types'
-import type { MetaField, MetaResponse } from './types'
-import { FILTER_OPERATORS } from './types'
+import type { MetaField, MetaResponse } from '../QueryBuilder/types'
+import { FILTER_OPERATORS } from '../QueryBuilder/types'
 
 /**
  * Check if a field is selected in the current query

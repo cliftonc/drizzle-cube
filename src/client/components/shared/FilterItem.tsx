@@ -8,10 +8,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import FilterValueSelector from './FilterValueSelector'
-import type { FilterItemProps, MetaField, DateRangeType } from './types'
+import type { FilterItemProps, MetaField, DateRangeType } from '../QueryBuilder/types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
-import { DATE_RANGE_OPTIONS } from './types'
+import { DATE_RANGE_OPTIONS } from '../QueryBuilder/types'
 
 const CloseIcon = getIcon('close')
 const FilterIcon = getIcon('filter')
@@ -258,7 +258,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
   const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
 
   return (
-    <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3 overflow-hidden">
+    <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 max-w-full">
         {/* Row 1 on mobile: Filter icon and field selection - conditionally hidden */}

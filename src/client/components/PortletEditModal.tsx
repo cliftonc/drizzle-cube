@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
-import QueryBuilder from './QueryBuilder'
+import QueryBuilder from './QueryBuilderShim'
 import ChartConfigPanel from './ChartConfigPanel'
 import ChartTypeSelector from './ChartTypeSelector'
 import { useCubeContext } from '../providers/CubeProvider'

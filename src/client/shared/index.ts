@@ -65,6 +65,7 @@ export {
 
 // Components
 export { default as QueryAnalysisPanel } from './components/QueryAnalysisPanel'
+export { default as CodeBlock } from './components/CodeBlock'
 
 // Chart defaults (smart chart type selection and configuration)
 export {

@@ -9,7 +9,7 @@ import { useState, useEffect, memo } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
-import { QueryAnalysisPanel } from '../../shared'
+import { QueryAnalysisPanel, CodeBlock } from '../../shared'
 import ColorPaletteSelector from '../ColorPaletteSelector'
 
 /**
@@ -253,37 +253,58 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* JSON Query */}
         <div>
-          <h4 className="text-sm font-semibold text-dc-text mb-2">JSON Query</h4>
-          <pre className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-xs overflow-auto max-h-64 text-dc-text-secondary">
-            {debugQuery ? JSON.stringify(debugQuery, null, 2) : 'No query'}
-          </pre>
+          {debugQuery ? (
+            <CodeBlock
+              code={JSON.stringify(debugQuery, null, 2)}
+              language="json"
+              title="JSON Query"
+              maxHeight="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">JSON Query</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                No query
+              </div>
+            </>
+          )}
         </div>
 
         {/* Generated SQL */}
         <div>
-          <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
           {debugLoading ? (
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
-              Loading...
-            </div>
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                Loading...
+              </div>
+            </>
           ) : debugError ? (
-            <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error">
-              {debugError}
-            </div>
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error">
+                {debugError}
+              </div>
+            </>
           ) : debugSql ? (
-            <pre className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-xs overflow-auto max-h-64 text-dc-text-secondary font-mono whitespace-pre-wrap">
-              {debugSql.sql}
-              {debugSql.params && debugSql.params.length > 0 && (
-                <>
-                  {'\n\n-- Parameters:\n'}
-                  {JSON.stringify(debugSql.params, null, 2)}
-                </>
-              )}
-            </pre>
+            <CodeBlock
+              code={
+                debugSql.sql +
+                (debugSql.params && debugSql.params.length > 0
+                  ? '\n\n-- Parameters:\n' + JSON.stringify(debugSql.params, null, 2)
+                  : '')
+              }
+              language="sql"
+              title="Generated SQL"
+              maxHeight="16rem"
+            />
           ) : (
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
-              Add metrics to generate SQL
-            </div>
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                Add metrics to generate SQL
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -10,6 +10,11 @@ import { useCubeQuery } from '../../src/client/hooks/useCubeQuery'
 import { CubeProvider } from '../../src/client/providers/CubeProvider'
 import type { CubeQuery, CubeQueryOptions, CubeResultSet } from '../../src/client/types'
 
+// Mock createCubeClient to return our mock client
+vi.mock('../../src/client/client/CubeClient', () => ({
+  createCubeClient: vi.fn(() => mockCubeClient)
+}))
+
 // Mock the CubeClient
 const mockLoad = vi.fn()
 const mockCubeClient = {
@@ -23,14 +28,21 @@ const mockCubeClient = {
 // We disable batching to test the basic query behavior directly
 // BatchCoordinator has its own dedicated tests
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <CubeProvider cubeApi={mockCubeClient as any} enableBatching={false}>
+  <CubeProvider
+    apiOptions={{ apiUrl: '/cubejs-api/v1' }}
+    token="test-token"
+    enableBatching={false}
+  >
     {children}
   </CubeProvider>
 )
 
 describe('useCubeQuery', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    // Reset createCubeClient mock to return our mockCubeClient
+    const { createCubeClient } = await import('../../src/client/client/CubeClient')
+    ;(createCubeClient as Mock).mockReturnValue(mockCubeClient)
     // Don't use fake timers for async tests - this was causing the timeouts
     // vi.useFakeTimers()
   })
@@ -464,7 +476,7 @@ describe('useCubeQuery', () => {
 
       expect(() => {
         renderHook(() => useCubeQuery(sampleQuery))
-      }).toThrow('useCubeContext must be used within a CubeProvider')
+      }).toThrow('useCubeApi must be used within CubeApiProvider')
 
       console.error = originalError
     })

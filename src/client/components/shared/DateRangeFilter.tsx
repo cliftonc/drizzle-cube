@@ -8,7 +8,7 @@
 import React from 'react'
 import { getIcon } from '../../icons'
 import DateRangeSelector from './DateRangeSelector'
-import type { DateRangeFilterProps } from './types'
+import type { DateRangeFilterProps } from '../QueryBuilder/types'
 import { getTimeDimensionsWithDateRanges } from './utils'
 
 const AddIcon = getIcon('add')

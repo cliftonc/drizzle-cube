@@ -6,13 +6,13 @@
 
 import React, { useCallback } from 'react'
 import { getIcon } from '../../icons'
-import FilterItem from '../QueryBuilder/FilterItem'
+import FilterItem from '../shared/FilterItem'
 
 const FilterIcon = getIcon('filter')
 const ClockIcon = getIcon('timeDimension')
-import DateRangeSelector from '../QueryBuilder/DateRangeSelector'
+import DateRangeSelector from '../shared/DateRangeSelector'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
-import type { MetaResponse } from '../QueryBuilder/types'
+import type { MetaResponse } from '../../shared/types'
 
 interface ReadOnlyFilterListProps {
   dashboardFilters: DashboardFilter[]

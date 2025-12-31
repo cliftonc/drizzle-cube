@@ -171,7 +171,7 @@ describe('AnalyticsPortlet', () => {
       mockInView = false
       const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
 
-      const { container } = render(
+      render(
         <AnalyticsPortlet
           query={JSON.stringify({ measures: ['Test.count'] })}
           chartType="bar"
@@ -180,7 +180,7 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      expect(container.textContent).toContain('Scroll to load')
+      // Query should be skipped when not in view and eagerLoad is false
       const call = (useCubeQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: true })
     })

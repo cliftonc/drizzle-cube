@@ -18,8 +18,8 @@ export { default as PortletEditModal } from './components/PortletEditModal'
 export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 
-// Query Builder
-export { default as QueryBuilder } from './components/QueryBuilder'
+// Query Builder (uses AnalysisBuilder via backward compatibility shim)
+export { default as QueryBuilder } from './components/QueryBuilderShim'
 
 // Component utilities
 export { 
