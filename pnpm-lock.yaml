@@ -14,6 +14,9 @@ importers:
       d3:
         specifier: ^7.9.0
         version: 7.9.0
+      highlight.js:
+        specifier: ^11.9.0
+        version: 11.11.1
       lz-string:
         specifier: ^1.5.0
         version: 1.5.0
@@ -166,14 +169,14 @@ importers:
         specifier: ^18.0.0
         version: 18.3.1(react@18.3.1)
       react-grid-layout:
-        specifier: ^2.2.2
+        specifier: ^2.1.1
         version: 2.2.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-hook-form:
         specifier: ^7.68.0
         version: 7.69.0(react@18.3.1)
       react-resizable:
-        specifier: ^3.1.0
-        version: 3.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^3.1.1
+        version: 3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       reactflow:
         specifier: ^11.11.4
         version: 11.11.4(@types/react@18.3.27)(immer@11.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2737,6 +2740,10 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
+  highlight.js@11.11.1:
+    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
+    engines: {node: '>=12.0.0'}
+
   hono@4.11.3:
     resolution: {integrity: sha512-PmQi306+M/ct/m5s66Hrg+adPnkD5jiO6IjA7WhWw0gSBSo1EcRegwuI1deZ+wd5pzCGynCcn2DprnE4/yEV4w==}
     engines: {node: '>=16.9.0'}
@@ -3445,8 +3452,8 @@ packages:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
 
-  react-resizable@3.1.0:
-    resolution: {integrity: sha512-2//VqxPBkO0J045raHGogpWlOzlOMaP3TgKgxSHCKOvjmfSRmmSCVcuUyAk7g6SAV3A0gZLW7RehLHjEX3hnWA==}
+  react-resizable@3.1.1:
+    resolution: {integrity: sha512-lYxM0Av7XtFXXvvRuyup5RHHTjfb7070+NZQ1Peg1iDsel5F2ULukj1/eMKfysgwE9HbR165/ga1xl6/AhLEKQ==}
     peerDependencies:
       react: '>= 16.3'
       react-dom: '>= 16.3'
@@ -6550,6 +6557,8 @@ snapshots:
 
   he@1.2.0: {}
 
+  highlight.js@11.11.1: {}
+
   hono@4.11.3: {}
 
   html-encoding-sniffer@6.0.0:
@@ -7193,7 +7202,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-draggable: 4.5.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-resizable: 3.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-resizable: 3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       resize-observer-polyfill: 1.5.1
 
   react-hook-form@7.69.0(react@18.3.1):
@@ -7223,7 +7232,7 @@ snapshots:
 
   react-refresh@0.18.0: {}
 
-  react-resizable@3.1.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-resizable@3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       prop-types: 15.8.1
       react: 18.3.1
