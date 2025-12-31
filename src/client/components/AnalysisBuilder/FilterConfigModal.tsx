@@ -9,9 +9,10 @@
  * - Multi-value support
  */
 
-import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
+import React, { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
 import { getIcon } from '../../icons'
-import type { SimpleFilter, FilterOperator, MetaResponse, DateRangeType } from '../../shared/types'
+import type { SimpleFilter, FilterOperator } from '../../types'
+import type { MetaResponse, DateRangeType } from '../../shared/types'
 import {
   FILTER_OPERATORS,
   DATE_RANGE_OPTIONS
@@ -75,7 +76,7 @@ export default function FilterConfigModal({
   const fieldTitle = getFieldTitle(filter.member, schema)
 
   // Get operator metadata
-  const operatorMeta = FILTER_OPERATORS[filter.operator]
+  const operatorMeta = FILTER_OPERATORS[filter.operator as FilterOperator]
 
   // Get available operators for this field type
   const availableOperators = getAvailableOperators(fieldType)
@@ -227,7 +228,7 @@ export default function FilterConfigModal({
 
   // Handle value removal
   const handleValueRemove = useCallback((valueToRemove: unknown) => {
-    const values = (filter.values || []).filter(v => v !== valueToRemove)
+    const values = (filter.values || []).filter((v: unknown) => v !== valueToRemove)
     setFilter({ ...filter, values })
   }, [filter])
 
@@ -460,7 +461,7 @@ export default function FilterConfigModal({
           {/* Selected values as tags */}
           {filter.values && filter.values.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {filter.values.map((value, index) => (
+              {filter.values.map((value: unknown, index: number) => (
                 <span
                   key={index}
                   className="inline-flex items-center gap-1 bg-dc-primary/10 text-dc-primary text-sm px-2 py-1 rounded"
