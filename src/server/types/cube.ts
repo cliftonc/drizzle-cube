@@ -4,14 +4,15 @@
  */
 
 import type { SQL, AnyColumn, Table, Subquery, View } from 'drizzle-orm'
-import type { 
-  SecurityContext, 
-  DrizzleDatabase, 
-  QueryResult, 
-  MeasureType, 
-  DimensionType 
+import type {
+  SecurityContext,
+  DrizzleDatabase,
+  QueryResult,
+  MeasureType,
+  DimensionType
 } from './core'
 import type { SemanticQuery } from './query'
+import type { FilterCacheManager } from '../filter-cache'
 
 /**
  * Any queryable relation that can be used in FROM/JOIN clauses
@@ -51,6 +52,11 @@ export interface QueryContext {
   query?: SemanticQuery
   /** The compiled cube being queried */
   cube?: Cube
+  /**
+   * Filter cache for parameter deduplication across CTEs
+   * Created at query start and used throughout query building
+   */
+  filterCache?: FilterCacheManager
 }
 
 /**
@@ -267,6 +273,8 @@ export interface PropagatingFilter {
     /** Foreign key column on target cube (CTE cube) */
     target: AnyColumn
   }
+  /** Pre-built filter SQL for parameter deduplication (optional, built during query planning) */
+  preBuiltFilterSQL?: SQL
 }
 
 /**

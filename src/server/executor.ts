@@ -30,6 +30,7 @@ import type {
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
+import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { validateQueryAgainstCubes } from './compiler'
@@ -66,12 +67,19 @@ export class QueryExecutor {
         throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
       }
 
-      // Create query context
+      // Create filter cache for parameter deduplication across CTEs
+      const filterCache = new FilterCacheManager()
+
+      // Create query context with filter cache
       const context: QueryContext = {
         db: this.dbExecutor.db,
         schema: this.dbExecutor.schema,
-        securityContext
+        securityContext,
+        filterCache
       }
+
+      // Pre-build filter SQL for reuse across CTEs and main query
+      this.preloadFilterCache(query, filterCache, cubes, context)
 
       // Create unified query plan (works for both single and multi-cube)
       const queryPlan = this.queryPlanner.createQueryPlan(cubes, query, context)
@@ -146,7 +154,8 @@ export class QueryExecutor {
     cteInfo: NonNullable<QueryPlan['preAggregationCTEs']>[0],
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan: QueryPlan
+    queryPlan: QueryPlan,
+    preBuiltFilterMap?: Map<string, SQL[]>
   ): any {
     const cube = cteInfo.cube
     const cubeBase = cube.sql(context) // Gets security filtering!
@@ -239,7 +248,7 @@ export class QueryExecutor {
       preAggregationCTEs: queryPlan.preAggregationCTEs?.filter((cte: any) => cte.cube.name !== cube.name)
     } : undefined
     
-    const whereConditions = this.queryBuilder.buildWhereConditions(cube, query, context, cteQueryPlan)
+    const whereConditions = this.queryBuilder.buildWhereConditions(cube, query, context, cteQueryPlan, preBuiltFilterMap)
     
     // Also add time dimension filters for this cube within the CTE
     const cteTimeFilters: any[] = []
@@ -408,18 +417,24 @@ export class QueryExecutor {
       filterConditions.push(cubeBase.where)
     }
 
-    // Create a synthetic query with just the propagating filters
-    // and use buildWhereConditions to process them
-    const syntheticQuery: SemanticQuery = {
-      filters: propFilter.filters
+    // Use pre-built filter SQL if available (for parameter deduplication)
+    // Otherwise fall back to building fresh
+    if (propFilter.preBuiltFilterSQL) {
+      filterConditions.push(propFilter.preBuiltFilterSQL)
+    } else {
+      // Fallback: Create a synthetic query with just the propagating filters
+      // and use buildWhereConditions to process them
+      const syntheticQuery: SemanticQuery = {
+        filters: propFilter.filters
+      }
+      const cubeMap = new Map([[sourceCube.name, sourceCube]])
+      const filterSQL = this.queryBuilder.buildWhereConditions(
+        cubeMap,
+        syntheticQuery,
+        context
+      )
+      filterConditions.push(...filterSQL)
     }
-    const cubeMap = new Map([[sourceCube.name, sourceCube]])
-    const filterSQL = this.queryBuilder.buildWhereConditions(
-      cubeMap,
-      syntheticQuery,
-      context
-    )
-    filterConditions.push(...filterSQL)
 
     // If no filter conditions, no subquery needed
     if (filterConditions.length === 0) {
@@ -451,13 +466,49 @@ export class QueryExecutor {
     query: SemanticQuery,
     context: QueryContext
   ) {
+    // Pre-build filter SQL for propagating filters to enable parameter deduplication
+    // This ensures the same filter values are shared between CTE subqueries and main query
+    const preBuiltFilterMap = new Map<string, SQL[]>()
+
+    if (queryPlan.preAggregationCTEs && queryPlan.preAggregationCTEs.length > 0) {
+      for (const cteInfo of queryPlan.preAggregationCTEs) {
+        if (cteInfo.propagatingFilters && cteInfo.propagatingFilters.length > 0) {
+          for (const propFilter of cteInfo.propagatingFilters) {
+            const sourceCubeName = propFilter.sourceCube.name
+
+            // Build filter SQL once if not already built for this cube
+            if (!preBuiltFilterMap.has(sourceCubeName)) {
+              const syntheticQuery: SemanticQuery = {
+                filters: propFilter.filters
+              }
+              const cubeMap = new Map([[sourceCubeName, propFilter.sourceCube]])
+              const filterSQL = this.queryBuilder.buildWhereConditions(
+                cubeMap,
+                syntheticQuery,
+                context
+              )
+              preBuiltFilterMap.set(sourceCubeName, filterSQL)
+            }
+
+            // Store the pre-built SQL in the propagating filter for reuse
+            const preBuiltSQL = preBuiltFilterMap.get(sourceCubeName)
+            if (preBuiltSQL && preBuiltSQL.length > 0) {
+              propFilter.preBuiltFilterSQL = preBuiltSQL.length === 1
+                ? preBuiltSQL[0]
+                : and(...preBuiltSQL) as SQL
+            }
+          }
+        }
+      }
+    }
+
     // Build pre-aggregation CTEs if needed
     const ctes: any[] = []
     const cteAliasMap = new Map<string, string>()
-    
+
     if (queryPlan.preAggregationCTEs && queryPlan.preAggregationCTEs.length > 0) {
       for (const cteInfo of queryPlan.preAggregationCTEs) {
-        const cte = this.buildPreAggregationCTE(cteInfo, query, context, queryPlan)
+        const cte = this.buildPreAggregationCTE(cteInfo, query, context, queryPlan, preBuiltFilterMap)
         if (cte) {
           ctes.push(cte)
           cteAliasMap.set(cteInfo.cube.name, cteInfo.cteAlias)
@@ -724,13 +775,15 @@ export class QueryExecutor {
     }
 
     // Add query-specific WHERE conditions using QueryBuilder
+    // Pass preBuiltFilterMap to reuse filter SQL and deduplicate parameters
     const queryWhereConditions = this.queryBuilder.buildWhereConditions(
-      queryPlan.joinCubes.length > 0 
+      queryPlan.joinCubes.length > 0
         ? this.getCubesFromPlan(queryPlan) // Multi-cube
         : queryPlan.primaryCube, // Single cube
       query,
       context,
-      queryPlan // Pass the queryPlan to handle CTE scenarios
+      queryPlan, // Pass the queryPlan to handle CTE scenarios
+      preBuiltFilterMap // Reuse pre-built filters for parameter deduplication
     )
     if (queryWhereConditions.length > 0) {
       allWhereConditions.push(...queryWhereConditions)
@@ -932,7 +985,92 @@ export class QueryExecutor {
     }
   }
 
+  /**
+   * Pre-build filter SQL and store in cache for reuse across CTEs and main query
+   * This enables parameter deduplication - the same filter values are shared
+   * rather than appearing as separate parameters in different parts of the query
+   */
+  private preloadFilterCache(
+    query: SemanticQuery,
+    filterCache: FilterCacheManager,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): void {
+    // Pre-build regular filters
+    if (query.filters && query.filters.length > 0) {
+      // Flatten nested AND/OR filters to get individual conditions
+      const flatFilters = flattenFilters(query.filters)
 
+      for (const filter of flatFilters) {
+        const key = getFilterKey(filter)
+
+        // Skip if already cached (from a previous filter in the same query)
+        if (filterCache.has(key)) continue
+
+        // Find the cube for this filter's member
+        const [cubeName, fieldName] = filter.member.split('.')
+        const cube = cubes.get(cubeName)
+        if (!cube) continue
+
+        const dimension = cube.dimensions?.[fieldName]
+        if (!dimension) continue
+
+        // For array operators, we need the raw column (not isolated SQL)
+        // because Drizzle's array functions need column type metadata for proper encoding
+        const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filter.operator)
+        if (isArrayOperator) {
+          // Skip caching array operator filters - they require special column handling
+          // and will be built fresh each time to ensure proper array encoding
+          continue
+        }
+
+        // Build the filter SQL using the query builder
+        const fieldExpr = resolveSqlExpression(dimension.sql, context)
+        const filterSQL = this.queryBuilder.buildFilterConditionPublic(
+          fieldExpr,
+          filter.operator,
+          filter.values,
+          dimension,
+          filter.dateRange
+        )
+
+        if (filterSQL) {
+          filterCache.set(key, filterSQL)
+        }
+      }
+
+      // NOTE: We do NOT cache logical filters (AND/OR) because they can contain
+      // mixed cube references. When some cubes are in CTEs, the cached version
+      // would reference wrong table contexts. Individual simple filters within
+      // logical filters are still cached for deduplication.
+    }
+
+    // Pre-build time dimension date range filters
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        if (timeDim.dateRange) {
+          const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
+
+          // Skip if already cached
+          if (filterCache.has(key)) continue
+
+          const [cubeName, fieldName] = timeDim.dimension.split('.')
+          const cube = cubes.get(cubeName)
+          if (!cube) continue
+
+          const dimension = cube.dimensions?.[fieldName]
+          if (!dimension) continue
+
+          const fieldExpr = resolveSqlExpression(dimension.sql, context)
+          const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+
+          if (dateCondition) {
+            filterCache.set(key, dateCondition)
+          }
+        }
+      }
+    }
+  }
 
 
 

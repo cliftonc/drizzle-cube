@@ -110,29 +110,30 @@ export class QueryPlanner {
   /**
    * Extract measures referenced in filters (for CTE inclusion)
    */
-  private extractMeasuresFromFilters(query: SemanticQuery, cubeName: string): string[] {
+  private extractMeasuresFromFilters(query: SemanticQuery, cube: Cube): string[] {
     const measures: string[] = []
-    
+
     if (!query.filters) {
       return measures
     }
-    
+
     for (const filter of query.filters) {
-      this.extractMeasuresFromFilter(filter, cubeName, measures)
+      this.extractMeasuresFromFilter(filter, cube, measures)
     }
-    
+
     return measures
   }
 
   /**
    * Recursively extract measures from filters for a specific cube
+   * Only includes filter members that are actually measures (not dimensions)
    */
-  private extractMeasuresFromFilter(filter: any, targetCubeName: string, measures: string[]): void {
+  private extractMeasuresFromFilter(filter: any, targetCube: Cube, measures: string[]): void {
     // Handle logical filters (AND/OR)
     if ('and' in filter || 'or' in filter) {
       const logicalFilters = filter.and || filter.or || []
       for (const subFilter of logicalFilters) {
-        this.extractMeasuresFromFilter(subFilter, targetCubeName, measures)
+        this.extractMeasuresFromFilter(subFilter, targetCube, measures)
       }
       return
     }
@@ -140,11 +141,15 @@ export class QueryPlanner {
     // Handle simple filter condition
     if ('member' in filter) {
       const memberName = filter.member
-      const [cubeName] = memberName.split('.')
-      if (cubeName === targetCubeName) {
-        // This is a filter on the target cube - check if it's a measure
-        // We'll include it and let the CTE building logic determine if it's actually a measure
-        measures.push(memberName)
+      const [cubeName, fieldName] = memberName.split('.')
+      if (cubeName === targetCube.name) {
+        // Only include if this is actually a measure, not a dimension
+        // Dimension filters should not trigger CTE creation
+        if (targetCube.measures && targetCube.measures[fieldName]) {
+          measures.push(memberName)
+        }
+        // Dimension filters are intentionally excluded - they don't cause fan-out
+        // and shouldn't trigger pre-aggregation CTEs
       }
     }
   }
@@ -477,7 +482,8 @@ export class QueryPlanner {
       ) : []
 
       // Also check for measures referenced in filters (for HAVING clause)
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, joinCube.cube.name)
+      // Only actual measures are included - dimension filters don't trigger CTE creation
+      const measuresFromFilters = this.extractMeasuresFromFilters(query, joinCube.cube)
 
       // Combine and deduplicate measures from both SELECT and filters
       const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
@@ -1037,15 +1043,17 @@ export class QueryPlanner {
 
   /**
    * Analyze pre-aggregation requirements for hasMany relationships
+   * This mirrors the logic in planPreAggregationCTEs to ensure analysis matches execution
    */
   private analyzePreAggregations(
-    _cubes: Map<string, Cube>,
+    cubes: Map<string, Cube>,
     primaryCube: Cube,
     cubesToJoin: string[],
     query: SemanticQuery
   ): PreAggregationAnalysis[] {
     const preAggregations: PreAggregationAnalysis[] = []
 
+    // No measures in query means no fan-out risk, no CTEs needed
     if (!query.measures || query.measures.length === 0) {
       return preAggregations
     }
@@ -1056,12 +1064,24 @@ export class QueryPlanner {
         continue
       }
 
-      // Check if we have measures from this cube
-      const measuresFromThisCube = query.measures.filter(m =>
+      const targetCube = cubes.get(targetCubeName)
+      if (!targetCube) {
+        continue
+      }
+
+      // Check if we have measures from this cube (from SELECT clause)
+      const measuresFromSelect = query.measures.filter(m =>
         m.startsWith(targetCubeName + '.')
       )
 
-      if (measuresFromThisCube.length === 0) {
+      // Also check for measures referenced in filters (for HAVING clause)
+      // Only actual measures are included - dimension filters don't trigger CTE creation
+      const measuresFromFilters = this.extractMeasuresFromFilters(query, targetCube)
+
+      // Combine and deduplicate measures from both SELECT and filters
+      const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
+
+      if (allMeasuresFromThisCube.length === 0) {
         continue
       }
 
@@ -1075,7 +1095,7 @@ export class QueryPlanner {
         cubeName: targetCubeName,
         cteAlias: `${targetCubeName.toLowerCase()}_agg`,
         reason: `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
-        measures: measuresFromThisCube,
+        measures: allMeasuresFromThisCube,
         joinKeys
       })
     }
