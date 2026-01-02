@@ -6,8 +6,9 @@
 
 Transform your Drizzle schema into a powerful, type-safe analytics platform with SQL injection protection and full TypeScript support.
 
-📖 **[Documentation](https://www.drizzle-cube.dev/)** 
-🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)**
+ - **[Documentation](https://www.drizzle-cube.dev/)** 
+ - **[Try the Sandbox](https://try.drizzle-cube.dev/)**
+ - **[Contribute to the Roadmap](https://github.com/users/cliftonc/projects/2)**
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
