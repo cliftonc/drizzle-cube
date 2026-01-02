@@ -63,7 +63,9 @@ All three approaches work automatically with drizzle-cube components!
 
 ### Semantic CSS Variables
 
-drizzle-cube uses **semantic CSS variables** prefixed with `--dc-` (drizzle-cube). These variables change automatically when you switch themes:
+drizzle-cube uses **semantic CSS variables** prefixed with `--dc-` (drizzle-cube). These variables change automatically when you switch themes.
+
+#### Core Variables (Quick Reference)
 
 | Variable | Purpose | Light | Dark | Neon |
 |----------|---------|-------|------|------|
@@ -83,7 +85,72 @@ drizzle-cube uses **semantic CSS variables** prefixed with `--dc-` (drizzle-cube
 | `--dc-error` | Error state | `#ef4444` | `#f87171` | `#ff0066` |
 | `--dc-danger` | Destructive actions | `#dc2626` | `#ef4444` | `#ff1493` |
 
-See [variables.css](../src/client/theme/variables.css) for the complete list of 40+ semantic variables.
+#### Complete Variable List by Category
+
+**Surface Colors** (backgrounds for cards, modals, panels):
+- `--dc-surface` - Primary background
+- `--dc-surface-secondary` - Secondary background
+- `--dc-surface-tertiary` - Tertiary background
+- `--dc-surface-hover` - Hover state background
+
+**Text Colors** (content text in various emphasis levels):
+- `--dc-text` - Primary text
+- `--dc-text-secondary` - Secondary text
+- `--dc-text-muted` - Muted/subtle text
+- `--dc-text-disabled` - Disabled state text
+
+**Border Colors** (dividers, outlines, borders):
+- `--dc-border` - Primary border
+- `--dc-border-secondary` - Secondary border
+- `--dc-border-hover` - Hover state border
+
+**Primary Colors** (main interactive elements):
+- `--dc-primary` - Primary color
+- `--dc-primary-hover` - Primary hover state
+- `--dc-primary-content` - Text on primary background
+
+**Semantic State Colors** (with background and border variants):
+- Success: `--dc-success`, `--dc-success-bg`, `--dc-success-border`
+- Warning: `--dc-warning`, `--dc-warning-bg`, `--dc-warning-border`
+- Error: `--dc-error`, `--dc-error-bg`, `--dc-error-border`
+- Info: `--dc-info`, `--dc-info-bg`, `--dc-info-border`
+- Danger: `--dc-danger`, `--dc-danger-hover`, `--dc-danger-bg`
+
+**Card/Component Colors**:
+- `--dc-card-bg` - Card background
+- `--dc-card-bg-hover` - Card hover background
+- `--dc-card-border` - Card border
+- `--dc-card-border-hover` - Card hover border
+
+**Accent Colors**:
+- `--dc-accent` - Accent color
+- `--dc-accent-hover` - Accent hover state
+- `--dc-accent-bg` - Accent background
+- `--dc-accent-border` - Accent border
+
+**Muted/Subtle Colors** (for secondary elements):
+- `--dc-muted` - Muted color
+- `--dc-muted-bg` - Muted background
+- `--dc-muted-border` - Muted border
+
+**Field Type Colors** (for semantic field type badges):
+- Dimension: `--dc-dimension-bg`, `--dc-dimension-text`, `--dc-dimension-border`
+- Time Dimension: `--dc-time-dimension-bg`, `--dc-time-dimension-text`, `--dc-time-dimension-border`
+- Measure: `--dc-measure-bg`, `--dc-measure-text`, `--dc-measure-border`
+- Filter: `--dc-filter-bg`, `--dc-filter-text`, `--dc-filter-border`
+
+**Overlay Colors** (modal backdrops, overlays):
+- `--dc-overlay` - Standard overlay
+- `--dc-overlay-light` - Light overlay
+
+**Shadow Variables** (elevation, depth):
+- `--dc-shadow-sm` through `--dc-shadow-2xl`
+
+**AI Panel Gradient** (special gradient for AI features):
+- `--dc-ai-gradient-start` - Gradient start color
+- `--dc-ai-gradient-end` - Gradient end color
+
+See [variables.css](../src/client/theme/variables.css) for the complete source with all 58+ semantic variables.
 
 ## Creating Custom Themes
 
