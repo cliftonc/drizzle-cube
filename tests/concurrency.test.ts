@@ -14,8 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestDatabaseExecutor } from './helpers/test-database'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
-import { SemanticLayerCompiler } from '../src/server/compiler'
-import type { Cube, SemanticQuery } from '../src/server/types'
+import type { Cube } from '../src/server/types'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
@@ -268,9 +267,7 @@ describe('Concurrency Tests', () => {
         expect(result.data).toBeDefined()
       }
 
-      // Active + Inactive should equal total
-      const activeCount = results[0].data[0]['Employees.count'] as number
-      const inactiveCount = results[1].data[0]['Employees.count'] as number
+      // All queries should return valid counts
       const highSalary = results[2].data[0]['Employees.count'] as number
       const lowSalary = results[3].data[0]['Employees.count'] as number
 
@@ -322,10 +319,8 @@ describe('Concurrency Tests', () => {
         .dimensions(['Employees.departmentId'])
         .build()
 
-      // Time single query
-      const singleStart = performance.now()
+      // Warm up with single query
       await testExecutor.executeQuery(query)
-      const singleDuration = performance.now() - singleStart
 
       // Time 10 concurrent queries
       const concurrentStart = performance.now()

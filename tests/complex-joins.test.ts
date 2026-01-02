@@ -12,13 +12,10 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, and, sql } from 'drizzle-orm'
-import { createTestDatabaseExecutor, getTestSchema } from './helpers/test-database'
+import { createTestDatabaseExecutor } from './helpers/test-database'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
-import { QueryPlanner } from '../src/server/query-planner'
-import { defineCube } from '../src/server/cube-utils'
-import type { Cube, QueryContext, BaseQueryDefinition, SemanticQuery } from '../src/server/types'
+import type { Cube } from '../src/server/types'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 

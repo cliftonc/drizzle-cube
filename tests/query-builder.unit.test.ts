@@ -9,8 +9,8 @@
  * - buildMeasureExpression() - all measure types
  * - buildTimeDimensionExpression() - granularity handling
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { sql, eq, SQL } from 'drizzle-orm'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { QueryBuilder } from '../src/server/query-builder'
 import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'

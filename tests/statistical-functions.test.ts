@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import {
   createTestDatabaseExecutor,
   getTestDatabaseType,
@@ -37,7 +37,7 @@ describe('Statistical Functions', () => {
     close = cleanup
 
     // Get test schema for cube definitions
-    const { employees, productivity } = await getTestSchema()
+    const { employees } = await getTestSchema()
 
     // Create statistical test cube with new measure types
     const statisticalCube = defineCube('Statistics', {

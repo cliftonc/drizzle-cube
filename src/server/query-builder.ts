@@ -8,28 +8,11 @@ import {
   sql,
   and,
   or,
-  eq,
-  ne,
-  gt,
-  gte,
-  lt,
-  lte,
-  isNull,
-  isNotNull,
-  inArray,
-  notInArray,
   count,
-  sum,
-  min,
-  max,
-  countDistinct,
   asc,
   desc,
   SQL,
-  type AnyColumn,
-  arrayContains as drizzleArrayContains,
-  arrayContained as drizzleArrayContained,
-  arrayOverlaps as drizzleArrayOverlaps
+  type AnyColumn
 } from 'drizzle-orm'
 
 import type {
@@ -38,32 +21,33 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter,
-  TimeGranularity,
   Cube,
   QueryContext,
-  QueryPlan,
-  JoinKeyInfo
+  QueryPlan
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
 import type { DatabaseAdapter } from './adapters/base-adapter'
-import { CalculatedMeasureResolver } from './calculated-measure-resolver'
-import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from './template-substitution'
 import { getFilterKey, getTimeDimensionFilterKey } from './filter-cache'
+import { DateTimeBuilder, FilterBuilder, GroupByBuilder, MeasureBuilder } from './builders'
+import type { ResolvedMeasures } from './template-substitution'
 
 export class QueryBuilder {
-  constructor(private databaseAdapter: DatabaseAdapter) {}
+  private dateTimeBuilder: DateTimeBuilder
+  private filterBuilder: FilterBuilder
+  private groupByBuilder: GroupByBuilder
+  private measureBuilder: MeasureBuilder
+
+  constructor(databaseAdapter: DatabaseAdapter) {
+    this.dateTimeBuilder = new DateTimeBuilder(databaseAdapter)
+    this.filterBuilder = new FilterBuilder(databaseAdapter, this.dateTimeBuilder)
+    this.groupByBuilder = new GroupByBuilder(this.dateTimeBuilder)
+    this.measureBuilder = new MeasureBuilder(databaseAdapter)
+  }
 
   /**
    * Build resolvedMeasures map for a set of measures
-   * This centralizes the logic for building both regular and calculated measures
-   * in dependency order, avoiding duplication across main queries and CTEs
-   *
-   * @param measureNames - Array of measure names to resolve (e.g., ["Employees.count", "Employees.activePercentage"])
-   * @param cubeMap - Map of all cubes involved in the query
-   * @param context - Query context with database and security context
-   * @param customMeasureBuilder - Optional function to override how individual measures are built
-   * @returns Map of measure names to SQL builder functions
+   * Delegates to MeasureBuilder
    */
   buildResolvedMeasures(
     measureNames: string[],
@@ -71,104 +55,7 @@ export class QueryBuilder {
     context: QueryContext,
     customMeasureBuilder?: (measureName: string, measure: any, cube: Cube) => SQL
   ): ResolvedMeasures {
-    const resolvedMeasures: ResolvedMeasures = new Map()
-    const regularMeasures: string[] = []
-    const calculatedMeasures: string[] = []
-    const allMeasuresToResolve = new Set<string>(measureNames)
-
-    // Build dependency graph
-    const resolver = new CalculatedMeasureResolver(cubeMap)
-    for (const cube of cubeMap.values()) {
-      resolver.buildGraph(cube)
-    }
-
-    // First pass: classify user-requested measures and collect dependencies
-    for (const measureName of measureNames) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = cubeMap.get(cubeName)
-      if (cube && cube.measures && cube.measures[fieldName]) {
-        const measure = cube.measures[fieldName]
-        if (CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
-          calculatedMeasures.push(measureName)
-          // Add all dependencies to measures that need to be resolved
-          const deps = getMemberReferences(measure.calculatedSql!, cubeName)
-          deps.forEach(dep => allMeasuresToResolve.add(dep))
-
-          // Also add transitive calculated measure dependencies
-          const calculatedDeps = resolver.getAllDependencies(measureName)
-          calculatedDeps.forEach(dep => {
-            const [depCubeName, depFieldName] = dep.split('.')
-            const depCube = cubeMap.get(depCubeName)
-            if (depCube && depCube.measures[depFieldName]) {
-              const depMeasure = depCube.measures[depFieldName]
-              if (CalculatedMeasureResolver.isCalculatedMeasure(depMeasure)) {
-                const nestedDeps = getMemberReferences(depMeasure.calculatedSql!, depCubeName)
-                nestedDeps.forEach(nestedDep => allMeasuresToResolve.add(nestedDep))
-              }
-            }
-          })
-        } else {
-          regularMeasures.push(measureName)
-        }
-      }
-    }
-
-    // Second pass: classify all measures that need to be resolved (including dependencies)
-    for (const measureName of allMeasuresToResolve) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = cubeMap.get(cubeName)
-      if (cube && cube.measures && cube.measures[fieldName]) {
-        const measure = cube.measures[fieldName]
-        if (!CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
-          if (!regularMeasures.includes(measureName)) {
-            regularMeasures.push(measureName)
-          }
-        } else {
-          if (!calculatedMeasures.includes(measureName)) {
-            calculatedMeasures.push(measureName)
-          }
-        }
-      }
-    }
-
-    // Build regular measures first
-    for (const measureName of regularMeasures) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = cubeMap.get(cubeName)!
-      const measure = cube.measures[fieldName]
-
-      // Use custom builder if provided, otherwise use default
-      if (customMeasureBuilder) {
-        const builtExpr = customMeasureBuilder(measureName, measure, cube)
-        resolvedMeasures.set(measureName, () => builtExpr)
-      } else {
-        // Store a FUNCTION that builds the SQL expression to avoid mutation issues
-        // Pass cube for window function dimension resolution
-        resolvedMeasures.set(measureName, () => this.buildMeasureExpression(measure, context, cube))
-      }
-    }
-
-    // Build calculated measures in dependency order
-    if (calculatedMeasures.length > 0) {
-      const sortedCalculated = resolver.topologicalSort(calculatedMeasures)
-
-      for (const measureName of sortedCalculated) {
-        const [cubeName, fieldName] = measureName.split('.')
-        const cube = cubeMap.get(cubeName)!
-        const measure = cube.measures[fieldName]
-
-        // Store a FUNCTION that builds the calculated measure SQL
-        resolvedMeasures.set(measureName, () => this.buildCalculatedMeasure(
-          measure,
-          cube,
-          cubeMap,
-          resolvedMeasures,
-          context
-        ))
-      }
-    }
-
-    return resolvedMeasures
+    return this.measureBuilder.buildResolvedMeasures(measureNames, cubeMap, context, customMeasureBuilder)
   }
 
   /**
@@ -246,7 +133,7 @@ export class QueryBuilder {
 
   /**
    * Build calculated measure expression by substituting {member} references
-   * with resolved SQL expressions
+   * Delegates to MeasureBuilder
    */
   public buildCalculatedMeasure(
     measure: any,
@@ -255,39 +142,12 @@ export class QueryBuilder {
     resolvedMeasures: ResolvedMeasures,
     context: QueryContext
   ): SQL {
-    if (!measure.calculatedSql) {
-      throw new Error(
-        `Calculated measure '${cube.name}.${measure.name}' missing calculatedSql property`
-      )
-    }
-
-    // Preprocess template for database-specific transformations (e.g., SQLite float division)
-    const preprocessedSql = this.databaseAdapter.preprocessCalculatedTemplate(measure.calculatedSql)
-
-    // Substitute {member} references with resolved SQL
-    const substitutedSql = substituteTemplate(preprocessedSql, {
-      cube,
-      allCubes,
-      resolvedMeasures,
-      queryContext: context
-    })
-
-    return substitutedSql
+    return this.measureBuilder.buildCalculatedMeasure(measure, cube, allCubes, resolvedMeasures, context)
   }
 
   /**
    * Build resolved measures map for a calculated measure from CTE columns
-   * This handles re-aggregating pre-aggregated CTE columns for calculated measures
-   *
-   * IMPORTANT: For calculated measures in CTEs, we cannot sum/avg pre-computed ratios.
-   * We must recalculate from the base measures that were pre-aggregated in the CTE.
-   *
-   * @param measure - The calculated measure to build
-   * @param cube - The cube containing this measure
-   * @param cteInfo - CTE metadata (alias, measures, cube reference)
-   * @param allCubes - Map of all cubes in the query
-   * @param context - Query context
-   * @returns SQL expression for the calculated measure using CTE column references
+   * Delegates to MeasureBuilder
    */
   public buildCTECalculatedMeasure(
     measure: any,
@@ -296,76 +156,12 @@ export class QueryBuilder {
     allCubes: Map<string, Cube>,
     context: QueryContext
   ): SQL {
-    if (!measure.calculatedSql) {
-      throw new Error(
-        `Calculated measure '${cube.name}.${measure.name || 'unknown'}' missing calculatedSql property`
-      )
-    }
-
-    // Build a resolvedMeasures map with CTE column references
-    const cteResolvedMeasures = new Map<string, () => SQL>()
-
-    // Get all dependencies for this calculated measure
-    const deps = getMemberReferences(measure.calculatedSql, cube.name)
-
-    for (const depMeasureName of deps) {
-      const [depCubeName, depFieldName] = depMeasureName.split('.')
-      const depCube = allCubes.get(depCubeName)
-
-      if (depCube && depCube.measures[depFieldName]) {
-        const depMeasure = depCube.measures[depFieldName]
-
-        // Check if this dependency is also in the CTE
-        if (cteInfo.measures.includes(depMeasureName)) {
-          // Reference the CTE column and apply appropriate aggregation
-          const cteDepColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(depFieldName)}`
-
-          // Apply aggregation based on the dependency's type
-          // For pre-aggregated values in CTEs, we need to re-aggregate them properly:
-          // - count/sum values should be summed
-          // - avg values should be averaged (though ideally weighted average)
-          // - min/max values should take min/max
-          let aggregatedDep: SQL
-          switch (depMeasure.type) {
-            case 'count':
-            case 'countDistinct':
-            case 'sum':
-              aggregatedDep = sum(cteDepColumn)
-              break
-            case 'avg':
-              aggregatedDep = this.databaseAdapter.buildAvg(cteDepColumn)
-              break
-            case 'min':
-              aggregatedDep = min(cteDepColumn)
-              break
-            case 'max':
-              aggregatedDep = max(cteDepColumn)
-              break
-            case 'number':
-              aggregatedDep = sum(cteDepColumn)
-              break
-            default:
-              aggregatedDep = sum(cteDepColumn)
-          }
-
-          // Store the aggregated CTE column as a builder function
-          cteResolvedMeasures.set(depMeasureName, () => aggregatedDep)
-        }
-      }
-    }
-
-    // Re-apply the calculated measure template with CTE-based dependencies
-    return this.buildCalculatedMeasure(
-      measure,
-      cube,
-      allCubes,
-      cteResolvedMeasures,
-      context
-    )
+    return this.measureBuilder.buildCTECalculatedMeasure(measure, cube, cteInfo, allCubes, context)
   }
 
   /**
    * Build measure expression for HAVING clause, handling CTE references correctly
+   * Delegates to MeasureBuilder
    */
   private buildHavingMeasureExpression(
     cubeName: string,
@@ -374,302 +170,31 @@ export class QueryBuilder {
     context: QueryContext,
     queryPlan?: QueryPlan
   ): SQL {
-    // Check if this measure is from a CTE cube
-    if (queryPlan && queryPlan.preAggregationCTEs) {
-      const cteInfo = queryPlan.preAggregationCTEs.find(cte => cte.cube.name === cubeName)
-      if (cteInfo && cteInfo.measures.includes(`${cubeName}.${fieldKey}`)) {
-        // This measure is from a CTE - reference the CTE alias instead of the original table
-
-        if (measure.type === 'calculated' && measure.calculatedSql) {
-          // Get the cube for this measure
-          const cube = queryPlan.primaryCube.name === cubeName
-            ? queryPlan.primaryCube
-            : queryPlan.joinCubes?.find(jc => jc.cube.name === cubeName)?.cube
-
-          if (!cube) {
-            throw new Error(`Cube ${cubeName} not found in query plan`)
-          }
-
-          // Build a cubeMap for the calculated measure builder
-          const cubeMap = new Map<string, Cube>([[queryPlan.primaryCube.name, queryPlan.primaryCube]])
-          if (queryPlan.joinCubes) {
-            for (const jc of queryPlan.joinCubes) {
-              cubeMap.set(jc.cube.name, jc.cube)
-            }
-          }
-
-          // Use the shared helper to build calculated measure from CTE columns
-          return this.buildCTECalculatedMeasure(
-            measure,
-            cube,
-            cteInfo,
-            cubeMap,
-            context
-          )
-        } else {
-          // For non-calculated measures, aggregate the CTE column directly
-          const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldKey)}`
-
-          // Apply aggregation function based on measure type
-          switch (measure.type) {
-            case 'count':
-            case 'countDistinct':
-            case 'sum':
-              return sum(cteColumn)
-            case 'avg':
-              // For average of averages, we should use a weighted average, but for now use simple avg
-              return this.databaseAdapter.buildAvg(cteColumn)
-            case 'min':
-              return min(cteColumn)
-            case 'max':
-              return max(cteColumn)
-            case 'number':
-              // For number type, use sum to combine values
-              return sum(cteColumn)
-            default:
-              return sum(cteColumn)
-          }
-        }
-      }
-    }
-
-    // Not from CTE - use regular measure expression
-    return this.buildMeasureExpression(measure, context)
+    return this.measureBuilder.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
   }
 
   /**
    * Build measure expression with aggregation and filters
-   * Note: This should NOT be called for calculated measures
-   *
-   * @param measure - The measure definition
-   * @param context - Query context with security context and database info
-   * @param cube - Optional cube reference for resolving dimension references (window functions)
+   * Delegates to MeasureBuilder
    */
   buildMeasureExpression(
     measure: any,
     context: QueryContext,
     cube?: Cube
   ): SQL {
-    // Calculated measures should be built via buildCalculatedMeasure
-    if (measure.type === 'calculated') {
-      throw new Error(
-        `Cannot build calculated measure '${measure.name}' directly. ` +
-        `Use buildCalculatedMeasure instead.`
-      )
-    }
-
-    // Non-calculated measures must have sql property
-    if (!measure.sql) {
-      throw new Error(
-        `Measure '${measure.name}' of type '${measure.type}' is missing required 'sql' property. ` +
-        `Only calculated measures can omit 'sql'.`
-      )
-    }
-
-    // resolveSqlExpression already applies isolation via isolateSqlExpression()
-    // This protects against Drizzle SQL object mutation during reuse
-    let baseExpr = resolveSqlExpression(measure.sql, context)
-
-    // Apply measure filters if they exist
-    if (measure.filters && measure.filters.length > 0) {
-      const filterConditions = measure.filters.map((filter: (ctx: QueryContext) => SQL) => {
-        const filterResult = filter(context)
-        // Single wrap is OK here - we're creating fresh SQL for grouping in parentheses
-        // The filter function itself should handle isolation if needed
-        return filterResult ? sql`(${filterResult})` : undefined
-      }).filter(Boolean) // Remove any undefined conditions
-
-      if (filterConditions.length > 0) {
-        // Use CASE WHEN for conditional aggregation via adapter
-        const andCondition = filterConditions.length === 1 ? filterConditions[0] : and(...filterConditions)
-        const caseExpr = this.databaseAdapter.buildCaseWhen([
-          { when: andCondition!, then: baseExpr }
-        ])
-        baseExpr = caseExpr
-      }
-    }
-
-    // Apply aggregation function based on measure type
-    switch (measure.type) {
-      case 'count':
-        return count(baseExpr)
-      case 'countDistinct':
-        return countDistinct(baseExpr)
-      case 'sum':
-        return sum(baseExpr)
-      case 'avg':
-        return this.databaseAdapter.buildAvg(baseExpr)
-      case 'min':
-        return min(baseExpr)
-      case 'max':
-        return max(baseExpr)
-      case 'number':
-        return baseExpr as SQL
-
-      // Statistical functions (Phase 1)
-      case 'stddev':
-      case 'stddevSamp': {
-        const useSample = measure.type === 'stddevSamp' || measure.statisticalConfig?.useSample
-        const result = this.databaseAdapter.buildStddev(baseExpr, useSample)
-        if (result === null) {
-          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
-          // Use MAX(NULL) to ensure proper aggregation behavior
-          return sql`MAX(NULL)`
-        }
-        return result
-      }
-
-      case 'variance':
-      case 'varianceSamp': {
-        const useSample = measure.type === 'varianceSamp' || measure.statisticalConfig?.useSample
-        const result = this.databaseAdapter.buildVariance(baseExpr, useSample)
-        if (result === null) {
-          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
-          // Use MAX(NULL) to ensure proper aggregation behavior
-          return sql`MAX(NULL)`
-        }
-        return result
-      }
-
-      case 'percentile':
-      case 'median':
-      case 'p95':
-      case 'p99': {
-        // Determine percentile value based on type
-        let pct: number
-        switch (measure.type) {
-          case 'median':
-            pct = 50
-            break
-          case 'p95':
-            pct = 95
-            break
-          case 'p99':
-            pct = 99
-            break
-          default:
-            pct = measure.statisticalConfig?.percentile ?? 50
-        }
-        const result = this.databaseAdapter.buildPercentile(baseExpr, pct)
-        if (result === null) {
-          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
-          // Use MAX(NULL) to ensure proper aggregation behavior
-          return sql`MAX(NULL)`
-        }
-        return result
-      }
-
-      // Window functions (Phase 2) - now with dimension resolution
-      case 'lag':
-      case 'lead':
-      case 'rank':
-      case 'denseRank':
-      case 'rowNumber':
-      case 'ntile':
-      case 'firstValue':
-      case 'lastValue':
-      case 'movingAvg':
-      case 'movingSum': {
-        const windowConfig = measure.windowConfig || {}
-
-        // Resolve partitionBy dimension references to SQL expressions
-        let partitionByExprs: (AnyColumn | SQL)[] | undefined
-        if (windowConfig.partitionBy && windowConfig.partitionBy.length > 0 && cube) {
-          const resolvedPartitions = windowConfig.partitionBy
-            .map((dimRef: string) => {
-              // Handle both "dimensionName" and "CubeName.dimensionName" formats
-              const dimName = dimRef.includes('.') ? dimRef.split('.')[1] : dimRef
-              const dimension = cube.dimensions?.[dimName]
-              if (dimension) {
-                return resolveSqlExpression(dimension.sql, context)
-              }
-              console.warn(`[drizzle-cube] Window function partition dimension '${dimRef}' not found in cube '${cube.name}'`)
-              return null
-            })
-            .filter((expr: AnyColumn | SQL | null): expr is AnyColumn | SQL => expr !== null)
-
-          if (resolvedPartitions.length > 0) {
-            partitionByExprs = resolvedPartitions
-          }
-        }
-
-        // Resolve orderBy dimension/measure references to SQL expressions
-        type OrderByExpr = { field: AnyColumn | SQL; direction: 'asc' | 'desc' }
-        let orderByExprs: OrderByExpr[] | undefined
-        if (windowConfig.orderBy && windowConfig.orderBy.length > 0 && cube) {
-          const resolvedOrders = windowConfig.orderBy
-            .map((orderSpec: { field: string; direction: 'asc' | 'desc' }): OrderByExpr | null => {
-              // Handle both "fieldName" and "CubeName.fieldName" formats
-              const fieldName = orderSpec.field.includes('.') ? orderSpec.field.split('.')[1] : orderSpec.field
-
-              // First check dimensions, then measures
-              const dimension = cube.dimensions?.[fieldName]
-              if (dimension) {
-                return {
-                  field: resolveSqlExpression(dimension.sql, context),
-                  direction: orderSpec.direction
-                }
-              }
-
-              const measureDef = cube.measures?.[fieldName]
-              if (measureDef && measureDef.sql) {
-                return {
-                  field: resolveSqlExpression(measureDef.sql, context),
-                  direction: orderSpec.direction
-                }
-              }
-
-              console.warn(`[drizzle-cube] Window function order field '${orderSpec.field}' not found in cube '${cube.name}'`)
-              return null
-            })
-            .filter((expr: OrderByExpr | null): expr is OrderByExpr => expr !== null)
-
-          if (resolvedOrders.length > 0) {
-            orderByExprs = resolvedOrders
-          }
-        }
-
-        const result = this.databaseAdapter.buildWindowFunction(
-          measure.type,
-          ['rank', 'denseRank', 'rowNumber'].includes(measure.type) ? null : baseExpr,
-          partitionByExprs,
-          orderByExprs,
-          {
-            offset: windowConfig.offset,
-            defaultValue: windowConfig.defaultValue,
-            nTile: windowConfig.nTile,
-            frame: windowConfig.frame
-          }
-        )
-        if (result === null) {
-          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
-          return sql`NULL`
-        }
-        return result
-      }
-
-      default:
-        return count(baseExpr)
-    }
+    return this.measureBuilder.buildMeasureExpression(measure, context, cube)
   }
 
   /**
    * Build time dimension expression with granularity using database adapter
+   * Delegates to DateTimeBuilder
    */
   buildTimeDimensionExpression(
     dimensionSql: any,
     granularity: string | undefined,
     context: QueryContext
   ): SQL {
-    const baseExpr = resolveSqlExpression(dimensionSql, context)
-    
-    if (!granularity) {
-      // Ensure we return SQL even when no granularity is applied
-      return baseExpr instanceof SQL ? baseExpr : sql`${baseExpr}`
-    }
-    
-    // Use database adapter for database-specific time dimension building
-    return this.databaseAdapter.buildTimeDimension(granularity as TimeGranularity, baseExpr)
+    return this.dateTimeBuilder.buildTimeDimensionExpression(dimensionSql, granularity, context)
   }
 
   /**
@@ -899,6 +424,7 @@ export class QueryBuilder {
 
   /**
    * Build filter condition using Drizzle operators
+   * Delegates to FilterBuilder
    */
   private buildFilterCondition(
     fieldExpr: AnyColumn | SQL,
@@ -907,723 +433,31 @@ export class QueryBuilder {
     field?: any,
     dateRange?: string | string[]
   ): SQL | null {
-    // Handle dateRange for date filters
-    if (dateRange !== undefined) {
-      // Validate: dateRange only works with inDateRange operator
-      if (operator !== 'inDateRange') {
-        throw new Error(
-          `dateRange can only be used with 'inDateRange' operator, but got '${operator}'. ` +
-          `Use explicit date values in the 'values' array for other date operators.`
-        )
-      }
-
-      // Validate: field must be a time dimension
-      if (field && field.type !== 'time') {
-        throw new Error(
-          `dateRange can only be used on time dimensions, but field '${field.name || 'unknown'}' has type '${field.type}'`
-        )
-      }
-
-      // Use existing buildDateRangeCondition logic - dateRange takes precedence over values
-      return this.buildDateRangeCondition(fieldExpr, dateRange)
-    }
-
-    // Handle empty values
-    if (!values || values.length === 0) {
-      // For empty equals filter, return condition that matches nothing
-      if (operator === 'equals') {
-        return this.databaseAdapter.buildBooleanLiteral(false)
-      }
-      return null
-    }
-
-    // Filter out empty/null values and values containing null bytes for security
-    // For date operators, don't convert values yet - we'll normalize to Date first    
-    const filteredValues = values.filter(v => {
-      if (v === null || v === undefined || v === '') return false
-      // Reject values containing null bytes for security
-      if (typeof v === 'string' && v.includes('\x00')) return false
-      return true
-    }).map(this.databaseAdapter.convertFilterValue)
-        
-    // For certain operators, we need at least one non-empty value
-    if (filteredValues.length === 0 && !['set', 'notSet'].includes(operator)) {
-      // For empty equals filter, return condition that matches nothing
-      if (operator === 'equals') {
-        return this.databaseAdapter.buildBooleanLiteral(false)
-      }
-      return null
-    }
-
-    const value = filteredValues[0]
-    
-    switch (operator) {
-      case 'equals':
-        if (filteredValues.length > 1) {
-          // For time-type fields, normalize all values
-          if (field?.type === 'time') {
-            const normalizedValues = filteredValues.map(v => this.normalizeDate(v) || v)
-            return inArray(fieldExpr as AnyColumn, normalizedValues)
-          }
-          return inArray(fieldExpr as AnyColumn, filteredValues)
-        } else if (filteredValues.length === 1) {
-          // For time-type fields, normalize the single value
-          const finalValue = field?.type === 'time' ? this.normalizeDate(value) || value : value
-          return eq(fieldExpr as AnyColumn, finalValue)
-        }
-        return this.databaseAdapter.buildBooleanLiteral(false)
-      case 'notEquals':
-        if (filteredValues.length > 1) {
-          return notInArray(fieldExpr as AnyColumn, filteredValues)
-        } else if (filteredValues.length === 1) {
-          return ne(fieldExpr as AnyColumn, value)
-        }
-        return null
-      case 'contains':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'contains', value)
-      case 'notContains':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notContains', value)
-      case 'startsWith':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'startsWith', value)
-      case 'endsWith':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'endsWith', value)
-      case 'gt':
-        return gt(fieldExpr as AnyColumn, value)
-      case 'gte':
-        return gte(fieldExpr as AnyColumn, value)
-      case 'lt':
-        return lt(fieldExpr as AnyColumn, value)
-      case 'lte':
-        return lte(fieldExpr as AnyColumn, value)
-      case 'set':
-        return isNotNull(fieldExpr as AnyColumn)
-      case 'notSet':
-        return isNull(fieldExpr as AnyColumn)
-      case 'inDateRange':
-        if (filteredValues.length >= 2) {
-          const startDate = this.normalizeDate(filteredValues[0])
-          let endDate = this.normalizeDate(filteredValues[1])
-
-          if (startDate && endDate) {
-            // For date-only strings in original values, treat end date as end-of-day
-            // Check original values array (before filtering/conversion)
-            const originalEndValue = values[1]
-            if (typeof originalEndValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(originalEndValue.trim())) {
-              const endDateObj = typeof endDate === 'number'
-                ? new Date(endDate * (this.databaseAdapter.getEngineType() === 'sqlite' ? 1000 : 1))
-                : new Date(endDate)
-              const endOfDay = new Date(endDateObj)
-              endOfDay.setUTCHours(23, 59, 59, 999)
-              if (this.databaseAdapter.isTimestampInteger()) {
-                endDate = this.databaseAdapter.getEngineType() === 'sqlite'
-                  ? Math.floor(endOfDay.getTime() / 1000)
-                  : endOfDay.getTime()
-              } else {
-                // PostgreSQL and MySQL need ISO strings
-                endDate = endOfDay.toISOString()
-              }
-            }
-
-            return and(
-              gte(fieldExpr as AnyColumn, startDate),
-              lte(fieldExpr as AnyColumn, endDate)
-            ) as SQL
-          }
-        }
-        return null
-      case 'beforeDate': {
-        const beforeValue = this.normalizeDate(value)
-        if (beforeValue) {          
-          return lt(fieldExpr as AnyColumn, beforeValue)
-        }
-        return null
-      }
-      case 'afterDate': {
-        const afterValue = this.normalizeDate(value)
-        if (afterValue) {          
-          return gt(fieldExpr as AnyColumn, afterValue)
-        }
-        return null
-      }
-      case 'between':
-        if (filteredValues.length >= 2) {
-          return and(
-            gte(fieldExpr as AnyColumn, filteredValues[0]),
-            lte(fieldExpr as AnyColumn, filteredValues[1])
-          ) as SQL
-        }
-        return null
-      case 'notBetween':
-        if (filteredValues.length >= 2) {
-          return or(
-            lt(fieldExpr as AnyColumn, filteredValues[0]),
-            gt(fieldExpr as AnyColumn, filteredValues[1])
-          ) as SQL
-        }
-        return null
-      case 'in':
-        if (filteredValues.length > 0) {
-          return inArray(fieldExpr as AnyColumn, filteredValues)
-        }
-        return null
-      case 'notIn':
-        if (filteredValues.length > 0) {
-          return notInArray(fieldExpr as AnyColumn, filteredValues)
-        }
-        return null
-      case 'like':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'like', value)
-      case 'notLike':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notLike', value)
-      case 'ilike':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'ilike', value)
-      case 'regex':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'regex', value)
-      case 'notRegex':
-        return this.databaseAdapter.buildStringCondition(fieldExpr, 'notRegex', value)
-      case 'isEmpty':
-        return or(
-          isNull(fieldExpr as AnyColumn),
-          eq(fieldExpr as AnyColumn, '')
-        ) as SQL
-      case 'isNotEmpty':
-        return and(
-          isNotNull(fieldExpr as AnyColumn),
-          ne(fieldExpr as AnyColumn, '')
-        ) as SQL
-      // PostgreSQL array operators - silent no-op for other databases
-      // These use Drizzle's built-in array operator functions
-      case 'arrayContains':
-        if (this.databaseAdapter.getEngineType() === 'postgres') {
-          return drizzleArrayContains(fieldExpr as AnyColumn, filteredValues)
-        }
-        return null
-      case 'arrayOverlaps':
-        if (this.databaseAdapter.getEngineType() === 'postgres') {
-          return drizzleArrayOverlaps(fieldExpr as AnyColumn, filteredValues)
-        }
-        return null
-      case 'arrayContained':
-        if (this.databaseAdapter.getEngineType() === 'postgres') {
-          return drizzleArrayContained(fieldExpr as AnyColumn, filteredValues)
-        }
-        return null
-      default:
-        return null
-    }
+    return this.filterBuilder.buildFilterCondition(fieldExpr, operator, values, field, dateRange)
   }
 
   /**
    * Build date range condition for time dimensions
+   * Delegates to DateTimeBuilder
    */
   buildDateRangeCondition(
     fieldExpr: AnyColumn | SQL,
     dateRange: string | string[]
   ): SQL | null {
-    if (!dateRange) return null
-
-    // Handle array date range first
-    if (Array.isArray(dateRange) && dateRange.length >= 2) {
-      const startDate = this.normalizeDate(dateRange[0])
-      let endDate = this.normalizeDate(dateRange[1])
-
-      if (!startDate || !endDate) return null
-
-      // For date-only strings, treat end date as end-of-day (23:59:59.999)
-      // to include all records on that day
-      if (typeof dateRange[1] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateRange[1].trim())) {
-        const endDateObj = typeof endDate === 'number'
-          ? new Date(endDate * (this.databaseAdapter.getEngineType() === 'sqlite' ? 1000 : 1))
-          : new Date(endDate)
-        const endOfDay = new Date(endDateObj)
-        endOfDay.setUTCHours(23, 59, 59, 999)
-        if (this.databaseAdapter.isTimestampInteger()) {
-          endDate = this.databaseAdapter.getEngineType() === 'sqlite'
-            ? Math.floor(endOfDay.getTime() / 1000)
-            : endOfDay.getTime()
-        } else {
-          // PostgreSQL and MySQL need ISO strings
-          endDate = endOfDay.toISOString()
-        }
-      }
-
-      return and(
-        gte(fieldExpr as AnyColumn, startDate),
-        lte(fieldExpr as AnyColumn, endDate)
-      ) as SQL
-    }
-
-    // Handle string date range
-    if (typeof dateRange === 'string') {
-      // Handle relative date expressions
-      const relativeDates = this.parseRelativeDateRange(dateRange)
-      if (relativeDates) {
-        // Convert Date objects to appropriate format for the database
-        let start: string | number
-        let end: string | number
-
-        if (this.databaseAdapter.isTimestampInteger()) {
-          if (this.databaseAdapter.getEngineType() === 'sqlite') {
-            start = Math.floor(relativeDates.start.getTime() / 1000)
-            end = Math.floor(relativeDates.end.getTime() / 1000)
-          } else {
-            start = relativeDates.start.getTime()
-            end = relativeDates.end.getTime()
-          }
-        } else {
-          // PostgreSQL and MySQL need ISO strings
-          start = relativeDates.start.toISOString()
-          end = relativeDates.end.toISOString()
-        }
-
-        return and(
-          gte(fieldExpr as AnyColumn, start),
-          lte(fieldExpr as AnyColumn, end)
-        ) as SQL
-      }
-
-      // Handle absolute date (single date)
-      const normalizedDate = this.normalizeDate(dateRange)
-      if (!normalizedDate) return null
-
-      // For single date, create range for the whole day
-      // normalizedDate might be a timestamp (number) or ISO string depending on database
-      const dateObj = typeof normalizedDate === 'number'
-        ? new Date(normalizedDate * (this.databaseAdapter.getEngineType() === 'sqlite' ? 1000 : 1))
-        : new Date(normalizedDate)
-      const startOfDay = new Date(dateObj)
-      startOfDay.setUTCHours(0, 0, 0, 0)  // Ensure we start at midnight UTC
-      const endOfDay = new Date(dateObj)
-      endOfDay.setUTCHours(23, 59, 59, 999)  // Ensure we end at 11:59:59.999 UTC
-
-      // Convert to appropriate format for the database
-      let startValue: string | number
-      let endValue: string | number
-
-      if (this.databaseAdapter.isTimestampInteger()) {
-        if (this.databaseAdapter.getEngineType() === 'sqlite') {
-          startValue = Math.floor(startOfDay.getTime() / 1000)
-          endValue = Math.floor(endOfDay.getTime() / 1000)
-        } else {
-          startValue = startOfDay.getTime()
-          endValue = endOfDay.getTime()
-        }
-      } else {
-        // PostgreSQL and MySQL need ISO strings
-        startValue = startOfDay.toISOString()
-        endValue = endOfDay.toISOString()
-      }
-
-      return and(
-        gte(fieldExpr as AnyColumn, startValue),
-        lte(fieldExpr as AnyColumn, endValue)
-      ) as SQL
-    }
-
-    return null
-  }
-
-  /**
-   * Parse relative date range expressions like "today", "yesterday", "last 7 days", "this month", etc.
-   * Handles all 14 DATE_RANGE_OPTIONS from the client
-   */
-  private parseRelativeDateRange(dateRange: string): { start: Date; end: Date } | null {
-    const now = new Date()
-    const lowerRange = dateRange.toLowerCase().trim()
-    
-    // Extract UTC date components for consistent calculations
-    const utcYear = now.getUTCFullYear()
-    const utcMonth = now.getUTCMonth()
-    const utcDate = now.getUTCDate()
-    const utcDay = now.getUTCDay()
-
-    // Handle "today"
-    if (lowerRange === 'today') {
-      const start = new Date(now)
-      start.setUTCHours(0, 0, 0, 0)
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "yesterday"
-    if (lowerRange === 'yesterday') {
-      const start = new Date(now)
-      start.setUTCDate(utcDate - 1)
-      start.setUTCHours(0, 0, 0, 0)
-      const end = new Date(now)
-      end.setUTCDate(utcDate - 1)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "this week" (Monday to Sunday)
-    if (lowerRange === 'this week') {
-      const mondayOffset = utcDay === 0 ? -6 : 1 - utcDay // If Sunday, go back 6 days, otherwise go to Monday
-      const start = new Date(now)
-      start.setUTCDate(utcDate + mondayOffset)
-      start.setUTCHours(0, 0, 0, 0)
-      
-      const end = new Date(start)
-      end.setUTCDate(start.getUTCDate() + 6) // Sunday
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "this month"
-    if (lowerRange === 'this month') {
-      const start = new Date(Date.UTC(utcYear, utcMonth, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(utcYear, utcMonth + 1, 0, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "this quarter"
-    if (lowerRange === 'this quarter') {
-      const quarter = Math.floor(utcMonth / 3)
-      const start = new Date(Date.UTC(utcYear, quarter * 3, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(utcYear, quarter * 3 + 3, 0, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "this year"
-    if (lowerRange === 'this year') {
-      const start = new Date(Date.UTC(utcYear, 0, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(utcYear, 11, 31, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "last N days" pattern
-    const lastDaysMatch = lowerRange.match(/^last\s+(\d+)\s+days?$/)
-    if (lastDaysMatch) {
-      const days = parseInt(lastDaysMatch[1], 10)
-      const start = new Date(now)
-      start.setUTCDate(utcDate - days + 1) // Include today in the count
-      start.setUTCHours(0, 0, 0, 0)
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last N weeks" pattern
-    const lastWeeksMatch = lowerRange.match(/^last\s+(\d+)\s+weeks?$/)
-    if (lastWeeksMatch) {
-      const weeks = parseInt(lastWeeksMatch[1], 10)
-      const days = weeks * 7
-      const start = new Date(now)
-      start.setUTCDate(utcDate - days + 1) // Include today in the count
-      start.setUTCHours(0, 0, 0, 0)
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last week" (previous Monday to Sunday)
-    if (lowerRange === 'last week') {
-      const lastMondayOffset = utcDay === 0 ? -13 : -6 - utcDay // Go to previous Monday
-      const start = new Date(now)
-      start.setUTCDate(utcDate + lastMondayOffset)
-      start.setUTCHours(0, 0, 0, 0)
-      
-      const end = new Date(start)
-      end.setUTCDate(start.getUTCDate() + 6) // Previous Sunday
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last month"
-    if (lowerRange === 'last month') {
-      const start = new Date(Date.UTC(utcYear, utcMonth - 1, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(utcYear, utcMonth, 0, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "last quarter"
-    if (lowerRange === 'last quarter') {
-      const currentQuarter = Math.floor(utcMonth / 3)
-      const lastQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1
-      const year = currentQuarter === 0 ? utcYear - 1 : utcYear
-      const start = new Date(Date.UTC(year, lastQuarter * 3, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(year, lastQuarter * 3 + 3, 0, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "last year"
-    if (lowerRange === 'last year') {
-      const start = new Date(Date.UTC(utcYear - 1, 0, 1, 0, 0, 0, 0))
-      const end = new Date(Date.UTC(utcYear - 1, 11, 31, 23, 59, 59, 999))
-      return { start, end }
-    }
-
-    // Handle "last 12 months" (rolling 12 months)
-    if (lowerRange === 'last 12 months') {
-      const start = new Date(Date.UTC(utcYear, utcMonth - 11, 1, 0, 0, 0, 0))
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last N months" pattern (legacy support)
-    const lastMonthsMatch = lowerRange.match(/^last\s+(\d+)\s+months?$/)
-    if (lastMonthsMatch) {
-      const months = parseInt(lastMonthsMatch[1], 10)
-      const start = new Date(Date.UTC(utcYear, utcMonth - months + 1, 1, 0, 0, 0, 0))
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    // Handle "last N years" pattern (legacy support)
-    const lastYearsMatch = lowerRange.match(/^last\s+(\d+)\s+years?$/)
-    if (lastYearsMatch) {
-      const years = parseInt(lastYearsMatch[1], 10)
-      const start = new Date(Date.UTC(utcYear - years, 0, 1, 0, 0, 0, 0))
-      const end = new Date(now)
-      end.setUTCHours(23, 59, 59, 999)
-      return { start, end }
-    }
-
-    return null
-  }
-
-  /**
-   * Normalize date values to handle strings, numbers, and Date objects
-   * Returns ISO string for PostgreSQL/MySQL, Unix timestamp for SQLite, or null
-   * Ensures dates are in the correct format for each database engine
-   */
-  private normalizeDate(value: any): string | number | null {
-    if (!value) return null
-
-    // If it's already a Date object, validate and convert to appropriate format
-    if (value instanceof Date) {
-      if (isNaN(value.getTime())) return null
-      // Return timestamp for integer-based databases, ISO string for others
-      // SQLite stores timestamps as Unix seconds (not milliseconds)
-      if (this.databaseAdapter.isTimestampInteger()) {
-        return this.databaseAdapter.getEngineType() === 'sqlite'
-          ? Math.floor(value.getTime() / 1000)
-          : value.getTime()
-      }
-      // PostgreSQL and MySQL need ISO strings, not Date objects
-      return value.toISOString()
-    }
-
-    // If it's a number, assume it's a timestamp
-    if (typeof value === 'number') {
-      // If it's a reasonable Unix timestamp in seconds (10 digits), convert to milliseconds
-      // Otherwise assume it's already in milliseconds
-      const timestamp = value < 10000000000 ? value * 1000 : value
-      const date = new Date(timestamp)
-      if (isNaN(date.getTime())) return null
-      // Return timestamp for integer-based databases, ISO string for others
-      // SQLite stores timestamps as Unix seconds (not milliseconds)
-      if (this.databaseAdapter.isTimestampInteger()) {
-        return this.databaseAdapter.getEngineType() === 'sqlite'
-          ? Math.floor(timestamp / 1000)
-          : timestamp
-      }
-      // PostgreSQL and MySQL need ISO strings, not Date objects
-      return date.toISOString()
-    }
-
-    // If it's a string, try to parse it as a Date
-    if (typeof value === 'string') {
-      // Check if it's a date-only string (YYYY-MM-DD format)
-      // Parse as UTC midnight to avoid timezone/DST issues
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-        const parsed = new Date(value + 'T00:00:00Z')
-        if (isNaN(parsed.getTime())) return null
-        // Return timestamp for integer-based databases, ISO string for others
-        // SQLite stores timestamps as Unix seconds (not milliseconds)
-        if (this.databaseAdapter.isTimestampInteger()) {
-          return this.databaseAdapter.getEngineType() === 'sqlite'
-            ? Math.floor(parsed.getTime() / 1000)
-            : parsed.getTime()
-        }
-        // PostgreSQL and MySQL need ISO strings, not Date objects
-        return parsed.toISOString()
-      }
-
-      // For other formats (with time components), use default parsing
-      const parsed = new Date(value)
-      if (isNaN(parsed.getTime())) return null
-      // Return timestamp for integer-based databases, ISO string for others
-      // SQLite stores timestamps as Unix seconds (not milliseconds)
-      if (this.databaseAdapter.isTimestampInteger()) {
-        return this.databaseAdapter.getEngineType() === 'sqlite'
-          ? Math.floor(parsed.getTime() / 1000)
-          : parsed.getTime()
-      }
-      // PostgreSQL and MySQL need ISO strings, not Date objects
-      return parsed.toISOString()
-    }
-
-    // Try to parse any other type as date
-    const parsed = new Date(value)
-    if (isNaN(parsed.getTime())) return null
-    // Return timestamp for integer-based databases, ISO string for others
-    // SQLite stores timestamps as Unix seconds (not milliseconds)
-    if (this.databaseAdapter.isTimestampInteger()) {
-      return this.databaseAdapter.getEngineType() === 'sqlite'
-        ? Math.floor(parsed.getTime() / 1000)
-        : parsed.getTime()
-    }
-    // PostgreSQL and MySQL need ISO strings, not Date objects
-    return parsed.toISOString()
-  }
-
-  /**
-   * Check if a measure type is a window function
-   */
-  private isWindowFunctionType(measureType: string): boolean {
-    const windowTypes = ['lag', 'lead', 'rank', 'denseRank', 'rowNumber',
-                         'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum']
-    return windowTypes.includes(measureType)
-  }
-
-  /**
-   * Check if a measure type is an aggregate function (requires GROUP BY)
-   */
-  private isAggregateFunctionType(measureType: string): boolean {
-    const aggTypes = ['count', 'countDistinct', 'sum', 'avg', 'min', 'max',
-                      'stddev', 'stddevSamp', 'variance', 'varianceSamp',
-                      'median', 'p95', 'p99', 'percentile']
-    return aggTypes.includes(measureType)
+    return this.dateTimeBuilder.buildDateRangeCondition(fieldExpr, dateRange)
   }
 
   /**
    * Build GROUP BY fields from dimensions and time dimensions
-   * Works for both single and multi-cube queries
-   *
-   * NOTE: GROUP BY is only added when there are AGGREGATE measures.
-   * Window functions do not require GROUP BY and operate on individual rows.
+   * Delegates to GroupByBuilder
    */
   buildGroupByFields(
     cubes: Map<string, Cube> | Cube,
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan?: any // Optional QueryPlan for CTE handling
+    queryPlan?: any
   ): (SQL | AnyColumn)[] {
-    const groupFields: (SQL | AnyColumn)[] = []
-
-    // Convert single cube to map for consistent handling
-    const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
-
-    // Only add GROUP BY if we have AGGREGATE measures (not window functions)
-    // Window functions operate on individual rows and don't need GROUP BY
-    let hasAggregateMeasures = false
-    let hasWindowMeasures = false
-
-    for (const measureName of query.measures || []) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = cubeMap.get(cubeName)
-      if (cube && cube.measures && cube.measures[fieldName]) {
-        const measure = cube.measures[fieldName]
-        if (this.isAggregateFunctionType(measure.type) || measure.type === 'calculated') {
-          hasAggregateMeasures = true
-        }
-        if (this.isWindowFunctionType(measure.type)) {
-          hasWindowMeasures = true
-        }
-      }
-    }
-
-    // Warn about mixed aggregate + window queries (not fully supported yet)
-    if (hasAggregateMeasures && hasWindowMeasures) {
-      console.warn(
-        '[drizzle-cube] Warning: Mixing aggregate measures (count, sum, avg, etc.) with window functions ' +
-        '(lag, lead, rank, etc.) in the same query may produce incorrect results. ' +
-        'Window functions will operate on raw rows before aggregation. ' +
-        'Consider separating these into different queries or using CTE pattern.'
-      )
-    }
-
-    if (!hasAggregateMeasures) {
-      return []
-    }
-    
-    // Add dimensions to GROUP BY
-    if (query.dimensions) {
-      for (const dimensionName of query.dimensions) {
-        const [cubeName, fieldName] = dimensionName.split('.')
-        const cube = cubeMap.get(cubeName)
-        if (cube && cube.dimensions && cube.dimensions[fieldName]) {
-          
-          // Check if this dimension is from a CTE cube
-          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
-          
-          if (isFromCTE) {
-            // For dimensions from CTE cubes, check if this is a join key that maps to the main table
-            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
-            const matchingJoinKey = cteInfo.joinKeys.find((jk: JoinKeyInfo) => jk.targetColumn === fieldName)
-            
-            if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {
-              // Use the source column from the main table for GROUP BY instead of the CTE dimension
-              groupFields.push(matchingJoinKey.sourceColumnObj)
-            } else {
-              // This dimension from CTE cube is not a join key - we need to reference it from the CTE
-              // But only if it was included in the CTE selections
-              const cteDimensionExpr = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
-              groupFields.push(cteDimensionExpr)
-            }
-          } else {
-            // Regular dimension from non-CTE cube
-            const dimension = cube.dimensions[fieldName]
-            const dimensionExpr = resolveSqlExpression(dimension.sql, context)
-            groupFields.push(dimensionExpr)
-          }
-        }
-      }
-    }
-    
-    // Add time dimensions to GROUP BY
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [cubeName, fieldName] = timeDim.dimension.split('.')
-        const cube = cubeMap.get(cubeName)
-        if (cube && cube.dimensions && cube.dimensions[fieldName]) {
-          
-          // Check if this time dimension is from a CTE cube
-          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
-          
-          if (isFromCTE) {
-            // For time dimensions from CTE cubes, check if this is a join key that maps to the main table
-            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
-            const matchingJoinKey = cteInfo.joinKeys.find((jk: JoinKeyInfo) => jk.targetColumn === fieldName)
-            
-            if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {
-              // Use the source column from the main table for GROUP BY with time granularity
-              // const dimension = cube.dimensions[fieldName] // Unused
-              const timeExpr = this.buildTimeDimensionExpression(
-                matchingJoinKey.sourceColumnObj, 
-                timeDim.granularity, 
-                context
-              )
-              groupFields.push(timeExpr)
-            } else {
-              // This time dimension from CTE cube is not a join key - reference it from the CTE
-              // The CTE already has the time dimension expression applied, so just reference the column
-              const cteDimensionExpr = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
-              groupFields.push(cteDimensionExpr)
-            }
-          } else {
-            // Regular time dimension from non-CTE cube
-            const dimension = cube.dimensions[fieldName]
-            const timeExpr = this.buildTimeDimensionExpression(
-              dimension.sql, 
-              timeDim.granularity, 
-              context
-            )
-            groupFields.push(timeExpr)
-          }
-        }
-      }
-    }
-    
-    // Note: We used to add join keys from CTEs to GROUP BY, but this is unnecessary
-    // Join keys are only needed for the JOIN condition, not for grouping
-    // The GROUP BY should only contain columns that are actually selected or used for aggregation
-    
-    return groupFields
+    return this.groupByBuilder.buildGroupByFields(cubes, query, context, queryPlan)
   }
 
   /**
@@ -1753,63 +587,13 @@ export class QueryBuilder {
   /**
    * Build a logical filter (AND/OR) - used by executor for cache preloading
    * This handles nested filter structures and builds combined SQL
+   * Delegates to FilterBuilder
    */
   buildLogicalFilter(
     filter: Filter,
     cubes: Map<string, Cube>,
     context: QueryContext
   ): SQL | null {
-    if ('and' in filter && filter.and) {
-      const conditions = filter.and
-        .map(f => this.buildSingleFilter(f, cubes, context))
-        .filter((c): c is SQL => c !== null)
-      return conditions.length > 0
-        ? (conditions.length === 1 ? conditions[0] : and(...conditions) as SQL)
-        : null
-    }
-
-    if ('or' in filter && filter.or) {
-      const conditions = filter.or
-        .map(f => this.buildSingleFilter(f, cubes, context))
-        .filter((c): c is SQL => c !== null)
-      return conditions.length > 0
-        ? (conditions.length === 1 ? conditions[0] : or(...conditions) as SQL)
-        : null
-    }
-
-    return null
-  }
-
-  /**
-   * Build SQL for a single filter condition (simple or logical)
-   * Used for cache preloading to build filters independently of query context
-   */
-  private buildSingleFilter(
-    filter: Filter,
-    cubes: Map<string, Cube>,
-    context: QueryContext
-  ): SQL | null {
-    // Handle logical filters recursively
-    if ('and' in filter || 'or' in filter) {
-      return this.buildLogicalFilter(filter, cubes, context)
-    }
-
-    // Simple filter
-    const fc = filter as FilterCondition
-    const [cubeName, fieldName] = fc.member.split('.')
-    const cube = cubes.get(cubeName)
-    if (!cube) return null
-
-    const dimension = cube.dimensions?.[fieldName]
-    if (!dimension) return null
-
-    const fieldExpr = resolveSqlExpression(dimension.sql, context)
-    return this.buildFilterCondition(
-      fieldExpr,
-      fc.operator,
-      fc.values,
-      dimension,
-      fc.dateRange
-    )
+    return this.filterBuilder.buildLogicalFilter(filter, cubes, context)
   }
 }
