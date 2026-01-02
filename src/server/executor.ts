@@ -160,7 +160,10 @@ export class QueryExecutor {
    */
   private validateSecurityContext(queryPlan: QueryPlan, context: QueryContext): void {
     // Only run validation in development or when explicitly enabled
-    if (process.env.NODE_ENV !== 'development' && !process.env.DRIZZLE_CUBE_WARN_SECURITY) {
+    // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
+    const nodeEnv = typeof process !== 'undefined' ? process.env?.NODE_ENV : undefined
+    const warnSecurity = typeof process !== 'undefined' ? process.env?.DRIZZLE_CUBE_WARN_SECURITY : undefined
+    if (nodeEnv !== 'development' && !warnSecurity) {
       return
     }
 
