@@ -142,22 +142,22 @@ function App() {
 
 ## Key Features
 
-🔒 **SQL Injection Proof** - All queries use Drizzle's parameterized SQL
-🛡️ **Type Safe** - Full TypeScript inference from your database schema
-⚡ **Performance** - Prepared statements and query optimization
-🧩 **Cube.js Compatible** - Works with existing Cube.js React components
-🎯 **Zero Config** - Infer cube definitions from your Drizzle schema
-🎨 **Themeable** - Built-in light/dark themes with CSS variables
+ - **SQL Injection Proof** - All queries use Drizzle's parameterized SQL
+ - **Type Safe** - Full TypeScript inference from your database schema
+ - **Performance** - Prepared statements and query optimization
+ - **Cube.js Compatible** - Works with existing Cube.js React components
+ - **Zero Config** - Infer cube definitions from your Drizzle schema
+ - **Themeable** - Built-in light/dark themes with CSS variables
 
 
 ## Supported Features
 
-✅ **Multiple Database Types** - PostgreSQL, MySQL
-✅ **Framework Adapters** - Hono, Express, Fastify, Next.js
-✅ **Full Type Safety** - Complete TypeScript inference
-✅ **All SQL Features** - Joins, CTEs, subqueries, window functions
-✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
-✅ **Scalable Theming** - Built-in themes (light/dark/neon) with semantic CSS variables
+ - ✅ **Multiple Database Types** - PostgreSQL, MySQL
+ - ✅ **Framework Adapters** - Hono, Express, Fastify, Next.js
+ - ✅ **Full Type Safety** - Complete TypeScript inference
+ - ✅ **All SQL Features** - Joins, CTEs, subqueries, window functions
+ - ✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
+ - ✅ **Scalable Theming** - Built-in themes (light/dark/neon) with semantic CSS variables
 
 ## Theming
 
@@ -165,9 +165,9 @@ Drizzle Cube features a **scalable semantic theming system** with three built-in
 
 ### Built-in Themes
 
-🌞 **Light** - Clean white backgrounds with blue accents
-🌙 **Dark** - Slate grays with lighter blue highlights
-⚡ **Neon** - Bold fluorescent colors with deep purple backgrounds
+ - 🌞 **Light** - Clean white backgrounds with blue accents
+ - 🌙 **Dark** - Slate grays with lighter blue highlights
+ - ⚡ **Neon** - Bold fluorescent colors with deep purple backgrounds (to show flexibility!)
 
 ### Quick Start
 
@@ -238,9 +238,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ## Roadmap
 
-- 🔄 **Pre-aggregations** - Materialized view support
-- 🔄 **Real-time Updates** - WebSocket support
-- 🔄 **Query Caching** - Redis integration
+To view or contribute to the roadmap please visit the [Github Project](https://github.com/users/cliftonc/projects/2)
 
 ## License
 
