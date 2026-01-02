@@ -221,64 +221,24 @@ export class QueryPlanner {
   /**
    * Choose the primary cube based on query analysis
    * Uses a consistent strategy to avoid measure order dependencies
+   *
+   * Delegates to analyzePrimaryCubeSelection() for the actual logic,
+   * ensuring a single source of truth for primary cube selection.
    */
   choosePrimaryCube(cubeNames: string[], query: SemanticQuery, cubes?: Map<string, Cube>): string {
-    // Strategy: Prefer the cube that has dimensions in the query
-    // This represents the "grain" of the analysis
-    if (query.dimensions && query.dimensions.length > 0 && cubes) {
-      const dimensionCubes = query.dimensions.map(d => d.split('.')[0])
-      
-      // Find the cube with the most dimensions in the query
-      const cubeDimensionCount = new Map<string, number>()
-      for (const cube of dimensionCubes) {
-        cubeDimensionCount.set(cube, (cubeDimensionCount.get(cube) || 0) + 1)
-      }
-      
-      if (cubeDimensionCount.size > 0) {
-        // Return the cube with the most dimensions, but verify connectivity first
-        const maxDimensions = Math.max(...cubeDimensionCount.values())
-        const primaryCandidates = [...cubeDimensionCount.entries()]
-          .filter(([, count]) => count === maxDimensions)
-          .map(([name]) => name)
-          .sort()
-          
-        // Check if the primary candidate can reach all other required cubes
-        const resolver = this.getResolver(cubes)
-        for (const candidate of primaryCandidates) {
-          if (resolver.canReachAll(candidate, cubeNames)) {
-            return candidate
-          }
-        }
-      }
+    // For single cube, return immediately
+    if (cubeNames.length === 1) {
+      return cubeNames[0]
     }
-    
-    // Fallback: Choose cube with most connectivity that can reach all other cubes
-    if (cubes) {
-      const resolver = this.getResolver(cubes)
-      const connectivityScores = new Map<string, number>()
 
-      for (const cubeName of cubeNames) {
-        if (resolver.canReachAll(cubeName, cubeNames)) {
-          const cube = cubes.get(cubeName)
-          const joinCount = cube?.joins ? Object.keys(cube.joins).length : 0
-          connectivityScores.set(cubeName, joinCount)
-        }
-      }
-      
-      if (connectivityScores.size > 0) {
-        // Find cube with highest connectivity, break ties alphabetically
-        const maxConnectivity = Math.max(...connectivityScores.values())
-        const mostConnectedCubes = [...connectivityScores.entries()]
-          .filter(([, count]) => count === maxConnectivity)
-          .map(([name]) => name)
-          .sort()
-          
-        return mostConnectedCubes[0]
-      }
+    // Without cubes map, fall back to alphabetical
+    if (!cubes) {
+      return [...cubeNames].sort()[0]
     }
-    
-    // Final fallback: alphabetical order for consistency
-    return [...cubeNames].sort()[0]
+
+    // Use the detailed analysis method and extract just the selected cube
+    const analysis = this.analyzePrimaryCubeSelection(cubeNames, query, cubes)
+    return analysis.selectedCube
   }
 
   /**
@@ -914,95 +874,72 @@ export class QueryPlanner {
 
   /**
    * Analyze the join path between two cubes with detailed step information
+   *
+   * Uses JoinPathResolver.findPath() for the actual path finding,
+   * then converts the result to human-readable analysis format.
    */
   private analyzeJoinPath(
     cubes: Map<string, Cube>,
     fromCube: string,
     toCube: string
   ): JoinPathAnalysis {
-    const visitedCubes: string[] = [fromCube]
+    // Use the resolver for BFS path finding (cached, optimized)
+    const resolver = this.getResolver(cubes)
+    const internalPath = resolver.findPath(fromCube, toCube)
 
-    // BFS to find path with tracking
-    const queue: Array<{
-      cube: string
-      path: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }>
-    }> = [{ cube: fromCube, path: [] }]
-    const visited = new Set([fromCube])
-
-    while (queue.length > 0) {
-      const { cube: currentCube, path } = queue.shift()!
-      const cubeDefinition = cubes.get(currentCube)
-
-      if (!cubeDefinition?.joins) {
-        continue
-      }
-
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
-        const actualTargetName = resolvedTargetCube.name
-
-        if (visited.has(actualTargetName)) {
-          continue
-        }
-
-        visitedCubes.push(actualTargetName)
-        visited.add(actualTargetName)
-
-        const newPath = [...path, {
-          fromCube: currentCube,
-          toCube: actualTargetName,
-          joinDef: joinDef as CubeJoin
-        }]
-
-        if (actualTargetName === toCube) {
-          // Found the path - convert to analysis format
-          const pathSteps: JoinPathStep[] = newPath.map(step => {
-            const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
-
-            const joinColumns = step.joinDef.on.map(joinOn => ({
-              sourceColumn: joinOn.source.name,
-              targetColumn: joinOn.target.name
-            }))
-
-            const result: JoinPathStep = {
-              fromCube: step.fromCube,
-              toCube: step.toCube,
-              relationship: step.joinDef.relationship,
-              joinType,
-              joinColumns
-            }
-
-            // Add junction table info for belongsToMany
-            if (step.joinDef.relationship === 'belongsToMany' && step.joinDef.through) {
-              const through = step.joinDef.through
-              result.junctionTable = {
-                tableName: (through.table as any)[Symbol.for('drizzle:Name')] || 'junction_table',
-                sourceColumns: through.sourceKey.map(k => k.target.name),
-                targetColumns: through.targetKey.map(k => k.source.name)
-              }
-            }
-
-            return result
-          })
-
-          return {
-            targetCube: toCube,
-            pathFound: true,
-            path: pathSteps,
-            pathLength: pathSteps.length,
-            visitedCubes
-          }
-        }
-
-        queue.push({ cube: actualTargetName, path: newPath })
+    // Build visited cubes list from path
+    const visitedCubes = [fromCube]
+    if (internalPath) {
+      for (const step of internalPath) {
+        visitedCubes.push(step.toCube)
       }
     }
 
     // No path found
+    if (!internalPath || internalPath.length === 0) {
+      return {
+        targetCube: toCube,
+        pathFound: false,
+        error: `No join path found from '${fromCube}' to '${toCube}'. Ensure the target cube has a relationship defined (belongsTo, hasOne, hasMany, or belongsToMany).`,
+        visitedCubes
+      }
+    }
+
+    // Convert internal path to analysis format
+    const pathSteps: JoinPathStep[] = internalPath.map(step => {
+      const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+      const joinColumns = step.joinDef.on.map(joinOn => ({
+        sourceColumn: joinOn.source.name,
+        targetColumn: joinOn.target.name
+      }))
+
+      const result: JoinPathStep = {
+        fromCube: step.fromCube,
+        toCube: step.toCube,
+        relationship: step.joinDef.relationship,
+        joinType,
+        joinColumns
+      }
+
+      // Add junction table info for belongsToMany
+      if (step.joinDef.relationship === 'belongsToMany' && step.joinDef.through) {
+        const through = step.joinDef.through
+        result.junctionTable = {
+          tableName: (through.table as any)[Symbol.for('drizzle:Name')] || 'junction_table',
+          sourceColumns: through.sourceKey.map(k => k.target.name),
+          targetColumns: through.targetKey.map(k => k.source.name)
+        }
+      }
+
+      return result
+    })
+
     return {
       targetCube: toCube,
-      pathFound: false,
-      error: `No join path found from '${fromCube}' to '${toCube}'. Ensure the target cube has a relationship defined (belongsTo, hasOne, hasMany, or belongsToMany).`,
+      pathFound: true,
+      path: pathSteps,
+      pathLength: pathSteps.length,
       visitedCubes
     }
   }
