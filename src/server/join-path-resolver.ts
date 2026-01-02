@@ -25,11 +25,10 @@ export interface InternalJoinPathStep {
 
 /**
  * Cache entry for connectivity between cubes
+ * Simple cache without TTL since cube config is set once at startup
  */
 interface ConnectivityCacheEntry {
-  reachable: boolean
   path: InternalJoinPathStep[] | null
-  timestamp: number
 }
 
 /**
@@ -38,23 +37,12 @@ interface ConnectivityCacheEntry {
 export class JoinPathResolver {
   private cubes: Map<string, Cube>
   private connectivityCache: Map<string, ConnectivityCacheEntry> = new Map()
-  private cacheTTL: number
 
   /**
    * @param cubes Map of cube name to cube definition
-   * @param cacheTTL Cache time-to-live in milliseconds (default: 5 minutes)
    */
-  constructor(cubes: Map<string, Cube>, cacheTTL: number = 5 * 60 * 1000) {
+  constructor(cubes: Map<string, Cube>) {
     this.cubes = cubes
-    this.cacheTTL = cacheTTL
-  }
-
-  /**
-   * Update the cubes map (e.g., when cubes are registered)
-   */
-  updateCubes(cubes: Map<string, Cube>): void {
-    this.cubes = cubes
-    this.invalidateCache()
   }
 
   /**
@@ -220,28 +208,7 @@ export class JoinPathResolver {
     return reachable
   }
 
-  /**
-   * Invalidate the connectivity cache
-   * Call this when cube definitions change
-   */
-  invalidateCache(): void {
-    this.connectivityCache.clear()
-  }
-
-  /**
-   * Get cache statistics for monitoring
-   */
-  getCacheStats(): { size: number; hits: number; misses: number } {
-    return {
-      size: this.connectivityCache.size,
-      hits: this.cacheHits,
-      misses: this.cacheMisses
-    }
-  }
-
   // Private cache management
-  private cacheHits = 0
-  private cacheMisses = 0
 
   private getCacheKey(fromCube: string, toCube: string, excluded: Set<string>): string {
     const excludedStr = Array.from(excluded).sort().join(',')
@@ -251,26 +218,12 @@ export class JoinPathResolver {
   private getFromCache(key: string): InternalJoinPathStep[] | null | undefined {
     const entry = this.connectivityCache.get(key)
     if (!entry) {
-      this.cacheMisses++
       return undefined
     }
-
-    // Check if entry is expired
-    if (Date.now() - entry.timestamp > this.cacheTTL) {
-      this.connectivityCache.delete(key)
-      this.cacheMisses++
-      return undefined
-    }
-
-    this.cacheHits++
     return entry.path
   }
 
   private setInCache(key: string, path: InternalJoinPathStep[] | null): void {
-    this.connectivityCache.set(key, {
-      reachable: path !== null,
-      path,
-      timestamp: Date.now()
-    })
+    this.connectivityCache.set(key, { path })
   }
 }

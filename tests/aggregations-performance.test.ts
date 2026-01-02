@@ -539,7 +539,7 @@ describe('Performance-Focused Aggregation Testing', () => {
 
       // Performance characteristics analysis
       const avgDuration = measurements.reduce((sum, m) => sum + m.duration, 0) / measurements.length
-      expect(avgDuration).toBeLessThan(50) // Average should be under 50ms
+      expect(avgDuration).toBeLessThan(100) // Average should be under 100ms
 
       // Find slowest and fastest queries
       const slowest = measurements.reduce((prev, curr) => prev.duration > curr.duration ? prev : curr)

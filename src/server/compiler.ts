@@ -26,8 +26,6 @@ export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
   private dbExecutor?: DatabaseExecutor
   private metadataCache?: CubeMetadata[]
-  private metadataCacheTimestamp?: number
-  private readonly METADATA_CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
 
   constructor(options?: {
     drizzle?: DatabaseExecutor['db']
@@ -224,24 +222,18 @@ export class SemanticLayerCompiler {
   /**
    * Get metadata for all cubes (for API responses)
    * Uses caching to improve performance for repeated requests
+   * Cache is invalidated when cubes are modified (registerCube, removeCube, clearCubes)
    */
   getMetadata(): CubeMetadata[] {
-    const now = Date.now()
-    
-    // Check if cache is valid
-    if (this.metadataCache && this.metadataCacheTimestamp && 
-        (now - this.metadataCacheTimestamp) < this.METADATA_CACHE_TTL) {
+    // Return cached metadata if available
+    if (this.metadataCache) {
       return this.metadataCache
     }
-    
-    // Generate fresh metadata
-    const metadata = Array.from(this.cubes.values()).map(cube => this.generateCubeMetadata(cube))
-    
-    // Update cache
-    this.metadataCache = metadata
-    this.metadataCacheTimestamp = now
-    
-    return metadata
+
+    // Generate and cache metadata
+    this.metadataCache = Array.from(this.cubes.values()).map(cube => this.generateCubeMetadata(cube))
+
+    return this.metadataCache
   }
 
   /**
@@ -426,7 +418,6 @@ export class SemanticLayerCompiler {
    */
   private invalidateMetadataCache(): void {
     this.metadataCache = undefined
-    this.metadataCacheTimestamp = undefined
   }
 
   /**
