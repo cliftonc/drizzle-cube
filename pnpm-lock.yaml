@@ -175,8 +175,8 @@ importers:
         specifier: ^7.68.0
         version: 7.69.0(react@18.3.1)
       react-resizable:
-        specifier: ^3.0.5
-        version: 3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^3.1.3
+        version: 3.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       reactflow:
         specifier: ^11.11.4
         version: 11.11.4(@types/react@18.3.27)(immer@11.1.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -211,7 +211,7 @@ importers:
         specifier: ^4.0.0
         version: 4.0.16(@types/node@24.10.4)(@vitest/ui@4.0.16)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(tsx@4.21.0)
       zod:
-        specifier: ^4.3.4
+        specifier: ^4.0.0
         version: 4.3.4
 
 packages:
@@ -3452,8 +3452,8 @@ packages:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
 
-  react-resizable@3.1.1:
-    resolution: {integrity: sha512-lYxM0Av7XtFXXvvRuyup5RHHTjfb7070+NZQ1Peg1iDsel5F2ULukj1/eMKfysgwE9HbR165/ga1xl6/AhLEKQ==}
+  react-resizable@3.1.3:
+    resolution: {integrity: sha512-liJBNayhX7qA4tBJiBD321FDhJxgGTJ07uzH5zSORXoE8h7PyEZ8mLqmosST7ppf6C4zUsbd2gzDMmBCfFp9Lw==}
     peerDependencies:
       react: '>= 16.3'
       react-dom: '>= 16.3'
@@ -7202,7 +7202,7 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-draggable: 4.5.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-resizable: 3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-resizable: 3.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       resize-observer-polyfill: 1.5.1
 
   react-hook-form@7.69.0(react@18.3.1):
@@ -7232,7 +7232,7 @@ snapshots:
 
   react-refresh@0.18.0: {}
 
-  react-resizable@3.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-resizable@3.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       prop-types: 15.8.1
       react: 18.3.1
