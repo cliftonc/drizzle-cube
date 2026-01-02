@@ -23,7 +23,8 @@ import type {
 import {
   resolveCubeReference,
   getJoinType,
-  expandBelongsToManyJoin
+  expandBelongsToManyJoin,
+  isolateSqlExpression
 } from './cube-utils'
 
 import { eq, and, sql, type SQL } from 'drizzle-orm'
@@ -374,23 +375,25 @@ export class QueryPlanner {
     targetAlias: string | null
   ): SQL {
     const conditions: SQL[] = []
-    
+
     // Process array of join conditions
     for (const joinOn of joinDef.on) {
       // Use actual column objects instead of aliases for regular table joins
-      const sourceCol = sourceAlias 
+      // Apply SQL isolation when using raw column objects to prevent mutation issues
+      // (See CLAUDE.md SQL Object Isolation Pattern)
+      const sourceCol = sourceAlias
         ? sql`${sql.identifier(sourceAlias)}.${sql.identifier(joinOn.source.name)}`
-        : joinOn.source
-        
+        : isolateSqlExpression(joinOn.source)
+
       const targetCol = targetAlias
         ? sql`${sql.identifier(targetAlias)}.${sql.identifier(joinOn.target.name)}`
-        : joinOn.target
-      
+        : isolateSqlExpression(joinOn.target)
+
       // Use custom comparator or default to eq
       const comparator = joinOn.as || eq
       conditions.push(comparator(sourceCol as any, targetCol as any))
     }
-    
+
     return and(...conditions)!
   }
 
@@ -659,12 +662,13 @@ export class QueryPlanner {
             result.push({
               sourceCube: filterCube,
               filters: allFilters,
+              // Map all join keys for composite key support
               // source = filterCube PK (e.g., employees.id)
               // target = cteCube FK (e.g., productivity.employeeId)
-              joinCondition: {
-                source: joinDef.on[0].source,
-                target: joinDef.on[0].target
-              }
+              joinConditions: joinDef.on.map(key => ({
+                source: key.source,
+                target: key.target
+              }))
             })
           }
         }
@@ -697,12 +701,18 @@ export class QueryPlanner {
 
   /**
    * Extract filters for a specific cube from the filter array
+   *
+   * Logic for preserving filter semantics:
+   * - AND: Safe to extract only matching branches (AND of fewer conditions is more permissive)
+   * - OR: Must include ALL branches or skip entirely (partial OR changes semantics)
+   *       If any branch belongs to another cube, skip the entire OR to be safe
+   *       since we can't evaluate the other cube's conditions
    */
   private extractFiltersForCube(filters: Filter[], targetCubeName: string): Filter[] {
     const result: Filter[] = []
 
     for (const filter of filters) {
-      // Handle logical filters (AND/OR) - recursively extract and reconstruct
+      // Handle AND filters - safe to extract only matching branches
       if ('and' in filter) {
         const subFilters = this.extractFiltersForCube((filter as any).and || [], targetCubeName)
         if (subFilters.length > 0) {
@@ -710,11 +720,27 @@ export class QueryPlanner {
         }
         continue
       }
+
+      // Handle OR filters - must check if ALL branches belong to target cube
+      // If any branch belongs to another cube, skip the entire OR
       if ('or' in filter) {
-        const subFilters = this.extractFiltersForCube((filter as any).or || [], targetCubeName)
-        if (subFilters.length > 0) {
-          result.push({ or: subFilters })
+        const orFilters = (filter as any).or || []
+
+        // Check if all simple filters in this OR belong to target cube
+        // If any belong to other cubes, skip this OR entirely
+        const allBelongToTarget = this.allFiltersFromCube(orFilters, targetCubeName)
+
+        if (allBelongToTarget) {
+          // All branches belong to target cube, safe to include
+          const subFilters = this.extractFiltersForCube(orFilters, targetCubeName)
+          if (subFilters.length > 0) {
+            result.push({ or: subFilters })
+          }
         }
+        // If not all belong to target, skip this OR filter entirely
+        // This is the safe choice for CTE propagation - we can't evaluate
+        // conditions from other cubes, so we shouldn't filter rows based on
+        // partial OR conditions
         continue
       }
 
@@ -728,6 +754,34 @@ export class QueryPlanner {
     }
 
     return result
+  }
+
+  /**
+   * Check if all simple filters in a filter array belong to the specified cube
+   * Recursively checks nested AND/OR filters
+   */
+  private allFiltersFromCube(filters: Filter[], targetCubeName: string): boolean {
+    for (const filter of filters) {
+      if ('and' in filter) {
+        if (!this.allFiltersFromCube((filter as any).and || [], targetCubeName)) {
+          return false
+        }
+        continue
+      }
+      if ('or' in filter) {
+        if (!this.allFiltersFromCube((filter as any).or || [], targetCubeName)) {
+          return false
+        }
+        continue
+      }
+      if ('member' in filter) {
+        const [cubeName] = (filter as any).member.split('.')
+        if (cubeName !== targetCubeName) {
+          return false
+        }
+      }
+    }
+    return true
   }
 
   /**

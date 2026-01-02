@@ -291,6 +291,16 @@ export interface JoinKeyInfo {
 }
 
 /**
+ * Single join key pair for composite key support
+ */
+export interface JoinKeyPair {
+  /** Primary key column on source cube */
+  source: AnyColumn
+  /** Foreign key column on target cube (CTE cube) */
+  target: AnyColumn
+}
+
+/**
  * Propagating filter information for cross-cube filter propagation
  * When cube A has filters and cube B (with hasMany from A) needs a CTE,
  * A's filters should propagate into B's CTE via a subquery
@@ -300,13 +310,8 @@ export interface PropagatingFilter {
   sourceCube: Cube
   /** Filters from the source cube to apply */
   filters: import('./query').Filter[]
-  /** Join condition linking source cube PK to target cube FK */
-  joinCondition: {
-    /** Primary key column on source cube */
-    source: AnyColumn
-    /** Foreign key column on target cube (CTE cube) */
-    target: AnyColumn
-  }
+  /** Join conditions linking source cube PK(s) to target cube FK(s) - supports composite keys */
+  joinConditions: JoinKeyPair[]
   /** Pre-built filter SQL for parameter deduplication (optional, built during query planning) */
   preBuiltFilterSQL?: SQL
 }

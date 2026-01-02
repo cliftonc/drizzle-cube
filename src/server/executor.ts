@@ -83,7 +83,10 @@ export class QueryExecutor {
 
       // Create unified query plan (works for both single and multi-cube)
       const queryPlan = this.queryPlanner.createQueryPlan(cubes, query, context)
-      
+
+      // Validate security context is applied to all cubes in the query plan
+      this.validateSecurityContext(queryPlan, context)
+
       // Build the query using unified approach
       const builtQuery = this.buildUnifiedQuery(queryPlan, query, context)
 
@@ -137,14 +140,65 @@ export class QueryExecutor {
    * Legacy interface for single cube queries
    */
   async executeQuery(
-    cube: Cube, 
-    query: SemanticQuery, 
+    cube: Cube,
+    query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
     // Convert single cube to map for unified execution
     const cubes = new Map<string, Cube>()
     cubes.set(cube.name, cube)
     return this.execute(cubes, query, securityContext)
+  }
+
+  /**
+   * Validate that all cubes in the query plan have proper security filtering.
+   * Emits a warning if a cube's sql() function doesn't return a WHERE clause.
+   *
+   * Security is critical in multi-tenant applications - this validation helps
+   * detect cubes that may leak data across tenants.
+   */
+  private validateSecurityContext(queryPlan: QueryPlan, context: QueryContext): void {
+    // Only run validation in development or when explicitly enabled
+    if (process.env.NODE_ENV !== 'development' && !process.env.DRIZZLE_CUBE_WARN_SECURITY) {
+      return
+    }
+
+    // Collect all cubes in the query (primary + joined cubes + CTE cubes)
+    const cubesToCheck: Cube[] = [queryPlan.primaryCube]
+
+    for (const joinInfo of queryPlan.joinCubes || []) {
+      cubesToCheck.push(joinInfo.cube)
+    }
+
+    for (const cteInfo of queryPlan.preAggregationCTEs || []) {
+      cubesToCheck.push(cteInfo.cube)
+    }
+
+    // Track unique cubes to avoid duplicate warnings
+    const checkedCubes = new Set<string>()
+
+    // Check each cube's security context
+    for (const cube of cubesToCheck) {
+      if (checkedCubes.has(cube.name)) continue
+      checkedCubes.add(cube.name)
+
+      try {
+        const securityResult = cube.sql(context)
+
+        // A properly secured cube should have a 'where' clause that filters by security context
+        // If no 'where' clause is present, the cube might be returning all data
+        if (!securityResult.where) {
+          console.warn(
+            `[drizzle-cube] WARNING: Cube '${cube.name}' may not have proper security filtering. ` +
+            `The sql() function returned no 'where' clause. ` +
+            `Ensure it returns a filter like: { from: table, where: eq(table.organisationId, ctx.securityContext.organisationId) }`
+          )
+        }
+      } catch {
+        // If calling sql() throws, skip validation for this cube
+        // The actual execution will catch the error with better context
+      }
+    }
   }
 
   /**
@@ -441,21 +495,42 @@ export class QueryExecutor {
       return null
     }
 
-    // Build: cteCube.FK IN (SELECT sourceCube.PK FROM sourceCube WHERE ...)
-    const { source: sourcePK, target: cteFK } = propFilter.joinCondition
-
-    // Build the combined WHERE condition
+    // Build the combined WHERE condition from filters
     const combinedWhere = filterConditions.length === 1
       ? filterConditions[0]
       : and(...filterConditions)
 
-    // Build the subquery: SELECT pk FROM sourceTable WHERE conditions
-    const subquery = context.db
-      .select({ pk: sourcePK })
-      .from(cubeBase.from)
-      .where(combinedWhere!)
+    // For composite keys, use EXISTS instead of IN for better database compatibility
+    // EXISTS (SELECT 1 FROM source WHERE source.pk1 = cte.fk1 AND source.pk2 = cte.fk2 AND <filters>)
+    const joinConditions = propFilter.joinConditions
 
-    return sql`${cteFK} IN ${subquery}`
+    if (joinConditions.length === 1) {
+      // Single key: use simple IN clause
+      const { source: sourcePK, target: cteFK } = joinConditions[0]
+      const subquery = context.db
+        .select({ pk: sourcePK })
+        .from(cubeBase.from)
+        .where(combinedWhere!)
+
+      return sql`${cteFK} IN ${subquery}`
+    } else {
+      // Composite keys: use EXISTS with all join conditions
+      // Build join condition: source.pk1 = cte.fk1 AND source.pk2 = cte.fk2 ...
+      const joinEqualityConditions = joinConditions.map(jc => eq(jc.source, jc.target))
+
+      // Combine join conditions with filter conditions
+      const existsWhere = and(
+        ...joinEqualityConditions,
+        combinedWhere!
+      )
+
+      const existsSubquery = context.db
+        .select({ one: sql`1` })
+        .from(cubeBase.from)
+        .where(existsWhere!)
+
+      return sql`EXISTS ${existsSubquery}`
+    }
   }
 
   /**
