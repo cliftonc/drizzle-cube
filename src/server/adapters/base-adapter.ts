@@ -7,6 +7,56 @@
 import type { SQL, AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
 
+/**
+ * Database capabilities for feature detection
+ * Used for graceful degradation when functions aren't supported
+ */
+export interface DatabaseCapabilities {
+  /** Whether the database supports STDDEV_POP/STDDEV_SAMP */
+  supportsStddev: boolean
+  /** Whether the database supports VAR_POP/VAR_SAMP */
+  supportsVariance: boolean
+  /** Whether the database supports PERCENTILE_CONT or similar */
+  supportsPercentile: boolean
+  /** Whether the database supports window functions (LAG, LEAD, RANK, etc.) */
+  supportsWindowFunctions: boolean
+  /** Whether the database supports frame clauses (ROWS BETWEEN, RANGE BETWEEN) */
+  supportsFrameClause: boolean
+}
+
+/**
+ * Window function types supported by the adapter
+ */
+export type WindowFunctionType =
+  | 'lag'
+  | 'lead'
+  | 'rank'
+  | 'denseRank'
+  | 'rowNumber'
+  | 'ntile'
+  | 'firstValue'
+  | 'lastValue'
+  | 'movingAvg'
+  | 'movingSum'
+
+/**
+ * Window function configuration
+ */
+export interface WindowFunctionConfig {
+  /** Number of rows to offset for lag/lead */
+  offset?: number
+  /** Default value when offset is out of bounds */
+  defaultValue?: any
+  /** Number of buckets for ntile */
+  nTile?: number
+  /** Frame specification for moving aggregates */
+  frame?: {
+    type: 'rows' | 'range'
+    start: number | 'unbounded'
+    end: number | 'current' | 'unbounded'
+  }
+}
+
 export interface DatabaseAdapter {
   /**
    * Get the database engine type this adapter supports
@@ -94,6 +144,57 @@ export interface DatabaseAdapter {
    * @returns Preprocessed template string
    */
   preprocessCalculatedTemplate(calculatedSql: string): string
+
+  // ============================================
+  // Statistical & Window Function Methods
+  // ============================================
+
+  /**
+   * Get database capabilities for feature detection
+   * Used for graceful degradation when functions aren't supported
+   */
+  getCapabilities(): DatabaseCapabilities
+
+  /**
+   * Build STDDEV aggregation expression
+   * @param fieldExpr - The field expression to calculate stddev for
+   * @param useSample - Use sample stddev (STDDEV_SAMP) vs population (STDDEV_POP). Default: false
+   * @returns SQL expression or null if unsupported
+   */
+  buildStddev(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
+
+  /**
+   * Build VARIANCE aggregation expression
+   * @param fieldExpr - The field expression to calculate variance for
+   * @param useSample - Use sample variance (VAR_SAMP) vs population (VAR_POP). Default: false
+   * @returns SQL expression or null if unsupported
+   */
+  buildVariance(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
+
+  /**
+   * Build PERCENTILE aggregation expression
+   * @param fieldExpr - The field expression to calculate percentile for
+   * @param percentile - Percentile value (0-100)
+   * @returns SQL expression or null if unsupported
+   */
+  buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL | null
+
+  /**
+   * Build a window function expression
+   * @param type - Window function type (lag, lead, rank, etc.)
+   * @param fieldExpr - The field expression (null for rank functions that don't need a field)
+   * @param partitionBy - PARTITION BY columns
+   * @param orderBy - ORDER BY columns with direction
+   * @param config - Additional configuration (offset, default, frame, etc.)
+   * @returns SQL expression or null if unsupported
+   */
+  buildWindowFunction(
+    type: WindowFunctionType,
+    fieldExpr: AnyColumn | SQL | null,
+    partitionBy?: (AnyColumn | SQL)[],
+    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
+    config?: WindowFunctionConfig
+  ): SQL | null
 }
 
 /**
@@ -112,6 +213,17 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract prepareDateValue(date: Date): any
   abstract isTimestampInteger(): boolean
   abstract convertTimeDimensionResult(value: any): any
+  abstract getCapabilities(): DatabaseCapabilities
+  abstract buildStddev(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
+  abstract buildVariance(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
+  abstract buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL | null
+  abstract buildWindowFunction(
+    type: WindowFunctionType,
+    fieldExpr: AnyColumn | SQL | null,
+    partitionBy?: (AnyColumn | SQL)[],
+    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
+    config?: WindowFunctionConfig
+  ): SQL | null
 
   /**
    * Default implementation returns template unchanged

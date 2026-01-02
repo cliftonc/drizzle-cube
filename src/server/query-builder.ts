@@ -143,7 +143,8 @@ export class QueryBuilder {
         resolvedMeasures.set(measureName, () => builtExpr)
       } else {
         // Store a FUNCTION that builds the SQL expression to avoid mutation issues
-        resolvedMeasures.set(measureName, () => this.buildMeasureExpression(measure, context))
+        // Pass cube for window function dimension resolution
+        resolvedMeasures.set(measureName, () => this.buildMeasureExpression(measure, context, cube))
       }
     }
 
@@ -439,10 +440,15 @@ export class QueryBuilder {
   /**
    * Build measure expression with aggregation and filters
    * Note: This should NOT be called for calculated measures
+   *
+   * @param measure - The measure definition
+   * @param context - Query context with security context and database info
+   * @param cube - Optional cube reference for resolving dimension references (window functions)
    */
   buildMeasureExpression(
     measure: any,
-    context: QueryContext
+    context: QueryContext,
+    cube?: Cube
   ): SQL {
     // Calculated measures should be built via buildCalculatedMeasure
     if (measure.type === 'calculated') {
@@ -499,6 +505,149 @@ export class QueryBuilder {
         return max(baseExpr)
       case 'number':
         return baseExpr as SQL
+
+      // Statistical functions (Phase 1)
+      case 'stddev':
+      case 'stddevSamp': {
+        const useSample = measure.type === 'stddevSamp' || measure.statisticalConfig?.useSample
+        const result = this.databaseAdapter.buildStddev(baseExpr, useSample)
+        if (result === null) {
+          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
+          // Use MAX(NULL) to ensure proper aggregation behavior
+          return sql`MAX(NULL)`
+        }
+        return result
+      }
+
+      case 'variance':
+      case 'varianceSamp': {
+        const useSample = measure.type === 'varianceSamp' || measure.statisticalConfig?.useSample
+        const result = this.databaseAdapter.buildVariance(baseExpr, useSample)
+        if (result === null) {
+          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
+          // Use MAX(NULL) to ensure proper aggregation behavior
+          return sql`MAX(NULL)`
+        }
+        return result
+      }
+
+      case 'percentile':
+      case 'median':
+      case 'p95':
+      case 'p99': {
+        // Determine percentile value based on type
+        let pct: number
+        switch (measure.type) {
+          case 'median':
+            pct = 50
+            break
+          case 'p95':
+            pct = 95
+            break
+          case 'p99':
+            pct = 99
+            break
+          default:
+            pct = measure.statisticalConfig?.percentile ?? 50
+        }
+        const result = this.databaseAdapter.buildPercentile(baseExpr, pct)
+        if (result === null) {
+          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
+          // Use MAX(NULL) to ensure proper aggregation behavior
+          return sql`MAX(NULL)`
+        }
+        return result
+      }
+
+      // Window functions (Phase 2) - now with dimension resolution
+      case 'lag':
+      case 'lead':
+      case 'rank':
+      case 'denseRank':
+      case 'rowNumber':
+      case 'ntile':
+      case 'firstValue':
+      case 'lastValue':
+      case 'movingAvg':
+      case 'movingSum': {
+        const windowConfig = measure.windowConfig || {}
+
+        // Resolve partitionBy dimension references to SQL expressions
+        let partitionByExprs: (AnyColumn | SQL)[] | undefined
+        if (windowConfig.partitionBy && windowConfig.partitionBy.length > 0 && cube) {
+          const resolvedPartitions = windowConfig.partitionBy
+            .map((dimRef: string) => {
+              // Handle both "dimensionName" and "CubeName.dimensionName" formats
+              const dimName = dimRef.includes('.') ? dimRef.split('.')[1] : dimRef
+              const dimension = cube.dimensions?.[dimName]
+              if (dimension) {
+                return resolveSqlExpression(dimension.sql, context)
+              }
+              console.warn(`[drizzle-cube] Window function partition dimension '${dimRef}' not found in cube '${cube.name}'`)
+              return null
+            })
+            .filter((expr: AnyColumn | SQL | null): expr is AnyColumn | SQL => expr !== null)
+
+          if (resolvedPartitions.length > 0) {
+            partitionByExprs = resolvedPartitions
+          }
+        }
+
+        // Resolve orderBy dimension/measure references to SQL expressions
+        type OrderByExpr = { field: AnyColumn | SQL; direction: 'asc' | 'desc' }
+        let orderByExprs: OrderByExpr[] | undefined
+        if (windowConfig.orderBy && windowConfig.orderBy.length > 0 && cube) {
+          const resolvedOrders = windowConfig.orderBy
+            .map((orderSpec: { field: string; direction: 'asc' | 'desc' }): OrderByExpr | null => {
+              // Handle both "fieldName" and "CubeName.fieldName" formats
+              const fieldName = orderSpec.field.includes('.') ? orderSpec.field.split('.')[1] : orderSpec.field
+
+              // First check dimensions, then measures
+              const dimension = cube.dimensions?.[fieldName]
+              if (dimension) {
+                return {
+                  field: resolveSqlExpression(dimension.sql, context),
+                  direction: orderSpec.direction
+                }
+              }
+
+              const measureDef = cube.measures?.[fieldName]
+              if (measureDef && measureDef.sql) {
+                return {
+                  field: resolveSqlExpression(measureDef.sql, context),
+                  direction: orderSpec.direction
+                }
+              }
+
+              console.warn(`[drizzle-cube] Window function order field '${orderSpec.field}' not found in cube '${cube.name}'`)
+              return null
+            })
+            .filter((expr: OrderByExpr | null): expr is OrderByExpr => expr !== null)
+
+          if (resolvedOrders.length > 0) {
+            orderByExprs = resolvedOrders
+          }
+        }
+
+        const result = this.databaseAdapter.buildWindowFunction(
+          measure.type,
+          ['rank', 'denseRank', 'rowNumber'].includes(measure.type) ? null : baseExpr,
+          partitionByExprs,
+          orderByExprs,
+          {
+            offset: windowConfig.offset,
+            defaultValue: windowConfig.defaultValue,
+            nTile: windowConfig.nTile,
+            frame: windowConfig.frame
+          }
+        )
+        if (result === null) {
+          console.warn(`[drizzle-cube] ${measure.type} not supported on ${this.databaseAdapter.getEngineType()}, returning NULL`)
+          return sql`NULL`
+        }
+        return result
+      }
+
       default:
         return count(baseExpr)
     }
@@ -1323,25 +1472,74 @@ export class QueryBuilder {
   }
 
   /**
+   * Check if a measure type is a window function
+   */
+  private isWindowFunctionType(measureType: string): boolean {
+    const windowTypes = ['lag', 'lead', 'rank', 'denseRank', 'rowNumber',
+                         'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum']
+    return windowTypes.includes(measureType)
+  }
+
+  /**
+   * Check if a measure type is an aggregate function (requires GROUP BY)
+   */
+  private isAggregateFunctionType(measureType: string): boolean {
+    const aggTypes = ['count', 'countDistinct', 'sum', 'avg', 'min', 'max',
+                      'stddev', 'stddevSamp', 'variance', 'varianceSamp',
+                      'median', 'p95', 'p99', 'percentile']
+    return aggTypes.includes(measureType)
+  }
+
+  /**
    * Build GROUP BY fields from dimensions and time dimensions
    * Works for both single and multi-cube queries
+   *
+   * NOTE: GROUP BY is only added when there are AGGREGATE measures.
+   * Window functions do not require GROUP BY and operate on individual rows.
    */
   buildGroupByFields(
-    cubes: Map<string, Cube> | Cube, 
-    query: SemanticQuery, 
+    cubes: Map<string, Cube> | Cube,
+    query: SemanticQuery,
     context: QueryContext,
     queryPlan?: any // Optional QueryPlan for CTE handling
   ): (SQL | AnyColumn)[] {
     const groupFields: (SQL | AnyColumn)[] = []
-    
-    // Only add GROUP BY if we have measures (aggregations)
-    const hasMeasures = query.measures && query.measures.length > 0
-    if (!hasMeasures) {
-      return []
-    }
-    
+
     // Convert single cube to map for consistent handling
     const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
+
+    // Only add GROUP BY if we have AGGREGATE measures (not window functions)
+    // Window functions operate on individual rows and don't need GROUP BY
+    let hasAggregateMeasures = false
+    let hasWindowMeasures = false
+
+    for (const measureName of query.measures || []) {
+      const [cubeName, fieldName] = measureName.split('.')
+      const cube = cubeMap.get(cubeName)
+      if (cube && cube.measures && cube.measures[fieldName]) {
+        const measure = cube.measures[fieldName]
+        if (this.isAggregateFunctionType(measure.type) || measure.type === 'calculated') {
+          hasAggregateMeasures = true
+        }
+        if (this.isWindowFunctionType(measure.type)) {
+          hasWindowMeasures = true
+        }
+      }
+    }
+
+    // Warn about mixed aggregate + window queries (not fully supported yet)
+    if (hasAggregateMeasures && hasWindowMeasures) {
+      console.warn(
+        '[drizzle-cube] Warning: Mixing aggregate measures (count, sum, avg, etc.) with window functions ' +
+        '(lag, lead, rank, etc.) in the same query may produce incorrect results. ' +
+        'Window functions will operate on raw rows before aggregation. ' +
+        'Consider separating these into different queries or using CTE pattern.'
+      )
+    }
+
+    if (!hasAggregateMeasures) {
+      return []
+    }
     
     // Add dimensions to GROUP BY
     if (query.dimensions) {

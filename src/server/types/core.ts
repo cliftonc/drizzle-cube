@@ -106,6 +106,26 @@ export type MeasureType =
   | 'runningTotal'
   | 'number'
   | 'calculated'
+  // Statistical functions (Phase 1)
+  | 'stddev'         // Standard deviation (population)
+  | 'stddevSamp'     // Standard deviation (sample)
+  | 'variance'       // Variance (population)
+  | 'varianceSamp'   // Variance (sample)
+  | 'percentile'     // Configurable percentile (0-100)
+  | 'median'         // Shorthand for P50
+  | 'p95'            // 95th percentile
+  | 'p99'            // 99th percentile
+  // Window functions (Phase 2)
+  | 'lag'
+  | 'lead'
+  | 'rank'
+  | 'denseRank'
+  | 'rowNumber'
+  | 'ntile'
+  | 'firstValue'
+  | 'lastValue'
+  | 'movingAvg'
+  | 'movingSum'
 
 export type MeasureFormat = 'currency' | 'percent' | 'number' | 'integer'
 export type DimensionFormat = 'currency' | 'percent' | 'number' | 'date' | 'datetime' | 'id' | 'link'

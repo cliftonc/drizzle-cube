@@ -178,6 +178,40 @@ export interface Measure {
 
   /** Additional metadata */
   meta?: Record<string, any>
+
+  /**
+   * Statistical function configuration
+   * Used for percentile, stddev, variance measure types
+   */
+  statisticalConfig?: {
+    /** Percentile value (0-100) for percentile measures. Default: 50 for median */
+    percentile?: number
+    /** Use sample vs population calculation for stddev/variance. Default: false (population) */
+    useSample?: boolean
+  }
+
+  /**
+   * Window function configuration
+   * Used for lag, lead, rank, movingAvg, and other window function measure types
+   */
+  windowConfig?: {
+    /** Dimension references to partition by (e.g., ['employeeId']) */
+    partitionBy?: string[]
+    /** Columns to order by with direction */
+    orderBy?: Array<{ field: string; direction: 'asc' | 'desc' }>
+    /** Number of rows to offset for lag/lead. Default: 1 */
+    offset?: number
+    /** Default value when offset is out of bounds for lag/lead */
+    defaultValue?: any
+    /** Number of buckets for ntile. Default: 4 */
+    nTile?: number
+    /** Window frame specification for moving aggregates */
+    frame?: {
+      type: 'rows' | 'range'
+      start: number | 'unbounded'
+      end: number | 'current' | 'unbounded'
+    }
+  }
 }
 
 /**

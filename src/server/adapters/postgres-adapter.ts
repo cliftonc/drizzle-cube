@@ -6,7 +6,7 @@
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
-import { BaseDatabaseAdapter } from './base-adapter'
+import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
 
 export class PostgresAdapter extends BaseDatabaseAdapter {
   getEngineType(): 'postgres' {
@@ -147,8 +147,127 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
    * PostgreSQL time dimensions already return proper values
    * No conversion needed
    */
-  convertTimeDimensionResult(value: any): any {        
+  convertTimeDimensionResult(value: any): any {
     return value
   }
 
+  // ============================================
+  // Statistical & Window Function Methods
+  // ============================================
+
+  /**
+   * PostgreSQL has full support for statistical and window functions
+   */
+  getCapabilities(): DatabaseCapabilities {
+    return {
+      supportsStddev: true,
+      supportsVariance: true,
+      supportsPercentile: true,
+      supportsWindowFunctions: true,
+      supportsFrameClause: true
+    }
+  }
+
+  /**
+   * Build PostgreSQL STDDEV aggregation
+   * Uses STDDEV_POP for population, STDDEV_SAMP for sample
+   */
+  buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
+    const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
+    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
+  }
+
+  /**
+   * Build PostgreSQL VARIANCE aggregation
+   * Uses VAR_POP for population, VAR_SAMP for sample
+   */
+  buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
+    const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
+    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
+  }
+
+  /**
+   * Build PostgreSQL PERCENTILE_CONT aggregation
+   * Uses ordered-set aggregate function
+   */
+  buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL {
+    const pct = percentile / 100
+    return sql`PERCENTILE_CONT(${pct}) WITHIN GROUP (ORDER BY ${fieldExpr})`
+  }
+
+  /**
+   * Build PostgreSQL window function expression
+   * PostgreSQL has full window function support
+   */
+  buildWindowFunction(
+    type: WindowFunctionType,
+    fieldExpr: AnyColumn | SQL | null,
+    partitionBy?: (AnyColumn | SQL)[],
+    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
+    config?: WindowFunctionConfig
+  ): SQL {
+    // Build OVER clause components
+    const partitionClause = partitionBy && partitionBy.length > 0
+      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
+      : sql``
+
+    const orderClause = orderBy && orderBy.length > 0
+      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
+          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
+        ), sql`, `)}`
+      : sql``
+
+    // Build frame clause if specified
+    let frameClause = sql``
+    if (config?.frame) {
+      const { type: frameType, start, end } = config.frame
+      const frameTypeStr = frameType.toUpperCase()
+
+      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
+        : typeof start === 'number' ? `${start} PRECEDING`
+        : 'CURRENT ROW'
+
+      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
+        : end === 'current' ? 'CURRENT ROW'
+        : typeof end === 'number' ? `${end} FOLLOWING`
+        : 'CURRENT ROW'
+
+      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
+    }
+
+    // Combine OVER clause
+    const overParts: SQL[] = []
+    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
+    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
+    if (config?.frame) overParts.push(frameClause)
+
+    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
+    const over = sql`OVER (${overContent})`
+
+    // Build the window function based on type
+    switch (type) {
+      case 'lag':
+        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
+      case 'lead':
+        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
+      case 'rank':
+        return sql`RANK() ${over}`
+      case 'denseRank':
+        return sql`DENSE_RANK() ${over}`
+      case 'rowNumber':
+        return sql`ROW_NUMBER() ${over}`
+      case 'ntile':
+        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
+      case 'firstValue':
+        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
+      case 'lastValue':
+        return sql`LAST_VALUE(${fieldExpr}) ${over}`
+      case 'movingAvg':
+        return sql`AVG(${fieldExpr}) ${over}`
+      case 'movingSum':
+        return sql`SUM(${fieldExpr}) ${over}`
+      default:
+        throw new Error(`Unsupported window function: ${type}`)
+    }
+  }
 }
