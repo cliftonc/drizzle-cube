@@ -23,11 +23,10 @@ import type {
 import {
   resolveCubeReference,
   getJoinType,
-  expandBelongsToManyJoin,
-  isolateSqlExpression
+  expandBelongsToManyJoin
 } from './cube-utils'
 
-import { eq, and, sql, type SQL } from 'drizzle-orm'
+import { JoinPathResolver } from './join-path-resolver'
 
 
 /**
@@ -45,7 +44,21 @@ import { eq, and, sql, type SQL } from 'drizzle-orm'
 // }
 
 export class QueryPlanner {
-  
+  // Cache resolver per cubes map to avoid repeated instantiation
+  private resolverCache: WeakMap<Map<string, Cube>, JoinPathResolver> = new WeakMap()
+
+  /**
+   * Get or create a JoinPathResolver for the given cubes map
+   */
+  private getResolver(cubes: Map<string, Cube>): JoinPathResolver {
+    let resolver = this.resolverCache.get(cubes)
+    if (!resolver) {
+      resolver = new JoinPathResolver(cubes)
+      this.resolverCache.set(cubes, resolver)
+    }
+    return resolver
+  }
+
   /**
    * Analyze a semantic query to determine which cubes are involved
    */
@@ -230,8 +243,9 @@ export class QueryPlanner {
           .sort()
           
         // Check if the primary candidate can reach all other required cubes
+        const resolver = this.getResolver(cubes)
         for (const candidate of primaryCandidates) {
-          if (this.canReachAllCubes(candidate, cubeNames, cubes)) {
+          if (resolver.canReachAll(candidate, cubeNames)) {
             return candidate
           }
         }
@@ -240,10 +254,11 @@ export class QueryPlanner {
     
     // Fallback: Choose cube with most connectivity that can reach all other cubes
     if (cubes) {
+      const resolver = this.getResolver(cubes)
       const connectivityScores = new Map<string, number>()
-      
+
       for (const cubeName of cubeNames) {
-        if (this.canReachAllCubes(cubeName, cubeNames, cubes)) {
+        if (resolver.canReachAll(cubeName, cubeNames)) {
           const cube = cubes.get(cubeName)
           const joinCount = cube?.joins ? Object.keys(cube.joins).length : 0
           connectivityScores.set(cubeName, joinCount)
@@ -267,22 +282,6 @@ export class QueryPlanner {
   }
 
   /**
-   * Check if a cube can reach all other cubes in the list via joins
-   */
-  private canReachAllCubes(fromCube: string, allCubes: string[], cubes: Map<string, Cube>): boolean {
-    const otherCubes = allCubes.filter(name => name !== fromCube)
-    
-    for (const targetCube of otherCubes) {
-      const path = this.findJoinPath(cubes, fromCube, targetCube, new Set())
-      if (!path || path.length === 0) {
-        return false
-      }
-    }
-    
-    return true
-  }
-
-  /**
    * Build join plan for multi-cube query
    * Supports both direct joins and transitive joins through intermediate cubes
    */
@@ -292,6 +291,7 @@ export class QueryPlanner {
     cubeNames: string[],
     ctx: QueryContext
   ): QueryPlan['joinCubes'] {
+    const resolver = this.getResolver(cubes)
     const joinCubes: QueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
 
@@ -303,7 +303,7 @@ export class QueryPlanner {
         continue // Already processed
       }
 
-      const joinPath = this.findJoinPath(cubes, primaryCube.name, cubeName, processedCubes)
+      const joinPath = resolver.findPath(primaryCube.name, cubeName, processedCubes)
       if (!joinPath || joinPath.length === 0) {
         throw new Error(`No join path found from '${primaryCube.name}' to '${cubeName}'`)
       }
@@ -342,7 +342,7 @@ export class QueryPlanner {
           // Regular join (belongsTo, hasOne, hasMany)
           // Build join condition using new array-based format
           // For regular table joins, we don't use artificial aliases - use actual table references
-          const joinCondition = this.buildJoinCondition(
+          const joinCondition = resolver.buildJoinCondition(
             joinDef as CubeJoin,
             null, // No source alias needed - use the actual column
             null // No target alias needed - use the actual column
@@ -364,95 +364,6 @@ export class QueryPlanner {
     }
 
     return joinCubes
-  }
-
-  /**
-   * Build join condition from new array-based join definition
-   */
-  private buildJoinCondition(
-    joinDef: CubeJoin,
-    sourceAlias: string | null,
-    targetAlias: string | null
-  ): SQL {
-    const conditions: SQL[] = []
-
-    // Process array of join conditions
-    for (const joinOn of joinDef.on) {
-      // Use actual column objects instead of aliases for regular table joins
-      // Apply SQL isolation when using raw column objects to prevent mutation issues
-      // (See CLAUDE.md SQL Object Isolation Pattern)
-      const sourceCol = sourceAlias
-        ? sql`${sql.identifier(sourceAlias)}.${sql.identifier(joinOn.source.name)}`
-        : isolateSqlExpression(joinOn.source)
-
-      const targetCol = targetAlias
-        ? sql`${sql.identifier(targetAlias)}.${sql.identifier(joinOn.target.name)}`
-        : isolateSqlExpression(joinOn.target)
-
-      // Use custom comparator or default to eq
-      const comparator = joinOn.as || eq
-      conditions.push(comparator(sourceCol as any, targetCol as any))
-    }
-
-    return and(...conditions)!
-  }
-
-  /**
-   * Find join path from source cube to target cube
-   * Returns array of join steps to reach target
-   */
-  private findJoinPath(
-    cubes: Map<string, Cube>,
-    fromCube: string,
-    toCube: string,
-    alreadyProcessed: Set<string>
-  ): Array<{ fromCube: string, toCube: string, joinDef: any }> | null {
-    if (fromCube === toCube) {
-      return []
-    }
-
-    // BFS to find shortest path
-    const queue: Array<{ cube: string, path: Array<{ fromCube: string, toCube: string, joinDef: any }> }> = [
-      { cube: fromCube, path: [] }
-    ]
-    const visited = new Set([fromCube, ...alreadyProcessed])
-
-    while (queue.length > 0) {
-      const { cube: currentCube, path } = queue.shift()!
-      const cubeDefinition = cubes.get(currentCube)
-
-      if (!cubeDefinition?.joins) {
-        continue
-      }
-
-      // Check all joins from current cube - resolve lazy references
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        // Resolve cube reference to get actual cube name
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
-        const actualTargetName = resolvedTargetCube.name
-        
-        if (visited.has(actualTargetName)) {
-          continue
-        }
-
-        const newPath = [...path, {
-          fromCube: currentCube,
-          toCube: actualTargetName,
-          joinDef
-        }]
-
-        if (actualTargetName === toCube) {
-          return newPath
-        }
-
-        visited.add(actualTargetName)
-        queue.push({ cube: actualTargetName, path: newPath })
-      }
-    }
-
-    // If no direct path found, try looking for reverse joins
-    // (where other cubes join to the current cube chain)
-    return null
   }
 
   /**
@@ -936,11 +847,12 @@ export class QueryPlanner {
       cubeDimensionCount.set(cube, (cubeDimensionCount.get(cube) || 0) + 1)
     }
 
+    const resolver = this.getResolver(cubes)
     for (const cubeName of cubeNames) {
       const cube = cubes.get(cubeName)
       const dimensionCount = cubeDimensionCount.get(cubeName) || 0
       const joinCount = cube?.joins ? Object.keys(cube.joins).length : 0
-      const canReachAll = this.canReachAllCubes(cubeName, cubeNames, cubes)
+      const canReachAll = resolver.canReachAll(cubeName, cubeNames)
 
       candidates.push({
         cubeName,

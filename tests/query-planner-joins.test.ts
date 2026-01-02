@@ -1,17 +1,21 @@
 /**
  * Tests for QueryPlanner join functionality with new array-based joins
+ * Tests JoinPathResolver.buildJoinCondition() method
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import { eq, gte } from 'drizzle-orm'
 import { QueryPlanner } from '../src/server/query-planner'
+import { JoinPathResolver } from '../src/server/join-path-resolver'
 import { getTestSchema } from './helpers/test-database'
-import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
-import type { QueryContext, CubeJoin } from '../../src/server/types'
+import { createTestCubesForCurrentDatabase, getTestCubes } from './helpers/test-cubes'
+import type { QueryContext, CubeJoin, Cube } from '../src/server/types'
 
 describe('QueryPlanner - New Join System', () => {
   let schema: any
   let queryPlanner: QueryPlanner
+  let joinResolver: JoinPathResolver
   let testCubes: any
+  let cubesMap: Map<string, Cube>
   let context: QueryContext
 
   beforeAll(async () => {
@@ -19,7 +23,9 @@ describe('QueryPlanner - New Join System', () => {
     schema = testSchema
     queryPlanner = new QueryPlanner()
     testCubes = await createTestCubesForCurrentDatabase()
-    
+    cubesMap = await getTestCubes()
+    joinResolver = new JoinPathResolver(cubesMap)
+
     // Mock query context for testing
     context = {
       db: {} as any, // Mock database instance
@@ -38,13 +44,11 @@ describe('QueryPlanner - New Join System', () => {
         ]
       }
 
-      // Access private method for testing
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      // Use JoinPathResolver for buildJoinCondition
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
         'productivity_cube',
-        'employees_cube',
-        context
+        'employees_cube'
       )
 
       expect(condition).toBeDefined()
@@ -62,12 +66,10 @@ describe('QueryPlanner - New Join System', () => {
         ]
       }
 
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
-        'productivity_cube', 
-        'employees_cube',
-        context
+        'productivity_cube',
+        'employees_cube'
       )
 
       expect(condition).toBeDefined()
@@ -79,20 +81,18 @@ describe('QueryPlanner - New Join System', () => {
         targetCube: () => testCubes.testEmployeesCube,
         relationship: 'hasMany',
         on: [
-          { 
-            source: schema.employees.createdAt, 
+          {
+            source: schema.employees.createdAt,
             target: schema.productivity.date,
             as: (source, target) => gte(target, source)
           }
         ]
       }
 
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
         'employees_cube',
-        'productivity_cube', 
-        context
+        'productivity_cube'
       )
 
       expect(condition).toBeDefined()
@@ -108,12 +108,10 @@ describe('QueryPlanner - New Join System', () => {
         ]
       }
 
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
         null, // Primary cube has no alias
-        'employees_cube',
-        context
+        'employees_cube'
       )
 
       expect(condition).toBeDefined()
@@ -179,21 +177,19 @@ describe('QueryPlanner - New Join System', () => {
         ]
       }
 
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
         'productivity_cube', // Source table alias
-        'employees_cube',    // Target table alias
-        context
+        'employees_cube'     // Target table alias
       )
 
       // Verify the condition contains properly qualified column references
       expect(condition).toBeDefined()
       expect(condition.queryChunks).toBeDefined()
-      
+
       // Convert to SQL to verify proper aliasing
       const sqlString = condition.toSQL ? condition.toSQL().sql : condition.toString()
-      
+
       // Should contain aliased column references
       expect(typeof sqlString).toBe('string')
       // The actual SQL generation will be tested in integration tests
@@ -208,12 +204,10 @@ describe('QueryPlanner - New Join System', () => {
         ]
       }
 
-      const planner = queryPlanner as any
-      const condition = planner.buildJoinCondition(
+      const condition = joinResolver.buildJoinCondition(
         joinDef,
         null, // Primary cube - no alias needed
-        'employees_cube',
-        context
+        'employees_cube'
       )
 
       expect(condition).toBeDefined()
