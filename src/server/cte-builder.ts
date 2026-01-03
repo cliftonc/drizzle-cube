@@ -215,6 +215,8 @@ export class CTEBuilder {
       cteQuery = cteQuery.where(combinedWhere)
     }
 
+    // All CTEs now use GROUP BY for pre-aggregation
+    // Post-aggregation window functions are applied in the outer query, not in CTEs
     // Group by join keys (essential for pre-aggregation) and requested dimensions
     const groupByFields: any[] = []
 

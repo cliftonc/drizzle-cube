@@ -193,8 +193,43 @@ export interface Measure {
   /**
    * Window function configuration
    * Used for lag, lead, rank, movingAvg, and other window function measure types
+   *
+   * Post-aggregation window functions:
+   * When `measure` is specified, the window function operates on AGGREGATED data.
+   * The base measure is first aggregated (grouped by query dimensions), then the
+   * window function is applied to the aggregated results.
+   *
+   * Example: Month-over-month revenue change
+   * ```typescript
+   * revenueChange: {
+   *   type: 'lag',
+   *   windowConfig: {
+   *     measure: 'totalRevenue',  // Reference to aggregate measure
+   *     operation: 'difference',   // current - previous
+   *     orderBy: [{ field: 'date', direction: 'asc' }]
+   *   }
+   * }
+   * ```
    */
   windowConfig?: {
+    /**
+     * Reference to the measure this window function operates on.
+     * The referenced measure will be aggregated first, then the window function applied.
+     * Can be a simple name ('totalRevenue') or fully qualified ('Sales.totalRevenue').
+     */
+    measure?: string
+
+    /**
+     * Operation to perform after getting the window result:
+     * - 'raw': Return the window function result directly (default for rank, rowNumber, ntile)
+     * - 'difference': Subtract window result from current value (current - window)
+     * - 'ratio': Divide current value by window result (current / window)
+     * - 'percentChange': Calculate percentage change ((current - window) / window * 100)
+     *
+     * Default: 'difference' for lag/lead, 'raw' for rank/rowNumber/ntile/firstValue/lastValue
+     */
+    operation?: 'raw' | 'difference' | 'ratio' | 'percentChange'
+
     /** Dimension references to partition by (e.g., ['employeeId']) */
     partitionBy?: string[]
     /** Columns to order by with direction */
@@ -329,10 +364,19 @@ export interface PreAggregationCTEInfo {
   cteAlias: string
   /** Join keys to connect CTE back to main query */
   joinKeys: JoinKeyInfo[]
-  /** List of measure names included in this CTE */
+  /** List of measure names included in this CTE (aggregate measures + window base measures) */
   measures: string[]
   /** Propagating filters from related cubes (for cross-cube filter propagation) */
   propagatingFilters?: PropagatingFilter[]
+  /**
+   * Type of CTE:
+   * - 'aggregate': Standard CTE with GROUP BY for count/sum/avg measures
+   *
+   * Note: Window function CTEs are no longer used. Post-aggregation window
+   * functions (lag, lead, rank, etc.) operate on aggregated data and are
+   * applied in the outer query SELECT clause, not in separate CTEs.
+   */
+  cteType?: 'aggregate'
 }
 
 /**

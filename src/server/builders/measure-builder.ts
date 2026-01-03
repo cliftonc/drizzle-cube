@@ -63,11 +63,27 @@ export class MeasureBuilder {
     }
 
     // First pass: classify user-requested measures and collect dependencies
+    // Post-aggregation window measures are handled separately in the executor
+    const postAggWindowMeasures: string[] = []
+
     for (const measureName of measureNames) {
       const [cubeName, fieldName] = measureName.split('.')
       const cube = cubeMap.get(cubeName)
       if (cube && cube.measures && cube.measures[fieldName]) {
         const measure = cube.measures[fieldName]
+
+        // Post-aggregation window functions are handled separately
+        // They don't go through buildMeasureExpression
+        if (MeasureBuilder.isPostAggregationWindow(measure)) {
+          postAggWindowMeasures.push(measureName)
+          // Add the base measure as a dependency
+          const baseMeasure = MeasureBuilder.getWindowBaseMeasure(measure, cubeName)
+          if (baseMeasure) {
+            allMeasuresToResolve.add(baseMeasure)
+          }
+          continue
+        }
+
         if (CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
           calculatedMeasures.push(measureName)
           // Add all dependencies to measures that need to be resolved
@@ -94,11 +110,18 @@ export class MeasureBuilder {
     }
 
     // Second pass: classify all measures that need to be resolved (including dependencies)
+    // Skip post-aggregation window measures - they're handled separately
     for (const measureName of allMeasuresToResolve) {
       const [cubeName, fieldName] = measureName.split('.')
       const cube = cubeMap.get(cubeName)
       if (cube && cube.measures && cube.measures[fieldName]) {
         const measure = cube.measures[fieldName]
+
+        // Skip post-aggregation window measures
+        if (MeasureBuilder.isPostAggregationWindow(measure)) {
+          continue
+        }
+
         if (!CalculatedMeasureResolver.isCalculatedMeasure(measure)) {
           if (!regularMeasures.includes(measureName)) {
             regularMeasures.push(measureName)
@@ -365,11 +388,20 @@ export class MeasureBuilder {
       )
     }
 
-    // Non-calculated measures must have sql property
+    // Post-aggregation window functions don't use sql property - they reference another measure
+    // These are handled in the executor's buildPostAggregationWindowExpression method
+    if (MeasureBuilder.isPostAggregationWindow(measure)) {
+      throw new Error(
+        `Post-aggregation window measure '${measure.name}' should be built via ` +
+        `buildPostAggregationWindowExpression, not buildMeasureExpression.`
+      )
+    }
+
+    // Non-calculated, non-post-agg-window measures must have sql property
     if (!measure.sql) {
       throw new Error(
         `Measure '${measure.name}' of type '${measure.type}' is missing required 'sql' property. ` +
-        `Only calculated measures can omit 'sql'.`
+        `Only calculated measures and post-aggregation window functions can omit 'sql'.`
       )
     }
 
@@ -558,5 +590,194 @@ export class MeasureBuilder {
       default:
         return count(baseExpr)
     }
+  }
+
+  /**
+   * List of measure types that are window functions
+   * Window functions require special handling in CTEs:
+   * - No GROUP BY in the CTE
+   * - No re-aggregation in outer query
+   * - Return individual rows, not grouped results
+   */
+  static WINDOW_FUNCTION_TYPES = [
+    'lag', 'lead', 'rank', 'denseRank', 'rowNumber',
+    'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum'
+  ] as const
+
+  /**
+   * Check if a measure type is a window function
+   * @param measureType - The measure type string
+   * @returns true if this is a window function type
+   */
+  static isWindowFunction(measureType: string): boolean {
+    return (MeasureBuilder.WINDOW_FUNCTION_TYPES as readonly string[]).includes(measureType)
+  }
+
+  /**
+   * Categorize measures into window functions and regular aggregates
+   * Used by query planner to create separate CTEs for each category
+   *
+   * @param measureNames - Array of measure names (e.g., ["Productivity.rank", "Productivity.totalLines"])
+   * @param cubeMap - Map of cubes to look up measure definitions
+   * @returns Object with windowMeasures and aggregateMeasures arrays
+   */
+  static categorizeMeasures(
+    measureNames: string[],
+    cubeMap: Map<string, Cube>
+  ): { windowMeasures: string[]; aggregateMeasures: string[] } {
+    const windowMeasures: string[] = []
+    const aggregateMeasures: string[] = []
+
+    for (const measureName of measureNames) {
+      const [cubeName, fieldName] = measureName.split('.')
+      const cube = cubeMap.get(cubeName)
+
+      if (cube?.measures?.[fieldName]) {
+        const measure = cube.measures[fieldName]
+        if (MeasureBuilder.isWindowFunction(measure.type)) {
+          windowMeasures.push(measureName)
+        } else {
+          aggregateMeasures.push(measureName)
+        }
+      }
+    }
+
+    return { windowMeasures, aggregateMeasures }
+  }
+
+  /**
+   * Check if a query contains any window function measures
+   * @param measureNames - Array of measure names
+   * @param cubeMap - Map of cubes
+   * @returns true if any measure is a window function
+   */
+  static hasWindowFunctions(
+    measureNames: string[],
+    cubeMap: Map<string, Cube>
+  ): boolean {
+    const { windowMeasures } = MeasureBuilder.categorizeMeasures(measureNames, cubeMap)
+    return windowMeasures.length > 0
+  }
+
+  // ============================================================================
+  // Post-Aggregation Window Functions
+  // ============================================================================
+
+  /**
+   * Check if a measure is a post-aggregation window function.
+   * Post-aggregation windows have a `measure` reference in their windowConfig,
+   * indicating they should operate on aggregated data rather than raw rows.
+   *
+   * @param measure - The measure definition
+   * @returns true if this is a post-aggregation window function
+   */
+  static isPostAggregationWindow(measure: any): boolean {
+    return (
+      MeasureBuilder.isWindowFunction(measure.type) &&
+      measure.windowConfig?.measure !== undefined
+    )
+  }
+
+  /**
+   * Get the base measure reference for a post-aggregation window function.
+   * Resolves simple names (e.g., 'totalRevenue') to fully qualified names ('Sales.totalRevenue').
+   *
+   * @param measure - The measure definition
+   * @param cubeName - The name of the cube containing this measure
+   * @returns Fully qualified base measure name, or null if not a post-agg window
+   */
+  static getWindowBaseMeasure(measure: any, cubeName: string): string | null {
+    if (!measure.windowConfig?.measure) {
+      return null
+    }
+    const ref = measure.windowConfig.measure
+    return ref.includes('.') ? ref : `${cubeName}.${ref}`
+  }
+
+  /**
+   * Get the default operation for a window function type.
+   * - lag/lead default to 'difference' (compare current vs previous/next)
+   * - rank/rowNumber/ntile/firstValue/lastValue default to 'raw'
+   * - movingAvg/movingSum default to 'raw'
+   *
+   * @param windowType - The window function type
+   * @returns Default operation for the window type
+   */
+  static getDefaultWindowOperation(windowType: string): 'raw' | 'difference' | 'ratio' | 'percentChange' {
+    switch (windowType) {
+      case 'lag':
+      case 'lead':
+        return 'difference'
+      default:
+        return 'raw'
+    }
+  }
+
+  /**
+   * Categorize measures for post-aggregation window function handling.
+   * Separates measures into:
+   * - aggregateMeasures: Regular aggregates (count, sum, avg, etc.)
+   * - postAggWindowMeasures: Window functions that reference a base measure
+   * - requiredBaseMeasures: Base measures needed by window functions (auto-added to query)
+   *
+   * @param measureNames - Array of measure names from the query
+   * @param cubeMap - Map of cubes to look up measure definitions
+   * @returns Categorized measures with base measure dependencies
+   */
+  static categorizeForPostAggregation(
+    measureNames: string[],
+    cubeMap: Map<string, Cube>
+  ): {
+    aggregateMeasures: string[]
+    postAggWindowMeasures: string[]
+    requiredBaseMeasures: Set<string>
+  } {
+    const aggregateMeasures: string[] = []
+    const postAggWindowMeasures: string[] = []
+    const requiredBaseMeasures = new Set<string>()
+
+    for (const measureName of measureNames) {
+      const [cubeName, fieldName] = measureName.split('.')
+      const cube = cubeMap.get(cubeName)
+
+      if (cube?.measures?.[fieldName]) {
+        const measure = cube.measures[fieldName]
+
+        if (MeasureBuilder.isPostAggregationWindow(measure)) {
+          postAggWindowMeasures.push(measureName)
+
+          // Extract and add the base measure as a required dependency
+          const baseMeasure = MeasureBuilder.getWindowBaseMeasure(measure, cubeName)
+          if (baseMeasure) {
+            requiredBaseMeasures.add(baseMeasure)
+          }
+        } else if (!MeasureBuilder.isWindowFunction(measure.type)) {
+          // Regular aggregate measure (not a window function)
+          aggregateMeasures.push(measureName)
+        }
+        // Note: Pre-aggregation window functions (no windowConfig.measure) are no longer supported
+        // They should be updated to use the new post-aggregation pattern
+      }
+    }
+
+    return { aggregateMeasures, postAggWindowMeasures, requiredBaseMeasures }
+  }
+
+  /**
+   * Check if any measures in the query are post-aggregation window functions.
+   *
+   * @param measureNames - Array of measure names
+   * @param cubeMap - Map of cubes
+   * @returns true if any measure is a post-aggregation window function
+   */
+  static hasPostAggregationWindows(
+    measureNames: string[],
+    cubeMap: Map<string, Cube>
+  ): boolean {
+    const { postAggWindowMeasures } = MeasureBuilder.categorizeForPostAggregation(
+      measureNames,
+      cubeMap
+    )
+    return postAggWindowMeasures.length > 0
   }
 }

@@ -27,6 +27,7 @@ import {
 } from './cube-utils'
 
 import { JoinPathResolver } from './join-path-resolver'
+import { MeasureBuilder } from './builders/measure-builder'
 
 
 /**
@@ -366,12 +367,6 @@ export class QueryPlanner {
         continue // No measures from this cube, no fan-out risk
       }
 
-      // Expand calculated measures to include their dependencies
-      const expandedMeasures = this.expandCalculatedMeasureDependencies(
-        joinCube.cube,
-        allMeasuresFromThisCube
-      )
-
       // Extract join keys from the new array-based format
       const joinKeys = hasManyJoinDef.on.map(joinOn => ({
         sourceColumn: joinOn.source.name,
@@ -383,14 +378,48 @@ export class QueryPlanner {
       // Find propagating filters from related cubes that should apply to this CTE
       const propagatingFilters = this.findPropagatingFilters(query, joinCube.cube, _cubes)
 
-      preAggCTEs!.push({
-        cube: joinCube.cube,
-        alias: joinCube.alias,
-        cteAlias: `${joinCube.cube.name.toLowerCase()}_agg`,
-        joinKeys,
-        measures: expandedMeasures,
-        propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined
-      })
+      // Categorize measures for post-aggregation window function handling
+      // Window functions now operate on aggregated data, so we need to:
+      // 1. Collect regular aggregate measures
+      // 2. Collect base measures required by post-aggregation window functions
+      // 3. Window functions themselves are applied in the outer query, not in CTEs
+      const cubeMap = new Map([[joinCube.cube.name, joinCube.cube]])
+      const { aggregateMeasures, requiredBaseMeasures } = MeasureBuilder.categorizeForPostAggregation(
+        allMeasuresFromThisCube,
+        cubeMap
+      )
+
+      // Combine aggregate measures with base measures required by window functions
+      // This ensures the CTE contains all data needed for window function computation
+      const allAggregateMeasures = [...new Set([
+        ...aggregateMeasures,
+        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(joinCube.cube.name + '.'))
+      ])]
+
+      // Create aggregate CTE if we have any aggregate measures (including window base measures)
+      if (allAggregateMeasures.length > 0) {
+        // Expand calculated measures to include their dependencies
+        const expandedAggregateMeasures = this.expandCalculatedMeasureDependencies(
+          joinCube.cube,
+          allAggregateMeasures
+        )
+
+        preAggCTEs!.push({
+          cube: joinCube.cube,
+          alias: joinCube.alias,
+          cteAlias: `${joinCube.cube.name.toLowerCase()}_agg`,
+          joinKeys,
+          measures: expandedAggregateMeasures,
+          propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined,
+          cteType: 'aggregate'
+        })
+      }
+
+      // NOTE: Window CTEs are no longer created here.
+      // Post-aggregation window functions are applied in the outer query (executor.ts)
+      // after the data has been aggregated. This follows the analytics pattern:
+      // 1. Aggregate data in CTE (GROUP BY dimensions)
+      // 2. Apply window functions to aggregated results in outer SELECT
     }
 
     return preAggCTEs
@@ -764,6 +793,18 @@ export class QueryPlanner {
       analysis.querySummary.cteCount = analysis.preAggregations.length
       analysis.querySummary.hasPreAggregation = analysis.preAggregations.length > 0
 
+      // Detect post-aggregation window functions in the query
+      const allCubes = new Map<string, Cube>()
+      for (const name of cubeNames) {
+        const cube = cubes.get(name)
+        if (cube) allCubes.set(name, cube)
+      }
+      const hasPostAggWindows = MeasureBuilder.hasPostAggregationWindows(
+        query.measures || [],
+        allCubes
+      )
+      analysis.querySummary.hasWindowFunctions = hasPostAggWindows
+
       if (analysis.preAggregations.length > 0) {
         analysis.querySummary.queryType = 'multi_cube_cte'
       } else {
@@ -774,6 +815,13 @@ export class QueryPlanner {
       for (const failedPath of failedPaths) {
         analysis.warnings!.push(
           `No join path found to cube '${failedPath.targetCube}'. Check that joins are defined correctly.`
+        )
+      }
+
+      // Add info about post-aggregation window functions
+      if (hasPostAggWindows) {
+        analysis.warnings!.push(
+          `Query contains post-aggregation window functions which will be applied to aggregated results.`
         )
       }
     }
@@ -994,13 +1042,35 @@ export class QueryPlanner {
         targetColumn: joinOn.target.name
       }))
 
-      preAggregations.push({
-        cubeName: targetCubeName,
-        cteAlias: `${targetCubeName.toLowerCase()}_agg`,
-        reason: `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
-        measures: allMeasuresFromThisCube,
-        joinKeys
-      })
+      // Categorize measures for post-aggregation window function handling
+      const cubeMap = new Map([[targetCubeName, targetCube]])
+      const { aggregateMeasures, postAggWindowMeasures, requiredBaseMeasures } = MeasureBuilder.categorizeForPostAggregation(
+        allMeasuresFromThisCube,
+        cubeMap
+      )
+
+      // Combine aggregate measures with base measures required by window functions
+      const allAggregateMeasures = [...new Set([
+        ...aggregateMeasures,
+        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(targetCubeName + '.'))
+      ])]
+
+      // Create analysis for aggregate CTE if we have any aggregate measures
+      if (allAggregateMeasures.length > 0) {
+        const hasWindowDeps = postAggWindowMeasures.length > 0
+        preAggregations.push({
+          cubeName: targetCubeName,
+          cteAlias: `${targetCubeName.toLowerCase()}_agg`,
+          reason: hasWindowDeps
+            ? `hasMany relationship from ${primaryCube.name} - requires pre-aggregation; includes base measures for post-aggregation window functions`
+            : `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
+          measures: allAggregateMeasures,
+          joinKeys,
+          cteType: 'aggregate'
+        })
+      }
+
+      // Note: Window CTEs are no longer created - post-aggregation windows are applied in outer query
     }
 
     return preAggregations

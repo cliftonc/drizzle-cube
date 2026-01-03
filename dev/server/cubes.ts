@@ -517,56 +517,90 @@ productivityCube = defineCube('Productivity', {
     },
 
     // ============================================
-    // Window Function Measures
-    // NOTE: Window functions work on raw rows. Don't mix with aggregates in the same query.
+    // Post-Aggregation Window Function Measures
+    // These operate on aggregated data - the base measure is aggregated first,
+    // then the window function is applied to the aggregated results.
     // ============================================
 
-    // LAG - Previous day's code output
-    previousDayCode: {
-      name: 'previousDayCode',
-      title: 'Previous Day Code',
+    // LAG - Compare to previous period's total (difference)
+    linesOfCodeChange: {
+      name: 'linesOfCodeChange',
+      title: 'Lines Change (vs Previous)',
       type: 'lag',
-      sql: productivity.linesOfCode,
-      description: 'Lines of code from the previous day (for comparison)',
+      description: 'Change in lines of code compared to previous period',
       windowConfig: {
-        orderBy: [{ field: 'date', direction: 'asc' }],
-        offset: 1,
-        defaultValue: 0
-      }
-    },
-
-    // RANK - Rank days by productivity (most productive = rank 1)
-    productivityRank: {
-      name: 'productivityRank',
-      title: 'Productivity Rank',
-      type: 'rank',
-      sql: productivity.linesOfCode,
-      description: 'Rank by lines of code (1 = most productive day)',
-      windowConfig: {
-        orderBy: [{ field: 'linesOfCode', direction: 'desc' }]
-      }
-    },
-
-    // ROW_NUMBER - Sequential day number
-    dayNumber: {
-      name: 'dayNumber',
-      title: 'Day #',
-      type: 'rowNumber',
-      sql: productivity.id,
-      description: 'Sequential day number ordered by date',
-      windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'difference',
         orderBy: [{ field: 'date', direction: 'asc' }]
       }
     },
 
-    // Moving 7-day average for trend analysis
-    movingAvg7Day: {
-      name: 'movingAvg7Day',
-      title: '7-Day Moving Avg',
-      type: 'movingAvg',
-      sql: productivity.linesOfCode,
-      description: '7-day moving average of lines of code',
+    // LAG - Get previous period's total (raw value)
+    previousPeriodLines: {
+      name: 'previousPeriodLines',
+      title: 'Previous Period Lines',
+      type: 'lag',
+      description: 'Lines of code from the previous period',
       windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'raw',
+        orderBy: [{ field: 'date', direction: 'asc' }]
+      }
+    },
+
+    // LAG - Percent change from previous period
+    linesPercentChange: {
+      name: 'linesPercentChange',
+      title: 'Lines % Change',
+      type: 'lag',
+      description: 'Percent change in lines of code from previous period',
+      windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'percentChange',
+        orderBy: [{ field: 'date', direction: 'asc' }]
+      }
+    },
+
+    // RANK - Rank periods by total lines (most productive = rank 1)
+    productivityRank: {
+      name: 'productivityRank',
+      title: 'Productivity Rank',
+      type: 'rank',
+      description: 'Rank by total lines of code (1 = most productive period)',
+      windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'raw',
+        orderBy: [{ field: 'totalLinesOfCode', direction: 'desc' }]
+      }
+    },
+
+    // Running total - Cumulative sum of lines
+    runningTotalLines: {
+      name: 'runningTotalLines',
+      title: 'Running Total Lines',
+      type: 'movingSum',
+      description: 'Cumulative total lines of code over time',
+      windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'raw',
+        orderBy: [{ field: 'date', direction: 'asc' }],
+        frame: {
+          type: 'rows',
+          start: 'unbounded',
+          end: 'current'
+        }
+      }
+    },
+
+    // Moving 7-period average for trend analysis
+    movingAvg7Period: {
+      name: 'movingAvg7Period',
+      title: '7-Period Moving Avg',
+      type: 'movingAvg',
+      description: '7-period moving average of lines of code',
+      windowConfig: {
+        measure: 'totalLinesOfCode',
+        operation: 'raw',
         orderBy: [{ field: 'date', direction: 'asc' }],
         frame: {
           type: 'rows',

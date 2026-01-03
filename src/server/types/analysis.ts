@@ -93,13 +93,21 @@ export interface PreAggregationAnalysis {
   cteAlias: string
   /** Why this cube needs a CTE */
   reason: string
-  /** Measures included in CTE */
+  /** Measures included in CTE (aggregate measures + window base measures) */
   measures: string[]
   /** Join keys used */
   joinKeys: Array<{
     sourceColumn: string
     targetColumn: string
   }>
+  /**
+   * Type of CTE:
+   * - 'aggregate': Standard CTE with GROUP BY (count, sum, avg, etc.)
+   *
+   * Note: Window function CTEs are no longer used. Post-aggregation window
+   * functions are applied in the outer query after data is aggregated.
+   */
+  cteType?: 'aggregate'
 }
 
 /**
@@ -114,6 +122,12 @@ export interface QuerySummary {
   cteCount: number
   /** Has hasMany relationships requiring aggregation */
   hasPreAggregation: boolean
+  /**
+   * Whether query contains post-aggregation window function measures.
+   * These window functions (lag, lead, rank, etc.) operate on aggregated
+   * data and are applied in the outer query after CTEs.
+   */
+  hasWindowFunctions?: boolean
 }
 
 /**

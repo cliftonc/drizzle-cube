@@ -558,24 +558,24 @@ export const productivityDashboardConfig = {
       // Window Function: Moving Average Line Chart
       {
         id: 'moving-average-trend',
-        title: 'Window Function: Daily Output with 7-Day Moving Average',
+        title: 'Window Function: Weekly Output with 7-Period Moving Average',
         query: JSON.stringify({
-          measures: ['Productivity.movingAvg7Day'],
-          dimensions: ['Productivity.date', 'Productivity.linesOfCode'],
+          measures: ['Productivity.totalLinesOfCode', 'Productivity.movingAvg7Period'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'week',
+            dateRange: 'last 6 months'
+          }],
           filters: [{
             member: 'Productivity.isDayOff',
             operator: 'equals',
             values: [false]
-          }],
-          order: {
-            'Productivity.date': 'asc'
-          },
-          limit: 90
+          }]
         }, null, 2),
         chartType: 'line' as const,
         chartConfig: {
           xAxis: ['Productivity.date'],
-          yAxis: ['Productivity.linesOfCode', 'Productivity.movingAvg7Day'],
+          yAxis: ['Productivity.totalLinesOfCode', 'Productivity.movingAvg7Period'],
           series: []
         },
         displayConfig: {
@@ -585,6 +585,70 @@ export const productivityDashboardConfig = {
         h: 6,
         x: 0,
         y: 73
+      },
+
+      // Window Function: Period-over-Period Change
+      {
+        id: 'period-change-trend',
+        title: 'Window Function: Period-over-Period Lines of Code Change',
+        query: JSON.stringify({
+          measures: ['Productivity.totalLinesOfCode', 'Productivity.linesOfCodeChange', 'Productivity.linesPercentChange'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'week',
+            dateRange: 'last 6 months'
+          }],
+          filters: [{
+            member: 'Productivity.isDayOff',
+            operator: 'equals',
+            values: [false]
+          }]
+        }, null, 2),
+        chartType: 'line' as const,
+        chartConfig: {
+          xAxis: ['Productivity.date'],
+          yAxis: ['Productivity.linesOfCodeChange'],
+          series: []
+        },
+        displayConfig: {
+          showLegend: true
+        },
+        w: 6,
+        h: 6,
+        x: 0,
+        y: 79
+      },
+
+      // Window Function: Cumulative Running Total
+      {
+        id: 'running-total-trend',
+        title: 'Window Function: Cumulative Lines of Code (Running Total)',
+        query: JSON.stringify({
+          measures: ['Productivity.totalLinesOfCode', 'Productivity.runningTotalLines'],
+          timeDimensions: [{
+            dimension: 'Productivity.date',
+            granularity: 'week',
+            dateRange: 'last 6 months'
+          }],
+          filters: [{
+            member: 'Productivity.isDayOff',
+            operator: 'equals',
+            values: [false]
+          }]
+        }, null, 2),
+        chartType: 'area' as const,
+        chartConfig: {
+          xAxis: ['Productivity.date'],
+          yAxis: ['Productivity.runningTotalLines'],
+          series: []
+        },
+        displayConfig: {
+          showLegend: true
+        },
+        w: 6,
+        h: 6,
+        x: 6,
+        y: 79
       }
     ]
   }

@@ -32,6 +32,7 @@ import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFil
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { CTEBuilder } from './cte-builder'
+import { MeasureBuilder } from './builders/measure-builder'
 import { validateQueryAgainstCubes } from './compiler'
 import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
@@ -282,7 +283,7 @@ export class QueryExecutor {
     if (queryPlan.preAggregationCTEs) {
       for (const cteInfo of queryPlan.preAggregationCTEs) {
         const cubeName = cteInfo.cube.name
-        
+
         // Handle measures from CTE cubes
         for (const measureName of cteInfo.measures) {
           if (modifiedSelections[measureName]) {
@@ -290,8 +291,9 @@ export class QueryExecutor {
             const cube = this.getCubesFromPlan(queryPlan).get(cubeName)
             if (cube && cube.measures && cube.measures[fieldName]) {
               const measure = cube.measures[fieldName]
+              const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
 
-              // Use appropriate Drizzle aggregate function based on measure type
+              // For aggregate CTEs, use appropriate Drizzle aggregate function based on measure type
               // Since CTE is already pre-aggregated, we need to aggregate the pre-aggregated values
               let aggregatedExpr: SQL
 
@@ -307,8 +309,6 @@ export class QueryExecutor {
                 )
               } else {
                 // For non-calculated measures, aggregate the CTE column directly
-                const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
-
                 switch (measure.type) {
                   case 'count':
                   case 'countDistinct':
@@ -378,7 +378,59 @@ export class QueryExecutor {
         }
       }
     }
-    
+
+    // Handle post-aggregation window functions
+    // These window functions reference a base measure and operate on aggregated data
+    if (query.measures) {
+      const allCubes = this.getCubesFromPlan(queryPlan)
+
+      for (const measureName of query.measures) {
+        const [cubeName, fieldName] = measureName.split('.')
+        const cube = allCubes.get(cubeName)
+
+        if (cube?.measures?.[fieldName]) {
+          const measure = cube.measures[fieldName]
+
+          // Check if this is a post-aggregation window function
+          if (MeasureBuilder.isPostAggregationWindow(measure)) {
+            const baseMeasureName = MeasureBuilder.getWindowBaseMeasure(measure, cubeName)
+
+            if (baseMeasureName) {
+              // Build the base measure expression fresh (without alias)
+              // We can't use modifiedSelections because those are aliased and SQL doesn't
+              // allow referencing SELECT aliases in the same SELECT clause
+              const [baseCubeName, baseFieldName] = baseMeasureName.split('.')
+              const baseCube = allCubes.get(baseCubeName)
+
+              if (baseCube?.measures?.[baseFieldName]) {
+                const baseMeasure = baseCube.measures[baseFieldName]
+                // Build the raw aggregation expression (e.g., SUM(column))
+                const baseMeasureExpr = this.queryBuilder.buildMeasureExpression(baseMeasure, context, baseCube)
+
+                // Ensure the base measure is also in the selections (for display)
+                if (!modifiedSelections[baseMeasureName]) {
+                  modifiedSelections[baseMeasureName] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
+                }
+
+                // Build the window function expression
+                const windowExpr = this.buildPostAggregationWindowExpression(
+                  measure,
+                  baseMeasureExpr,
+                  query,
+                  context,
+                  cube
+                )
+
+                if (windowExpr) {
+                  modifiedSelections[measureName] = sql`${windowExpr}`.as(measureName) as unknown as SQL
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Collect all WHERE conditions (declared early for junction table security)
     const allWhereConditions: SQL[] = []
 
@@ -819,7 +871,149 @@ export class QueryExecutor {
     }
   }
 
+  /**
+   * Build post-aggregation window function expression
+   *
+   * Post-aggregation windows operate on already-aggregated data:
+   * 1. The base measure is aggregated (e.g., SUM(revenue))
+   * 2. The window function is applied (e.g., LAG(...) OVER ORDER BY date)
+   * 3. An optional operation is applied (e.g., current - previous)
+   *
+   * @param measure - The window function measure definition
+   * @param baseMeasureExpr - The aggregated base measure expression
+   * @param query - The semantic query (for dimension context)
+   * @param context - Query context
+   * @param cube - The cube containing this measure
+   * @returns SQL expression for the window function
+   */
+  private buildPostAggregationWindowExpression(
+    measure: any,
+    baseMeasureExpr: any,
+    query: SemanticQuery,
+    context: QueryContext,
+    cube: Cube
+  ): SQL | null {
+    const windowConfig = measure.windowConfig || {}
 
+    // Build ORDER BY expression for the window function
+    // Use time dimensions or specified orderBy fields
+    type OrderByExpr = { field: any; direction: 'asc' | 'desc' }
+    let orderByExprs: OrderByExpr[] | undefined
+
+    if (windowConfig.orderBy && windowConfig.orderBy.length > 0) {
+      orderByExprs = windowConfig.orderBy
+        .map((orderSpec: { field: string; direction: 'asc' | 'desc' }): OrderByExpr | null => {
+          const fieldName = orderSpec.field.includes('.') ? orderSpec.field.split('.')[1] : orderSpec.field
+
+          // First check if it's a time dimension in the query (with granularity)
+          // This takes priority because time dimensions need the granularity-applied expression
+          if (query.timeDimensions) {
+            for (const timeDim of query.timeDimensions) {
+              const [, timeDimField] = timeDim.dimension.split('.')
+              if (timeDimField === fieldName) {
+                const timeDimension = cube.dimensions?.[timeDimField]
+                if (timeDimension) {
+                  // Use the time dimension expression with granularity
+                  return {
+                    field: this.queryBuilder.buildTimeDimensionExpression(
+                      timeDimension.sql,
+                      timeDim.granularity,
+                      context
+                    ),
+                    direction: orderSpec.direction
+                  }
+                }
+              }
+            }
+          }
+
+          // Fall back to regular dimensions if not a time dimension
+          const dimension = cube.dimensions?.[fieldName]
+          if (dimension) {
+            return {
+              field: resolveSqlExpression(dimension.sql, context),
+              direction: orderSpec.direction
+            }
+          }
+
+          return null
+        })
+        .filter((expr: OrderByExpr | null): expr is OrderByExpr => expr !== null)
+    } else if (query.timeDimensions && query.timeDimensions.length > 0) {
+      // Default to first time dimension for ordering
+      const timeDim = query.timeDimensions[0]
+      const [timeCubeName, timeDimField] = timeDim.dimension.split('.')
+      const timeCube = cube.name === timeCubeName ? cube : undefined
+
+      if (timeCube?.dimensions?.[timeDimField]) {
+        const timeDimension = timeCube.dimensions[timeDimField]
+        orderByExprs = [{
+          field: this.queryBuilder.buildTimeDimensionExpression(
+            timeDimension.sql,
+            timeDim.granularity,
+            context
+          ),
+          direction: 'asc' as const
+        }]
+      }
+    }
+
+    // Build PARTITION BY expression if specified
+    let partitionByExprs: any[] | undefined
+    if (windowConfig.partitionBy && windowConfig.partitionBy.length > 0) {
+      partitionByExprs = windowConfig.partitionBy
+        .map((dimRef: string) => {
+          const dimName = dimRef.includes('.') ? dimRef.split('.')[1] : dimRef
+          const dimension = cube.dimensions?.[dimName]
+          if (dimension) {
+            return resolveSqlExpression(dimension.sql, context)
+          }
+          return null
+        })
+        .filter((expr: any): expr is any => expr !== null)
+    }
+
+    // Build the base window function using the database adapter
+    const windowResult = this.databaseAdapter.buildWindowFunction(
+      measure.type,
+      baseMeasureExpr,
+      partitionByExprs,
+      orderByExprs,
+      {
+        offset: windowConfig.offset,
+        defaultValue: windowConfig.defaultValue,
+        nTile: windowConfig.nTile,
+        frame: windowConfig.frame
+      }
+    )
+
+    if (!windowResult) {
+      return null
+    }
+
+    // Apply the operation (difference, ratio, percentChange)
+    const operation = windowConfig.operation || MeasureBuilder.getDefaultWindowOperation(measure.type)
+
+    switch (operation) {
+      case 'difference':
+        // For LAG: current - previous (baseMeasure - LAG(baseMeasure))
+        // For LEAD: current - next (baseMeasure - LEAD(baseMeasure))
+        return sql`${baseMeasureExpr} - ${windowResult}`
+
+      case 'ratio':
+        // current / window (with NULL protection)
+        return sql`${baseMeasureExpr} / NULLIF(${windowResult}, 0)`
+
+      case 'percentChange':
+        // ((current - window) / window) * 100
+        return sql`((${baseMeasureExpr} - ${windowResult}) / NULLIF(${windowResult}, 0)) * 100`
+
+      case 'raw':
+      default:
+        // Return the window function result directly
+        return windowResult
+    }
+  }
 
 
 
