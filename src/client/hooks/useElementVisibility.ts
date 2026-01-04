@@ -14,7 +14,9 @@ interface UseElementVisibilityOptions {
   /** Debounce delay in milliseconds */
   debounceMs?: number
   /** Custom scroll container ref (uses viewport if not provided) */
-  containerRef?: RefObject<HTMLElement>
+  containerRef?: RefObject<HTMLElement | null>
+  /** Optional state value to trigger re-initialization when container is found */
+  container?: HTMLElement | null
 }
 
 /**
@@ -35,8 +37,8 @@ interface UseElementVisibilityOptions {
  * {!isEditBarVisible && <FloatingToolbar />}
  */
 export function useElementVisibility(
-  elementRef: RefObject<HTMLElement>,
-  { threshold = 80, debounceMs = 100, containerRef }: UseElementVisibilityOptions = {}
+  elementRef: RefObject<HTMLElement | null>,
+  { threshold = 80, debounceMs = 100, containerRef, container }: UseElementVisibilityOptions = {}
 ): boolean {
   // Start with visible=true to prevent flash on initial render
   const [isVisible, setIsVisible] = useState(true)
@@ -99,15 +101,22 @@ export function useElementVisibility(
     // Initial check
     checkVisibility()
 
+    // Deferred re-check after React render cycle completes
+    // This handles the case where elementRef.current isn't set yet on first render
+    const rafId = requestAnimationFrame(() => {
+      checkVisibility()
+    })
+
     // Cleanup
     return () => {
       scrollTarget.removeEventListener('scroll', checkVisibility)
       window.removeEventListener('resize', checkVisibility)
+      cancelAnimationFrame(rafId)
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [elementRef, containerRef, threshold, debounceMs])
+  }, [elementRef, containerRef, threshold, debounceMs, container])
 
   return isVisible
 }

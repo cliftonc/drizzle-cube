@@ -15,6 +15,8 @@ interface UseScrollDetectionOptions {
   threshold?: number
   /** Debounce delay in milliseconds (default: 150) */
   debounceMs?: number
+  /** Optional container state to trigger re-initialization when found */
+  container?: HTMLElement | null
 }
 
 /**
@@ -36,8 +38,8 @@ interface UseScrollDetectionOptions {
  * </div>
  */
 export function useScrollDetection(
-  containerRef: RefObject<HTMLElement>,
-  { threshold = 20, debounceMs = 150 }: UseScrollDetectionOptions = {}
+  containerRef: RefObject<HTMLElement | null>,
+  { threshold = 20, debounceMs = 150, container }: UseScrollDetectionOptions = {}
 ) {
   const [isScrolled, setIsScrolled] = useState(false)
   const timeoutRef = useRef<number>()
@@ -75,7 +77,7 @@ export function useScrollDetection(
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [threshold, debounceMs])
+  }, [threshold, debounceMs, container])
 
   return isScrolled
 }

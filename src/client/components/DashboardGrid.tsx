@@ -378,7 +378,8 @@ export default function DashboardGrid({
   // Uses the actual scroll container (found via findScrollableAncestor) instead of window
   const isScrolled = useScrollDetection(scrollContainerRef, {
     threshold: 20,
-    debounceMs: 150
+    debounceMs: 150,
+    container: scrollContainer  // State dependency to trigger re-init when container found
   })
 
   // Track edit bar visibility for floating toolbar
@@ -386,7 +387,8 @@ export default function DashboardGrid({
   const isEditBarVisible = useElementVisibility(editBarRef, {
     threshold: 80,
     debounceMs: 100,
-    containerRef: scrollContainerRef
+    containerRef: scrollContainerRef,
+    container: scrollContainer  // State dependency to trigger re-init when container found
   })
 
   // Modal states
