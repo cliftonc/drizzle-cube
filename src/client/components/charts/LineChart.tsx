@@ -136,6 +136,21 @@ const LineChart = React.memo(function LineChart({
       return mapping
     }, [yAxisFields, getFieldLabel])
 
+    // Helper to find field from series key, handling comparison suffixes like "(Current)" and "(Prior)"
+    const findFieldFromSeriesKey = (seriesKey: string): string | undefined => {
+      // Direct match first
+      if (seriesKeyToField[seriesKey]) {
+        return seriesKeyToField[seriesKey]
+      }
+      // For comparison data, strip the period suffix and any dimension prefix
+      // Series keys look like: "Label (Current)", "Label (Prior)", or "DimValue - Label (Current)"
+      const withoutSuffix = seriesKey.replace(/\s*\((Current|Prior)\)$/, '')
+      // Check if it has a dimension prefix (contains " - ")
+      const parts = withoutSuffix.split(' - ')
+      const measureLabel = parts[parts.length - 1] // Last part is the measure label
+      return seriesKeyToField[measureLabel]
+    }
+
     // Determine if we need a right Y-axis
     const hasRightAxis = yAxisFields.some((field) => yAxisAssignment[field] === 'right')
 
@@ -252,7 +267,7 @@ const LineChart = React.memo(function LineChart({
                 }
 
                 // Determine which axis format to use based on series name
-                const originalField = seriesKeyToField[name]
+                const originalField = findFieldFromSeriesKey(name)
                 const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
                 const formatConfig = axisId === 'right' ? rightYAxisFormat : leftYAxisFormat
                 // Series name is already formatted (e.g., "Total Lines of Code (Current)")
@@ -290,7 +305,7 @@ const LineChart = React.memo(function LineChart({
           )}
           {seriesKeys.map((seriesKey, index) => {
             // Look up the original field name to get its axis assignment
-            const originalField = seriesKeyToField[seriesKey]
+            const originalField = findFieldFromSeriesKey(seriesKey)
             const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
 
             // Determine if this is a prior period series (for styling)
