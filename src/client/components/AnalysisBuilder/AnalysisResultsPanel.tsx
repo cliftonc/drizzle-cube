@@ -249,67 +249,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         </div>
       )}
 
-      {/* JSON Query and SQL Query in 2 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* JSON Query */}
-        <div>
-          {debugQuery ? (
-            <CodeBlock
-              code={JSON.stringify(debugQuery, null, 2)}
-              language="json"
-              title="JSON Query"
-              maxHeight="16rem"
-            />
-          ) : (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">JSON Query</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
-                No query
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Generated SQL */}
-        <div>
-          {debugLoading ? (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
-                Loading...
-              </div>
-            </>
-          ) : debugError ? (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error">
-                {debugError}
-              </div>
-            </>
-          ) : debugSql ? (
-            <CodeBlock
-              code={
-                debugSql.sql +
-                (debugSql.params && debugSql.params.length > 0
-                  ? '\n\n-- Parameters:\n' + JSON.stringify(debugSql.params, null, 2)
-                  : '')
-              }
-              language="sql"
-              title="Generated SQL"
-              maxHeight="16rem"
-            />
-          ) : (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
-                Add metrics to generate SQL
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Query Analysis - full width */}
+      {/* Query Analysis - full width (at top for visibility) */}
       <div>
         <h4 className="text-sm font-semibold text-dc-text mb-2">Query Analysis</h4>
         {debugLoading ? (
@@ -324,6 +264,108 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
             {debugError ? 'Analysis unavailable due to error' : 'Add metrics to see analysis'}
           </div>
+        )}
+      </div>
+
+      {/* Cube Query and SQL Query in 2 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cube Query */}
+        <div>
+          {debugQuery ? (
+            <CodeBlock
+              code={JSON.stringify(debugQuery, null, 2)}
+              language="json"
+              title="Cube Query"
+              height="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Cube Query</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+                No query
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Generated SQL */}
+        <div>
+          {debugLoading ? (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+                Loading...
+              </div>
+            </>
+          ) : debugError ? (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-64 overflow-auto">
+                {debugError}
+              </div>
+            </>
+          ) : debugSql ? (
+            <CodeBlock
+              code={
+                debugSql.sql +
+                (debugSql.params && debugSql.params.length > 0
+                  ? '\n\n-- Parameters:\n' + JSON.stringify(debugSql.params, null, 2)
+                  : '')
+              }
+              language="sql"
+              title="Generated SQL"
+              height="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+                Add metrics to generate SQL
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Chart Config & Display Config in 2 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Chart Config */}
+        <div>
+          <CodeBlock
+            code={JSON.stringify(chartConfig, null, 2)}
+            language="json"
+            title="Chart Config"
+            height="16rem"
+          />
+        </div>
+
+        {/* Display Config */}
+        <div>
+          <CodeBlock
+            code={JSON.stringify(displayConfig, null, 2)}
+            language="json"
+            title="Display Config"
+            height="16rem"
+          />
+        </div>
+      </div>
+
+      {/* Server Response - full width */}
+      <div>
+        {executionResults ? (
+          <CodeBlock
+            code={JSON.stringify(executionResults, null, 2)}
+            language="json"
+            title={`Server Response (${executionResults.length} rows)`}
+            maxHeight="24rem"
+          />
+        ) : (
+          <>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+              No results yet
+            </div>
+          </>
         )}
       </div>
     </div>

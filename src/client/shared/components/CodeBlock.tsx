@@ -19,6 +19,7 @@ interface CodeBlockProps {
   language: 'json' | 'sql'
   title?: string
   maxHeight?: string
+  height?: string
   className?: string
 }
 
@@ -27,6 +28,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   language,
   title,
   maxHeight = '16rem',
+  height,
   className = ''
 }) => {
   const [copied, setCopied] = useState(false)
@@ -90,7 +92,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
       {/* Code block with syntax highlighting */}
       <div
         className="bg-dc-surface-secondary border border-dc-border rounded overflow-auto"
-        style={{ maxHeight }}
+        style={height ? { height, minHeight: height, maxHeight: height } : { maxHeight }}
       >
         <pre className="p-3 text-xs m-0">
           <code
