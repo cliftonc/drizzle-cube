@@ -134,7 +134,13 @@ export class QueryExecutor {
         annotation
       }
     } catch (error) {
-      throw new Error(`Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Preserve the original error for better debugging
+      // The underlying database error message is visible to users
+      if (error instanceof Error) {
+        error.message = `Query execution failed: ${error.message}`
+        throw error
+      }
+      throw new Error(`Query execution failed: Unknown error`)
     }
   }
 
@@ -404,8 +410,26 @@ export class QueryExecutor {
 
               if (baseCube?.measures?.[baseFieldName]) {
                 const baseMeasure = baseCube.measures[baseFieldName]
-                // Build the raw aggregation expression (e.g., SUM(column))
-                const baseMeasureExpr = this.queryBuilder.buildMeasureExpression(baseMeasure, context, baseCube)
+
+                // Check if the base measure is from a CTE cube (hasMany relationship)
+                // If so, we should reference the CTE column with re-aggregation
+                // because the main query has its own GROUP BY
+                const cteInfo = queryPlan.preAggregationCTEs?.find(
+                  (cte: any) => cte.cube?.name === baseCubeName && cte.measures?.includes(baseMeasureName)
+                )
+
+                let baseMeasureExpr: SQL
+                if (cteInfo) {
+                  // Base measure is from a CTE - reference the CTE column
+                  // The CTE already contains the aggregated value (e.g., totalLinesOfCode)
+                  // But the main query may have additional GROUP BY, so we need to re-aggregate
+                  const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(baseFieldName)}`
+                  // Apply sum() to the CTE column to re-aggregate for the main query's GROUP BY
+                  baseMeasureExpr = sql`sum(${cteColumn})`
+                } else {
+                  // Not from a CTE - build the raw aggregation expression (e.g., SUM(column))
+                  baseMeasureExpr = this.queryBuilder.buildMeasureExpression(baseMeasure, context, baseCube)
+                }
 
                 // Ensure the base measure is also in the selections (for display)
                 if (!modifiedSelections[baseMeasureName]) {
@@ -418,7 +442,8 @@ export class QueryExecutor {
                   baseMeasureExpr,
                   query,
                   context,
-                  cube
+                  cube,
+                  queryPlan
                 )
 
                 if (windowExpr) {
@@ -722,16 +747,16 @@ export class QueryExecutor {
     const timeDimensions: Record<string, TimeDimensionAnnotation> = {}
     
     // Get all cubes involved (primary + join cubes)
-    const allCubes = [queryPlan.primaryCube]
+    const allCubes = [queryPlan.primaryCube].filter(Boolean)
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
-      allCubes.push(...queryPlan.joinCubes.map((jc: any) => jc.cube))
+      allCubes.push(...queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
     }
-    
+
     // Generate measure annotations from all cubes
     if (query.measures) {
       for (const measureName of query.measures) {
         const [cubeName, fieldName] = measureName.split('.')
-        const cube = allCubes.find(c => c.name === cubeName)
+        const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.measures[fieldName]) {
           const measure = cube.measures[fieldName]
           measures[measureName] = {
@@ -747,8 +772,8 @@ export class QueryExecutor {
     if (query.dimensions) {
       for (const dimensionName of query.dimensions) {
         const [cubeName, fieldName] = dimensionName.split('.')
-        const cube = allCubes.find(c => c.name === cubeName)
-        if (cube && cube.dimensions[fieldName]) {
+        const cube = allCubes.find(c => c?.name === cubeName)
+        if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           dimensions[dimensionName] = {
             title: dimension.title || fieldName,
@@ -758,13 +783,13 @@ export class QueryExecutor {
         }
       }
     }
-    
+
     // Generate time dimension annotations from all cubes
     if (query.timeDimensions) {
       for (const timeDim of query.timeDimensions) {
         const [cubeName, fieldName] = timeDim.dimension.split('.')
-        const cube = allCubes.find(c => c.name === cubeName)
-        if (cube && cube.dimensions && cube.dimensions[fieldName]) {
+        const cube = allCubes.find(c => c?.name === cubeName)
+        if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           timeDimensions[timeDim.dimension] = {
             title: dimension.title || fieldName,
@@ -891,9 +916,23 @@ export class QueryExecutor {
     baseMeasureExpr: any,
     query: SemanticQuery,
     context: QueryContext,
-    cube: Cube
+    cube: Cube,
+    queryPlan?: any
   ): SQL | null {
     const windowConfig = measure.windowConfig || {}
+
+    // Helper to check if a dimension's cube is in a CTE
+    // If so, return the CTE's pre-computed column reference instead of re-computing
+    const getCTEDimensionExpr = (dimCubeName: string, fieldName: string): SQL | null => {
+      if (!queryPlan?.preAggregationCTEs) return null
+      const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube?.name === dimCubeName)
+      if (cteInfo && cteInfo.cteAlias) {
+        // Check if this dimension is in the CTE's selections (time dimensions are included)
+        // We reference the CTE's pre-computed column directly
+        return sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
+      }
+      return null
+    }
 
     // Build ORDER BY expression for the window function
     // Use time dimensions or specified orderBy fields
@@ -909,11 +948,21 @@ export class QueryExecutor {
           // This takes priority because time dimensions need the granularity-applied expression
           if (query.timeDimensions) {
             for (const timeDim of query.timeDimensions) {
-              const [, timeDimField] = timeDim.dimension.split('.')
+              const [timeDimCubeName, timeDimField] = timeDim.dimension.split('.')
               if (timeDimField === fieldName) {
+                // Check if this dimension's cube is in a CTE
+                // If so, use the CTE's pre-computed date column
+                const cteExpr = getCTEDimensionExpr(timeDimCubeName, fieldName)
+                if (cteExpr) {
+                  return {
+                    field: cteExpr,
+                    direction: orderSpec.direction
+                  }
+                }
+
+                // Not from CTE - build the time dimension expression with granularity
                 const timeDimension = cube.dimensions?.[timeDimField]
                 if (timeDimension) {
-                  // Use the time dimension expression with granularity
                   return {
                     field: this.queryBuilder.buildTimeDimensionExpression(
                       timeDimension.sql,
@@ -936,6 +985,20 @@ export class QueryExecutor {
             }
           }
 
+          // Check if the ORDER BY field references the base measure itself
+          // This is common for RANK/DENSE_RANK where we order by the aggregated value
+          const baseMeasureFieldName = windowConfig.measure?.includes('.')
+            ? windowConfig.measure.split('.')[1]
+            : windowConfig.measure
+
+          if (fieldName === baseMeasureFieldName || orderSpec.field === windowConfig.measure) {
+            // Use the base measure expression for ordering
+            return {
+              field: baseMeasureExpr,
+              direction: orderSpec.direction
+            }
+          }
+
           return null
         })
         .filter((expr: OrderByExpr | null): expr is OrderByExpr => expr !== null)
@@ -943,18 +1006,28 @@ export class QueryExecutor {
       // Default to first time dimension for ordering
       const timeDim = query.timeDimensions[0]
       const [timeCubeName, timeDimField] = timeDim.dimension.split('.')
-      const timeCube = cube.name === timeCubeName ? cube : undefined
 
-      if (timeCube?.dimensions?.[timeDimField]) {
-        const timeDimension = timeCube.dimensions[timeDimField]
+      // Check if the time dimension's cube is in a CTE
+      const cteExpr = getCTEDimensionExpr(timeCubeName, timeDimField)
+      if (cteExpr) {
         orderByExprs = [{
-          field: this.queryBuilder.buildTimeDimensionExpression(
-            timeDimension.sql,
-            timeDim.granularity,
-            context
-          ),
+          field: cteExpr,
           direction: 'asc' as const
         }]
+      } else {
+        const timeCube = cube.name === timeCubeName ? cube : undefined
+
+        if (timeCube?.dimensions?.[timeDimField]) {
+          const timeDimension = timeCube.dimensions[timeDimField]
+          orderByExprs = [{
+            field: this.queryBuilder.buildTimeDimensionExpression(
+              timeDimension.sql,
+              timeDim.granularity,
+              context
+            ),
+            direction: 'asc' as const
+          }]
+        }
       }
     }
 

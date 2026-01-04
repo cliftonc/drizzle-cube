@@ -22,6 +22,7 @@ import type {
 
 import { resolveSqlExpression } from '../cube-utils'
 import { DateTimeBuilder } from './date-time-builder'
+import { MeasureBuilder } from './measure-builder'
 
 export class GroupByBuilder {
   constructor(private dateTimeBuilder: DateTimeBuilder) {}
@@ -63,10 +64,9 @@ export class GroupByBuilder {
     // Convert single cube to map for consistent handling
     const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
 
-    // Only add GROUP BY if we have AGGREGATE measures (not window functions)
-    // Window functions operate on individual rows and don't need GROUP BY
+    // Only add GROUP BY if we have AGGREGATE measures
+    // This also includes post-aggregation window functions that reference aggregate base measures
     let hasAggregateMeasures = false
-    let hasWindowMeasures = false
 
     for (const measureName of query.measures || []) {
       const [cubeName, fieldName] = measureName.split('.')
@@ -75,21 +75,24 @@ export class GroupByBuilder {
         const measure = cube.measures[fieldName]
         if (this.isAggregateFunctionType(measure.type) || measure.type === 'calculated') {
           hasAggregateMeasures = true
+          break
         }
-        if (this.isWindowFunctionType(measure.type)) {
-          hasWindowMeasures = true
+
+        // Check for post-aggregation window functions (e.g., RANK ordered by aggregated measure)
+        // These require GROUP BY because they operate on aggregated data
+        if (MeasureBuilder.isPostAggregationWindow(measure)) {
+          const baseMeasureName = MeasureBuilder.getWindowBaseMeasure(measure, cubeName)
+          if (baseMeasureName) {
+            const [baseCubeName, baseFieldName] = baseMeasureName.split('.')
+            const baseCube = cubeMap.get(baseCubeName)
+            const baseMeasure = baseCube?.measures?.[baseFieldName]
+            if (baseMeasure && this.isAggregateFunctionType(baseMeasure.type)) {
+              hasAggregateMeasures = true
+              break
+            }
+          }
         }
       }
-    }
-
-    // Warn about mixed aggregate + window queries (not fully supported yet)
-    if (hasAggregateMeasures && hasWindowMeasures) {
-      console.warn(
-        '[drizzle-cube] Warning: Mixing aggregate measures (count, sum, avg, etc.) with window functions ' +
-        '(lag, lead, rank, etc.) in the same query may produce incorrect results. ' +
-        'Window functions will operate on raw rows before aggregation. ' +
-        'Consider separating these into different queries or using CTE pattern.'
-      )
     }
 
     if (!hasAggregateMeasures) {

@@ -428,6 +428,28 @@ describe('Post-Aggregation Window Functions Query Execution', () => {
     }
   })
 
+  it('should execute RANK with only dimensions (no time dimension)', async () => {
+    // This tests the fix for: ORDER BY field referencing a measure
+    // The RANK function orders by totalLines (a measure), not a dimension
+    const query = TestQueryBuilder.create()
+      .measures(['Analytics.productivityRank'])
+      .dimensions(['Analytics.employeeId'])
+      .limit(10)
+      .build()
+
+    const result = await testExecutor.executeQuery(query)
+    expect(result.data.length).toBeGreaterThan(0)
+
+    for (const row of result.data) {
+      expect(row).toHaveProperty('Analytics.productivityRank')
+      expect(row).toHaveProperty('Analytics.totalLines') // Base measure auto-added
+      expect(row).toHaveProperty('Analytics.employeeId')
+      const rank = row['Analytics.productivityRank']
+      expect(typeof rank).toBe('number')
+      expect(rank).toBeGreaterThanOrEqual(1)
+    }
+  })
+
   it('should execute running total (cumulative sum)', async () => {
     const query = TestQueryBuilder.create()
       .measures(['Analytics.totalLines', 'Analytics.runningTotal'])
@@ -470,5 +492,223 @@ describe('Post-Aggregation Window Functions Query Execution', () => {
       expect(row).toHaveProperty('Analytics.linesChangeFromPrevious')
       expect(row).toHaveProperty('Analytics.productivityRank')
     }
+  })
+})
+
+/**
+ * Tests for post-aggregation window functions with hasMany relationships (CTE scenario)
+ *
+ * When a cube has a hasMany relationship, the related data is pre-aggregated in a CTE.
+ * Post-aggregation window functions must reference the CTE columns, not the original table.
+ */
+describe('Post-Aggregation Window Functions with HasMany (CTE)', () => {
+  let testExecutor: TestExecutor
+  let cubes: Map<string, Cube>
+  let close: () => void
+
+  beforeAll(async () => {
+    const { executor: dbExecutor, close: cleanup } = await createTestDatabaseExecutor()
+    close = cleanup
+
+    const { productivity, employees } = await getTestSchema()
+
+    // Declare variables first to handle circular references
+    let productivityCube: Cube
+    let employeesCube: Cube
+
+    // Create a Productivity cube with post-aggregation window functions
+    productivityCube = defineCube('Productivity', {
+      title: 'Productivity with Windows',
+      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        from: productivity,
+        where: eq(productivity.organisationId, ctx.securityContext.organisationId)
+      }),
+      joins: {
+        Employees: {
+          targetCube: () => employeesCube,
+          relationship: 'belongsTo',
+          on: [
+            { source: productivity.employeeId, target: employees.id }
+          ]
+        }
+      },
+      measures: {
+        totalLinesOfCode: {
+          name: 'totalLinesOfCode',
+          type: 'sum',
+          sql: () => productivity.linesOfCode
+        },
+        avgLinesOfCode: {
+          name: 'avgLinesOfCode',
+          type: 'avg',
+          sql: () => productivity.linesOfCode
+        },
+        // Post-aggregation window function: 7-period moving average
+        movingAvg7Period: {
+          name: 'movingAvg7Period',
+          type: 'movingAvg',
+          windowConfig: {
+            measure: 'totalLinesOfCode',
+            operation: 'raw',
+            orderBy: [{ field: 'date', direction: 'asc' }],
+            frame: {
+              type: 'rows',
+              start: 6,
+              end: 'current'
+            }
+          }
+        },
+        // Post-aggregation window function: running total
+        runningTotalLines: {
+          name: 'runningTotalLines',
+          type: 'movingSum',
+          windowConfig: {
+            measure: 'totalLinesOfCode',
+            operation: 'raw',
+            orderBy: [{ field: 'date', direction: 'asc' }],
+            frame: {
+              type: 'rows',
+              start: 'unbounded',
+              end: 'current'
+            }
+          }
+        }
+      },
+      dimensions: {
+        date: {
+          name: 'date',
+          type: 'time',
+          sql: () => productivity.date
+        },
+        employeeId: {
+          name: 'employeeId',
+          type: 'number',
+          sql: () => productivity.employeeId
+        }
+      }
+    })
+
+    // Create an Employees cube with hasMany relationship to Productivity
+    employeesCube = defineCube('Employees', {
+      title: 'Employees',
+      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        from: employees,
+        where: eq(employees.organisationId, ctx.securityContext.organisationId)
+      }),
+      joins: {
+        // hasMany relationship - this triggers CTE pre-aggregation
+        Productivity: {
+          targetCube: () => productivityCube,
+          relationship: 'hasMany',
+          on: [
+            { source: employees.id, target: productivity.employeeId }
+          ]
+        }
+      },
+      measures: {
+        count: {
+          name: 'count',
+          type: 'countDistinct',
+          sql: () => employees.id
+        }
+      },
+      dimensions: {
+        name: {
+          name: 'name',
+          type: 'string',
+          sql: () => employees.name
+        }
+      }
+    })
+
+    cubes = new Map([
+      ['Productivity', productivityCube],
+      ['Employees', employeesCube]
+    ])
+    const queryExecutor = new QueryExecutor(dbExecutor)
+    testExecutor = new TestExecutor(queryExecutor, cubes, testSecurityContexts.org1)
+  })
+
+  afterAll(() => {
+    if (close) close()
+  })
+
+  it('should execute window function with hasMany relationship (movingAvg on CTE data)', async () => {
+    // This query combines:
+    // - Employees.name (from primary cube)
+    // - Productivity measures (from hasMany cube - uses CTE)
+    // - Post-aggregation window function on the CTE data
+    const query = TestQueryBuilder.create()
+      .measures([
+        'Productivity.totalLinesOfCode',
+        'Productivity.movingAvg7Period'
+      ])
+      .dimensions(['Employees.name'])
+      .timeDimensions([{
+        dimension: 'Productivity.date',
+        granularity: 'week'
+      }])
+      .limit(20)
+      .build()
+
+    const result = await testExecutor.executeQuery(query)
+    expect(result.data.length).toBeGreaterThan(0)
+
+    // Verify all expected fields are present
+    for (const row of result.data) {
+      expect(row).toHaveProperty('Employees.name')
+      expect(row).toHaveProperty('Productivity.totalLinesOfCode')
+      expect(row).toHaveProperty('Productivity.movingAvg7Period')
+      expect(row).toHaveProperty('Productivity.date')
+    }
+  })
+
+  it('should execute running total with hasMany relationship', async () => {
+    const query = TestQueryBuilder.create()
+      .measures([
+        'Productivity.totalLinesOfCode',
+        'Productivity.runningTotalLines'
+      ])
+      .dimensions(['Employees.name'])
+      .timeDimensions([{
+        dimension: 'Productivity.date',
+        granularity: 'month'
+      }])
+      .limit(20)
+      .build()
+
+    const result = await testExecutor.executeQuery(query)
+    expect(result.data.length).toBeGreaterThan(0)
+
+    for (const row of result.data) {
+      expect(row).toHaveProperty('Employees.name')
+      expect(row).toHaveProperty('Productivity.totalLinesOfCode')
+      expect(row).toHaveProperty('Productivity.runningTotalLines')
+    }
+  })
+
+  it('should handle filter with window function on CTE data', async () => {
+    const query = TestQueryBuilder.create()
+      .measures([
+        'Productivity.totalLinesOfCode',
+        'Productivity.movingAvg7Period'
+      ])
+      .dimensions(['Employees.name'])
+      .timeDimensions([{
+        dimension: 'Productivity.date',
+        granularity: 'week'
+      }])
+      .filters([{
+        member: 'Employees.name',
+        operator: 'equals',
+        values: ['John Doe']
+      }])
+      .limit(10)
+      .build()
+
+    const result = await testExecutor.executeQuery(query)
+    // May or may not have data depending on test data, but shouldn't error
+    expect(result).toBeDefined()
+    expect(result.data).toBeDefined()
   })
 })
