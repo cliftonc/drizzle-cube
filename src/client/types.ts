@@ -314,6 +314,8 @@ export interface FeaturesConfig {
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
   showSchemaDiagram?: boolean // Show schema diagram in QueryBuilder (default: false, requires reactflow/dagre)
   useAnalysisBuilder?: boolean // Use new AnalysisBuilder modal for portlet editing (default: false)
+  editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
+  floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')
 }
 
 // Grid layout types (simplified)

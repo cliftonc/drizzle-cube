@@ -23,17 +23,25 @@ interface CubeFeaturesProviderProps {
   children: ReactNode
 }
 
+const DEFAULT_FEATURES: FeaturesConfig = {
+  enableAI: true,
+  aiEndpoint: '/api/ai/generate',
+  showSchemaDiagram: false,
+  useAnalysisBuilder: false,
+  editToolbar: 'both',
+  floatingToolbarPosition: 'right'
+}
+
 export function CubeFeaturesProvider({
-  features: initialFeatures = {
-    enableAI: true,
-    aiEndpoint: '/api/ai/generate',
-    showSchemaDiagram: false,
-    useAnalysisBuilder: false
-  },
+  features: initialFeatures,
   dashboardModes = ['rows', 'grid'],
   children
 }: CubeFeaturesProviderProps) {
-  const [features, setFeatures] = useState<FeaturesConfig>(initialFeatures)
+  // Merge passed features with defaults so new features get default values
+  const [features, setFeatures] = useState<FeaturesConfig>(() => ({
+    ...DEFAULT_FEATURES,
+    ...initialFeatures
+  }))
 
   const updateFeatures = useCallback((newFeatures: Partial<FeaturesConfig>) => {
     setFeatures(prev => ({ ...prev, ...newFeatures }))

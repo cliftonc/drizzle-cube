@@ -17,7 +17,9 @@ const apiOptions = { apiUrl: '/cubejs-api/v1' }
 const features = {
   enableAI: true,
   aiEndpoint: '/api/ai/generate',
-  useAnalysisBuilder: true
+  useAnalysisBuilder: true,
+  editToolbar: 'both' as const,  // 'floating' | 'top' | 'both'
+  floatingToolbarPosition: 'right' as const
 }
 
 function App() {

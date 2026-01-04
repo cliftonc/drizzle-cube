@@ -19,12 +19,15 @@ import {
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { getIcon } from '../icons'
 import { useScrollDetection } from '../hooks/useScrollDetection'
+import { useElementVisibility } from '../hooks/useElementVisibility'
 import DashboardPortletCard from './DashboardPortletCard'
 import RowManagedLayout from './RowManagedLayout'
+import FloatingEditToolbar from './FloatingEditToolbar'
 
 const ChartBarIcon = getIcon('measure')
 const RefreshIcon = getIcon('refresh')
 const EditIcon = getIcon('edit')
+const CheckIcon = getIcon('check')
 const DeleteIcon = getIcon('delete')
 const AddIcon = getIcon('add')
 const CopyIcon = getIcon('copy')
@@ -317,6 +320,7 @@ export default function DashboardGrid({
   const [scrollContainer, setScrollContainer] = useState<HTMLElement | null>(null)
   const containerElementRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLElement | null>(null)
+  const editBarRef = useRef<HTMLDivElement | null>(null)
 
   // Combined ref for container
   const combinedContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -375,6 +379,14 @@ export default function DashboardGrid({
   const isScrolled = useScrollDetection(scrollContainerRef, {
     threshold: 20,
     debounceMs: 150
+  })
+
+  // Track edit bar visibility for floating toolbar
+  // When edit bar scrolls out of view, show floating toolbar
+  const isEditBarVisible = useElementVisibility(editBarRef, {
+    threshold: 80,
+    debounceMs: 100,
+    containerRef: scrollContainerRef
   })
 
   // Modal states
@@ -1440,11 +1452,13 @@ export default function DashboardGrid({
       }}
       compactor={verticalCompactor}
     >
-      {config.portlets.map(portlet => (
-        <div key={portlet.id}>
-          {renderPortletCard(portlet)}
-        </div>
-      ))}
+      {config.portlets
+        .filter(portlet => portlet && portlet.id) // Guard against malformed portlets
+        .map(portlet => (
+          <div key={portlet.id}>
+            {renderPortletCard(portlet)}
+          </div>
+        ))}
     </ReactGridLayout>
   )
 
@@ -1472,8 +1486,9 @@ export default function DashboardGrid({
   return (
     <ScrollContainerProvider value={scrollContainer}>
       <div ref={combinedContainerRef} className="dashboard-grid-container w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-        {editable && (
+        {editable && features.editToolbar !== 'floating' && (
         <div
+          ref={editBarRef}
           className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-dc-surface-tertiary border border-dc-border rounded-lg transition-all duration-200 ${
             isScrolled ? 'border-b' : ''
           }`}
@@ -1497,8 +1512,8 @@ export default function DashboardGrid({
                 borderColor: !isResponsiveEditable ? 'var(--dc-border)' : isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
               }}
             >
-              <EditIcon className="w-4 h-4 mr-1.5" />
-              {isEditMode ? 'Finished Editing' : 'Edit'}
+              {isEditMode ? <CheckIcon className="w-4 h-4 mr-1.5" /> : <EditIcon className="w-4 h-4 mr-1.5" />}
+              {isEditMode ? 'Finish Editing' : 'Edit'}
             </button>
             {isEditMode && allowedModes.length > 1 && (
               <div className="inline-flex rounded-md border border-dc-border overflow-hidden whitespace-nowrap">
@@ -1541,34 +1556,46 @@ export default function DashboardGrid({
             )}
           </div>
 
-          {/* Color Palette Selector - Only show in edit mode */}
-          <div className="flex items-center gap-3">
-            {isEditMode && (
+          {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
+          {isEditMode && (
+            <div className="flex items-center gap-3">
               <ColorPaletteSelector
                 currentPalette={config.colorPalette}
                 onPaletteChange={handlePaletteChange}
                 className="shrink-0"
               />
-            )}
 
-            <button
-              onClick={handleAddPortlet}
-              disabled={!isEditMode}
-              className={`inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
-              isEditMode
-                ? 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover'
-                : 'border-dc-border bg-dc-surface-secondary cursor-not-allowed'
-            }`}
-              style={{
-                color: isEditMode ? 'var(--dc-primary)' : 'var(--dc-text-muted)',
-                borderColor: isEditMode ? 'var(--dc-primary)' : 'var(--dc-border)'
-              }}
-          >
-            <AddIcon className="w-5 h-5 mr-2" />
-            Add Portlet
-          </button>
-          </div>
+              <button
+                onClick={handleAddPortlet}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover"
+                style={{
+                  color: 'var(--dc-primary)',
+                  borderColor: 'var(--dc-primary)'
+                }}
+              >
+                <AddIcon className="w-5 h-5 mr-2" />
+                Add Portlet
+              </button>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Floating Edit Toolbar - appears when top edit bar scrolls out of view (or always if editToolbar='floating') */}
+      {editable && features.editToolbar !== 'top' && displayMode === 'desktop' && (
+        <FloatingEditToolbar
+          isEditBarVisible={features.editToolbar === 'floating' ? false : isEditBarVisible}
+          position={features.floatingToolbarPosition || 'right'}
+          isEditMode={isEditMode}
+          onEditModeToggle={() => isResponsiveEditable && setIsEditMode(!isEditMode)}
+          layoutMode={layoutMode}
+          onLayoutModeChange={handleLayoutModeChange}
+          allowedModes={allowedModes}
+          canChangeLayoutMode={canChangeLayoutMode}
+          currentPalette={config.colorPalette || 'default'}
+          onPaletteChange={handlePaletteChange}
+          onAddPortlet={handleAddPortlet}
+        />
       )}
 
       {/* Dashboard Filter Panel - Always visible below toolbar */}
