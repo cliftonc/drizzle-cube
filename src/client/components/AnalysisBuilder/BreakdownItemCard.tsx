@@ -23,6 +23,8 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
   fieldMeta,
   onRemove,
   onGranularityChange,
+  onComparisonToggle,
+  comparisonDisabled,
   sortDirection,
   sortPriority,
   onToggleSort,
@@ -116,6 +118,31 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
             </option>
           ))}
         </select>
+      )}
+
+      {/* Comparison Toggle (for time dimensions) */}
+      {breakdown.isTimeDimension && onComparisonToggle && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onComparisonToggle()
+          }}
+          disabled={comparisonDisabled && !breakdown.enableComparison}
+          className={`text-xs px-2 py-1 rounded flex-shrink-0 transition-colors ${
+            breakdown.enableComparison
+              ? 'bg-dc-accent text-white'
+              : 'bg-dc-surface border border-dc-border text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
+          } ${comparisonDisabled && !breakdown.enableComparison ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title={
+            comparisonDisabled && !breakdown.enableComparison
+              ? 'Another time dimension already has comparison enabled'
+              : breakdown.enableComparison
+                ? 'Click to disable comparison'
+                : 'Compare with previous period'
+          }
+        >
+          vs prior
+        </button>
       )}
 
       {/* Sort Button */}

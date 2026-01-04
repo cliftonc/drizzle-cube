@@ -34,6 +34,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   onAddBreakdown,
   onRemoveBreakdown,
   onBreakdownGranularityChange,
+  onBreakdownComparisonToggle,
   onReorderBreakdowns,
   onFiltersChange,
   onDropFieldToFilter,
@@ -123,6 +124,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
               onAdd={onAddBreakdown}
               onRemove={onRemoveBreakdown}
               onGranularityChange={onBreakdownGranularityChange}
+              onComparisonToggle={onBreakdownComparisonToggle}
               order={order}
               onOrderChange={onOrderChange}
               onReorder={onReorderBreakdowns}

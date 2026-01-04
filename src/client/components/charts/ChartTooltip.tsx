@@ -4,7 +4,7 @@ import { formatNumericValue } from '../../utils/chartUtils'
 
 interface ChartTooltipProps {
   formatter?: (value: any, name: any, props: any) => [React.ReactText, React.ReactText]
-  labelFormatter?: (label: any) => React.ReactText
+  labelFormatter?: (label: any, payload?: readonly any[]) => React.ReactText
 }
 
 // Default formatter that rounds numeric values to at most 2 decimal places

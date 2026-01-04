@@ -52,6 +52,28 @@ export const lineChartConfig: ChartTypeConfig = {
       description: 'Single value or comma-separated values to spread across X-axis'
     },
     {
+      key: 'priorPeriodStyle',
+      label: 'Prior Period Line Style',
+      type: 'select',
+      defaultValue: 'dashed',
+      options: [
+        { value: 'dashed', label: 'Dashed' },
+        { value: 'dotted', label: 'Dotted' },
+        { value: 'solid', label: 'Solid' }
+      ],
+      description: 'Line style for prior period in comparison mode'
+    },
+    {
+      key: 'priorPeriodOpacity',
+      label: 'Prior Period Opacity',
+      type: 'number',
+      defaultValue: 0.5,
+      min: 0.1,
+      max: 1,
+      step: 0.1,
+      description: 'Opacity for prior period lines (0.1 to 1)'
+    },
+    {
       key: 'leftYAxisFormat',
       label: 'Left Y-Axis Format',
       type: 'axisFormat',

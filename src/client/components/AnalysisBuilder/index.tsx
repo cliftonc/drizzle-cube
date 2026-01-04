@@ -25,6 +25,7 @@ import type {
   QueryAnalysis
 } from './types'
 import type { CubeQuery, Filter, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
+import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../shared/date-utils'
 import FieldSearchModal from './FieldSearchModal'
 import AnalysisResultsPanel from './AnalysisResultsPanel'
 import AnalysisQueryPanel from './AnalysisQueryPanel'
@@ -63,6 +64,84 @@ function generateMetricLabel(index: number): string {
 }
 
 /**
+ * Find date filter for a specific time dimension field
+ * Recursively searches filters (including nested and/or groups)
+ * Handles both UI format ({type: 'and'/'or', filters: [...]}) and simple filters
+ */
+function findDateFilterForField(
+  filters: Filter[],
+  field: string
+): { dateRange: string | string[] } | undefined {
+  for (const filter of filters) {
+    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
+    if ('type' in filter && 'filters' in filter) {
+      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
+      const nested = findDateFilterForField(groupFilter.filters, field)
+      if (nested) return nested
+    } else if ('member' in filter) {
+      // Simple filter with member, operator, dateRange
+      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
+      if (simple.member === field && simple.operator === 'inDateRange' && simple.dateRange) {
+        return { dateRange: simple.dateRange }
+      }
+    }
+  }
+  return undefined
+}
+
+/**
+ * Build compareDateRange for a time dimension based on its date filter
+ * When comparison is enabled, returns [[currentStart, currentEnd], [priorStart, priorEnd]]
+ */
+function buildCompareDateRangeFromFilter(
+  timeDimensionField: string,
+  filters: Filter[]
+): [string, string][] | undefined {
+  // Find the date filter for this time dimension
+  const dateFilter = findDateFilterForField(filters, timeDimensionField)
+  if (!dateFilter?.dateRange) return undefined
+
+  // Parse the current range using shared utility
+  const currentPeriod = parseDateRange(dateFilter.dateRange)
+  if (!currentPeriod) return undefined
+
+  // Calculate prior period using shared utility
+  const priorPeriod = calculatePriorPeriod(currentPeriod.start, currentPeriod.end)
+
+  return [
+    [formatDateForCube(currentPeriod.start), formatDateForCube(currentPeriod.end)],
+    [formatDateForCube(priorPeriod.start), formatDateForCube(priorPeriod.end)]
+  ]
+}
+
+/**
+ * Remove date filter for a specific field from filters array
+ * Returns a new array with the filter removed (immutable)
+ */
+function removeComparisonDateFilter(filters: Filter[], field: string): Filter[] {
+  return filters.reduce<Filter[]>((acc, filter) => {
+    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
+    if ('type' in filter && 'filters' in filter) {
+      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
+      const cleanedSubFilters = removeComparisonDateFilter(groupFilter.filters, field)
+      // Only keep the group if it still has filters
+      if (cleanedSubFilters.length > 0) {
+        acc.push({ type: groupFilter.type, filters: cleanedSubFilters } as Filter)
+      }
+    } else if ('member' in filter) {
+      // Simple filter - skip if it's the date filter for this field
+      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
+      if (!(simple.member === field && simple.operator === 'inDateRange')) {
+        acc.push(filter)
+      }
+    } else {
+      acc.push(filter)
+    }
+    return acc
+  }, [])
+}
+
+/**
  * Convert metrics and breakdowns to CubeQuery format
  */
 function buildCubeQuery(
@@ -71,16 +150,44 @@ function buildCubeQuery(
   filters: Filter[],
   order?: Record<string, 'asc' | 'desc'>
 ): CubeQuery {
+  // Find time dimensions with comparison enabled
+  const comparisonFields = breakdowns
+    .filter((b) => b.isTimeDimension && b.enableComparison)
+    .map((b) => b.field)
+
+  // Remove date filters for comparison-enabled time dimensions
+  // (compareDateRange will handle the date ranges instead)
+  let filteredFilters = filters
+  for (const field of comparisonFields) {
+    filteredFilters = removeComparisonDateFilter(filteredFilters, field)
+  }
+
   const query: CubeQuery = {
     measures: metrics.map((m) => m.field),
     dimensions: breakdowns.filter((b) => !b.isTimeDimension).map((b) => b.field),
     timeDimensions: breakdowns
       .filter((b) => b.isTimeDimension)
-      .map((b) => ({
-        dimension: b.field,
-        granularity: b.granularity || 'day'
-      })),
-    filters: filters.length > 0 ? filters : undefined,
+      .map((b) => {
+        const td: {
+          dimension: string
+          granularity: string
+          compareDateRange?: [string, string][]
+        } = {
+          dimension: b.field,
+          granularity: b.granularity || 'day'
+        }
+
+        // If comparison is enabled, build compareDateRange from the ORIGINAL filter
+        if (b.enableComparison) {
+          const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
+          if (compareDateRange) {
+            td.compareDateRange = compareDateRange
+          }
+        }
+
+        return td
+      }),
+    filters: filteredFilters.length > 0 ? filteredFilters : undefined,
     order: order && Object.keys(order).length > 0 ? order : undefined
   }
 
@@ -449,12 +556,15 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         return 'success'
       }
       if (!debouncedQuery) return 'idle'
+      // If results are stale (query changed but debounce hasn't fired yet), show refreshing
+      // This prevents flash when toggling comparison mode
+      if (state.resultsStale && resultSet) return 'refreshing'
       if (isLoading && !resultSet) return 'loading'
       if (isLoading && resultSet) return 'refreshing'
       if (error) return 'error'
       if (resultSet) return 'success'
       return 'idle'
-    }, [debouncedQuery, isLoading, error, resultSet, initialData])
+    }, [debouncedQuery, isLoading, error, resultSet, initialData, state.resultsStale])
 
     // Get execution results - use initialData if no resultSet yet
     const executionResults = useMemo(() => {
@@ -474,6 +584,13 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     // Note: We pass executionStatus, executionResults, error directly to PortletResultsPanel
     // instead of storing in state, to avoid render loops
+
+    // Clear resultsStale flag when new results arrive
+    useEffect(() => {
+      if (resultSet && state.resultsStale) {
+        setState((prev) => ({ ...prev, resultsStale: false }))
+      }
+    }, [resultSet, state.resultsStale])
 
     // Compute chart availability based on current metrics and breakdowns
     const chartAvailability = useMemo(
@@ -792,6 +909,45 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       []
     )
 
+    const handleBreakdownComparisonToggle = useCallback(
+      (breakdownId: string) => {
+        // Check if we're enabling comparison (the breakdown currently doesn't have it)
+        const targetBreakdown = state.breakdowns.find(b => b.id === breakdownId)
+        const isEnabling = targetBreakdown && !targetBreakdown.enableComparison
+
+        // If enabling comparison and chart type is not 'line', switch to line chart first
+        // (comparison only works well with line charts)
+        if (isEnabling && chartType !== 'line') {
+          setChartType('line')
+          // Update chart config for line chart
+          const { chartConfig: newChartConfig } = getSmartChartDefaults(
+            state.metrics,
+            state.breakdowns,
+            'line'
+          )
+          setChartConfig(newChartConfig)
+        }
+
+        // Update breakdowns - React 18 will batch this with the above updates
+        setState((prev) => ({
+          ...prev,
+          breakdowns: prev.breakdowns.map((b) => {
+            if (b.id === breakdownId) {
+              // Toggle this breakdown's comparison
+              return { ...b, enableComparison: !b.enableComparison }
+            }
+            // Clear comparison from other time dimensions when enabling (only one allowed)
+            if (b.isTimeDimension && b.enableComparison) {
+              return { ...b, enableComparison: false }
+            }
+            return b
+          }),
+          resultsStale: true
+        }))
+      },
+      [chartType, state.breakdowns, state.metrics]
+    )
+
     // ========================================================================
     // Reorder Handlers
     // ========================================================================
@@ -1088,6 +1244,24 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     // Handle chart type change - track that user manually selected this
     const handleChartTypeChange = useCallback((type: ChartType) => {
+      // If switching away from 'line', clear any comparison from time dimensions first
+      // (comparison only works with line charts)
+      // Do this before other updates so React 18 batches them together
+      if (type !== 'line') {
+        const hasComparison = state.breakdowns.some(b => b.isTimeDimension && b.enableComparison)
+        if (hasComparison) {
+          setState((prev) => ({
+            ...prev,
+            breakdowns: prev.breakdowns.map((b) =>
+              b.isTimeDimension && b.enableComparison
+                ? { ...b, enableComparison: false }
+                : b
+            ),
+            resultsStale: true
+          }))
+        }
+      }
+
       setChartType(type)
       setUserManuallySelectedChart(true)
 
@@ -1262,6 +1436,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             onAddBreakdown={handleAddBreakdown}
             onRemoveBreakdown={handleRemoveBreakdown}
             onBreakdownGranularityChange={handleBreakdownGranularityChange}
+            onBreakdownComparisonToggle={handleBreakdownComparisonToggle}
             onReorderBreakdowns={handleReorderBreakdowns}
             onFiltersChange={handleFiltersChange}
             onDropFieldToFilter={handleDropFieldToFilter}

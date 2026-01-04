@@ -56,6 +56,7 @@ const BreakdownSection = memo(function BreakdownSection({
   onAdd,
   onRemove,
   onGranularityChange,
+  onComparisonToggle,
   order,
   onOrderChange,
   onReorder
@@ -71,6 +72,12 @@ const BreakdownSection = memo(function BreakdownSection({
 
   // Get the ordered keys to calculate priority
   const orderKeys = useMemo(() => order ? Object.keys(order) : [], [order])
+
+  // Calculate which breakdown has comparison enabled (only one allowed at a time)
+  const activeComparisonId = useMemo(() => {
+    const withComparison = breakdowns.find(b => b.isTimeDimension && b.enableComparison)
+    return withComparison?.id || null
+  }, [breakdowns])
 
   // Resolve field metadata for all breakdowns with sort info
   const breakdownsWithMeta = useMemo(() => {
@@ -288,6 +295,12 @@ const BreakdownSection = memo(function BreakdownSection({
                     ? (granularity) => onGranularityChange(breakdown.id, granularity)
                     : undefined
                 }
+                onComparisonToggle={
+                  breakdown.isTimeDimension && onComparisonToggle
+                    ? () => onComparisonToggle(breakdown.id)
+                    : undefined
+                }
+                comparisonDisabled={activeComparisonId !== null && activeComparisonId !== breakdown.id}
                 sortDirection={sortDirection}
                 sortPriority={sortPriority}
                 onToggleSort={onOrderChange ? () => {

@@ -3,8 +3,15 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Lege
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
+import { transformChartDataWithSeries, formatAxisValue, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
+import {
+  isComparisonData,
+  getPeriodLabels,
+  transformForOverlayMode,
+  isPriorPeriodSeries,
+  getPriorPeriodStrokeDashArray
+} from '../../utils/comparisonUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
@@ -79,15 +86,38 @@ const LineChart = React.memo(function LineChart({
       )
     }
 
-    // Use shared function to transform data and handle series
-    const { data: chartData, seriesKeys } = transformChartDataWithSeries(
-      data,
-      xAxisField,
-      yAxisFields,
-      queryObject,
-      seriesFields,
-      getFieldLabel
-    )
+    // Check if this is comparison data (has __periodIndex metadata)
+    const hasComparisonData = isComparisonData(data)
+    const priorPeriodStyle = displayConfig?.priorPeriodStyle || 'dashed'
+    const priorPeriodOpacity = displayConfig?.priorPeriodOpacity ?? 0.5
+    const periodLabels = hasComparisonData ? getPeriodLabels(data) : []
+
+    // Transform data based on comparison mode
+    let chartData: any[]
+    let seriesKeys: string[]
+    let effectiveXAxisKey = 'name' // Default X-axis key after transformation
+
+    if (hasComparisonData) {
+      // For comparison data, always use overlay transformation to align by period day index
+      // Both 'separate' and 'overlay' modes use the same data transformation,
+      // they differ only in styling (dashed lines, opacity for prior periods in overlay mode)
+      const overlayResult = transformForOverlayMode(data, yAxisFields, xAxisField, getFieldLabel)
+      chartData = overlayResult.data
+      seriesKeys = overlayResult.seriesKeys
+      effectiveXAxisKey = '__periodDayIndex'
+    } else {
+      // Standard mode: use normal transformation
+      const standardResult = transformChartDataWithSeries(
+        data,
+        xAxisField,
+        yAxisFields,
+        queryObject,
+        seriesFields,
+        getFieldLabel
+      )
+      chartData = standardResult.data
+      seriesKeys = standardResult.seriesKeys
+    }
 
     // Dual Y-axis support: extract yAxisAssignment from chartConfig (memoized to prevent object recreation)
     const yAxisAssignment = useMemo(() =>
@@ -154,12 +184,26 @@ const LineChart = React.memo(function LineChart({
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}
-          <XAxis 
-            dataKey="name"
+          <XAxis
+            dataKey={effectiveXAxisKey}
             tick={{ fontSize: 12 }}
             angle={-45}
             textAnchor="end"
             height={60}
+            tickFormatter={
+              hasComparisonData
+                ? (value, index) => {
+                    // For comparison data, show the date from the current period
+                    // formatted according to the query's granularity
+                    const row = chartData[index]
+                    if (row?.__displayDate) {
+                      const granularity = getFieldGranularity(queryObject, xAxisField)
+                      return formatTimeValue(row.__displayDate, granularity)
+                    }
+                    return `Period ${value + 1}`
+                  }
+                : undefined
+            }
           />
           <YAxis
             yAxisId="left"
@@ -206,12 +250,30 @@ const LineChart = React.memo(function LineChart({
                   // Use left Y-axis format for target values
                   return [formatAxisValue(value, leftYAxisFormat), 'Target Value']
                 }
+
                 // Determine which axis format to use based on series name
                 const originalField = seriesKeyToField[name]
                 const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
                 const formatConfig = axisId === 'right' ? rightYAxisFormat : leftYAxisFormat
+                // Series name is already formatted (e.g., "Total Lines of Code (Current)")
                 return [formatAxisValue(value, formatConfig), name]
               }}
+              labelFormatter={
+                hasComparisonData
+                  ? (label: any, payload: any) => {
+                      // For comparison data, show the date from the current period
+                      // formatted according to the query's granularity
+                      if (payload && payload.length > 0) {
+                        const row = payload[0]?.payload
+                        if (row?.__displayDate) {
+                          const granularity = getFieldGranularity(queryObject, xAxisField)
+                          return formatTimeValue(row.__displayDate, granularity)
+                        }
+                      }
+                      return `Period ${Number(label) + 1}`
+                    }
+                  : undefined
+              }
             />
           )}
           {showLegend && (
@@ -230,6 +292,12 @@ const LineChart = React.memo(function LineChart({
             // Look up the original field name to get its axis assignment
             const originalField = seriesKeyToField[seriesKey]
             const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+
+            // Determine if this is a prior period series (for styling)
+            const isPriorPeriod = hasComparisonData && isPriorPeriodSeries(seriesKey, periodLabels)
+            const strokeDashArray = isPriorPeriod ? getPriorPeriodStrokeDashArray(priorPeriodStyle) : undefined
+            const opacity = isPriorPeriod ? priorPeriodOpacity : 1
+
             return (
               <Line
                 key={seriesKey}
@@ -240,10 +308,15 @@ const LineChart = React.memo(function LineChart({
                   (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
                   CHART_COLORS[index % CHART_COLORS.length]
                 }
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
-                strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                strokeWidth={isPriorPeriod ? 1.5 : 2}
+                strokeDasharray={strokeDashArray}
+                dot={isPriorPeriod ? false : { r: 3 }}
+                activeDot={isPriorPeriod ? false : { r: 5 }}
+                strokeOpacity={
+                  hoveredLegend
+                    ? (hoveredLegend === seriesKey ? 1 : 0.3)
+                    : opacity
+                }
                 connectNulls={safeDisplayConfig.connectNulls}
               />
             )

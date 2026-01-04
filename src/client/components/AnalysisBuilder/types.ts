@@ -51,6 +51,8 @@ export interface BreakdownItem {
   granularity?: string
   /** Whether this is a time dimension */
   isTimeDimension: boolean
+  /** Enable period comparison for time dimensions (compares current filter period vs prior period) */
+  enableComparison?: boolean
 }
 
 // ============================================================================
@@ -227,6 +229,7 @@ export interface AnalysisQueryPanelProps {
   onAddBreakdown: () => void
   onRemoveBreakdown: (id: string) => void
   onBreakdownGranularityChange: (id: string, granularity: string) => void
+  onBreakdownComparisonToggle?: (id: string) => void
   onReorderBreakdowns?: (fromIndex: number, toIndex: number) => void
 
   // Filter actions
@@ -368,6 +371,8 @@ export interface BreakdownSectionProps {
   onRemove: (id: string) => void
   /** Change granularity for time dimension */
   onGranularityChange: (id: string, granularity: string) => void
+  /** Toggle comparison for time dimension */
+  onComparisonToggle?: (id: string) => void
   /** Whether the section is expanded */
   isExpanded?: boolean
   /** Toggle expansion */
@@ -426,6 +431,10 @@ export interface BreakdownItemCardProps {
   onRemove: () => void
   /** Granularity change handler (for time dimensions) */
   onGranularityChange?: (granularity: string) => void
+  /** Toggle comparison for time dimensions */
+  onComparisonToggle?: () => void
+  /** Whether another time dimension already has comparison enabled */
+  comparisonDisabled?: boolean
   /** Current sort direction for this field */
   sortDirection?: 'asc' | 'desc' | null
   /** Sort priority (1, 2, 3...) if sorted */

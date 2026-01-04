@@ -36,12 +36,14 @@ import { MeasureBuilder } from './builders/measure-builder'
 import { validateQueryAgainstCubes } from './compiler'
 import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
+import { ComparisonQueryBuilder } from './comparison-query-builder'
 
 export class QueryExecutor {
   private queryBuilder: QueryBuilder
   private queryPlanner: QueryPlanner
   private cteBuilder: CTEBuilder
   private databaseAdapter: DatabaseAdapter
+  private comparisonQueryBuilder: ComparisonQueryBuilder
 
   constructor(private dbExecutor: DatabaseExecutor) {
     // Get the database adapter from the executor
@@ -52,6 +54,7 @@ export class QueryExecutor {
     this.queryBuilder = new QueryBuilder(this.databaseAdapter)
     this.queryPlanner = new QueryPlanner()
     this.cteBuilder = new CTEBuilder(this.queryBuilder)
+    this.comparisonQueryBuilder = new ComparisonQueryBuilder(this.databaseAdapter)
   }
 
   /**
@@ -67,6 +70,11 @@ export class QueryExecutor {
       const validation = validateQueryAgainstCubes(cubes, query)
       if (!validation.isValid) {
         throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+      }
+
+      // Check for compareDateRange queries and route to comparison execution
+      if (this.comparisonQueryBuilder.hasComparison(query)) {
+        return this.executeComparisonQuery(cubes, query, securityContext)
       }
 
       // Create filter cache for parameter deduplication across CTEs
@@ -156,6 +164,136 @@ export class QueryExecutor {
     const cubes = new Map<string, Cube>()
     cubes.set(cube.name, cube)
     return this.execute(cubes, query, securityContext)
+  }
+
+  /**
+   * Execute a comparison query with multiple date periods
+   * Expands compareDateRange into multiple sub-queries and merges results
+   */
+  private async executeComparisonQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    // Get the time dimension with compareDateRange
+    const timeDimension = this.comparisonQueryBuilder.getComparisonTimeDimension(query)
+    if (!timeDimension || !timeDimension.compareDateRange) {
+      throw new Error('No compareDateRange found in query')
+    }
+
+    // Normalize periods (parse relative dates, etc.)
+    const periods = this.comparisonQueryBuilder.normalizePeriods(
+      timeDimension.compareDateRange
+    )
+
+    if (periods.length < 2) {
+      throw new Error('compareDateRange requires at least 2 periods')
+    }
+
+    // Get granularity (default to 'day' if not specified)
+    const granularity = timeDimension.granularity || 'day'
+
+    // Execute query for each period in parallel
+    const periodResultPromises = periods.map(async (period) => {
+      // Create a sub-query for this specific period
+      const periodQuery = this.comparisonQueryBuilder.createPeriodQuery(query, period)
+
+      // Execute using the standard path (this.execute handles the rest)
+      // Note: We call executeStandardQuery to avoid recursion
+      const result = await this.executeStandardQuery(cubes, periodQuery, securityContext)
+
+      return { result, period }
+    })
+
+    // Wait for all period queries to complete
+    const periodResults = await Promise.all(periodResultPromises)
+
+    // Merge results with period metadata
+    const mergedResult = this.comparisonQueryBuilder.mergeComparisonResults(
+      periodResults,
+      timeDimension,
+      granularity
+    )
+
+    // Sort by period index and time dimension
+    mergedResult.data = this.comparisonQueryBuilder.sortComparisonResults(
+      mergedResult.data as any,
+      timeDimension.dimension
+    )
+
+    return mergedResult
+  }
+
+  /**
+   * Standard query execution (non-comparison)
+   * This is the core execution logic extracted for use by comparison queries
+   */
+  private async executeStandardQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    // Create filter cache for parameter deduplication across CTEs
+    const filterCache = new FilterCacheManager()
+
+    // Create query context with filter cache
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext,
+      filterCache
+    }
+
+    // Pre-build filter SQL for reuse across CTEs and main query
+    this.preloadFilterCache(query, filterCache, cubes, context)
+
+    // Create unified query plan (works for both single and multi-cube)
+    const queryPlan = this.queryPlanner.createQueryPlan(cubes, query, context)
+
+    // Build the query using unified approach
+    const builtQuery = this.buildUnifiedQuery(queryPlan, query, context)
+
+    // Execute query - pass numeric field names for selective conversion
+    const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
+    const data = await this.dbExecutor.execute(builtQuery, numericFields)
+
+    // Process time dimension results
+    const mappedData = Array.isArray(data) ? data.map(row => {
+      const mappedRow = { ...row }
+      if (query.timeDimensions) {
+        for (const timeDim of query.timeDimensions) {
+          if (timeDim.dimension in mappedRow) {
+            let dateValue = mappedRow[timeDim.dimension]
+
+            // If we have a date that is not 'T' in the center and Z at the end, we need to fix it
+            if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
+              const isoString = dateValue.replace(' ', 'T')
+              const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+')
+                ? isoString + 'Z'
+                : isoString
+              dateValue = new Date(finalIsoString)
+            }
+
+            // Convert time dimension result using database adapter if required
+            dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)
+            mappedRow[timeDim.dimension] = dateValue
+          }
+        }
+      }
+      return mappedRow
+    }) : [data]
+
+    // Apply gap filling for time series if requested
+    const measureNames = query.measures || []
+    const filledData = applyGapFilling(mappedData, query, measureNames)
+
+    // Generate annotations for UI
+    const annotation = this.generateAnnotations(queryPlan, query)
+
+    return {
+      data: filledData,
+      annotation
+    }
   }
 
   /**

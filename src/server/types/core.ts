@@ -26,7 +26,24 @@ export interface QueryResult {
     dimensions: Record<string, DimensionAnnotation>
     segments: Record<string, unknown>
     timeDimensions: Record<string, TimeDimensionAnnotation>
+    /** Period comparison metadata (present when compareDateRange is used) */
+    periods?: PeriodComparisonMetadata
   }
+}
+
+/**
+ * Period comparison metadata for compareDateRange queries
+ * Provides information about the periods being compared
+ */
+export interface PeriodComparisonMetadata {
+  /** The date ranges being compared */
+  ranges: [string, string][]
+  /** Human-readable labels for each period */
+  labels: string[]
+  /** The time dimension used for comparison */
+  timeDimension: string
+  /** Granularity used for the comparison */
+  granularity?: TimeGranularity
 }
 
 /**

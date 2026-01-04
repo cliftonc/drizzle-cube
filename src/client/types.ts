@@ -117,6 +117,20 @@ export interface ChartDisplayConfig {
   xAxisFormat?: AxisFormatConfig       // Formatting for X-axis values
   leftYAxisFormat?: AxisFormatConfig   // Formatting for left Y-axis values
   rightYAxisFormat?: AxisFormatConfig  // Formatting for right Y-axis values (dual-axis charts)
+
+  // Period comparison display options (for compareDateRange queries)
+  /**
+   * How to display compared periods:
+   * - 'separate': Each period as distinct series with different colors (default)
+   * - 'overlay': Periods aligned by day-of-period index with ghost styling for prior periods
+   */
+  comparisonMode?: 'separate' | 'overlay'
+  /** Line style for prior periods in overlay mode */
+  priorPeriodStyle?: 'solid' | 'dashed' | 'dotted'
+  /** Opacity for prior period lines (0-1), default: 0.5 */
+  priorPeriodOpacity?: number
+  /** Include period labels in legend */
+  showPeriodLabels?: boolean
 }
 
 // Portlet configuration
@@ -216,6 +230,12 @@ export interface CubeQuery {
     dimension: string
     granularity?: string
     dateRange?: string[] | string
+    fillMissingDates?: boolean
+    /**
+     * Array of date ranges for period-over-period comparison.
+     * When specified, queries are executed for each period and results are merged.
+     */
+    compareDateRange?: (string | [string, string])[]
   }>
   filters?: Filter[]
   order?: { [key: string]: 'asc' | 'desc' }

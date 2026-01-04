@@ -11,6 +11,7 @@ export * from './measureIcons'
 export * from './periodUtils'
 export * from './pivotUtils'
 export * from './syntaxHighlighting'
+export * from './comparisonUtils'
 
 /**
  * Create a dashboard layout from portlet configurations

@@ -54,6 +54,22 @@ export interface TimeDimension {
    * Default: true (enabled)
    */
   fillMissingDates?: boolean
+  /**
+   * Array of date ranges for period-over-period comparison.
+   * When specified, queries are executed for each period and results are merged
+   * with period metadata (__periodIndex, __periodDayIndex) for alignment.
+   *
+   * Each range can be:
+   * - A relative string: 'this week', 'last month', 'last 30 days'
+   * - A tuple: ['2024-01-01', '2024-01-31']
+   *
+   * @example
+   * compareDateRange: [
+   *   'last 30 days',                    // Current period
+   *   ['2024-01-01', '2024-01-30']       // Prior period to compare
+   * ]
+   */
+  compareDateRange?: (string | [string, string])[]
 }
 
 /**
