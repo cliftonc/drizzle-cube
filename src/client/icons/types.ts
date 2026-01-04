@@ -71,6 +71,7 @@ export interface IconRegistry {
   documentText: IconDefinition
   bookOpen: IconDefinition
   codeBracket: IconDefinition
+  swatch: IconDefinition
 
   // Field type icons
   measure: IconDefinition

@@ -68,6 +68,7 @@ export { createCubeClient } from './client/CubeClient'
 // Performance hooks
 export { useTheme } from './hooks/useTheme'
 export { useScrollDetection } from './hooks/useScrollDetection'
+export { useElementVisibility } from './hooks/useElementVisibility'
 
 // Types
 export type {
