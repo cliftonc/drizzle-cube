@@ -142,10 +142,24 @@ export class QueryExecutor {
         annotation
       }
     } catch (error) {
-      // Preserve the original error for better debugging
-      // The underlying database error message is visible to users
+      // Extract the actual database error from the cause chain
+      // Drizzle ORM wraps database errors, but the real error is in the cause
       if (error instanceof Error) {
-        error.message = `Query execution failed: ${error.message}`
+        let dbError: Error = error
+        while (dbError.cause instanceof Error) {
+          dbError = dbError.cause
+        }
+
+        // Build comprehensive error message with the actual database error
+        let message = dbError.message
+
+        // Add PostgreSQL-specific details if available
+        const pgError = dbError as any
+        if (pgError.code) message += ` [${pgError.code}]`
+        if (pgError.detail) message += ` Detail: ${pgError.detail}`
+        if (pgError.hint) message += ` Hint: ${pgError.hint}`
+
+        error.message = `Query execution failed: ${message}`
         throw error
       }
       throw new Error(`Query execution failed: Unknown error`)

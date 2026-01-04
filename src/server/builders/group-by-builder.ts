@@ -38,11 +38,16 @@ export class GroupByBuilder {
 
   /**
    * Check if a measure type is an aggregate function (requires GROUP BY)
+   *
+   * Note: 'number' is included because users commonly define measures with raw SQL
+   * aggregations (e.g., sql`COUNT(DISTINCT ...)`) and set type: 'number' for the output.
+   * These measures still require GROUP BY when used with time dimensions.
    */
   isAggregateFunctionType(measureType: string): boolean {
     const aggTypes = ['count', 'countDistinct', 'sum', 'avg', 'min', 'max',
                       'stddev', 'stddevSamp', 'variance', 'varianceSamp',
-                      'median', 'p95', 'p99', 'percentile']
+                      'median', 'p95', 'p99', 'percentile',
+                      'number']
     return aggTypes.includes(measureType)
   }
 
