@@ -6,9 +6,14 @@
  *
  * New code should use the specialized hooks (useCubeApi, useCubeMeta, useCubeFeatures)
  * for better performance and selective re-rendering.
+ *
+ * Also includes TanStack Query's QueryClientProvider for data fetching in
+ * AnalysisBuilder and other components that use TanStack Query hooks.
  */
 
 import { useMemo, type ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
 import { CubeMetaProvider, useCubeMeta } from './CubeMetaProvider'
 import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider'
@@ -16,6 +21,23 @@ import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutM
 import type { CubeMeta, FieldLabelMap } from '../hooks/useCubeMeta'
 import type { CubeClient } from '../client/CubeClient'
 import type { BatchCoordinator } from '../client/BatchCoordinator'
+
+// Create a stable QueryClient instance for TanStack Query
+// This is created at module level to ensure stability across re-renders
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Stale time: 5 minutes (matches existing cache duration)
+      staleTime: 5 * 60 * 1000,
+      // GC time: 15 minutes
+      gcTime: 15 * 60 * 1000,
+      // Retry failed queries up to 3 times
+      retry: 3,
+      // Don't refetch on window focus by default (can be overridden per-query)
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 // Backward compatible interface - merges all three contexts
 interface CubeContextValue {
@@ -66,19 +88,23 @@ export function CubeProvider({
   children
 }: CubeProviderProps) {
   return (
-    <CubeApiProvider
-      apiOptions={apiOptions || { apiUrl: '/cubejs-api/v1' }}
-      token={token}
-      options={options}
-      enableBatching={enableBatching}
-      batchDelayMs={batchDelayMs}
-    >
-      <CubeMetaProvider>
-        <CubeFeaturesProvider features={features} dashboardModes={dashboardModes}>
-          {children}
-        </CubeFeaturesProvider>
-      </CubeMetaProvider>
-    </CubeApiProvider>
+    <QueryClientProvider client={queryClient}>
+      <CubeApiProvider
+        apiOptions={apiOptions || { apiUrl: '/cubejs-api/v1' }}
+        token={token}
+        options={options}
+        enableBatching={enableBatching}
+        batchDelayMs={batchDelayMs}
+      >
+        <CubeMetaProvider>
+          <CubeFeaturesProvider features={features} dashboardModes={dashboardModes}>
+            {children}
+          </CubeFeaturesProvider>
+        </CubeMetaProvider>
+      </CubeApiProvider>
+      {/* TanStack Query DevTools - only shows in development */}
+      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+    </QueryClientProvider>
   )
 }
 
@@ -108,3 +134,6 @@ export function useCubeContext(): CubeContextValue {
 
 // Re-export specialized hooks for better tree-shaking and performance
 export { useCubeApi, useCubeMeta, useCubeFeatures }
+
+// Export queryClient for testing and advanced use cases
+export { queryClient }

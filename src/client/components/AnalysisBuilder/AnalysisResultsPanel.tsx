@@ -46,6 +46,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   onShareClick,
   canShare = false,
   shareButtonState = 'idle',
+  // Refresh functionality
+  onRefreshClick,
+  canRefresh = false,
+  isRefreshing = false,
   // Clear functionality
   onClearClick,
   canClear = false,
@@ -115,6 +119,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const CheckIcon = getIcon('check')
   const TrashIcon = getIcon('delete')
   const SparklesIcon = getIcon('sparkles')
+  const RefreshIcon = getIcon('arrowPath')
 
   // Loading state - initial load
   const renderLoading = () => (
@@ -620,6 +625,23 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               </button>
             )}
 
+            {/* Refresh Button */}
+            {onRefreshClick && canRefresh && (
+              <button
+                onClick={onRefreshClick}
+                disabled={isRefreshing}
+                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                  isRefreshing
+                    ? 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-wait'
+                    : 'text-dc-accent bg-dc-accent-bg border border-dc-accent hover:bg-dc-accent-bg'
+                }`}
+                title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
+              >
+                <RefreshIcon className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
+              </button>
+            )}
+
             {/* Clear Button */}
             {onClearClick && canClear && (
               <button
@@ -691,9 +713,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           ) : activeView === 'chart' ? (
             <div className="p-4 h-full">{renderChart()}</div>
           ) : isMultiQuery ? (
-            <div className="h-full">{renderTable(activeTableIndex)}</div>
+            <div className="h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
           ) : (
-            <div className="h-full">{renderTable()}</div>
+            <div className="h-full" key="table-single">{renderTable()}</div>
           )}
         </div>
 

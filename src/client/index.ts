@@ -67,6 +67,51 @@ export type { UseMultiCubeQueryResult } from './hooks/useMultiCubeQuery'
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
 export { createCubeClient } from './client/CubeClient'
 
+// TanStack Query hooks (modern alternative to useCubeQuery)
+export {
+  useCubeMetaQuery,
+  useCubeLoadQuery,
+  useMultiCubeLoadQuery,
+  useDryRunQuery,
+  useMultiDryRunQueries,
+  useDryRunQueries,
+} from './hooks/queries'
+export type {
+  UseCubeMetaQueryOptions,
+  UseCubeMetaQueryResult,
+  UseCubeLoadQueryOptions,
+  UseCubeLoadQueryResult,
+  UseMultiCubeLoadQueryOptions,
+  UseMultiCubeLoadQueryResult,
+  DebugDataEntry,
+} from './hooks/queries'
+
+// Master coordination hook for AnalysisBuilder
+export { useAnalysisBuilder } from './hooks/useAnalysisBuilderHook'
+export type {
+  UseAnalysisBuilderOptions,
+  UseAnalysisBuilderResult,
+} from './hooks/useAnalysisBuilderHook'
+
+// Zustand stores
+export {
+  useAnalysisBuilderStore,
+  selectCurrentState,
+  selectMetrics,
+  selectBreakdowns,
+  selectFilters,
+  selectChartConfig,
+  selectUIState,
+  selectMultiQueryState,
+} from './stores/analysisBuilderStore'
+export type {
+  AnalysisBuilderStore,
+  AnalysisBuilderStoreState,
+  AnalysisBuilderStoreActions,
+  FieldModalMode,
+  SharedState,
+} from './stores/analysisBuilderStore'
+
 // Multi-query validation utilities
 export {
   validateMultiQueryConfig,

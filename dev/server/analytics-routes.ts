@@ -122,9 +122,11 @@ analyticsApp.post('/', async (c) => {
       return c.json({ error: 'Config portlets must be an array' }, 400)
     }
 
-    // Limit portlets to maximum of 20
-    if (config.portlets.length > 20) {
-      config.portlets = config.portlets.slice(0, 20)
+    // Limit portlets to maximum of 50
+    if (config.portlets.length > 50) {
+      return c.json({
+        error: `Maximum of 50 portlets allowed. You have ${config.portlets.length} portlets.`
+      }, 400)
     }
 
     const newPage = await db
@@ -214,9 +216,11 @@ analyticsApp.put('/:id', async (c) => {
       if (!config.portlets || !Array.isArray(config.portlets)) {
         return c.json({ error: 'Config portlets must be an array' }, 400)
       }
-      // Limit portlets to maximum of 20
-      if (config.portlets.length > 20) {
-        config.portlets = config.portlets.slice(0, 20)
+      // Limit portlets to maximum of 50
+      if (config.portlets.length > 50) {
+        return c.json({
+          error: `Maximum of 50 portlets allowed. You have ${config.portlets.length} portlets.`
+        }, 400)
       }
       updateData.config = config
     }

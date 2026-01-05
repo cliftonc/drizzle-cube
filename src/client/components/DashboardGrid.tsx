@@ -998,7 +998,7 @@ export default function DashboardGrid({
   // Handle deleting portlet
   const handleDeletePortlet = useCallback(async (portletId: string) => {
     if (!onConfigChange) return
-    
+
     if (window.confirm('Are you sure you want to delete this portlet?')) {
       const updatedPortlets = config.portlets.filter(p => p.id !== portletId)
 

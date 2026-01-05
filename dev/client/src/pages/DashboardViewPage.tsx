@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom'
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { AnalyticsDashboard, DashboardEditModal, getIcon } from '@drizzle-cube/client'
 import { useAnalyticsPage, useUpdateAnalyticsPage, useResetAnalyticsPage } from '../hooks/useAnalyticsPages'
 import type { DashboardConfig } from '../types'
@@ -31,13 +31,26 @@ export default function DashboardViewPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showOptionsMenu, setShowOptionsMenu] = useState(false)
 
-  // Update config when page data loads
+  // Track if this is the initial load to prevent overwriting local edits
+  const hasInitializedRef = useRef(false)
+  const lastPageIdRef = useRef<string | null>(null)
+
+  // Update config when page data loads - but only on initial load or page change
+  // This prevents the useEffect from overwriting local edits after a save
   useEffect(() => {
     if (page) {
-      setConfig(page.config)
-      setLastSaved(new Date(page.updatedAt))
+      // Only sync from server on initial load or when viewing a different page
+      const isInitialLoad = !hasInitializedRef.current
+      const isPageChange = lastPageIdRef.current !== null && lastPageIdRef.current !== id
+
+      if (isInitialLoad || isPageChange) {
+        setConfig(page.config)
+        setLastSaved(new Date(page.updatedAt))
+        hasInitializedRef.current = true
+        lastPageIdRef.current = id ?? null
+      }
     }
-  }, [page])
+  }, [page, id])
 
   // Close options menu when clicking outside
   useEffect(() => {

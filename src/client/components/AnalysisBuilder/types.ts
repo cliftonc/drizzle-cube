@@ -347,6 +347,11 @@ export interface AnalysisResultsPanelProps {
   canShare?: boolean
   shareButtonState?: 'idle' | 'copied' | 'copied-no-chart'
 
+  // Refresh functionality
+  onRefreshClick?: () => void
+  canRefresh?: boolean
+  isRefreshing?: boolean
+
   // Clear functionality
   onClearClick?: () => void
   canClear?: boolean
