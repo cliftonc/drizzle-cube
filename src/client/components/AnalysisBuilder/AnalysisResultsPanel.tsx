@@ -5,7 +5,7 @@
  * Used in the left panel of AnalysisBuilder.
  */
 
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
@@ -34,7 +34,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   colorPalette,
   currentPaletteName,
   onColorPaletteChange,
-  query,
+  allQueries,
   activeView = 'chart',
   onActiveViewChange,
   displayLimit = 100,
@@ -56,7 +56,12 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // AI functionality
   enableAI = false,
   isAIOpen = false,
-  onAIToggle
+  onAIToggle,
+  // Multi-query props
+  queryCount = 1,
+  perQueryResults,
+  activeTableIndex = 0,
+  onActiveTableChange
 }: AnalysisResultsPanelProps) {
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
@@ -66,6 +71,20 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       onActiveViewChange('table')
     }
   }, [hasMetrics, activeView, onActiveViewChange])
+
+  // Create a combined query object for the chart (includes measures from ALL queries)
+  const combinedQueryForChart = useMemo(() => {
+    if (!allQueries || allQueries.length === 0) return undefined
+    if (allQueries.length === 1) return allQueries[0]
+
+    // Combine measures from all queries, dimensions are shared (from Q1)
+    const allMeasures = allQueries.flatMap(q => q?.measures || [])
+    return {
+      ...allQueries[0],
+      measures: allMeasures
+    }
+  }, [allQueries])
+
   // Icons
   const SuccessIcon = getIcon('success')
   const ErrorIcon = getIcon('error')
@@ -127,12 +146,12 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
-  // Check if query has any content (pending execution)
-  const hasQueryContent = !!(
-    (query.measures && query.measures.length > 0) ||
-    (query.dimensions && query.dimensions.length > 0) ||
-    (query.timeDimensions && query.timeDimensions.length > 0)
-  )
+  // Check if any query has content (pending execution)
+  const hasQueryContent = !!(allQueries?.some(q =>
+    (q?.measures && q.measures.length > 0) ||
+    (q?.dimensions && q.dimensions.length > 0) ||
+    (q?.timeDimensions && q.timeDimensions.length > 0)
+  ))
 
   // Waiting state - query built but not yet executed (debounce period)
   const renderWaiting = () => (
@@ -225,7 +244,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         chartConfig={chartConfig}
         displayConfig={displayConfig}
         colorPalette={colorPalette}
-        queryObject={query}
+        queryObject={combinedQueryForChart}
         height="100%"
         fallback={
           <div className="flex items-center justify-center h-full">
@@ -371,9 +390,30 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
-  // Render table
-  const renderTable = () => {
-    if (!executionResults || executionResults.length === 0) {
+  // Determine if we're in multi-query mode
+  const isMultiQuery = queryCount > 1 && perQueryResults && perQueryResults.length > 1
+
+  // Render table - uses per-query results in multi-query mode
+  const renderTable = (tableIndex?: number) => {
+    // In multi-query mode, use specific query's results and query object
+    // tableIndex: undefined = single query, -1 = merged view, 0+ = per-query view
+    let tableData: any[] | null = null
+    let tableQuery = allQueries?.[0]  // Default to first query
+
+    if (isMultiQuery && tableIndex !== undefined && tableIndex >= 0 && perQueryResults) {
+      // Per-query table view
+      tableData = perQueryResults[tableIndex] || null
+      tableQuery = allQueries?.[tableIndex]
+    } else {
+      // Merged view (tableIndex === -1) or single query mode
+      tableData = executionResults
+      // For merged view, use combined query
+      if (isMultiQuery) {
+        tableQuery = combinedQueryForChart
+      }
+    }
+
+    if (!tableData || tableData.length === 0) {
       return (
         <div className="flex items-center justify-center h-full text-dc-text-muted">
           <div className="text-center">
@@ -386,14 +426,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     }
 
     // Apply display limit
-    const limitedData = executionResults.slice(0, displayLimit)
+    const limitedData = tableData.slice(0, displayLimit)
 
     return (
       <LazyChart
         chartType="table"
         data={limitedData}
         colorPalette={colorPalette}
-        queryObject={query}
+        queryObject={tableQuery}
         height="100%"
         fallback={
           <div className="flex items-center justify-center h-full">
@@ -603,6 +643,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             renderDebug()
           ) : activeView === 'chart' ? (
             <div className="p-4 h-full">{renderChart()}</div>
+          ) : isMultiQuery ? (
+            <div className="h-full">{renderTable(activeTableIndex)}</div>
           ) : (
             <div className="h-full">{renderTable()}</div>
           )}
@@ -612,6 +654,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {!showDebug && (
           <div className="px-4 py-3 border-t border-dc-border bg-dc-surface flex justify-center flex-shrink-0">
             <div className="flex items-center bg-dc-surface-secondary border border-dc-border rounded-md overflow-hidden">
+              {/* Chart button */}
               <button
                 onClick={() => hasMetrics && onActiveViewChange('chart')}
                 disabled={!hasMetrics}
@@ -627,18 +670,60 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 <ChartIcon className="w-4 h-4" />
                 Chart
               </button>
-              <button
-                onClick={() => onActiveViewChange('table')}
-                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
-                  activeView === 'table'
-                    ? 'bg-dc-primary text-white'
-                    : 'text-dc-text-secondary hover:bg-dc-surface-hover'
-                }`}
-                title="Table view"
-              >
-                <TableIcon className="w-4 h-4" />
-                Table
-              </button>
+
+              {/* Table buttons - show multiple when in multi-query mode */}
+              {isMultiQuery ? (
+                <>
+                  {/* Per-query table buttons */}
+                  {Array.from({ length: queryCount }).map((_, index) => (
+                    <button
+                      key={`table-${index}`}
+                      onClick={() => {
+                        onActiveViewChange('table')
+                        onActiveTableChange?.(index)
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                        activeView === 'table' && activeTableIndex === index
+                          ? 'bg-dc-primary text-white'
+                          : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+                      }`}
+                      title={`Table Q${index + 1}`}
+                    >
+                      <TableIcon className="w-4 h-4" />
+                      Q{index + 1}
+                    </button>
+                  ))}
+                  {/* Merged table button */}
+                  <button
+                    onClick={() => {
+                      onActiveViewChange('table')
+                      onActiveTableChange?.(-1)  // -1 = merged view
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                      activeView === 'table' && activeTableIndex === -1
+                        ? 'bg-dc-primary text-white'
+                        : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+                    }`}
+                    title="Merged table view"
+                  >
+                    <TableIcon className="w-4 h-4" />
+                    Merged
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => onActiveViewChange('table')}
+                  className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
+                    activeView === 'table'
+                      ? 'bg-dc-primary text-white'
+                      : 'text-dc-text-secondary hover:bg-dc-surface-hover'
+                  }`}
+                  title="Table view"
+                >
+                  <TableIcon className="w-4 h-4" />
+                  Table
+                </button>
+              )}
             </div>
           </div>
         )}

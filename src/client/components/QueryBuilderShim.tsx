@@ -19,10 +19,15 @@ const QueryBuilderShim = forwardRef<QueryBuilderRef, QueryBuilderProps>(
     // Map QueryBuilder ref interface to AnalysisBuilder ref
     useImperativeHandle(ref, () => ({
       getCurrentQuery: () => {
-        return analysisBuilderRef.current?.getCurrentQuery() || {
-          measures: [],
-          dimensions: []
+        const config = analysisBuilderRef.current?.getQueryConfig()
+        if (!config) {
+          return { measures: [], dimensions: [] }
         }
+        // If multi-query, return first query for backward compatibility
+        if ('queries' in config) {
+          return config.queries[0] || { measures: [], dimensions: [] }
+        }
+        return config
       },
 
       getValidationState: () => {

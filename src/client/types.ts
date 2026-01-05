@@ -244,6 +244,37 @@ export interface CubeQuery {
   segments?: string[]
 }
 
+/**
+ * Merge strategy for combining multiple query results
+ * - 'concat': Append rows with __queryIndex marker (for separate series per query)
+ * - 'merge': Align data by common dimension key (for combined visualization)
+ */
+export type QueryMergeStrategy = 'concat' | 'merge'
+
+/**
+ * Configuration for multi-query portlets
+ * Detected by presence of 'queries' array property
+ */
+export interface MultiQueryConfig {
+  queries: CubeQuery[]
+  mergeStrategy: QueryMergeStrategy
+  mergeKeys?: string[]        // Dimensions to align on (for 'merge' strategy) - composite key
+  queryLabels?: string[]      // User-defined labels per query
+}
+
+/**
+ * Type guard to detect multi-query configuration
+ */
+export function isMultiQueryConfig(obj: unknown): obj is MultiQueryConfig {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'queries' in obj &&
+    Array.isArray((obj as MultiQueryConfig).queries) &&
+    (obj as MultiQueryConfig).queries.length > 0
+  )
+}
+
 export interface CubeQueryOptions {
   skip?: boolean
   resetResultSetOnChange?: boolean

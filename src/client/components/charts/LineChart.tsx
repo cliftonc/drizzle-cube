@@ -15,9 +15,9 @@ import {
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-const LineChart = React.memo(function LineChart({ 
-  data, 
-  chartConfig, 
+const LineChart = React.memo(function LineChart({
+  data,
+  chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
@@ -26,7 +26,38 @@ const LineChart = React.memo(function LineChart({
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
-  
+
+  // Extract Y-axis fields early for use in useMemo hooks
+  // This ensures hooks are always called in the same order
+  const yAxisFields = useMemo(() => {
+    if (chartConfig?.yAxis) {
+      return Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
+    }
+    if (chartConfig?.y) {
+      return Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
+    }
+    return []
+  }, [chartConfig?.yAxis, chartConfig?.y])
+
+  // Dual Y-axis support: extract yAxisAssignment from chartConfig (memoized to prevent object recreation)
+  // MUST be called before any early returns to satisfy React hooks rules
+  const yAxisAssignment = useMemo(() =>
+    chartConfig?.yAxisAssignment || {},
+    [chartConfig?.yAxisAssignment]
+  )
+
+  // Build mapping from series key (label) to original field name (memoized to prevent object recreation)
+  // This is needed because seriesKeys use display labels, not field names
+  // MUST be called before any early returns to satisfy React hooks rules
+  const seriesKeyToField = useMemo(() => {
+    const mapping: Record<string, string> = {}
+    yAxisFields.forEach((field) => {
+      const label = getFieldLabel(field)
+      mapping[label] = field
+    })
+    return mapping
+  }, [yAxisFields, getFieldLabel])
+
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
@@ -52,18 +83,15 @@ const LineChart = React.memo(function LineChart({
 
     // Validate chartConfig - support both legacy and new formats
     let xAxisField: string
-    let yAxisFields: string[]
     let seriesFields: string[] = []
-    
+
     if (chartConfig?.xAxis && chartConfig?.yAxis) {
       // New format
       xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
-      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
       seriesFields = chartConfig.series || []
     } else if (chartConfig?.x && chartConfig?.y) {
       // Legacy format
       xAxisField = chartConfig.x
-      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
     } else {
       return (
         <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
@@ -75,7 +103,7 @@ const LineChart = React.memo(function LineChart({
       )
     }
 
-    if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
+    if (!xAxisField || yAxisFields.length === 0) {
       return (
         <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
@@ -119,23 +147,6 @@ const LineChart = React.memo(function LineChart({
       seriesKeys = standardResult.seriesKeys
     }
 
-    // Dual Y-axis support: extract yAxisAssignment from chartConfig (memoized to prevent object recreation)
-    const yAxisAssignment = useMemo(() =>
-      chartConfig?.yAxisAssignment || {},
-      [chartConfig?.yAxisAssignment]
-    )
-
-    // Build mapping from series key (label) to original field name (memoized to prevent object recreation)
-    // This is needed because seriesKeys use display labels, not field names
-    const seriesKeyToField = useMemo(() => {
-      const mapping: Record<string, string> = {}
-      yAxisFields.forEach((field) => {
-        const label = getFieldLabel(field)
-        mapping[label] = field
-      })
-      return mapping
-    }, [yAxisFields, getFieldLabel])
-
     // Helper to find field from series key, handling comparison suffixes like "(Current)" and "(Prior)"
     const findFieldFromSeriesKey = (seriesKey: string): string | undefined => {
       // Direct match first
@@ -167,11 +178,11 @@ const LineChart = React.memo(function LineChart({
       left: 40, // Space for left Y-axis label
       right: hasRightAxis ? 40 : 20 // Extra space for right Y-axis label if needed
     }
-    
+
     // Process target values and add to chart data
     const targetValues = parseTargetValues(displayConfig?.target || '')
     const spreadTargets = spreadTargetValues(targetValues, chartData.length)
-    
+
     // Add target data to chart data if targets exist
     let enhancedChartData = chartData
     if (spreadTargets.length > 0) {
@@ -180,7 +191,7 @@ const LineChart = React.memo(function LineChart({
         __target: spreadTargets[index] || null
       }))
     }
-    
+
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
@@ -292,7 +303,7 @@ const LineChart = React.memo(function LineChart({
             />
           )}
           {showLegend && (
-            <Legend 
+            <Legend
               wrapperStyle={{ fontSize: '12px', paddingTop: '25px' }}
               iconType="line"
               iconSize={8}

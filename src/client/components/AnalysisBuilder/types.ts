@@ -14,11 +14,13 @@ import type {
   Filter,
   ChartType,
   ChartAxisConfig,
-  ChartDisplayConfig
+  ChartDisplayConfig,
+  MultiQueryConfig
 } from '../../types'
 import type { ColorPalette } from '../../utils/colorPalettes'
 import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
+import type { MultiQueryValidationResult } from '../../utils/multiQueryValidation'
 
 // Re-export types from shared for convenience
 export type { MetaResponse, MetaField, MetaCube, QueryAnalysis }
@@ -257,6 +259,30 @@ export interface AnalysisQueryPanelProps {
   // Validation state (for showing errors)
   validationStatus: ValidationStatus
   validationError: string | null
+
+  // Multi-query props
+  /** Number of queries (determines single vs multi-query display) */
+  queryCount?: number
+  /** Index of the currently active query tab */
+  activeQueryIndex?: number
+  /** Strategy for merging results from multiple queries */
+  mergeStrategy?: 'concat' | 'merge'
+  /** Callback when active query tab changes */
+  onActiveQueryChange?: (index: number) => void
+  /** Callback to add a new query */
+  onAddQuery?: () => void
+  /** Callback to remove a query at specified index */
+  onRemoveQuery?: (index: number) => void
+  /** Callback when merge strategy changes */
+  onMergeStrategyChange?: (strategy: 'concat' | 'merge') => void
+  /** Whether breakdowns are locked (synced from Q1 in merge mode) */
+  breakdownsLocked?: boolean
+  /** Combined metrics from all queries (for chart config in multi-query mode) */
+  combinedMetrics?: MetricItem[]
+  /** Combined breakdowns from all queries (for chart config in multi-query mode) */
+  combinedBreakdowns?: BreakdownItem[]
+  /** Validation result for multi-query mode (errors and warnings) */
+  multiQueryValidation?: MultiQueryValidationResult | null
 }
 
 /**
@@ -287,8 +313,8 @@ export interface AnalysisResultsPanelProps {
   /** Callback when color palette changes (shows selector when provided) */
   onColorPaletteChange?: (paletteName: string) => void
 
-  /** Current query object (for annotation/metadata) */
-  query: CubeQuery
+  /** All queries for multi-query mode (used for table column headers per-query) */
+  allQueries?: CubeQuery[]
   /** Schema metadata */
   schema: MetaResponse | null
 
@@ -325,6 +351,16 @@ export interface AnalysisResultsPanelProps {
   enableAI?: boolean
   isAIOpen?: boolean
   onAIToggle?: () => void
+
+  // Multi-query support
+  /** Number of queries (for showing Table 1, Table 2 tabs) */
+  queryCount?: number
+  /** Per-query results (for table view in multi-query mode) */
+  perQueryResults?: (any[] | null)[]
+  /** Active table index in multi-query mode */
+  activeTableIndex?: number
+  /** Callback when active table changes */
+  onActiveTableChange?: (index: number) => void
 }
 
 // ============================================================================
@@ -469,8 +505,12 @@ export interface AnalysisBuilderProps {
   className?: string
   /** Maximum height for the component (e.g., '800px', '100vh', 'calc(100vh - 64px)') */
   maxHeight?: string
-  /** Initial query to load */
-  initialQuery?: CubeQuery
+  /**
+   * Initial query configuration to load.
+   * Accepts either a single CubeQuery or a MultiQueryConfig - the component handles both internally.
+   * This keeps multi-query complexity contained within AnalysisBuilder.
+   */
+  initialQuery?: CubeQuery | MultiQueryConfig
   /** Initial chart configuration (for editing existing portlets) */
   initialChartConfig?: {
     chartType?: ChartType
@@ -495,8 +535,12 @@ export interface AnalysisBuilderProps {
  * Ref interface for AnalysisBuilder (for external access)
  */
 export interface AnalysisBuilderRef {
-  /** Get the current query object */
-  getCurrentQuery: () => CubeQuery
+  /**
+   * Get the current query configuration.
+   * Returns either a CubeQuery (single query) or MultiQueryConfig (multiple queries).
+   * Consumers should just JSON.stringify the result - no need to check the type.
+   */
+  getQueryConfig: () => CubeQuery | MultiQueryConfig
   /** Get current chart configuration */
   getChartConfig: () => { chartType: ChartType; chartConfig: ChartAxisConfig; displayConfig: ChartDisplayConfig }
   /** Execute the current query */
@@ -513,6 +557,7 @@ export interface AnalysisBuilderRef {
  * Local storage state shape for persistence
  */
 export interface AnalysisBuilderStorageState {
+  // Legacy single-query format (for backward compatibility)
   metrics: MetricItem[]
   breakdowns: BreakdownItem[]
   filters: Filter[]
@@ -521,6 +566,13 @@ export interface AnalysisBuilderStorageState {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
   activeView: 'table' | 'chart'
+
+  // Multi-query format (when multiple queries are configured)
+  queryStates?: AnalysisBuilderState[]
+  activeQueryIndex?: number
+  mergeStrategy?: 'concat' | 'merge'
+  /** Dimension keys used for merging in 'merge' strategy */
+  mergeKeys?: string[]
 }
 
 /**

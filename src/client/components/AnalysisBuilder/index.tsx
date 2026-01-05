@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { useCubeQuery } from '../../hooks/useCubeQuery'
+import { useMultiCubeQuery } from '../../hooks/useMultiCubeQuery'
 import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
@@ -24,17 +25,19 @@ import type {
   AnalysisBuilderStorageState,
   QueryAnalysis
 } from './types'
-import type { CubeQuery, Filter, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
+import type { CubeQuery, Filter, ChartType, ChartAxisConfig, ChartDisplayConfig, QueryMergeStrategy, MultiQueryConfig } from '../../types'
+import { isMultiQueryConfig } from '../../types'
 import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../shared/date-utils'
 import FieldSearchModal from './FieldSearchModal'
 import AnalysisResultsPanel from './AnalysisResultsPanel'
 import AnalysisQueryPanel from './AnalysisQueryPanel'
 import type { MetaField, MetaResponse } from '../../shared/types'
-import { cleanQueryForServer } from '../../shared/utils'
+import { cleanQueryForServer, convertDateRangeTypeToValue } from '../../shared/utils'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../../shared/chartDefaults'
 import { compressWithFallback, parseShareHash, decodeAndDecompress, clearShareHash } from '../../utils/shareUtils'
 import { getColorPalette } from '../../utils/colorPalettes'
 import { sendGeminiMessage, extractTextFromResponse } from '../AIAssistant/utils'
+import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../../utils/multiQueryValidation'
 import AnalysisAIPanel from './AnalysisAIPanel'
 
 // Storage key for localStorage persistence
@@ -267,46 +270,129 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       [] // Only run once on mount
     )
 
-    // Load initial state from localStorage or initialQuery
-    const [state, setState] = useState<AnalysisBuilderState>(() => {
-      // If initialQuery is provided, parse it to metrics/breakdowns
+    // Helper to convert a CubeQuery to AnalysisBuilderState
+    const queryToState = (query: CubeQuery): AnalysisBuilderState => ({
+      ...createInitialState(),
+      metrics: (query.measures || []).map((field, index) => ({
+        id: generateId(),
+        field,
+        label: generateMetricLabel(index)
+      })),
+      breakdowns: [
+        ...(query.dimensions || []).map((field) => ({
+          id: generateId(),
+          field,
+          isTimeDimension: false
+        })),
+        ...(query.timeDimensions || []).map((td) => ({
+          id: generateId(),
+          field: td.dimension,
+          granularity: td.granularity,
+          isTimeDimension: true
+        }))
+      ],
+      filters: query.filters || []
+    })
+
+    // Multi-query state management
+    // queryStates holds an array of query configurations (one per tab)
+    // For single-query mode, this is an array with one element
+    const [queryStates, setQueryStates] = useState<AnalysisBuilderState[]>(() => {
+      // If initialQuery is provided, detect if it's multi-query or single query internally
       if (initialQuery) {
-        return {
-          ...createInitialState(),
-          metrics: (initialQuery.measures || []).map((field, index) => ({
-            id: generateId(),
-            field,
-            label: generateMetricLabel(index)
-          })),
-          breakdowns: [
-            ...(initialQuery.dimensions || []).map((field) => ({
-              id: generateId(),
-              field,
-              isTimeDimension: false
-            })),
-            ...(initialQuery.timeDimensions || []).map((td) => ({
-              id: generateId(),
-              field: td.dimension,
-              granularity: td.granularity,
-              isTimeDimension: true
-            }))
-          ],
-          filters: initialQuery.filters || []
+        if (isMultiQueryConfig(initialQuery)) {
+          // Multi-query config - parse each query
+          const multiConfig = initialQuery as MultiQueryConfig
+          return multiConfig.queries.map(queryToState)
         }
+        // Single query - wrap in array
+        const singleQuery = initialQuery as CubeQuery
+        return [queryToState(singleQuery)]
       }
 
       // Use cached localStorage data if available
       if (cachedStorage) {
-        return {
+        // Support legacy single-query format and new multi-query format
+        const queries = cachedStorage.queryStates || [{
           ...createInitialState(),
           metrics: cachedStorage.metrics || [],
           breakdowns: cachedStorage.breakdowns || [],
           filters: cachedStorage.filters || []
+        }]
+        return queries
+      }
+
+      return [createInitialState()]
+    })
+
+    // Index of the currently active query tab
+    const [activeQueryIndex, setActiveQueryIndex] = useState<number>(() => {
+      if (cachedStorage?.activeQueryIndex !== undefined) {
+        return cachedStorage.activeQueryIndex
+      }
+      return 0
+    })
+
+    // Merge strategy for combining multiple query results
+    const [mergeStrategy, setMergeStrategy] = useState<QueryMergeStrategy>(() => {
+      // Priority: initialQuery (if multi-query) > cached localStorage > default
+      if (initialQuery && isMultiQueryConfig(initialQuery)) {
+        const multiConfig = initialQuery as MultiQueryConfig
+        if (multiConfig.mergeStrategy) {
+          return multiConfig.mergeStrategy
+        }
+      }
+      if (cachedStorage?.mergeStrategy) {
+        return cachedStorage.mergeStrategy
+      }
+      return 'concat'
+    })
+
+    // Dimension keys to align data on for 'merge' strategy - auto-computed from Q1 breakdowns
+    const mergeKeys = useMemo(() => {
+      if (mergeStrategy !== 'merge' || queryStates.length === 0) return undefined
+      const q1Breakdowns = queryStates[0].breakdowns
+      if (q1Breakdowns.length === 0) return undefined
+      return q1Breakdowns.map(b => b.field)
+    }, [mergeStrategy, queryStates])
+
+    // Derive the active query state (convenience accessor)
+    const state = queryStates[activeQueryIndex] || createInitialState()
+
+    // Helper to update the active query state
+    const setState = useCallback((updater: AnalysisBuilderState | ((prev: AnalysisBuilderState) => AnalysisBuilderState)) => {
+      setQueryStates(prevStates => {
+        const newStates = [...prevStates]
+        if (typeof updater === 'function') {
+          newStates[activeQueryIndex] = updater(prevStates[activeQueryIndex] || createInitialState())
+        } else {
+          newStates[activeQueryIndex] = updater
+        }
+        return newStates
+      })
+    }, [activeQueryIndex])
+
+    // Sync breakdowns from Q1 to other queries when in merge mode
+    useEffect(() => {
+      if (mergeStrategy !== 'merge' || queryStates.length <= 1) return
+
+      const q1Breakdowns = queryStates[0].breakdowns
+
+      // Check if other queries need syncing
+      let needsSync = false
+      for (let i = 1; i < queryStates.length; i++) {
+        if (JSON.stringify(queryStates[i].breakdowns) !== JSON.stringify(q1Breakdowns)) {
+          needsSync = true
+          break
         }
       }
 
-      return createInitialState()
-    })
+      if (needsSync) {
+        setQueryStates(prev => prev.map((qs, i) =>
+          i === 0 ? qs : { ...qs, breakdowns: [...q1Breakdowns] }
+        ))
+      }
+    }, [mergeStrategy, queryStates])
 
     // Chart configuration state - load from initialChartConfig, cached localStorage, or defaults
     const [chartType, setChartType] = useState<ChartType>(() => {
@@ -353,9 +439,12 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     // Sort order state
     const [order, setOrder] = useState<Record<string, 'asc' | 'desc'> | undefined>(() => {
-      // Load from initialQuery if provided
-      if (initialQuery?.order) {
-        return initialQuery.order
+      // Load from initialQuery if provided (only for single query, not multi-query)
+      if (initialQuery && !isMultiQueryConfig(initialQuery)) {
+        const singleQuery = initialQuery as CubeQuery
+        if (singleQuery.order) {
+          return singleQuery.order
+        }
       }
       // Use cached localStorage data if available
       if (!initialQuery && cachedStorage?.order) {
@@ -417,35 +506,27 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       const sharedState = decodeAndDecompress(encoded)
       if (!sharedState || !sharedState.query) return
 
-      const query = sharedState.query
+      const queryConfig = sharedState.query
 
-      // Set metrics and breakdowns from shared query
-      setState({
-        ...createInitialState(),
-        metrics: (query.measures || []).map((field, index) => ({
-          id: generateId(),
-          field,
-          label: generateMetricLabel(index)
-        })),
-        breakdowns: [
-          ...(query.dimensions || []).map((field) => ({
-            id: generateId(),
-            field,
-            isTimeDimension: false
-          })),
-          ...(query.timeDimensions || []).map((td) => ({
-            id: generateId(),
-            field: td.dimension,
-            granularity: td.granularity,
-            isTimeDimension: true
-          }))
-        ],
-        filters: query.filters || []
-      })
+      // Check if this is a multi-query config
+      if (isMultiQueryConfig(queryConfig)) {
+        // Multi-query: set all query states
+        const multiConfig = queryConfig as MultiQueryConfig
+        setQueryStates(multiConfig.queries.map(queryToState))
+        setActiveQueryIndex(0)
+        if (multiConfig.mergeStrategy) {
+          setMergeStrategy(multiConfig.mergeStrategy)
+        }
+      } else {
+        // Single query: set as the only query state
+        const query = queryConfig as CubeQuery
+        setQueryStates([queryToState(query)])
+        setActiveQueryIndex(0)
 
-      // Set order if present
-      if (query.order) {
-        setOrder(query.order)
+        // Set order if present (only for single query)
+        if (query.order) {
+          setOrder(query.order)
+        }
       }
 
       // Apply chart config if present
@@ -467,14 +548,77 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       clearShareHash()
     }, []) // Run once on mount
 
-    // Build current query - memoized to prevent infinite loops
+    // Build current query for the active tab - memoized to prevent infinite loops
     const currentQuery = useMemo(
       () => buildCubeQuery(state.metrics, state.breakdowns, state.filters, order),
       [state.metrics, state.breakdowns, state.filters, order]
     )
 
+    // Build ALL queries from all queryStates (for multi-query execution)
+    const allQueries = useMemo(() => {
+      return queryStates.map(qs => buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, order))
+    }, [queryStates, order])
+
+    // Check if we're in multi-query mode (more than one query with content)
+    const isMultiQueryMode = useMemo(() => {
+      if (queryStates.length <= 1) return false
+      // Check if at least 2 queries have content
+      const queriesWithContent = queryStates.filter(qs =>
+        qs.metrics.length > 0 || qs.breakdowns.length > 0
+      )
+      return queriesWithContent.length > 1
+    }, [queryStates])
+
+    // Validate multi-query configuration and get warnings/errors
+    const multiQueryValidation = useMemo((): MultiQueryValidationResult | null => {
+      if (!isMultiQueryMode) return null
+      return validateMultiQueryConfig(allQueries, mergeStrategy, mergeKeys || [])
+    }, [isMultiQueryMode, allQueries, mergeStrategy, mergeKeys])
+
+    // Combined metrics from ALL queries (for chart config in multi-query mode)
+    const allMetrics = useMemo(() => {
+      if (!isMultiQueryMode) return state.metrics
+      return queryStates.flatMap(qs => qs.metrics)
+    }, [isMultiQueryMode, queryStates, state.metrics])
+
+    // Combined breakdowns from ALL queries (for chart config in multi-query mode)
+    // In merge mode, breakdowns are synced from Q1 so we use Q1's breakdowns
+    // In concat mode, we also use Q1's breakdowns as the reference (they're usually shared)
+    const allBreakdowns = useMemo(() => {
+      if (!isMultiQueryMode) return state.breakdowns
+      // Use Q1's breakdowns as the canonical source
+      return queryStates[0]?.breakdowns || []
+    }, [isMultiQueryMode, queryStates, state.breakdowns])
+
+    // Build MultiQueryConfig for multi-query execution
+    const multiQueryConfig = useMemo(() => {
+      if (!isMultiQueryMode) return null
+
+      // Filter to only valid queries (have measures or dimensions)
+      const validQueries = allQueries.filter(q =>
+        (q.measures && q.measures.length > 0) ||
+        (q.dimensions && q.dimensions.length > 0) ||
+        (q.timeDimensions && q.timeDimensions.length > 0)
+      )
+
+      if (validQueries.length < 2) return null
+
+      return {
+        queries: validQueries.map(q => cleanQueryForServer(q)),
+        mergeStrategy,
+        mergeKeys,
+        queryLabels: validQueries.map((_, i) => `Q${i + 1}`)
+      }
+    }, [allQueries, isMultiQueryMode, mergeStrategy, mergeKeys])
+
     // Serialize query for comparison (prevents object reference issues)
-    const currentQueryString = useMemo(() => JSON.stringify(currentQuery), [currentQuery])
+    // For multi-query mode, serialize all queries
+    const currentQueryString = useMemo(() => {
+      if (isMultiQueryMode) {
+        return JSON.stringify({ queries: allQueries, mergeStrategy, mergeKeys })
+      }
+      return JSON.stringify(currentQuery)
+    }, [currentQuery, allQueries, isMultiQueryMode, mergeStrategy, mergeKeys])
 
     // Debounced query for auto-execution
     const [debouncedQuery, setDebouncedQuery] = useState<CubeQuery | null>(null)
@@ -495,12 +639,25 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       (currentQuery.dimensions && currentQuery.dimensions.length > 0) ||
       (currentQuery.timeDimensions && currentQuery.timeDimensions.length > 0)
 
+    // In multi-query mode, check if we have 2+ valid queries (for debounce purposes)
+    const hasValidMultiQuery = useMemo(() => {
+      if (!isMultiQueryMode) return false
+      const validQueries = allQueries.filter(q =>
+        (q.measures && q.measures.length > 0) ||
+        (q.dimensions && q.dimensions.length > 0) ||
+        (q.timeDimensions && q.timeDimensions.length > 0)
+      )
+      return validQueries.length >= 2
+    }, [isMultiQueryMode, allQueries])
+
     // Debounce query changes - use string comparison to avoid infinite loops
     useEffect(() => {
       // Skip if query hasn't actually changed
       if (currentQueryString === lastQueryStringRef.current) {
+        console.log('[DEBUG] Debounce: skipped - query unchanged')
         return
       }
+      console.log('[DEBUG] Debounce: query changed, will execute', { isMultiQueryMode, hasValidMultiQuery })
 
       // Skip initial auto-execution if initialData was provided and query hasn't changed from initial
       // This prevents re-fetching data that was already provided
@@ -517,11 +674,15 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         clearTimeout(debounceTimerRef.current)
       }
 
-      // Only debounce if we have a valid query
-      if (isValidQuery) {
+      // Only debounce if we have a valid query (single or multi-query mode)
+      const shouldExecute = isValidQuery || hasValidMultiQuery
+      if (shouldExecute) {
         debounceTimerRef.current = setTimeout(() => {
           lastQueryStringRef.current = currentQueryString
-          setDebouncedQuery(currentQuery)
+          // For multi-query, debouncedQuery just needs to be truthy to trigger execution
+          // The actual value isn't used - multiQueryConfig is used instead
+          // Using allQueries[0] provides stability - doesn't change on tab switch
+          setDebouncedQuery(hasValidMultiQuery ? allQueries[0] : currentQuery)
         }, AUTO_EXECUTE_DELAY)
       } else {
         // Clear debounced query if no valid query
@@ -534,7 +695,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           clearTimeout(debounceTimerRef.current)
         }
       }
-    }, [currentQueryString, currentQuery, isValidQuery])
+    }, [currentQueryString, isValidQuery, hasValidMultiQuery, allQueries])
 
     // Transform debounced query to server format (converts filter groups)
     const serverQuery = useMemo(() => {
@@ -542,35 +703,71 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       return cleanQueryForServer(debouncedQuery)
     }, [debouncedQuery])
 
-    // Execute query using useCubeQuery hook
+    // Debounced multi-query config for auto-execution
+    // This syncs with debouncedQuery - when debouncedQuery fires, we also fire multi-query
+    const debouncedMultiConfig = useMemo(() => {
+      // Only create multi-query config when:
+      // 1. In multi-query mode (2+ queries with content)
+      // 2. A debounced query has fired (indicating user finished typing)
+      if (!isMultiQueryMode || !multiQueryConfig || !debouncedQuery) {
+        return null
+      }
+      return multiQueryConfig
+    }, [isMultiQueryMode, multiQueryConfig, debouncedQuery])
+
+    // Execute SINGLE query using useCubeQuery hook (when not in multi-query mode)
     // Reset resultSet when query changes to avoid showing stale data after clearing
-    const { resultSet, isLoading, error } = useCubeQuery(serverQuery, {
-      skip: !serverQuery,
+    const singleQueryResult = useCubeQuery(serverQuery, {
+      skip: !serverQuery || isMultiQueryMode,
       resetResultSetOnChange: true
     })
+
+    // Execute MULTI query using useMultiCubeQuery hook (when in multi-query mode)
+    const multiQueryResult = useMultiCubeQuery(debouncedMultiConfig, {
+      skip: !debouncedMultiConfig || !isMultiQueryMode,
+      resetResultSetOnChange: true
+    })
+
+    // Unify results from single or multi query
+    const resultSet = isMultiQueryMode ? null : singleQueryResult.resultSet
+    const isLoading = isMultiQueryMode ? multiQueryResult.isLoading : singleQueryResult.isLoading
+    const error = isMultiQueryMode ? multiQueryResult.error : singleQueryResult.error
 
     // Derive execution status - show success with initialData even before first query
     const executionStatus: ExecutionStatus = useMemo(() => {
       // If we have initialData and haven't started querying yet, show success
-      if (initialData && initialData.length > 0 && !debouncedQuery && !resultSet) {
+      const hasResults = isMultiQueryMode ? multiQueryResult.data : resultSet
+      if (initialData && initialData.length > 0 && !debouncedQuery && !hasResults) {
         return 'success'
       }
-      if (!debouncedQuery) return 'idle'
+      if (!debouncedQuery && !debouncedMultiConfig) return 'idle'
       // If results are stale (query changed but debounce hasn't fired yet), show refreshing
       // This prevents flash when toggling comparison mode
-      if (state.resultsStale && resultSet) return 'refreshing'
-      if (isLoading && !resultSet) return 'loading'
-      if (isLoading && resultSet) return 'refreshing'
+      // In multi-query mode, don't use per-tab resultsStale - the chart shows shared merged
+      // data that doesn't change on tab switch. We rely on isLoading for actual refreshes.
+      if (!isMultiQueryMode && state.resultsStale && hasResults) return 'refreshing'
+      if (isLoading && !hasResults) return 'loading'
+      if (isLoading && hasResults) return 'refreshing'
       if (error) return 'error'
-      if (resultSet) return 'success'
+      if (hasResults) return 'success'
       return 'idle'
-    }, [debouncedQuery, isLoading, error, resultSet, initialData, state.resultsStale])
+    }, [debouncedQuery, debouncedMultiConfig, isLoading, error, resultSet, multiQueryResult.data, initialData, state.resultsStale, isMultiQueryMode])
 
     // Get execution results - use initialData if no resultSet yet
+    // For chart: use merged results from all queries
     const executionResults = useMemo(() => {
+      // Multi-query mode: use merged data from useMultiCubeQuery
+      if (isMultiQueryMode && multiQueryResult.data) {
+        console.log('[DEBUG] executionResults: multi-query', multiQueryResult.data?.length)
+        return multiQueryResult.data as any[]
+      }
+
+      // Single query mode: use resultSet
       if (resultSet) {
         try {
-          return resultSet.rawData()
+          const data = resultSet.rawData()
+          console.log('[DEBUG] executionResults: single-query', data?.length)
+          return data
         } catch {
           return null
         }
@@ -579,8 +776,30 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       if (initialData && initialData.length > 0) {
         return initialData
       }
+      console.log('[DEBUG] executionResults: null')
       return null
-    }, [resultSet, initialData])
+    }, [resultSet, initialData, isMultiQueryMode, multiQueryResult.data])
+
+    // Get per-query results for table view in multi-query mode
+    const perQueryResults = useMemo(() => {
+      if (!isMultiQueryMode || !multiQueryResult.resultSets) {
+        console.log('[DEBUG] perQueryResults: no results', { isMultiQueryMode, resultSets: multiQueryResult.resultSets })
+        return undefined
+      }
+      const results = multiQueryResult.resultSets.map(rs => {
+        if (!rs) return null
+        try {
+          return rs.rawData()
+        } catch {
+          return null
+        }
+      })
+      console.log('[DEBUG] perQueryResults:', results.map(r => r?.length || 0))
+      return results
+    }, [isMultiQueryMode, multiQueryResult.resultSets])
+
+    // Active table index for multi-query table view
+    const [activeTableIndex, setActiveTableIndex] = useState(0)
 
     // Note: We pass executionStatus, executionResults, error directly to PortletResultsPanel
     // instead of storing in state, to avoid render loops
@@ -593,9 +812,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [resultSet, state.resultsStale])
 
     // Compute chart availability based on current metrics and breakdowns
+    // Use allMetrics/allBreakdowns for consistency in multi-query mode
     const chartAvailability = useMemo(
-      () => getAllChartAvailability(state.metrics, state.breakdowns),
-      [state.metrics, state.breakdowns]
+      () => getAllChartAvailability(allMetrics, allBreakdowns),
+      [allMetrics, allBreakdowns]
     )
 
     // Helper to check if chart config is completely empty (no axes configured)
@@ -622,14 +842,15 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         return
       }
 
-      if (state.metrics.length === 0 && state.breakdowns.length === 0) {
+      if (allMetrics.length === 0 && allBreakdowns.length === 0) {
         return // Nothing to configure
       }
 
       // Create a key from metrics/breakdowns fields to detect actual changes
+      // Use allMetrics and allBreakdowns to track changes across all queries
       const currentKey = JSON.stringify({
-        metrics: state.metrics.map(m => m.field),
-        breakdowns: state.breakdowns.map(b => ({ field: b.field, isTime: b.isTimeDimension }))
+        metrics: allMetrics.map(m => m.field),
+        breakdowns: allBreakdowns.map(b => ({ field: b.field, isTime: b.isTimeDimension }))
       })
 
       // Skip if metrics/breakdowns haven't actually changed
@@ -638,10 +859,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
       prevMetricsBreakdownsRef.current = currentKey
 
-      // Check if we should auto-switch chart type
+      // Check if we should auto-switch chart type (use allMetrics/allBreakdowns for multi-query)
       const newChartType = shouldAutoSwitchChartType(
-        state.metrics,
-        state.breakdowns,
+        allMetrics,
+        allBreakdowns,
         chartType,
         userManuallySelectedChart
       )
@@ -649,28 +870,28 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       if (newChartType) {
         // Chart type is changing - get smart defaults for the new chart type
         const { chartConfig: newChartConfig } = getSmartChartDefaults(
-          state.metrics,
-          state.breakdowns,
+          allMetrics,
+          allBreakdowns,
           newChartType
         )
         setChartType(newChartType)
         setChartConfig(newChartConfig)
         // Reset user selection flag since we auto-switched
         setUserManuallySelectedChart(false)
-      } else if (state.metrics.length > 0 || state.breakdowns.length > 0) {
+      } else if (allMetrics.length > 0 || allBreakdowns.length > 0) {
         // Only apply smart defaults if the chart config is COMPLETELY empty
         // Once user has configured ANY axis, don't auto-fill (respects user removals)
         // Use ref to get current value without adding to dependencies
         if (isChartConfigEmpty(chartConfigRef.current)) {
           const { chartConfig: smartDefaults } = getSmartChartDefaults(
-            state.metrics,
-            state.breakdowns,
+            allMetrics,
+            allBreakdowns,
             chartType
           )
           setChartConfig(smartDefaults)
         }
       }
-    }, [debouncedQuery, state.metrics, state.breakdowns, chartType, userManuallySelectedChart, isChartConfigEmpty])
+    }, [debouncedQuery, allMetrics, allBreakdowns, chartType, userManuallySelectedChart, isChartConfigEmpty])
 
     // Save state to localStorage whenever it changes (if not disabled)
     // Deferred to avoid blocking renders
@@ -680,15 +901,22 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       // Defer to next tick to avoid blocking renders
       const timeoutId = setTimeout(() => {
         try {
+          // Store both legacy format (for backward compatibility) and multi-query format
+          const activeState = queryStates[activeQueryIndex] || createInitialState()
           const storageState: AnalysisBuilderStorageState = {
-            metrics: state.metrics,
-            breakdowns: state.breakdowns,
-            filters: state.filters,
+            // Legacy format (for backward compatibility with single-query)
+            metrics: activeState.metrics,
+            breakdowns: activeState.breakdowns,
+            filters: activeState.filters,
             order,
             chartType,
             chartConfig,
             displayConfig,
-            activeView
+            activeView,
+            // Multi-query format (mergeKeys is computed from Q1 breakdowns, not stored)
+            queryStates: queryStates.length > 1 ? queryStates : undefined,
+            activeQueryIndex: queryStates.length > 1 ? activeQueryIndex : undefined,
+            mergeStrategy: queryStates.length > 1 ? mergeStrategy : undefined
           }
           localStorage.setItem(STORAGE_KEY, JSON.stringify(storageState))
         } catch {
@@ -698,9 +926,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
       return () => clearTimeout(timeoutId)
     }, [
-      state.metrics,
-      state.breakdowns,
-      state.filters,
+      queryStates,
+      activeQueryIndex,
+      mergeStrategy,
       order,
       chartType,
       chartConfig,
@@ -863,7 +1091,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           setShowFieldModal(false)
         }
       },
-      [fieldModalMode]
+      [fieldModalMode, setState]
     )
 
     // ========================================================================
@@ -898,22 +1126,79 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     const handleBreakdownGranularityChange = useCallback(
       (id: string, granularity: string) => {
-        setState((prev) => ({
-          ...prev,
-          breakdowns: prev.breakdowns.map((b) =>
-            b.id === id ? { ...b, granularity } : b
-          ),
-          resultsStale: true
-        }))
+        // In merge mode, granularity changes should update Q1's breakdowns (source of truth)
+        // since the sync effect copies Q1 → other queries
+        if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
+          // Update Q1's breakdowns directly
+          setQueryStates(prev => {
+            const newStates = [...prev]
+            newStates[0] = {
+              ...newStates[0],
+              breakdowns: newStates[0].breakdowns.map((b) =>
+                b.id === id ? { ...b, granularity } : b
+              ),
+              resultsStale: true
+            }
+            return newStates
+          })
+        } else {
+          // Normal case: update active query's breakdowns
+          setState((prev) => ({
+            ...prev,
+            breakdowns: prev.breakdowns.map((b) =>
+              b.id === id ? { ...b, granularity } : b
+            ),
+            resultsStale: true
+          }))
+        }
       },
-      []
+      [mergeStrategy, activeQueryIndex, setState]
     )
 
     const handleBreakdownComparisonToggle = useCallback(
       (breakdownId: string) => {
         // Check if we're enabling comparison (the breakdown currently doesn't have it)
-        const targetBreakdown = state.breakdowns.find(b => b.id === breakdownId)
+        // In merge mode, use Q1's breakdowns as the source of truth
+        const sourceBreakdowns = (mergeStrategy === 'merge' && activeQueryIndex > 0)
+          ? queryStates[0]?.breakdowns || []
+          : state.breakdowns
+        const targetBreakdown = sourceBreakdowns.find(b => b.id === breakdownId)
         const isEnabling = targetBreakdown && !targetBreakdown.enableComparison
+
+        // If enabling comparison and no date filter exists, auto-add one (last 30 days)
+        if (isEnabling && targetBreakdown) {
+          const currentFilters = (mergeStrategy === 'merge' && activeQueryIndex > 0)
+            ? queryStates[0]?.filters || []
+            : state.filters
+          const hasDateFilter = findDateFilterForField(currentFilters, targetBreakdown.field)
+
+          if (!hasDateFilter) {
+            // Auto-add a date filter with 'last 30 days' range
+            const newFilter: Filter = {
+              member: targetBreakdown.field,
+              operator: 'inDateRange',
+              values: [],
+              dateRange: convertDateRangeTypeToValue('last_30_days')
+            } as Filter
+
+            // Add the filter to the appropriate query's filters
+            if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
+              setQueryStates(prev => {
+                const newStates = [...prev]
+                newStates[0] = {
+                  ...newStates[0],
+                  filters: [...newStates[0].filters, newFilter]
+                }
+                return newStates
+              })
+            } else {
+              setState((prev) => ({
+                ...prev,
+                filters: [...prev.filters, newFilter]
+              }))
+            }
+          }
+        }
 
         // If enabling comparison and chart type is not 'line', switch to line chart first
         // (comparison only works well with line charts)
@@ -928,10 +1213,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           setChartConfig(newChartConfig)
         }
 
-        // Update breakdowns - React 18 will batch this with the above updates
-        setState((prev) => ({
-          ...prev,
-          breakdowns: prev.breakdowns.map((b) => {
+        // Helper to update breakdowns with comparison toggle
+        const updateBreakdowns = (breakdowns: typeof state.breakdowns) =>
+          breakdowns.map((b) => {
             if (b.id === breakdownId) {
               // Toggle this breakdown's comparison
               return { ...b, enableComparison: !b.enableComparison }
@@ -941,11 +1225,29 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
               return { ...b, enableComparison: false }
             }
             return b
-          }),
-          resultsStale: true
-        }))
+          })
+
+        // In merge mode, update Q1's breakdowns (source of truth)
+        if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
+          setQueryStates(prev => {
+            const newStates = [...prev]
+            newStates[0] = {
+              ...newStates[0],
+              breakdowns: updateBreakdowns(newStates[0].breakdowns),
+              resultsStale: true
+            }
+            return newStates
+          })
+        } else {
+          // Normal case: update active query's breakdowns
+          setState((prev) => ({
+            ...prev,
+            breakdowns: updateBreakdowns(prev.breakdowns),
+            resultsStale: true
+          }))
+        }
       },
-      [chartType, state.breakdowns, state.metrics]
+      [chartType, state.breakdowns, state.filters, state.metrics, mergeStrategy, activeQueryIndex, queryStates, setState]
     )
 
     // ========================================================================
@@ -965,7 +1267,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           }
         })
       },
-      []
+      [setState]
     )
 
     const handleReorderBreakdowns = useCallback(
@@ -981,7 +1283,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           }
         })
       },
-      []
+      [setState]
     )
 
     // ========================================================================
@@ -995,7 +1297,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         filters,
         resultsStale: true
       }))
-    }, [])
+    }, [setState])
 
     // Handle dropping a field from metrics/breakdowns onto the filter section
     const handleDropFieldToFilter = useCallback((field: string) => {
@@ -1045,7 +1347,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           resultsStale: true
         }
       })
-    }, [])
+    }, [setState])
 
     // ========================================================================
     // Order Handlers
@@ -1072,10 +1374,103 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     )
 
     // ========================================================================
+    // Multi-Query Handlers
+    // ========================================================================
+
+    // Add a new query tab - copies current query's metrics, breakdowns, filters
+    const handleAddQuery = useCallback(() => {
+      const currentState = queryStates[activeQueryIndex] || createInitialState()
+      const newState: AnalysisBuilderState = {
+        ...createInitialState(),
+        metrics: [...currentState.metrics],
+        breakdowns: [...currentState.breakdowns],
+        filters: [...currentState.filters]
+      }
+      setQueryStates(prev => [...prev, newState])
+      // Switch to the new tab
+      setActiveQueryIndex(queryStates.length)
+    }, [queryStates, activeQueryIndex])
+
+    // Remove a query tab at specified index
+    const handleRemoveQuery = useCallback((index: number) => {
+      setQueryStates(prev => {
+        // Don't allow removing the last query
+        if (prev.length <= 1) return prev
+        return prev.filter((_, i) => i !== index)
+      })
+      // Adjust active index if needed
+      if (index === activeQueryIndex) {
+        // If removing active tab, switch to previous (or first if removing first)
+        setActiveQueryIndex(Math.max(0, activeQueryIndex - 1))
+      } else if (index < activeQueryIndex) {
+        // Shift active index down if removing a tab before it
+        setActiveQueryIndex(activeQueryIndex - 1)
+      }
+    }, [activeQueryIndex])
+
+    // Change active query tab
+    const handleActiveQueryChange = useCallback((index: number) => {
+      setActiveQueryIndex(index)
+    }, [])
+
+    // Update merge strategy
+    const handleMergeStrategyChange = useCallback((strategy: QueryMergeStrategy) => {
+      setMergeStrategy(strategy)
+    }, [])
+
+    // Compute combined metrics from ALL queries (for chart config in multi-query mode)
+    // Always returns an array (never undefined) for consistent prop passing
+    const combinedMetrics = useMemo(() => {
+      if (!isMultiQueryMode) return state.metrics
+
+      const seen = new Set<string>()
+      const combined: MetricItem[] = []
+
+      for (let qIndex = 0; qIndex < queryStates.length; qIndex++) {
+        const qs = queryStates[qIndex]
+        for (const metric of qs.metrics) {
+          // In multi-query mode, prefix with query label to distinguish
+          const key = `Q${qIndex + 1}:${metric.field}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            combined.push({
+              ...metric,
+              // Keep original field but update label to show query source
+              label: `${metric.label} (Q${qIndex + 1})`
+            })
+          }
+        }
+      }
+      return combined
+    }, [isMultiQueryMode, queryStates, state.metrics])
+
+    // Compute combined breakdowns from ALL queries (for chart config in multi-query mode)
+    // Always returns an array (never undefined) for consistent prop passing
+    const combinedBreakdowns = useMemo(() => {
+      if (!isMultiQueryMode) return state.breakdowns
+
+      const seen = new Set<string>()
+      const combined: BreakdownItem[] = []
+
+      for (const qs of queryStates) {
+        for (const breakdown of qs.breakdowns) {
+          // Deduplicate by field (breakdowns are usually shared across queries)
+          if (!seen.has(breakdown.field)) {
+            seen.add(breakdown.field)
+            combined.push(breakdown)
+          }
+        }
+      }
+      return combined
+    }, [isMultiQueryMode, queryStates, state.breakdowns])
+
+    // ========================================================================
     // Clear Query
     // ========================================================================
 
     const handleClearQuery = useCallback(() => {
+      // In multi-query mode, only clear the active query
+      // If user wants to clear all queries, they should remove tabs
       setState(createInitialState())
       setOrder(undefined)
       setUserManuallySelectedChart(false)
@@ -1090,7 +1485,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
       }
-    }, [])
+    }, [setState])
 
     // ========================================================================
     // AI Query Generation
@@ -1295,10 +1690,20 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     // ========================================================================
 
     const handleShare = useCallback(async () => {
-      if (!isValidQuery || !serverQuery) return
+      if (!isValidQuery) return
+
+      // Build the query config - use multi-query format if multiple queries exist
+      const queryConfig = queryStates.length > 1
+        ? {
+            queries: allQueries,
+            mergeStrategy,
+            mergeKeys,
+            queryLabels: queryStates.map((_, i) => `Q${i + 1}`)
+          }
+        : currentQuery
 
       const shareableState = {
-        query: serverQuery,
+        query: queryConfig,
         chartType,
         chartConfig,
         displayConfig,
@@ -1334,7 +1739,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       setTimeout(() => {
         setShareButtonState('idle')
       }, 2000)
-    }, [isValidQuery, serverQuery, chartType, chartConfig, displayConfig, activeView])
+    }, [isValidQuery, queryStates.length, allQueries, mergeStrategy, mergeKeys, currentQuery, chartType, chartConfig, displayConfig, activeView])
 
     // ========================================================================
     // Expose API via ref
@@ -1343,14 +1748,26 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     useImperativeHandle(
       ref,
       () => ({
-        getCurrentQuery: () => currentQuery,
+        getQueryConfig: () => {
+          // If multiple queries, return MultiQueryConfig format
+          if (queryStates.length > 1) {
+            return {
+              queries: allQueries,
+              mergeStrategy,
+              mergeKeys,
+              queryLabels: queryStates.map((_, i) => `Q${i + 1}`)
+            }
+          }
+          // Single query, return CubeQuery format
+          return currentQuery
+        },
         getChartConfig: () => ({ chartType, chartConfig, displayConfig }),
         executeQuery: () => {
           // TODO: Implement manual execute
         },
         clearQuery: handleClearQuery
       }),
-      [currentQuery, chartType, chartConfig, displayConfig, handleClearQuery]
+      [currentQuery, allQueries, queryStates.length, mergeStrategy, mergeKeys, chartType, chartConfig, displayConfig, handleClearQuery]
     )
 
     // ========================================================================
@@ -1393,7 +1810,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
               // Only show palette selector in standalone mode (not when editing portlet)
               currentPaletteName={!externalColorPalette ? localPaletteName : undefined}
               onColorPaletteChange={!externalColorPalette ? setLocalPaletteName : undefined}
-              query={currentQuery}
+              allQueries={allQueries}
               schema={meta as MetaResponse | null}
               activeView={activeView}
               onActiveViewChange={setActiveView}
@@ -1417,6 +1834,11 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
               enableAI={features?.enableAI !== false}
               isAIOpen={aiState.isOpen}
               onAIToggle={aiState.isOpen ? handleCloseAI : handleOpenAI}
+              // Multi-query props
+              queryCount={queryStates.length}
+              perQueryResults={perQueryResults}
+              activeTableIndex={activeTableIndex}
+              onActiveTableChange={setActiveTableIndex}
             />
           </div>
         </div>
@@ -1452,6 +1874,18 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             onDisplayConfigChange={handleDisplayConfigChange}
             validationStatus={state.validationStatus}
             validationError={state.validationError}
+            // Multi-query props
+            queryCount={queryStates.length}
+            activeQueryIndex={activeQueryIndex}
+            mergeStrategy={mergeStrategy}
+            onActiveQueryChange={handleActiveQueryChange}
+            onAddQuery={handleAddQuery}
+            onRemoveQuery={handleRemoveQuery}
+            onMergeStrategyChange={handleMergeStrategyChange}
+            breakdownsLocked={mergeStrategy === 'merge' && activeQueryIndex > 0}
+            combinedMetrics={combinedMetrics}
+            combinedBreakdowns={combinedBreakdowns}
+            multiQueryValidation={multiQueryValidation}
           />
         </div>
 

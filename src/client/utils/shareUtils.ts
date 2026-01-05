@@ -6,14 +6,14 @@
  */
 
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig, MultiQueryConfig } from '../types'
 
 /**
  * State that can be shared via URL
- * Query is required, chart config is optional (may be dropped if too large)
+ * Query is required (can be single CubeQuery or MultiQueryConfig), chart config is optional (may be dropped if too large)
  */
 export interface ShareableState {
-  query: CubeQuery
+  query: CubeQuery | MultiQueryConfig
   chartType?: ChartType
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig

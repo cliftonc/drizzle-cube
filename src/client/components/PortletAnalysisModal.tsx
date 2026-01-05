@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Modal from './Modal'
 import AnalysisBuilder from './AnalysisBuilder'
 import type { AnalysisBuilderRef } from './AnalysisBuilder/types'
-import type { PortletConfig, ColorPalette, CubeQuery } from '../types'
+import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig } from '../types'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -45,7 +45,8 @@ export default function PortletAnalysisModal({
   const [formTitle, setFormTitle] = useState('')
 
   // Parse initial query from portlet
-  const initialQuery = React.useMemo<CubeQuery | undefined>(() => {
+  // AnalysisBuilder handles both single CubeQuery and MultiQueryConfig internally
+  const initialQuery = React.useMemo<CubeQuery | MultiQueryConfig | undefined>(() => {
     if (!portlet?.query) return undefined
     try {
       return JSON.parse(portlet.query)
@@ -78,31 +79,34 @@ export default function PortletAnalysisModal({
       return
     }
 
-    // Get current query and chart config from AnalysisBuilder
-    const currentQuery = builderRef.current?.getCurrentQuery()
+    // Get query config and chart config from AnalysisBuilder
+    // AnalysisBuilder returns either CubeQuery or MultiQueryConfig - we just stringify it
+    const queryConfig = builderRef.current?.getQueryConfig()
     const chartConfig = builderRef.current?.getChartConfig()
 
-    if (!currentQuery) {
+    if (!queryConfig) {
       alert('Please configure a query before saving.')
       return
     }
 
-    // Check if query has at least one measure or dimension
+    // Check if config has content - works for both single and multi-query
+    // For multi-query, check the first query; for single query, check directly
+    const firstQuery = 'queries' in queryConfig ? queryConfig.queries[0] : queryConfig
     const hasContent =
-      (currentQuery.measures && currentQuery.measures.length > 0) ||
-      (currentQuery.dimensions && currentQuery.dimensions.length > 0) ||
-      (currentQuery.timeDimensions && currentQuery.timeDimensions.length > 0)
+      (firstQuery?.measures && firstQuery.measures.length > 0) ||
+      (firstQuery?.dimensions && firstQuery.dimensions.length > 0) ||
+      (firstQuery?.timeDimensions && firstQuery.timeDimensions.length > 0)
 
     if (!hasContent) {
       alert('Please add at least one metric or breakdown to your query.')
       return
     }
 
-    // Build portlet config
+    // Build portlet config - just stringify whatever AnalysisBuilder returned
     const portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'> = {
       ...(portlet || {}),
       title: formTitle.trim(),
-      query: JSON.stringify(currentQuery),
+      query: JSON.stringify(queryConfig),
       chartType: chartConfig?.chartType || 'line',
       chartConfig: chartConfig?.chartConfig || {},
       displayConfig: chartConfig?.displayConfig || {},

@@ -62,8 +62,26 @@ export {
 } from './providers/CubeProvider'
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
 export { useCubeQuery } from './hooks/useCubeQuery'
+export { useMultiCubeQuery } from './hooks/useMultiCubeQuery'
+export type { UseMultiCubeQueryResult } from './hooks/useMultiCubeQuery'
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
 export { createCubeClient } from './client/CubeClient'
+
+// Multi-query validation utilities
+export {
+  validateMultiQueryConfig,
+  validateTimeDimensionAlignment,
+  validateMergeKeys,
+  detectMeasureCollisions,
+  detectAsymmetricDateRanges,
+  isMultiQueryValid,
+  getValidationSummary
+} from './utils/multiQueryValidation'
+export type {
+  MultiQueryValidationError,
+  MultiQueryValidationWarning,
+  MultiQueryValidationResult
+} from './utils/multiQueryValidation'
 
 // Performance hooks
 export { useTheme } from './hooks/useTheme'
@@ -79,8 +97,14 @@ export type {
   CubeQuery,
   CubeQueryOptions,
   CubeApiOptions,
-  DashboardConfig
+  DashboardConfig,
+  // Multi-query types
+  MultiQueryConfig,
+  QueryMergeStrategy
 } from './types'
+
+// Multi-query type guard
+export { isMultiQueryConfig } from './types'
 
 // Chart configuration types
 export type {
@@ -91,6 +115,19 @@ export type {
 
 // Utilities
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'
+
+// Multi-query utilities
+export {
+  isMultiQueryData,
+  mergeQueryResults,
+  mergeResultsConcat,
+  mergeResultsByKey,
+  getCombinedFields,
+  getQueryLabels,
+  getQueryIndices,
+  generateQueryLabel,
+  validateMergeKey
+} from './utils/multiQueryUtils'
 
 // Theme utilities
 export {

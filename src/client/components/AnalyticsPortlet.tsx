@@ -6,12 +6,14 @@
 import React, { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useCubeQuery } from '../hooks/useCubeQuery'
+import { useMultiCubeQuery } from '../hooks/useMultiCubeQuery'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
 import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
-import type { AnalyticsPortletProps } from '../types'
+import type { AnalyticsPortletProps, MultiQueryConfig } from '../types'
+import { isMultiQueryConfig } from '../types'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 
 
@@ -68,10 +70,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }, [dashboardFilters])
 
   // Parse query from JSON string, merge dashboard filters, and include refresh counter to force re-query
-  const queryObject = useMemo(() => {
+  // Supports both single CubeQuery and MultiQueryConfig formats
+  const { queryObject, multiQueryConfig } = useMemo(() => {
     // Skip query parsing for charts that don't need queries
     if (shouldSkipQuery) {
-      return null
+      return { queryObject: null, multiQueryConfig: null }
     }
 
     try {
@@ -80,10 +83,23 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
       const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
 
-      // Merge dashboard filters with portlet filters
-      const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
+      // Check if this is a multi-query configuration
+      if (isMultiQueryConfig(parsed)) {
+        // Multi-query: apply filters to each query in the array
+        const multiConfig: MultiQueryConfig = {
+          ...parsed,
+          queries: parsed.queries.map(q => ({
+            ...q,
+            filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters),
+            timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions),
+            __refresh_counter: refreshCounter
+          }))
+        }
+        return { queryObject: null, multiQueryConfig: multiConfig }
+      }
 
-      // Apply universal time filters to timeDimensions (dashboard wins over portlet dateRange)
+      // Single query: existing behavior
+      const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, parsed.filters)
       const mergedTimeDimensions = applyUniversalTimeFilters(
         dashboardFilters,
         dashboardFilterMapping,
@@ -91,25 +107,42 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       )
 
       return {
-        ...parsed,
-        filters: mergedFilters,
-        timeDimensions: mergedTimeDimensions,
-        __refresh_counter: refreshCounter
+        queryObject: {
+          ...parsed,
+          filters: mergedFilters,
+          timeDimensions: mergedTimeDimensions,
+          __refresh_counter: refreshCounter
+        },
+        multiQueryConfig: null
       }
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
-      return null
+      return { queryObject: null, multiQueryConfig: null }
     }
   }, [query, refreshCounter, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
-  // Use the cube React hook (skip for charts that don't need queries or not visible for lazy loading)
-  // Priority: shouldSkipQuery (chart type) > eagerLoad override > isVisible (lazy loading)
-  const shouldSkip = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible)
+  // Determine whether to skip queries based on various conditions
+  const isMultiQuery = multiQueryConfig !== null
+  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery
+  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible)
 
-  const { resultSet, isLoading, error } = useCubeQuery(queryObject, {
-    skip: shouldSkip,
+  // Use single query hook (skip if multi-query or other skip conditions)
+  const singleQueryResult = useCubeQuery(queryObject, {
+    skip: shouldSkipSingle,
     resetResultSetOnChange: true
   })
+
+  // Use multi-query hook (skip if single query or other skip conditions)
+  const multiQueryResult = useMultiCubeQuery(multiQueryConfig, {
+    skip: shouldSkipMulti,
+    resetResultSetOnChange: true
+  })
+
+  // Combine results from both hooks
+  const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
+  const isLoading = isMultiQuery ? multiQueryResult.isLoading : singleQueryResult.isLoading
+  const error = isMultiQuery ? multiQueryResult.error : singleQueryResult.error
+  const multiQueryData = isMultiQuery ? multiQueryResult.data : null
 
   // Expose refresh function through ref
   useImperativeHandle(ref, () => ({
@@ -224,7 +257,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       )
     }
 
-    if (!resultSet || !queryObject) {
+    // Check for valid data based on query type
+    const hasValidData = isMultiQuery
+      ? (multiQueryData !== null && multiQueryConfig !== null)
+      : (resultSet !== null && queryObject !== null)
+
+    if (!hasValidData) {
       return (
         <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
@@ -242,12 +280,17 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     if (shouldSkipQuery) {
       return []
     }
-    
-    // Return empty array if no resultSet
+
+    // Multi-query: return merged data directly
+    if (isMultiQuery) {
+      return multiQueryData || []
+    }
+
+    // Single query: return empty array if no resultSet
     if (!resultSet) {
       return []
     }
-    
+
     switch (chartType) {
       case 'pie':
       case 'table':
