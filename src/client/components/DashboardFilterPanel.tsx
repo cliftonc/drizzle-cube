@@ -13,8 +13,8 @@
 
 import React, { useState, useCallback } from 'react'
 import FilterEditModal from './DashboardFilters/FilterEditModal'
-import ReadOnlyFilterList from './DashboardFilters/ReadOnlyFilterList'
 import EditModeFilterList from './DashboardFilters/EditModeFilterList'
+import CompactFilterBar from './DashboardFilters/CompactFilterBar'
 import type { DashboardFilter, CubeMeta, DashboardConfig } from '../types'
 import type { MetaResponse } from '../shared/types'
 
@@ -174,43 +174,6 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     setShowFilterBuilder(false)
   }, [])
 
-  // Handle date range change in read-only mode
-  const handleFilterDateRangeChange = useCallback((filterId: string, dateRange: string | string[]) => {
-    const updatedFilters = dashboardFilters.map(df => {
-      if (df.id === filterId) {
-        const filter = df.filter
-        if ('member' in filter) {
-          return {
-            ...df,
-            filter: {
-              ...filter,
-              dateRange,
-              values: Array.isArray(dateRange) ? dateRange : [dateRange]
-            }
-          }
-        }
-      }
-      return df
-    })
-    onDashboardFiltersChange(updatedFilters)
-  }, [dashboardFilters, onDashboardFiltersChange])
-
-  // Handle filter change in read-only mode
-  const handleReadOnlyFilterChange = useCallback((filterId: string, updatedFilter: DashboardFilter) => {
-    const updatedFilters = dashboardFilters.map(df =>
-      df.id === filterId ? updatedFilter : df
-    )
-    onDashboardFiltersChange(updatedFilters)
-  }, [dashboardFilters, onDashboardFiltersChange])
-
-  // Check if a field is a time dimension
-  const isTimeDimensionField = useCallback((fieldName: string): boolean => {
-    if (!schema) return false
-    return schema.cubes.some(cube =>
-      cube.dimensions.some(dim => dim.name === fieldName && dim.type === 'time')
-    )
-  }, [schema])
-
   // Hide filter panel completely when not editable (fully embedded mode without filter support)
   if (!editable) {
     return null
@@ -222,34 +185,37 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   }
 
   return (
-    <div
-      className="mb-4 border rounded-lg"
-      style={{
-        borderColor: 'var(--dc-border)',
-        backgroundColor: 'var(--dc-surface)',
-        boxShadow: 'var(--dc-shadow-sm)'
-      }}
-    >
-      {/* Edit Mode - Filter chips with edit/delete actions */}
+    <div className="mb-4">
+      {/* Edit Mode - Full filter management with chips and actions */}
       {isEditMode ? (
-        <EditModeFilterList
-          dashboardFilters={dashboardFilters}
-          onAddFilter={handleAddFilter}
-          onAddTimeFilter={handleAddTimeFilter}
-          onEditFilter={handleEditFilter}
-          onRemoveFilter={handleRemoveFilter}
-          selectedFilterId={selectedFilterId}
-          onFilterSelect={onFilterSelect}
-        />
+        <div
+          className="border rounded-lg"
+          style={{
+            borderColor: 'var(--dc-border)',
+            backgroundColor: 'var(--dc-surface)',
+            boxShadow: 'var(--dc-shadow-sm)'
+          }}
+        >
+          <EditModeFilterList
+            dashboardFilters={dashboardFilters}
+            onAddFilter={handleAddFilter}
+            onAddTimeFilter={handleAddTimeFilter}
+            onEditFilter={handleEditFilter}
+            onRemoveFilter={handleRemoveFilter}
+            selectedFilterId={selectedFilterId}
+            onFilterSelect={onFilterSelect}
+          />
+        </div>
       ) : (
-        /* View Mode - Read-only interactive filters */
-        <ReadOnlyFilterList
+        /* View Mode - Compact Mixpanel-style filter bar */
+        <CompactFilterBar
           dashboardFilters={dashboardFilters}
           schema={schema}
-          onFilterChange={handleReadOnlyFilterChange}
-          onDateRangeChange={handleFilterDateRangeChange}
-          convertToMetaResponse={convertToMetaResponse}
-          isTimeDimensionField={isTimeDimensionField}
+          isEditMode={false}
+          onDashboardFiltersChange={onDashboardFiltersChange}
+          onAddFilter={handleAddFilter}
+          onEditFilter={handleEditFilter}
+          onRemoveFilter={handleRemoveFilter}
         />
       )}
 

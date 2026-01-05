@@ -755,3 +755,264 @@ export function getNextSortDirection(current: 'asc' | 'desc' | null): 'asc' | 'd
       return 'asc'
   }
 }
+
+/**
+ * Compact filter bar date utilities
+ */
+
+/**
+ * Date preset configuration for compact filter bar
+ */
+export interface DatePreset {
+  id: string
+  label: string
+  value: string
+}
+
+export const DATE_PRESETS: DatePreset[] = [
+  { id: 'today', label: 'Today', value: 'today' },
+  { id: 'yesterday', label: 'Yesterday', value: 'yesterday' },
+  { id: '7d', label: '7D', value: 'last 7 days' },
+  { id: '30d', label: '30D', value: 'last 30 days' },
+  { id: '3m', label: '3M', value: 'last 3 months' },
+  { id: '6m', label: '6M', value: 'last 6 months' },
+  { id: '12m', label: '12M', value: 'last 12 months' }
+]
+
+export const XTD_OPTIONS: DatePreset[] = [
+  { id: 'wtd', label: 'Week to Date', value: 'this week' },
+  { id: 'mtd', label: 'Month to Date', value: 'this month' },
+  { id: 'qtd', label: 'Quarter to Date', value: 'this quarter' },
+  { id: 'ytd', label: 'Year to Date', value: 'this year' }
+]
+
+/**
+ * Calculate actual date range from a preset string
+ * Returns start and end dates for display purposes
+ */
+export function calculateDateRange(preset: string): { start: Date, end: Date } | null {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const endOfToday = new Date(today)
+  endOfToday.setHours(23, 59, 59, 999)
+
+  switch (preset.toLowerCase()) {
+    case 'today': {
+      return { start: today, end: endOfToday }
+    }
+    case 'yesterday': {
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const endOfYesterday = new Date(yesterday)
+      endOfYesterday.setHours(23, 59, 59, 999)
+      return { start: yesterday, end: endOfYesterday }
+    }
+    case 'this week': {
+      const startOfWeek = new Date(today)
+      const dayOfWeek = startOfWeek.getDay()
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday as first day
+      startOfWeek.setDate(startOfWeek.getDate() - diff)
+      return { start: startOfWeek, end: endOfToday }
+    }
+    case 'this month': {
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { start: startOfMonth, end: endOfToday }
+    }
+    case 'this quarter': {
+      const quarter = Math.floor(today.getMonth() / 3)
+      const startOfQuarter = new Date(today.getFullYear(), quarter * 3, 1)
+      return { start: startOfQuarter, end: endOfToday }
+    }
+    case 'this year': {
+      const startOfYear = new Date(today.getFullYear(), 0, 1)
+      return { start: startOfYear, end: endOfToday }
+    }
+    default: {
+      // Handle "last N units" patterns
+      const lastNMatch = preset.match(/^last\s+(\d+)\s+(day|days|week|weeks|month|months|quarter|quarters|year|years)$/i)
+      if (lastNMatch) {
+        const num = parseInt(lastNMatch[1], 10)
+        const unit = lastNMatch[2].toLowerCase()
+        const startDate = new Date(today)
+
+        if (unit === 'day' || unit === 'days') {
+          startDate.setDate(startDate.getDate() - num + 1)
+        } else if (unit === 'week' || unit === 'weeks') {
+          startDate.setDate(startDate.getDate() - (num * 7) + 1)
+        } else if (unit === 'month' || unit === 'months') {
+          startDate.setMonth(startDate.getMonth() - num)
+          startDate.setDate(startDate.getDate() + 1)
+        } else if (unit === 'quarter' || unit === 'quarters') {
+          startDate.setMonth(startDate.getMonth() - (num * 3))
+          startDate.setDate(startDate.getDate() + 1)
+        } else if (unit === 'year' || unit === 'years') {
+          startDate.setFullYear(startDate.getFullYear() - num)
+          startDate.setDate(startDate.getDate() + 1)
+        }
+
+        return { start: startDate, end: endOfToday }
+      }
+
+      // Handle "last week", "last month", etc. (without number)
+      const lastUnitMatch = preset.match(/^last\s+(week|month|quarter|year)$/i)
+      if (lastUnitMatch) {
+        const unit = lastUnitMatch[1].toLowerCase()
+
+        if (unit === 'week') {
+          const endOfLastWeek = new Date(today)
+          const dayOfWeek = endOfLastWeek.getDay()
+          const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+          endOfLastWeek.setDate(endOfLastWeek.getDate() - diff - 1)
+          endOfLastWeek.setHours(23, 59, 59, 999)
+
+          const startOfLastWeek = new Date(endOfLastWeek)
+          startOfLastWeek.setDate(startOfLastWeek.getDate() - 6)
+          startOfLastWeek.setHours(0, 0, 0, 0)
+
+          return { start: startOfLastWeek, end: endOfLastWeek }
+        } else if (unit === 'month') {
+          const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+          const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+          endOfLastMonth.setHours(23, 59, 59, 999)
+          return { start: startOfLastMonth, end: endOfLastMonth }
+        } else if (unit === 'quarter') {
+          const currentQuarter = Math.floor(today.getMonth() / 3)
+          const lastQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1
+          const lastQuarterYear = currentQuarter === 0 ? today.getFullYear() - 1 : today.getFullYear()
+          const startOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3, 1)
+          const endOfLastQuarter = new Date(lastQuarterYear, lastQuarter * 3 + 3, 0)
+          endOfLastQuarter.setHours(23, 59, 59, 999)
+          return { start: startOfLastQuarter, end: endOfLastQuarter }
+        } else if (unit === 'year') {
+          const startOfLastYear = new Date(today.getFullYear() - 1, 0, 1)
+          const endOfLastYear = new Date(today.getFullYear() - 1, 11, 31)
+          endOfLastYear.setHours(23, 59, 59, 999)
+          return { start: startOfLastYear, end: endOfLastYear }
+        }
+      }
+
+      return null
+    }
+  }
+}
+
+/**
+ * Format a date range for display (e.g., "Jan 1, 2024 - Jan 31, 2024")
+ */
+export function formatDateRangeDisplay(start: Date, end: Date): string {
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }
+
+  const startStr = start.toLocaleDateString('en-US', options)
+  const endStr = end.toLocaleDateString('en-US', options)
+
+  // If same day, just show one date
+  if (startStr === endStr) {
+    return startStr
+  }
+
+  // If same year, omit year from start date
+  if (start.getFullYear() === end.getFullYear()) {
+    const startNoYear: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+    return `${start.toLocaleDateString('en-US', startNoYear)} - ${endStr}`
+  }
+
+  return `${startStr} - ${endStr}`
+}
+
+/**
+ * Detect preset ID from a date range value
+ * Returns the preset ID (e.g., '7d', 'mtd') or 'custom' if not a preset
+ */
+export function detectPresetFromDateRange(dateRange: string | string[] | undefined): string | null {
+  if (!dateRange) return null
+
+  // Custom date range (array of dates)
+  if (Array.isArray(dateRange)) {
+    return 'custom'
+  }
+
+  const normalizedRange = dateRange.toLowerCase().trim()
+
+  // Check regular presets
+  for (const preset of DATE_PRESETS) {
+    if (preset.value.toLowerCase() === normalizedRange) {
+      return preset.id
+    }
+  }
+
+  // Check XTD presets
+  for (const preset of XTD_OPTIONS) {
+    if (preset.value.toLowerCase() === normalizedRange) {
+      return preset.id
+    }
+  }
+
+  // Check for "last N units" patterns that don't match exact presets
+  const lastNMatch = normalizedRange.match(/^last\s+(\d+)\s+(day|days|week|weeks|month|months|quarter|quarters|year|years)$/i)
+  if (lastNMatch) {
+    return 'custom' // Dynamic last N is treated as custom
+  }
+
+  return 'custom'
+}
+
+/**
+ * Format filter value for display in a compact chip
+ */
+export function formatFilterValueDisplay(values: any[], operator: string): string {
+  if (!values || values.length === 0) {
+    // Handle operators that don't need values
+    if (operator === 'set') return 'is set'
+    if (operator === 'notSet') return 'is not set'
+    if (operator === 'isEmpty') return 'is empty'
+    if (operator === 'isNotEmpty') return 'is not empty'
+    return ''
+  }
+
+  const formattedValues = values.map(v => {
+    if (v === true) return 'true'
+    if (v === false) return 'false'
+    if (v === null || v === undefined) return 'null'
+    return String(v)
+  })
+
+  switch (operator) {
+    case 'equals':
+      return formattedValues.length === 1 ? `= ${formattedValues[0]}` : `in (${formattedValues.join(', ')})`
+    case 'notEquals':
+      return formattedValues.length === 1 ? `!= ${formattedValues[0]}` : `not in (${formattedValues.join(', ')})`
+    case 'contains':
+      return `contains "${formattedValues[0]}"`
+    case 'notContains':
+      return `!contains "${formattedValues[0]}"`
+    case 'startsWith':
+      return `starts with "${formattedValues[0]}"`
+    case 'endsWith':
+      return `ends with "${formattedValues[0]}"`
+    case 'gt':
+      return `> ${formattedValues[0]}`
+    case 'gte':
+      return `>= ${formattedValues[0]}`
+    case 'lt':
+      return `< ${formattedValues[0]}`
+    case 'lte':
+      return `<= ${formattedValues[0]}`
+    case 'between':
+      return `${formattedValues[0]} - ${formattedValues[1] || '?'}`
+    case 'in':
+      return `in (${formattedValues.join(', ')})`
+    case 'notIn':
+      return `not in (${formattedValues.join(', ')})`
+    case 'set':
+      return 'is set'
+    case 'notSet':
+      return 'is not set'
+    default:
+      return formattedValues.join(', ')
+  }
+}
