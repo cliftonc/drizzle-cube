@@ -9,236 +9,49 @@
  * - Auto-execute queries on field changes
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useState, useCallback, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { useCubeContext } from '../../providers/CubeProvider'
-import { useCubeQuery } from '../../hooks/useCubeQuery'
-import { useMultiCubeQuery } from '../../hooks/useMultiCubeQuery'
+import { useAnalysisState } from '../../hooks/useAnalysisState'
+import { useQueryExecution } from '../../hooks/useQueryExecution'
+import { useChartConfiguration } from '../../hooks/useChartConfiguration'
+import { useAnalysisAI } from '../../hooks/useAnalysisAI'
+import { useAnalysisShare } from '../../hooks/useAnalysisShare'
 import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
-  AnalysisBuilderState,
-  AIState,
+  AnalysisBuilderStorageState,
   MetricItem,
   BreakdownItem,
   QueryPanelTab,
-  ExecutionStatus,
-  AnalysisBuilderStorageState,
   QueryAnalysis
 } from './types'
-import type { CubeQuery, Filter, ChartType, ChartAxisConfig, ChartDisplayConfig, QueryMergeStrategy, MultiQueryConfig } from '../../types'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig, MultiQueryConfig } from '../../types'
 import { isMultiQueryConfig } from '../../types'
-import { parseDateRange, calculatePriorPeriod, formatDateForCube } from '../../../shared/date-utils'
 import FieldSearchModal from './FieldSearchModal'
 import AnalysisResultsPanel from './AnalysisResultsPanel'
 import AnalysisQueryPanel from './AnalysisQueryPanel'
-import type { MetaField, MetaResponse } from '../../shared/types'
-import { cleanQueryForServer, convertDateRangeTypeToValue } from '../../shared/utils'
-import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../../shared/chartDefaults'
-import { compressWithFallback, parseShareHash, decodeAndDecompress, clearShareHash } from '../../utils/shareUtils'
-import { getColorPalette } from '../../utils/colorPalettes'
-import { sendGeminiMessage, extractTextFromResponse } from '../AIAssistant/utils'
+import type { MetaResponse } from '../../shared/types'
+import { cleanQueryForServer } from '../../shared/utils'
+import { getSmartChartDefaults } from '../../shared/chartDefaults'
+import { parseShareHash, decodeAndDecompress, clearShareHash } from '../../utils/shareUtils'
 import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../../utils/multiQueryValidation'
 import AnalysisAIPanel from './AnalysisAIPanel'
 
-// Storage key for localStorage persistence
-const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
+// Import utils from organized folder
+import {
+  buildCubeQuery,
+  createInitialState,
+  loadInitialStateFromStorage,
+  STORAGE_KEY
+} from './utils'
 
-// Debounce delay for auto-execute (ms)
-const AUTO_EXECUTE_DELAY = 300
-
-/**
- * Generate a unique ID for items
- */
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
-
-/**
- * Generate letter label for metrics (A, B, C, ..., AA, AB, ...)
- */
-function generateMetricLabel(index: number): string {
-  let label = ''
-  let n = index
-  do {
-    label = String.fromCharCode(65 + (n % 26)) + label
-    n = Math.floor(n / 26) - 1
-  } while (n >= 0)
-  return label
-}
-
-/**
- * Find date filter for a specific time dimension field
- * Recursively searches filters (including nested and/or groups)
- * Handles both UI format ({type: 'and'/'or', filters: [...]}) and simple filters
- */
-function findDateFilterForField(
-  filters: Filter[],
-  field: string
-): { dateRange: string | string[] } | undefined {
-  for (const filter of filters) {
-    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const nested = findDateFilterForField(groupFilter.filters, field)
-      if (nested) return nested
-    } else if ('member' in filter) {
-      // Simple filter with member, operator, dateRange
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (simple.member === field && simple.operator === 'inDateRange' && simple.dateRange) {
-        return { dateRange: simple.dateRange }
-      }
-    }
-  }
-  return undefined
-}
-
-/**
- * Build compareDateRange for a time dimension based on its date filter
- * When comparison is enabled, returns [[currentStart, currentEnd], [priorStart, priorEnd]]
- */
-function buildCompareDateRangeFromFilter(
-  timeDimensionField: string,
-  filters: Filter[]
-): [string, string][] | undefined {
-  // Find the date filter for this time dimension
-  const dateFilter = findDateFilterForField(filters, timeDimensionField)
-  if (!dateFilter?.dateRange) return undefined
-
-  // Parse the current range using shared utility
-  const currentPeriod = parseDateRange(dateFilter.dateRange)
-  if (!currentPeriod) return undefined
-
-  // Calculate prior period using shared utility
-  const priorPeriod = calculatePriorPeriod(currentPeriod.start, currentPeriod.end)
-
-  return [
-    [formatDateForCube(currentPeriod.start), formatDateForCube(currentPeriod.end)],
-    [formatDateForCube(priorPeriod.start), formatDateForCube(priorPeriod.end)]
-  ]
-}
-
-/**
- * Remove date filter for a specific field from filters array
- * Returns a new array with the filter removed (immutable)
- */
-function removeComparisonDateFilter(filters: Filter[], field: string): Filter[] {
-  return filters.reduce<Filter[]>((acc, filter) => {
-    // Check for UI GroupFilter format: {type: 'and'/'or', filters: [...]}
-    if ('type' in filter && 'filters' in filter) {
-      const groupFilter = filter as { type: 'and' | 'or'; filters: Filter[] }
-      const cleanedSubFilters = removeComparisonDateFilter(groupFilter.filters, field)
-      // Only keep the group if it still has filters
-      if (cleanedSubFilters.length > 0) {
-        acc.push({ type: groupFilter.type, filters: cleanedSubFilters } as Filter)
-      }
-    } else if ('member' in filter) {
-      // Simple filter - skip if it's the date filter for this field
-      const simple = filter as { member: string; operator?: string; dateRange?: string | string[] }
-      if (!(simple.member === field && simple.operator === 'inDateRange')) {
-        acc.push(filter)
-      }
-    } else {
-      acc.push(filter)
-    }
-    return acc
-  }, [])
-}
-
-/**
- * Convert metrics and breakdowns to CubeQuery format
- */
-function buildCubeQuery(
-  metrics: MetricItem[],
-  breakdowns: BreakdownItem[],
-  filters: Filter[],
-  order?: Record<string, 'asc' | 'desc'>
-): CubeQuery {
-  // Find time dimensions with comparison enabled
-  const comparisonFields = breakdowns
-    .filter((b) => b.isTimeDimension && b.enableComparison)
-    .map((b) => b.field)
-
-  // Remove date filters for comparison-enabled time dimensions
-  // (compareDateRange will handle the date ranges instead)
-  let filteredFilters = filters
-  for (const field of comparisonFields) {
-    filteredFilters = removeComparisonDateFilter(filteredFilters, field)
-  }
-
-  const query: CubeQuery = {
-    measures: metrics.map((m) => m.field),
-    dimensions: breakdowns.filter((b) => !b.isTimeDimension).map((b) => b.field),
-    timeDimensions: breakdowns
-      .filter((b) => b.isTimeDimension)
-      .map((b) => {
-        const td: {
-          dimension: string
-          granularity: string
-          compareDateRange?: [string, string][]
-        } = {
-          dimension: b.field,
-          granularity: b.granularity || 'day'
-        }
-
-        // If comparison is enabled, build compareDateRange from the ORIGINAL filter
-        if (b.enableComparison) {
-          const compareDateRange = buildCompareDateRangeFromFilter(b.field, filters)
-          if (compareDateRange) {
-            td.compareDateRange = compareDateRange
-          }
-        }
-
-        return td
-      }),
-    filters: filteredFilters.length > 0 ? filteredFilters : undefined,
-    order: order && Object.keys(order).length > 0 ? order : undefined
-  }
-
-  // Clean up empty arrays
-  if (query.measures?.length === 0) delete query.measures
-  if (query.dimensions?.length === 0) delete query.dimensions
-  if (query.timeDimensions?.length === 0) delete query.timeDimensions
-
-  return query
-}
-
-/**
- * Create initial empty state
- */
-function createInitialState(): AnalysisBuilderState {
-  return {
-    metrics: [],
-    breakdowns: [],
-    filters: [],
-    order: undefined,
-    validationStatus: 'idle',
-    validationError: null,
-    executionStatus: 'idle',
-    executionResults: null,
-    executionError: null,
-    totalRowCount: null,
-    resultsStale: false
-  }
-}
-
-/**
- * Load all state from localStorage once (to avoid repeated parsing)
- */
-function loadInitialStateFromStorage(
-  disableLocalStorage: boolean
-): AnalysisBuilderStorageState | null {
-  if (disableLocalStorage) return null
-
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      return JSON.parse(saved) as AnalysisBuilderStorageState
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return null
-}
+// Import handler hooks
+import {
+  useMetricsHandlers,
+  useBreakdownsHandlers,
+  useFiltersHandlers,
+  useMultiQueryHandlers
+} from './handlers'
 
 const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
   (
@@ -271,174 +84,23 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       [] // Only run once on mount
     )
 
-    // Helper to convert a CubeQuery to AnalysisBuilderState
-    const queryToState = (query: CubeQuery): AnalysisBuilderState => ({
-      ...createInitialState(),
-      metrics: (query.measures || []).map((field, index) => ({
-        id: generateId(),
-        field,
-        label: generateMetricLabel(index)
-      })),
-      breakdowns: [
-        ...(query.dimensions || []).map((field) => ({
-          id: generateId(),
-          field,
-          isTimeDimension: false
-        })),
-        ...(query.timeDimensions || []).map((td) => ({
-          id: generateId(),
-          field: td.dimension,
-          granularity: td.granularity,
-          isTimeDimension: true
-        }))
-      ],
-      filters: query.filters || [],
-      order: query.order
+    // Use the analysis state hook for multi-query state management
+    const {
+      queryStates,
+      setQueryStates,
+      activeQueryIndex,
+      setActiveQueryIndex,
+      mergeStrategy,
+      setMergeStrategy,
+      state,
+      setState,
+      mergeKeys,
+      isMultiQueryMode,
+      queryToState
+    } = useAnalysisState({
+      initialQuery,
+      cachedStorage
     })
-
-    // Multi-query state management
-    // queryStates holds an array of query configurations (one per tab)
-    // For single-query mode, this is an array with one element
-    const [queryStates, setQueryStates] = useState<AnalysisBuilderState[]>(() => {
-      // If initialQuery is provided, detect if it's multi-query or single query internally
-      if (initialQuery) {
-        if (isMultiQueryConfig(initialQuery)) {
-          // Multi-query config - parse each query
-          const multiConfig = initialQuery as MultiQueryConfig
-          return multiConfig.queries.map(queryToState)
-        }
-        // Single query - wrap in array
-        const singleQuery = initialQuery as CubeQuery
-        return [queryToState(singleQuery)]
-      }
-
-      // Use cached localStorage data if available
-      if (cachedStorage) {
-        // Support legacy single-query format and new multi-query format
-        const queries = cachedStorage.queryStates || [{
-          ...createInitialState(),
-          metrics: cachedStorage.metrics || [],
-          breakdowns: cachedStorage.breakdowns || [],
-          filters: cachedStorage.filters || [],
-          order: cachedStorage.order
-        }]
-        return queries
-      }
-
-      return [createInitialState()]
-    })
-
-    // Index of the currently active query tab
-    const [activeQueryIndex, setActiveQueryIndex] = useState<number>(() => {
-      if (cachedStorage?.activeQueryIndex !== undefined) {
-        return cachedStorage.activeQueryIndex
-      }
-      return 0
-    })
-
-    // Merge strategy for combining multiple query results
-    const [mergeStrategy, setMergeStrategy] = useState<QueryMergeStrategy>(() => {
-      // Priority: initialQuery (if multi-query) > cached localStorage > default
-      if (initialQuery && isMultiQueryConfig(initialQuery)) {
-        const multiConfig = initialQuery as MultiQueryConfig
-        if (multiConfig.mergeStrategy) {
-          return multiConfig.mergeStrategy
-        }
-      }
-      if (cachedStorage?.mergeStrategy) {
-        return cachedStorage.mergeStrategy
-      }
-      return 'concat'
-    })
-
-    // Dimension keys to align data on for 'merge' strategy - auto-computed from Q1 breakdowns
-    const mergeKeys = useMemo(() => {
-      if (mergeStrategy !== 'merge' || queryStates.length === 0) return undefined
-      const q1Breakdowns = queryStates[0].breakdowns
-      if (q1Breakdowns.length === 0) return undefined
-      return q1Breakdowns.map(b => b.field)
-    }, [mergeStrategy, queryStates])
-
-    // Derive the active query state (convenience accessor)
-    const state = queryStates[activeQueryIndex] || createInitialState()
-
-    // Helper to update the active query state
-    const setState = useCallback((updater: AnalysisBuilderState | ((prev: AnalysisBuilderState) => AnalysisBuilderState)) => {
-      setQueryStates(prevStates => {
-        const newStates = [...prevStates]
-        if (typeof updater === 'function') {
-          newStates[activeQueryIndex] = updater(prevStates[activeQueryIndex] || createInitialState())
-        } else {
-          newStates[activeQueryIndex] = updater
-        }
-        return newStates
-      })
-    }, [activeQueryIndex])
-
-    // Sync breakdowns from Q1 to other queries when in merge mode
-    useEffect(() => {
-      if (mergeStrategy !== 'merge' || queryStates.length <= 1) return
-
-      const q1Breakdowns = queryStates[0].breakdowns
-
-      // Check if other queries need syncing
-      let needsSync = false
-      for (let i = 1; i < queryStates.length; i++) {
-        if (JSON.stringify(queryStates[i].breakdowns) !== JSON.stringify(q1Breakdowns)) {
-          needsSync = true
-          break
-        }
-      }
-
-      if (needsSync) {
-        setQueryStates(prev => prev.map((qs, i) =>
-          i === 0 ? qs : { ...qs, breakdowns: [...q1Breakdowns] }
-        ))
-      }
-    }, [mergeStrategy, queryStates])
-
-    // Chart configuration state - load from initialChartConfig, cached localStorage, or defaults
-    const [chartType, setChartType] = useState<ChartType>(() => {
-      // Priority: initialChartConfig > cached localStorage > default
-      if (initialChartConfig?.chartType) {
-        return initialChartConfig.chartType
-      }
-      if (!initialQuery && cachedStorage?.chartType) {
-        return cachedStorage.chartType
-      }
-      return 'line'
-    })
-
-    const [chartConfig, setChartConfig] = useState<ChartAxisConfig>(() => {
-      // Priority: initialChartConfig > cached localStorage > default
-      if (initialChartConfig?.chartConfig) {
-        return initialChartConfig.chartConfig
-      }
-      if (!initialQuery && cachedStorage?.chartConfig) {
-        return cachedStorage.chartConfig
-      }
-      return {}
-    })
-
-    const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>(() => {
-      // Priority: initialChartConfig > cached localStorage > default
-      if (initialChartConfig?.displayConfig) {
-        return initialChartConfig.displayConfig
-      }
-      if (!initialQuery && cachedStorage?.displayConfig) {
-        return cachedStorage.displayConfig
-      }
-      return { showLegend: true, showGrid: true, showTooltip: true }
-    })
-
-    // Local color palette state (only used when externalColorPalette is not provided)
-    const [localPaletteName, setLocalPaletteName] = useState<string>('default')
-
-    // Compute effective color palette
-    const effectiveColorPalette = useMemo(() => {
-      if (externalColorPalette) return externalColorPalette
-      return getColorPalette(localPaletteName)
-    }, [externalColorPalette, localPaletteName])
 
     // Order is now stored per-query in queryStates[index].order
     // Access current query's order via state.order
@@ -453,12 +115,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     })
     const [displayLimit, setDisplayLimit] = useState<number>(100)
 
-    // Track whether user manually selected a chart type (vs auto-selection)
-    // If initialChartConfig is provided, treat it as a manual selection to prevent auto-switching
-    const [userManuallySelectedChart, setUserManuallySelectedChart] = useState(
-      () => !!initialChartConfig?.chartType
-    )
-
     // Debug data state (from dry-run API) - one entry per query in multi-query mode
     interface DebugDataEntry {
       sql: { sql: string; params: any[] } | null
@@ -471,20 +127,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     // Field search modal state
     const [showFieldModal, setShowFieldModal] = useState(false)
     const [fieldModalMode, setFieldModalMode] = useState<'metrics' | 'breakdown'>('metrics')
-
-    // Share state
-    const [shareButtonState, setShareButtonState] = useState<'idle' | 'copied' | 'copied-no-chart'>('idle')
-
-    // AI state
-    const { features } = useCubeContext()
-    const [aiState, setAIState] = useState<AIState>({
-      isOpen: false,
-      userPrompt: '',
-      isGenerating: false,
-      error: null,
-      hasGeneratedQuery: false,
-      previousState: null
-    })
 
     // Load shared state from URL on mount
     useEffect(() => {
@@ -547,16 +189,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       return queryStates.map(qs => buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, qs.order))
     }, [queryStates])
 
-    // Check if we're in multi-query mode (more than one query with content)
-    const isMultiQueryMode = useMemo(() => {
-      if (queryStates.length <= 1) return false
-      // Check if at least 2 queries have content
-      const queriesWithContent = queryStates.filter(qs =>
-        qs.metrics.length > 0 || qs.breakdowns.length > 0
-      )
-      return queriesWithContent.length > 1
-    }, [queryStates])
-
     // Validate multi-query configuration and get warnings/errors
     const multiQueryValidation = useMemo((): MultiQueryValidationResult | null => {
       if (!isMultiQueryMode) return null
@@ -599,287 +231,162 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
     }, [allQueries, isMultiQueryMode, mergeStrategy, mergeKeys])
 
-    // Serialize query for comparison (prevents object reference issues)
-    // For multi-query mode, serialize all queries
-    const currentQueryString = useMemo(() => {
-      if (isMultiQueryMode) {
-        return JSON.stringify({ queries: allQueries, mergeStrategy, mergeKeys })
-      }
-      return JSON.stringify(currentQuery)
-    }, [currentQuery, allQueries, isMultiQueryMode, mergeStrategy, mergeKeys])
+    // Callback to clear resultsStale flag
+    const handleResultsStaleChange = useCallback((stale: boolean) => {
+      setState((prev) => ({ ...prev, resultsStale: stale }))
+    }, [setState])
 
-    // Debounced query for auto-execution
-    const [debouncedQuery, setDebouncedQuery] = useState<CubeQuery | null>(null)
-    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const lastQueryStringRef = useRef<string>('')
-
-    // Track if we should skip the first auto-execute (when initialData is provided)
-    const hasInitialDataRef = useRef<boolean>(!!initialData && initialData.length > 0)
-    const initialQueryStringRef = useRef<string>(initialQuery ? JSON.stringify(initialQuery) : '')
-
-    // Track previous metrics/breakdowns for smart chart defaulting (avoid re-runs when chartConfig changes)
-    const prevMetricsBreakdownsRef = useRef<string>('')
-    const chartConfigRef = useRef<ChartAxisConfig>(chartConfig)
-
-    // Determine if query is valid (has at least one measure OR one dimension)
-    const isValidQuery =
-      (currentQuery.measures && currentQuery.measures.length > 0) ||
-      (currentQuery.dimensions && currentQuery.dimensions.length > 0) ||
-      (currentQuery.timeDimensions && currentQuery.timeDimensions.length > 0)
-
-    // In multi-query mode, check if we have 2+ valid queries (for debounce purposes)
-    const hasValidMultiQuery = useMemo(() => {
-      if (!isMultiQueryMode) return false
-      const validQueries = allQueries.filter(q =>
-        (q.measures && q.measures.length > 0) ||
-        (q.dimensions && q.dimensions.length > 0) ||
-        (q.timeDimensions && q.timeDimensions.length > 0)
-      )
-      return validQueries.length >= 2
-    }, [isMultiQueryMode, allQueries])
-
-    // Debounce query changes - use string comparison to avoid infinite loops
-    useEffect(() => {
-      // Skip if query hasn't actually changed
-      if (currentQueryString === lastQueryStringRef.current) {
-        console.log('[DEBUG] Debounce: skipped - query unchanged')
-        return
-      }
-      console.log('[DEBUG] Debounce: query changed, will execute', { isMultiQueryMode, hasValidMultiQuery })
-
-      // Skip initial auto-execution if initialData was provided and query hasn't changed from initial
-      // This prevents re-fetching data that was already provided
-      if (hasInitialDataRef.current && currentQueryString === initialQueryStringRef.current) {
-        // Mark the query as "seen" so we don't skip future executions
-        lastQueryStringRef.current = currentQueryString
-        // Clear the flag so subsequent changes will execute
-        hasInitialDataRef.current = false
-        return
-      }
-
-      // Clear existing timer
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-
-      // Only debounce if we have a valid query (single or multi-query mode)
-      const shouldExecute = isValidQuery || hasValidMultiQuery
-      if (shouldExecute) {
-        debounceTimerRef.current = setTimeout(() => {
-          lastQueryStringRef.current = currentQueryString
-          // For multi-query, debouncedQuery just needs to be truthy to trigger execution
-          // The actual value isn't used - multiQueryConfig is used instead
-          // Using allQueries[0] provides stability - doesn't change on tab switch
-          setDebouncedQuery(hasValidMultiQuery ? allQueries[0] : currentQuery)
-        }, AUTO_EXECUTE_DELAY)
-      } else {
-        // Clear debounced query if no valid query
-        lastQueryStringRef.current = currentQueryString
-        setDebouncedQuery(null)
-      }
-
-      return () => {
-        if (debounceTimerRef.current) {
-          clearTimeout(debounceTimerRef.current)
-        }
-      }
-    }, [currentQueryString, isValidQuery, hasValidMultiQuery, allQueries])
-
-    // Transform debounced query to server format (converts filter groups)
-    const serverQuery = useMemo(() => {
-      if (!debouncedQuery) return null
-      return cleanQueryForServer(debouncedQuery)
-    }, [debouncedQuery])
-
-    // Debounced multi-query config for auto-execution
-    // This syncs with debouncedQuery - when debouncedQuery fires, we also fire multi-query
-    const debouncedMultiConfig = useMemo(() => {
-      // Only create multi-query config when:
-      // 1. In multi-query mode (2+ queries with content)
-      // 2. A debounced query has fired (indicating user finished typing)
-      if (!isMultiQueryMode || !multiQueryConfig || !debouncedQuery) {
-        return null
-      }
-      return multiQueryConfig
-    }, [isMultiQueryMode, multiQueryConfig, debouncedQuery])
-
-    // Execute SINGLE query using useCubeQuery hook (when not in multi-query mode)
-    // Reset resultSet when query changes to avoid showing stale data after clearing
-    const singleQueryResult = useCubeQuery(serverQuery, {
-      skip: !serverQuery || isMultiQueryMode,
-      resetResultSetOnChange: true
+    // Use query execution hook for debouncing and result management
+    const {
+      executionStatus,
+      executionResults,
+      perQueryResults,
+      isLoading,
+      error,
+      debouncedQuery,
+      setDebouncedQuery,
+      debounceTimerRef,
+      isValidQuery,
+      activeTableIndex,
+      setActiveTableIndex,
+      serverQuery
+    } = useQueryExecution({
+      currentQuery,
+      allQueries,
+      isMultiQueryMode,
+      multiQueryConfig,
+      mergeStrategy,
+      mergeKeys,
+      initialData,
+      initialQuery,
+      resultsStale: state.resultsStale,
+      onResultsStaleChange: handleResultsStaleChange
     })
 
-    // Execute MULTI query using useMultiCubeQuery hook (when in multi-query mode)
-    const multiQueryResult = useMultiCubeQuery(debouncedMultiConfig, {
-      skip: !debouncedMultiConfig || !isMultiQueryMode,
-      resetResultSetOnChange: true
+    // Chart configuration via hook (type, config, display, palette, smart defaulting)
+    const {
+      chartType,
+      setChartType,
+      chartConfig,
+      setChartConfig,
+      displayConfig,
+      setDisplayConfig,
+      localPaletteName,
+      setLocalPaletteName,
+      effectiveColorPalette,
+      setUserManuallySelectedChart,
+      chartAvailability
+    } = useChartConfiguration({
+      initialChartConfig,
+      cachedStorage,
+      initialQuery,
+      externalColorPalette,
+      allMetrics,
+      allBreakdowns,
+      debouncedQuery
     })
 
-    // Unify results from single or multi query
-    const resultSet = isMultiQueryMode ? null : singleQueryResult.resultSet
-    const isLoading = isMultiQueryMode ? multiQueryResult.isLoading : singleQueryResult.isLoading
-    const error = isMultiQueryMode ? multiQueryResult.error : singleQueryResult.error
+    // ========================================================================
+    // Handler Hooks
+    // ========================================================================
 
-    // Derive execution status - show success with initialData even before first query
-    const executionStatus: ExecutionStatus = useMemo(() => {
-      // If we have initialData and haven't started querying yet, show success
-      const hasResults = isMultiQueryMode ? multiQueryResult.data : resultSet
-      if (initialData && initialData.length > 0 && !debouncedQuery && !hasResults) {
-        return 'success'
-      }
-      if (!debouncedQuery && !debouncedMultiConfig) return 'idle'
-      // If results are stale (query changed but debounce hasn't fired yet), show refreshing
-      // This prevents flash when toggling comparison mode
-      // In multi-query mode, don't use per-tab resultsStale - the chart shows shared merged
-      // data that doesn't change on tab switch. We rely on isLoading for actual refreshes.
-      if (!isMultiQueryMode && state.resultsStale && hasResults) return 'refreshing'
-      if (isLoading && !hasResults) return 'loading'
-      if (isLoading && hasResults) return 'refreshing'
-      if (error) return 'error'
-      if (hasResults) return 'success'
-      return 'idle'
-    }, [debouncedQuery, debouncedMultiConfig, isLoading, error, resultSet, multiQueryResult.data, initialData, state.resultsStale, isMultiQueryMode])
+    // Metrics handlers (add, remove, select, reorder)
+    const {
+      handleAddMetric,
+      handleRemoveMetric,
+      handleFieldSelected,
+      handleReorderMetrics
+    } = useMetricsHandlers({
+      setState,
+      fieldModalMode,
+      setShowFieldModal,
+      setFieldModalMode
+    })
 
-    // Get execution results - use initialData if no resultSet yet
-    // For chart: use merged results from all queries
-    const executionResults = useMemo(() => {
-      // Multi-query mode: use merged data from useMultiCubeQuery
-      if (isMultiQueryMode && multiQueryResult.data) {
-        console.log('[DEBUG] executionResults: multi-query', multiQueryResult.data?.length)
-        return multiQueryResult.data as any[]
-      }
+    // Breakdowns handlers (add, remove, granularity, comparison, reorder)
+    const {
+      handleAddBreakdown,
+      handleRemoveBreakdown,
+      handleBreakdownGranularityChange,
+      handleBreakdownComparisonToggle,
+      handleReorderBreakdowns
+    } = useBreakdownsHandlers({
+      setState,
+      setShowFieldModal,
+      setFieldModalMode,
+      mergeStrategy,
+      activeQueryIndex,
+      queryStates,
+      setQueryStates,
+      chartType,
+      setChartType,
+      setChartConfig,
+      state
+    })
 
-      // Single query mode: use resultSet
-      if (resultSet) {
-        try {
-          const data = resultSet.rawData()
-          console.log('[DEBUG] executionResults: single-query', data?.length)
-          return data
-        } catch {
-          return null
-        }
-      }
-      // Use initialData if provided and no resultSet yet
-      if (initialData && initialData.length > 0) {
-        return initialData
-      }
-      console.log('[DEBUG] executionResults: null')
-      return null
-    }, [resultSet, initialData, isMultiQueryMode, multiQueryResult.data])
+    // Filters handlers (change, drop to filter, order)
+    const {
+      handleFiltersChange,
+      handleDropFieldToFilter,
+      handleOrderChange
+    } = useFiltersHandlers({
+      setState
+    })
 
-    // Get per-query results for table view in multi-query mode
-    const perQueryResults = useMemo(() => {
-      if (!isMultiQueryMode || !multiQueryResult.resultSets) {
-        console.log('[DEBUG] perQueryResults: no results', { isMultiQueryMode, resultSets: multiQueryResult.resultSets })
-        return undefined
-      }
-      const results = multiQueryResult.resultSets.map(rs => {
-        if (!rs) return null
-        try {
-          return rs.rawData()
-        } catch {
-          return null
-        }
-      })
-      console.log('[DEBUG] perQueryResults:', results.map(r => r?.length || 0))
-      return results
-    }, [isMultiQueryMode, multiQueryResult.resultSets])
+    // Multi-query handlers (add, remove, change, merge strategy)
+    const {
+      handleAddQuery,
+      handleRemoveQuery,
+      handleActiveQueryChange,
+      handleMergeStrategyChange
+    } = useMultiQueryHandlers({
+      queryStates,
+      setQueryStates,
+      activeQueryIndex,
+      setActiveQueryIndex,
+      setMergeStrategy
+    })
 
-    // Active table index for multi-query table view
-    const [activeTableIndex, setActiveTableIndex] = useState(0)
+    // AI query generation hook
+    const { features } = useCubeContext()
+    const {
+      aiState,
+      handleOpenAI,
+      handleCloseAI,
+      handleAIPromptChange,
+      handleGenerateAI,
+      handleAcceptAI,
+      handleCancelAI
+    } = useAnalysisAI({
+      state,
+      setState,
+      chartType,
+      setChartType,
+      chartConfig,
+      setChartConfig,
+      displayConfig,
+      setDisplayConfig,
+      setUserManuallySelectedChart,
+      setActiveView,
+      aiEndpoint: features?.aiEndpoint
+    })
 
-    // Note: We pass executionStatus, executionResults, error directly to PortletResultsPanel
-    // instead of storing in state, to avoid render loops
-
-    // Clear resultsStale flag when new results arrive
-    useEffect(() => {
-      if (resultSet && state.resultsStale) {
-        setState((prev) => ({ ...prev, resultsStale: false }))
-      }
-    }, [resultSet, state.resultsStale])
-
-    // Compute chart availability based on current metrics and breakdowns
-    // Use allMetrics/allBreakdowns for consistency in multi-query mode
-    const chartAvailability = useMemo(
-      () => getAllChartAvailability(allMetrics, allBreakdowns),
-      [allMetrics, allBreakdowns]
-    )
-
-    // Helper to check if chart config is completely empty (no axes configured)
-    const isChartConfigEmpty = useCallback((config: ChartAxisConfig): boolean => {
-      const keys: (keyof ChartAxisConfig)[] = ['xAxis', 'yAxis', 'series', 'sizeField', 'colorField', 'dateField', 'valueField']
-      return keys.every(key => {
-        const val = config[key]
-        if (val === undefined || val === null) return true
-        if (Array.isArray(val)) return val.length === 0
-        if (typeof val === 'string') return val === ''
-        return false
-      })
-    }, [])
-
-    // Keep chartConfigRef in sync with chartConfig state
-    chartConfigRef.current = chartConfig
-
-    // Smart chart defaulting - auto-configure chart type and axes when debouncedQuery changes
-    // This runs AFTER the debounce fires, so chart config changes are synchronized with data updates
-    // This prevents the "double refresh" visual where chart updates before data arrives
-    useEffect(() => {
-      // Only run when we have a debounced query (after debounce timer fires)
-      if (!debouncedQuery) {
-        return
-      }
-
-      if (allMetrics.length === 0 && allBreakdowns.length === 0) {
-        return // Nothing to configure
-      }
-
-      // Create a key from metrics/breakdowns fields to detect actual changes
-      // Use allMetrics and allBreakdowns to track changes across all queries
-      const currentKey = JSON.stringify({
-        metrics: allMetrics.map(m => m.field),
-        breakdowns: allBreakdowns.map(b => ({ field: b.field, isTime: b.isTimeDimension }))
-      })
-
-      // Skip if metrics/breakdowns haven't actually changed
-      if (currentKey === prevMetricsBreakdownsRef.current) {
-        return
-      }
-      prevMetricsBreakdownsRef.current = currentKey
-
-      // Check if we should auto-switch chart type (use allMetrics/allBreakdowns for multi-query)
-      const newChartType = shouldAutoSwitchChartType(
-        allMetrics,
-        allBreakdowns,
-        chartType,
-        userManuallySelectedChart
-      )
-
-      if (newChartType) {
-        // Chart type is changing - get smart defaults for the new chart type
-        const { chartConfig: newChartConfig } = getSmartChartDefaults(
-          allMetrics,
-          allBreakdowns,
-          newChartType
-        )
-        setChartType(newChartType)
-        setChartConfig(newChartConfig)
-        // Reset user selection flag since we auto-switched
-        setUserManuallySelectedChart(false)
-      } else if (allMetrics.length > 0 || allBreakdowns.length > 0) {
-        // Only apply smart defaults if the chart config is COMPLETELY empty
-        // Once user has configured ANY axis, don't auto-fill (respects user removals)
-        // Use ref to get current value without adding to dependencies
-        if (isChartConfigEmpty(chartConfigRef.current)) {
-          const { chartConfig: smartDefaults } = getSmartChartDefaults(
-            allMetrics,
-            allBreakdowns,
-            chartType
-          )
-          setChartConfig(smartDefaults)
-        }
-      }
-    }, [debouncedQuery, allMetrics, allBreakdowns, chartType, userManuallySelectedChart, isChartConfigEmpty])
+    // Share URL hook
+    const {
+      shareButtonState,
+      handleShare
+    } = useAnalysisShare({
+      isValidQuery,
+      queryStatesLength: queryStates.length,
+      allQueries,
+      currentQuery,
+      mergeStrategy,
+      mergeKeys: mergeKeys || undefined,
+      chartType,
+      chartConfig,
+      displayConfig,
+      activeView
+    })
 
     // Save state to localStorage whenever it changes (if not disabled)
     // Deferred to avoid blocking renders
@@ -997,443 +504,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
     }, [serverQuery, multiQueryConfig, cubeApi, isValidQuery, isMultiQueryMode])
 
-    // ========================================================================
-    // Metric Handlers
-    // ========================================================================
-
-    const handleAddMetric = useCallback(() => {
-      setFieldModalMode('metrics')
-      setShowFieldModal(true)
-    }, [])
-
-    const handleRemoveMetric = useCallback((id: string) => {
-      setState((prev) => {
-        // Find the field name before removing
-        const fieldToRemove = prev.metrics.find((m) => m.id === id)?.field
-        const newMetrics = prev.metrics.filter((m) => m.id !== id)
-
-        // Clean up any sort order for the removed field
-        let newOrder = prev.order
-        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
-          newOrder = { ...newOrder }
-          delete newOrder[fieldToRemove]
-          if (Object.keys(newOrder).length === 0) {
-            newOrder = undefined
-          }
-        }
-
-        return {
-          ...prev,
-          metrics: newMetrics,
-          order: newOrder,
-          resultsStale: true
-        }
-      })
-    }, [setState])
-
-    const handleFieldSelected = useCallback(
-      (field: MetaField, fieldType: 'measure' | 'dimension' | 'timeDimension', _cubeName: string, keepOpen?: boolean) => {
-        if (fieldModalMode === 'metrics' && fieldType === 'measure') {
-          // Toggle metric - add if not present, remove if already added
-          setState((prev) => {
-            const existingIndex = prev.metrics.findIndex((m) => m.field === field.name)
-            if (existingIndex >= 0) {
-              // Remove existing metric
-              return {
-                ...prev,
-                metrics: prev.metrics.filter((_, i) => i !== existingIndex),
-                resultsStale: true
-              }
-            }
-            // Add new metric
-            const newMetric: MetricItem = {
-              id: generateId(),
-              field: field.name,
-              label: generateMetricLabel(prev.metrics.length)
-            }
-            return {
-              ...prev,
-              metrics: [...prev.metrics, newMetric],
-              resultsStale: true
-            }
-          })
-        } else if (fieldModalMode === 'breakdown') {
-          // Toggle breakdown - add if not present, remove if already added
-          const isTimeDimension = fieldType === 'timeDimension'
-          setState((prev) => {
-            const existingIndex = prev.breakdowns.findIndex((b) => b.field === field.name)
-            if (existingIndex >= 0) {
-              // Remove existing breakdown
-              return {
-                ...prev,
-                breakdowns: prev.breakdowns.filter((_, i) => i !== existingIndex),
-                resultsStale: true
-              }
-            }
-
-            // Check if we already have a time dimension breakdown (only allow one)
-            if (isTimeDimension) {
-              const hasExistingTimeDimension = prev.breakdowns.some((b) => b.isTimeDimension)
-              if (hasExistingTimeDimension) {
-                // Don't add - already have a time dimension breakdown
-                // Could show a notification here in the future
-                return prev
-              }
-            }
-
-            // Add new breakdown
-            const newBreakdown: BreakdownItem = {
-              id: generateId(),
-              field: field.name,
-              isTimeDimension,
-              granularity: isTimeDimension ? 'month' : undefined
-            }
-            return {
-              ...prev,
-              breakdowns: [...prev.breakdowns, newBreakdown],
-              resultsStale: true
-            }
-          })
-        }
-        // Only close modal if not doing shift-click multi-select
-        if (!keepOpen) {
-          setShowFieldModal(false)
-        }
-      },
-      [fieldModalMode, setState]
-    )
-
-    // ========================================================================
-    // Breakdown Handlers
-    // ========================================================================
-
-    const handleAddBreakdown = useCallback(() => {
-      setFieldModalMode('breakdown')
-      setShowFieldModal(true)
-    }, [])
-
-    const handleRemoveBreakdown = useCallback((id: string) => {
-      setState((prev) => {
-        // Find the field name before removing
-        const fieldToRemove = prev.breakdowns.find((b) => b.id === id)?.field
-        const newBreakdowns = prev.breakdowns.filter((b) => b.id !== id)
-
-        // Clean up any sort order for the removed field
-        let newOrder = prev.order
-        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
-          newOrder = { ...newOrder }
-          delete newOrder[fieldToRemove]
-          if (Object.keys(newOrder).length === 0) {
-            newOrder = undefined
-          }
-        }
-
-        return {
-          ...prev,
-          breakdowns: newBreakdowns,
-          order: newOrder,
-          resultsStale: true
-        }
-      })
-    }, [setState])
-
-    const handleBreakdownGranularityChange = useCallback(
-      (id: string, granularity: string) => {
-        // In merge mode, granularity changes should update Q1's breakdowns (source of truth)
-        // since the sync effect copies Q1 → other queries
-        if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
-          // Update Q1's breakdowns directly
-          setQueryStates(prev => {
-            const newStates = [...prev]
-            newStates[0] = {
-              ...newStates[0],
-              breakdowns: newStates[0].breakdowns.map((b) =>
-                b.id === id ? { ...b, granularity } : b
-              ),
-              resultsStale: true
-            }
-            return newStates
-          })
-        } else {
-          // Normal case: update active query's breakdowns
-          setState((prev) => ({
-            ...prev,
-            breakdowns: prev.breakdowns.map((b) =>
-              b.id === id ? { ...b, granularity } : b
-            ),
-            resultsStale: true
-          }))
-        }
-      },
-      [mergeStrategy, activeQueryIndex, setState]
-    )
-
-    const handleBreakdownComparisonToggle = useCallback(
-      (breakdownId: string) => {
-        // Check if we're enabling comparison (the breakdown currently doesn't have it)
-        // In merge mode, use Q1's breakdowns as the source of truth
-        const sourceBreakdowns = (mergeStrategy === 'merge' && activeQueryIndex > 0)
-          ? queryStates[0]?.breakdowns || []
-          : state.breakdowns
-        const targetBreakdown = sourceBreakdowns.find(b => b.id === breakdownId)
-        const isEnabling = targetBreakdown && !targetBreakdown.enableComparison
-
-        // If enabling comparison and no date filter exists, auto-add one (last 30 days)
-        if (isEnabling && targetBreakdown) {
-          const currentFilters = (mergeStrategy === 'merge' && activeQueryIndex > 0)
-            ? queryStates[0]?.filters || []
-            : state.filters
-          const hasDateFilter = findDateFilterForField(currentFilters, targetBreakdown.field)
-
-          if (!hasDateFilter) {
-            // Auto-add a date filter with 'last 30 days' range
-            const newFilter: Filter = {
-              member: targetBreakdown.field,
-              operator: 'inDateRange',
-              values: [],
-              dateRange: convertDateRangeTypeToValue('last_30_days')
-            } as Filter
-
-            // Add the filter to the appropriate query's filters
-            if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
-              setQueryStates(prev => {
-                const newStates = [...prev]
-                newStates[0] = {
-                  ...newStates[0],
-                  filters: [...newStates[0].filters, newFilter]
-                }
-                return newStates
-              })
-            } else {
-              setState((prev) => ({
-                ...prev,
-                filters: [...prev.filters, newFilter]
-              }))
-            }
-          }
-        }
-
-        // If enabling comparison and chart type is not 'line', switch to line chart first
-        // (comparison only works well with line charts)
-        if (isEnabling && chartType !== 'line') {
-          setChartType('line')
-          // Update chart config for line chart
-          const { chartConfig: newChartConfig } = getSmartChartDefaults(
-            state.metrics,
-            state.breakdowns,
-            'line'
-          )
-          setChartConfig(newChartConfig)
-        }
-
-        // Helper to update breakdowns with comparison toggle
-        const updateBreakdowns = (breakdowns: typeof state.breakdowns) =>
-          breakdowns.map((b) => {
-            if (b.id === breakdownId) {
-              // Toggle this breakdown's comparison
-              return { ...b, enableComparison: !b.enableComparison }
-            }
-            // Clear comparison from other time dimensions when enabling (only one allowed)
-            if (b.isTimeDimension && b.enableComparison) {
-              return { ...b, enableComparison: false }
-            }
-            return b
-          })
-
-        // In merge mode, update Q1's breakdowns (source of truth)
-        if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
-          setQueryStates(prev => {
-            const newStates = [...prev]
-            newStates[0] = {
-              ...newStates[0],
-              breakdowns: updateBreakdowns(newStates[0].breakdowns),
-              resultsStale: true
-            }
-            return newStates
-          })
-        } else {
-          // Normal case: update active query's breakdowns
-          setState((prev) => ({
-            ...prev,
-            breakdowns: updateBreakdowns(prev.breakdowns),
-            resultsStale: true
-          }))
-        }
-      },
-      [chartType, state.breakdowns, state.filters, state.metrics, mergeStrategy, activeQueryIndex, queryStates, setState]
-    )
-
-    // ========================================================================
-    // Reorder Handlers
-    // ========================================================================
-
-    const handleReorderMetrics = useCallback(
-      (fromIndex: number, toIndex: number) => {
-        setState((prev) => {
-          const newMetrics = [...prev.metrics]
-          const [movedItem] = newMetrics.splice(fromIndex, 1)
-          newMetrics.splice(toIndex, 0, movedItem)
-          return {
-            ...prev,
-            metrics: newMetrics,
-            resultsStale: true
-          }
-        })
-      },
-      [setState]
-    )
-
-    const handleReorderBreakdowns = useCallback(
-      (fromIndex: number, toIndex: number) => {
-        setState((prev) => {
-          const newBreakdowns = [...prev.breakdowns]
-          const [movedItem] = newBreakdowns.splice(fromIndex, 1)
-          newBreakdowns.splice(toIndex, 0, movedItem)
-          return {
-            ...prev,
-            breakdowns: newBreakdowns,
-            resultsStale: true
-          }
-        })
-      },
-      [setState]
-    )
-
-    // ========================================================================
-    // Filter Handlers
-    // ========================================================================
-
-    // Filter change handler - connected to PortletQueryPanel
-    const handleFiltersChange = useCallback((filters: Filter[]) => {
-      setState((prev) => ({
-        ...prev,
-        filters,
-        resultsStale: true
-      }))
-    }, [setState])
-
-    // Handle dropping a field from metrics/breakdowns onto the filter section
-    const handleDropFieldToFilter = useCallback((field: string) => {
-      // Create a new filter with 'set' operator (checks if field exists/is not null)
-      const newFilter: Filter = {
-        member: field,
-        operator: 'set',
-        values: []
-      }
-
-      setState((prev) => {
-        // Add to existing filters or create new array
-        const existingFilters = prev.filters || []
-
-        // Check if we already have a filter for this field
-        const hasFilterForField = existingFilters.some((f) =>
-          'member' in f && f.member === field
-        )
-
-        if (hasFilterForField) {
-          // Don't add duplicate filter
-          return prev
-        }
-
-        // If we have existing filters, wrap in an AND group or add to existing group
-        let updatedFilters: Filter[]
-        if (existingFilters.length === 0) {
-          updatedFilters = [newFilter]
-        } else if (existingFilters.length === 1 && 'type' in existingFilters[0]) {
-          // Already a group, add to it
-          const group = existingFilters[0] as { type: 'and' | 'or'; filters: Filter[] }
-          updatedFilters = [{
-            ...group,
-            filters: [...group.filters, newFilter]
-          }]
-        } else {
-          // Wrap all in AND group
-          updatedFilters = [{
-            type: 'and' as const,
-            filters: [...existingFilters, newFilter]
-          }]
-        }
-
-        return {
-          ...prev,
-          filters: updatedFilters,
-          resultsStale: true
-        }
-      })
-    }, [setState])
-
-    // ========================================================================
-    // Order Handlers
-    // ========================================================================
-
-    const handleOrderChange = useCallback(
-      (fieldName: string, direction: 'asc' | 'desc' | null) => {
-        setState((prev) => {
-          const newOrder = { ...(prev.order || {}) }
-
-          if (direction === null) {
-            // Remove sort for this field
-            delete newOrder[fieldName]
-          } else {
-            // Set or update sort direction
-            newOrder[fieldName] = direction
-          }
-
-          return {
-            ...prev,
-            order: Object.keys(newOrder).length > 0 ? newOrder : undefined,
-            resultsStale: true
-          }
-        })
-      },
-      [setState]
-    )
-
-    // ========================================================================
-    // Multi-Query Handlers
-    // ========================================================================
-
-    // Add a new query tab - copies current query's metrics, breakdowns, filters
-    const handleAddQuery = useCallback(() => {
-      const currentState = queryStates[activeQueryIndex] || createInitialState()
-      const newState: AnalysisBuilderState = {
-        ...createInitialState(),
-        metrics: [...currentState.metrics],
-        breakdowns: [...currentState.breakdowns],
-        filters: [...currentState.filters]
-      }
-      setQueryStates(prev => [...prev, newState])
-      // Switch to the new tab
-      setActiveQueryIndex(queryStates.length)
-    }, [queryStates, activeQueryIndex])
-
-    // Remove a query tab at specified index
-    const handleRemoveQuery = useCallback((index: number) => {
-      setQueryStates(prev => {
-        // Don't allow removing the last query
-        if (prev.length <= 1) return prev
-        return prev.filter((_, i) => i !== index)
-      })
-      // Adjust active index if needed
-      if (index === activeQueryIndex) {
-        // If removing active tab, switch to previous (or first if removing first)
-        setActiveQueryIndex(Math.max(0, activeQueryIndex - 1))
-      } else if (index < activeQueryIndex) {
-        // Shift active index down if removing a tab before it
-        setActiveQueryIndex(activeQueryIndex - 1)
-      }
-    }, [activeQueryIndex])
-
-    // Change active query tab
-    const handleActiveQueryChange = useCallback((index: number) => {
-      setActiveQueryIndex(index)
-    }, [])
-
-    // Update merge strategy
-    const handleMergeStrategyChange = useCallback((strategy: QueryMergeStrategy) => {
-      setMergeStrategy(strategy)
-    }, [])
-
     // Compute combined metrics from ALL queries (for chart config in multi-query mode)
     // Always returns an array (never undefined) for consistent prop passing
     const combinedMetrics = useMemo(() => {
@@ -1503,156 +573,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
     }, [setState])
 
-    // ========================================================================
-    // AI Query Generation
-    // ========================================================================
-
-    const handleOpenAI = useCallback(() => {
-      // Snapshot current state for undo
-      setAIState({
-        isOpen: true,
-        userPrompt: '',
-        isGenerating: false,
-        error: null,
-        hasGeneratedQuery: false,
-        previousState: {
-          metrics: [...state.metrics],
-          breakdowns: [...state.breakdowns],
-          filters: [...state.filters],
-          chartType,
-          chartConfig: { ...chartConfig },
-          displayConfig: { ...displayConfig }
-        }
-      })
-    }, [state.metrics, state.breakdowns, state.filters, chartType, chartConfig, displayConfig])
-
-    const handleCloseAI = useCallback(() => {
-      setAIState(prev => ({
-        ...prev,
-        isOpen: false,
-        userPrompt: '',
-        error: null,
-        hasGeneratedQuery: false
-      }))
-    }, [])
-
-    const handleAIPromptChange = useCallback((prompt: string) => {
-      setAIState(prev => ({ ...prev, userPrompt: prompt }))
-    }, [])
-
-    const handleGenerateAI = useCallback(async () => {
-      if (!aiState.userPrompt.trim()) return
-
-      setAIState(prev => ({ ...prev, isGenerating: true, error: null }))
-
-      try {
-        const response = await sendGeminiMessage(
-          '', // API key not needed for server-side AI
-          aiState.userPrompt,
-          features?.aiEndpoint || '/api/ai'
-        )
-
-        const responseText = extractTextFromResponse(response)
-        const parsed = JSON.parse(responseText) as {
-          query?: CubeQuery
-          chartType?: ChartType
-          chartConfig?: ChartAxisConfig
-        } | CubeQuery
-
-        // Support both new format (with query/chartType/chartConfig) and legacy format (just query)
-        const query = ('query' in parsed && parsed.query) ? parsed.query : parsed as CubeQuery
-        const aiChartType = ('chartType' in parsed) ? parsed.chartType : undefined
-        const aiChartConfig = ('chartConfig' in parsed) ? parsed.chartConfig : undefined
-
-        // Load query into builder state (same pattern as initialQuery)
-        setState(prev => ({
-          ...prev,
-          metrics: (query.measures || []).map((field, index) => ({
-            id: generateId(),
-            field,
-            label: generateMetricLabel(index)
-          })),
-          breakdowns: [
-            ...(query.dimensions || []).map((field) => ({
-              id: generateId(),
-              field,
-              isTimeDimension: false
-            })),
-            ...(query.timeDimensions || []).map((td) => ({
-              id: generateId(),
-              field: td.dimension,
-              granularity: td.granularity,
-              isTimeDimension: true
-            }))
-          ],
-          filters: query.filters || []
-        }))
-
-        // Apply chart type if provided by AI
-        if (aiChartType) {
-          setChartType(aiChartType)
-          setUserManuallySelectedChart(true) // Prevent auto-switching
-        }
-
-        // Apply chart config if provided by AI
-        if (aiChartConfig) {
-          setChartConfig(aiChartConfig)
-        }
-
-        // Switch to chart view so user can see the visualization
-        setActiveView('chart')
-
-        setAIState(prev => ({
-          ...prev,
-          isGenerating: false,
-          hasGeneratedQuery: true
-        }))
-      } catch (error) {
-        setAIState(prev => ({
-          ...prev,
-          isGenerating: false,
-          error: error instanceof Error ? error.message : 'Failed to generate query'
-        }))
-      }
-    }, [aiState.userPrompt, features?.aiEndpoint])
-
-    const handleAcceptAI = useCallback(() => {
-      // Close panel and clear previous state (keep the changes)
-      setAIState({
-        isOpen: false,
-        userPrompt: '',
-        isGenerating: false,
-        error: null,
-        hasGeneratedQuery: false,
-        previousState: null
-      })
-    }, [])
-
-    const handleCancelAI = useCallback(() => {
-      // Restore previous state
-      if (aiState.previousState) {
-        setState(prev => ({
-          ...prev,
-          metrics: aiState.previousState!.metrics,
-          breakdowns: aiState.previousState!.breakdowns,
-          filters: aiState.previousState!.filters
-        }))
-        setChartType(aiState.previousState.chartType)
-        setChartConfig(aiState.previousState.chartConfig)
-        setDisplayConfig(aiState.previousState.displayConfig)
-      }
-
-      // Close panel
-      setAIState({
-        isOpen: false,
-        userPrompt: '',
-        isGenerating: false,
-        error: null,
-        hasGeneratedQuery: false,
-        previousState: null
-      })
-    }, [aiState.previousState])
-
     // Handle chart type change - track that user manually selected this
     const handleChartTypeChange = useCallback((type: ChartType) => {
       // If switching away from 'line', clear any comparison from time dimensions first
@@ -1700,62 +620,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       // Switch to chart view so user can see the changes
       setActiveView('chart')
     }, [])
-
-    // ========================================================================
-    // Share Handler
-    // ========================================================================
-
-    const handleShare = useCallback(async () => {
-      if (!isValidQuery) return
-
-      // Build the query config - use multi-query format if multiple queries exist
-      const queryConfig = queryStates.length > 1
-        ? {
-            queries: allQueries,
-            mergeStrategy,
-            mergeKeys,
-            queryLabels: queryStates.map((_, i) => `Q${i + 1}`)
-          }
-        : currentQuery
-
-      const shareableState = {
-        query: queryConfig,
-        chartType,
-        chartConfig,
-        displayConfig,
-        activeView
-      }
-
-      // Try full state first, fall back to query-only if too large
-      const { encoded, queryOnly } = compressWithFallback(shareableState)
-
-      // If even query-only is too large, don't share
-      if (!encoded) {
-        return
-      }
-
-      const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`
-
-      try {
-        await navigator.clipboard.writeText(url)
-      } catch {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea')
-        textArea.value = url
-        document.body.appendChild(textArea)
-        textArea.select()
-        document.execCommand('copy')
-        document.body.removeChild(textArea)
-      }
-
-      // Update button state
-      setShareButtonState(queryOnly ? 'copied-no-chart' : 'copied')
-
-      // Reset button state after 2 seconds
-      setTimeout(() => {
-        setShareButtonState('idle')
-      }, 2000)
-    }, [isValidQuery, queryStates.length, allQueries, mergeStrategy, mergeKeys, currentQuery, chartType, chartConfig, displayConfig, activeView])
 
     // ========================================================================
     // Expose API via ref

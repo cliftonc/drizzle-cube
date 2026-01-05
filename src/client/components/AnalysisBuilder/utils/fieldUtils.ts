@@ -1,87 +1,11 @@
 /**
- * Utility functions for PortletBuilder component
+ * Field Metadata Utilities for AnalysisBuilder
+ *
+ * Functions for working with field metadata from the schema.
  */
 
-import type {
-  MetricItem,
-  BreakdownItem,
-  FieldOption,
-  FieldType,
-  RecentFieldsStorage
-} from './types'
-import type { MetaResponse, MetaField } from '../../shared/types'
-import type { CubeQuery, Filter } from '../../types'
-
-// ============================================================================
-// ID Generation
-// ============================================================================
-
-/**
- * Generate a unique ID for items
- */
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
-
-/**
- * Generate letter label for metrics (A, B, C, ..., AA, AB, ...)
- */
-export function generateMetricLabel(index: number): string {
-  let label = ''
-  let n = index
-  do {
-    label = String.fromCharCode(65 + (n % 26)) + label
-    n = Math.floor(n / 26) - 1
-  } while (n >= 0)
-  return label
-}
-
-// ============================================================================
-// Query Building
-// ============================================================================
-
-/**
- * Convert metrics and breakdowns to CubeQuery format
- */
-export function buildCubeQuery(
-  metrics: MetricItem[],
-  breakdowns: BreakdownItem[],
-  filters: Filter[]
-): CubeQuery {
-  const query: CubeQuery = {
-    measures: metrics.map((m) => m.field),
-    dimensions: breakdowns.filter((b) => !b.isTimeDimension).map((b) => b.field),
-    timeDimensions: breakdowns
-      .filter((b) => b.isTimeDimension)
-      .map((b) => ({
-        dimension: b.field,
-        granularity: b.granularity || 'day'
-      })),
-    filters: filters.length > 0 ? filters : undefined
-  }
-
-  // Clean up empty arrays
-  if (query.measures?.length === 0) delete query.measures
-  if (query.dimensions?.length === 0) delete query.dimensions
-  if (query.timeDimensions?.length === 0) delete query.timeDimensions
-
-  return query
-}
-
-/**
- * Check if a query has any content
- */
-export function hasQueryContent(
-  metrics: MetricItem[],
-  breakdowns: BreakdownItem[],
-  filters: Filter[]
-): boolean {
-  return metrics.length > 0 || breakdowns.length > 0 || filters.length > 0
-}
-
-// ============================================================================
-// Field Utilities
-// ============================================================================
+import type { FieldOption, FieldType } from '../types'
+import type { MetaResponse, MetaField } from '../../../shared/types'
 
 /**
  * Get cube name from a field name (e.g., "Employees.count" -> "Employees")
@@ -150,10 +74,6 @@ export function getFieldType(field: MetaField): FieldType {
   }
   return 'dimension'
 }
-
-// ============================================================================
-// Field Search & Filtering
-// ============================================================================
 
 /**
  * Convert schema to flat list of field options
@@ -271,78 +191,6 @@ export function groupFieldsByCube(options: FieldOption[]): Map<string, FieldOpti
   return grouped
 }
 
-// ============================================================================
-// Recent Fields Storage
-// ============================================================================
-
-const RECENT_FIELDS_KEY = 'drizzle-cube-recent-fields'
-const MAX_RECENT_FIELDS = 10
-
-/**
- * Get recent fields from localStorage
- */
-export function getRecentFields(): RecentFieldsStorage {
-  try {
-    const stored = localStorage.getItem(RECENT_FIELDS_KEY)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch {
-    // Ignore errors
-  }
-  return { metrics: [], breakdowns: [] }
-}
-
-/**
- * Add a field to recent fields
- */
-export function addRecentField(fieldName: string, mode: 'metrics' | 'breakdowns'): void {
-  try {
-    const recent = getRecentFields()
-    const list = recent[mode]
-
-    // Remove if already exists
-    const filtered = list.filter((f) => f !== fieldName)
-
-    // Add to front
-    filtered.unshift(fieldName)
-
-    // Limit size
-    recent[mode] = filtered.slice(0, MAX_RECENT_FIELDS)
-
-    localStorage.setItem(RECENT_FIELDS_KEY, JSON.stringify(recent))
-  } catch {
-    // Ignore errors
-  }
-}
-
-/**
- * Get recent field options from schema
- */
-export function getRecentFieldOptions(
-  schema: MetaResponse | null,
-  mode: 'metrics' | 'breakdown' | 'filter',
-  recentFieldNames: string[]
-): FieldOption[] {
-  if (!schema || recentFieldNames.length === 0) return []
-
-  const allOptions = schemaToFieldOptions(schema, mode)
-  const recentOptions: FieldOption[] = []
-
-  for (const fieldName of recentFieldNames) {
-    const option = allOptions.find((opt) => opt.name === fieldName)
-    if (option) {
-      recentOptions.push(option)
-    }
-  }
-
-  return recentOptions
-}
-
-// ============================================================================
-// Cube List Utilities
-// ============================================================================
-
 /**
  * Get list of cube names from schema
  */
@@ -358,63 +206,4 @@ export function getCubeTitle(cubeName: string, schema: MetaResponse | null): str
   if (!schema) return cubeName
   const cube = schema.cubes.find((c) => c.name === cubeName)
   return cube?.title || cubeName
-}
-
-// ============================================================================
-// State Persistence
-// ============================================================================
-
-const STORAGE_KEY = 'drizzle-cube-portlet-builder-state'
-
-/**
- * Save state to localStorage
- */
-export function saveStateToStorage(state: {
-  metrics: MetricItem[]
-  breakdowns: BreakdownItem[]
-  filters: Filter[]
-  chartType: string
-  chartConfig: object
-  displayConfig: object
-  activeView: string
-}): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {
-    // Ignore errors
-  }
-}
-
-/**
- * Load state from localStorage
- */
-export function loadStateFromStorage(): {
-  metrics: MetricItem[]
-  breakdowns: BreakdownItem[]
-  filters: Filter[]
-  chartType: string
-  chartConfig: object
-  displayConfig: object
-  activeView: string
-} | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch {
-    // Ignore errors
-  }
-  return null
-}
-
-/**
- * Clear state from localStorage
- */
-export function clearStateFromStorage(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // Ignore errors
-  }
 }
