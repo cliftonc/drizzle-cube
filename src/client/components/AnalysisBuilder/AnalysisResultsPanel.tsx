@@ -64,6 +64,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Active debug query tab (independent of main query tabs)
   const [activeDebugIndex, setActiveDebugIndex] = useState(0)
 
+  // Clamp activeDebugIndex when queries are removed
+  useEffect(() => {
+    if (debugDataPerQuery.length > 0 && activeDebugIndex >= debugDataPerQuery.length) {
+      setActiveDebugIndex(debugDataPerQuery.length - 1)
+    }
+  }, [debugDataPerQuery.length, activeDebugIndex])
+
   // Get current debug data based on active index
   const currentDebugData = debugDataPerQuery[activeDebugIndex] || {
     sql: null,
