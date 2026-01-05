@@ -28,6 +28,19 @@ vi.mock('../../src/client/hooks/useCubeQuery', () => ({
   useCubeQuery: vi.fn(() => mockUseCubeQueryResult)
 }))
 
+// Mock useMultiCubeQuery (used for multi-query portlets)
+let mockUseMultiCubeQueryResult = {
+  data: null as unknown[] | null,
+  resultSets: null as CubeResultSet[] | null,
+  isLoading: false,
+  error: null as Error | null,
+  errors: [] as (Error | null)[],
+  queryId: null as string | null
+}
+vi.mock('../../src/client/hooks/useMultiCubeQuery', () => ({
+  useMultiCubeQuery: vi.fn(() => mockUseMultiCubeQueryResult)
+}))
+
 // Mock useScrollContainer
 vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)
@@ -108,6 +121,14 @@ describe('AnalyticsPortlet', () => {
       resultSet: null,
       isLoading: false,
       error: null
+    }
+    mockUseMultiCubeQueryResult = {
+      data: null,
+      resultSets: null,
+      isLoading: false,
+      error: null,
+      errors: [],
+      queryId: null
     }
   })
 

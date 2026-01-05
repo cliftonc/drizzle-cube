@@ -210,6 +210,7 @@ function createInitialState(): AnalysisBuilderState {
     metrics: [],
     breakdowns: [],
     filters: [],
+    order: undefined,
     validationStatus: 'idle',
     validationError: null,
     executionStatus: 'idle',
@@ -291,7 +292,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           isTimeDimension: true
         }))
       ],
-      filters: query.filters || []
+      filters: query.filters || [],
+      order: query.order
     })
 
     // Multi-query state management
@@ -317,7 +319,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
           ...createInitialState(),
           metrics: cachedStorage.metrics || [],
           breakdowns: cachedStorage.breakdowns || [],
-          filters: cachedStorage.filters || []
+          filters: cachedStorage.filters || [],
+          order: cachedStorage.order
         }]
         return queries
       }
@@ -437,21 +440,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       return getColorPalette(localPaletteName)
     }, [externalColorPalette, localPaletteName])
 
-    // Sort order state
-    const [order, setOrder] = useState<Record<string, 'asc' | 'desc'> | undefined>(() => {
-      // Load from initialQuery if provided (only for single query, not multi-query)
-      if (initialQuery && !isMultiQueryConfig(initialQuery)) {
-        const singleQuery = initialQuery as CubeQuery
-        if (singleQuery.order) {
-          return singleQuery.order
-        }
-      }
-      // Use cached localStorage data if available
-      if (!initialQuery && cachedStorage?.order) {
-        return cachedStorage.order
-      }
-      return undefined
-    })
+    // Order is now stored per-query in queryStates[index].order
+    // Access current query's order via state.order
 
     // UI state
     const [activeTab, setActiveTab] = useState<QueryPanelTab>('query')
@@ -469,13 +459,14 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       () => !!initialChartConfig?.chartType
     )
 
-    // Debug data state (from dry-run API)
-    const [debugData, setDebugData] = useState<{
+    // Debug data state (from dry-run API) - one entry per query in multi-query mode
+    interface DebugDataEntry {
       sql: { sql: string; params: any[] } | null
       analysis: QueryAnalysis | null
       loading: boolean
       error: string | null
-    }>({ sql: null, analysis: null, loading: false, error: null })
+    }
+    const [debugDataPerQuery, setDebugDataPerQuery] = useState<DebugDataEntry[]>([])
 
     // Field search modal state
     const [showFieldModal, setShowFieldModal] = useState(false)
@@ -519,14 +510,10 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         }
       } else {
         // Single query: set as the only query state
+        // queryToState already includes order from query.order
         const query = queryConfig as CubeQuery
         setQueryStates([queryToState(query)])
         setActiveQueryIndex(0)
-
-        // Set order if present (only for single query)
-        if (query.order) {
-          setOrder(query.order)
-        }
       }
 
       // Apply chart config if present
@@ -550,14 +537,15 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     // Build current query for the active tab - memoized to prevent infinite loops
     const currentQuery = useMemo(
-      () => buildCubeQuery(state.metrics, state.breakdowns, state.filters, order),
-      [state.metrics, state.breakdowns, state.filters, order]
+      () => buildCubeQuery(state.metrics, state.breakdowns, state.filters, state.order),
+      [state.metrics, state.breakdowns, state.filters, state.order]
     )
 
     // Build ALL queries from all queryStates (for multi-query execution)
+    // Each query uses its own order from its state
     const allQueries = useMemo(() => {
-      return queryStates.map(qs => buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, order))
-    }, [queryStates, order])
+      return queryStates.map(qs => buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, qs.order))
+    }, [queryStates])
 
     // Check if we're in multi-query mode (more than one query with content)
     const isMultiQueryMode = useMemo(() => {
@@ -908,12 +896,13 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             metrics: activeState.metrics,
             breakdowns: activeState.breakdowns,
             filters: activeState.filters,
-            order,
+            order: activeState.order,
             chartType,
             chartConfig,
             displayConfig,
             activeView,
             // Multi-query format (mergeKeys is computed from Q1 breakdowns, not stored)
+            // queryStates already includes order per query
             queryStates: queryStates.length > 1 ? queryStates : undefined,
             activeQueryIndex: queryStates.length > 1 ? activeQueryIndex : undefined,
             mergeStrategy: queryStates.length > 1 ? mergeStrategy : undefined
@@ -929,7 +918,6 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       queryStates,
       activeQueryIndex,
       mergeStrategy,
-      order,
       chartType,
       chartConfig,
       displayConfig,
@@ -952,36 +940,53 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [chartType, chartConfig, displayConfig, onChartConfigChange])
 
     // Fetch dry-run data for debug tab
+    // In multi-query mode, fetch debug data for ALL queries
     useEffect(() => {
-      // Clear debug data if no valid query
-      if (!isValidQuery || !serverQuery) {
-        setDebugData({ sql: null, analysis: null, loading: false, error: null })
+      // Determine which queries to fetch debug for
+      const queriesToFetch = isMultiQueryMode && multiQueryConfig
+        ? multiQueryConfig.queries
+        : (isValidQuery && serverQuery) ? [serverQuery] : []
+
+      if (queriesToFetch.length === 0) {
+        setDebugDataPerQuery([])
         return
       }
 
       let isCancelled = false
 
       const fetchDebugData = async () => {
-        setDebugData((prev) => ({ ...prev, loading: true, error: null }))
-        try {
-          const result = await cubeApi.dryRun(serverQuery)
-          if (!isCancelled) {
-            setDebugData({
-              sql: result.sql,
-              analysis: result.analysis,
-              loading: false,
-              error: null
-            })
-          }
-        } catch (err) {
-          if (!isCancelled) {
-            setDebugData({
-              sql: null,
-              analysis: null,
-              loading: false,
-              error: err instanceof Error ? err.message : 'Failed to fetch debug info'
-            })
-          }
+        // Initialize loading state for all queries
+        setDebugDataPerQuery(queriesToFetch.map(() => ({
+          sql: null,
+          analysis: null,
+          loading: true,
+          error: null
+        })))
+
+        // Fetch debug data for each query in parallel
+        const results = await Promise.all(
+          queriesToFetch.map(async (query) => {
+            try {
+              const result = await cubeApi.dryRun(query)
+              return {
+                sql: result.sql,
+                analysis: result.analysis,
+                loading: false,
+                error: null
+              }
+            } catch (err) {
+              return {
+                sql: null,
+                analysis: null,
+                loading: false,
+                error: err instanceof Error ? err.message : 'Failed to fetch debug info'
+              }
+            }
+          })
+        )
+
+        if (!isCancelled) {
+          setDebugDataPerQuery(results)
         }
       }
 
@@ -990,7 +995,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       return () => {
         isCancelled = true
       }
-    }, [serverQuery, cubeApi, isValidQuery])
+    }, [serverQuery, multiQueryConfig, cubeApi, isValidQuery, isMultiQueryMode])
 
     // ========================================================================
     // Metric Handlers
@@ -1002,25 +1007,29 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [])
 
     const handleRemoveMetric = useCallback((id: string) => {
-      // Find the field name before removing
-      const fieldToRemove = state.metrics.find((m) => m.id === id)?.field
+      setState((prev) => {
+        // Find the field name before removing
+        const fieldToRemove = prev.metrics.find((m) => m.id === id)?.field
+        const newMetrics = prev.metrics.filter((m) => m.id !== id)
 
-      setState((prev) => ({
-        ...prev,
-        metrics: prev.metrics.filter((m) => m.id !== id),
-        resultsStale: true
-      }))
-
-      // Clean up any sort order for the removed field
-      if (fieldToRemove) {
-        setOrder((prevOrder) => {
-          if (!prevOrder || !prevOrder[fieldToRemove]) return prevOrder
-          const newOrder = { ...prevOrder }
+        // Clean up any sort order for the removed field
+        let newOrder = prev.order
+        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
+          newOrder = { ...newOrder }
           delete newOrder[fieldToRemove]
-          return Object.keys(newOrder).length > 0 ? newOrder : undefined
-        })
-      }
-    }, [state.metrics])
+          if (Object.keys(newOrder).length === 0) {
+            newOrder = undefined
+          }
+        }
+
+        return {
+          ...prev,
+          metrics: newMetrics,
+          order: newOrder,
+          resultsStale: true
+        }
+      })
+    }, [setState])
 
     const handleFieldSelected = useCallback(
       (field: MetaField, fieldType: 'measure' | 'dimension' | 'timeDimension', _cubeName: string, keepOpen?: boolean) => {
@@ -1104,25 +1113,29 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     }, [])
 
     const handleRemoveBreakdown = useCallback((id: string) => {
-      // Find the field name before removing
-      const fieldToRemove = state.breakdowns.find((b) => b.id === id)?.field
+      setState((prev) => {
+        // Find the field name before removing
+        const fieldToRemove = prev.breakdowns.find((b) => b.id === id)?.field
+        const newBreakdowns = prev.breakdowns.filter((b) => b.id !== id)
 
-      setState((prev) => ({
-        ...prev,
-        breakdowns: prev.breakdowns.filter((b) => b.id !== id),
-        resultsStale: true
-      }))
-
-      // Clean up any sort order for the removed field
-      if (fieldToRemove) {
-        setOrder((prevOrder) => {
-          if (!prevOrder || !prevOrder[fieldToRemove]) return prevOrder
-          const newOrder = { ...prevOrder }
+        // Clean up any sort order for the removed field
+        let newOrder = prev.order
+        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
+          newOrder = { ...newOrder }
           delete newOrder[fieldToRemove]
-          return Object.keys(newOrder).length > 0 ? newOrder : undefined
-        })
-      }
-    }, [state.breakdowns])
+          if (Object.keys(newOrder).length === 0) {
+            newOrder = undefined
+          }
+        }
+
+        return {
+          ...prev,
+          breakdowns: newBreakdowns,
+          order: newOrder,
+          resultsStale: true
+        }
+      })
+    }, [setState])
 
     const handleBreakdownGranularityChange = useCallback(
       (id: string, granularity: string) => {
@@ -1355,8 +1368,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
 
     const handleOrderChange = useCallback(
       (fieldName: string, direction: 'asc' | 'desc' | null) => {
-        setOrder((prev) => {
-          const newOrder = { ...(prev || {}) }
+        setState((prev) => {
+          const newOrder = { ...(prev.order || {}) }
 
           if (direction === null) {
             // Remove sort for this field
@@ -1366,11 +1379,14 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             newOrder[fieldName] = direction
           }
 
-          // Return undefined if empty, otherwise return the new order
-          return Object.keys(newOrder).length > 0 ? newOrder : undefined
+          return {
+            ...prev,
+            order: Object.keys(newOrder).length > 0 ? newOrder : undefined,
+            resultsStale: true
+          }
         })
       },
-      []
+      [setState]
     )
 
     // ========================================================================
@@ -1471,8 +1487,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const handleClearQuery = useCallback(() => {
       // In multi-query mode, only clear the active query
       // If user wants to clear all queries, they should remove tabs
+      // createInitialState() already sets order: undefined
       setState(createInitialState())
-      setOrder(undefined)
       setUserManuallySelectedChart(false)
       // Also reset chart type, config, and display config
       setChartType('line')
@@ -1817,12 +1833,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
               displayLimit={displayLimit}
               onDisplayLimitChange={setDisplayLimit}
               hasMetrics={state.metrics.length > 0}
-              // Debug props (serverQuery is the cleaned/transformed version sent to server)
-              debugQuery={serverQuery}
-              debugSql={debugData.sql}
-              debugAnalysis={debugData.analysis}
-              debugLoading={debugData.loading}
-              debugError={debugData.error}
+              // Debug props - per-query debug data for multi-query mode
+              debugDataPerQuery={debugDataPerQuery}
               // Share props
               onShareClick={handleShare}
               canShare={isValidQuery}
@@ -1862,7 +1874,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
             onReorderBreakdowns={handleReorderBreakdowns}
             onFiltersChange={handleFiltersChange}
             onDropFieldToFilter={handleDropFieldToFilter}
-            order={order}
+            order={state.order}
             onOrderChange={handleOrderChange}
             chartType={chartType}
             chartConfig={chartConfig}

@@ -40,12 +40,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   displayLimit = 100,
   onDisplayLimitChange,
   hasMetrics = false,
-  // Debug props
-  debugQuery,
-  debugSql,
-  debugAnalysis,
-  debugLoading,
-  debugError,
+  // Debug props - per-query for multi-query mode
+  debugDataPerQuery = [],
   // Share props
   onShareClick,
   canShare = false,
@@ -65,6 +61,22 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 }: AnalysisResultsPanelProps) {
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
+  // Active debug query tab (independent of main query tabs)
+  const [activeDebugIndex, setActiveDebugIndex] = useState(0)
+
+  // Get current debug data based on active index
+  const currentDebugData = debugDataPerQuery[activeDebugIndex] || {
+    sql: null,
+    analysis: null,
+    loading: false,
+    error: null
+  }
+  const debugSql = currentDebugData.sql
+  const debugAnalysis = currentDebugData.analysis
+  const debugLoading = currentDebugData.loading
+  const debugError = currentDebugData.error
+  // Get the query for the active debug tab
+  const debugQuery = allQueries?.[activeDebugIndex] || null
   // Force table view when no metrics are selected
   useEffect(() => {
     if (!hasMetrics && activeView === 'chart') {
@@ -258,6 +270,34 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Render debug view
   const renderDebug = () => (
     <div className="p-4 space-y-4 overflow-auto h-full">
+      {/* Query tabs for multi-query mode */}
+      {debugDataPerQuery.length > 1 && (
+        <div className="flex items-center gap-1 mb-4">
+          <span className="text-xs font-medium text-dc-text-muted mr-2">Query:</span>
+          <div className="flex border border-dc-border rounded-md overflow-hidden">
+            {debugDataPerQuery.map((data, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveDebugIndex(idx)}
+                className={`px-3 py-1 text-xs font-medium transition-colors border-r last:border-r-0 border-dc-border ${
+                  activeDebugIndex === idx
+                    ? 'bg-dc-accent text-white'
+                    : 'bg-dc-bg text-dc-text-secondary hover:bg-dc-bg-secondary'
+                }`}
+              >
+                Q{idx + 1}
+                {data.loading && (
+                  <span className="ml-1 opacity-70">•</span>
+                )}
+                {data.error && (
+                  <span className="ml-1 text-dc-error">!</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Execution Error Banner (if any) */}
       {executionError && (
         <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
@@ -596,8 +636,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               title={showDebug ? 'Hide debug info' : 'Show debug info'}
             >
               <CodeIcon className="w-4 h-4" />
-              {/* Error indicator dot */}
-              {(executionError || debugError) && !showDebug && (
+              {/* Error indicator dot - show if ANY query has an error */}
+              {(executionError || debugDataPerQuery.some(d => d.error)) && !showDebug && (
                 <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-dc-danger-bg0 rounded-full" />
               )}
             </button>

@@ -77,6 +77,8 @@ export interface AnalysisBuilderState {
   breakdowns: BreakdownItem[]
   /** Applied filters */
   filters: Filter[]
+  /** Sort order for this query (field name -> 'asc' | 'desc') */
+  order?: Record<string, 'asc' | 'desc'>
 
   // Validation state
   validationStatus: ValidationStatus
@@ -331,12 +333,14 @@ export interface AnalysisResultsPanelProps {
   /** Whether the query has metrics (measures) - needed to enable/disable chart view */
   hasMetrics: boolean
 
-  // Debug information (from dry-run)
-  debugQuery?: CubeQuery | null
-  debugSql?: { sql: string; params: any[] } | null
-  debugAnalysis?: QueryAnalysis | null
-  debugLoading?: boolean
-  debugError?: string | null
+  // Debug information (from dry-run) - per-query for multi-query mode
+  /** Debug data for each query (SQL, analysis, loading/error state) */
+  debugDataPerQuery?: Array<{
+    sql: { sql: string; params: any[] } | null
+    analysis: QueryAnalysis | null
+    loading: boolean
+    error: string | null
+  }>
 
   // Share functionality
   onShareClick?: () => void
