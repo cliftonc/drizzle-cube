@@ -5,12 +5,13 @@
 
 import { FastifyPluginCallback, FastifyRequest, FastifyReply, FastifyInstance } from 'fastify'
 import type { FastifyCorsOptions } from '@fastify/cors'
-import type { 
-  SemanticQuery, 
-  SecurityContext, 
+import type {
+  SemanticQuery,
+  SecurityContext,
   DatabaseExecutor,
   DrizzleDatabase,
-  Cube
+  Cube,
+  CacheConfig
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -88,6 +89,12 @@ export interface FastifyAdapterOptions {
    * JSON body parser limit (default: 10485760 - 10MB)
    */
   bodyLimit?: number
+
+  /**
+   * Cache configuration for query result caching
+   * When provided, query results will be cached using the specified provider
+   */
+  cache?: CacheConfig
 }
 
 /**
@@ -98,7 +105,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   options: FastifyAdapterOptions, 
   done: (err?: Error) => void
 ) {
-  const { 
+  const {
     cubes,
     drizzle,
     schema,
@@ -106,7 +113,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     engineType,
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
-    bodyLimit = 10485760 // 10MB
+    bodyLimit = 10485760, // 10MB
+    cache
   } = options
 
   // Validate required options
@@ -130,7 +138,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
-    engineType
+    engineType,
+    cache
   })
 
   // Register all provided cubes

@@ -24,7 +24,7 @@ export {
 } from './executors'
 
 // Export cube utilities
-export { 
+export {
   resolveSqlExpression,
   createMultiCubeContext,
   resolveCubeReference,
@@ -33,6 +33,17 @@ export {
 
 // Export cube definitions
 export { defineCube } from './cube-utils'
+
+// Export cache utilities
+export {
+  generateCacheKey,
+  normalizeQuery,
+  fnv1aHash,
+  getCubeInvalidationPattern
+} from './cache-utils'
+
+// Export cache providers
+export { MemoryCacheProvider } from './cache-providers'
 
 // Import types for use in utility functions
 import type { DrizzleDatabase } from './types'

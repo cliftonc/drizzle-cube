@@ -7,14 +7,16 @@ interface DebugModalProps {
   queryObject: any
   data: any[]
   chartType: string
+  cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
 }
 
-export default function DebugModal({ 
-  chartConfig, 
-  displayConfig, 
-  queryObject, 
-  data, 
-  chartType 
+export default function DebugModal({
+  chartConfig,
+  displayConfig,
+  queryObject,
+  data,
+  chartType,
+  cacheInfo
 }: DebugModalProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -155,6 +157,29 @@ export default function DebugModal({
             <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(data?.slice(0, 3) || [], null, 2)}</code>
             </pre>
+          </div>
+
+          <div className="lg:col-span-2">
+            <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Cache Status</h3>
+            <div className="bg-dc-surface-secondary p-2 rounded-sm text-xs border border-dc-border">
+              {cacheInfo ? (
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-dc-success-bg text-dc-success">
+                    Cache Hit
+                  </span>
+                  <span><strong>Cached At:</strong> {new Date(cacheInfo.cachedAt).toLocaleString()}</span>
+                  <span><strong>TTL:</strong> {Math.round(cacheInfo.ttlMs / 1000)}s</span>
+                  <span><strong>TTL Remaining:</strong> {Math.round(cacheInfo.ttlRemainingMs / 1000)}s</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-dc-surface text-dc-text-muted border border-dc-border">
+                    Fresh Query
+                  </span>
+                  <span className="text-dc-text-muted">Result not served from cache</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

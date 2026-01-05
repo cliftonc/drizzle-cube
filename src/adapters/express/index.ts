@@ -6,12 +6,13 @@
 import express, { Router, Request, Response, NextFunction, Express } from 'express'
 import cors from 'cors'
 import type { CorsOptions } from 'cors'
-import type { 
-  SemanticQuery, 
-  SecurityContext, 
+import type {
+  SemanticQuery,
+  SecurityContext,
   DatabaseExecutor,
   DrizzleDatabase,
-  Cube
+  Cube,
+  CacheConfig
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -90,6 +91,12 @@ export interface ExpressAdapterOptions {
    * JSON body parser limit (default: '10mb')
    */
   jsonLimit?: string
+
+  /**
+   * Cache configuration for query result caching
+   * When provided, query results will be cached using the specified provider
+   */
+  cache?: CacheConfig
 }
 
 /**
@@ -98,7 +105,7 @@ export interface ExpressAdapterOptions {
 export function createCubeRouter(
   options: ExpressAdapterOptions
 ): Router {
-  const { 
+  const {
     cubes,
     drizzle,
     schema,
@@ -106,7 +113,8 @@ export function createCubeRouter(
     engineType,
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
-    jsonLimit = '10mb'
+    jsonLimit = '10mb',
+    cache
   } = options
 
   // Validate required options
@@ -131,7 +139,8 @@ export function createCubeRouter(
   const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
-    engineType
+    engineType,
+    cache
   })
 
   // Register all provided cubes

@@ -295,6 +295,7 @@ export interface CubeResultSet {
   series(): any[]
   annotation(): any
   loadResponse?: any
+  cacheInfo?(): { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined
 }
 
 // Component props
@@ -317,6 +318,7 @@ export interface AnalyticsPortletProps {
     queryObject: any
     data: any[]
     chartType: ChartType
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   }) => void
 }
 

@@ -24,11 +24,13 @@ import type {
   Cube,
   QueryContext,
   QueryPlan,
-  JoinKeyInfo
+  JoinKeyInfo,
+  CacheConfig
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
 import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
+import { generateCacheKey } from './cache-utils'
 import { QueryBuilder } from './query-builder'
 import { QueryPlanner } from './query-planner'
 import { CTEBuilder } from './cte-builder'
@@ -44,8 +46,9 @@ export class QueryExecutor {
   private cteBuilder: CTEBuilder
   private databaseAdapter: DatabaseAdapter
   private comparisonQueryBuilder: ComparisonQueryBuilder
+  private cacheConfig?: CacheConfig
 
-  constructor(private dbExecutor: DatabaseExecutor) {
+  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
     // Get the database adapter from the executor
     this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
@@ -55,6 +58,7 @@ export class QueryExecutor {
     this.queryPlanner = new QueryPlanner()
     this.cteBuilder = new CTEBuilder(this.queryBuilder)
     this.comparisonQueryBuilder = new ComparisonQueryBuilder(this.databaseAdapter)
+    this.cacheConfig = cacheConfig
   }
 
   /**
@@ -72,9 +76,52 @@ export class QueryExecutor {
         throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
       }
 
+      // Check cache BEFORE expensive operations (after validation, includes security context)
+      let cacheKey: string | undefined
+      if (this.cacheConfig?.enabled !== false && this.cacheConfig?.provider) {
+        cacheKey = generateCacheKey(query, securityContext, this.cacheConfig)
+        try {
+          const startTime = Date.now()
+          const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
+          if (cacheResult) {
+            this.cacheConfig.onCacheEvent?.({
+              type: 'hit',
+              key: cacheKey,
+              durationMs: Date.now() - startTime
+            })
+
+            // Return cached result WITH cache metadata
+            return {
+              ...cacheResult.value,
+              cache: cacheResult.metadata
+                ? {
+                    hit: true as const,
+                    cachedAt: new Date(cacheResult.metadata.cachedAt).toISOString(),
+                    ttlMs: cacheResult.metadata.ttlMs,
+                    ttlRemainingMs: cacheResult.metadata.ttlRemainingMs
+                  }
+                : {
+                    hit: true as const,
+                    cachedAt: new Date().toISOString(),
+                    ttlMs: 0,
+                    ttlRemainingMs: 0
+                  }
+            }
+          }
+          this.cacheConfig.onCacheEvent?.({
+            type: 'miss',
+            key: cacheKey,
+            durationMs: Date.now() - startTime
+          })
+        } catch (error) {
+          this.cacheConfig.onError?.(error as Error, 'get')
+          // Continue without cache - failures are non-fatal
+        }
+      }
+
       // Check for compareDateRange queries and route to comparison execution
       if (this.comparisonQueryBuilder.hasComparison(query)) {
-        return this.executeComparisonQuery(cubes, query, securityContext)
+        return this.executeComparisonQueryWithCache(cubes, query, securityContext, cacheKey)
       }
 
       // Create filter cache for parameter deduplication across CTEs
@@ -137,10 +184,32 @@ export class QueryExecutor {
       // Generate annotations for UI
       const annotation = this.generateAnnotations(queryPlan, query)
 
-      return {
+      const result: QueryResult = {
         data: filledData,
         annotation
       }
+
+      // Cache result before returning (without cache metadata - that's only on cache hits)
+      if (cacheKey && this.cacheConfig?.provider) {
+        try {
+          const startTime = Date.now()
+          await this.cacheConfig.provider.set(
+            cacheKey,
+            result,
+            this.cacheConfig.defaultTtlMs ?? 300000
+          )
+          this.cacheConfig.onCacheEvent?.({
+            type: 'set',
+            key: cacheKey,
+            durationMs: Date.now() - startTime
+          })
+        } catch (error) {
+          this.cacheConfig.onError?.(error as Error, 'set')
+          // Continue without caching - failures are non-fatal
+        }
+      }
+
+      return result
     } catch (error) {
       // Extract the actual database error from the cause chain
       // Drizzle ORM wraps database errors, but the real error is in the cause
@@ -178,6 +247,41 @@ export class QueryExecutor {
     const cubes = new Map<string, Cube>()
     cubes.set(cube.name, cube)
     return this.execute(cubes, query, securityContext)
+  }
+
+  /**
+   * Execute a comparison query with caching support
+   * Wraps executeComparisonQuery with cache set logic
+   */
+  private async executeComparisonQueryWithCache(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    cacheKey: string | undefined
+  ): Promise<QueryResult> {
+    const result = await this.executeComparisonQuery(cubes, query, securityContext)
+
+    // Cache result before returning (without cache metadata - that's only on cache hits)
+    if (cacheKey && this.cacheConfig?.provider) {
+      try {
+        const startTime = Date.now()
+        await this.cacheConfig.provider.set(
+          cacheKey,
+          result,
+          this.cacheConfig.defaultTtlMs ?? 300000
+        )
+        this.cacheConfig.onCacheEvent?.({
+          type: 'set',
+          key: cacheKey,
+          durationMs: Date.now() - startTime
+        })
+      } catch (error) {
+        this.cacheConfig.onError?.(error as Error, 'set')
+        // Continue without caching - failures are non-fatal
+      }
+    }
+
+    return result
   }
 
   /**

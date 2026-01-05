@@ -13,7 +13,8 @@ import type {
   DimensionMetadata,
   CubeRelationshipMetadata,
   Cube,
-  QueryAnalysis
+  QueryAnalysis,
+  CacheConfig
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
@@ -26,12 +27,15 @@ export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
   private dbExecutor?: DatabaseExecutor
   private metadataCache?: CubeMetadata[]
+  private cacheConfig?: CacheConfig
 
   constructor(options?: {
     drizzle?: DatabaseExecutor['db']
     schema?: any
     databaseExecutor?: DatabaseExecutor
     engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+    /** Cache configuration for query result caching */
+    cache?: CacheConfig
   }) {
     if (options?.databaseExecutor) {
       this.dbExecutor = options.databaseExecutor
@@ -43,6 +47,7 @@ export class SemanticLayerCompiler {
         options.engineType
       )
     }
+    this.cacheConfig = options?.cache
   }
 
   /**
@@ -187,7 +192,7 @@ export class SemanticLayerCompiler {
       throw new Error('Database executor not configured')
     }
 
-    const executor = new QueryExecutor(this.dbExecutor)
+    const executor = new QueryExecutor(this.dbExecutor, this.cacheConfig)
     return executor.execute(this.cubes, query, securityContext)
   }
 

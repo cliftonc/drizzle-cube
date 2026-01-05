@@ -5,12 +5,13 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { 
-  SemanticQuery, 
-  SecurityContext, 
+import type {
+  SemanticQuery,
+  SecurityContext,
   DatabaseExecutor,
   DrizzleDatabase,
-  Cube
+  Cube,
+  CacheConfig
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -87,6 +88,12 @@ export interface HonoAdapterOptions {
    * API base path (default: '/cubejs-api/v1')
    */
   basePath?: string
+
+  /**
+   * Cache configuration for query result caching
+   * When provided, query results will be cached using the specified provider
+   */
+  cache?: CacheConfig
 }
 
 /**
@@ -95,14 +102,15 @@ export interface HonoAdapterOptions {
 export function createCubeRoutes(
   options: HonoAdapterOptions
 ) {
-  const { 
+  const {
     cubes,
     drizzle,
     schema,
     extractSecurityContext,
     engineType,
     cors: corsConfig,
-    basePath = '/cubejs-api/v1'
+    basePath = '/cubejs-api/v1',
+    cache
   } = options
 
   // Validate required options
@@ -121,7 +129,8 @@ export function createCubeRoutes(
   const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
-    engineType
+    engineType,
+    cache
   })
 
   // Register all provided cubes

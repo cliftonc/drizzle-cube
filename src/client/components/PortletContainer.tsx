@@ -29,6 +29,7 @@ export default function PortletContainer({
     queryObject: any
     data: any[]
     chartType: string
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   } | null>(null)
 
   // Memoize debug data callback to prevent AnalyticsPortlet re-renders
@@ -38,6 +39,7 @@ export default function PortletContainer({
     queryObject: any
     data: any[]
     chartType: string
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   }) => {
     setDebugData(data)
   }, [])
@@ -56,6 +58,7 @@ export default function PortletContainer({
               queryObject={debugData.queryObject}
               data={debugData.data}
               chartType={debugData.chartType}
+              cacheInfo={debugData.cacheInfo}
             />
           )}
         </div>

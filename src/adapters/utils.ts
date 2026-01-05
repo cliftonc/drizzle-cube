@@ -208,7 +208,7 @@ export async function handleDryRun(
  */
 export function formatCubeResponse(
   query: SemanticQuery,
-  result: { data: any[]; annotation?: any },
+  result: { data: any[]; annotation?: any; cache?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } },
   semanticLayer: SemanticLayerCompiler
 ) {
   const dbType = getDatabaseType(semanticLayer)
@@ -230,7 +230,9 @@ export function formatCubeResponse(
       extDbType: dbType,
       external: false,
       slowQuery: false,
-      data: result.data
+      data: result.data,
+      // Include cache metadata if present (indicates cache hit with TTL info)
+      ...(result.cache && { cache: result.cache })
     }],
     pivotQuery: {
       ...query,

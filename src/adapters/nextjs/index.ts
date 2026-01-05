@@ -4,12 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import type { 
-  SemanticQuery, 
-  SecurityContext, 
+import type {
+  SemanticQuery,
+  SecurityContext,
   DatabaseExecutor,
   DrizzleDatabase,
-  Cube
+  Cube,
+  CacheConfig
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -106,6 +107,12 @@ export interface NextAdapterOptions {
    * 'edge' for Edge Runtime, 'nodejs' for Node.js Runtime
    */
   runtime?: 'edge' | 'nodejs'
+
+  /**
+   * Cache configuration for query result caching
+   * When provided, query results will be cached using the specified provider
+   */
+  cache?: CacheConfig
 }
 
 export interface RouteContext {
@@ -131,7 +138,7 @@ export interface CubeHandlers {
 function createSemanticLayer(
   options: NextAdapterOptions
 ): SemanticLayerCompiler {
-  const { cubes, drizzle, schema, engineType } = options
+  const { cubes, drizzle, schema, engineType, cache } = options
 
   // Validate required options
   if (!cubes || cubes.length === 0) {
@@ -142,7 +149,8 @@ function createSemanticLayer(
   const semanticLayer = new SemanticLayerCompiler({
     drizzle,
     schema,
-    engineType
+    engineType,
+    cache
   })
 
   // Register all provided cubes

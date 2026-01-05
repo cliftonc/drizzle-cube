@@ -12,6 +12,7 @@ import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
 import { createCubeApp } from '../../src/adapters/hono/index.js'
 import type { SecurityContext, DrizzleDatabase } from '../../src/server/index.js'
+import { MemoryCacheProvider } from '../../src/server/index.js'
 import { schema } from './schema.js'
 import { allCubes } from './cubes.js'
 import type { Schema } from './schema.js'
@@ -201,6 +202,12 @@ app.get('/api/docs', (c) => {
   })
 })
 
+// Create cache provider for query result caching
+const cacheProvider = new MemoryCacheProvider({
+  defaultTtlMs: 60000, // 1 minute default TTL
+  cleanupIntervalMs: 30000 // Cleanup every 30 seconds
+})
+
 // Mount the cube API routes
 const cubeApp = createCubeApp({
   cubes: allCubes,
@@ -213,6 +220,15 @@ const cubeApp = createCubeApp({
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     credentials: true
+  },
+  cache: {
+    provider: cacheProvider,
+    defaultTtlMs: 60000, // 1 minute
+    keyPrefix: 'drizzle-cube-dev:',
+    onCacheEvent: (event) => {
+      const icon = event.type === 'hit' ? '✅' : event.type === 'miss' ? '❌' : '💾'
+      console.log(`${icon} Cache ${event.type}: ${event.key.substring(0, 50)}... (${event.durationMs}ms)`)
+    }
   }
 })
 

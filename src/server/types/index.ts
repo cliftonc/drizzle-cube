@@ -22,6 +22,9 @@ export * from './analysis'
 // Utility functions and helpers
 export * from './utils'
 
+// Cache types
+export * from './cache'
+
 // Legacy compatibility - re-export with old names for backwards compatibility
 export type {
   Cube as SemanticCube,

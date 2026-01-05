@@ -229,6 +229,18 @@ class ResultSet implements CubeResultSet {
     }
     return this.loadResponse.annotation || {}
   }
+
+  /**
+   * Get cache metadata if result was served from cache
+   * Returns undefined if not a cache hit
+   */
+  cacheInfo(): { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined {
+    // Handle nested structure: loadResponse.results[0].cache
+    if (this.loadResponse.results && this.loadResponse.results[0]) {
+      return this.loadResponse.results[0].cache
+    }
+    return this.loadResponse.cache
+  }
 }
 
 /**

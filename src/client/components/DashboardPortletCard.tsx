@@ -18,6 +18,7 @@ interface DashboardPortletCardProps {
     queryObject: any
     data: any[]
     chartType: string
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   }
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
@@ -37,6 +38,7 @@ interface DashboardPortletCardProps {
     queryObject: any
     data: any[]
     chartType: string
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   }) => void
   setPortletRef: (portletId: string, element: HTMLDivElement | null) => void
   setPortletComponentRef: (portletId: string, element: { refresh: () => void } | null) => void
@@ -188,6 +190,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     queryObject: any
     data: any[]
     chartType: string
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
   }) => {
     onDebugDataReady(portlet.id, data)
   }, [portlet.id, onDebugDataReady])
@@ -242,6 +245,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                   queryObject={debugData.queryObject}
                   data={debugData.data}
                   chartType={debugData.chartType}
+                  cacheInfo={debugData.cacheInfo}
                 />
               </div>
             )}
@@ -253,6 +257,28 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             onTouchStart={(event) => event.stopPropagation()}
             onTouchEnd={(event) => event.stopPropagation()}
           >
+            {/* Cache indicator - show when result was served from cache */}
+            {debugData?.cacheInfo && (
+              <span
+                className="p-1 text-dc-text-muted opacity-40"
+                title={`Cached ${Math.round((Date.now() - new Date(debugData.cacheInfo.cachedAt).getTime()) / 1000)}s ago`}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                  <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+                </svg>
+              </span>
+            )}
             <button
               onClick={(event) => {
                 event.stopPropagation()

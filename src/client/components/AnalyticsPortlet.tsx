@@ -165,14 +165,15 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         }
       }
       const data = getData()
-      
+
       if (data) {
         onDebugDataReadyRef.current({
           chartConfig: chartConfig || {},
           displayConfig: displayConfig || {},
           queryObject,
           data,
-          chartType
+          chartType,
+          cacheInfo: resultSet.cacheInfo?.()
         })
       }
     }
