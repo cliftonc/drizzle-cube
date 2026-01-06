@@ -457,7 +457,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           metrics: [...currentState.metrics, newMetric],
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -484,7 +483,6 @@ function createStoreActions(
           ...currentState,
           metrics: newMetrics,
           order: newOrder,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -503,8 +501,7 @@ function createStoreActions(
           newStates[index] = {
             ...currentState,
             metrics: currentState.metrics.filter((_, i) => i !== existingIndex),
-            resultsStale: true,
-          }
+            }
         } else {
           // Add new
           const newMetric: MetricItem = {
@@ -515,8 +512,7 @@ function createStoreActions(
           newStates[index] = {
             ...currentState,
             metrics: [...currentState.metrics, newMetric],
-            resultsStale: true,
-          }
+            }
         }
         return { queryStates: newStates }
       }),
@@ -532,7 +528,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           metrics: newMetrics,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -565,7 +560,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           breakdowns: [...currentState.breakdowns, newBreakdown],
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -592,7 +586,6 @@ function createStoreActions(
           ...currentState,
           breakdowns: newBreakdowns,
           order: newOrder,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -611,8 +604,7 @@ function createStoreActions(
           newStates[index] = {
             ...currentState,
             breakdowns: currentState.breakdowns.filter((_, i) => i !== existingIndex),
-            resultsStale: true,
-          }
+            }
         } else {
           // Check if we already have a time dimension
           if (isTimeDimension) {
@@ -629,8 +621,7 @@ function createStoreActions(
           newStates[index] = {
             ...currentState,
             breakdowns: [...currentState.breakdowns, newBreakdown],
-            resultsStale: true,
-          }
+            }
         }
         return { queryStates: newStates }
       }),
@@ -647,16 +638,14 @@ function createStoreActions(
             breakdowns: newStates[0].breakdowns.map((b) =>
               b.id === id ? { ...b, granularity } : b
             ),
-            resultsStale: true,
-          }
+            }
         } else {
           newStates[activeQueryIndex] = {
             ...newStates[activeQueryIndex],
             breakdowns: newStates[activeQueryIndex].breakdowns.map((b) =>
               b.id === id ? { ...b, granularity } : b
             ),
-            resultsStale: true,
-          }
+            }
         }
         return { queryStates: newStates }
       }),
@@ -722,7 +711,6 @@ function createStoreActions(
         newStates[sourceIndex] = {
           ...newStates[sourceIndex],
           breakdowns: updatedBreakdowns,
-          resultsStale: true,
         }
 
         return {
@@ -743,7 +731,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           breakdowns: newBreakdowns,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -759,7 +746,6 @@ function createStoreActions(
         newStates[index] = {
           ...newStates[index],
           filters,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -796,7 +782,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           filters: updatedFilters,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -817,7 +802,6 @@ function createStoreActions(
         newStates[index] = {
           ...currentState,
           order: Object.keys(newOrder).length > 0 ? newOrder : undefined,
-          resultsStale: true,
         }
         return { queryStates: newStates }
       }),
@@ -878,8 +862,7 @@ function createStoreActions(
                   ? { ...b, enableComparison: false }
                   : b
               ),
-              resultsStale: true,
-            }
+                }
 
             const { chartConfig } = getSmartChartDefaults(
               currentState.metrics,
@@ -997,7 +980,6 @@ function createStoreActions(
           metrics: prev.metrics,
           breakdowns: prev.breakdowns,
           filters: prev.filters,
-          resultsStale: true,
         }
 
         return {

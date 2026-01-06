@@ -69,6 +69,10 @@ export type ExecutionStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'e
 
 /**
  * Main state for the AnalysisBuilder component
+ *
+ * Note: Execution state (results, loading, error) is NOT stored here.
+ * All server state is managed by TanStack Query. This state only contains
+ * client-side configuration (metrics, breakdowns, filters, validation).
  */
 export interface AnalysisBuilderState {
   /** Selected metrics (measures) */
@@ -80,18 +84,9 @@ export interface AnalysisBuilderState {
   /** Sort order for this query (field name -> 'asc' | 'desc') */
   order?: Record<string, 'asc' | 'desc'>
 
-  // Validation state
+  // Validation state (client-side query validation)
   validationStatus: ValidationStatus
   validationError: string | null
-
-  // Execution state
-  executionStatus: ExecutionStatus
-  executionResults: any[] | null
-  executionError: string | null
-  totalRowCount: number | null
-
-  // Stale indicator (query changed since last execution)
-  resultsStale: boolean
 }
 
 /**

@@ -40,10 +40,10 @@ export { default as DashboardGrid } from './components/DashboardGrid'
 export { default as PortletContainer } from './components/PortletContainer'
 
 // Modals and configuration
-export { default as PortletEditModal } from './components/PortletEditModal'
 export { default as PortletAnalysisModal } from './components/PortletAnalysisModal'
 export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
+export { default as ConfirmModal } from './components/ConfirmModal'
 
 // Query Builder - Seamless shim that uses AnalysisBuilder internally
 export { default as QueryBuilder } from './components/QueryBuilderShim'
@@ -61,13 +61,10 @@ export {
   useCubeFeatures  // Only re-renders on feature flag changes
 } from './providers/CubeProvider'
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
-export { useCubeQuery } from './hooks/useCubeQuery'
-export { useMultiCubeQuery } from './hooks/useMultiCubeQuery'
-export type { UseMultiCubeQueryResult } from './hooks/useMultiCubeQuery'
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
 export { createCubeClient } from './client/CubeClient'
 
-// TanStack Query hooks (modern alternative to useCubeQuery)
+// TanStack Query hooks for data fetching
 export {
   useCubeMetaQuery,
   useCubeLoadQuery,
@@ -93,7 +90,15 @@ export type {
   UseAnalysisBuilderResult,
 } from './hooks/useAnalysisBuilderHook'
 
-// Zustand stores
+// Master coordination hook for Dashboard
+export { useDashboard } from './hooks/useDashboardHook'
+export type {
+  UseDashboardOptions,
+  UseDashboardResult,
+  UseDashboardActions,
+} from './hooks/useDashboardHook'
+
+// Zustand stores - AnalysisBuilder
 export {
   useAnalysisBuilderStore,
   selectCurrentState,
@@ -111,6 +116,34 @@ export type {
   FieldModalMode,
   SharedState,
 } from './stores/analysisBuilderStore'
+
+// Zustand stores - Dashboard
+export {
+  DashboardStoreProvider,
+  useDashboardStore,
+  useDashboardStoreApi,
+  useDashboardStoreOptional,
+  createDashboardStore,
+  selectEditModeState,
+  selectModalState,
+  selectLayoutState,
+  selectDebugData,
+  selectPortletDebugData,
+  selectEditModeActions,
+  selectModalActions,
+  selectLayoutActions,
+  selectDebugDataActions,
+  selectAllActions,
+} from './stores/dashboardStore'
+export type {
+  DashboardStore,
+  DashboardStoreState,
+  DashboardStoreActions,
+  PortletDebugDataEntry,
+  DragState,
+  CreateDashboardStoreOptions,
+  DashboardStoreProviderProps,
+} from './stores/dashboardStore'
 
 // Multi-query validation utilities
 export {

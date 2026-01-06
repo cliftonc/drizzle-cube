@@ -35,9 +35,9 @@ const FilterIcon = getIcon('filter')
 const DesktopIcon = getIcon('desktop')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
-import PortletEditModal from './PortletEditModal'
 import PortletAnalysisModal from './PortletAnalysisModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
+import ConfirmModal from './ConfirmModal'
 import { useCubeContext } from '../providers/CubeProvider'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
@@ -45,6 +45,7 @@ import ScaledGridWrapper from './ScaledGridWrapper'
 import MobileStackedLayout from './MobileStackedLayout'
 import { useResponsiveDashboard } from '../hooks/useResponsiveDashboard'
 import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
+import { useDashboard } from '../hooks/useDashboardHook'
 import type { ColorPalette } from '../utils/colorPalettes'
 
 /**
@@ -191,92 +192,10 @@ const adjustRowWidths = (
   return adjusted
 }
 
-const convertPortletsToRows = (
-  portlets: PortletConfig[],
-  gridSettings: DashboardGridSettings
-): RowLayout[] => {
-  if (portlets.length === 0) return []
-
-  const sorted = [...portlets].sort((a, b) => {
-    if (a.y !== b.y) return a.y - b.y
-    return a.x - b.x
-  })
-
-  const rowsByY = new Map<number, PortletConfig[]>()
-  sorted.forEach(portlet => {
-    const row = rowsByY.get(portlet.y) ?? []
-    row.push(portlet)
-    rowsByY.set(portlet.y, row)
-  })
-
-  return Array.from(rowsByY.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([rowY, rowPortlets]) => {
-      const rowHeight = Math.max(
-        gridSettings.minH,
-        ...rowPortlets.map(portlet => portlet.h)
-      )
-      const portletIds = rowPortlets.map(portlet => portlet.id)
-      return {
-        id: `row-${rowY}`,
-        h: rowHeight,
-        columns: equalizeRowColumns(portletIds, gridSettings)
-      }
-    })
-}
-
-const normalizeRows = (
-  rows: RowLayout[],
-  portlets: PortletConfig[],
-  gridSettings: DashboardGridSettings
-): RowLayout[] => {
-  const portletIds = new Set(portlets.map(portlet => portlet.id))
-  return rows
-    .map(row => ({
-      ...row,
-      h: Math.max(gridSettings.minH, row.h),
-      columns: adjustRowWidths(
-        row.columns.filter(column => portletIds.has(column.portletId)),
-        gridSettings
-      )
-    }))
-    .filter(row => row.columns.length > 0)
-}
-
-const convertRowsToPortlets = (
-  rows: RowLayout[],
-  portlets: PortletConfig[]
-): PortletConfig[] => {
-  const portletMap = new Map(portlets.map(portlet => [portlet.id, portlet]))
-  let currentY = 0
-
-  const updated: PortletConfig[] = []
-  rows.forEach(row => {
-    let currentX = 0
-    row.columns.forEach(column => {
-      const portlet = portletMap.get(column.portletId)
-      if (!portlet) return
-      updated.push({
-        ...portlet,
-        x: currentX,
-        y: currentY,
-        w: column.w,
-        h: row.h
-      })
-      currentX += column.w
-    })
-    currentY += row.h
-  })
-
-  const updatedIds = new Set(updated.map(portlet => portlet.id))
-  portlets.forEach(portlet => {
-    if (!updatedIds.has(portlet.id)) {
-      updated.push(portlet)
-    }
-  })
-
-  return updated
-}
+// Helper functions moved to useDashboardHook.ts:
+// - convertPortletsToRows
+// - normalizeRows
+// - convertRowsToPortlets
 
 export default function DashboardGrid({
   config,
@@ -304,14 +223,10 @@ export default function DashboardGrid({
     designWidth
   } = useResponsiveDashboard()
 
+  // allowedModes is passed to useDashboard hook which computes layoutMode
   const allowedModes: DashboardLayoutMode[] = dashboardModes && dashboardModes.length > 0
     ? dashboardModes
     : ['rows', 'grid']
-  const fallbackMode: DashboardLayoutMode = allowedModes.includes('rows') ? 'rows' : allowedModes[0] ?? 'grid'
-  const configMode = config.layoutMode ?? 'grid'
-  const layoutMode: DashboardLayoutMode = allowedModes.includes(configMode)
-    ? configMode
-    : fallbackMode
   const gridSettings = useMemo(() => getGridSettings(config), [config])
 
   // Scroll container detection for lazy loading
@@ -337,42 +252,71 @@ export default function DashboardGrid({
   // Desktop: use actual container width (allows wider than 1200px)
   // Scaled: use design width (1200px) and apply CSS scaling
   const gridWidth = displayMode === 'desktop' ? containerWidth : designWidth
-  const [draftRows, setDraftRows] = useState<RowLayout[] | null>(null)
-  const draftRowsRef = useRef<RowLayout[] | null>(null)
-  const dragStateRef = useRef<{ rowIndex: number; colIndex: number; portletId: string } | null>(null)
-  const [isDraggingPortlet, setIsDraggingPortlet] = useState(false)
 
-  // Refs to store portlet refs for refresh functionality
+  // Refs to store portlet refs for refresh functionality (kept local - DOM-specific)
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
+  const draftRowsRef = useRef<RowLayout[] | null>(null)
+  const dragStateRef = useRef<{ rowIndex: number; colIndex: number; portletId: string } | null>(null)
 
-  // Track if component has been initialized to prevent saves during initial load
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [lastKnownLayout, setLastKnownLayout] = useState<any[]>([])
+  // =========================================================================
+  // Dashboard State from Zustand Store via useDashboard hook
+  // Replaces 11 useState calls and provides computed values + actions
+  // =========================================================================
+  const dashboard = useDashboard({
+    config,
+    editable,
+    dashboardFilters,
+    gridSettings,
+    allowedModes,
+    isResponsiveEditable,
+    onConfigChange,
+    onSave,
+    gridWidth,
+    portletComponentRefs,
+    onPortletRefresh,
+  })
 
-  // Edit mode state - dashboard is readonly by default
-  const [isEditMode, setIsEditMode] = useState(false)
+  // Destructure for easier access (maintains existing variable names)
+  // Note: lastKnownLayout is managed internally by the hook and accessed via actions
+  const {
+    isEditMode,
+    selectedFilterId,
+    isPortletModalOpen,
+    editingPortlet,
+    isFilterConfigModalOpen,
+    filterConfigPortlet,
+    deleteConfirmPortletId,
+    draftRows,
+    isDraggingPortlet,
+    isInitialized,
+    // debugData removed - now read from store directly in DashboardPortletCard
+    canEdit,
+    canChangeLayoutMode,
+    selectedFilter,
+    resolvedRows,
+    layoutMode,
+    actions,
+  } = dashboard
 
-  // Filter selection mode state
-  const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null)
-
-  // Determine if editing is allowed (only in desktop mode)
-  const canEdit = editable && isEditMode && isResponsiveEditable && !selectedFilterId
-  const canChangeLayoutMode = editable && isEditMode && isResponsiveEditable && !selectedFilterId && allowedModes.length > 1
+  // Sync draftRowsRef with store state (for mouse event handlers)
+  useEffect(() => {
+    draftRowsRef.current = draftRows
+  }, [draftRows])
 
   // Exit filter selection mode when leaving edit mode or when switching to non-desktop mode
   useEffect(() => {
     if ((!isEditMode || !isResponsiveEditable) && selectedFilterId) {
-      setSelectedFilterId(null)
+      actions.exitFilterSelectionMode()
     }
-  }, [isEditMode, isResponsiveEditable, selectedFilterId])
+  }, [isEditMode, isResponsiveEditable, selectedFilterId, actions])
 
   // Exit edit mode when switching to non-desktop view
   useEffect(() => {
     if (!isResponsiveEditable && isEditMode) {
-      setIsEditMode(false)
+      actions.exitEditMode()
     }
-  }, [isResponsiveEditable, isEditMode])
+  }, [isResponsiveEditable, isEditMode, actions])
 
   // Track scroll state for sticky header using debounced scroll detection
   // Uses the actual scroll container (found via findScrollableAncestor) instead of window
@@ -391,64 +335,11 @@ export default function DashboardGrid({
     container: scrollContainer  // State dependency to trigger re-init when container found
   })
 
-  // Modal states
-  const [isPortletModalOpen, setIsPortletModalOpen] = useState(false)
-  const [editingPortlet, setEditingPortlet] = useState<PortletConfig | null>(null)
-  const [isFilterConfigModalOpen, setIsFilterConfigModalOpen] = useState(false)
-  const [filterConfigPortlet, setFilterConfigPortlet] = useState<PortletConfig | null>(null)
-
-  // Debug data state - keyed by portlet ID
-  const [debugData, setDebugData] = useState<{ [portletId: string]: {
-    chartConfig: any
-    displayConfig: any
-    queryObject: any
-    data: any[]
-    chartType: string
-  } }>({})
-
-  useEffect(() => {
-    draftRowsRef.current = draftRows
-  }, [draftRows])
-
-  const resolvedRows = useMemo(() => {
-    if (layoutMode !== 'rows') return []
-    const baseRows = draftRows ?? config.rows ?? convertPortletsToRows(config.portlets, gridSettings)
-    return normalizeRows(baseRows, config.portlets, gridSettings)
-  }, [layoutMode, draftRows, config.rows, config.portlets, gridSettings])
-
-  const updateRowLayout = useCallback(async (
-    rows: RowLayout[],
-    save = true,
-    portletsOverride?: PortletConfig[]
-  ) => {
-    if (!onConfigChange) return
-    const portlets = portletsOverride ?? config.portlets
-    const normalizedRows = normalizeRows(rows, portlets, gridSettings)
-    const updatedPortlets = convertRowsToPortlets(normalizedRows, portlets)
-    const updatedConfig = {
-      ...config,
-      layoutMode: 'rows' as const,
-      rows: normalizedRows,
-      portlets: updatedPortlets
-    }
-
-    setDraftRows(null)
-    onConfigChange(updatedConfig)
-
-    if (save && onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed after row layout change:', error)
-      }
-    }
-  }, [config, gridSettings, onConfigChange, onSave])
-
   // Set up initialization tracking
   useEffect(() => {
     // Mark as initialized after first render to prevent saves during load/resize
     const timer = setTimeout(() => {
-      setIsInitialized(true)
+      actions.setIsInitialized(true)
       // Store initial layout for comparison
       const initialLayout = config.portlets.map(portlet => ({
         i: portlet.id,
@@ -457,11 +348,11 @@ export default function DashboardGrid({
         w: portlet.w,
         h: portlet.h
       }))
-      setLastKnownLayout(initialLayout)
+      actions.setLastKnownLayout(initialLayout)
     }, 200) // Slightly longer delay to ensure responsive grid is fully settled
 
     return () => clearTimeout(timer)
-  }, [config.portlets])
+  }, [config.portlets, actions])
 
   // Scroll detection now handled by useScrollDetection hook above (lines 373-378)
   // This eliminates the old window.addEventListener('scroll') listener that was
@@ -471,7 +362,7 @@ export default function DashboardGrid({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedFilterId) {
-        setSelectedFilterId(null)
+        actions.exitFilterSelectionMode()
       }
     }
 
@@ -480,24 +371,7 @@ export default function DashboardGrid({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selectedFilterId])
-
-  // Helper function to check if layout actually changed (not just reordered due to responsive changes)
-  const hasLayoutActuallyChanged = useCallback((newLayout: any[]) => {
-    if (!isInitialized || lastKnownLayout.length === 0) return false
-    
-    // Compare each item's position and size
-    for (const newItem of newLayout) {
-      const oldItem = lastKnownLayout.find(item => item.i === newItem.i)
-      if (!oldItem) continue // New item, this is a change
-      
-      if (oldItem.x !== newItem.x || oldItem.y !== newItem.y || 
-          oldItem.w !== newItem.w || oldItem.h !== newItem.h) {
-        return true
-      }
-    }
-    return false
-  }, [isInitialized, lastKnownLayout])
+  }, [selectedFilterId, actions])
 
   const handleLayoutChange = useCallback((_layout: Layout) => {
     // This function is called for ALL layout changes
@@ -515,7 +389,7 @@ export default function DashboardGrid({
     // Only save if the layout actually changed from user interaction
     // Convert readonly Layout to mutable array for comparison
     const mutableLayout = [...layout]
-    if (!hasLayoutActuallyChanged(mutableLayout)) {
+    if (!actions.hasLayoutActuallyChanged(mutableLayout)) {
       return // No actual change, don't save
     }
 
@@ -545,7 +419,7 @@ export default function DashboardGrid({
     }
 
     // Update our tracking of the last known layout
-    setLastKnownLayout(mutableLayout)
+    actions.setLastKnownLayout(mutableLayout)
 
     // Update config state first
     onConfigChange?.(updatedConfig)
@@ -556,7 +430,7 @@ export default function DashboardGrid({
     } catch (error) {
       console.error('Auto-save failed after drag:', error)
     }
-  }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config, editable, isEditMode, onConfigChange, onSave, isInitialized, actions])
 
   // Handle resize stop - update config and save (resize is user interaction)
   const handleResizeStop = useCallback(async (layout: Layout, _oldItem: LayoutItem | null, _newItem: LayoutItem | null, _placeholder: LayoutItem | null, _e: Event, _element: HTMLElement | undefined) => {
@@ -565,7 +439,7 @@ export default function DashboardGrid({
     // Only proceed if the layout actually changed from user interaction
     // Convert readonly Layout to mutable array for comparison
     const mutableLayout = [...layout]
-    if (!hasLayoutActuallyChanged(mutableLayout)) {
+    if (!actions.hasLayoutActuallyChanged(mutableLayout)) {
       return // No actual change, don't save
     }
 
@@ -595,7 +469,7 @@ export default function DashboardGrid({
     }
 
     // Update our tracking of the last known layout
-    setLastKnownLayout(mutableLayout)
+    actions.setLastKnownLayout(mutableLayout)
 
     // Update config state
     onConfigChange(updatedConfig)
@@ -608,38 +482,9 @@ export default function DashboardGrid({
         console.error('Auto-save failed after resize:', error)
       }
     }
-  }, [config.portlets, config.layouts, editable, isEditMode, onConfigChange, onSave, isInitialized, hasLayoutActuallyChanged])
+  }, [config, editable, isEditMode, onConfigChange, onSave, isInitialized, actions])
 
-  const handleLayoutModeChange = useCallback(async (mode: DashboardLayoutMode) => {
-    if (!onConfigChange || mode === layoutMode || !canChangeLayoutMode || !allowedModes.includes(mode)) return
-
-    const baseRows = normalizeRows(
-      config.rows && config.rows.length > 0
-        ? config.rows
-        : convertPortletsToRows(config.portlets, gridSettings),
-      config.portlets,
-      gridSettings
-    )
-
-    const updatedPortlets = convertRowsToPortlets(baseRows, config.portlets)
-    const updatedConfig = {
-      ...config,
-      layoutMode: mode,
-      rows: baseRows,
-      portlets: updatedPortlets
-    }
-
-    setDraftRows(null)
-    onConfigChange(updatedConfig)
-
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed after layout mode switch:', error)
-      }
-    }
-  }, [allowedModes, canChangeLayoutMode, config, gridSettings, layoutMode, onConfigChange, onSave])
+  // handleLayoutModeChange now uses actions.handleLayoutModeChange from hook
 
   const startRowResize = useCallback((rowIndex: number, event: MouseEvent<HTMLDivElement>) => {
     if (!canEdit) return
@@ -661,19 +506,19 @@ export default function DashboardGrid({
           h: Math.max(gridSettings.minH, row.h + deltaUnits)
         }
       })
-      setDraftRows(nextRows)
+      actions.setDraftRows(nextRows)
     }
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       const finalRows = draftRowsRef.current ?? startRows
-      updateRowLayout(finalRows)
+      actions.updateRowLayout(finalRows)
     }
 
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
-  }, [canEdit, gridSettings, resolvedRows, updateRowLayout])
+  }, [canEdit, gridSettings, resolvedRows, actions])
 
   const startColumnResize = useCallback((rowIndex: number, columnIndex: number, event: MouseEvent<HTMLDivElement>) => {
     if (!canEdit) return
@@ -698,7 +543,7 @@ export default function DashboardGrid({
       const delta = moveEvent.clientX - startX
       const deltaUnits = Math.round(delta / unitWidth)
       if (deltaUnits === 0) {
-        setDraftRows(startRows)
+        actions.setDraftRows(startRows)
         return
       }
 
@@ -735,32 +580,32 @@ export default function DashboardGrid({
           columns: adjustRowWidths(nextColumns, gridSettings)
         }
       })
-      setDraftRows(nextRows)
+      actions.setDraftRows(nextRows)
     }
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       const finalRows = draftRowsRef.current ?? startRows
-      updateRowLayout(finalRows)
+      actions.updateRowLayout(finalRows)
     }
 
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
-  }, [canEdit, gridSettings, gridWidth, resolvedRows, updateRowLayout])
+  }, [canEdit, gridSettings, gridWidth, resolvedRows, actions])
 
   const handlePortletDragStart = useCallback((rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => {
     if (!canEdit) return
     dragStateRef.current = { rowIndex, colIndex, portletId }
-    setIsDraggingPortlet(true)
+    actions.setIsDraggingPortlet(true)
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', portletId)
-  }, [canEdit])
+  }, [canEdit, actions])
 
   const handlePortletDragEnd = useCallback(() => {
     dragStateRef.current = null
-    setIsDraggingPortlet(false)
-  }, [])
+    actions.setIsDraggingPortlet(false)
+  }, [actions])
 
   const handleRowDrop = useCallback((rowIndex: number, insertIndex: number | null) => {
     const dragState = dragStateRef.current
@@ -818,8 +663,8 @@ export default function DashboardGrid({
       }
     }
 
-    updateRowLayout(nextRows)
-  }, [gridSettings, resolvedRows, updateRowLayout])
+    actions.updateRowLayout(nextRows)
+  }, [gridSettings, resolvedRows, actions])
 
   const handleNewRowDrop = useCallback((insertIndex: number) => {
     const dragState = dragStateRef.current
@@ -850,129 +695,34 @@ export default function DashboardGrid({
     }
     nextRows.splice(insertIndex, 0, newRow)
 
-    updateRowLayout(nextRows)
-  }, [gridSettings, resolvedRows, updateRowLayout])
+    actions.updateRowLayout(nextRows)
+  }, [gridSettings, resolvedRows, actions])
 
-  // Handle portlet refresh
+  // Handle portlet refresh - use action from hook
   const handlePortletRefresh = useCallback((portletId: string) => {
-    const portletComponent = portletComponentRefs.current[portletId]
-    if (portletComponent && portletComponent.refresh) {
-      portletComponent.refresh()
-    }
-    if (onPortletRefresh) {
-      onPortletRefresh(portletId)
-    }
-  }, [onPortletRefresh])
+    actions.refreshPortlet(portletId)
+  }, [actions])
 
-  // Handle adding new portlet
-  const handleAddPortlet = useCallback(() => {
-    setEditingPortlet(null)
-    setIsPortletModalOpen(true)
-  }, [])
+  // Portlet CRUD operations - now use actions from useDashboard hook
+  // The hook handles all logic including row layout updates, saving, and modal state
 
-  // Handle editing existing portlet
-  const handleEditPortlet = useCallback((portlet: PortletConfig) => {
-    setEditingPortlet(portlet)
-    setIsPortletModalOpen(true)
-  }, [])
-
-  // Handle portlet save
+  // Handle portlet save with scroll-to-new behavior
   const handlePortletSave = useCallback(async (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => {
-    if (!onConfigChange) return
-
-    let updatedPortlets = [...config.portlets]
-    let isNewPortlet = false
-    let newPortletId: string | null = null
-
-    if (editingPortlet) {
-      // Editing existing portlet
-      const index = updatedPortlets.findIndex(p => p.id === editingPortlet.id)
-      if (index !== -1) {
-        updatedPortlets[index] = portletData as PortletConfig
-      }
-    } else {
-      // Adding new portlet
-      isNewPortlet = true
-      const newPortlet: PortletConfig = {
-        ...portletData,
-        id: `portlet-${Date.now()}`,
-        x: 0,
-        y: 0
-      } as PortletConfig
-
-      newPortletId = newPortlet.id
-
-      // Find the best position for the new portlet
-      const gridLayout = updatedPortlets.map(p => ({ i: p.id, x: p.x, y: p.y, w: p.w, h: p.h }))
-      let maxY = 0
-      gridLayout.forEach(item => {
-        if (item.y + item.h > maxY) {
-          maxY = item.y + item.h
-        }
-      })
-      newPortlet.y = maxY
-
-      updatedPortlets.push(newPortlet)
-    }
-
-    if (layoutMode === 'rows') {
-      const baseRows = resolvedRows.length > 0
-        ? resolvedRows.map(row => ({
-          ...row,
-          columns: row.columns.map(column => ({ ...column }))
-        }))
-        : normalizeRows(
-          config.rows ?? convertPortletsToRows(config.portlets, gridSettings),
-          updatedPortlets,
-          gridSettings
-        )
-
-      const nextRows = isNewPortlet && newPortletId
-        ? [
-          ...baseRows,
-          {
-            id: createRowId(),
-            h: Math.max(gridSettings.minH, 5),
-            columns: equalizeRowColumns([newPortletId], gridSettings)
-          }
-        ]
-        : baseRows
-
-      await updateRowLayout(nextRows, true, updatedPortlets)
-    } else {
-      const updatedConfig = {
-        ...config,
-        portlets: updatedPortlets
-      }
-
-      onConfigChange(updatedConfig)
-
-      // Auto-save if handler is provided
-      if (onSave) {
-        try {
-          await onSave(updatedConfig)
-        } catch (error) {
-          console.error('Auto-save failed:', error)
-        }
-      }
-    }
-
-    setIsPortletModalOpen(false)
-    setEditingPortlet(null)
+    const newPortletId = await actions.savePortlet(portletData)
+    actions.closePortletModal()
 
     // Scroll to the new portlet after DOM update
-    if (isNewPortlet && newPortletId) {
+    if (newPortletId) {
       setTimeout(() => {
         const scrollToPortlet = () => {
-          // Try both the ref and DOM query selector
-          let portletElement: HTMLElement | null = portletRefs.current[newPortletId!]
+          let portletElement: HTMLElement | null = portletRefs.current[newPortletId]
           if (!portletElement) {
             portletElement = document.querySelector(`[data-portlet-id="${newPortletId}"]`)
           }
-          
+
           if (portletElement) {
-            portletElement.scrollIntoView({ 
-              behavior: 'smooth', 
+            portletElement.scrollIntoView({
+              behavior: 'smooth',
               block: 'center',
               inline: 'nearest'
             })
@@ -980,7 +730,7 @@ export default function DashboardGrid({
           }
           return false
         }
-        
+
         // Try multiple times with increasing delays
         if (!scrollToPortlet()) {
           setTimeout(() => {
@@ -993,215 +743,77 @@ export default function DashboardGrid({
         }
       }, 200)
     }
-  }, [config, editingPortlet, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
+  }, [actions])
 
-  // Handle deleting portlet
+  // Handle deleting portlet - delegate to hook action
   const handleDeletePortlet = useCallback(async (portletId: string) => {
-    if (!onConfigChange) return
+    await actions.deletePortlet(portletId)
+  }, [actions])
 
-    if (window.confirm('Are you sure you want to delete this portlet?')) {
-      const updatedPortlets = config.portlets.filter(p => p.id !== portletId)
-
-      if (layoutMode === 'rows') {
-        const nextRows = resolvedRows
-          .map(row => ({
-            ...row,
-            columns: row.columns.filter(column => column.portletId !== portletId)
-          }))
-          .filter(row => row.columns.length > 0)
-          .map(row => ({
-            ...row,
-            columns: equalizeRowColumns(
-              row.columns.map(column => column.portletId),
-              gridSettings
-            )
-          }))
-
-        await updateRowLayout(nextRows, true, updatedPortlets)
-      } else {
-        const updatedConfig = {
-          ...config,
-          portlets: updatedPortlets
-        }
-        
-        onConfigChange(updatedConfig)
-
-        // Auto-save if handler is provided
-        if (onSave) {
-          try {
-            await onSave(updatedConfig)
-          } catch (error) {
-            console.error('Auto-save failed:', error)
-          }
-        }
-      }
-    }
-  }, [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
-
-  // Handle duplicating portlet
+  // Handle duplicating portlet - delegate to hook action with scroll to new portlet
   const handleDuplicatePortlet = useCallback(async (portletId: string) => {
-    if (!onConfigChange) return
-    
-    const originalPortlet = config.portlets.find(p => p.id === portletId)
-    if (!originalPortlet) return
-
-    // Create duplicated portlet with new ID and updated title
-    const duplicatedPortlet: PortletConfig = {
-      ...originalPortlet,
-      id: `portlet-${Date.now()}`,
-      title: `${originalPortlet.title} Duplicated`,
-      x: 0,
-      y: 0
-    }
-
-    // Find the best position for the duplicated portlet
-    const gridLayout = config.portlets.map(p => ({ i: p.id, x: p.x, y: p.y, w: p.w, h: p.h }))
-    let maxY = 0
-    gridLayout.forEach(item => {
-      if (item.y + item.h > maxY) {
-        maxY = item.y + item.h
-      }
-    })
-    duplicatedPortlet.y = maxY
-
-    const updatedPortlets = [...config.portlets, duplicatedPortlet]
-    if (layoutMode === 'rows') {
-      const baseRows = resolvedRows.map(row => ({
-        ...row,
-        columns: row.columns.map(column => ({ ...column }))
-      }))
-      const nextRows = [
-        ...baseRows,
-        {
-          id: createRowId(),
-          h: Math.max(gridSettings.minH, 5),
-          columns: equalizeRowColumns([duplicatedPortlet.id], gridSettings)
-        }
-      ]
-      await updateRowLayout(nextRows, true, updatedPortlets)
-    } else {
-      const updatedConfig = {
-        ...config,
-        portlets: updatedPortlets
-      }
-      
-      onConfigChange(updatedConfig)
-
-      // Auto-save if handler is provided
-      if (onSave) {
-        try {
-          await onSave(updatedConfig)
-        } catch (error) {
-          console.error('Auto-save failed:', error)
-        }
-      }
-    }
+    const newPortletId = await actions.duplicatePortlet(portletId)
 
     // Scroll to the duplicated portlet after DOM update
-    setTimeout(() => {
-      const scrollToPortlet = () => {
-        // Try both the ref and DOM query selector
-        let portletElement: HTMLElement | null = portletRefs.current[duplicatedPortlet.id]
-        if (!portletElement) {
-          portletElement = document.querySelector(`[data-portlet-id="${duplicatedPortlet.id}"]`)
-        }
-        
-        if (portletElement) {
-          portletElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
-          })
-          return true
-        }
-        return false
-      }
-      
-      // Try multiple times with increasing delays
-      if (!scrollToPortlet()) {
-        setTimeout(() => {
-          if (!scrollToPortlet()) {
-            setTimeout(() => {
-              scrollToPortlet()
-            }, 300)
+    if (newPortletId) {
+      setTimeout(() => {
+        const scrollToPortlet = () => {
+          let portletElement: HTMLElement | null = portletRefs.current[newPortletId]
+          if (!portletElement) {
+            portletElement = document.querySelector(`[data-portlet-id="${newPortletId}"]`)
           }
-        }, 200)
-      }
-    }, 200)
-  }, [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout])
 
-  // Handle color palette changes
-  const handlePaletteChange = useCallback(async (paletteName: string) => {
-    if (!onConfigChange) return
-
-    const updatedConfig = {
-      ...config,
-      colorPalette: paletteName
-    }
-
-    onConfigChange(updatedConfig)
-
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
-      }
-    }
-  }, [config, onConfigChange, onSave])
-
-  // Handle opening filter config modal
-  const handleOpenFilterConfig = useCallback((portlet: PortletConfig) => {
-    setFilterConfigPortlet(portlet)
-    setIsFilterConfigModalOpen(true)
-  }, [])
-
-  // Handle saving filter configuration
-  const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
-    if (!onConfigChange || !filterConfigPortlet) return
-
-    const updatedPortlets = config.portlets.map(p => {
-      if (p.id === filterConfigPortlet.id) {
-        return {
-          ...p,
-          dashboardFilterMapping: mapping
+          if (portletElement) {
+            portletElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest'
+            })
+            return true
+          }
+          return false
         }
-      }
-      return p
-    })
 
-    const updatedConfig = {
-      ...config,
-      portlets: updatedPortlets
+        // Try multiple times with increasing delays
+        if (!scrollToPortlet()) {
+          setTimeout(() => {
+            if (!scrollToPortlet()) {
+              setTimeout(() => {
+                scrollToPortlet()
+              }, 300)
+            }
+          }, 200)
+        }
+      }, 200)
     }
+  }, [actions])
 
-    onConfigChange(updatedConfig)
+  // Handle adding new portlet - delegate to hook action
+  const handleAddPortlet = useCallback(() => {
+    actions.openAddPortlet()
+  }, [actions])
 
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
-      }
-    }
-  }, [config, filterConfigPortlet, onConfigChange, onSave])
+  // Handle editing existing portlet - delegate to hook action
+  const handleEditPortlet = useCallback((portlet: PortletConfig) => {
+    actions.openEditPortlet(portlet)
+  }, [actions])
 
-  // Memoized callbacks for DashboardPortletCard to prevent re-renders
-  const handleDebugDataReady = useCallback((portletId: string, data: {
-    chartConfig: any
-    displayConfig: any
-    queryObject: any
-    data: any[]
-    chartType: string
-  }) => {
-    setDebugData(prev => ({
-      ...prev,
-      [portletId]: data
-    }))
-  }, [])
+  // Handle palette change - delegate to hook action
+  const handlePaletteChange = useCallback(async (paletteName: string) => {
+    await actions.handlePaletteChange(paletteName)
+  }, [actions])
 
+  // Handle opening filter config modal - delegate to hook action
+  const handleOpenFilterConfig = useCallback((portlet: PortletConfig) => {
+    actions.openFilterConfig(portlet)
+  }, [actions])
+
+  // Handle saving filter configuration - delegate to hook action
+  const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
+    await actions.saveFilterConfig(mapping)
+  }, [actions])
+
+  // Memoized ref callbacks for DashboardPortletCard
   const handleSetPortletRef = useCallback((portletId: string, element: HTMLDivElement | null) => {
     portletRefs.current[portletId] = element
   }, [])
@@ -1215,89 +827,44 @@ export default function DashboardGrid({
     RefreshIcon, EditIcon, DeleteIcon, CopyIcon, FilterIcon
   }), [])
 
-  // Handle toggling filter for a portlet (used in filter selection mode)
+  // Handle toggling filter for a portlet - delegate to hook action
   const handleToggleFilterForPortlet = useCallback(async (portletId: string, filterId: string) => {
-    if (!onConfigChange) return
+    await actions.toggleFilterForPortlet(portletId, filterId)
+  }, [actions])
 
-    const updatedPortlets = config.portlets.map(p => {
-      if (p.id === portletId) {
-        const currentMapping = p.dashboardFilterMapping || []
-        const hasFilter = currentMapping.includes(filterId)
-
-        return {
-          ...p,
-          dashboardFilterMapping: hasFilter
-            ? currentMapping.filter(id => id !== filterId)
-            : [...currentMapping, filterId]
-        }
-      }
-      return p
-    })
-
-    const updatedConfig = {
-      ...config,
-      portlets: updatedPortlets
-    }
-
-    onConfigChange(updatedConfig)
-
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
-      }
-    }
-  }, [config, onConfigChange, onSave])
-
-  // Handle filter selection (click on filter chip)
+  // Handle filter selection (click on filter chip) - delegate to hook action
   const handleFilterSelect = useCallback((filterId: string) => {
-    // Toggle selection: if already selected, deselect
-    setSelectedFilterId(prev => prev === filterId ? null : filterId)
-  }, [])
+    actions.selectFilter(filterId)
+  }, [actions])
 
-  // Handle select all - apply current filter to all portlets
+  // Handle select all - delegate to hook action
   const handleSelectAllForFilter = useCallback(async (filterId: string) => {
-    if (!onConfigChange) return
+    await actions.selectAllForFilter(filterId)
+  }, [actions])
 
-    const updatedPortlets = config.portlets.map(p => {
-      const currentMapping = p.dashboardFilterMapping || []
-      // Add the filter if it's not already in the mapping
-      if (!currentMapping.includes(filterId)) {
-        return {
-          ...p,
-          dashboardFilterMapping: [...currentMapping, filterId]
-        }
-      }
-      return p
-    })
+  // selectedFilter is now computed by the hook
 
-    const updatedConfig = {
-      ...config,
-      portlets: updatedPortlets
-    }
-
-    onConfigChange(updatedConfig)
-
-    // Auto-save if handler is provided
-    if (onSave) {
-      try {
-        await onSave(updatedConfig)
-      } catch (error) {
-        console.error('Auto-save failed:', error)
-      }
-    }
-  }, [config, onConfigChange, onSave])
-
-  // Get the selected filter object
-  const selectedFilter = selectedFilterId
-    ? dashboardFilters?.find(f => f.id === selectedFilterId)
-    : null
+  // Memoized callbacks object for DashboardPortletCard
+  // This groups action callbacks into a stable object to reduce prop drilling
+  const portletCallbacks = useMemo(() => ({
+    onToggleFilter: handleToggleFilterForPortlet,
+    onRefresh: handlePortletRefresh,
+    onDuplicate: handleDuplicatePortlet,
+    onEdit: handleEditPortlet,
+    onDelete: handleDeletePortlet,
+    onOpenFilterConfig: handleOpenFilterConfig,
+  }), [
+    handleToggleFilterForPortlet,
+    handlePortletRefresh,
+    handleDuplicatePortlet,
+    handleEditPortlet,
+    handleDeletePortlet,
+    handleOpenFilterConfig,
+  ])
 
   // Memoize renderPortletCard to prevent unnecessary re-renders of DashboardPortletCard
   // IMPORTANT: Must be defined before any early returns to follow Rules of Hooks
-  // All callback props are already memoized with useCallback above
+  // State props (isEditMode, selectedFilterId, debugData) now read from store in component
   const renderPortletCard = useCallback((
     portlet: PortletConfig,
     containerProps?: HTMLAttributes<HTMLDivElement>,
@@ -1306,42 +873,24 @@ export default function DashboardGrid({
     <DashboardPortletCard
       portlet={portlet}
       editable={editable}
-      isEditMode={isEditMode}
-      selectedFilterId={selectedFilterId}
-      debugData={debugData[portlet.id]}
       dashboardFilters={dashboardFilters}
       configEagerLoad={config.eagerLoad}
       loadingComponent={loadingComponent}
       colorPalette={colorPalette}
       containerProps={containerProps}
       headerProps={headerProps}
-      onToggleFilter={handleToggleFilterForPortlet}
-      onRefresh={handlePortletRefresh}
-      onDuplicate={handleDuplicatePortlet}
-      onEdit={handleEditPortlet}
-      onDelete={handleDeletePortlet}
-      onOpenFilterConfig={handleOpenFilterConfig}
-      onDebugDataReady={handleDebugDataReady}
+      callbacks={portletCallbacks}
       setPortletRef={handleSetPortletRef}
       setPortletComponentRef={handleSetPortletComponentRef}
       icons={portletIcons}
     />
   ), [
     editable,
-    isEditMode,
-    selectedFilterId,
-    debugData,
     dashboardFilters,
     config.eagerLoad,
     loadingComponent,
     colorPalette,
-    handleToggleFilterForPortlet,
-    handlePortletRefresh,
-    handleDuplicatePortlet,
-    handleEditPortlet,
-    handleDeletePortlet,
-    handleOpenFilterConfig,
-    handleDebugDataReady,
+    portletCallbacks,
     handleSetPortletRef,
     handleSetPortletComponentRef,
     portletIcons
@@ -1373,34 +922,17 @@ export default function DashboardGrid({
           </div>
         </div>
         
-        {/* Portlet Modal - conditionally render new or old modal based on feature flag */}
-        {features.useAnalysisBuilder ? (
-          <PortletAnalysisModal
-            isOpen={isPortletModalOpen}
-            onClose={() => {
-              setIsPortletModalOpen(false)
-              setEditingPortlet(null)
-            }}
-            onSave={handlePortletSave}
-            portlet={editingPortlet}
-            title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-            submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-            colorPalette={colorPalette}
-          />
-        ) : (
-          <PortletEditModal
-            isOpen={isPortletModalOpen}
-            onClose={() => {
-              setIsPortletModalOpen(false)
-              setEditingPortlet(null)
-            }}
-            onSave={handlePortletSave}
-            portlet={editingPortlet}
-            title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-            submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-            colorPalette={colorPalette}
-          />
-        )}
+        {/* Portlet Modal */}
+        <PortletAnalysisModal
+          isOpen={isPortletModalOpen}
+          onClose={actions.closePortletModal}
+          onSave={handlePortletSave}
+          portlet={editingPortlet}
+          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+          colorPalette={colorPalette}
+          dashboardFilters={dashboardFilters}
+        />
       </>
     )
   }
@@ -1500,7 +1032,7 @@ export default function DashboardGrid({
         >
           <div className="flex items-center gap-4">
             <button
-              onClick={() => isResponsiveEditable && setIsEditMode(!isEditMode)}
+              onClick={() => isResponsiveEditable && actions.toggleEditMode()}
               disabled={!isResponsiveEditable}
               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
                 !isResponsiveEditable
@@ -1520,7 +1052,7 @@ export default function DashboardGrid({
             {isEditMode && allowedModes.length > 1 && (
               <div className="inline-flex rounded-md border border-dc-border overflow-hidden whitespace-nowrap">
                 <button
-                  onClick={() => handleLayoutModeChange('grid')}
+                  onClick={() => actions.handleLayoutModeChange('grid')}
                   disabled={!canChangeLayoutMode}
                   className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
                     layoutMode === 'grid'
@@ -1532,7 +1064,7 @@ export default function DashboardGrid({
                   Grid
                 </button>
                 <button
-                  onClick={() => handleLayoutModeChange('rows')}
+                  onClick={() => actions.handleLayoutModeChange('rows')}
                   disabled={!canChangeLayoutMode}
                   className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
                     layoutMode === 'rows'
@@ -1589,14 +1121,14 @@ export default function DashboardGrid({
           isEditBarVisible={features.editToolbar === 'floating' ? false : isEditBarVisible}
           position={features.floatingToolbarPosition || 'right'}
           isEditMode={isEditMode}
-          onEditModeToggle={() => isResponsiveEditable && setIsEditMode(!isEditMode)}
+          onEditModeToggle={() => isResponsiveEditable && actions.toggleEditMode()}
           layoutMode={layoutMode}
-          onLayoutModeChange={handleLayoutModeChange}
+          onLayoutModeChange={actions.handleLayoutModeChange}
           allowedModes={allowedModes}
           canChangeLayoutMode={canChangeLayoutMode}
           currentPalette={config.colorPalette || 'default'}
-          onPaletteChange={handlePaletteChange}
-          onAddPortlet={handleAddPortlet}
+          onPaletteChange={actions.handlePaletteChange}
+          onAddPortlet={actions.openAddPortlet}
         />
       )}
 
@@ -1651,7 +1183,7 @@ export default function DashboardGrid({
                 Select All
               </button>
               <button
-                onClick={() => setSelectedFilterId(null)}
+                onClick={() => actions.exitFilterSelectionMode()}
                 className="px-3 py-1 rounded-md transition-colors text-sm font-medium"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -1683,46 +1215,45 @@ export default function DashboardGrid({
         renderActiveLayout
       )}
       
-      {/* Portlet Modal - conditionally render new or old modal based on feature flag */}
-      {features.useAnalysisBuilder ? (
-        <PortletAnalysisModal
-          isOpen={isPortletModalOpen}
-          onClose={() => {
-            setIsPortletModalOpen(false)
-            setEditingPortlet(null)
-          }}
-          onSave={handlePortletSave}
-          portlet={editingPortlet}
-          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-          colorPalette={colorPalette}
-        />
-      ) : (
-        <PortletEditModal
-          isOpen={isPortletModalOpen}
-          onClose={() => {
-            setIsPortletModalOpen(false)
-            setEditingPortlet(null)
-          }}
-          onSave={handlePortletSave}
-          portlet={editingPortlet}
-          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
-          colorPalette={colorPalette}
-        />
-      )}
+      {/* Portlet Modal */}
+      <PortletAnalysisModal
+        isOpen={isPortletModalOpen}
+        onClose={actions.closePortletModal}
+        onSave={handlePortletSave}
+        portlet={editingPortlet}
+        title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
+        submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+        colorPalette={colorPalette}
+        dashboardFilters={dashboardFilters}
+      />
 
       {/* Filter Configuration Modal */}
       <PortletFilterConfigModal
         isOpen={isFilterConfigModalOpen}
-        onClose={() => {
-          setIsFilterConfigModalOpen(false)
-          setFilterConfigPortlet(null)
-        }}
+        onClose={actions.closeFilterConfig}
         dashboardFilters={dashboardFilters || []}
         currentMapping={filterConfigPortlet?.dashboardFilterMapping || []}
         onSave={handleSaveFilterConfig}
         portletTitle={filterConfigPortlet?.title || ''}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmPortletId}
+        onClose={actions.closeDeleteConfirm}
+        onConfirm={actions.confirmDelete}
+        title="Delete Portlet"
+        message={
+          <>
+            Are you sure you want to delete{' '}
+            <strong>
+              {config.portlets.find(p => p.id === deleteConfirmPortletId)?.title || 'this portlet'}
+            </strong>
+            ? This action cannot be undone.
+          </>
+        }
+        confirmText="Delete"
+        confirmVariant="danger"
       />
       </div>
     </ScrollContainerProvider>

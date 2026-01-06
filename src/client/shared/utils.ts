@@ -109,6 +109,14 @@ export function createOrFilter(filters: Filter[] = []): GroupFilter {
   }
 }
 
+/**
+ * Clean up filters - backward compatible (returns filters unchanged)
+ * @deprecated This function is no longer used as we now support filtering on any schema field
+ */
+export function cleanupFilters(filters: Filter[], _query?: CubeQuery): Filter[] {
+  return filters || []
+}
+
 // ============================================================================
 // Filter transformation functions
 // ============================================================================

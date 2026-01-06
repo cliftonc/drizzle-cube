@@ -18,27 +18,37 @@ vi.mock('react-intersection-observer', () => ({
   }))
 }))
 
-// Mock useCubeQuery
-let mockUseCubeQueryResult = {
+// Mock useCubeLoadQuery
+let mockUseCubeLoadQueryResult = {
   resultSet: null as CubeResultSet | null,
+  rawData: null as unknown[] | null,
   isLoading: false,
-  error: null as Error | null
+  isFetching: false,
+  isDebouncing: false,
+  error: null as Error | null,
+  debouncedQuery: null,
+  isValidQuery: false,
+  refetch: vi.fn(),
+  clearCache: vi.fn()
 }
-vi.mock('../../src/client/hooks/useCubeQuery', () => ({
-  useCubeQuery: vi.fn(() => mockUseCubeQueryResult)
+vi.mock('../../src/client/hooks/queries/useCubeLoadQuery', () => ({
+  useCubeLoadQuery: vi.fn(() => mockUseCubeLoadQueryResult)
 }))
 
-// Mock useMultiCubeQuery (used for multi-query portlets)
-let mockUseMultiCubeQueryResult = {
-  data: null as unknown[] | null,
-  resultSets: null as CubeResultSet[] | null,
+// Mock useMultiCubeLoadQuery (used for multi-query portlets)
+let mockUseMultiCubeLoadQueryResult = {
+  mergedData: null as unknown[] | null,
+  queryResults: [] as any[],
   isLoading: false,
-  error: null as Error | null,
+  isFetching: false,
+  isDebouncing: false,
   errors: [] as (Error | null)[],
-  queryId: null as string | null
+  isAnyLoading: false,
+  areAllComplete: true,
+  refetch: vi.fn()
 }
-vi.mock('../../src/client/hooks/useMultiCubeQuery', () => ({
-  useMultiCubeQuery: vi.fn(() => mockUseMultiCubeQueryResult)
+vi.mock('../../src/client/hooks/queries/useMultiCubeLoadQuery', () => ({
+  useMultiCubeLoadQuery: vi.fn(() => mockUseMultiCubeLoadQueryResult)
 }))
 
 // Mock useScrollContainer
@@ -117,26 +127,36 @@ describe('AnalyticsPortlet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInView = true
-    mockUseCubeQueryResult = {
+    mockUseCubeLoadQueryResult = {
       resultSet: null,
+      rawData: null,
       isLoading: false,
-      error: null
-    }
-    mockUseMultiCubeQueryResult = {
-      data: null,
-      resultSets: null,
-      isLoading: false,
+      isFetching: false,
+      isDebouncing: false,
       error: null,
+      debouncedQuery: null,
+      isValidQuery: false,
+      refetch: vi.fn(),
+      clearCache: vi.fn()
+    }
+    mockUseMultiCubeLoadQueryResult = {
+      mergedData: null,
+      queryResults: [],
+      isLoading: false,
+      isFetching: false,
+      isDebouncing: false,
       errors: [],
-      queryId: null
+      isAnyLoading: false,
+      areAllComplete: true,
+      refetch: vi.fn()
     }
   })
 
   describe('query execution', () => {
-    it('should parse query JSON and pass to useCubeQuery', async () => {
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
+    it('should parse query JSON and pass to useCubeLoadQuery', async () => {
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
       const mockQuery = { measures: ['Test.count'] }
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -146,8 +166,8 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      expect(useCubeQuery).toHaveBeenCalled()
-      const call = (useCubeQuery as any).mock.calls[0]
+      expect(useCubeLoadQuery).toHaveBeenCalled()
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[0]).toMatchObject({
         measures: ['Test.count']
       })
@@ -170,9 +190,9 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should add refresh counter to query for re-fetching', async () => {
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
       const mockQuery = { measures: ['Test.count'] }
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -182,7 +202,7 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const call = (useCubeQuery as any).mock.calls[0]
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[0]).toHaveProperty('__refresh_counter')
     })
   })
@@ -190,7 +210,7 @@ describe('AnalyticsPortlet', () => {
   describe('lazy loading', () => {
     it('should not query when not in view and eagerLoad is false', async () => {
       mockInView = false
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
 
       render(
         <AnalyticsPortlet
@@ -202,14 +222,14 @@ describe('AnalyticsPortlet', () => {
       )
 
       // Query should be skipped when not in view and eagerLoad is false
-      const call = (useCubeQuery as any).mock.calls[0]
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: true })
     })
 
     it('should query immediately when eagerLoad is true', async () => {
       mockInView = false // Not in view, but eagerLoad overrides
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -220,14 +240,14 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const call = (useCubeQuery as any).mock.calls[0]
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: false })
     })
 
     it('should query when in view', async () => {
       mockInView = true
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -238,7 +258,7 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const call = (useCubeQuery as any).mock.calls[0]
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: false })
     })
   })
@@ -246,7 +266,7 @@ describe('AnalyticsPortlet', () => {
   describe('refresh mechanism', () => {
     it('should expose refresh function through ref', async () => {
       const ref = createRef<{ refresh: () => void }>()
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -263,8 +283,8 @@ describe('AnalyticsPortlet', () => {
 
     it('should increment refresh counter when refresh is called', async () => {
       const ref = createRef<{ refresh: () => void }>()
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet
@@ -275,8 +295,8 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const initialCallCount = (useCubeQuery as any).mock.calls.length
-      const initialCall = (useCubeQuery as any).mock.calls[initialCallCount - 1]
+      const initialCallCount = (useCubeLoadQuery as any).mock.calls.length
+      const initialCall = (useCubeLoadQuery as any).mock.calls[initialCallCount - 1]
       const initialRefreshCounter = initialCall[0].__refresh_counter
 
       act(() => {
@@ -284,8 +304,8 @@ describe('AnalyticsPortlet', () => {
       })
 
       await waitFor(() => {
-        const finalCallCount = (useCubeQuery as any).mock.calls.length
-        const finalCall = (useCubeQuery as any).mock.calls[finalCallCount - 1]
+        const finalCallCount = (useCubeLoadQuery as any).mock.calls.length
+        const finalCall = (useCubeLoadQuery as any).mock.calls[finalCallCount - 1]
         expect(finalCall[0].__refresh_counter).toBe(initialRefreshCounter + 1)
       })
     })
@@ -293,7 +313,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('chart rendering', () => {
     it('should render bar chart when chartType is bar', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       const { getByTestId } = render(
         <AnalyticsPortlet
@@ -307,7 +327,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should render line chart when chartType is line', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       const { getByTestId } = render(
         <AnalyticsPortlet
@@ -321,7 +341,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should render pie chart when chartType is pie', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       const { getByTestId } = render(
         <AnalyticsPortlet
@@ -335,7 +355,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should render data table when chartType is table', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       const { getByTestId } = render(
         <AnalyticsPortlet
@@ -349,7 +369,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should pass chartConfig to chart component', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
       const chartConfig = { yAxis: ['Test.count'], xAxis: ['Test.name'] }
 
       const { getByTestId } = render(
@@ -365,7 +385,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should show unsupported chart type message for unknown types', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       const { container } = render(
         <AnalyticsPortlet
@@ -381,7 +401,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('loading state', () => {
     it('should show loading indicator while loading', () => {
-      mockUseCubeQueryResult.isLoading = true
+      mockUseCubeLoadQueryResult.isLoading = true
 
       const { getByTestId } = render(
         <AnalyticsPortlet
@@ -395,7 +415,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should show custom loading component if provided', () => {
-      mockUseCubeQueryResult.isLoading = true
+      mockUseCubeLoadQueryResult.isLoading = true
       const customLoader = <div data-testid="custom-loader">Custom Loading...</div>
 
       const { getByTestId } = render(
@@ -413,7 +433,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('error state', () => {
     it('should show error message when query fails', () => {
-      mockUseCubeQueryResult.error = new Error('Query failed')
+      mockUseCubeLoadQueryResult.error = new Error('Query failed')
 
       const { container } = render(
         <AnalyticsPortlet
@@ -428,7 +448,7 @@ describe('AnalyticsPortlet', () => {
     })
 
     it('should show retry button on error', () => {
-      mockUseCubeQueryResult.error = new Error('Query failed')
+      mockUseCubeLoadQueryResult.error = new Error('Query failed')
 
       const { container } = render(
         <AnalyticsPortlet
@@ -446,7 +466,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('configuration required state', () => {
     it('should show configuration required when chartConfig is missing for mandatory fields', () => {
-      mockUseCubeQueryResult.resultSet = createMockResultSet([])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([])
 
       const { container } = render(
         <AnalyticsPortlet
@@ -462,7 +482,7 @@ describe('AnalyticsPortlet', () => {
 
   describe('skip query charts', () => {
     it('should not execute query for markdown charts', async () => {
-      const { useCubeQuery } = await import('../../src/client/hooks/useCubeQuery')
+      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
 
       // The mock for useChartConfig already returns skipQuery: true for markdown
       // (see mock at top of file)
@@ -475,7 +495,7 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const call = (useCubeQuery as any).mock.calls[0]
+      const call = (useCubeLoadQuery as any).mock.calls[0]
       expect(call[1]).toMatchObject({ skip: true })
     })
   })
@@ -484,7 +504,7 @@ describe('AnalyticsPortlet', () => {
     it('should call onDebugDataReady when result is available', async () => {
       const onDebugDataReady = vi.fn()
       const chartConfig = { yAxis: ['Test.count'] }
-      mockUseCubeQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
+      mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
         <AnalyticsPortlet

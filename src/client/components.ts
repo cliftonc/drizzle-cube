@@ -14,7 +14,6 @@ export { default as DashboardGrid } from './components/DashboardGrid'
 export { default as PortletContainer } from './components/PortletContainer'
 
 // Modals and configuration
-export { default as PortletEditModal } from './components/PortletEditModal'
 export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 

@@ -1,14 +1,33 @@
 /**
  * Drizzle Cube React Hooks
- * 
+ *
  * React hooks only - for applications that need data fetching hooks
  * without UI components.
  */
 
-// Hooks
-export { useCubeQuery } from './hooks/useCubeQuery'
-export { useCubeMeta } from './hooks/useCubeMeta'
+// TanStack Query hooks for data fetching
+export {
+  useCubeMetaQuery,
+  useCubeLoadQuery,
+  useMultiCubeLoadQuery,
+  useDryRunQuery,
+  useMultiDryRunQueries,
+  useDryRunQueries,
+} from './hooks/queries'
+export type {
+  UseCubeMetaQueryOptions,
+  UseCubeMetaQueryResult,
+  UseCubeLoadQueryOptions,
+  UseCubeLoadQueryResult,
+  UseMultiCubeLoadQueryOptions,
+  UseMultiCubeLoadQueryResult,
+  DebugDataEntry,
+} from './hooks/queries'
+
+// Other hooks
 export { useDebounce } from './hooks/useDebounce'
+export { useDirtyStateTracking } from './hooks/useDirtyStateTracking'
+export type { UseDirtyStateTrackingOptions, UseDirtyStateTrackingResult } from './hooks/useDirtyStateTracking'
 export { useFilterValues } from './hooks/useFilterValues'
 export { useResponsiveDashboard } from './hooks/useResponsiveDashboard'
 export type { DashboardDisplayMode, UseResponsiveDashboardResult } from './hooks/useResponsiveDashboard'

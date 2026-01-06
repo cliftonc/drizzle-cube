@@ -45,8 +45,9 @@ export function useScrollDetection(
   const timeoutRef = useRef<number>()
 
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    // Note: containerRef is intentionally not in deps - refs are stable and we access .current inside
+    const scrollContainer = containerRef.current
+    if (!scrollContainer) return
 
     const handleScroll = () => {
       // Clear existing timeout
@@ -56,7 +57,7 @@ export function useScrollDetection(
 
       // Debounce scroll updates
       timeoutRef.current = window.setTimeout(() => {
-        const scrollTop = container.scrollTop
+        const scrollTop = scrollContainer.scrollTop
         const shouldBeScrolled = scrollTop > threshold
 
         // Only update state if value actually changed
@@ -65,19 +66,20 @@ export function useScrollDetection(
     }
 
     // Attach scroll listener to actual container (not window!)
-    container.addEventListener('scroll', handleScroll, { passive: true })
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
 
     // Initial check
     handleScroll()
 
     // Cleanup
     return () => {
-      container.removeEventListener('scroll', handleScroll)
+      scrollContainer.removeEventListener('scroll', handleScroll)
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [threshold, debounceMs, container])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threshold, debounceMs, container]) // containerRef is stable, container triggers re-init
 
   return isScrolled
 }

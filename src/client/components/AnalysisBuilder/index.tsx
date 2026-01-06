@@ -41,7 +41,11 @@ import type { MetaResponse } from '../../shared/types'
 /**
  * Inner component that uses the store (must be inside provider)
  */
-const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
+interface AnalysisBuilderInnerProps extends Omit<AnalysisBuilderProps, 'initialQuery' | 'initialChartConfig' | 'disableLocalStorage'> {
+  hideShare?: boolean
+}
+
+const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInnerProps>(
   (
     {
       className = '',
@@ -49,6 +53,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps
       initialData,
       colorPalette: externalColorPalette,
       hideSettings: _hideSettings = false,
+      hideShare = false,
       onQueryChange,
       onChartConfigChange
     },
@@ -98,7 +103,6 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps
             metrics: newState.metrics,
             breakdowns: newState.breakdowns,
             filters: newState.filters,
-            resultsStale: true,
           }
         })
       },
@@ -212,9 +216,9 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps
               hasMetrics={analysis.queryState.metrics.length > 0}
               // Debug props - per-query debug data for multi-query mode
               debugDataPerQuery={analysis.debugDataPerQuery}
-              // Share props
-              onShareClick={handleShare}
-              canShare={analysis.isValidQuery}
+              // Share props (hidden when viewing shared analysis with initialQuery)
+              onShareClick={hideShare ? undefined : handleShare}
+              canShare={hideShare ? false : analysis.isValidQuery}
               shareButtonState={shareButtonState}
               // Refresh props
               onRefreshClick={analysis.actions.refetch}
@@ -316,13 +320,16 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       ...innerProps
     } = props
 
+    // Hide share button when using initialQuery (e.g., viewing a shared analysis)
+    const hideShare = !!initialQuery
+
     return (
       <AnalysisBuilderStoreProvider
         initialQuery={initialQuery}
         initialChartConfig={initialChartConfig}
         disableLocalStorage={disableLocalStorage || !!initialQuery}
       >
-        <AnalysisBuilderInner ref={ref} {...innerProps} />
+        <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>
     )
   }

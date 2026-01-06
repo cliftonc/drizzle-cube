@@ -3,9 +3,8 @@
  * Tests state initialization and localStorage persistence functions
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import type { AnalysisBuilderState, AnalysisBuilderStorageState, MetricItem, BreakdownItem } from '../../../src/client/components/AnalysisBuilder/types'
-import type { Filter } from '../../../src/client/types'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import type { AnalysisBuilderState, AnalysisBuilderStorageState } from '../../../src/client/components/AnalysisBuilder/types'
 
 // Storage key constant (must match the one in index.tsx)
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'

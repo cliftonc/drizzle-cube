@@ -37,27 +37,31 @@ const BarChart = React.memo(function BarChart({
 
   // Validate chartConfig - support both legacy and new formats
   // Do validation but don't early return yet (hooks must come first)
-  let xAxisField: string | undefined
-  let yAxisFields: string[] = []
-  let seriesFields: string[] = []
-  let configError: string | null = null
+  const { xAxisField, yAxisFields, seriesFields, configError } = useMemo(() => {
+    let xAxisField: string | undefined
+    let yAxisFields: string[] = []
+    let seriesFields: string[] = []
+    let configError: string | null = null
 
-  if (chartConfig?.xAxis && chartConfig?.yAxis) {
-    // New format
-    xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
-    yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
-    seriesFields = chartConfig.series || []
-  } else if (chartConfig?.x && chartConfig?.y) {
-    // Legacy format
-    xAxisField = chartConfig.x
-    yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
-  } else {
-    configError = 'Invalid or missing chart axis configuration'
-  }
+    if (chartConfig?.xAxis && chartConfig?.yAxis) {
+      // New format
+      xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis
+      yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]
+      seriesFields = chartConfig.series || []
+    } else if (chartConfig?.x && chartConfig?.y) {
+      // Legacy format
+      xAxisField = chartConfig.x
+      yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
+    } else {
+      configError = 'Invalid or missing chart axis configuration'
+    }
 
-  if (!configError && (!xAxisField || !yAxisFields || yAxisFields.length === 0)) {
-    configError = 'Missing required X-axis or Y-axis fields'
-  }
+    if (!configError && (!xAxisField || !yAxisFields || yAxisFields.length === 0)) {
+      configError = 'Missing required X-axis or Y-axis fields'
+    }
+
+    return { xAxisField, yAxisFields, seriesFields, configError }
+  }, [chartConfig])
 
   // Transform data (will be empty arrays if config is invalid)
   const { data: transformedData, seriesKeys } = useMemo(() => {

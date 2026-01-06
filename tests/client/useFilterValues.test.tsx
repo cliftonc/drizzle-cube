@@ -6,14 +6,14 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest'
 import { useFilterValues } from '../../src/client/hooks/useFilterValues'
-import { useCubeQuery } from '../../src/client/hooks/useCubeQuery'
+import { useCubeLoadQuery } from '../../src/client/hooks/queries/useCubeLoadQuery'
 
-// Mock the useCubeQuery hook
-vi.mock('../../src/client/hooks/useCubeQuery', () => ({
-  useCubeQuery: vi.fn()
+// Mock the useCubeLoadQuery hook
+vi.mock('../../src/client/hooks/queries/useCubeLoadQuery', () => ({
+  useCubeLoadQuery: vi.fn()
 }))
 
-const mockUseCubeQuery = vi.mocked(useCubeQuery)
+const mockUseCubeLoadQuery = vi.mocked(useCubeLoadQuery)
 
 // Mock console.error to avoid noise during error tests
 const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -37,11 +37,17 @@ describe('useFilterValues', () => {
     }
 
     // Default mock return value
-    mockUseCubeQuery.mockReturnValue({
+    mockUseCubeLoadQuery.mockReturnValue({
       resultSet: null,
+      rawData: null,
       isLoading: false,
+      isFetching: false,
+      isDebouncing: false,
       error: null,
-      queryId: null
+      debouncedQuery: null,
+      isValidQuery: false,
+      refetch: vi.fn(),
+      clearCache: vi.fn()
     })
   })
 
@@ -65,34 +71,47 @@ describe('useFilterValues', () => {
       expect(result.current.loading).toBe(false)
     })
 
-    it('should call useCubeQuery with skip when field is null', () => {
+    it('should call useCubeLoadQuery with skip when field is null', () => {
       renderHook(() => useFilterValues(null))
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(null, {
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(null, {
         skip: true,
-        resetResultSetOnChange: true
+        debounceMs: 150,
+        keepPreviousData: true
       })
     })
 
-    it('should call useCubeQuery with skip when disabled', () => {
+    it('should call useCubeLoadQuery with skip when disabled', () => {
       renderHook(() => useFilterValues('Users.name', false))
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(null, {
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(null, {
         skip: true,
-        resetResultSetOnChange: true
+        debounceMs: 150,
+        keepPreviousData: true
       })
     })
   })
 
   describe('value extraction', () => {
     it('should extract unique values from result set', () => {
-      const queryId = 'test-query-1'
-      
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+      // Add rawData method to mock for deduplication tracking
+      const rawDataResult = [{ 'Users.name': 'Alice' }, { 'Users.name': 'Bob' }]
+      const resultSetWithRawData = {
+        ...mockResultSet,
+        rawData: () => rawDataResult
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: resultSetWithRawData,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -101,6 +120,7 @@ describe('useFilterValues', () => {
     })
 
     it('should filter out null, undefined, and empty values', () => {
+      const rawDataResult = [{ 'Users.status': 'active' }]
       const resultSetWithNulls = {
         tablePivot: () => [
           { 'Users.status': 'active' },
@@ -109,14 +129,21 @@ describe('useFilterValues', () => {
           { 'Users.status': '' },
           { 'Users.status': 'inactive' },
           { 'Users.status': 'pending' }
-        ]
+        ],
+        rawData: () => rawDataResult
       }
 
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: resultSetWithNulls,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: 'test-query-nulls'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.status'))
@@ -125,20 +152,28 @@ describe('useFilterValues', () => {
     })
 
     it('should handle different data types', () => {
+      const rawDataResult = [{ 'Orders.amount': 100 }]
       const mixedDataResultSet = {
         tablePivot: () => [
           { 'Orders.amount': 100 },
           { 'Orders.amount': 200.50 },
           { 'Orders.amount': 0 }, // Should include zero
           { 'Orders.amount': 300 }
-        ]
+        ],
+        rawData: () => rawDataResult
       }
 
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: mixedDataResultSet,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: 'test-query-mixed'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Orders.amount'))
@@ -147,20 +182,28 @@ describe('useFilterValues', () => {
     })
 
     it('should handle boolean values', () => {
+      const rawDataResult = [{ 'Users.isActive': true }]
       const booleanResultSet = {
         tablePivot: () => [
           { 'Users.isActive': true },
           { 'Users.isActive': false },
           { 'Users.isActive': true }, // Duplicate
           { 'Users.isActive': false } // Duplicate
-        ]
+        ],
+        rawData: () => rawDataResult
       }
 
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: booleanResultSet,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: 'test-query-boolean'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.isActive'))
@@ -170,12 +213,18 @@ describe('useFilterValues', () => {
   })
 
   describe('loading state', () => {
-    it('should reflect loading state from useCubeQuery', () => {
-      mockUseCubeQuery.mockReturnValue({
+    it('should reflect loading state from useCubeLoadQuery', () => {
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: null,
+        rawData: null,
         isLoading: true,
+        isFetching: true,
+        isDebouncing: false,
         error: null,
-        queryId: 'loading-query'
+        debouncedQuery: null,
+        isValidQuery: false,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -184,11 +233,23 @@ describe('useFilterValues', () => {
     })
 
     it('should not process results while loading', () => {
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+      const rawDataResult = [{ 'Users.name': 'Alice' }]
+      const resultSetWithRawData = {
+        ...mockResultSet,
+        rawData: () => rawDataResult
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: resultSetWithRawData,
+        rawData: rawDataResult,
         isLoading: true,
+        isFetching: true,
+        isDebouncing: false,
         error: null,
-        queryId: 'loading-query'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -201,12 +262,18 @@ describe('useFilterValues', () => {
   describe('error handling', () => {
     it('should handle query errors', () => {
       const queryError = new Error('Query failed')
-      
-      mockUseCubeQuery.mockReturnValue({
+
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: null,
+        rawData: null,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: queryError,
-        queryId: 'error-query'
+        debouncedQuery: null,
+        isValidQuery: false,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -216,11 +283,17 @@ describe('useFilterValues', () => {
     })
 
     it('should handle non-Error query errors', () => {
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: null,
+        rawData: null,
         isLoading: false,
-        error: 'String error',
-        queryId: 'error-query'
+        isFetching: false,
+        isDebouncing: false,
+        error: 'String error' as any,
+        debouncedQuery: null,
+        isValidQuery: false,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -232,17 +305,25 @@ describe('useFilterValues', () => {
       // Set up a fresh console spy for this test
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+      const rawDataResult = [{}]
       const brokenResultSet = {
         tablePivot: () => {
           throw new Error('ResultSet error')
-        }
+        },
+        rawData: () => rawDataResult
       }
 
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: brokenResultSet,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: 'broken-query'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -265,49 +346,82 @@ describe('useFilterValues', () => {
     })
   })
 
-  describe('query ID tracking', () => {
-    it('should not reprocess same query results', () => {
-      const queryId = 'same-query'
-      
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+  describe('result tracking', () => {
+    it('should not reprocess same query results (same rawData reference)', () => {
+      // Use the same rawData array reference to simulate unchanged results
+      const rawDataResult = [{ 'Users.name': 'Alice' }, { 'Users.name': 'Bob' }]
+      const resultSetWithRawData = {
+        ...mockResultSet,
+        rawData: () => rawDataResult
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: resultSetWithRawData,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result, rerender } = renderHook(() => useFilterValues('Users.name'))
 
       expect(result.current.values).toEqual(['Alice', 'Bob', 'Charlie', 'David'])
 
-      // Rerender with same query ID - should not reprocess
+      // Rerender with same rawData reference - should not reprocess
       rerender()
 
       expect(result.current.values).toEqual(['Alice', 'Bob', 'Charlie', 'David'])
       expect(mockResultSet.tablePivot).toHaveBeenCalledTimes(1)
     })
 
-    it('should process new query results', () => {
-      let queryId = 'first-query'
-      
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+    it('should process new query results (different rawData reference)', () => {
+      // First result
+      const firstRawData = [{ 'Users.name': 'Alice' }]
+      const firstResultSet = {
+        ...mockResultSet,
+        rawData: () => firstRawData
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: firstResultSet,
+        rawData: firstRawData,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result, rerender } = renderHook(() => useFilterValues('Users.name'))
 
       expect(result.current.values).toEqual(['Alice', 'Bob', 'Charlie', 'David'])
 
-      // Change query ID - should reprocess
-      queryId = 'second-query'
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+      // New rawData reference - should reprocess
+      const secondRawData = [{ 'Users.name': 'Eve' }]
+      const secondResultSet = {
+        ...mockResultSet,
+        rawData: () => secondRawData
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: secondResultSet,
+        rawData: secondRawData,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       rerender()
@@ -325,7 +439,7 @@ describe('useFilterValues', () => {
         result.current.refetch()
       })
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(
         {
           dimensions: ['Users.name'],
           limit: 25,
@@ -333,7 +447,8 @@ describe('useFilterValues', () => {
         },
         {
           skip: false,
-          resetResultSetOnChange: true
+          debounceMs: 150,
+          keepPreviousData: true
         }
       )
     })
@@ -346,9 +461,10 @@ describe('useFilterValues', () => {
       })
 
       // Should still be skipping
-      expect(mockUseCubeQuery).toHaveBeenLastCalledWith(null, {
+      expect(mockUseCubeLoadQuery).toHaveBeenLastCalledWith(null, {
         skip: true,
-        resetResultSetOnChange: true
+        debounceMs: 150,
+        keepPreviousData: true
       })
     })
 
@@ -382,7 +498,7 @@ describe('useFilterValues', () => {
         result.current.searchValues('Alice')
       })
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(
         {
           dimensions: ['Users.name'],
           limit: 25,
@@ -395,7 +511,8 @@ describe('useFilterValues', () => {
         },
         {
           skip: false,
-          resetResultSetOnChange: true
+          debounceMs: 150,
+          keepPreviousData: true
         }
       )
     })
@@ -407,7 +524,7 @@ describe('useFilterValues', () => {
         result.current.searchValues('', true)
       })
 
-      expect(mockUseCubeQuery).toHaveBeenLastCalledWith(
+      expect(mockUseCubeLoadQuery).toHaveBeenLastCalledWith(
         {
           dimensions: ['Users.name'],
           limit: 25,
@@ -415,7 +532,8 @@ describe('useFilterValues', () => {
         },
         {
           skip: false,
-          resetResultSetOnChange: true
+          debounceMs: 150,
+          keepPreviousData: true
         }
       )
     })
@@ -427,7 +545,7 @@ describe('useFilterValues', () => {
         result.current.searchValues('  Alice  ')
       })
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(
         expect.objectContaining({
           filters: [{
             member: 'Users.name',
@@ -447,14 +565,14 @@ describe('useFilterValues', () => {
         result.current.searchValues('Alice')
       })
 
-      const firstCallCount = mockUseCubeQuery.mock.calls.length
+      const firstCallCount = mockUseCubeLoadQuery.mock.calls.length
 
       // Same search - should not create new query
       act(() => {
         result.current.searchValues('Alice')
       })
 
-      expect(mockUseCubeQuery.mock.calls.length).toBe(firstCallCount)
+      expect(mockUseCubeLoadQuery.mock.calls.length).toBe(firstCallCount)
     })
 
     it('should force new query when force parameter is true', () => {
@@ -465,14 +583,14 @@ describe('useFilterValues', () => {
         result.current.searchValues('Alice')
       })
 
-      const firstCallCount = mockUseCubeQuery.mock.calls.length
+      const firstCallCount = mockUseCubeLoadQuery.mock.calls.length
 
       // Same search with force=true - should create new query
       act(() => {
         result.current.searchValues('Alice', true)
       })
 
-      expect(mockUseCubeQuery.mock.calls.length).toBe(firstCallCount + 1)
+      expect(mockUseCubeLoadQuery.mock.calls.length).toBe(firstCallCount + 1)
     })
 
     it('should not search when field is null', () => {
@@ -483,19 +601,26 @@ describe('useFilterValues', () => {
       })
 
       // Should still be skipping
-      expect(mockUseCubeQuery).toHaveBeenLastCalledWith(null, {
+      expect(mockUseCubeLoadQuery).toHaveBeenLastCalledWith(null, {
         skip: true,
-        resetResultSetOnChange: true
+        debounceMs: 150,
+        keepPreviousData: true
       })
     })
 
     it('should handle search errors gracefully', () => {
       // Test what happens when the search query results in an error from the API
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: null,
+        rawData: null,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: new Error('Search API error'),
-        queryId: 'search-error-query'
+        debouncedQuery: null,
+        isValidQuery: false,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result } = renderHook(() => useFilterValues('Users.name'))
@@ -526,7 +651,7 @@ describe('useFilterValues', () => {
         result.current.refetch()
       })
 
-      expect(mockUseCubeQuery).toHaveBeenCalledWith(
+      expect(mockUseCubeLoadQuery).toHaveBeenCalledWith(
         {
           dimensions: ['Users.email'],
           limit: 25,
@@ -534,17 +659,30 @@ describe('useFilterValues', () => {
         },
         {
           skip: false,
-          resetResultSetOnChange: true
+          debounceMs: 150,
+          keepPreviousData: true
         }
       )
     })
 
     it('should reset values when field becomes null', () => {
-      mockUseCubeQuery.mockReturnValue({
-        resultSet: mockResultSet,
+      const rawDataResult = [{ 'Users.name': 'Alice' }]
+      const resultSetWithRawData = {
+        ...mockResultSet,
+        rawData: () => rawDataResult
+      }
+
+      mockUseCubeLoadQuery.mockReturnValue({
+        resultSet: resultSetWithRawData,
+        rawData: rawDataResult,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: 'initial-query'
+        debouncedQuery: null,
+        isValidQuery: true,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       const { result, rerender } = renderHook(
@@ -557,11 +695,17 @@ describe('useFilterValues', () => {
       expect(result.current.values).toEqual(['Alice', 'Bob', 'Charlie', 'David'])
 
       // Change field to null
-      mockUseCubeQuery.mockReturnValue({
+      mockUseCubeLoadQuery.mockReturnValue({
         resultSet: null,
+        rawData: null,
         isLoading: false,
+        isFetching: false,
+        isDebouncing: false,
         error: null,
-        queryId: null
+        debouncedQuery: null,
+        isValidQuery: false,
+        refetch: vi.fn(),
+        clearCache: vi.fn()
       })
 
       rerender({ fieldName: null })
@@ -584,9 +728,10 @@ describe('useFilterValues', () => {
       // Enable the hook
       rerender({ enabled: true })
 
-      expect(mockUseCubeQuery).toHaveBeenLastCalledWith(null, {
+      expect(mockUseCubeLoadQuery).toHaveBeenLastCalledWith(null, {
         skip: true, // Still true because no query has been set yet
-        resetResultSetOnChange: true
+        debounceMs: 150,
+        keepPreviousData: true
       })
     })
   })

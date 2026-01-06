@@ -124,6 +124,7 @@ export function useCubeLoadQuery(
   const [isDebouncing, setIsDebouncing] = useState(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastQueryStringRef = useRef<string>('')
+  const wasSkippedRef = useRef<boolean>(skip)
 
   // Validate query
   const isValidQuery = isValidCubeQuery(query)
@@ -139,8 +140,14 @@ export function useCubeLoadQuery(
 
   // Debounce the query changes
   useEffect(() => {
-    // Skip if query hasn't actually changed
-    if (queryString === lastQueryStringRef.current) {
+    // Detect skip-to-unskip transition (e.g., portlet becoming visible)
+    const wasSkipped = wasSkippedRef.current
+    const justBecameUnskipped = wasSkipped && !skip
+    wasSkippedRef.current = skip
+
+    // Skip if query hasn't actually changed AND we haven't just become unskipped
+    // The justBecameUnskipped check ensures we re-trigger when visibility changes
+    if (queryString === lastQueryStringRef.current && !justBecameUnskipped) {
       return
     }
 

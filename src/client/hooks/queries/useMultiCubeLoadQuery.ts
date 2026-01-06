@@ -7,8 +7,6 @@
  * - Built-in debouncing to prevent excessive API calls
  * - Per-query error tracking
  * - BatchCoordinator integration for dashboard-level batching
- *
- * This hook replaces useMultiCubeQuery with TanStack Query.
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -129,6 +127,7 @@ export function useMultiCubeLoadQuery(
   const [isDebouncing, setIsDebouncing] = useState(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConfigStringRef = useRef<string>('')
+  const wasSkippedRef = useRef<boolean>(skip)
 
   // Validate config
   const isValidConfig = isValidMultiQueryConfig(config)
@@ -141,8 +140,14 @@ export function useMultiCubeLoadQuery(
 
   // Debounce the config changes
   useEffect(() => {
-    // Skip if config hasn't actually changed
-    if (configString === lastConfigStringRef.current) {
+    // Detect skip-to-unskip transition (e.g., portlet becoming visible)
+    const wasSkipped = wasSkippedRef.current
+    const justBecameUnskipped = wasSkipped && !skip
+    wasSkippedRef.current = skip
+
+    // Skip if config hasn't actually changed AND we haven't just become unskipped
+    // The justBecameUnskipped check ensures we re-trigger when visibility changes
+    if (configString === lastConfigStringRef.current && !justBecameUnskipped) {
       return
     }
 

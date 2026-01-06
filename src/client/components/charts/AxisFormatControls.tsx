@@ -60,7 +60,7 @@ export function AxisFormatControls({
   axisLabel,
   previewValue = 1250000
 }: AxisFormatControlsProps) {
-  const config = value || {}
+  const config = useMemo(() => value || {}, [value])
 
   // Get locale-aware currency symbol for the button
   const currencySymbol = useMemo(() => getLocaleCurrencySymbol(), [])

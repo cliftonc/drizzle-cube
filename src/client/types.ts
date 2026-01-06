@@ -5,8 +5,38 @@
 import type { ReactNode } from 'react'
 import type { ColorPalette } from './utils/colorPalettes'
 
-// Re-export metadata types from useCubeMeta hook
-export type { CubeMeta, CubeMetaCube, CubeMetaField, CubeMetaRelationship, FieldLabelMap } from './hooks/useCubeMeta'
+// Cube metadata types
+export interface CubeMetaField {
+  name: string
+  title: string
+  shortTitle: string
+  type: string
+}
+
+export interface CubeMetaRelationship {
+  targetCube: string
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
+  joinFields: Array<{
+    sourceField: string
+    targetField: string
+  }>
+}
+
+export interface CubeMetaCube {
+  name: string
+  title: string
+  description?: string
+  measures: CubeMetaField[]
+  dimensions: CubeMetaField[]
+  segments: CubeMetaField[]
+  relationships?: CubeMetaRelationship[]
+}
+
+export interface CubeMeta {
+  cubes: CubeMetaCube[]
+}
+
+export type FieldLabelMap = Record<string, string>
 
 // Re-export color palette types
 export type { ColorPalette } from './utils/colorPalettes'
@@ -345,8 +375,8 @@ export interface ChartProps {
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
-  showSchemaDiagram?: boolean // Show schema diagram in QueryBuilder (default: false, requires reactflow/dagre)
-  useAnalysisBuilder?: boolean // Use new AnalysisBuilder modal for portlet editing (default: false)
+  showSchemaDiagram?: boolean // Deprecated - schema diagram feature has been removed
+  useAnalysisBuilder?: boolean // Deprecated - AnalysisBuilder modal is now always used (PortletEditModal was removed)
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
   floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')
 }

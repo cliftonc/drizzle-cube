@@ -3,45 +3,37 @@ import type { DashboardFilter, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
+import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore'
 
 // Constant style object to prevent re-renders from inline object recreation
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
 
+/**
+ * Simplified props interface after Zustand migration.
+ * State (isEditMode, selectedFilterId, debugData) now comes from store.
+ * Actions now come from callbacks prop or store.
+ */
 interface DashboardPortletCardProps {
   portlet: PortletConfig
   editable: boolean
-  isEditMode: boolean
-  selectedFilterId: string | null
-  debugData?: {
-    chartConfig: any
-    displayConfig: any
-    queryObject: any
-    data: any[]
-    chartType: string
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
-  }
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
   loadingComponent?: ReactNode
   colorPalette?: ColorPalette
   containerProps?: HTMLAttributes<HTMLDivElement>
   headerProps?: HTMLAttributes<HTMLDivElement>
-  onToggleFilter: (portletId: string, filterId: string) => void
-  onRefresh: (portletId: string) => void
-  onDuplicate: (portletId: string) => void
-  onEdit: (portlet: PortletConfig) => void
-  onDelete: (portletId: string) => void
-  onOpenFilterConfig: (portlet: PortletConfig) => void
-  onDebugDataReady: (portletId: string, data: {
-    chartConfig: any
-    displayConfig: any
-    queryObject: any
-    data: any[]
-    chartType: string
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
-  }) => void
+  // Ref callbacks - must remain as props (parent manages refs)
   setPortletRef: (portletId: string, element: HTMLDivElement | null) => void
   setPortletComponentRef: (portletId: string, element: { refresh: () => void } | null) => void
+  // Action callbacks - provided by parent for flexibility
+  callbacks: {
+    onToggleFilter: (portletId: string, filterId: string) => void
+    onRefresh: (portletId: string) => void
+    onDuplicate: (portletId: string) => void
+    onEdit: (portlet: PortletConfig) => void
+    onDelete: (portletId: string) => void
+    onOpenFilterConfig: (portlet: PortletConfig) => void
+  }
   icons: {
     RefreshIcon: ComponentType<{ className?: string; style?: CSSProperties }>
     EditIcon: ComponentType<{ className?: string; style?: CSSProperties }>
@@ -59,23 +51,21 @@ function arePropsEqual(
   // Fast path: if object references are the same, props are equal
   if (prevProps === nextProps) return true
 
-  // Check all scalar props
+  // Check scalar props
   if (
     prevProps.editable !== nextProps.editable ||
-    prevProps.isEditMode !== nextProps.isEditMode ||
-    prevProps.selectedFilterId !== nextProps.selectedFilterId ||
     prevProps.configEagerLoad !== nextProps.configEagerLoad
   ) {
     return false
   }
 
-  // Check object/array props by reference (React.memo default behavior)
+  // Check object/array props by reference
   if (
     prevProps.portlet !== nextProps.portlet ||
-    prevProps.debugData !== nextProps.debugData ||
     prevProps.dashboardFilters !== nextProps.dashboardFilters ||
     prevProps.colorPalette !== nextProps.colorPalette ||
     prevProps.loadingComponent !== nextProps.loadingComponent ||
+    prevProps.callbacks !== nextProps.callbacks ||
     prevProps.icons !== nextProps.icons
   ) {
     return false
@@ -83,13 +73,6 @@ function arePropsEqual(
 
   // Check function props by reference
   if (
-    prevProps.onToggleFilter !== nextProps.onToggleFilter ||
-    prevProps.onRefresh !== nextProps.onRefresh ||
-    prevProps.onDuplicate !== nextProps.onDuplicate ||
-    prevProps.onEdit !== nextProps.onEdit ||
-    prevProps.onDelete !== nextProps.onDelete ||
-    prevProps.onOpenFilterConfig !== nextProps.onOpenFilterConfig ||
-    prevProps.onDebugDataReady !== nextProps.onDebugDataReady ||
     prevProps.setPortletRef !== nextProps.setPortletRef ||
     prevProps.setPortletComponentRef !== nextProps.setPortletComponentRef
   ) {
@@ -97,17 +80,16 @@ function arePropsEqual(
   }
 
   // Special handling for containerProps and headerProps - compare properties shallowly
-  // These objects may be recreated but with the same values (especially function references)
   const containerPropsEqual = shallowEqualObjects(prevProps.containerProps, nextProps.containerProps)
   const headerPropsEqual = shallowEqualObjects(prevProps.headerProps, nextProps.headerProps)
 
   return containerPropsEqual && headerPropsEqual
 }
 
-// Shallow comparison for objects - compares keys and values by reference
-function shallowEqualObjects(
-  a: Record<string, any> | undefined,
-  b: Record<string, any> | undefined
+// Shallow comparison for objects
+function shallowEqualObjects<T extends object>(
+  a: T | undefined,
+  b: T | undefined
 ): boolean {
   if (a === b) return true
   if (!a || !b) return a === b
@@ -118,36 +100,35 @@ function shallowEqualObjects(
   if (keysA.length !== keysB.length) return false
 
   for (const key of keysA) {
-    if (a[key] !== b[key]) return false
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) return false
   }
 
   return true
 }
 
-// Memoize component to prevent re-renders when props haven't changed
+// Memoize component - now using store for state, so fewer props to compare
 const DashboardPortletCard = React.memo(function DashboardPortletCard({
   portlet,
   editable,
-  isEditMode,
-  selectedFilterId,
-  debugData,
   dashboardFilters,
   configEagerLoad,
   loadingComponent,
   colorPalette,
   containerProps,
   headerProps,
-  onToggleFilter,
-  onRefresh,
-  onDuplicate,
-  onEdit,
-  onDelete,
-  onOpenFilterConfig,
-  onDebugDataReady,
   setPortletRef,
   setPortletComponentRef,
+  callbacks,
   icons
 }: DashboardPortletCardProps) {
+  // Get state from Zustand store - automatic memoization via selectors
+  const isEditMode = useDashboardStore(state => state.isEditMode)
+  const selectedFilterId = useDashboardStore(state => state.selectedFilterId)
+  const debugData = useDashboardStore(state => state.debugData[portlet.id])
+
+  // Get setDebugData action from store
+  const setDebugData = useDashboardStore(state => state.setDebugData)
+
   const hasSelectedFilter = selectedFilterId
     ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
     : false
@@ -183,17 +164,10 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     ...restHeaderProps
   } = headerProps ?? {}
 
-  // Memoize debug data callback to prevent AnalyticsPortlet re-renders
-  const handleDebugDataReady = useCallback((data: {
-    chartConfig: any
-    displayConfig: any
-    queryObject: any
-    data: any[]
-    chartType: string
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
-  }) => {
-    onDebugDataReady(portlet.id, data)
-  }, [portlet.id, onDebugDataReady])
+  // Memoize debug data callback - now uses store action directly
+  const handleDebugDataReady = useCallback((data: PortletDebugDataEntry) => {
+    setDebugData(portlet.id, data)
+  }, [portlet.id, setDebugData])
 
   return (
     <div
@@ -215,7 +189,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       onClick={(event) => {
         if (isInSelectionMode && selectedFilterId) {
           event.stopPropagation()
-          onToggleFilter(portlet.id, selectedFilterId)
+          callbacks.onToggleFilter(portlet.id, selectedFilterId)
         }
         containerOnClick?.(event)
       }}
@@ -245,7 +219,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                   queryObject={debugData.queryObject}
                   data={debugData.data}
                   chartType={debugData.chartType}
-                  cacheInfo={debugData.cacheInfo}
+                  cacheInfo={debugData.cacheInfo as { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | undefined}
                 />
               </div>
             )}
@@ -282,12 +256,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             <button
               onClick={(event) => {
                 event.stopPropagation()
-                onRefresh(portlet.id)
+                callbacks.onRefresh(portlet.id)
               }}
               onTouchEnd={(event) => {
                 event.stopPropagation()
                 event.preventDefault()
-                onRefresh(portlet.id)
+                callbacks.onRefresh(portlet.id)
               }}
               disabled={isInSelectionMode}
               className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
@@ -303,12 +277,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
-                    onOpenFilterConfig(portlet)
+                    callbacks.onOpenFilterConfig(portlet)
                   }}
                   onTouchEnd={(event) => {
                     event.stopPropagation()
                     event.preventDefault()
-                    onOpenFilterConfig(portlet)
+                    callbacks.onOpenFilterConfig(portlet)
                   }}
                   className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
                   title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
@@ -324,12 +298,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
-                    onDuplicate(portlet.id)
+                    callbacks.onDuplicate(portlet.id)
                   }}
                   onTouchEnd={(event) => {
                     event.stopPropagation()
                     event.preventDefault()
-                    onDuplicate(portlet.id)
+                    callbacks.onDuplicate(portlet.id)
                   }}
                   className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                   title="Duplicate portlet"
@@ -339,12 +313,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
-                    onEdit(portlet)
+                    callbacks.onEdit(portlet)
                   }}
                   onTouchEnd={(event) => {
                     event.stopPropagation()
                     event.preventDefault()
-                    onEdit(portlet)
+                    callbacks.onEdit(portlet)
                   }}
                   className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
                   title="Edit portlet"
@@ -354,12 +328,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                 <button
                   onClick={(event) => {
                     event.stopPropagation()
-                    onDelete(portlet.id)
+                    callbacks.onDelete(portlet.id)
                   }}
                   onTouchEnd={(event) => {
                     event.stopPropagation()
                     event.preventDefault()
-                    onDelete(portlet.id)
+                    callbacks.onDelete(portlet.id)
                   }}
                   className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-danger-bg text-dc-danger transition-colors"
                   title="Delete portlet"
