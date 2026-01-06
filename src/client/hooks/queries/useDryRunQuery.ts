@@ -16,6 +16,7 @@ import { useCubeApi } from '../../providers/CubeApiProvider'
 import type { CubeQuery } from '../../types'
 import type { QueryAnalysis } from '../../components/AnalysisBuilder/types'
 import { cleanQueryForServer } from '../../shared/utils'
+import { stableStringify } from '../../shared/queryKey'
 
 /**
  * Debug data entry for a single query
@@ -27,8 +28,8 @@ export interface DebugDataEntry {
   analysis: QueryAnalysis | null
   /** Whether this entry is loading */
   loading: boolean
-  /** Error message if fetch failed */
-  error: string | null
+  /** Error if fetch failed */
+  error: Error | null
 }
 
 /**
@@ -38,7 +39,7 @@ export function createDryRunQueryKey(
   query: CubeQuery | null
 ): readonly unknown[] {
   if (!query) return ['cube', 'dryRun', null] as const
-  return ['cube', 'dryRun', JSON.stringify(query)] as const
+  return ['cube', 'dryRun', stableStringify(query)] as const
 }
 
 export interface UseDryRunQueryOptions {
@@ -100,7 +101,7 @@ export function useDryRunQuery(
     sql: queryResult.data?.sql ?? null,
     analysis: queryResult.data?.analysis ?? null,
     loading: queryResult.isLoading,
-    error: queryResult.error?.message ?? null,
+    error: queryResult.error ?? null,
   }
 
   return {
@@ -176,7 +177,7 @@ export function useMultiDryRunQueries(
     sql: result.data?.sql ?? null,
     analysis: result.data?.analysis ?? null,
     loading: result.isLoading,
-    error: result.error?.message ?? null,
+    error: result.error ?? null,
   }))
 
   // Check if any query is loading

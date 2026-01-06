@@ -11,7 +11,7 @@ import type { CubeResultSet } from '../../../src/client/types'
 // Storage key constant (must match the one in index.tsx)
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
 
-// Mock useCubeContext
+// Mock useCubeMeta/useCubeFeatures
 const mockMeta = {
   cubes: [
     {
@@ -29,25 +29,19 @@ const mockMeta = {
   ]
 }
 
-const mockCubeContext = {
-  cubeApi: {
-    load: vi.fn(),
-    sql: vi.fn().mockResolvedValue({ sql: 'SELECT 1', params: [] }),
-    meta: vi.fn().mockResolvedValue(mockMeta),
-    analyzeQuery: vi.fn()
-  },
-  meta: mockMeta,
-  labelMap: {},
-  metaLoading: false,
-  metaError: null,
-  getFieldLabel: (field: string) => field,
-  refetchMeta: vi.fn(),
-  updateApiConfig: vi.fn(),
-  features: { enableAI: false }
-}
-
 vi.mock('../../../src/client/providers/CubeProvider', () => ({
-  useCubeContext: vi.fn(() => mockCubeContext)
+  useCubeMeta: vi.fn(() => ({
+    meta: mockMeta,
+    labelMap: {},
+    metaLoading: false,
+    metaError: null,
+    getFieldLabel: (field: string) => field,
+    refetchMeta: vi.fn()
+  })),
+  useCubeFeatures: vi.fn(() => ({
+    features: { enableAI: false },
+    dashboardModes: ['grid', 'rows']
+  }))
 }))
 
 // Mock useCubeApi (used by TanStack Query hooks like useCubeLoadQuery)

@@ -38,7 +38,7 @@ const RowsIcon = getIcon('table')
 import PortletAnalysisModal from './PortletAnalysisModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
 import ConfirmModal from './ConfirmModal'
-import { useCubeContext } from '../providers/CubeProvider'
+import { useCubeFeatures } from '../providers/CubeProvider'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
 import ScaledGridWrapper from './ScaledGridWrapper'
@@ -211,7 +211,7 @@ export default function DashboardGrid({
   dashboardModes
 }: DashboardGridProps) {
   // Get features from context for conditional modal rendering
-  const { features } = useCubeContext()
+  const { features } = useCubeFeatures()
 
   // Responsive dashboard hook for three-tier layout strategy
   const {

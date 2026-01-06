@@ -18,6 +18,14 @@ vi.mock('react-intersection-observer', () => ({
   }))
 }))
 
+// Mock @tanstack/react-query useQueryClient
+const mockInvalidateQueries = vi.fn()
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: mockInvalidateQueries
+  }))
+}))
+
 // Mock useCubeLoadQuery
 let mockUseCubeLoadQueryResult = {
   resultSet: null as CubeResultSet | null,
@@ -32,7 +40,8 @@ let mockUseCubeLoadQueryResult = {
   clearCache: vi.fn()
 }
 vi.mock('../../src/client/hooks/queries/useCubeLoadQuery', () => ({
-  useCubeLoadQuery: vi.fn(() => mockUseCubeLoadQueryResult)
+  useCubeLoadQuery: vi.fn(() => mockUseCubeLoadQueryResult),
+  createQueryKey: vi.fn((query) => ['cube', 'load', JSON.stringify(query)])
 }))
 
 // Mock useMultiCubeLoadQuery (used for multi-query portlets)
@@ -48,7 +57,8 @@ let mockUseMultiCubeLoadQueryResult = {
   refetch: vi.fn()
 }
 vi.mock('../../src/client/hooks/queries/useMultiCubeLoadQuery', () => ({
-  useMultiCubeLoadQuery: vi.fn(() => mockUseMultiCubeLoadQueryResult)
+  useMultiCubeLoadQuery: vi.fn(() => mockUseMultiCubeLoadQueryResult),
+  createMultiQueryKey: vi.fn((config) => ['cube', 'multiLoad', JSON.stringify(config)])
 }))
 
 // Mock useScrollContainer
@@ -107,6 +117,21 @@ vi.mock('../../src/client/utils/filterUtils', () => ({
   getApplicableDashboardFilters: vi.fn((filters, mapping) => filters || []),
   mergeDashboardAndPortletFilters: vi.fn((dashboardFilters, portletFilters) => [...(dashboardFilters || []), ...(portletFilters || [])]),
   applyUniversalTimeFilters: vi.fn((dashboardFilters, mapping, timeDimensions) => timeDimensions || [])
+}))
+
+// Mock shared/utils (cleanQueryForServer)
+vi.mock('../../src/client/shared/utils', () => ({
+  cleanQueryForServer: vi.fn((query) => {
+    // Remove empty arrays to match real behavior
+    const cleaned: any = {}
+    if (query.measures && query.measures.length > 0) cleaned.measures = query.measures
+    if (query.dimensions && query.dimensions.length > 0) cleaned.dimensions = query.dimensions
+    if (query.timeDimensions && query.timeDimensions.length > 0) cleaned.timeDimensions = query.timeDimensions
+    if (query.filters && query.filters.length > 0) cleaned.filters = query.filters
+    if (query.order) cleaned.order = query.order
+    if (query.limit) cleaned.limit = query.limit
+    return cleaned
+  })
 }))
 
 // Helper to create mock result set
@@ -189,7 +214,7 @@ describe('AnalyticsPortlet', () => {
       consoleSpy.mockRestore()
     })
 
-    it('should add refresh counter to query for re-fetching', async () => {
+    it('should pass query without refresh metadata', async () => {
       const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
       const mockQuery = { measures: ['Test.count'] }
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
@@ -203,7 +228,7 @@ describe('AnalyticsPortlet', () => {
       )
 
       const call = (useCubeLoadQuery as any).mock.calls[0]
-      expect(call[0]).toHaveProperty('__refresh_counter')
+      expect(call[0]).not.toHaveProperty('__refresh_counter')
     })
   })
 
@@ -281,9 +306,8 @@ describe('AnalyticsPortlet', () => {
       expect(typeof ref.current?.refresh).toBe('function')
     })
 
-    it('should increment refresh counter when refresh is called', async () => {
+    it('should invalidate cache when refresh is called', async () => {
       const ref = createRef<{ refresh: () => void }>()
-      const { useCubeLoadQuery } = await import('../../src/client/hooks/queries/useCubeLoadQuery')
       mockUseCubeLoadQueryResult.resultSet = createMockResultSet([{ 'Test.count': 10 }])
 
       render(
@@ -295,18 +319,16 @@ describe('AnalyticsPortlet', () => {
         />
       )
 
-      const initialCallCount = (useCubeLoadQuery as any).mock.calls.length
-      const initialCall = (useCubeLoadQuery as any).mock.calls[initialCallCount - 1]
-      const initialRefreshCounter = initialCall[0].__refresh_counter
-
       act(() => {
         ref.current?.refresh()
       })
 
       await waitFor(() => {
-        const finalCallCount = (useCubeLoadQuery as any).mock.calls.length
-        const finalCall = (useCubeLoadQuery as any).mock.calls[finalCallCount - 1]
-        expect(finalCall[0].__refresh_counter).toBe(initialRefreshCounter + 1)
+        // Component uses invalidateQueries to clear cache and trigger refetch
+        // The query is cleaned (empty arrays removed) to match the cache key format
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: ['cube', 'load', JSON.stringify({ measures: ['Test.count'] })]
+        })
       })
     })
   })

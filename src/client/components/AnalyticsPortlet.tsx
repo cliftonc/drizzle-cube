@@ -3,9 +3,10 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useMemo, useState, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
+import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
-import { useCubeLoadQuery, useMultiCubeLoadQuery } from '../hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCubeLoadQuery, useMultiCubeLoadQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
@@ -14,6 +15,7 @@ import { useChartConfig } from '../charts/lazyChartConfigRegistry'
 import type { AnalyticsPortletProps, MultiQueryConfig } from '../types'
 import { isMultiQueryConfig } from '../types'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
+import { cleanQueryForServer } from '../shared/utils'
 
 
 interface AnalyticsPortletRef {
@@ -36,7 +38,6 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   loadingComponent,
   onDebugDataReady
 }, ref) => {
-  const [refreshCounter, setRefreshCounter] = useState(0)
   const onDebugDataReadyRef = useRef(onDebugDataReady)
 
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible
@@ -90,8 +91,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           queries: parsed.queries.map(q => ({
             ...q,
             filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters),
-            timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions),
-            __refresh_counter: refreshCounter
+            timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
           }))
         }
         return { queryObject: null, multiQueryConfig: multiConfig }
@@ -109,8 +109,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         queryObject: {
           ...parsed,
           filters: mergedFilters,
-          timeDimensions: mergedTimeDimensions,
-          __refresh_counter: refreshCounter
+          timeDimensions: mergedTimeDimensions
         },
         multiQueryConfig: null
       }
@@ -118,12 +117,15 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
       return { queryObject: null, multiQueryConfig: null }
     }
-  }, [query, refreshCounter, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
+  }, [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
   // Determine whether to skip queries based on various conditions
   const isMultiQuery = multiQueryConfig !== null
   const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery
   const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible)
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient()
 
   // Use single query hook with TanStack Query (skip if multi-query or other skip conditions)
   const singleQueryResult = useCubeLoadQuery(queryObject, {
@@ -142,22 +144,38 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Combine results from both hooks
   const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
   const isLoading = isMultiQuery ? multiQueryResult.isLoading : singleQueryResult.isLoading
+  const isFetching = isMultiQuery ? multiQueryResult.isFetching : singleQueryResult.isFetching
   const error = isMultiQuery ? multiQueryResult.error : singleQueryResult.error
   const multiQueryData = isMultiQuery ? multiQueryResult.data : null
 
   // Expose refresh function through ref
-  // Uses TanStack Query's refetch for cache-aware refresh
+  // Invalidates cache and forces a fresh fetch from the server
   useImperativeHandle(ref, () => ({
     refresh: () => {
-      if (isMultiQuery) {
-        multiQueryResult.refetch()
-      } else {
-        singleQueryResult.refetch()
+      if (isMultiQuery && multiQueryConfig) {
+        // Invalidate cache for this specific multi-query, then refetch
+        // Clean each query to match the cache key format used by useMultiCubeLoadQuery
+        const cleanedConfig = {
+          ...multiQueryConfig,
+          queries: multiQueryConfig.queries.map(q => cleanQueryForServer(q))
+        }
+        queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
+      } else if (queryObject) {
+        // Clean the query to match the cache key format used by useCubeLoadQuery
+        // This is important because the cache uses cleanQueryForServer(query) which removes empty arrays
+        const cleanedQuery = cleanQueryForServer(queryObject)
+        queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
       }
-      // Also increment counter to ensure query key changes (belt and suspenders)
-      setRefreshCounter(prev => prev + 1)
     }
-  }), [isMultiQuery, multiQueryResult, singleQueryResult])
+  }), [isMultiQuery, multiQueryConfig, queryObject, queryClient])
+
+  const handleRetry = useCallback(() => {
+    if (isMultiQuery) {
+      multiQueryResult.refetch()
+    } else {
+      singleQueryResult.refetch()
+    }
+  }, [isMultiQuery, multiQueryResult, singleQueryResult])
 
 
   // Send debug data to parent when ready (must be before any returns)
@@ -213,7 +231,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
   // Skip loading and error handling for charts that don't need queries
   if (!shouldSkipQuery) {
-    if (isLoading || (queryObject && !resultSet && !error)) {
+    // Show loading indicator during initial load OR during refresh (isFetching)
+    if (isLoading || isFetching || (queryObject && !resultSet && !error)) {
       return (
         <div ref={inViewRef} className="flex items-center justify-center w-full" style={{ height }}>
           {loadingComponent || <LoadingIndicator size="md" />}
@@ -228,7 +247,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
               <button
-                onClick={() => setRefreshCounter(prev => prev + 1)}
+                onClick={handleRetry}
                 className="px-2 py-1 text-white rounded-sm text-xs"
                 style={{ backgroundColor: 'var(--dc-primary)' }}
               >

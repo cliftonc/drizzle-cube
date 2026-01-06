@@ -10,11 +10,13 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useMemo } from 'react'
+import { useCubeApi } from '../../providers/CubeApiProvider'
 import type { MultiQueryConfig, CubeResultSet } from '../../types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { mergeQueryResults } from '../../utils/multiQueryUtils'
+import { stableStringify } from '../../shared/queryKey'
+import { useDebounceQuery } from '../useDebounceQuery'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -26,7 +28,7 @@ export function createMultiQueryKey(
   config: MultiQueryConfig | null
 ): readonly unknown[] {
   if (!config) return ['cube', 'multiLoad', null] as const
-  return ['cube', 'multiLoad', JSON.stringify(config)] as const
+  return ['cube', 'multiLoad', stableStringify(config)] as const
 }
 
 export interface UseMultiCubeLoadQueryOptions {
@@ -50,6 +52,11 @@ export interface UseMultiCubeLoadQueryOptions {
    * @default 60 * 1000 (1 minute)
    */
   staleTime?: number
+  /**
+   * Whether to keep previous data while loading new data
+   * @default true
+   */
+  keepPreviousData?: boolean
 }
 
 export interface UseMultiCubeLoadQueryResult {
@@ -113,70 +120,24 @@ export function useMultiCubeLoadQuery(
     debounceMs = DEFAULT_DEBOUNCE_MS,
     resetResultSetOnChange: _resetResultSetOnChange = true,
     staleTime = 60 * 1000,
+    keepPreviousData = true,
   } = options
 
   // Silence unused variable warning - used for future functionality
   void _resetResultSetOnChange
 
-  const { cubeApi, batchCoordinator, enableBatching } = useCubeContext()
+  const { cubeApi, batchCoordinator, enableBatching } = useCubeApi()
   const queryClient = useQueryClient()
-
-  // Debounced config state
-  const [debouncedConfig, setDebouncedConfig] =
-    useState<MultiQueryConfig | null>(null)
-  const [isDebouncing, setIsDebouncing] = useState(false)
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastConfigStringRef = useRef<string>('')
-  const wasSkippedRef = useRef<boolean>(skip)
 
   // Validate config
   const isValidConfig = isValidMultiQueryConfig(config)
 
-  // Serialize config for comparison
-  const configString = useMemo(() => {
-    if (!config) return ''
-    return JSON.stringify(config)
-  }, [config])
-
-  // Debounce the config changes
-  useEffect(() => {
-    // Detect skip-to-unskip transition (e.g., portlet becoming visible)
-    const wasSkipped = wasSkippedRef.current
-    const justBecameUnskipped = wasSkipped && !skip
-    wasSkippedRef.current = skip
-
-    // Skip if config hasn't actually changed AND we haven't just become unskipped
-    // The justBecameUnskipped check ensures we re-trigger when visibility changes
-    if (configString === lastConfigStringRef.current && !justBecameUnskipped) {
-      return
-    }
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // If config is valid, set debouncing state and schedule update
-    if (isValidConfig && !skip) {
-      setIsDebouncing(true)
-      debounceTimerRef.current = setTimeout(() => {
-        lastConfigStringRef.current = configString
-        setDebouncedConfig(config)
-        setIsDebouncing(false)
-      }, debounceMs)
-    } else {
-      // Clear debounced config if invalid or skipped
-      lastConfigStringRef.current = configString
-      setDebouncedConfig(null)
-      setIsDebouncing(false)
-    }
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-    }
-  }, [configString, isValidConfig, skip, debounceMs, config])
+  // Use shared debounce hook
+  const { debouncedValue: debouncedConfig, isDebouncing } = useDebounceQuery(config, {
+    isValid: isValidConfig,
+    skip,
+    debounceMs,
+  })
 
   // Transform queries for server
   const serverConfig = useMemo(() => {
@@ -249,7 +210,7 @@ export function useMultiCubeLoadQuery(
     },
     enabled: !!serverConfig && !skip,
     staleTime,
-    placeholderData: (prevData) => prevData,
+    placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
 
   // Refetch function - forces immediate refetch

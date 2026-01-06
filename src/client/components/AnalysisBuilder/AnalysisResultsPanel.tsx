@@ -372,7 +372,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <>
               <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
               <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-64 overflow-auto">
-                {debugError}
+                {debugError.message}
               </div>
             </>
           ) : debugSql ? (

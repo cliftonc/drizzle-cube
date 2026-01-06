@@ -22,12 +22,13 @@
  */
 
 import { forwardRef, useImperativeHandle, useMemo } from 'react'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeFeatures, useCubeMeta } from '../../providers/CubeProvider'
 import { AnalysisBuilderStoreProvider } from '../../stores/analysisBuilderStore'
 import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook'
 import { useAnalysisBuilderStoreApi } from '../../stores/analysisBuilderStore'
 import { useAnalysisAI } from '../../hooks/useAnalysisAI'
 import { useAnalysisShare } from '../../hooks/useAnalysisShare'
+import { parseShareHash } from '../../utils/shareUtils'
 import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
@@ -63,7 +64,8 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
     void _hideSettings
 
     // Get context
-    const { meta, features } = useCubeContext()
+    const { meta } = useCubeMeta()
+    const { features } = useCubeFeatures()
 
     // ========================================================================
     // Master Hook - Provides all state, data fetching, and actions
@@ -127,11 +129,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
       handleShare
     } = useAnalysisShare({
       isValidQuery: analysis.isValidQuery,
-      queryStatesLength: analysis.queryStates.length,
-      allQueries: analysis.allQueries,
-      currentQuery: analysis.currentQuery,
-      mergeStrategy: analysis.mergeStrategy,
-      mergeKeys: analysis.mergeKeys,
+      getQueryConfig: analysis.getQueryConfig,
       chartType: analysis.chartType,
       chartConfig: analysis.chartConfig,
       displayConfig: analysis.displayConfig,
@@ -320,6 +318,8 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       ...innerProps
     } = props
 
+    const hasShareHash = Boolean(parseShareHash())
+
     // Hide share button when using initialQuery (e.g., viewing a shared analysis)
     const hideShare = !!initialQuery
 
@@ -327,7 +327,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       <AnalysisBuilderStoreProvider
         initialQuery={initialQuery}
         initialChartConfig={initialChartConfig}
-        disableLocalStorage={disableLocalStorage || !!initialQuery}
+        disableLocalStorage={disableLocalStorage || !!initialQuery || hasShareHash}
       >
         <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>

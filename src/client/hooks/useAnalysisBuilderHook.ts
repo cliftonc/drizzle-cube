@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useRef } from 'react'
-import { useCubeContext } from '../providers/CubeProvider'
+import { useCubeFeatures } from '../providers/CubeProvider'
 import {
   useAnalysisBuilderStore,
   useAnalysisBuilderStoreApi,
@@ -191,7 +191,7 @@ export function useAnalysisBuilder(
   const { initialData, externalColorPalette, onQueryChange, onChartConfigChange } = options
 
   // Get context
-  const { features } = useCubeContext()
+  const { features } = useCubeFeatures()
 
   // Get store API for direct access
   const storeApi = useAnalysisBuilderStoreApi()

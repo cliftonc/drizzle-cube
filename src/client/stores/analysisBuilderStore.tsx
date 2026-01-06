@@ -21,6 +21,7 @@ import { createStore, useStore, type StoreApi } from 'zustand'
 import { devtools, persist, subscribeWithSelector } from 'zustand/middleware'
 import type {
   Filter,
+  SimpleFilter,
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
@@ -328,6 +329,71 @@ const createDefaultState = (): AnalysisBuilderStoreState => ({
  * Convert CubeQuery to AnalysisBuilderState
  */
 function queryToState(query: CubeQuery): AnalysisBuilderState {
+  const baseFilters = query.filters ? [...query.filters] : []
+
+  const timeDimensions = query.timeDimensions || []
+  const breakdowns = [
+    ...(query.dimensions || []).map((field) => ({
+      id: generateId(),
+      field,
+      isTimeDimension: false,
+    })),
+    ...timeDimensions.map((td) => ({
+      id: generateId(),
+      field: td.dimension,
+      granularity: td.granularity,
+      isTimeDimension: true,
+      enableComparison: Boolean(td.compareDateRange && td.compareDateRange.length > 0),
+    })),
+  ]
+
+  let filters = baseFilters
+
+  // Restore date filters for comparison-enabled time dimensions when missing.
+  for (const td of timeDimensions) {
+    if (!td.compareDateRange || td.compareDateRange.length === 0) continue
+
+    const hasDateFilter = filters.some(
+      (filter) =>
+        'member' in filter &&
+        (filter as SimpleFilter).member === td.dimension &&
+        (filter as SimpleFilter).operator === 'inDateRange'
+    )
+
+    const firstRange = td.compareDateRange[0]
+    const dateRange =
+      Array.isArray(firstRange) || typeof firstRange === 'string'
+        ? firstRange
+        : undefined
+
+    if (!dateRange) continue
+
+    if (!hasDateFilter) {
+      filters = [
+        ...filters,
+        {
+          member: td.dimension,
+          operator: 'inDateRange',
+          values: [],
+          dateRange,
+        } as SimpleFilter,
+      ]
+      continue
+    }
+
+    filters = filters.map((filter) => {
+      if (
+        'member' in filter &&
+        (filter as SimpleFilter).member === td.dimension &&
+        (filter as SimpleFilter).operator === 'inDateRange' &&
+        !(filter as SimpleFilter).dateRange
+      ) {
+        return { ...(filter as SimpleFilter), dateRange }
+      }
+      return filter
+    })
+  }
+
   return {
     ...createInitialState(),
     metrics: (query.measures || []).map((field, index) => ({
@@ -335,20 +401,8 @@ function queryToState(query: CubeQuery): AnalysisBuilderState {
       field,
       label: generateMetricLabel(index),
     })),
-    breakdowns: [
-      ...(query.dimensions || []).map((field) => ({
-        id: generateId(),
-        field,
-        isTimeDimension: false,
-      })),
-      ...(query.timeDimensions || []).map((td) => ({
-        id: generateId(),
-        field: td.dimension,
-        granularity: td.granularity,
-        isTimeDimension: true,
-      })),
-    ],
-    filters: query.filters || [],
+    breakdowns,
+    filters,
     order: query.order,
   }
 }

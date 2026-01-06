@@ -13,10 +13,12 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider'
 import type { CubeQuery, CubeResultSet } from '../../types'
 import { cleanQueryForServer } from '../../shared/utils'
+import { stableStringify } from '../../shared/queryKey'
+import { useDebounceQuery } from '../useDebounceQuery'
 
 // Default debounce delay in milliseconds
 const DEFAULT_DEBOUNCE_MS = 300
@@ -28,7 +30,7 @@ const DEFAULT_DEBOUNCE_MS = 300
 export function createQueryKey(query: CubeQuery | null): readonly unknown[] {
   if (!query) return ['cube', 'load', null] as const
   // Use JSON.stringify for deep equality comparison
-  return ['cube', 'load', JSON.stringify(query)] as const
+  return ['cube', 'load', stableStringify(query)] as const
 }
 
 export interface UseCubeLoadQueryOptions {
@@ -119,64 +121,18 @@ export function useCubeLoadQuery(
   const { cubeApi } = useCubeApi()
   const queryClient = useQueryClient()
 
-  // Debounced query state
-  const [debouncedQuery, setDebouncedQuery] = useState<CubeQuery | null>(null)
-  const [isDebouncing, setIsDebouncing] = useState(false)
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastQueryStringRef = useRef<string>('')
-  const wasSkippedRef = useRef<boolean>(skip)
-
   // Validate query
   const isValidQuery = isValidCubeQuery(query)
 
   // Silence unused variable warning - used for future functionality
   void resetResultSetOnChange
 
-  // Serialize query for comparison
-  const queryString = useMemo(() => {
-    if (!query) return ''
-    return JSON.stringify(query)
-  }, [query])
-
-  // Debounce the query changes
-  useEffect(() => {
-    // Detect skip-to-unskip transition (e.g., portlet becoming visible)
-    const wasSkipped = wasSkippedRef.current
-    const justBecameUnskipped = wasSkipped && !skip
-    wasSkippedRef.current = skip
-
-    // Skip if query hasn't actually changed AND we haven't just become unskipped
-    // The justBecameUnskipped check ensures we re-trigger when visibility changes
-    if (queryString === lastQueryStringRef.current && !justBecameUnskipped) {
-      return
-    }
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // If query is valid, set debouncing state and schedule update
-    if (isValidQuery && !skip) {
-      setIsDebouncing(true)
-      debounceTimerRef.current = setTimeout(() => {
-        lastQueryStringRef.current = queryString
-        setDebouncedQuery(query)
-        setIsDebouncing(false)
-      }, debounceMs)
-    } else {
-      // Clear debounced query if invalid or skipped
-      lastQueryStringRef.current = queryString
-      setDebouncedQuery(null)
-      setIsDebouncing(false)
-    }
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-    }
-  }, [queryString, isValidQuery, skip, debounceMs, query])
+  // Use shared debounce hook
+  const { debouncedValue: debouncedQuery, isDebouncing } = useDebounceQuery(query, {
+    isValid: isValidQuery,
+    skip,
+    debounceMs,
+  })
 
   // Transform query for server (converts filter groups)
   const serverQuery = useMemo(() => {

@@ -10,17 +10,9 @@ import DashboardGrid from '../../src/client/components/DashboardGrid'
 import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
 import type { DashboardConfig, PortletConfig, DashboardFilter } from '../../src/client/types'
 
-// Mock CubeProvider context - DashboardGrid uses useCubeContext for features
+// Mock CubeProvider context - DashboardGrid uses useCubeFeatures for features
 vi.mock('../../src/client/providers/CubeProvider', () => ({
-  useCubeContext: vi.fn(() => ({
-    cubeApi: {},
-    meta: { cubes: [] },
-    labelMap: {},
-    metaLoading: false,
-    metaError: null,
-    getFieldLabel: (field: string) => field,
-    refetchMeta: vi.fn(),
-    updateApiConfig: vi.fn(),
+  useCubeFeatures: vi.fn(() => ({
     features: {},
     batchCoordinator: null,
     enableBatching: false,

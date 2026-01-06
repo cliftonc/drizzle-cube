@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo } from 'react'
-import { useCubeContext } from '../../providers/CubeProvider'
+import { useCubeMeta } from '../../providers/CubeProvider'
 import { getMeasureTypeIcon } from '../../icons'
 import {
   hasTimeDimensionForPivot,
@@ -27,7 +27,7 @@ const DataTable = React.memo(function DataTable({
   queryObject,
   height = 300
 }: ChartProps) {
-  const { getFieldLabel, meta } = useCubeContext()
+  const { getFieldLabel, meta } = useCubeMeta()
 
   // Detect if we should pivot based on query structure
   // Pass chartConfig.xAxis to respect user-configured column ordering

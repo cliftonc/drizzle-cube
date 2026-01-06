@@ -16,7 +16,8 @@ export function buildCubeQuery(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
   filters: Filter[],
-  order?: Record<string, 'asc' | 'desc'>
+  order?: Record<string, 'asc' | 'desc'>,
+  preserveComparisonFilters: boolean = false
 ): CubeQuery {
   // Find time dimensions with comparison enabled
   const comparisonFields = breakdowns
@@ -26,8 +27,10 @@ export function buildCubeQuery(
   // Remove date filters for comparison-enabled time dimensions
   // (compareDateRange will handle the date ranges instead)
   let filteredFilters = filters
-  for (const field of comparisonFields) {
-    filteredFilters = removeComparisonDateFilter(filteredFilters, field)
+  if (!preserveComparisonFilters) {
+    for (const field of comparisonFields) {
+      filteredFilters = removeComparisonDateFilter(filteredFilters, field)
+    }
   }
 
   const query: CubeQuery = {

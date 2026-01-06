@@ -11,16 +11,17 @@ import type { DashboardConfig, DashboardFilter, PortletConfig, CubeMeta } from '
 
 // Mock CubeProvider context
 vi.mock('../../src/client/providers/CubeProvider', () => ({
-  useCubeContext: vi.fn(() => ({
-    cubeApi: {},
+  useCubeMeta: vi.fn(() => ({
     meta: { cubes: [] } as CubeMeta,
     labelMap: {},
     metaLoading: false,
     metaError: null,
     getFieldLabel: (field: string) => field,
     refetchMeta: vi.fn(),
-    updateApiConfig: vi.fn(),
-    features: {}
+  })),
+  useCubeFeatures: vi.fn(() => ({
+    features: {},
+    dashboardModes: ['grid', 'rows']
   }))
 }))
 

@@ -5,7 +5,7 @@
  * Isolated from metadata and feature contexts to prevent unnecessary re-renders.
  */
 
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import { createCubeClient, type CubeClient } from '../client/CubeClient'
 import type { CubeQueryOptions, CubeApiOptions } from '../types'
 import { BatchCoordinator } from '../client/BatchCoordinator'
@@ -37,7 +37,20 @@ export function CubeApiProvider({
   batchDelayMs = 100,
   children
 }: CubeApiProviderProps) {
-  const [config, setConfig] = useState({ apiOptions: initialApiOptions, token: initialToken })
+  const baseConfig = useMemo(
+    () => ({ apiOptions: initialApiOptions, token: initialToken }),
+    [initialApiOptions, initialToken]
+  )
+  const [overrideConfig, setOverrideConfig] = useState<{
+    apiOptions: CubeApiOptions
+    token?: string
+  } | null>(null)
+
+  useEffect(() => {
+    setOverrideConfig(null)
+  }, [baseConfig])
+
+  const config = overrideConfig ?? baseConfig
 
   // Create CubeClient - only recreates when config changes
   const cubeApi = useMemo(() =>
@@ -53,7 +66,7 @@ export function CubeApiProvider({
 
   // Stable callback for updating config
   const updateApiConfig = useCallback((newApiOptions: CubeApiOptions, newToken?: string) => {
-    setConfig({ apiOptions: newApiOptions, token: newToken })
+    setOverrideConfig({ apiOptions: newApiOptions, token: newToken })
   }, [])
 
   // Memoize context value - only changes when cubeApi/options change

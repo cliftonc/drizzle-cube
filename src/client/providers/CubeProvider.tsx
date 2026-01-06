@@ -11,7 +11,7 @@
  * AnalysisBuilder and other components that use TanStack Query hooks.
  */
 
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
 import { CubeMetaProvider, useCubeMeta } from './CubeMetaProvider'
@@ -20,9 +20,9 @@ import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutM
 import type { CubeClient } from '../client/CubeClient'
 import type { BatchCoordinator } from '../client/BatchCoordinator'
 
-// Create a stable QueryClient instance for TanStack Query
-// This is created at module level to ensure stability across re-renders
-const queryClient = new QueryClient({
+const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
+
+export const createCubeQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
       // Stale time: 5 minutes (matches existing cache duration)
@@ -36,6 +36,9 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Legacy default client (useful for tests or explicit injection)
+export const queryClient = createCubeQueryClient()
 
 // Backward compatible interface - merges all three contexts
 interface CubeContextValue {
@@ -63,6 +66,7 @@ interface CubeProviderProps {
   dashboardModes?: DashboardLayoutMode[]
   enableBatching?: boolean
   batchDelayMs?: number  // Delay in ms to collect queries before batching (default: 100)
+  queryClient?: QueryClient
   children: ReactNode
 }
 
@@ -83,12 +87,16 @@ export function CubeProvider({
   dashboardModes,
   enableBatching,
   batchDelayMs,
+  queryClient: providedQueryClient,
   children
 }: CubeProviderProps) {
+  const [internalQueryClient] = useState(() => createCubeQueryClient())
+  const queryClient = providedQueryClient ?? internalQueryClient
+
   return (
     <QueryClientProvider client={queryClient}>
       <CubeApiProvider
-        apiOptions={apiOptions || { apiUrl: '/cubejs-api/v1' }}
+        apiOptions={apiOptions || DEFAULT_API_OPTIONS}
         token={token}
         options={options}
         enableBatching={enableBatching}
@@ -131,5 +139,5 @@ export function useCubeContext(): CubeContextValue {
 // Re-export specialized hooks for better tree-shaking and performance
 export { useCubeApi, useCubeMeta, useCubeFeatures }
 
-// Export queryClient for testing and advanced use cases
-export { queryClient }
+// Export factory for testing and advanced use cases
+export { createCubeQueryClient as createQueryClient }

@@ -52,9 +52,7 @@ export default defineConfig({
         'react/jsx-runtime',
         'react-grid-layout',
         'react-resizable',
-        'recharts',
-        'reactflow',
-        'dagre'
+        'recharts'
       ],
       output: {
         entryFileNames: '[name].js',

@@ -331,10 +331,10 @@ export interface AnalysisResultsPanelProps {
   // Debug information (from dry-run) - per-query for multi-query mode
   /** Debug data for each query (SQL, analysis, loading/error state) */
   debugDataPerQuery?: Array<{
-    sql: { sql: string; params: any[] } | null
+    sql: { sql: string; params: unknown[] } | null
     analysis: QueryAnalysis | null
     loading: boolean
-    error: string | null
+    error: Error | null
   }>
 
   // Share functionality

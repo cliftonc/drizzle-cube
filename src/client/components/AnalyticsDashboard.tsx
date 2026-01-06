@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo } from 'react'
 import DashboardGrid from './DashboardGrid'
-import { useCubeContext } from '../providers/CubeProvider'
+import { useCubeFeatures, useCubeMeta } from '../providers/CubeProvider'
 import { DashboardStoreProvider } from '../stores/dashboardStore'
 import { getColorPalette } from '../utils/colorPalettes'
 import { useDirtyStateTracking } from '../hooks/useDirtyStateTracking'
@@ -22,7 +22,8 @@ export default function AnalyticsDashboard({
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
   // Get cube metadata for filter building
-  const { meta, dashboardModes } = useCubeContext()
+  const { meta } = useCubeMeta()
+  const { dashboardModes } = useCubeFeatures()
 
   // Track dirty state and wrap save/change handlers
   const {

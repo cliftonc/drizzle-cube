@@ -8,6 +8,7 @@
 import { useMemo } from 'react'
 import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore'
 import { validateMultiQueryConfig, type MultiQueryValidationResult } from '../utils/multiQueryValidation'
+import { buildCubeQuery } from '../components/AnalysisBuilder/utils'
 import type { CubeQuery, MultiQueryConfig, QueryMergeStrategy } from '../types'
 import type { AnalysisBuilderState } from '../components/AnalysisBuilder/types'
 
@@ -58,35 +59,46 @@ export function useAnalysisQueryBuilder(): UseAnalysisQueryBuilderResult {
   const getCurrentState = useAnalysisBuilderStore((state) => state.getCurrentState)
   const getMergeKeys = useAnalysisBuilderStore((state) => state.getMergeKeys)
   const isMultiQueryModeGetter = useAnalysisBuilderStore((state) => state.isMultiQueryMode)
-  const buildCurrentQuery = useAnalysisBuilderStore((state) => state.buildCurrentQuery)
-  const buildAllQueries = useAnalysisBuilderStore((state) => state.buildAllQueries)
-  const buildMultiQueryConfig = useAnalysisBuilderStore((state) => state.buildMultiQueryConfig)
-
   // Derived state
   const queryState = getCurrentState()
   const isMultiQueryMode = isMultiQueryModeGetter()
   const mergeKeys = getMergeKeys()
 
-  // Build current query
-  // NOTE: queryStates and activeQueryIndex must be in deps because buildCurrentQuery
-  // reads them via get() internally, but the function reference itself is stable
-  const currentQuery = useMemo(
-    () => buildCurrentQuery(),
-    [buildCurrentQuery, queryStates, activeQueryIndex]
-  )
+  // Build current query from active state
+  const currentQuery = useMemo(() => {
+    const current = queryStates[activeQueryIndex] || queryState
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order)
+  }, [queryStates, activeQueryIndex, queryState])
 
-  // Build all queries
-  // NOTE: queryStates and mergeStrategy must be in deps for same reason
-  const allQueries = useMemo(
-    () => buildAllQueries(),
-    [buildAllQueries, queryStates, mergeStrategy]
-  )
+  // Build all queries (respect merge mode for shared breakdowns)
+  const allQueries = useMemo(() => {
+    const q1Breakdowns = queryStates[0]?.breakdowns || []
+    return queryStates.map((qs, index) => {
+      const breakdowns = mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order)
+    })
+  }, [queryStates, mergeStrategy])
 
-  // Build multi-query config
-  const multiQueryConfig = useMemo(
-    () => buildMultiQueryConfig(),
-    [buildMultiQueryConfig, queryStates, mergeStrategy]
-  )
+  // Build multi-query config from queries
+  const multiQueryConfig = useMemo(() => {
+    if (queryStates.length <= 1) return null
+
+    const validQueries = allQueries.filter(
+      (q) =>
+        (q.measures && q.measures.length > 0) ||
+        (q.dimensions && q.dimensions.length > 0) ||
+        (q.timeDimensions && q.timeDimensions.length > 0)
+    )
+
+    if (validQueries.length < 2) return null
+
+    return {
+      queries: validQueries,
+      mergeStrategy,
+      mergeKeys,
+      queryLabels: validQueries.map((_, i) => `Q${i + 1}`),
+    }
+  }, [allQueries, queryStates.length, mergeStrategy, mergeKeys])
 
   // Validate multi-query configuration
   const multiQueryValidation = useMemo((): MultiQueryValidationResult | null => {
