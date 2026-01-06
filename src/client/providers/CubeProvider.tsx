@@ -13,7 +13,6 @@
 
 import { useMemo, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
 import { CubeMetaProvider, useCubeMeta } from './CubeMetaProvider'
 import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider'
@@ -101,8 +100,6 @@ export function CubeProvider({
           </CubeFeaturesProvider>
         </CubeMetaProvider>
       </CubeApiProvider>
-      {/* TanStack Query DevTools - only shows in development */}
-      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
     </QueryClientProvider>
   )
 }
