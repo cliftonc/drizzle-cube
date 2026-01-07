@@ -8,6 +8,7 @@
 import React, { useEffect, memo, useCallback, useMemo } from 'react'
 import type { AnalysisQueryPanelProps, BreakdownItem } from './types'
 import type { MetaField } from '../../shared/types'
+import type { QueryMergeStrategy } from '../../types'
 import { getIcon } from '../../icons'
 import MetricsSection from './MetricsSection'
 import BreakdownSection from './BreakdownSection'
@@ -15,11 +16,13 @@ import BreakdownItemCard from './BreakdownItemCard'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
+import FunnelBindingKeySelector from './FunnelBindingKeySelector'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
 const InfoIcon = getIcon('info')
 const WarningIcon = getIcon('warning')
+const LinkIcon = getIcon('link')
 
 /**
  * AnalysisQueryPanel displays the right-side query builder with:
@@ -72,13 +75,17 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   breakdownsLocked = false,
   combinedMetrics,
   combinedBreakdowns,
-  multiQueryValidation
+  multiQueryValidation,
+  // Funnel props
+  funnelBindingKey,
+  onFunnelBindingKeyChange,
 }: AnalysisQueryPanelProps) {
   // Mark unused props
   void _validationStatus
   void _validationError
 
   const isMultiQuery = queryCount > 1
+  const isFunnelMode = mergeStrategy === 'funnel'
 
   // Helper to find field metadata for a breakdown
   const getFieldMeta = useCallback((breakdown: BreakdownItem): MetaField | null => {
@@ -120,6 +127,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   // Get tab label for query tabs
   const getQueryTabLabel = (index: number) => {
     if (!isMultiQuery) return 'Query'
+    // In funnel mode, show "S1", "S2", etc.
+    if (isFunnelMode) return `S${index + 1}`
     return `Q${index + 1}`
   }
 
@@ -234,24 +243,32 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
       {/* Merge Strategy Controls (only shown when multiple queries and on query tab) */}
       {isMultiQuery && activeTab === 'query' && (
-        <div className="flex items-center gap-3 px-4 py-2 text-sm bg-dc-surface-secondary border-b border-dc-border">
-          <label className="flex items-center gap-2">
-            <span className="text-dc-text-secondary text-xs">Combine:</span>
-            <select
-              value={mergeStrategy}
-              onChange={(e) => onMergeStrategyChange?.(e.target.value as 'concat' | 'merge')}
-              className="px-2 py-1 text-xs bg-dc-surface border border-dc-border rounded text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
-            >
-              <option value="concat">Separate series</option>
-              <option value="merge">Merge by dimension</option>
-            </select>
-          </label>
+        <div className="flex items-center gap-2 px-4 py-1.5 text-sm bg-dc-surface-secondary border-b border-dc-border">
+          {LinkIcon && <LinkIcon className="w-3.5 h-3.5 text-dc-text-muted flex-shrink-0" />}
+          <select
+            value={mergeStrategy}
+            onChange={(e) => onMergeStrategyChange?.(e.target.value as QueryMergeStrategy)}
+            className="px-2 py-1 text-xs bg-dc-surface border border-dc-border rounded text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
+          >
+            <option value="concat">Separate series</option>
+            <option value="merge">Merge by dimension</option>
+            <option value="funnel">Funnel</option>
+          </select>
 
+          {/* Funnel Binding Key Selector (inline, only shown in funnel mode) */}
+          {isFunnelMode && onFunnelBindingKeyChange && (
+            <FunnelBindingKeySelector
+              bindingKey={funnelBindingKey ?? null}
+              onChange={onFunnelBindingKeyChange}
+              schema={schema}
+              className="flex-1 max-w-[200px]"
+            />
+          )}
         </div>
       )}
 
-      {/* Multi-Query Validation Warnings */}
-      {multiQueryValidation && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
+      {/* Multi-Query Validation Warnings (hidden in funnel mode - funnels can have same metrics) */}
+      {multiQueryValidation && !isFunnelMode && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
         <div className="px-4 py-2 border-b border-dc-border bg-dc-warning-bg">
           {multiQueryValidation.errors.map((error, i) => (
             <div key={`error-${i}`} className="flex items-start gap-2 text-xs text-dc-error">

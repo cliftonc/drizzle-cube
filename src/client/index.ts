@@ -73,6 +73,9 @@ export {
   useDryRunQuery,
   useMultiDryRunQueries,
   useDryRunQueries,
+  // Funnel query hook
+  useFunnelQuery,
+  createFunnelQueryKey,
 } from './hooks/queries'
 export type {
   UseCubeMetaQueryOptions,
@@ -109,6 +112,7 @@ export {
   selectChartConfig,
   selectUIState,
   selectMultiQueryState,
+  selectFunnelState,
 } from './stores/analysisBuilderStore'
 export type {
   AnalysisBuilderStore,
@@ -179,7 +183,19 @@ export type {
   DashboardConfig,
   // Multi-query types
   MultiQueryConfig,
-  QueryMergeStrategy
+  QueryMergeStrategy,
+  // Funnel types
+  FunnelBindingKey,
+  FunnelBindingKeyMapping,
+  FunnelStep,
+  FunnelConfig,
+  FunnelStepResult,
+  FunnelExecutionResult,
+  FunnelChartData,
+  FunnelValidationError,
+  FunnelValidationResult,
+  UseFunnelQueryOptions,
+  UseFunnelQueryResult,
 } from './types'
 
 // Multi-query type guard
@@ -207,6 +223,25 @@ export {
   generateQueryLabel,
   validateMergeKey
 } from './utils/multiQueryUtils'
+
+// Funnel utilities
+export {
+  validateFunnelConfig,
+  validateBindingKeyExists,
+  validateStepQueries,
+  validateBindingKeyForSteps,
+  isMinimumFunnelConfigValid,
+  getAvailableBindingKeyDimensions,
+  getBindingKeyLabel,
+} from './utils/funnelValidation'
+export {
+  getBindingKeyField,
+  extractBindingKeyValues,
+  buildStepQuery,
+  buildFunnelConfigFromQueries,
+  buildFunnelChartData,
+  isFunnelData,
+} from './utils/funnelExecution'
 
 // Theme utilities
 export {

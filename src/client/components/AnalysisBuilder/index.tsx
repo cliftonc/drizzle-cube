@@ -206,6 +206,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               currentPaletteName={!externalColorPalette ? analysis.localPaletteName : undefined}
               onColorPaletteChange={!externalColorPalette ? analysis.actions.setLocalPaletteName : undefined}
               allQueries={analysis.allQueries}
+              funnelExecutedQueries={analysis.funnelExecutedQueries ?? undefined}
               schema={meta as MetaResponse | null}
               activeView={analysis.activeView}
               onActiveViewChange={analysis.actions.setActiveView}
@@ -281,6 +282,9 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             combinedMetrics={analysis.combinedMetrics}
             combinedBreakdowns={analysis.combinedBreakdowns}
             multiQueryValidation={analysis.multiQueryValidation}
+            // Funnel props
+            funnelBindingKey={analysis.funnelBindingKey}
+            onFunnelBindingKeyChange={analysis.actions.setFunnelBindingKey}
           />
         </div>
 

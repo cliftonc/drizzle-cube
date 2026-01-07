@@ -43,7 +43,7 @@ export interface DisplayOptionConfig {
   label: string
   
   /** Type of input control to render */
-  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat'
+  type: 'boolean' | 'string' | 'number' | 'select' | 'color' | 'paletteColor' | 'axisFormat' | 'stringArray' | 'buttonGroup'
   
   /** Default value for the option */
   defaultValue?: any

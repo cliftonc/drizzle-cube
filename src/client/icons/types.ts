@@ -95,6 +95,7 @@ export interface IconRegistry {
   chartKpiDelta: IconDefinition
   chartKpiText: IconDefinition
   chartMarkdown: IconDefinition
+  chartFunnel: IconDefinition
 
   // Measure type icons
   measureCount: IconDefinition

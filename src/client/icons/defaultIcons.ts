@@ -135,6 +135,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartKpiDelta: { icon: trendingUp, category: 'chart' },
   chartKpiText: { icon: typography, category: 'chart' },
   chartMarkdown: { icon: fileText, category: 'chart' },
+  chartFunnel: { icon: funnel, category: 'chart' },
 
   // Measure type icons (solid)
   measureCount: { icon: bars3BottomLeftSolid, category: 'measure' },

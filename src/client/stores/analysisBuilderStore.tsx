@@ -28,6 +28,8 @@ import type {
   CubeQuery,
   QueryMergeStrategy,
   MultiQueryConfig,
+  FunnelBindingKey,
+  FunnelConfig,
 } from '../types'
 import type {
   AnalysisBuilderState,
@@ -43,6 +45,7 @@ import {
   buildCubeQuery,
   STORAGE_KEY,
 } from '../components/AnalysisBuilder/utils'
+import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
 import { findDateFilterForField } from '../components/AnalysisBuilder/utils'
 import { convertDateRangeTypeToValue } from '../shared/utils'
 import { getSmartChartDefaults } from '../shared/chartDefaults'
@@ -103,6 +106,14 @@ export interface AnalysisBuilderStoreState {
   // =========================================================================
   /** AI panel state */
   aiState: AIState
+
+  // =========================================================================
+  // Funnel State (when mergeStrategy === 'funnel')
+  // =========================================================================
+  /** Binding key dimension that links funnel steps together */
+  funnelBindingKey: FunnelBindingKey | null
+  /** Time window constraint for each step (ISO 8601 duration) */
+  stepTimeToConvert: (string | null)[]
 }
 
 /**
@@ -227,6 +238,18 @@ export interface AnalysisBuilderStoreActions {
   restoreAIPreviousState: () => void
 
   // =========================================================================
+  // Funnel Actions (when mergeStrategy === 'funnel')
+  // =========================================================================
+  /** Set the funnel binding key */
+  setFunnelBindingKey: (bindingKey: FunnelBindingKey | null) => void
+  /** Set time window for a specific step */
+  setStepTimeToConvert: (stepIndex: number, duration: string | null) => void
+  /** Build FunnelConfig from current state */
+  buildFunnelConfig: () => FunnelConfig | null
+  /** Check if in funnel mode */
+  isFunnelMode: () => boolean
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Clear the current query */
@@ -319,6 +342,10 @@ const createDefaultState = (): AnalysisBuilderStoreState => ({
 
   // AI state
   aiState: initialAIState,
+
+  // Funnel state
+  funnelBindingKey: null,
+  stepTimeToConvert: [],
 })
 
 // ============================================================================
@@ -489,7 +516,26 @@ function createStoreActions(
 
     setActiveQueryIndex: (index) => set({ activeQueryIndex: index }),
 
-    setMergeStrategy: (strategy) => set({ mergeStrategy: strategy }),
+    setMergeStrategy: (strategy) =>
+      set((state) => {
+        // Auto-switch to funnel chart when entering funnel mode
+        if (strategy === 'funnel' && state.chartType !== 'funnel') {
+          return {
+            mergeStrategy: strategy,
+            chartType: 'funnel',
+            userManuallySelectedChart: false,
+          }
+        }
+        // Auto-switch away from funnel chart when leaving funnel mode
+        if (strategy !== 'funnel' && state.chartType === 'funnel') {
+          return {
+            mergeStrategy: strategy,
+            chartType: 'line',
+            userManuallySelectedChart: false,
+          }
+        }
+        return { mergeStrategy: strategy }
+      }),
 
     // =================================================================
     // Metrics Actions
@@ -1046,6 +1092,47 @@ function createStoreActions(
       }),
 
     // =================================================================
+    // Funnel Actions
+    // =================================================================
+
+    setFunnelBindingKey: (bindingKey) => set({ funnelBindingKey: bindingKey }),
+
+    setStepTimeToConvert: (stepIndex, duration) =>
+      set((state) => {
+        const newTimeToConvert = [...state.stepTimeToConvert]
+        // Ensure array is large enough
+        while (newTimeToConvert.length <= stepIndex) {
+          newTimeToConvert.push(null)
+        }
+        newTimeToConvert[stepIndex] = duration
+        return { stepTimeToConvert: newTimeToConvert }
+      }),
+
+    buildFunnelConfig: () => {
+      const state = get()
+      if (state.mergeStrategy !== 'funnel') return null
+      if (!state.funnelBindingKey) return null
+      if (state.queryStates.length < 2) return null
+
+      // Build queries for each step
+      const queries = state.queryStates.map((qs) =>
+        buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, qs.order)
+      )
+
+      // Generate step labels
+      const stepLabels = state.queryStates.map((_, i) => `Step ${i + 1}`)
+
+      return buildFunnelConfigFromQueries(
+        queries,
+        state.funnelBindingKey,
+        stepLabels,
+        state.stepTimeToConvert
+      )
+    },
+
+    isFunnelMode: () => get().mergeStrategy === 'funnel',
+
+    // =================================================================
     // Utility Actions
     // =================================================================
 
@@ -1201,6 +1288,8 @@ export function createAnalysisBuilderStore(options: CreateStoreOptions = {}) {
               queryStates: state.queryStates,
               activeQueryIndex: state.queryStates.length > 1 ? state.activeQueryIndex : undefined,
               mergeStrategy: state.queryStates.length > 1 ? state.mergeStrategy : undefined,
+              // Funnel binding key (only persist when in funnel mode)
+              funnelBindingKey: state.mergeStrategy === 'funnel' ? state.funnelBindingKey : undefined,
               chartType: state.chartType,
               chartConfig: state.chartConfig,
               displayConfig: state.displayConfig,
@@ -1346,4 +1435,13 @@ export const selectMultiQueryState = (state: AnalysisBuilderStore) => ({
   activeQueryIndex: state.activeQueryIndex,
   mergeStrategy: state.mergeStrategy,
   isMultiQueryMode: state.queryStates.length > 1,
+})
+
+/**
+ * Select funnel state
+ */
+export const selectFunnelState = (state: AnalysisBuilderStore) => ({
+  funnelBindingKey: state.funnelBindingKey,
+  stepTimeToConvert: state.stepTimeToConvert,
+  isFunnelMode: state.mergeStrategy === 'funnel',
 })

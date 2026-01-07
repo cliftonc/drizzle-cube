@@ -1,7 +1,7 @@
 /**
  * useAnalysisQueryExecution
  *
- * Coordinates TanStack Query execution for single and multi-query modes.
+ * Coordinates TanStack Query execution for single, multi-query, and funnel modes.
  * Provides unified loading states, results, and refetch functionality.
  */
 
@@ -9,11 +9,13 @@ import { useMemo, useCallback } from 'react'
 import {
   useCubeLoadQuery,
   useMultiCubeLoadQuery,
+  useFunnelQuery,
   useDryRunQueries,
   type DebugDataEntry,
 } from './queries'
-import type { CubeQuery, MultiQueryConfig } from '../types'
+import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy } from '../types'
 import type { ExecutionStatus } from '../components/AnalysisBuilder/types'
+import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
 
 export interface UseAnalysisQueryExecutionOptions {
   /** Current query (for single-query mode) */
@@ -28,6 +30,10 @@ export interface UseAnalysisQueryExecutionOptions {
   isValidQuery: boolean
   /** Initial data (skip first fetch) */
   initialData?: unknown[]
+  /** Merge strategy (for detecting funnel mode) */
+  mergeStrategy?: QueryMergeStrategy
+  /** Funnel binding key (required for funnel mode) */
+  funnelBindingKey?: FunnelBindingKey | null
 }
 
 export interface UseAnalysisQueryExecutionResult {
@@ -49,6 +55,13 @@ export interface UseAnalysisQueryExecutionResult {
   hasDebounced: boolean
   /** Refetch function */
   refetch: () => void
+  /**
+   * In funnel mode, these are the actually executed queries with:
+   * - Binding key dimension auto-added
+   * - IN filter applied for steps 2+
+   * Use these for debug display instead of the original queries.
+   */
+  funnelExecutedQueries: CubeQuery[] | null
 }
 
 export function useAnalysisQueryExecution(
@@ -61,7 +74,18 @@ export function useAnalysisQueryExecution(
     isMultiQueryMode,
     isValidQuery,
     initialData,
+    mergeStrategy,
+    funnelBindingKey,
   } = options
+
+  // Determine if we're in funnel mode
+  const isFunnelMode = mergeStrategy === 'funnel' && isMultiQueryMode
+
+  // Build funnel config when in funnel mode
+  const funnelConfig = useMemo(() => {
+    if (!isFunnelMode || !funnelBindingKey || allQueries.length < 2) return null
+    return buildFunnelConfigFromQueries(allQueries, funnelBindingKey)
+  }, [isFunnelMode, funnelBindingKey, allQueries])
 
   // Single query execution
   const singleQueryResult = useCubeLoadQuery(currentQuery, {
@@ -69,9 +93,15 @@ export function useAnalysisQueryExecution(
     debounceMs: 300,
   })
 
-  // Multi-query execution
+  // Multi-query execution (skip in funnel mode)
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
-    skip: !multiQueryConfig || !isMultiQueryMode,
+    skip: !multiQueryConfig || !isMultiQueryMode || isFunnelMode,
+    debounceMs: 300,
+  })
+
+  // Funnel query execution
+  const funnelQueryResult = useFunnelQuery(funnelConfig, {
+    skip: !isFunnelMode || !funnelConfig,
     debounceMs: 300,
   })
 
@@ -82,26 +112,48 @@ export function useAnalysisQueryExecution(
     skip: !isValidQuery,
   })
 
-  // Unify results
-  const isLoading = isMultiQueryMode ? multiQueryResult.isLoading : singleQueryResult.isLoading
-  const isFetching = isMultiQueryMode ? multiQueryResult.isFetching : singleQueryResult.isFetching
-  const error = isMultiQueryMode ? multiQueryResult.error : singleQueryResult.error
+  // Unify results based on mode
+  const isLoading = isFunnelMode
+    ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
+    : isMultiQueryMode
+      ? multiQueryResult.isLoading
+      : singleQueryResult.isLoading
+  const isFetching = isFunnelMode
+    ? funnelQueryResult.isExecuting
+    : isMultiQueryMode
+      ? multiQueryResult.isFetching
+      : singleQueryResult.isFetching
+  const error = isFunnelMode
+    ? funnelQueryResult.error
+    : isMultiQueryMode
+      ? multiQueryResult.error
+      : singleQueryResult.error
 
   // Has debounced (for smart defaults trigger)
-  const hasDebounced = Boolean(singleQueryResult.debouncedQuery || multiQueryResult.debouncedConfig)
+  const hasDebounced = Boolean(
+    singleQueryResult.debouncedQuery ||
+    multiQueryResult.debouncedConfig ||
+    !funnelQueryResult.isDebouncing // Funnel has debounced when not debouncing
+  )
 
   // Unified refetch function
   const refetch = useCallback(() => {
-    if (isMultiQueryMode) {
+    if (isFunnelMode) {
+      funnelQueryResult.execute()
+    } else if (isMultiQueryMode) {
       multiQueryResult.refetch()
     } else {
       singleQueryResult.refetch()
     }
-  }, [isMultiQueryMode, multiQueryResult, singleQueryResult])
+  }, [isFunnelMode, isMultiQueryMode, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   // Execution status
   const executionStatus: ExecutionStatus = useMemo(() => {
-    const hasResults = isMultiQueryMode ? multiQueryResult.data : singleQueryResult.rawData
+    const hasResults = isFunnelMode
+      ? funnelQueryResult.chartData
+      : isMultiQueryMode
+        ? multiQueryResult.data
+        : singleQueryResult.rawData
     if (initialData && initialData.length > 0 && !hasResults) return 'success'
     if (!isValidQuery) return 'idle'
     if (isLoading && !hasResults) return 'loading'
@@ -109,10 +161,14 @@ export function useAnalysisQueryExecution(
     if (error) return 'error'
     if (hasResults) return 'success'
     return 'idle'
-  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, initialData, isMultiQueryMode])
+  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, initialData, isMultiQueryMode, isFunnelMode])
 
   // Execution results
   const executionResults = useMemo(() => {
+    // Funnel mode returns chart data directly
+    if (isFunnelMode && funnelQueryResult.chartData) {
+      return funnelQueryResult.chartData as unknown[]
+    }
     if (isMultiQueryMode && multiQueryResult.data) {
       return multiQueryResult.data as unknown[]
     }
@@ -123,13 +179,22 @@ export function useAnalysisQueryExecution(
       return initialData
     }
     return null
-  }, [singleQueryResult.rawData, multiQueryResult.data, initialData, isMultiQueryMode])
+  }, [singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, initialData, isMultiQueryMode, isFunnelMode])
 
-  // Per-query results for table view
+  // Per-query results for table view (or per-step for funnel)
   const perQueryResults = useMemo(() => {
+    // In funnel mode, return step results as per-query data
+    if (isFunnelMode && funnelQueryResult.stepResults) {
+      return funnelQueryResult.stepResults.map((step) => step.data)
+    }
     if (!isMultiQueryMode || !multiQueryResult.perQueryData) return null
     return multiQueryResult.perQueryData
-  }, [isMultiQueryMode, multiQueryResult.perQueryData])
+  }, [isMultiQueryMode, isFunnelMode, multiQueryResult.perQueryData, funnelQueryResult.stepResults])
+
+  // In funnel mode, provide the executed queries for debug display
+  const funnelExecutedQueries = isFunnelMode && funnelQueryResult.executedQueries?.length > 0
+    ? funnelQueryResult.executedQueries
+    : null
 
   return {
     executionStatus,
@@ -141,5 +206,6 @@ export function useAnalysisQueryExecution(
     debugDataPerQuery: dryRunResult.debugDataPerQuery,
     hasDebounced,
     refetch,
+    funnelExecutedQueries,
   }
 }

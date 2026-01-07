@@ -31,6 +31,7 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   kpiDelta: () => import('../components/charts/KpiDelta'),
   kpiText: () => import('../components/charts/KpiText'),
   markdown: () => import('../components/charts/MarkdownChart'),
+  funnel: () => import('../components/charts/FunnelChart'),
 }
 
 /**

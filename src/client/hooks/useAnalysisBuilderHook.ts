@@ -37,6 +37,8 @@ import type {
   ChartAxisConfig,
   ChartDisplayConfig,
   Filter,
+  QueryMergeStrategy,
+  FunnelBindingKey,
 } from '../types'
 import type {
   AnalysisBuilderState,
@@ -74,13 +76,16 @@ export interface UseAnalysisBuilderResult {
   queryState: AnalysisBuilderState
   queryStates: AnalysisBuilderState[]
   activeQueryIndex: number
-  mergeStrategy: 'concat' | 'merge'
+  mergeStrategy: QueryMergeStrategy
   isMultiQueryMode: boolean
   mergeKeys: string[] | undefined
   currentQuery: CubeQuery
   allQueries: CubeQuery[]
   multiQueryConfig: MultiQueryConfig | null
   multiQueryValidation: MultiQueryValidationResult | null
+
+  // Funnel State
+  funnelBindingKey: FunnelBindingKey | null
 
   // Data Fetching
   executionStatus: ExecutionStatus
@@ -91,6 +96,8 @@ export interface UseAnalysisBuilderResult {
   error: Error | null
   isValidQuery: boolean
   debugDataPerQuery: DebugDataEntry[]
+  /** In funnel mode, the actually executed queries with binding key dimension and IN filters */
+  funnelExecutedQueries: CubeQuery[] | null
 
   // Chart Configuration
   chartType: ChartType
@@ -128,7 +135,7 @@ export interface UseAnalysisBuilderResult {
   // Actions
   actions: {
     setActiveQueryIndex: (index: number) => void
-    setMergeStrategy: (strategy: 'concat' | 'merge') => void
+    setMergeStrategy: (strategy: QueryMergeStrategy) => void
     openMetricsModal: () => void
     addMetric: (field: string, label?: string) => void
     removeMetric: (id: string) => void
@@ -146,6 +153,7 @@ export interface UseAnalysisBuilderResult {
     setOrder: (fieldName: string, direction: 'asc' | 'desc' | null) => void
     addQuery: () => void
     removeQuery: (index: number) => void
+    setFunnelBindingKey: (bindingKey: FunnelBindingKey | null) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void
     setDisplayConfig: (config: ChartDisplayConfig) => void
@@ -212,6 +220,9 @@ export function useAnalysisBuilder(
     activeQueryIndex: queryBuilder.activeQueryIndex,
   })
 
+  // Get funnel binding key from store for funnel mode
+  const funnelBindingKey = useAnalysisBuilderStore((s) => s.funnelBindingKey)
+
   // 3. Query Execution (TanStack Query integration)
   const queryExecution = useAnalysisQueryExecution({
     currentQuery: queryBuilder.currentQuery,
@@ -220,6 +231,8 @@ export function useAnalysisBuilder(
     isMultiQueryMode: queryBuilder.isMultiQueryMode,
     isValidQuery: queryBuilder.isValidQuery ?? false,
     initialData,
+    mergeStrategy: queryBuilder.mergeStrategy,
+    funnelBindingKey,
   })
 
   // 4. Chart Defaults (chart config, availability, smart defaults)
@@ -271,6 +284,9 @@ export function useAnalysisBuilder(
 
   // Utility actions
   const clearQuery = useAnalysisBuilderStore((state) => state.clearQuery)
+
+  // Funnel actions
+  const setFunnelBindingKey = useAnalysisBuilderStore((state) => state.setFunnelBindingKey)
 
   // AI state and actions
   const aiState = useAnalysisBuilderStore((state) => state.aiState)
@@ -390,6 +406,9 @@ export function useAnalysisBuilder(
     multiQueryConfig: queryBuilder.multiQueryConfig,
     multiQueryValidation: queryBuilder.multiQueryValidation,
 
+    // Funnel state
+    funnelBindingKey,
+
     // Data fetching (from queryExecution)
     executionStatus: queryExecution.executionStatus,
     executionResults: queryExecution.executionResults,
@@ -399,6 +418,7 @@ export function useAnalysisBuilder(
     error: queryExecution.error,
     isValidQuery: queryBuilder.isValidQuery ?? false,
     debugDataPerQuery: queryExecution.debugDataPerQuery,
+    funnelExecutedQueries: queryExecution.funnelExecutedQueries,
 
     // Chart configuration (from chartDefaults)
     chartType: chartDefaults.chartType,
@@ -463,6 +483,9 @@ export function useAnalysisBuilder(
       // Multi-query (from queryBuilder)
       addQuery: queryBuilder.addQuery,
       removeQuery: queryBuilder.removeQuery,
+
+      // Funnel
+      setFunnelBindingKey,
 
       // Chart (from chartDefaults)
       setChartType: chartDefaults.setChartType,

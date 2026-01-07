@@ -15,7 +15,9 @@ import type {
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
-  MultiQueryConfig
+  MultiQueryConfig,
+  QueryMergeStrategy,
+  FunnelBindingKey,
 } from '../../types'
 import type { ColorPalette } from '../../utils/colorPalettes'
 import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types'
@@ -263,7 +265,7 @@ export interface AnalysisQueryPanelProps {
   /** Index of the currently active query tab */
   activeQueryIndex?: number
   /** Strategy for merging results from multiple queries */
-  mergeStrategy?: 'concat' | 'merge'
+  mergeStrategy?: QueryMergeStrategy
   /** Callback when active query tab changes */
   onActiveQueryChange?: (index: number) => void
   /** Callback to add a new query */
@@ -271,7 +273,7 @@ export interface AnalysisQueryPanelProps {
   /** Callback to remove a query at specified index */
   onRemoveQuery?: (index: number) => void
   /** Callback when merge strategy changes */
-  onMergeStrategyChange?: (strategy: 'concat' | 'merge') => void
+  onMergeStrategyChange?: (strategy: QueryMergeStrategy) => void
   /** Whether breakdowns are locked (synced from Q1 in merge mode) */
   breakdownsLocked?: boolean
   /** Combined metrics from all queries (for chart config in multi-query mode) */
@@ -280,6 +282,12 @@ export interface AnalysisQueryPanelProps {
   combinedBreakdowns?: BreakdownItem[]
   /** Validation result for multi-query mode (errors and warnings) */
   multiQueryValidation?: MultiQueryValidationResult | null
+
+  // Funnel-specific props (when mergeStrategy === 'funnel')
+  /** Binding key dimension that links funnel steps together */
+  funnelBindingKey?: FunnelBindingKey | null
+  /** Callback when funnel binding key changes */
+  onFunnelBindingKeyChange?: (bindingKey: FunnelBindingKey | null) => void
 }
 
 /**
@@ -312,6 +320,13 @@ export interface AnalysisResultsPanelProps {
 
   /** All queries for multi-query mode (used for table column headers per-query) */
   allQueries?: CubeQuery[]
+  /**
+   * In funnel mode, the actually executed queries with:
+   * - Binding key dimension auto-added
+   * - IN filter applied for steps 2+
+   * Use these for debug display instead of allQueries.
+   */
+  funnelExecutedQueries?: CubeQuery[]
   /** Schema metadata */
   schema: MetaResponse | null
 
@@ -574,7 +589,7 @@ export interface AnalysisBuilderStorageState {
   // Multi-query format (when multiple queries are configured)
   queryStates?: AnalysisBuilderState[]
   activeQueryIndex?: number
-  mergeStrategy?: 'concat' | 'merge'
+  mergeStrategy?: QueryMergeStrategy
   /** Dimension keys used for merging in 'merge' strategy */
   mergeKeys?: string[]
 }

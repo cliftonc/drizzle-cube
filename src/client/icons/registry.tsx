@@ -179,7 +179,8 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
     kpiNumber: 'chartKpiNumber',
     kpiDelta: 'chartKpiDelta',
     kpiText: 'chartKpiText',
-    markdown: 'chartMarkdown'
+    markdown: 'chartMarkdown',
+    funnel: 'chartFunnel'
   }
 
   const iconName = typeMap[chartType] || 'chartBar'

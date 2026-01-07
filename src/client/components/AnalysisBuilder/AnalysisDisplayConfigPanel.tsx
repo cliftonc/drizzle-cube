@@ -5,7 +5,7 @@
  * Extracted from AnalysisChartConfigPanel to be shown in its own tab.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import SectionHeading from './SectionHeading'
 import { chartConfigRegistry } from '../../charts/chartConfigRegistry'
 import { getChartConfig } from '../../charts/chartConfigs'
@@ -17,6 +17,59 @@ interface AnalysisDisplayConfigPanelProps {
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
   onDisplayConfigChange: (config: ChartDisplayConfig) => void
+}
+
+/**
+ * StringArrayInput - A textarea that edits an array of strings
+ * Uses local state while editing and only updates on blur
+ */
+function StringArrayInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  description,
+}: {
+  label: string
+  value: string[]
+  onChange: (value: string[]) => void
+  placeholder?: string
+  description?: string
+}) {
+  // Local state for textarea editing
+  const [localText, setLocalText] = useState(() => value.join('\n'))
+
+  // Sync local state when external value changes (e.g., from undo/redo or load)
+  useEffect(() => {
+    const externalText = value.join('\n')
+    setLocalText(externalText)
+  }, [value])
+
+  const handleBlur = useCallback(() => {
+    // Convert text to array, filtering empty strings
+    const arrayValue = localText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+    onChange(arrayValue)
+  }, [localText, onChange])
+
+  return (
+    <div className="space-y-1">
+      <label className="text-sm text-dc-text-secondary">{label}</label>
+      <textarea
+        value={localText}
+        onChange={(e) => setLocalText(e.target.value)}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        rows={4}
+        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text resize-y"
+      />
+      {description && (
+        <p className="text-xs text-dc-text-muted">{description}</p>
+      )}
+    </div>
+  )
 }
 
 export default function AnalysisDisplayConfigPanel({
@@ -384,6 +437,54 @@ export default function AnalysisDisplayConfigPanel({
                     })
                   }
                 />
+              )}
+
+              {option.type === 'stringArray' && (
+                <StringArrayInput
+                  label={option.label}
+                  value={(displayConfig[option.key as keyof ChartDisplayConfig] as string[]) ?? []}
+                  onChange={(arrayValue) =>
+                    onDisplayConfigChange({
+                      ...displayConfig,
+                      [option.key]: arrayValue.length > 0 ? arrayValue : undefined
+                    })
+                  }
+                  placeholder={option.placeholder}
+                  description={option.description}
+                />
+              )}
+
+              {option.type === 'buttonGroup' && (
+                <div className="space-y-1">
+                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="flex border border-dc-border rounded-sm overflow-hidden">
+                    {option.options?.map((opt) => {
+                      const isSelected = (displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue) === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() =>
+                            onDisplayConfigChange({
+                              ...displayConfig,
+                              [option.key]: opt.value
+                            })
+                          }
+                          className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-dc-primary text-white'
+                              : 'bg-dc-surface text-dc-text hover:bg-dc-border'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {option.description && (
+                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                  )}
+                </div>
               )}
             </div>
           ))}

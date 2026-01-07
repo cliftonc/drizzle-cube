@@ -13,6 +13,7 @@ import { kpiNumberConfig } from '../components/charts/KpiNumber.config'
 import { kpiDeltaConfig } from '../components/charts/KpiDelta.config'
 import { kpiTextConfig } from '../components/charts/KpiText.config'
 import { markdownConfig } from '../components/charts/MarkdownChart.config'
+import { funnelChartConfig } from '../components/charts/FunnelChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -33,5 +34,6 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   kpiNumber: kpiNumberConfig,
   kpiDelta: kpiDeltaConfig,
   kpiText: kpiTextConfig,
-  markdown: markdownConfig
+  markdown: markdownConfig,
+  funnel: funnelChartConfig,
 }

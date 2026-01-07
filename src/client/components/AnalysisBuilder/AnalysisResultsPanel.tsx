@@ -35,6 +35,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   currentPaletteName,
   onColorPaletteChange,
   allQueries,
+  funnelExecutedQueries,
   activeView = 'chart',
   onActiveViewChange,
   displayLimit = 100,
@@ -87,7 +88,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const debugLoading = currentDebugData.loading
   const debugError = currentDebugData.error
   // Get the query for the active debug tab
-  const debugQuery = allQueries?.[activeDebugIndex] || null
+  // In funnel mode, prefer showing the executed queries which include:
+  // - The binding key dimension (auto-added)
+  // - The IN filter for steps 2+ (with values from previous step)
+  const debugQuery = funnelExecutedQueries?.[activeDebugIndex] ?? allQueries?.[activeDebugIndex] ?? null
+
+  // Determine if we're showing funnel executed queries (for visual indicator)
+  const isShowingFunnelQuery = Boolean(funnelExecutedQueries?.length && funnelExecutedQueries[activeDebugIndex])
   // Force table view when no metrics are selected
   useEffect(() => {
     if (!hasMetrics && activeView === 'chart') {
@@ -343,12 +350,19 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Cube Query */}
         <div>
           {debugQuery ? (
-            <CodeBlock
-              code={JSON.stringify(debugQuery, null, 2)}
-              language="json"
-              title="Cube Query"
-              height="16rem"
-            />
+            <>
+              <CodeBlock
+                code={JSON.stringify(debugQuery, null, 2)}
+                language="json"
+                title={isShowingFunnelQuery ? "Executed Query (with funnel filters)" : "Cube Query"}
+                height="16rem"
+              />
+              {isShowingFunnelQuery && activeDebugIndex > 0 && (
+                <div className="mt-1 text-xs text-dc-text-muted">
+                  <span className="text-dc-accent">ℹ</span> This query includes an IN filter with binding key values from the previous step
+                </div>
+              )}
+            </>
           ) : (
             <>
               <h4 className="text-sm font-semibold text-dc-text mb-2">Cube Query</h4>

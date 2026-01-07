@@ -42,15 +42,15 @@ export type FieldLabelMap = Record<string, string>
 export type { ColorPalette } from './utils/colorPalettes'
 
 // Chart types
-export type ChartType = 
-  | 'line' 
-  | 'bar' 
-  | 'pie' 
-  | 'table' 
-  | 'area' 
-  | 'scatter' 
-  | 'radar' 
-  | 'radialBar' 
+export type ChartType =
+  | 'line'
+  | 'bar'
+  | 'pie'
+  | 'table'
+  | 'area'
+  | 'scatter'
+  | 'radar'
+  | 'radialBar'
   | 'treemap'
   | 'bubble'
   | 'activityGrid'
@@ -58,6 +58,7 @@ export type ChartType =
   | 'kpiDelta'
   | 'kpiText'
   | 'markdown'
+  | 'funnel'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
@@ -161,6 +162,14 @@ export interface ChartDisplayConfig {
   priorPeriodOpacity?: number
   /** Include period labels in legend */
   showPeriodLabels?: boolean
+
+  // Funnel chart specific display options
+  /** Custom labels for funnel steps (array indexed by step, e.g., ["Signup", "Activation", "Purchase"]) */
+  funnelStepLabels?: string[]
+  /** Hide the summary footer in funnel charts */
+  hideSummaryFooter?: boolean
+  /** Funnel orientation: horizontal (bars left to right) or vertical (bars bottom to top) */
+  funnelOrientation?: 'horizontal' | 'vertical'
 }
 
 // Portlet configuration
@@ -278,8 +287,9 @@ export interface CubeQuery {
  * Merge strategy for combining multiple query results
  * - 'concat': Append rows with __queryIndex marker (for separate series per query)
  * - 'merge': Align data by common dimension key (for combined visualization)
+ * - 'funnel': Execute queries sequentially, filtering each step by binding key from previous step
  */
-export type QueryMergeStrategy = 'concat' | 'merge'
+export type QueryMergeStrategy = 'concat' | 'merge' | 'funnel'
 
 /**
  * Configuration for multi-query portlets
@@ -398,3 +408,20 @@ export interface ResponsiveLayout {
 
 // Dashboard display modes for responsive layout
 export type DashboardDisplayMode = 'desktop' | 'scaled' | 'mobile'
+
+// Re-export funnel types
+export type {
+  FunnelBindingKey,
+  FunnelBindingKeyMapping,
+  FunnelStep,
+  FunnelConfig,
+  FunnelStepResult,
+  FunnelExecutionResult,
+  FunnelChartData,
+  FunnelValidationError,
+  FunnelValidationResult,
+  UseFunnelQueryOptions,
+  UseFunnelQueryResult,
+} from './types/funnel'
+
+export { isFunnelMergeStrategy } from './types/funnel'

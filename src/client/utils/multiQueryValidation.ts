@@ -5,7 +5,7 @@
  * These help detect issues like measure collisions and granularity mismatches.
  */
 
-import type { CubeQuery } from '../types'
+import type { CubeQuery, QueryMergeStrategy } from '../types'
 
 // TimeDimension type extracted from CubeQuery
 type TimeDimension = NonNullable<CubeQuery['timeDimensions']>[number]
@@ -203,11 +203,11 @@ export function detectAsymmetricDateRanges(queries: CubeQuery[]): MultiQueryVali
 /**
  * Validate a multi-query configuration
  * For 'merge' strategy: strict validation (errors block execution)
- * For 'concat' strategy: only warnings
+ * For 'concat' and 'funnel' strategies: only warnings
  */
 export function validateMultiQueryConfig(
   queries: CubeQuery[],
-  mergeStrategy: 'concat' | 'merge',
+  mergeStrategy: QueryMergeStrategy,
   mergeKeys: string[] = []
 ): MultiQueryValidationResult {
   const errors: MultiQueryValidationError[] = []

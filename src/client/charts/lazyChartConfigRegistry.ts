@@ -27,6 +27,7 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   kpiDelta: () => import('../components/charts/KpiDelta.config'),
   kpiText: () => import('../components/charts/KpiText.config'),
   markdown: () => import('../components/charts/MarkdownChart.config'),
+  funnel: () => import('../components/charts/FunnelChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -46,6 +47,7 @@ const configExportNames: Record<ChartType, string> = {
   kpiDelta: 'kpiDeltaConfig',
   kpiText: 'kpiTextConfig',
   markdown: 'markdownConfig',
+  funnel: 'funnelChartConfig',
 }
 
 // Cache for loaded configs

@@ -48,3 +48,9 @@ export {
   type UseMultiDryRunQueriesOptions,
   type UseMultiDryRunQueriesResult,
 } from './useDryRunQuery'
+
+// Funnel query data loading (sequential execution)
+export {
+  useFunnelQuery,
+  createFunnelQueryKey,
+} from './useFunnelQuery'
