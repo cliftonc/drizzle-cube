@@ -61,6 +61,24 @@ vi.mock('../../src/client/hooks/queries/useMultiCubeLoadQuery', () => ({
   createMultiQueryKey: vi.fn((config) => ['cube', 'multiLoad', JSON.stringify(config)])
 }))
 
+// Mock useFunnelQuery (used for funnel chart portlets)
+let mockUseFunnelQueryResult = {
+  result: null,
+  stepResults: [],
+  chartData: null,
+  executedQueries: [],
+  isExecuting: false,
+  isDebouncing: false,
+  status: 'idle' as const,
+  currentStepIndex: null,
+  error: null,
+  execute: vi.fn(),
+  reset: vi.fn()
+}
+vi.mock('../../src/client/hooks/queries/useFunnelQuery', () => ({
+  useFunnelQuery: vi.fn(() => mockUseFunnelQueryResult)
+}))
+
 // Mock useScrollContainer
 vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)
@@ -174,6 +192,19 @@ describe('AnalyticsPortlet', () => {
       isAnyLoading: false,
       areAllComplete: true,
       refetch: vi.fn()
+    }
+    mockUseFunnelQueryResult = {
+      result: null,
+      stepResults: [],
+      chartData: null,
+      executedQueries: [],
+      isExecuting: false,
+      isDebouncing: false,
+      status: 'idle' as const,
+      currentStepIndex: null,
+      error: null,
+      execute: vi.fn(),
+      reset: vi.fn()
     }
   })
 
