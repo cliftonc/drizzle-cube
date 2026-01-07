@@ -141,9 +141,10 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
   const hasSelection = bindingKey?.dimension !== null && bindingKey?.dimension !== undefined
 
   return (
-    <div ref={dropdownRef} className={`relative ${className}`}>
-      {/* Trigger Button - compact to match select dropdown */}
-      <button
+    <div className={className}>
+      <div ref={dropdownRef} className="relative">
+        {/* Trigger Button - compact to match select dropdown */}
+        <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -181,7 +182,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full min-w-[280px] bg-dc-surface border border-dc-border rounded-md shadow-lg">
+        <div className="absolute z-50 mt-1 right-0 w-[280px] bg-dc-surface border border-dc-border rounded-md shadow-lg">
           {/* Search Input */}
           <div className="p-2 border-b border-dc-border">
             <div className="relative">
@@ -243,6 +244,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 })

@@ -138,14 +138,14 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
       <div className="flex border-b border-dc-border flex-shrink-0">
         {/* Query Tabs - show Q1, Q2, etc. when multi-query, or single "Query" tab */}
         {isMultiQuery ? (
-          <>
+          <div className="flex min-w-0 overflow-x-auto scrollbar-thin">
             {Array.from({ length: queryCount }).map((_, index) => {
               const isActiveQuery = index === activeQueryIndex && activeTab === 'query'
               return (
                 <button
                   key={`q${index}`}
                   onClick={() => handleQueryTabClick(index)}
-                  className={`flex items-center gap-1 px-3 py-3 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1 px-3 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
                     isActiveQuery
                       ? 'text-dc-primary border-b-2 border-dc-primary'
                       : 'text-dc-text-secondary hover:text-dc-text'
@@ -169,13 +169,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             {/* Add Query Button */}
             <button
               onClick={onAddQuery}
-              className="flex items-center justify-center px-2 py-3 text-dc-text-secondary hover:text-dc-text transition-colors"
+              className="flex items-center justify-center px-2 py-3 text-dc-text-secondary hover:text-dc-text transition-colors flex-shrink-0"
               title="Add query"
               aria-label="Add new query"
             >
               <AddIcon className="w-4 h-4" />
             </button>
-          </>
+          </div>
         ) : (
           <button
             onClick={() => onActiveTabChange('query')}
@@ -214,7 +214,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('chart')}
           disabled={metrics.length === 0}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`px-4 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
+            isMultiQuery ? '' : 'flex-1'
+          } ${
             activeTab === 'chart'
               ? 'text-dc-primary border-b-2 border-dc-primary'
               : metrics.length === 0
@@ -228,7 +230,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('display')}
           disabled={metrics.length === 0}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`px-4 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
+            isMultiQuery ? '' : 'flex-1'
+          } ${
             activeTab === 'display'
               ? 'text-dc-primary border-b-2 border-dc-primary'
               : metrics.length === 0
@@ -261,7 +265,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
               bindingKey={funnelBindingKey ?? null}
               onChange={onFunnelBindingKeyChange}
               schema={schema}
-              className="flex-1 max-w-[200px]"
+              className="w-[180px] flex-shrink-0"
             />
           )}
         </div>
