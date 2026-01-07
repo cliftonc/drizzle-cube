@@ -135,6 +135,16 @@ export function extractBindingKeyValues(
 
   const allValues = Array.from(values)
   const totalCount = allValues.length
+
+  // Sort values for consistent ordering (enables query cache hits)
+  // Numbers sort numerically, strings sort alphabetically
+  allValues.sort((a, b) => {
+    if (typeof a === 'number' && typeof b === 'number') {
+      return a - b
+    }
+    return String(a).localeCompare(String(b))
+  })
+
   const limitedValues = limit > 0 ? allValues.slice(0, limit) : allValues
 
   return {
