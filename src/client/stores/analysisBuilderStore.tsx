@@ -466,11 +466,20 @@ function buildInitialState(options: CreateStoreOptions): AnalysisBuilderStoreSta
   const query = options.initialQuery
   let newQueryStates: AnalysisBuilderState[]
   let newMergeStrategy = defaultState.mergeStrategy
+  let newFunnelBindingKey = defaultState.funnelBindingKey
+  let newStepTimeToConvert = defaultState.stepTimeToConvert
 
   if (isMultiQueryConfig(query)) {
     newQueryStates = query.queries.map(queryToState)
     if (query.mergeStrategy) {
       newMergeStrategy = query.mergeStrategy
+    }
+    // Restore funnel-specific config
+    if (query.funnelBindingKey !== undefined) {
+      newFunnelBindingKey = query.funnelBindingKey
+    }
+    if (query.stepTimeToConvert !== undefined) {
+      newStepTimeToConvert = query.stepTimeToConvert
     }
   } else {
     newQueryStates = [queryToState(query)]
@@ -481,6 +490,8 @@ function buildInitialState(options: CreateStoreOptions): AnalysisBuilderStoreSta
     queryStates: newQueryStates,
     activeQueryIndex: 0,
     mergeStrategy: newMergeStrategy,
+    funnelBindingKey: newFunnelBindingKey,
+    stepTimeToConvert: newStepTimeToConvert,
     chartType: options.initialChartConfig?.chartType || defaultState.chartType,
     chartConfig: options.initialChartConfig?.chartConfig || defaultState.chartConfig,
     displayConfig: options.initialChartConfig?.displayConfig || defaultState.displayConfig,
@@ -1154,11 +1165,20 @@ function createStoreActions(
         const { query } = sharedState
         let newQueryStates: AnalysisBuilderState[]
         let newMergeStrategy = state.mergeStrategy
+        let newFunnelBindingKey = state.funnelBindingKey
+        let newStepTimeToConvert = state.stepTimeToConvert
 
         if (isMultiQueryConfig(query)) {
           newQueryStates = query.queries.map(queryToState)
           if (query.mergeStrategy) {
             newMergeStrategy = query.mergeStrategy
+          }
+          // Restore funnel-specific config from shared state
+          if (query.funnelBindingKey !== undefined) {
+            newFunnelBindingKey = query.funnelBindingKey
+          }
+          if (query.stepTimeToConvert !== undefined) {
+            newStepTimeToConvert = query.stepTimeToConvert
           }
         } else {
           newQueryStates = [queryToState(query)]
@@ -1168,6 +1188,8 @@ function createStoreActions(
           queryStates: newQueryStates,
           activeQueryIndex: 0,
           mergeStrategy: newMergeStrategy,
+          funnelBindingKey: newFunnelBindingKey,
+          stepTimeToConvert: newStepTimeToConvert,
           chartType: sharedState.chartType || state.chartType,
           chartConfig: sharedState.chartConfig || state.chartConfig,
           displayConfig: sharedState.displayConfig || state.displayConfig,

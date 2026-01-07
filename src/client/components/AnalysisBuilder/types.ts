@@ -592,6 +592,10 @@ export interface AnalysisBuilderStorageState {
   mergeStrategy?: QueryMergeStrategy
   /** Dimension keys used for merging in 'merge' strategy */
   mergeKeys?: string[]
+  /** Binding key for funnel strategy (links steps together) */
+  funnelBindingKey?: FunnelBindingKey | null
+  /** Time window per step for funnel strategy (ISO 8601 duration) */
+  stepTimeToConvert?: (string | null)[]
 }
 
 /**

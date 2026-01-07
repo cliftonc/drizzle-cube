@@ -4,6 +4,7 @@
 
 import type { ReactNode } from 'react'
 import type { ColorPalette } from './utils/colorPalettes'
+import type { FunnelBindingKey } from './types/funnel'
 
 // Cube metadata types
 export interface CubeMetaField {
@@ -300,6 +301,8 @@ export interface MultiQueryConfig {
   mergeStrategy: QueryMergeStrategy
   mergeKeys?: string[]        // Dimensions to align on (for 'merge' strategy) - composite key
   queryLabels?: string[]      // User-defined labels per query
+  funnelBindingKey?: FunnelBindingKey | null  // Binding key for funnel strategy
+  stepTimeToConvert?: (string | null)[]       // Time window per step (ISO 8601 duration)
 }
 
 /**

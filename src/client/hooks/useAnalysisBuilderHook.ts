@@ -375,6 +375,9 @@ export function useAnalysisBuilder(
         mergeStrategy: state.mergeStrategy,
         mergeKeys: state.getMergeKeys(),
         queryLabels: state.queryStates.map((_, i) => `Q${i + 1}`),
+        // Include funnel-specific config when in funnel mode
+        funnelBindingKey: state.funnelBindingKey,
+        stepTimeToConvert: state.stepTimeToConvert,
       }
     }
     return state.buildCurrentQuery()

@@ -6,7 +6,7 @@
 import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCubeLoadQuery, useMultiCubeLoadQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
+import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
@@ -16,6 +16,7 @@ import type { AnalyticsPortletProps, MultiQueryConfig } from '../types'
 import { isMultiQueryConfig } from '../types'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 import { cleanQueryForServer } from '../shared/utils'
+import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
 
 
 interface AnalyticsPortletRef {
@@ -121,11 +122,21 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
   // Determine whether to skip queries based on various conditions
   const isMultiQuery = multiQueryConfig !== null
+  const isFunnelMode = isMultiQuery && multiQueryConfig?.mergeStrategy === 'funnel'
   const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery
-  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible)
+  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode
+  const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
 
   // Query client for cache invalidation
   const queryClient = useQueryClient()
+
+  // Build funnel config when in funnel mode
+  const funnelConfig = useMemo(() => {
+    if (!isFunnelMode || !multiQueryConfig?.funnelBindingKey || !multiQueryConfig.queries || multiQueryConfig.queries.length < 2) {
+      return null
+    }
+    return buildFunnelConfigFromQueries(multiQueryConfig.queries, multiQueryConfig.funnelBindingKey)
+  }, [isFunnelMode, multiQueryConfig?.funnelBindingKey, multiQueryConfig?.queries])
 
   // Use single query hook with TanStack Query (skip if multi-query or other skip conditions)
   const singleQueryResult = useCubeLoadQuery(queryObject, {
@@ -134,25 +145,50 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     debounceMs: 100, // Lower debounce for portlets (faster response)
   })
 
-  // Use multi-query hook with TanStack Query (skip if single query or other skip conditions)
+  // Use multi-query hook with TanStack Query (skip if single query, funnel mode, or other skip conditions)
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
     skip: shouldSkipMulti,
     resetResultSetOnChange: true,
     debounceMs: 100, // Lower debounce for portlets (faster response)
   })
 
-  // Combine results from both hooks
+  // Use funnel query hook (only for funnel mode)
+  const funnelQueryResult = useFunnelQuery(funnelConfig, {
+    skip: shouldSkipFunnel || !funnelConfig,
+    debounceMs: 100,
+  })
+
+  // Combine results from all hooks
   const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
-  const isLoading = isMultiQuery ? multiQueryResult.isLoading : singleQueryResult.isLoading
-  const isFetching = isMultiQuery ? multiQueryResult.isFetching : singleQueryResult.isFetching
-  const error = isMultiQuery ? multiQueryResult.error : singleQueryResult.error
-  const multiQueryData = isMultiQuery ? multiQueryResult.data : null
+  const isLoading = isFunnelMode
+    ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
+    : isMultiQuery
+      ? multiQueryResult.isLoading
+      : singleQueryResult.isLoading
+  const isFetching = isFunnelMode
+    ? funnelQueryResult.isExecuting
+    : isMultiQuery
+      ? multiQueryResult.isFetching
+      : singleQueryResult.isFetching
+  const error = isFunnelMode
+    ? funnelQueryResult.error
+    : isMultiQuery
+      ? multiQueryResult.error
+      : singleQueryResult.error
+  const multiQueryData = isFunnelMode
+    ? (funnelQueryResult.chartData as unknown[] | null)
+    : isMultiQuery
+      ? multiQueryResult.data
+      : null
 
   // Expose refresh function through ref
   // Invalidates cache and forces a fresh fetch from the server
   useImperativeHandle(ref, () => ({
     refresh: () => {
-      if (isMultiQuery && multiQueryConfig) {
+      if (isFunnelMode) {
+        // For funnel mode, re-execute the funnel query
+        funnelQueryResult.execute()
+      } else if (isMultiQuery && multiQueryConfig) {
         // Invalidate cache for this specific multi-query, then refetch
         // Clean each query to match the cache key format used by useMultiCubeLoadQuery
         const cleanedConfig = {
@@ -167,15 +203,17 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
       }
     }
-  }), [isMultiQuery, multiQueryConfig, queryObject, queryClient])
+  }), [isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, funnelQueryResult])
 
   const handleRetry = useCallback(() => {
-    if (isMultiQuery) {
+    if (isFunnelMode) {
+      funnelQueryResult.execute()
+    } else if (isMultiQuery) {
       multiQueryResult.refetch()
     } else {
       singleQueryResult.refetch()
     }
-  }, [isMultiQuery, multiQueryResult, singleQueryResult])
+  }, [isFunnelMode, isMultiQuery, funnelQueryResult, multiQueryResult, singleQueryResult])
 
 
   // Send debug data to parent when ready (must be before any returns)
