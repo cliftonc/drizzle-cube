@@ -84,12 +84,14 @@
     "build:adapters": "vite build --config vite.config.adapters.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch",
+    "test:server": "vitest run --config vitest.config.server.ts",
+    "test:server:watch": "vitest --watch --config vitest.config.server.ts",
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest --watch --coverage",
     "test:coverage:ui": "vitest --ui --coverage",
-    "test:coverage:postgres": "COVERAGE_DIR=./coverage/postgres vitest run --coverage",
-    "test:coverage:mysql": "TEST_DB_TYPE=mysql COVERAGE_DIR=./coverage/mysql vitest run --coverage",
-    "test:coverage:sqlite": "TEST_DB_TYPE=sqlite COVERAGE_DIR=./coverage/sqlite vitest run --coverage",
+    "test:coverage:postgres": "COVERAGE_DIR=./coverage/postgres vitest run --coverage --config vitest.config.server.ts",
+    "test:coverage:mysql": "TEST_DB_TYPE=mysql COVERAGE_DIR=./coverage/mysql vitest run --coverage --config vitest.config.server.ts",
+    "test:coverage:sqlite": "TEST_DB_TYPE=sqlite COVERAGE_DIR=./coverage/sqlite vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:all": "npm run test:coverage:postgres && npm run test:coverage:mysql && npm run test:coverage:sqlite && npm run coverage:index",
     "test:coverage:complete": "npm run test:coverage:all && npm run test:client:coverage && npm run coverage:index",
     "test:client": "vitest run --config vitest.config.client.ts",
@@ -101,9 +103,9 @@
     "coverage:merged:open": "open coverage/merged/index.html",
     "coverage:client:open": "open coverage/client/index.html",
     "test:postgres": "vitest run",
-    "test:mysql": "TEST_DB_TYPE=mysql vitest run",
-    "test:sqlite": "TEST_DB_TYPE=sqlite vitest run",
-    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run && TEST_DB_TYPE=sqlite vitest run && npm run test:client",
+    "test:mysql": "TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts",
+    "test:sqlite": "TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
+    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
     "test:setup": "docker-compose up -d",
     "test:teardown": "docker-compose down",
     "typecheck": "tsc --noEmit",
@@ -147,7 +149,6 @@
     "@neondatabase/serverless": "^1.0.1",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
-    "dagre": "^0.8.5",
     "drizzle-orm": "^0.45.0",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
@@ -156,7 +157,6 @@
     "react-dom": "^18.0.0",
     "react-grid-layout": "^2.1.1",
     "react-is": "^19.2.3",
-    "reactflow": "^11.11.4",
     "recharts": "^3.5.1"
   },
   "peerDependenciesMeta": {
@@ -170,12 +170,6 @@
       "optional": true
     },
     "react-is": {
-      "optional": true
-    },
-    "reactflow": {
-      "optional": true
-    },
-    "dagre": {
       "optional": true
     },
     "drizzle-orm": {
@@ -211,13 +205,13 @@
     "@iconify/react": "^6.0.0",
     "@neondatabase/serverless": "^1.0.1",
     "@tailwindcss/postcss": "^4.1.12",
+    "@tanstack/react-query-devtools": "^5.91.2",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/better-sqlite3": "^7.6.0",
     "@types/cors": "^2.8.17",
     "@types/d3": "^7.4.3",
-    "@types/dagre": "^0.7.53",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.0.0",
@@ -231,11 +225,11 @@
     "better-sqlite3": "^12.0.0",
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",
-    "dagre": "^0.8.5",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
     "eslint": "^9.34.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.1.0",
     "fastify": "^5.6.2",
     "globals": "^16.3.0",
@@ -250,7 +244,6 @@
     "react-grid-layout": "^2.1.1",
     "react-hook-form": "^7.68.0",
     "react-resizable": "^3.0.5",
-    "reactflow": "^11.11.4",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^6.0.3",
     "sql-formatter": "^15.6.6",
@@ -271,6 +264,7 @@
     "highlight.js": "^11.9.0",
     "lz-string": "^1.5.0",
     "react-intersection-observer": "^10.0.0",
-    "react-router-dom": "^7.10.1"
+    "react-router-dom": "^7.10.1",
+    "zustand": "^5.0.9"
   }
 }

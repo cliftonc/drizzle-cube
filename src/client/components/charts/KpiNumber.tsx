@@ -23,113 +23,22 @@ const KpiNumber = React.memo(function KpiNumber({
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
 
-  // Calculate font size and text width based on container dimensions
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const container = containerRef.current
-        const rect = container.getBoundingClientRect()
-        const containerWidth = rect.width
-        const containerHeight = rect.height
-        
-        if (containerWidth > 0 && containerHeight > 0) {
-          // Calculate font size based on container dimensions
-          // For KPI displays, we want the text to be large and prominent
-          // Reserve space for the label by using more conservative sizing
-          const widthBasedSize = containerWidth / 5
-          const heightBasedSize = containerHeight / 4  // More conservative to leave room for label
-          const baseFontSize = Math.min(widthBasedSize, heightBasedSize)
-          const clampedFontSize = Math.max(24, Math.min(baseFontSize, 120)) // Lower max to ensure label fits
-          setFontSize(clampedFontSize)
-          
-          // Use a timeout to measure text width after font size is applied
-          setTimeout(() => {
-            if (valueRef.current) {
-              const textRect = valueRef.current.getBoundingClientRect()
-              const measuredWidth = textRect.width
-              // Ensure we have a minimum width and use container width as fallback
-              const effectiveWidth = Math.max(measuredWidth, Math.min(containerWidth * 0.6, 300))
-              setTextWidth(effectiveWidth)
-            }
-          }, 10)
-        }
-      }
-    }
-
-    // Initial calculation - reduce delay for faster initial render
-    const timer = setTimeout(updateDimensions, 50)
-    
-    const resizeObserver = new ResizeObserver(() => {
-      // Debounce the resize updates
-      setTimeout(updateDimensions, 10)
-    })
-    
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-    }
-
-    return () => {
-      clearTimeout(timer)
-      resizeObserver.disconnect()
-    }
-  }, [data, chartConfig])
-
-  if (!data || data.length === 0) {
-    return (
-      <div
-        className="flex items-center justify-center w-full h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
-        }}
-      >
-        <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display</div>
-        </div>
-      </div>
-    )
-  }
-
   // Extract value field from chart config - handle both string and array formats
-  let valueFields: string[] = []
-  if (chartConfig?.yAxis) {
-    // Handle both string and array formats
-    if (typeof chartConfig.yAxis === 'string') {
-      valueFields = [chartConfig.yAxis]
-    } else if (Array.isArray(chartConfig.yAxis)) {
-      valueFields = chartConfig.yAxis
-    }
-  }
-  
-  
-  if (valueFields.length === 0) {
-    return (
-      <div
-        className="flex items-center justify-center w-full h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined,
-          backgroundColor: 'var(--dc-danger-bg)',
-          color: 'var(--dc-danger)',
-          borderColor: 'var(--dc-danger-border)'
-        }}
-      >
-        <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">No measure fields configured</div>
-        </div>
-      </div>
-    )
-  }
+  const valueFields = useMemo(() => {
+    if (!chartConfig?.yAxis) return []
+    if (typeof chartConfig.yAxis === 'string') return [chartConfig.yAxis]
+    if (Array.isArray(chartConfig.yAxis)) return chartConfig.yAxis
+    return []
+  }, [chartConfig?.yAxis])
 
-  const valueField = valueFields[0] // Use first measure field
+  const valueField = valueFields[0] || '' // Use first measure field
 
   // Get time dimension field if present (for incomplete period filtering)
   const timeDimensionField = queryObject?.timeDimensions?.[0]?.dimension || undefined
 
   // Memoize sorted data to prevent recalculation on every render
   const sortedData = useMemo(() => {
+    if (!data || data.length === 0) return []
     let sorted = [...data]
     if (timeDimensionField) {
       sorted = sorted.sort((a, b) => {
@@ -153,6 +62,9 @@ const KpiNumber = React.memo(function KpiNumber({
     skippedLastPeriod,
     granularity
   } = useMemo(() => {
+    if (sortedData.length === 0) {
+      return { filteredData: [], excludedIncompletePeriod: false, skippedLastPeriod: false, granularity: undefined }
+    }
     return filterIncompletePeriod(sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod)
   }, [sortedData, timeDimensionField, queryObject, useLastCompletePeriod, skipLastPeriod])
 
@@ -161,6 +73,8 @@ const KpiNumber = React.memo(function KpiNumber({
 
   // Memoize value extraction to prevent recalculation
   const values = useMemo(() => {
+    if (!valueField || dataToUse.length === 0) return []
+
     const rawValues = dataToUse.map(row => {
       // Try direct field access first
       if (row[valueField] !== undefined) {
@@ -183,7 +97,170 @@ const KpiNumber = React.memo(function KpiNumber({
       .filter(val => val !== null && val !== undefined && !isNaN(Number(val)))
       .map(val => Number(val))
   }, [dataToUse, valueField])
-  
+
+  // Memoize statistics calculations
+  const { avg, min, max } = useMemo(() => {
+    if (values.length === 0) return { avg: 0, min: 0, max: 0 }
+    const sum = values.reduce((acc, val) => acc + val, 0)
+    const avg = sum / values.length
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    return { avg, min, max }
+  }, [values])
+
+  // Memoize format function to prevent re-creating on every render
+  const formatNumber = useCallback((value: number | null | undefined): string => {
+    // If custom formatValue is provided, use it exclusively
+    if (displayConfig.formatValue) {
+      return displayConfig.formatValue(value)
+    }
+
+    // Null handling: Show placeholder for missing data
+    if (value === null || value === undefined) {
+      return '—'
+    }
+
+    const decimals = displayConfig.decimals ?? 0
+    const prefix = displayConfig.prefix ?? ''
+
+    let formattedValue: string
+
+    if (Math.abs(value) >= 1e9) {
+      formattedValue = (value / 1e9).toFixed(decimals) + 'B'
+    } else if (Math.abs(value) >= 1e6) {
+      formattedValue = (value / 1e6).toFixed(decimals) + 'M'
+    } else if (Math.abs(value) >= 1e3) {
+      formattedValue = (value / 1e3).toFixed(decimals) + 'K'
+    } else {
+      formattedValue = value.toFixed(decimals)
+    }
+
+    return prefix + formattedValue
+  }, [displayConfig])
+
+  const mainValue = values.length === 1 ? values[0] : avg
+  const showStats = values.length > 1
+
+  // Memoize color calculation to prevent re-creating function on every render
+  const valueColor = useMemo((): string => {
+    if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
+      const colorIndex = displayConfig.valueColorIndex
+      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
+        return colorPalette.colors[colorIndex]
+      }
+    }
+    // Default to first color in palette if available, otherwise fallback to dark gray
+    return colorPalette?.colors?.[0] || '#1f2937'
+  }, [displayConfig.valueColorIndex, colorPalette?.colors])
+
+  // Process target values for variance calculation
+  const targetValues = useMemo(() => parseTargetValues(displayConfig?.target || ''), [displayConfig?.target])
+  const targetValue = targetValues.length > 0 ? targetValues[0] : null // Use first target value
+  const variance = targetValue !== null && values.length > 0 ? calculateVariance(mainValue, targetValue) : null
+
+  // Memoize variance color calculation
+  const varianceColor = useMemo((): string => {
+    if (variance === null) return '#6B7280' // Gray for no target
+
+    if (variance >= 0) {
+      // Positive variance - use positive color from palette
+      const positiveIndex = displayConfig.positiveColorIndex ?? 1
+      return colorPalette?.colors?.[positiveIndex] || '#10B981' // Green fallback
+    } else {
+      // Negative variance - use negative color from palette
+      const negativeIndex = displayConfig.negativeColorIndex ?? 7
+      return colorPalette?.colors?.[negativeIndex] || '#EF4444' // Red fallback
+    }
+  }, [variance, displayConfig.positiveColorIndex, displayConfig.negativeColorIndex, colorPalette?.colors])
+
+  // Calculate font size and text width based on container dimensions
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const container = containerRef.current
+        const rect = container.getBoundingClientRect()
+        const containerWidth = rect.width
+        const containerHeight = rect.height
+
+        if (containerWidth > 0 && containerHeight > 0) {
+          // Calculate font size based on container dimensions
+          // For KPI displays, we want the text to be large and prominent
+          // Reserve space for the label by using more conservative sizing
+          const widthBasedSize = containerWidth / 5
+          const heightBasedSize = containerHeight / 4  // More conservative to leave room for label
+          const baseFontSize = Math.min(widthBasedSize, heightBasedSize)
+          const clampedFontSize = Math.max(24, Math.min(baseFontSize, 120)) // Lower max to ensure label fits
+          setFontSize(clampedFontSize)
+
+          // Use a timeout to measure text width after font size is applied
+          setTimeout(() => {
+            if (valueRef.current) {
+              const textRect = valueRef.current.getBoundingClientRect()
+              const measuredWidth = textRect.width
+              // Ensure we have a minimum width and use container width as fallback
+              const effectiveWidth = Math.max(measuredWidth, Math.min(containerWidth * 0.6, 300))
+              setTextWidth(effectiveWidth)
+            }
+          }, 10)
+        }
+      }
+    }
+
+    // Initial calculation - reduce delay for faster initial render
+    const timer = setTimeout(updateDimensions, 50)
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Debounce the resize updates
+      setTimeout(updateDimensions, 10)
+    })
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    return () => {
+      clearTimeout(timer)
+      resizeObserver.disconnect()
+    }
+  }, [data, chartConfig])
+
+  // Early returns AFTER all hooks
+  if (!data || data.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
+          height: height === "100%" ? "100%" : height,
+          minHeight: height === "100%" ? '200px' : undefined
+        }}
+      >
+        <div className="text-center text-dc-text-muted">
+          <div className="text-sm font-semibold mb-1">No data available</div>
+          <div className="text-xs text-dc-text-secondary">No data points to display</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (valueFields.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
+          height: height === "100%" ? "100%" : height,
+          minHeight: height === "100%" ? '200px' : undefined,
+          backgroundColor: 'var(--dc-danger-bg)',
+          color: 'var(--dc-danger)',
+          borderColor: 'var(--dc-danger-border)'
+        }}
+      >
+        <div className="text-center">
+          <div className="text-sm font-semibold mb-1">Configuration Error</div>
+          <div className="text-xs">No measure fields configured</div>
+        </div>
+      </div>
+    )
+  }
 
   // Null handling: If all values are null, show placeholder instead of error
   if (values.length === 0) {
@@ -222,85 +299,11 @@ const KpiNumber = React.memo(function KpiNumber({
     )
   }
 
-  // Memoize statistics calculations
-  const { avg, min, max } = useMemo(() => {
-    const sum = values.reduce((acc, val) => acc + val, 0)
-    const avg = sum / values.length
-    const min = Math.min(...values)
-    const max = Math.max(...values)
-    return { avg, min, max }
-  }, [values])
-
-  // Memoize format function to prevent re-creating on every render
-  const formatNumber = useCallback((value: number | null | undefined): string => {
-    // If custom formatValue is provided, use it exclusively
-    if (displayConfig.formatValue) {
-      return displayConfig.formatValue(value)
-    }
-
-    // Null handling: Show placeholder for missing data
-    if (value === null || value === undefined) {
-      return '—'
-    }
-
-    const decimals = displayConfig.decimals ?? 0
-    const prefix = displayConfig.prefix ?? ''
-
-    let formattedValue: string
-
-    if (Math.abs(value) >= 1e9) {
-      formattedValue = (value / 1e9).toFixed(decimals) + 'B'
-    } else if (Math.abs(value) >= 1e6) {
-      formattedValue = (value / 1e6).toFixed(decimals) + 'M'
-    } else if (Math.abs(value) >= 1e3) {
-      formattedValue = (value / 1e3).toFixed(decimals) + 'K'
-    } else {
-      formattedValue = value.toFixed(decimals)
-    }
-
-    return prefix + formattedValue
-  }, [displayConfig.formatValue, displayConfig.decimals, displayConfig.prefix])
-
-  const mainValue = values.length === 1 ? values[0] : avg
-  const showStats = values.length > 1
-
-  // Memoize color calculation to prevent re-creating function on every render
-  const valueColor = useMemo((): string => {
-    if (displayConfig.valueColorIndex !== undefined && colorPalette?.colors) {
-      const colorIndex = displayConfig.valueColorIndex
-      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex]
-      }
-    }
-    // Default to first color in palette if available, otherwise fallback to dark gray
-    return colorPalette?.colors?.[0] || '#1f2937'
-  }, [displayConfig.valueColorIndex, colorPalette?.colors])
-
-  // Process target values for variance calculation
-  const targetValues = useMemo(() => parseTargetValues(displayConfig?.target || ''), [displayConfig?.target])
-  const targetValue = targetValues.length > 0 ? targetValues[0] : null // Use first target value
-  const variance = targetValue !== null ? calculateVariance(mainValue, targetValue) : null
-
-  // Memoize variance color calculation
-  const varianceColor = useMemo((): string => {
-    if (variance === null) return '#6B7280' // Gray for no target
-
-    if (variance >= 0) {
-      // Positive variance - use positive color from palette
-      const positiveIndex = displayConfig.positiveColorIndex ?? 1
-      return colorPalette?.colors?.[positiveIndex] || '#10B981' // Green fallback
-    } else {
-      // Negative variance - use negative color from palette
-      const negativeIndex = displayConfig.negativeColorIndex ?? 7
-      return colorPalette?.colors?.[negativeIndex] || '#EF4444' // Red fallback
-    }
-  }, [variance, displayConfig.positiveColorIndex, displayConfig.negativeColorIndex, colorPalette?.colors])
-
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex flex-col items-center justify-center w-full h-full p-4"
-      style={{ 
+      style={{
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined
       }}
@@ -335,23 +338,23 @@ const KpiNumber = React.memo(function KpiNumber({
 
         {/* Main KPI Value and Variance - Horizontal layout */}
         <div className="flex items-center justify-center gap-4 mb-3">
-          <div 
+          <div
             ref={valueRef}
             className="font-bold leading-none"
-            style={{ 
+            style={{
               fontSize: `${fontSize}px`,
               color: valueColor
             }}
           >
             {formatNumber(mainValue)}
           </div>
-          
+
           {/* Target Variance Display - To the right of main value */}
           {targetValue !== null && variance !== null && (
             <div className="flex flex-col items-start">
-              <div 
+              <div
                 className="font-semibold"
-                style={{ 
+                style={{
                   fontSize: `${Math.max(12, fontSize * 0.3)}px`,
                   color: varianceColor,
                   lineHeight: '1.2'

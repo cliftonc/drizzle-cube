@@ -1,5 +1,5 @@
 import React from 'react'
-import { useCubeQuery } from '@drizzle-cube/client'
+import { useCubeLoadQuery } from '@drizzle-cube/client'
 
 interface DebugAnalyticsPortletProps {
   query: string
@@ -38,9 +38,9 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
     }
   }, [parsedQuery])
 
-  const { resultSet, error, isLoading } = useCubeQuery(parsedQuery)
-  
-  console.log('useCubeQuery result:', { resultSet, error, isLoading, parsedQuery })
+  const { resultSet, error, isLoading, isFetching } = useCubeLoadQuery(parsedQuery)
+
+  console.log('useCubeLoadQuery result:', { resultSet, error, isLoading, isFetching, parsedQuery })
 
   return (
     <div className="border p-4 bg-white rounded-xs">
@@ -55,30 +55,30 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
         </div>
         
         <div>
-          <strong>useCubeQuery Loading:</strong> {isLoading ? 'Yes' : 'No'}
+          <strong>useCubeLoadQuery Loading:</strong> {isLoading ? 'Yes' : 'No'} {isFetching ? '(fetching...)' : ''}
         </div>
         
         {error && (
           <div>
-            <strong>useCubeQuery Error:</strong>
+            <strong>useCubeLoadQuery Error:</strong>
             <pre className="bg-red-100 p-2 rounded-xs text-xs text-red-700">
               <code className="language-json">{JSON.stringify(error, null, 2)}</code>
             </pre>
           </div>
         )}
-        
+
         {resultSet && (
           <div>
-            <strong>useCubeQuery Data:</strong>
+            <strong>useCubeLoadQuery Data:</strong>
             <pre className="bg-green-100 p-2 rounded-xs text-xs max-h-40 overflow-auto">
               <code className="language-json">{JSON.stringify(resultSet, null, 2)}</code>
             </pre>
           </div>
         )}
-        
+
         {!isLoading && !error && !resultSet && (
           <div className="text-gray-500">
-            useCubeQuery: No data returned
+            useCubeLoadQuery: No data returned
           </div>
         )}
         

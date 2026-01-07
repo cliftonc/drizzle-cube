@@ -1,5 +1,4 @@
-import type { FieldLabelMap } from '../hooks/useCubeMeta'
-import type { AxisFormatConfig } from '../types'
+import type { FieldLabelMap, AxisFormatConfig } from '../types'
 
 // Utility function to check if a value is a valid numeric value (not null, undefined, or NaN)
 // This is used to preserve null values instead of converting them to 0

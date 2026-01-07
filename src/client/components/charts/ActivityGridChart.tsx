@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { select, scaleQuantize, max, min } from 'd3'
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue } from '../../utils/chartUtils'
@@ -52,11 +52,11 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
     return unwatch
   }, [])
 
-  const safeDisplayConfig = {
+  const safeDisplayConfig = useMemo(() => ({
     showTooltip: displayConfig?.showTooltip ?? true,
     showLabels: displayConfig?.showLabels ?? true,
     fitToWidth: displayConfig?.fitToWidth ?? false
-  }
+  }), [displayConfig?.showTooltip, displayConfig?.showLabels, displayConfig?.fitToWidth])
 
   // Enhanced dimension measurement with retry mechanism
   useLayoutEffect(() => {
@@ -149,7 +149,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   }
 
   // Get granularity mapping based on time dimension
-  const getGridMapping = (granularity: string): GridMapping | null => {
+  const getGridMapping = useCallback((granularity: string): GridMapping | null => {
     switch (granularity?.toLowerCase()) {
       case 'year':
         // Year granularity is not useful for activity grids
@@ -263,7 +263,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
       default:
         return null
     }
-  }
+  }, [])
 
   // Helper function to get week of year with correct year (1-53)
   const getWeekOfYear = (date: Date): { year: number, week: number } => {
@@ -694,7 +694,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig.showTooltip, safeDisplayConfig.showLabels, colorPalette, currentTheme])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig, colorPalette, currentTheme, getFieldLabel, getGridMapping])
 
   if (!data || data.length === 0) {
     return (

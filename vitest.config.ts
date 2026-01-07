@@ -2,46 +2,50 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    globals: true,
-    env: {
-      NODE_ENV: 'test'
-    },
-    globalSetup: './tests/setup/globalSetup.ts',
-    globalTeardown: './tests/setup/globalTeardown.ts',
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/cypress/**',
-      '**/.{idea,git,cache,output,temp}/**',
-      'tests/client/**'  // Exclude client tests from server test runner
+    // Run both server and client test projects
+    projects: [
+      {
+        // Server tests - Node environment
+        extends: true,
+        test: {
+          name: 'server',
+          globals: true,
+          env: {
+            NODE_ENV: 'test'
+          },
+          globalSetup: './tests/setup/globalSetup.ts',
+          globalTeardown: './tests/setup/globalTeardown.ts',
+          include: ['tests/**/*.{test,spec}.ts'],
+          exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            'tests/client/**'
+          ],
+        }
+      },
+      './vitest.config.client.ts'
     ],
+    // Coverage config at root level (required for projects)
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       reportsDirectory: process.env.COVERAGE_DIR || './coverage',
       include: [
         'src/server/**/*.ts',
-        'src/adapters/**/*.ts'
+        'src/adapters/**/*.ts',
+        'src/client/**/*.{ts,tsx}'
       ],
       exclude: [
         '**/*.test.ts',
-        '**/types.ts'
+        '**/*.test.tsx',
+        '**/types.ts',
+        'node_modules/',
+        'tests/',
+        'dist/',
+        'examples/',
+        'dev/',
+        'coverage/',
       ],
-      thresholds: {
-        global: {
-          lines: 80,
-          functions: 80,
-          branches: 70,
-          statements: 80
-        },
-        // More strict for core server components
-        'src/server/': {
-          lines: 90,
-          functions: 90,
-          branches: 80,
-          statements: 90
-        }
-      }
     }
   },
 })

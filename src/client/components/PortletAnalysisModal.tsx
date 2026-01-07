@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal'
 import AnalysisBuilder from './AnalysisBuilder'
 import type { AnalysisBuilderRef } from './AnalysisBuilder/types'
-import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig } from '../types'
+import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter } from '../types'
+import {
+  mergeDashboardAndPortletFilters,
+  applyUniversalTimeFilters
+} from '../utils/filterUtils'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -14,6 +18,8 @@ interface PortletAnalysisModalProps {
   title: string
   submitText: string
   colorPalette?: ColorPalette
+  /** Dashboard filters to apply to preview (when editing portlet in dashboard context) */
+  dashboardFilters?: DashboardFilter[]
 }
 
 /**
@@ -35,7 +41,8 @@ export default function PortletAnalysisModal({
   initialData,
   title: modalTitle,
   submitText,
-  colorPalette
+  colorPalette,
+  dashboardFilters
 }: PortletAnalysisModalProps) {
 
   // Ref to AnalysisBuilder for getting current query and chart config
@@ -44,16 +51,60 @@ export default function PortletAnalysisModal({
   // Title state
   const [formTitle, setFormTitle] = useState('')
 
-  // Parse initial query from portlet
+  // Get applicable regular dashboard filters for this portlet
+  // Universal time filters are handled separately - they apply to timeDimensions, not the filters array
+  const applicableFilters = useMemo(() => {
+    if (!dashboardFilters || !portlet?.dashboardFilterMapping) {
+      return []
+    }
+    const mapping = portlet.dashboardFilterMapping
+    // Only include regular filters (not universal time filters which use __universal_time__ placeholder)
+    return dashboardFilters
+      .filter(df => !df.isUniversalTime && mapping.includes(df.id))
+      .map(df => df.filter)
+  }, [dashboardFilters, portlet?.dashboardFilterMapping])
+
+  // Parse initial query from portlet and merge dashboard filters
   // AnalysisBuilder handles both single CubeQuery and MultiQueryConfig internally
-  const initialQuery = React.useMemo<CubeQuery | MultiQueryConfig | undefined>(() => {
+  const initialQuery = useMemo<CubeQuery | MultiQueryConfig | undefined>(() => {
     if (!portlet?.query) return undefined
     try {
-      return JSON.parse(portlet.query)
+      const parsed = JSON.parse(portlet.query)
+
+      // Handle MultiQueryConfig
+      if (parsed && 'queries' in parsed && Array.isArray(parsed.queries)) {
+        return {
+          ...parsed,
+          queries: parsed.queries.map((q: CubeQuery) => ({
+            ...q,
+            // Merge regular dashboard filters (not universal time)
+            filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters, 'client'),
+            // Apply universal time filter dateRange to all time dimensions
+            timeDimensions: applyUniversalTimeFilters(
+              dashboardFilters,
+              portlet.dashboardFilterMapping,
+              q.timeDimensions
+            )
+          }))
+        }
+      }
+
+      // Handle single CubeQuery
+      return {
+        ...parsed,
+        // Merge regular dashboard filters (not universal time)
+        filters: mergeDashboardAndPortletFilters(applicableFilters, parsed.filters, 'client'),
+        // Apply universal time filter dateRange to all time dimensions
+        timeDimensions: applyUniversalTimeFilters(
+          dashboardFilters,
+          portlet?.dashboardFilterMapping,
+          parsed.timeDimensions
+        )
+      }
     } catch {
       return undefined
     }
-  }, [portlet?.query])
+  }, [portlet?.query, applicableFilters, dashboardFilters, portlet?.dashboardFilterMapping])
 
   // Initial chart config from portlet
   const initialChartConfig = React.useMemo(() => {

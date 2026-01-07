@@ -72,7 +72,7 @@ export default function AnalysisChartConfigPanel({
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
   // Get fields for each drop zone
-  const getFieldsForDropZone = (key: string): string[] => {
+  const getFieldsForDropZone = useCallback((key: string): string[] => {
     const value = chartConfig[key as keyof ChartAxisConfig]
     const result = Array.isArray(value)
       ? value
@@ -80,7 +80,7 @@ export default function AnalysisChartConfigPanel({
         ? [value]
         : []
     return result
-  }
+  }, [chartConfig])
 
   // Clean up chart config when available fields change
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function AnalysisChartConfigPanel({
     if (hasChanges) {
       onChartConfigChange(newConfig)
     }
-  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange])
+  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone])
 
   // Helper to determine field type and styling
   const getFieldType = (field: string): 'dimension' | 'timeDimension' | 'measure' => {

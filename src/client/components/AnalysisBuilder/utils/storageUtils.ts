@@ -12,6 +12,9 @@ export const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
 
 /**
  * Create initial empty state for AnalysisBuilder
+ *
+ * Note: Only client-side configuration state is stored.
+ * Server state (execution results, loading, errors) is managed by TanStack Query.
  */
 export function createInitialState(): AnalysisBuilderState {
   return {
@@ -21,11 +24,6 @@ export function createInitialState(): AnalysisBuilderState {
     order: undefined,
     validationStatus: 'idle',
     validationError: null,
-    executionStatus: 'idle',
-    executionResults: null,
-    executionError: null,
-    totalRowCount: null,
-    resultsStale: false
   }
 }
 

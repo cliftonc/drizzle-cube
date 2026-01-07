@@ -7,25 +7,43 @@ import React from 'react'
 import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import DashboardGrid from '../../src/client/components/DashboardGrid'
+import { DashboardStoreProvider } from '../../src/client/stores/dashboardStore'
 import type { DashboardConfig, PortletConfig, DashboardFilter } from '../../src/client/types'
 
-// Mock CubeProvider context - DashboardGrid uses useCubeContext for features
+// Mock CubeProvider context - DashboardGrid uses useCubeFeatures for features
 vi.mock('../../src/client/providers/CubeProvider', () => ({
-  useCubeContext: vi.fn(() => ({
-    cubeApi: {},
-    meta: { cubes: [] },
-    labelMap: {},
-    metaLoading: false,
-    metaError: null,
-    getFieldLabel: (field: string) => field,
-    refetchMeta: vi.fn(),
-    updateApiConfig: vi.fn(),
+  useCubeFeatures: vi.fn(() => ({
     features: {},
     batchCoordinator: null,
     enableBatching: false,
     dashboardModes: ['grid', 'mobile']
   }))
 }))
+
+// Mock CubeApiProvider - needed when portlet modal opens AnalysisBuilder
+vi.mock('../../src/client/providers/CubeApiProvider', () => ({
+  useCubeApi: vi.fn(() => ({
+    cubeApi: {
+      load: vi.fn().mockResolvedValue({ data: [] }),
+      meta: vi.fn().mockResolvedValue({ cubes: [] }),
+      sql: vi.fn().mockResolvedValue({ sql: '' }),
+    },
+    options: {},
+    updateConfig: vi.fn(),
+  })),
+  CubeApiProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+/**
+ * Test wrapper that provides all required context providers
+ */
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <DashboardStoreProvider>
+      {children}
+    </DashboardStoreProvider>
+  )
+}
 
 // Mock react-grid-layout (v2 API)
 let capturedGridLayoutProps: any = null
@@ -64,13 +82,13 @@ vi.mock('../../src/client/components/AnalyticsPortlet', () => ({
   default: React.forwardRef((props: any, ref) => <div data-testid="analytics-portlet" data-query={props.query} />)
 }))
 
-vi.mock('../../src/client/components/PortletEditModal', () => ({
-  default: ({ isOpen, onClose, onSave }: any) =>
-    isOpen ? <div data-testid="portlet-edit-modal"><button onClick={onClose}>Close</button></div> : null
-}))
-
 vi.mock('../../src/client/components/PortletFilterConfigModal', () => ({
   default: () => null
+}))
+
+vi.mock('../../src/client/components/PortletAnalysisModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div data-testid="portlet-edit-modal">Modal</div> : null
 }))
 
 vi.mock('../../src/client/components/DebugModal', () => ({
@@ -146,7 +164,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(2)
 
       const { getAllByTestId } = render(
-        <DashboardGrid config={config} />
+        <DashboardGrid config={config} />,
+        { wrapper: TestWrapper }
       )
 
       const portlets = getAllByTestId('analytics-portlet')
@@ -156,7 +175,7 @@ describe('DashboardGrid', () => {
     it('should pass correct layout to GridLayout', () => {
       const config = createTestConfig(2)
 
-      render(<DashboardGrid config={config} />)
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps).not.toBeNull()
       expect(capturedGridLayoutProps.layout).toHaveLength(2)
@@ -172,7 +191,7 @@ describe('DashboardGrid', () => {
     it('should use 12 columns', () => {
       const config = createTestConfig(1)
 
-      render(<DashboardGrid config={config} />)
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.gridConfig.cols).toBe(12)
     })
@@ -180,7 +199,7 @@ describe('DashboardGrid', () => {
     it('should set minW and minH for portlets', () => {
       const config = createTestConfig(1)
 
-      render(<DashboardGrid config={config} />)
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.layout[0]).toMatchObject({
         minW: 2,
@@ -194,7 +213,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(0)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       expect(container.textContent).toContain('No Portlets')
@@ -204,7 +224,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(0)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       const addButton = container.querySelector('button')
@@ -216,7 +237,7 @@ describe('DashboardGrid', () => {
     it('should not allow dragging when not in edit mode', async () => {
       const config = createTestConfig(1)
 
-      render(<DashboardGrid config={config} editable={true} />)
+      render(<DashboardGrid config={config} editable={true} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.dragConfig.enabled).toBe(false)
       expect(capturedGridLayoutProps.resizeConfig.enabled).toBe(false)
@@ -227,7 +248,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       // Find and click the edit button
@@ -248,7 +270,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       const editButton = container.querySelector('button')
@@ -259,7 +282,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={false} />
+        <DashboardGrid config={config} editable={false} />,
+        { wrapper: TestWrapper }
       )
 
       // No edit button should exist
@@ -275,7 +299,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { getByTestId } = render(
-        <DashboardGrid config={config} />
+        <DashboardGrid config={config} />,
+        { wrapper: TestWrapper }
       )
 
       expect(getByTestId('mobile-layout')).toBeInTheDocument()
@@ -286,7 +311,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { getByTestId } = render(
-        <DashboardGrid config={config} />
+        <DashboardGrid config={config} />,
+        { wrapper: TestWrapper }
       )
 
       expect(getByTestId('scaled-wrapper')).toBeInTheDocument()
@@ -298,7 +324,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { container } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       await act(async () => {
@@ -321,7 +348,8 @@ describe('DashboardGrid', () => {
           config={config}
           editable={true}
           onConfigChange={onConfigChange}
-        />
+        />,
+        { wrapper: TestWrapper }
       )
 
       // Enter edit mode
@@ -348,7 +376,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { container, queryByTestId } = render(
-        <DashboardGrid config={config} editable={true} />
+        <DashboardGrid config={config} editable={true} />,
+        { wrapper: TestWrapper }
       )
 
       // Enter edit mode first
@@ -375,7 +404,8 @@ describe('DashboardGrid', () => {
       const config = createTestConfig(1)
 
       const { getByTestId } = render(
-        <DashboardGrid config={config} />
+        <DashboardGrid config={config} />,
+        { wrapper: TestWrapper }
       )
 
       expect(getByTestId('filter-panel')).toBeInTheDocument()
@@ -388,7 +418,7 @@ describe('DashboardGrid', () => {
       mockResponsiveState.displayMode = 'desktop'
       const config = createTestConfig(1)
 
-      render(<DashboardGrid config={config} />)
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.width).toBe(1400)
     })
@@ -399,7 +429,7 @@ describe('DashboardGrid', () => {
       mockResponsiveState.designWidth = 1200
       const config = createTestConfig(1)
 
-      render(<DashboardGrid config={config} />)
+      render(<DashboardGrid config={config} />, { wrapper: TestWrapper })
 
       expect(capturedGridLayoutProps.width).toBe(1200)
     })

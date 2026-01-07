@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react'
+import React, { useMemo, useEffect, useState, useCallback } from 'react'
 import { getIcon } from '../icons'
 import AxisDropZone from './AxisDropZone'
 
@@ -50,11 +50,11 @@ export default function ChartConfigPanel({
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
 
   // Get fields for each drop zone
-  const getFieldsForDropZone = (key: string): string[] => {
+  const getFieldsForDropZone = useCallback((key: string): string[] => {
     const value = chartConfig[key as keyof ChartAxisConfig]
     const result = Array.isArray(value) ? value : (typeof value === 'string' ? [value] : [])
     return result
-  }
+  }, [chartConfig])
 
   // Clean up chart config when available fields change
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function ChartConfigPanel({
     if (hasChanges) {
       onChartConfigChange(newConfig)
     }
-  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange])
+  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone])
 
   // Helper to determine field type and styling
   const getFieldType = (field: string): 'dimension' | 'timeDimension' | 'measure' => {

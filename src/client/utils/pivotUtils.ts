@@ -5,8 +5,7 @@
  * into a pivoted structure with time periods as columns.
  */
 
-import type { CubeQuery } from '../types'
-import type { CubeMeta } from '../hooks/useCubeMeta'
+import type { CubeQuery, CubeMeta } from '../types'
 import { formatTimeValue } from './chartUtils'
 
 /**

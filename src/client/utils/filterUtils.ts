@@ -1,59 +1,11 @@
 /**
  * Filter utility functions for dashboard-level filtering
+ *
+ * NOTE: These are pure functions without internal caching.
+ * Memoization should be handled at the component level using useMemo.
  */
 
 import type { Filter, DashboardFilter, CubeMeta, GroupFilter, DashboardConfig, SimpleFilter } from '../types'
-
-/**
- * Memoization infrastructure to prevent creating new array references
- * when filter data is semantically identical
- */
-
-// Stable empty array reference (frozen to prevent mutations)
-export const EMPTY_FILTERS: Filter[] = []
-
-/**
- * Simple memoization cache using Map with JSON-stringified keys
- * WeakMap can't be used because primitives aren't valid keys
- */
-class FilterCache<T> {
-  private cache = new Map<string, T>()
-  private maxSize = 100 // Prevent unbounded growth
-
-  get(key: any): T | undefined {
-    try {
-      const keyStr = JSON.stringify(key)
-      return this.cache.get(keyStr)
-    } catch {
-      return undefined
-    }
-  }
-
-  set(key: any, value: T): void {
-    try {
-      const keyStr = JSON.stringify(key)
-
-      // Simple LRU: if cache is full, delete oldest entry
-      if (this.cache.size >= this.maxSize) {
-        const firstKey = this.cache.keys().next().value
-        if (firstKey) this.cache.delete(firstKey)
-      }
-
-      this.cache.set(keyStr, value)
-    } catch {
-      // Ignore cache failures - just don't cache
-    }
-  }
-
-  clear(): void {
-    this.cache.clear()
-  }
-}
-
-// Cache instances for each memoized function
-const applicableFiltersCache = new FilterCache<Filter[]>()
-const mergedFiltersCache = new FilterCache<Filter[] | undefined>()
-const timeDimensionsCache = new FilterCache<any[] | undefined>()
 
 /**
  * Check if a filter should be included in the query (has valid values or doesn't require values)
@@ -93,7 +45,7 @@ function shouldIncludeFilter(filter: Filter): boolean {
 
 /**
  * Get dashboard filters that should be applied to a portlet based on its mapping configuration
- * MEMOIZED: Returns stable array reference when inputs are semantically identical
+ *
  * @param dashboardFilters - All available dashboard filters
  * @param filterMapping - Array of filter IDs that apply to this portlet
  * @returns Array of filters that should be applied to the portlet
@@ -103,32 +55,19 @@ export function getApplicableDashboardFilters(
   filterMapping: string[] | undefined
 ): Filter[] {
   if (!dashboardFilters || !dashboardFilters.length) {
-    return EMPTY_FILTERS
+    return []
   }
 
   // If no mapping is specified, no dashboard filters apply
   if (!filterMapping || !filterMapping.length) {
-    return EMPTY_FILTERS
-  }
-
-  // Check cache first using both inputs as cache key
-  const cacheKey = { dashboardFilters, filterMapping }
-  const cached = applicableFiltersCache.get(cacheKey)
-  if (cached) {
-    return cached
+    return []
   }
 
   // Compute filters that are in the mapping AND have valid values
-  const result = dashboardFilters
+  return dashboardFilters
     .filter(df => filterMapping.includes(df.id))
     .filter(df => shouldIncludeFilter(df.filter))
     .map(df => df.filter)
-
-  // Freeze result to prevent mutations and cache it
-  const frozenResult = Object.freeze(result) as Filter[]
-  applicableFiltersCache.set(cacheKey, frozenResult)
-
-  return frozenResult
 }
 
 /**
@@ -154,52 +93,61 @@ function convertToServerFormat(filter: Filter): any {
 }
 
 /**
+ * Filter format for merge operation:
+ * - 'server': Returns {and: [...]} or {or: [...]} format (for API queries)
+ * - 'client': Returns {type: 'and', filters: [...]} format (for UI components)
+ */
+export type FilterFormat = 'server' | 'client'
+
+/**
  * Merge dashboard filters with portlet filters using AND logic
  * Dashboard filters are combined with portlet filters so both sets of filters apply
- * MEMOIZED: Returns stable array reference when inputs are semantically identical
+ *
  * @param dashboardFilters - Filters from dashboard-level configuration
  * @param portletFilters - Filters from portlet query
- * @returns Merged filter array with AND logic
+ * @param format - Output format: 'server' for API queries, 'client' for UI (default: 'server')
+ * @returns Merged filter array with AND logic in the specified format
  */
 export function mergeDashboardAndPortletFilters(
   dashboardFilters: Filter[],
-  portletFilters: Filter[] | undefined
+  portletFilters: Filter[] | undefined,
+  format: FilterFormat = 'server'
 ): Filter[] | undefined {
   // If no dashboard filters, return portlet filters as-is
   if (!dashboardFilters || dashboardFilters.length === 0) {
     return portletFilters
   }
 
-  // If no portlet filters, return dashboard filters (frozen to prevent mutations)
+  // If no portlet filters, return dashboard filters
   if (!portletFilters || portletFilters.length === 0) {
-    // Return frozen copy of dashboardFilters
-    const frozen = Object.freeze([...dashboardFilters]) as Filter[]
-    return frozen
-  }
-
-  // Check cache for merged result
-  const cacheKey = { dashboardFilters, portletFilters }
-  const cached = mergedFiltersCache.get(cacheKey)
-  if (cached) {
-    return cached
+    return [...dashboardFilters]
   }
 
   // Both exist - need to merge with AND logic
-  // We need to combine them in a way that both sets of filters apply
+  if (format === 'server') {
+    // Server format: convert to {and: [...]} structure
+    const allFilters = [...dashboardFilters, ...portletFilters].map(convertToServerFormat)
+    return [{
+      and: allFilters
+    } as any]
+  } else {
+    // Client format: use {type: 'and', filters: [...]} structure
+    const allFilters = [...dashboardFilters, ...portletFilters]
+    return [{
+      type: 'and',
+      filters: allFilters
+    } as GroupFilter]
+  }
+}
 
-  // Flatten both filter arrays and convert to server format
-  const allFilters = [...dashboardFilters, ...portletFilters].map(convertToServerFormat)
-
-  // Wrap all filters in a single AND group using server format
-  const result = [{
-    and: allFilters
-  } as any]
-
-  // Freeze result and cache it
-  const frozenResult = Object.freeze(result) as Filter[]
-  mergedFiltersCache.set(cacheKey, frozenResult)
-
-  return frozenResult
+/**
+ * @deprecated Use mergeDashboardAndPortletFilters(filters, portletFilters, 'client') instead
+ */
+export function mergeDashboardAndPortletFiltersClientFormat(
+  dashboardFilters: Filter[],
+  portletFilters: Filter[] | undefined
+): Filter[] | undefined {
+  return mergeDashboardAndPortletFilters(dashboardFilters, portletFilters, 'client')
 }
 
 /**
@@ -409,7 +357,6 @@ function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undef
 /**
  * Apply universal time filters to a portlet's timeDimensions
  * Universal time filters apply their dateRange to ALL time dimensions in the portlet
- * MEMOIZED: Returns stable array reference when inputs are semantically identical
  *
  * @param dashboardFilters - All dashboard filters
  * @param filterMapping - Filter IDs that apply to this portlet
@@ -429,13 +376,6 @@ export function applyUniversalTimeFilters(
   // If no mapping specified, no filters apply
   if (!filterMapping || filterMapping.length === 0) {
     return portletTimeDimensions
-  }
-
-  // Check cache first
-  const cacheKey = { dashboardFilters, filterMapping, portletTimeDimensions }
-  const cached = timeDimensionsCache.get(cacheKey)
-  if (cached) {
-    return cached
   }
 
   // Find applicable universal time filters that have valid date ranges
@@ -459,14 +399,8 @@ export function applyUniversalTimeFilters(
   const dateRange = getDateRangeFromFilter(simpleFilter)
 
   // Apply dateRange to ALL time dimensions (dashboard wins - overrides portlet dateRange)
-  const result = portletTimeDimensions.map(td => ({
+  return portletTimeDimensions.map(td => ({
     ...td,
     dateRange: dateRange
   }))
-
-  // Freeze result and cache it
-  const frozenResult = Object.freeze(result) as TimeDimension[]
-  timeDimensionsCache.set(cacheKey, frozenResult)
-
-  return frozenResult
 }

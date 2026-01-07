@@ -8,27 +8,28 @@ import { render, renderHook, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { CubeProvider, useCubeContext } from '../../src/client/providers/CubeProvider'
 import { createCubeClient } from '../../src/client/client/CubeClient'
-import { useCubeMeta } from '../../src/client/hooks/useCubeMeta'
 import type { CubeApiOptions, FeaturesConfig } from '../../src/client/types'
 
-// Mock the CubeClient creation and useCubeMeta hook
+// Mock the CubeClient creation
 vi.mock('../../src/client/client/CubeClient', () => ({
   createCubeClient: vi.fn()
 }))
 
-vi.mock('../../src/client/hooks/useCubeMeta', () => ({
-  useCubeMeta: vi.fn(() => ({
-    meta: { cubes: [] },
-    labelMap: {},
-    loading: false,
-    error: null,
-    getFieldLabel: (field: string) => field,
-    refetch: vi.fn()
-  }))
+// Mock the useCubeMetaQuery hook which is used by CubeMetaProvider
+const mockUseCubeMetaQuery = vi.fn(() => ({
+  meta: { cubes: [] },
+  labelMap: {},
+  isLoading: false,
+  error: null,
+  getFieldLabel: (field: string) => field,
+  refetch: vi.fn()
+}))
+
+vi.mock('../../src/client/hooks/queries/useCubeMetaQuery', () => ({
+  useCubeMetaQuery: () => mockUseCubeMetaQuery()
 }))
 
 const mockCreateCubeClient = createCubeClient as any
-const mockUseCubeMeta = vi.mocked(useCubeMeta)
 
 describe('CubeProvider', () => {
   let mockCubeClient: any
@@ -271,26 +272,26 @@ describe('CubeProvider', () => {
   })
 
   describe('metadata integration', () => {
-    it('should call useCubeMeta with the cube client', () => {
+    it('should call useCubeMetaQuery hook', () => {
       render(
         <CubeProvider>
           <div>test</div>
         </CubeProvider>
       )
 
-      expect(mockUseCubeMeta).toHaveBeenCalledWith(mockCubeClient)
+      expect(mockUseCubeMetaQuery).toHaveBeenCalled()
     })
 
-    it('should provide metadata values from useCubeMeta hook', () => {
+    it('should provide metadata values from useCubeMetaQuery hook', () => {
       const mockMeta = { cubes: [{ name: 'TestCube' }] }
       const mockLabelMap = { 'TestCube.field': 'Test Field' }
       const mockGetFieldLabel = vi.fn((field) => mockLabelMap[field] || field)
       const mockRefetch = vi.fn()
 
-      mockUseCubeMeta.mockReturnValue({
+      mockUseCubeMetaQuery.mockReturnValue({
         meta: mockMeta,
         labelMap: mockLabelMap,
-        loading: false,
+        isLoading: false,
         error: null,
         getFieldLabel: mockGetFieldLabel,
         refetch: mockRefetch
@@ -323,10 +324,10 @@ describe('CubeProvider', () => {
     })
 
     it('should handle metadata loading state', () => {
-      mockUseCubeMeta.mockReturnValue({
+      mockUseCubeMetaQuery.mockReturnValue({
         meta: null,
         labelMap: {},
-        loading: true,
+        isLoading: true,
         error: null,
         getFieldLabel: (field: string) => field,
         refetch: vi.fn()
@@ -347,10 +348,10 @@ describe('CubeProvider', () => {
     })
 
     it('should handle metadata error state', () => {
-      mockUseCubeMeta.mockReturnValue({
+      mockUseCubeMetaQuery.mockReturnValue({
         meta: null,
         labelMap: {},
-        loading: false,
+        isLoading: false,
         error: 'Failed to load metadata',
         getFieldLabel: (field: string) => field,
         refetch: vi.fn()

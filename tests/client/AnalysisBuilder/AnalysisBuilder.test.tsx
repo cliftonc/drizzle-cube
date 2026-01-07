@@ -11,7 +11,7 @@ import type { CubeResultSet } from '../../../src/client/types'
 // Storage key constant (must match the one in index.tsx)
 const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
 
-// Mock useCubeContext
+// Mock useCubeMeta/useCubeFeatures
 const mockMeta = {
   cubes: [
     {
@@ -29,25 +29,60 @@ const mockMeta = {
   ]
 }
 
-const mockCubeContext = {
-  cubeApi: {
-    load: vi.fn(),
-    sql: vi.fn().mockResolvedValue({ sql: 'SELECT 1', params: [] }),
-    meta: vi.fn().mockResolvedValue(mockMeta),
-    analyzeQuery: vi.fn()
-  },
-  meta: mockMeta,
-  labelMap: {},
-  metaLoading: false,
-  metaError: null,
-  getFieldLabel: (field: string) => field,
-  refetchMeta: vi.fn(),
-  updateApiConfig: vi.fn(),
-  features: { enableAI: false }
-}
-
 vi.mock('../../../src/client/providers/CubeProvider', () => ({
-  useCubeContext: vi.fn(() => mockCubeContext)
+  useCubeMeta: vi.fn(() => ({
+    meta: mockMeta,
+    labelMap: {},
+    metaLoading: false,
+    metaError: null,
+    getFieldLabel: (field: string) => field,
+    refetchMeta: vi.fn()
+  })),
+  useCubeFeatures: vi.fn(() => ({
+    features: { enableAI: false },
+    dashboardModes: ['grid', 'rows']
+  }))
+}))
+
+// Mock useCubeApi (used by TanStack Query hooks like useCubeLoadQuery)
+vi.mock('../../../src/client/providers/CubeApiProvider', () => ({
+  useCubeApi: vi.fn(() => ({
+    cubeApi: {
+      load: vi.fn(),
+      sql: vi.fn().mockResolvedValue({ sql: 'SELECT 1', params: [] }),
+      meta: vi.fn().mockResolvedValue(mockMeta),
+      analyzeQuery: vi.fn(),
+      batchLoad: vi.fn()
+    },
+    options: undefined,
+    updateApiConfig: vi.fn(),
+    batchCoordinator: null,
+    enableBatching: false
+  }))
+}))
+
+// Mock TanStack Query hooks (useQueryClient is called in useCubeLoadQuery)
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    isFetching: false,
+    error: null,
+    refetch: vi.fn()
+  })),
+  useQueries: vi.fn(() => []),
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: vi.fn(),
+    removeQueries: vi.fn(),
+    setQueryData: vi.fn(),
+    getQueryData: vi.fn()
+  })),
+  QueryClientProvider: ({ children }: any) => children,
+  QueryClient: vi.fn().mockImplementation(() => ({
+    defaultOptions: {},
+    mount: vi.fn(),
+    unmount: vi.fn()
+  }))
 }))
 
 // Mock useCubeQuery
@@ -352,15 +387,21 @@ describe('AnalysisBuilder', () => {
     })
 
     it('should load state from localStorage on mount', () => {
-      // Pre-save state to localStorage
+      // Pre-save state to localStorage (Zustand persist format)
       const savedState = {
-        metrics: [{ id: '1', field: 'Employees.avgSalary', label: 'A' }],
-        breakdowns: [],
-        filters: [],
-        chartType: 'line',
-        chartConfig: {},
-        displayConfig: {},
-        activeView: 'chart'
+        state: {
+          queryStates: [{
+            metrics: [{ id: '1', field: 'Employees.avgSalary', label: 'A' }],
+            breakdowns: [],
+            filters: [],
+            order: null
+          }],
+          chartType: 'line',
+          chartConfig: {},
+          displayConfig: {},
+          activeView: 'chart'
+        },
+        version: 0
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState))
 

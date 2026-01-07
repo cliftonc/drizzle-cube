@@ -82,24 +82,6 @@ export interface QueryBuilderRef {
   getValidationResult: () => ValidationResult | null
 }
 
-export interface CubeMetaExplorerProps {
-  schema: MetaResponse | null
-  schemaStatus: SchemaStatus
-  schemaError: string | null
-  selectedFields: {
-    measures: string[]
-    dimensions: string[]
-    timeDimensions: string[]
-  }
-  onFieldSelect: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
-  onFieldDeselect: (fieldName: string, fieldType: 'measures' | 'dimensions' | 'timeDimensions') => void
-  onRetrySchema?: () => void
-  onOpenSettings?: () => void
-  onExpandSchema?: (expanded: boolean) => void
-  onViewTypeChange?: (viewType: 'tree' | 'diagram') => void
-  isExpanded?: boolean
-}
-
 // Share button states
 export type ShareButtonState = 'idle' | 'copied' | 'copied-no-chart'
 

@@ -7,22 +7,14 @@
  */
 
 import { useState, useCallback } from 'react'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
+import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig, MultiQueryConfig } from '../types'
 import { compressWithFallback } from '../utils/shareUtils'
 
 interface UseAnalysisShareOptions {
   /** Whether the current query is valid */
   isValidQuery: boolean
-  /** Number of query states (for multi-query detection) */
-  queryStatesLength: number
-  /** All built queries */
-  allQueries: CubeQuery[]
-  /** Current query (for single-query mode) */
-  currentQuery: CubeQuery
-  /** Merge strategy for multi-query mode */
-  mergeStrategy: 'concat' | 'merge'
-  /** Merge keys for multi-query mode */
-  mergeKeys: string[] | undefined
+  /** Getter for the query config (matches AnalysisBuilder save format) */
+  getQueryConfig: () => CubeQuery | MultiQueryConfig
   /** Current chart type */
   chartType: ChartType
   /** Current chart config */
@@ -42,11 +34,7 @@ interface UseAnalysisShareResult {
 
 export function useAnalysisShare({
   isValidQuery,
-  queryStatesLength,
-  allQueries,
-  currentQuery,
-  mergeStrategy,
-  mergeKeys,
+  getQueryConfig,
   chartType,
   chartConfig,
   displayConfig,
@@ -60,15 +48,7 @@ export function useAnalysisShare({
   const handleShare = useCallback(async () => {
     if (!isValidQuery) return
 
-    // Build the query config - use multi-query format if multiple queries exist
-    const queryConfig = queryStatesLength > 1
-      ? {
-          queries: allQueries,
-          mergeStrategy,
-          mergeKeys,
-          queryLabels: Array.from({ length: queryStatesLength }, (_, i) => `Q${i + 1}`)
-        }
-      : currentQuery
+    const queryConfig = getQueryConfig()
 
     const shareableState = {
       query: queryConfig,
@@ -107,7 +87,7 @@ export function useAnalysisShare({
     setTimeout(() => {
       setShareButtonState('idle')
     }, 2000)
-  }, [isValidQuery, queryStatesLength, allQueries, mergeStrategy, mergeKeys, currentQuery, chartType, chartConfig, displayConfig, activeView])
+  }, [isValidQuery, getQueryConfig, chartType, chartConfig, displayConfig, activeView])
 
   return {
     shareButtonState,

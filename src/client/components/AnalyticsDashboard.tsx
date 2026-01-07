@@ -4,10 +4,12 @@
  * Minimal dependencies, designed to be embedded in existing apps
  */
 
-import { useCallback, useRef, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import DashboardGrid from './DashboardGrid'
-import { useCubeContext } from '../providers/CubeProvider'
+import { useCubeFeatures, useCubeMeta } from '../providers/CubeProvider'
+import { DashboardStoreProvider } from '../stores/dashboardStore'
 import { getColorPalette } from '../utils/colorPalettes'
+import { useDirtyStateTracking } from '../hooks/useDirtyStateTracking'
 import type { AnalyticsDashboardProps, DashboardConfig, DashboardFilter } from '../types'
 
 export default function AnalyticsDashboard({
@@ -20,11 +22,19 @@ export default function AnalyticsDashboard({
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
   // Get cube metadata for filter building
-  const { meta, dashboardModes } = useCubeContext()
+  const { meta } = useCubeMeta()
+  const { dashboardModes } = useCubeFeatures()
 
-  // Track initial config to prevent saves during initial load
-  const initialConfigRef = useRef(config)
-  const hasConfigChangedFromInitial = useRef(false)
+  // Track dirty state and wrap save/change handlers
+  const {
+    handleConfigChange: handleConfigChangeWithDirtyTracking,
+    handleSave: handleSaveWithDirtyTracking,
+  } = useDirtyStateTracking<DashboardConfig>({
+    initialConfig: config,
+    onConfigChange,
+    onSave,
+    onDirtyStateChange,
+  })
 
   // Merge programmatic filters (props) with config filters by ID
   // Config provides structure/metadata, props provide value overrides
@@ -66,55 +76,6 @@ export default function AnalyticsDashboard({
     return [...mergedFilters, ...newFilters]
   }, [config.filters, propDashboardFilters])
 
-  // Enhanced save handler that tracks dirty state and prevents saves during initial load
-  const handleSaveWithDirtyTracking = useCallback(async (config: DashboardConfig) => {
-    // Don't save if this config hasn't actually changed from the initial load
-    if (!hasConfigChangedFromInitial.current) {
-      return // Prevent saves during initial load/responsive changes
-    }
-    
-    if (onDirtyStateChange) {
-      onDirtyStateChange(true) // Mark as dirty when save starts
-    }
-    
-    try {
-      if (onSave) {
-        await onSave(config)
-      }
-      
-      // Update our reference point after successful save
-      initialConfigRef.current = config
-      
-      // Mark as clean after successful save
-      if (onDirtyStateChange) {
-        onDirtyStateChange(false)
-      }
-    } catch (error) {
-      // Keep dirty state if save failed
-      console.error('Save failed:', error)
-      throw error
-    }
-  }, [onSave, onDirtyStateChange])
-
-  // Enhanced config change handler that marks as dirty (only after initial load)
-  const handleConfigChangeWithDirtyTracking = useCallback((config: DashboardConfig) => {
-    if (onConfigChange) {
-      onConfigChange(config)
-    }
-    
-    // Check if this is a meaningful change from the initial config
-    const configString = JSON.stringify(config)
-    const initialConfigString = JSON.stringify(initialConfigRef.current)
-    
-    if (configString !== initialConfigString) {
-      hasConfigChangedFromInitial.current = true
-      
-      if (onDirtyStateChange) {
-        onDirtyStateChange(true)
-      }
-    }
-  }, [onConfigChange, onDirtyStateChange])
-
   // Handle dashboard filter changes
   const handleDashboardFiltersChange = useCallback((filters: DashboardFilter[]) => {
     // Only update config if we're not using programmatic filters
@@ -136,20 +97,22 @@ export default function AnalyticsDashboard({
   }, [config.colorPalette])
 
   return (
-    <div className="w-full">
-      {/* Dashboard Grid (now includes filter panel) */}
-      <DashboardGrid
-        config={config}
-        editable={editable}
-        dashboardFilters={mergedDashboardFilters}
-        loadingComponent={loadingComponent}
-        onConfigChange={handleConfigChangeWithDirtyTracking}
-        onSave={handleSaveWithDirtyTracking}
-        colorPalette={colorPalette}
-        schema={meta}
-        dashboardModes={dashboardModes}
-        onDashboardFiltersChange={handleDashboardFiltersChange}
-      />
-    </div>
+    <DashboardStoreProvider>
+      <div className="w-full">
+        {/* Dashboard Grid (now includes filter panel) */}
+        <DashboardGrid
+          config={config}
+          editable={editable}
+          dashboardFilters={mergedDashboardFilters}
+          loadingComponent={loadingComponent}
+          onConfigChange={handleConfigChangeWithDirtyTracking}
+          onSave={handleSaveWithDirtyTracking}
+          colorPalette={colorPalette}
+          schema={meta}
+          dashboardModes={dashboardModes}
+          onDashboardFiltersChange={handleDashboardFiltersChange}
+        />
+      </div>
+    </DashboardStoreProvider>
   )
 }
