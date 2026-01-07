@@ -68,6 +68,7 @@ export { createCubeClient } from './client/CubeClient'
 export {
   useCubeMetaQuery,
   useCubeLoadQuery,
+  useCubeQuery,
   useMultiCubeLoadQuery,
   useDryRunQuery,
   useMultiDryRunQueries,

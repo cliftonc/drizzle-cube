@@ -22,6 +22,7 @@ export {
 // Single query data loading
 export {
   useCubeLoadQuery,
+  useCubeLoadQuery as useCubeQuery,
   createQueryKey,
   type UseCubeLoadQueryOptions,
   type UseCubeLoadQueryResult,

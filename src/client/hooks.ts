@@ -9,6 +9,7 @@
 export {
   useCubeMetaQuery,
   useCubeLoadQuery,
+  useCubeQuery,
   useMultiCubeLoadQuery,
   useDryRunQuery,
   useMultiDryRunQueries,
