@@ -27,7 +27,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3
       react-router-dom:
-        specifier: ^7.12.0
+        specifier: ^7.10.1
         version: 7.12.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zustand:
         specifier: ^5.0.9
@@ -43,8 +43,8 @@ importers:
         specifier: ^11.1.0
         version: 11.2.0
       '@hono/node-server':
-        specifier: ^1.19.0
-        version: 1.19.7(hono@4.11.3)
+        specifier: ^1.19.8
+        version: 1.19.8(hono@4.11.3)
       '@iconify-icons/heroicons-outline':
         specifier: ^1.2.5
         version: 1.2.5
@@ -884,8 +884,8 @@ packages:
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
 
-  '@hono/node-server@1.19.7':
-    resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
+  '@hono/node-server@1.19.8':
+    resolution: {integrity: sha512-0/g2lIOPzX8f3vzW1ggQgvG5mjtFBDBHFAzI5SFAi2DzSqS9luJwqg9T6O/gKYLi+inS7eNxBeIFkkghIPvrMA==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
       hono: ^4
@@ -4588,7 +4588,7 @@ snapshots:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.3.0
 
-  '@hono/node-server@1.19.7(hono@4.11.3)':
+  '@hono/node-server@1.19.8(hono@4.11.3)':
     dependencies:
       hono: 4.11.3
 
