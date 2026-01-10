@@ -13,6 +13,62 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     return 'postgres'
   }
 
+  // ============================================
+  // Funnel Analysis Methods
+  // ============================================
+
+  /**
+   * Build PostgreSQL INTERVAL from ISO 8601 duration
+   * PostgreSQL supports INTERVAL literal syntax: INTERVAL '7 days'
+   */
+  buildIntervalFromISO(duration: string): SQL {
+    const parsed = this.parseISODuration(duration)
+    const parts: string[] = []
+
+    if (parsed.years) parts.push(`${parsed.years} years`)
+    if (parsed.months) parts.push(`${parsed.months} months`)
+    if (parsed.days) parts.push(`${parsed.days} days`)
+    if (parsed.hours) parts.push(`${parsed.hours} hours`)
+    if (parsed.minutes) parts.push(`${parsed.minutes} minutes`)
+    if (parsed.seconds) parts.push(`${parsed.seconds} seconds`)
+
+    const intervalStr = parts.join(' ') || '0 seconds'
+    return sql`INTERVAL '${sql.raw(intervalStr)}'`
+  }
+
+  /**
+   * Build PostgreSQL time difference in seconds using EXTRACT(EPOCH FROM ...)
+   * Returns (end - start) as seconds
+   */
+  buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
+    return sql`EXTRACT(EPOCH FROM (${end} - ${start}))`
+  }
+
+  /**
+   * Build PostgreSQL timestamp + interval expression
+   */
+  buildDateAddInterval(timestamp: SQL, duration: string): SQL {
+    const interval = this.buildIntervalFromISO(duration)
+    return sql`(${timestamp} + ${interval})`
+  }
+
+  /**
+   * Build PostgreSQL conditional aggregation using FILTER clause
+   * PostgreSQL supports the standard SQL FILTER clause for efficient conditional aggregation
+   * Example: AVG(time_diff) FILTER (WHERE step_1_time IS NOT NULL)
+   */
+  buildConditionalAggregation(
+    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
+    expr: SQL | null,
+    condition: SQL
+  ): SQL {
+    const fnName = aggFn.toUpperCase()
+    if (aggFn === 'count' && !expr) {
+      return sql`COUNT(*) FILTER (WHERE ${condition})`
+    }
+    return sql`${sql.raw(fnName)}(${expr}) FILTER (WHERE ${condition})`
+  }
+
   /**
    * Build PostgreSQL time dimension using DATE_TRUNC function
    * Extracted from executor.ts:649-670 and multi-cube-builder.ts:306-320

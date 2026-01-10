@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { useAnalysisBuilderStore, type SharedState } from '../stores/analysisBuilderStore'
-import { parseShareHash, decodeAndDecompress, clearShareHash } from '../utils/shareUtils'
+import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore'
+import { parseShareUrl, clearShareHash } from '../utils/shareUtils'
 import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
 
 export interface UseAnalysisInitializationOptions {
@@ -46,8 +46,8 @@ export function useAnalysisInitialization(options: UseAnalysisInitializationOpti
     onChartConfigChange,
   } = options
 
-  // Get store action for loading from share
-  const loadFromShare = useAnalysisBuilderStore((state) => state.loadFromShare)
+  // Get store action for loading from share URL
+  const load = useAnalysisBuilderStore((state) => state.load)
 
   // URL share loading (on mount only)
   const hasInitializedShareRef = useRef(false)
@@ -56,15 +56,13 @@ export function useAnalysisInitialization(options: UseAnalysisInitializationOpti
     if (hasInitializedShareRef.current) return
     hasInitializedShareRef.current = true
 
-    const encoded = parseShareHash()
-    if (!encoded) return
+    // parseShareUrl returns AnalysisConfig | null
+    const config = parseShareUrl()
+    if (!config) return
 
-    const sharedState = decodeAndDecompress(encoded) as SharedState | null
-    if (!sharedState || !sharedState.query) return
-
-    loadFromShare(sharedState)
+    load(config)
     clearShareHash()
-  }, [loadFromShare])
+  }, [load])
 
   // Query change callback
   useEffect(() => {

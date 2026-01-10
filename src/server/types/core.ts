@@ -29,16 +29,16 @@ export interface QueryResult {
     /** Period comparison metadata (present when compareDateRange is used) */
     periods?: PeriodComparisonMetadata
   }
-  /** Cache metadata (present when result served from cache) */
+  /** Cache metadata - indicates whether result was served from cache */
   cache?: {
-    /** Always true when this object is present */
-    hit: true
-    /** ISO timestamp when the result was cached */
-    cachedAt: string
-    /** Original TTL in milliseconds */
-    ttlMs: number
-    /** Remaining TTL in milliseconds */
-    ttlRemainingMs: number
+    /** True if result was served from cache, false if freshly computed */
+    hit: boolean
+    /** ISO timestamp when the result was cached (only present on cache hit) */
+    cachedAt?: string
+    /** Original TTL in milliseconds (only present on cache hit) */
+    ttlMs?: number
+    /** Remaining TTL in milliseconds (only present on cache hit) */
+    ttlRemainingMs?: number
   }
 }
 

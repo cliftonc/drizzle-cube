@@ -54,7 +54,7 @@ export function addRecentField(fieldName: string, mode: 'metrics' | 'breakdowns'
  */
 export function getRecentFieldOptions(
   schema: MetaResponse | null,
-  mode: 'metrics' | 'breakdown' | 'filter',
+  mode: 'metrics' | 'breakdown' | 'filter' | 'dimensionFilter',
   recentFieldNames: string[]
 ): FieldOption[] {
   if (!schema || recentFieldNames.length === 0) return []

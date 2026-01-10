@@ -75,7 +75,40 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     limit: query.limit,
     offset: query.offset,
     order: query.order ? sortObject(query.order) : undefined,
-    fillMissingDatesValue: query.fillMissingDatesValue
+    fillMissingDatesValue: query.fillMissingDatesValue,
+    // Include funnel config in cache key for proper cache invalidation
+    funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined
+  }
+}
+
+/**
+ * Normalize funnel config for consistent hashing
+ * Ensures step order and filter content create unique cache keys
+ *
+ * @param funnel - The funnel config to normalize
+ * @returns Normalized funnel config
+ */
+function normalizeFunnelConfig(funnel: NonNullable<SemanticQuery['funnel']>): NonNullable<SemanticQuery['funnel']> {
+  return {
+    bindingKey: funnel.bindingKey,
+    timeDimension: funnel.timeDimension,
+    // Normalize steps - preserve order but sort filters within each step
+    steps: funnel.steps.map(step => {
+      const normalizedStep: typeof step = {
+        name: step.name,
+        filter: step.filter
+          ? (Array.isArray(step.filter) ? sortFilters(step.filter) : sortFilters([step.filter])[0])
+          : undefined,
+        timeToConvert: step.timeToConvert
+      }
+      // Include cube property for multi-cube steps
+      if ('cube' in step && step.cube) {
+        (normalizedStep as { cube?: string }).cube = step.cube
+      }
+      return normalizedStep
+    }),
+    includeTimeMetrics: funnel.includeTimeMetrics,
+    globalTimeWindow: funnel.globalTimeWindow
   }
 }
 

@@ -39,6 +39,7 @@ import { validateQueryAgainstCubes } from './compiler'
 import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 import { ComparisonQueryBuilder } from './comparison-query-builder'
+import { FunnelQueryBuilder } from './funnel-query-builder'
 
 export class QueryExecutor {
   private queryBuilder: QueryBuilder
@@ -46,6 +47,7 @@ export class QueryExecutor {
   private cteBuilder: CTEBuilder
   private databaseAdapter: DatabaseAdapter
   private comparisonQueryBuilder: ComparisonQueryBuilder
+  private funnelQueryBuilder: FunnelQueryBuilder
   private cacheConfig?: CacheConfig
 
   constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
@@ -58,6 +60,7 @@ export class QueryExecutor {
     this.queryPlanner = new QueryPlanner()
     this.cteBuilder = new CTEBuilder(this.queryBuilder)
     this.comparisonQueryBuilder = new ComparisonQueryBuilder(this.databaseAdapter)
+    this.funnelQueryBuilder = new FunnelQueryBuilder(this.databaseAdapter)
     this.cacheConfig = cacheConfig
   }
 
@@ -70,10 +73,21 @@ export class QueryExecutor {
     securityContext: SecurityContext
   ): Promise<QueryResult> {
     try {
-      // Validate query before execution
-      const validation = validateQueryAgainstCubes(cubes, query)
-      if (!validation.isValid) {
-        throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+      // Check for funnel queries FIRST - funnel queries have different validation
+      if (this.funnelQueryBuilder.hasFunnel(query)) {
+        // Validate funnel configuration separately
+        const funnelValidation = this.funnelQueryBuilder.validateConfig(query.funnel!, cubes)
+        if (!funnelValidation.isValid) {
+          throw new Error(`Funnel validation failed: ${funnelValidation.errors.join(', ')}`)
+        }
+        // Skip standard validation for funnel queries and go directly to execution
+        // (after cache check below)
+      } else {
+        // Standard validation for non-funnel queries
+        const validation = validateQueryAgainstCubes(cubes, query)
+        if (!validation.isValid) {
+          throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+        }
       }
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
@@ -95,13 +109,13 @@ export class QueryExecutor {
               ...cacheResult.value,
               cache: cacheResult.metadata
                 ? {
-                    hit: true as const,
+                    hit: true,
                     cachedAt: new Date(cacheResult.metadata.cachedAt).toISOString(),
                     ttlMs: cacheResult.metadata.ttlMs,
                     ttlRemainingMs: cacheResult.metadata.ttlRemainingMs
                   }
                 : {
-                    hit: true as const,
+                    hit: true,
                     cachedAt: new Date().toISOString(),
                     ttlMs: 0,
                     ttlRemainingMs: 0
@@ -122,6 +136,11 @@ export class QueryExecutor {
       // Check for compareDateRange queries and route to comparison execution
       if (this.comparisonQueryBuilder.hasComparison(query)) {
         return this.executeComparisonQueryWithCache(cubes, query, securityContext, cacheKey)
+      }
+
+      // Check for funnel queries and route to funnel execution
+      if (this.funnelQueryBuilder.hasFunnel(query)) {
+        return this.executeFunnelQueryWithCache(cubes, query, securityContext, cacheKey)
       }
 
       // Create filter cache for parameter deduplication across CTEs
@@ -340,6 +359,104 @@ export class QueryExecutor {
     )
 
     return mergedResult
+  }
+
+  /**
+   * Execute a funnel query with caching support
+   */
+  private async executeFunnelQueryWithCache(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    cacheKey: string | undefined
+  ): Promise<QueryResult> {
+    const result = await this.executeFunnelQuery(cubes, query, securityContext)
+
+    // Cache result before returning
+    if (cacheKey && this.cacheConfig?.provider) {
+      try {
+        const startTime = Date.now()
+        await this.cacheConfig.provider.set(
+          cacheKey,
+          result,
+          this.cacheConfig.defaultTtlMs ?? 300000
+        )
+        this.cacheConfig.onCacheEvent?.({
+          type: 'set',
+          key: cacheKey,
+          durationMs: Date.now() - startTime
+        })
+      } catch (error) {
+        this.cacheConfig.onError?.(error as Error, 'set')
+      }
+    }
+
+    // Return result with cache metadata (miss - freshly computed)
+    return {
+      ...result,
+      cache: {
+        hit: false
+      }
+    }
+  }
+
+  /**
+   * Execute a funnel analysis query
+   */
+  private async executeFunnelQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    const config = query.funnel!
+
+    // Validate funnel configuration
+    const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Funnel validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build funnel query using Drizzle query builder
+    // The refactored buildFunnelQuery returns a query builder with .toSQL() support
+    const funnelQuery = this.funnelQueryBuilder.buildFunnelQuery(config, cubes, context)
+
+    // Execute the query builder directly
+    const rawResult = await funnelQuery as unknown as Record<string, unknown>[]
+
+    // Transform to step rows
+    const funnelRows = this.funnelQueryBuilder.transformResult(rawResult, config)
+
+    // Build annotation with funnel metadata
+    // Note: Funnel queries have a different annotation structure
+    // The funnel property contains the funnel-specific metadata
+    const annotation: QueryResult['annotation'] & { funnel?: unknown } = {
+      measures: {} as Record<string, MeasureAnnotation>,
+      dimensions: {} as Record<string, DimensionAnnotation>,
+      segments: {},
+      timeDimensions: {} as Record<string, TimeDimensionAnnotation>
+    }
+
+    // Add funnel metadata to annotation (as additional property)
+    ;(annotation as any).funnel = {
+      config,
+      steps: config.steps.map((step, index) => ({
+        name: step.name,
+        index,
+        timeToConvert: step.timeToConvert
+      }))
+    }
+
+    return {
+      data: funnelRows as unknown as Record<string, unknown>[],
+      annotation
+    }
   }
 
   /**
@@ -960,6 +1077,49 @@ export class QueryExecutor {
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
     return this.generateUnifiedSQL(cubes, query, securityContext)
+  }
+
+  /**
+   * Generate SQL for a funnel query without execution (dry-run)
+   * Returns the actual CTE-based SQL that would be executed
+   */
+  async dryRunFunnel(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    // Validate funnel query
+    if (!this.funnelQueryBuilder.hasFunnel(query)) {
+      throw new Error('Query does not contain a valid funnel configuration')
+    }
+
+    const config = query.funnel!
+
+    // Validate funnel configuration
+    const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Funnel validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build funnel query using Drizzle query builder
+    // The refactored buildFunnelQuery returns a query builder with .toSQL() support
+    const funnelQuery = this.funnelQueryBuilder.buildFunnelQuery(config, cubes, context)
+
+    // Use .toSQL() to get the SQL string and parameters
+    // This now works because buildFunnelQuery returns a Drizzle query builder
+    const sqlObj = funnelQuery.toSQL()
+
+    return {
+      sql: sqlObj.sql,
+      params: sqlObj.params
+    }
   }
 
   /**

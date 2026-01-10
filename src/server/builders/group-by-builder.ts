@@ -69,8 +69,17 @@ export class GroupByBuilder {
     // Convert single cube to map for consistent handling
     const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
 
-    // Only add GROUP BY if we have AGGREGATE measures
+    // Determine if GROUP BY is needed:
+    // 1. When there are aggregate measures
+    // 2. When there are dimensions but NO measures (distinct values query)
     // This also includes post-aggregation window functions that reference aggregate base measures
+    const hasDimensions = (query.dimensions && query.dimensions.length > 0) ||
+                          (query.timeDimensions && query.timeDimensions.length > 0)
+    const hasMeasures = query.measures && query.measures.length > 0
+
+    // For dimension-only queries (no measures), we need GROUP BY for DISTINCT behavior
+    const isDimensionOnlyQuery = hasDimensions && !hasMeasures
+
     let hasAggregateMeasures = false
 
     for (const measureName of query.measures || []) {
@@ -100,7 +109,8 @@ export class GroupByBuilder {
       }
     }
 
-    if (!hasAggregateMeasures) {
+    // Skip GROUP BY only if we have measures that aren't aggregates (pure window functions)
+    if (!hasAggregateMeasures && !isDimensionOnlyQuery) {
       return []
     }
 

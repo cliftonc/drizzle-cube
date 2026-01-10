@@ -119,7 +119,6 @@ export type {
   AnalysisBuilderStoreState,
   AnalysisBuilderStoreActions,
   FieldModalMode,
-  SharedState,
 } from './stores/analysisBuilderStore'
 
 // Zustand stores - Dashboard
@@ -235,12 +234,15 @@ export {
   getBindingKeyLabel,
 } from './utils/funnelValidation'
 export {
+  // Keep for public API
   getBindingKeyField,
-  extractBindingKeyValues,
-  buildStepQuery,
-  buildFunnelConfigFromQueries,
-  buildFunnelChartData,
+  getCubeNameFromQuery,
+  formatDuration,
+  transformServerFunnelResult,
+  buildServerFunnelQuery,
   isFunnelData,
+  // Backward compatibility (deprecated - use dedicated funnel mode instead)
+  buildFunnelConfigFromQueries,
 } from './utils/funnelExecution'
 
 // Theme utilities

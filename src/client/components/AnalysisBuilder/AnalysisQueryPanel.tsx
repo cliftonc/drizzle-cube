@@ -8,7 +8,7 @@
 import React, { useEffect, memo, useCallback, useMemo } from 'react'
 import type { AnalysisQueryPanelProps, BreakdownItem } from './types'
 import type { MetaField } from '../../shared/types'
-import type { QueryMergeStrategy } from '../../types'
+import type { QueryMergeStrategy, CubeMeta } from '../../types'
 import { getIcon } from '../../icons'
 import MetricsSection from './MetricsSection'
 import BreakdownSection from './BreakdownSection'
@@ -17,6 +17,8 @@ import AnalysisFilterSection from './AnalysisFilterSection'
 import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import FunnelBindingKeySelector from './FunnelBindingKeySelector'
+import AnalysisTypeSelector from './AnalysisTypeSelector'
+import FunnelModeContent from './FunnelModeContent'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -76,16 +78,40 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   combinedMetrics,
   combinedBreakdowns,
   multiQueryValidation,
-  // Funnel props
+  adapterValidation,
+  // Funnel props (legacy - for merge strategy mode)
   funnelBindingKey,
   onFunnelBindingKeyChange,
+  // Analysis Type props
+  analysisType = 'query',
+  onAnalysisTypeChange,
+  // Funnel Mode props (new dedicated state)
+  funnelCube = null,
+  funnelSteps = [],
+  activeFunnelStepIndex = 0,
+  funnelTimeDimension,
+  onFunnelCubeChange,
+  onAddFunnelStep,
+  onRemoveFunnelStep,
+  onUpdateFunnelStep,
+  onSelectFunnelStep,
+  onReorderFunnelSteps,
+  onFunnelTimeDimensionChange,
+  // Funnel display config (for Display tab)
+  funnelDisplayConfig,
+  onFunnelDisplayConfigChange,
 }: AnalysisQueryPanelProps) {
   // Mark unused props
   void _validationStatus
   void _validationError
 
   const isMultiQuery = queryCount > 1
-  const isFunnelMode = mergeStrategy === 'funnel'
+  // Note: Legacy mergeStrategy === 'funnel' is no longer supported
+  // Funnel mode is determined by analysisType === 'funnel'
+  const isFunnelMode = analysisType === 'funnel'
+
+  // Alias for clarity - same as isFunnelMode now
+  const isNewFunnelMode = analysisType === 'funnel'
 
   // Helper to find field metadata for a breakdown
   const getFieldMeta = useCallback((breakdown: BreakdownItem): MetaField | null => {
@@ -134,7 +160,40 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
   return (
     <div className="h-full flex flex-col bg-dc-surface">
-      {/* Tab Bar */}
+      {/* Analysis Type Selector - always visible */}
+      {onAnalysisTypeChange && (
+        <AnalysisTypeSelector
+          value={analysisType}
+          onChange={onAnalysisTypeChange}
+        />
+      )}
+
+      {/* Funnel Mode - dedicated UI when analysisType === 'funnel' */}
+      {isNewFunnelMode && onFunnelCubeChange && onAddFunnelStep && onRemoveFunnelStep && onUpdateFunnelStep && onSelectFunnelStep && onReorderFunnelSteps && onFunnelTimeDimensionChange && onFunnelBindingKeyChange ? (
+        <FunnelModeContent
+          funnelCube={funnelCube}
+          funnelSteps={funnelSteps}
+          activeFunnelStepIndex={activeFunnelStepIndex}
+          funnelTimeDimension={funnelTimeDimension ?? null}
+          funnelBindingKey={funnelBindingKey ?? null}
+          schema={schema as CubeMeta | null}
+          onCubeChange={onFunnelCubeChange}
+          onAddStep={onAddFunnelStep}
+          onRemoveStep={onRemoveFunnelStep}
+          onUpdateStep={onUpdateFunnelStep}
+          onSelectStep={onSelectFunnelStep}
+          onReorderSteps={onReorderFunnelSteps}
+          onTimeDimensionChange={onFunnelTimeDimensionChange}
+          onBindingKeyChange={onFunnelBindingKeyChange}
+          // Display tab props
+          chartType="funnel"
+          displayConfig={funnelDisplayConfig}
+          colorPalette={colorPalette}
+          onDisplayConfigChange={onFunnelDisplayConfigChange}
+        />
+      ) : (
+        <>
+      {/* Tab Bar - only shown when not in new funnel mode */}
       <div className="flex border-b border-dc-border flex-shrink-0">
         {/* Query Tabs - show Q1, Q2, etc. when multi-query, or single "Query" tab */}
         {isMultiQuery ? (
@@ -271,6 +330,24 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         </div>
       )}
 
+      {/* Adapter Validation Errors/Warnings (NEW - Phase 5) */}
+      {adapterValidation && (adapterValidation.errors.length > 0 || adapterValidation.warnings.length > 0) && activeTab === 'query' && (
+        <div className="px-4 py-2 border-b border-dc-border bg-dc-warning-bg space-y-1">
+          {adapterValidation.errors.map((error, i) => (
+            <div key={`adapter-error-${i}`} className="flex items-start gap-2 text-xs text-dc-error">
+              <WarningIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          ))}
+          {adapterValidation.warnings.map((warning, i) => (
+            <div key={`adapter-warning-${i}`} className="flex items-start gap-2 text-xs text-dc-warning">
+              <InfoIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>{warning}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Multi-Query Validation Warnings (hidden in funnel mode - funnels can have same metrics) */}
       {multiQueryValidation && !isFunnelMode && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
         <div className="px-4 py-2 border-b border-dc-border bg-dc-warning-bg">
@@ -386,6 +463,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           />
         ) : null}
       </div>
+        </>
+      )}
     </div>
   )
 })

@@ -18,11 +18,14 @@ import type {
   MultiQueryConfig,
   QueryMergeStrategy,
   FunnelBindingKey,
+  AnalysisType,
+  FunnelStepState,
 } from '../../types'
 import type { ColorPalette } from '../../utils/colorPalettes'
 import type { MetaResponse, MetaField, MetaCube, QueryAnalysis } from '../../shared/types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 import type { MultiQueryValidationResult } from '../../utils/multiQueryValidation'
+import type { ValidationResult } from '../../adapters/modeAdapter'
 
 // Re-export types from shared for convenience
 export type { MetaResponse, MetaField, MetaCube, QueryAnalysis }
@@ -113,7 +116,11 @@ export interface AIState {
     chartType: ChartType
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
+    /** Analysis type for restoring mode on cancel */
+    analysisType?: AnalysisType
   } | null
+  /** Full AnalysisConfig snapshot for complete restore (handles funnel mode properly) */
+  previousConfig?: import('../../types/analysisConfig').AnalysisConfig | null
 }
 
 // ============================================================================
@@ -122,8 +129,12 @@ export interface AIState {
 
 /**
  * Mode for the field search modal - determines which field types are shown
+ * - 'metrics': Only measures
+ * - 'breakdown': Only dimensions (including time dimensions)
+ * - 'filter': Both measures and dimensions
+ * - 'dimensionFilter': Only dimensions (for funnel step filters where measures don't work)
  */
-export type FieldSearchMode = 'metrics' | 'breakdown' | 'filter'
+export type FieldSearchMode = 'metrics' | 'breakdown' | 'filter' | 'dimensionFilter'
 
 /**
  * Field type categorization
@@ -204,6 +215,11 @@ export interface FieldDetailPanelProps {
 export type QueryPanelTab = 'query' | 'chart' | 'display'
 
 /**
+ * Tab options for the funnel panel
+ */
+export type FunnelPanelTab = 'steps' | 'display'
+
+/**
  * Props for the AnalysisQueryPanel component
  */
 export interface AnalysisQueryPanelProps {
@@ -282,12 +298,48 @@ export interface AnalysisQueryPanelProps {
   combinedBreakdowns?: BreakdownItem[]
   /** Validation result for multi-query mode (errors and warnings) */
   multiQueryValidation?: MultiQueryValidationResult | null
+  /** Validation result from adapter (NEW - Phase 5) */
+  adapterValidation?: ValidationResult | null
 
   // Funnel-specific props (when mergeStrategy === 'funnel')
   /** Binding key dimension that links funnel steps together */
   funnelBindingKey?: FunnelBindingKey | null
   /** Callback when funnel binding key changes */
   onFunnelBindingKeyChange?: (bindingKey: FunnelBindingKey | null) => void
+
+  // Analysis Type props (explicit mode selection)
+  /** Current analysis type (query, multi, funnel) */
+  analysisType?: AnalysisType
+  /** Callback when analysis type changes */
+  onAnalysisTypeChange?: (type: AnalysisType) => void
+
+  // Funnel Mode props (when analysisType === 'funnel')
+  /** Selected cube for funnel mode (all steps use this cube) */
+  funnelCube?: string | null
+  /** Dedicated funnel steps (separate from queryStates) */
+  funnelSteps?: FunnelStepState[]
+  /** Index of currently active funnel step */
+  activeFunnelStepIndex?: number
+  /** Time dimension for funnel temporal ordering */
+  funnelTimeDimension?: string | null
+  /** Callback when funnel cube changes */
+  onFunnelCubeChange?: (cube: string | null) => void
+  /** Add a new funnel step */
+  onAddFunnelStep?: () => void
+  /** Remove a funnel step by index */
+  onRemoveFunnelStep?: (index: number) => void
+  /** Update a funnel step by index */
+  onUpdateFunnelStep?: (index: number, updates: Partial<FunnelStepState>) => void
+  /** Set the active funnel step index */
+  onSelectFunnelStep?: (index: number) => void
+  /** Reorder funnel steps */
+  onReorderFunnelSteps?: (fromIndex: number, toIndex: number) => void
+  /** Set the time dimension for funnel */
+  onFunnelTimeDimensionChange?: (dimension: string | null) => void
+  /** Funnel display config (for Display tab in funnel mode) */
+  funnelDisplayConfig?: ChartDisplayConfig
+  /** Callback when funnel display config changes */
+  onFunnelDisplayConfigChange?: (config: ChartDisplayConfig) => void
 }
 
 /**
@@ -380,6 +432,31 @@ export interface AnalysisResultsPanelProps {
   activeTableIndex?: number
   /** Callback when active table changes */
   onActiveTableChange?: (index: number) => void
+  /** Current analysis type (query or funnel) - primary way to detect mode */
+  analysisType?: AnalysisType
+  /**
+   * Whether in funnel mode (always show unified results, no per-query tables)
+   * @deprecated Use analysisType === 'funnel' instead
+   */
+  isFunnelMode?: boolean
+
+  // Funnel-specific debug data (when analysisType === 'funnel')
+  /**
+   * The actual server funnel query { funnel: {...} } sent to the server.
+   * Use this for debug display instead of per-query debug data.
+   */
+  funnelServerQuery?: unknown
+  /**
+   * Unified debug data for funnel queries (SQL, analysis, loading/error state).
+   * Contains the CTE-based SQL for the entire funnel.
+   */
+  funnelDebugData?: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown
+    loading: boolean
+    error: Error | null
+    funnelMetadata?: unknown
+  } | null
 }
 
 // ============================================================================
@@ -517,6 +594,19 @@ export interface BreakdownItemCardProps {
 // ============================================================================
 
 /**
+ * Initial funnel state for AnalysisBuilder (matches InitialFunnelState in store)
+ */
+export interface AnalysisBuilderInitialFunnelState {
+  funnelCube?: string | null
+  funnelSteps?: FunnelStepState[]
+  funnelTimeDimension?: string | null
+  funnelBindingKey?: FunnelBindingKey | null
+  funnelChartType?: ChartType
+  funnelChartConfig?: ChartAxisConfig
+  funnelDisplayConfig?: ChartDisplayConfig
+}
+
+/**
  * Props for the main AnalysisBuilder component
  */
 export interface AnalysisBuilderProps {
@@ -536,6 +626,10 @@ export interface AnalysisBuilderProps {
     chartConfig?: ChartAxisConfig
     displayConfig?: ChartDisplayConfig
   }
+  /** Initial analysis type (query or funnel) - defaults to 'query' */
+  initialAnalysisType?: AnalysisType
+  /** Initial funnel state (when initialAnalysisType === 'funnel') */
+  initialFunnelState?: AnalysisBuilderInitialFunnelState
   /** Initial data to display (avoids re-fetching when editing existing portlets) */
   initialData?: any[]
   /** Color palette for chart visualization */
@@ -551,17 +645,42 @@ export interface AnalysisBuilderProps {
 }
 
 /**
+ * Funnel state returned by getFunnelState
+ */
+export interface FunnelStateSnapshot {
+  funnelCube: string | null
+  funnelSteps: FunnelStepState[]
+  funnelTimeDimension: string | null
+  funnelBindingKey: FunnelBindingKey | null
+  funnelChartType: ChartType
+  funnelChartConfig: ChartAxisConfig
+  funnelDisplayConfig: ChartDisplayConfig
+  activeFunnelStepIndex: number
+}
+
+/**
  * Ref interface for AnalysisBuilder (for external access)
  */
 export interface AnalysisBuilderRef {
   /**
    * Get the current query configuration.
-   * Returns either a CubeQuery (single query) or MultiQueryConfig (multiple queries).
+   * Returns CubeQuery (single query), MultiQueryConfig (multiple queries), or ServerFunnelQuery (funnel mode).
    * Consumers should just JSON.stringify the result - no need to check the type.
+   * @deprecated Use getAnalysisConfig() for Phase 3+ integrations
    */
-  getQueryConfig: () => CubeQuery | MultiQueryConfig
+  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../../types/funnel').ServerFunnelQuery
   /** Get current chart configuration */
   getChartConfig: () => { chartType: ChartType; chartConfig: ChartAxisConfig; displayConfig: ChartDisplayConfig }
+  /** Get the current analysis type (query or funnel) */
+  getAnalysisType: () => AnalysisType
+  /** Get the current funnel state (for persisting funnel mode configuration) */
+  getFunnelState: () => FunnelStateSnapshot
+  /**
+   * Phase 3: Get the complete AnalysisConfig.
+   * This is the canonical format for persisting analysis state.
+   * Replaces getQueryConfig + getChartConfig + getAnalysisType.
+   */
+  getAnalysisConfig: () => import('../../types/analysisConfig').AnalysisConfig
   /** Execute the current query */
   executeQuery: () => void
   /** Clear the current query */

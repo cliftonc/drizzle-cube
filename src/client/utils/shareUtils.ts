@@ -3,22 +3,17 @@
  *
  * Handles compression, encoding, and URL generation for sharing analysis state.
  * Uses LZ-String for compression which produces URL-safe output.
+ *
+ * Phase 3: Now uses AnalysisConfig format exclusively.
+ * Old share URLs will not parse (breaking change as per plan).
  */
 
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig, MultiQueryConfig } from '../types'
+import type { AnalysisConfig } from '../types/analysisConfig'
+import { isValidAnalysisConfig } from '../types/analysisConfig'
 
-/**
- * State that can be shared via URL
- * Query is required (can be single CubeQuery or MultiQueryConfig), chart config is optional (may be dropped if too large)
- */
-export interface ShareableState {
-  query: CubeQuery | MultiQueryConfig
-  chartType?: ChartType
-  chartConfig?: ChartAxisConfig
-  displayConfig?: ChartDisplayConfig
-  activeView?: 'table' | 'chart'
-}
+// Re-export for backward compatibility during transition
+export type { AnalysisConfig as ShareableState }
 
 /**
  * Result of compression with fallback
@@ -33,40 +28,43 @@ const MAX_HASH_LENGTH = 1800
 const SHARE_PREFIX = 'share='
 
 /**
- * Compress state to URL-safe encoded string
+ * Compress AnalysisConfig to URL-safe encoded string
  */
-export function compressAndEncode(state: ShareableState): string {
-  const json = JSON.stringify(state)
+export function compressAndEncode(config: AnalysisConfig): string {
+  const json = JSON.stringify(config)
   return compressToEncodedURIComponent(json)
 }
 
 /**
- * Decompress URL-safe encoded string back to state
- * Returns null if decompression or parsing fails
+ * Decompress URL-safe encoded string back to AnalysisConfig
+ * Returns null if decompression, parsing, or validation fails.
+ *
+ * Note: This does not support legacy share URL formats (breaking change).
  */
-export function decodeAndDecompress(encoded: string): ShareableState | null {
+export function decodeAndDecompress(encoded: string): AnalysisConfig | null {
   try {
     const json = decompressFromEncodedURIComponent(encoded)
     if (!json) return null
 
-    const state = JSON.parse(json) as ShareableState
+    const parsed = JSON.parse(json)
 
-    // Validate required field
-    if (!state.query || typeof state.query !== 'object') {
+    // Validate using the AnalysisConfig type guard
+    if (!isValidAnalysisConfig(parsed)) {
+      console.warn('[shareUtils] Invalid AnalysisConfig in share URL')
       return null
     }
 
-    return state
+    return parsed
   } catch {
     return null
   }
 }
 
 /**
- * Check if compressed state fits within URL length limit
+ * Check if compressed config fits within URL length limit
  */
-export function isShareableSize(state: ShareableState): { ok: boolean; size: number; maxSize: number } {
-  const encoded = compressAndEncode(state)
+export function isShareableSize(config: AnalysisConfig): { ok: boolean; size: number; maxSize: number } {
+  const encoded = compressAndEncode(config)
   return {
     ok: encoded.length <= MAX_HASH_LENGTH,
     size: encoded.length,
@@ -75,34 +73,40 @@ export function isShareableSize(state: ShareableState): { ok: boolean; size: num
 }
 
 /**
- * Compress state with automatic fallback
- * If full state is too large, tries with query only
+ * Compress config with automatic fallback
+ * If full config is too large, tries with query only (preserving essential fields)
  * Returns null encoded if even query-only is too large
  */
-export function compressWithFallback(state: ShareableState): CompressionResult {
-  // Try full state first
-  const fullEncoded = compressAndEncode(state)
+export function compressWithFallback(config: AnalysisConfig): CompressionResult {
+  // Try full config first
+  const fullEncoded = compressAndEncode(config)
   if (fullEncoded.length <= MAX_HASH_LENGTH) {
     return { encoded: fullEncoded, queryOnly: false }
   }
 
-  // Fall back to query only
-  const queryOnlyState: ShareableState = { query: state.query }
-  const queryOnlyEncoded = compressAndEncode(queryOnlyState)
+  // Fall back to minimal config (query + essential fields only)
+  const minimalConfig: AnalysisConfig = {
+    version: config.version,
+    analysisType: config.analysisType,
+    activeView: config.activeView,
+    charts: {}, // Drop chart config to save space
+    query: config.query,
+  } as AnalysisConfig
 
-  if (queryOnlyEncoded.length <= MAX_HASH_LENGTH) {
-    return { encoded: queryOnlyEncoded, queryOnly: true }
+  const minimalEncoded = compressAndEncode(minimalConfig)
+  if (minimalEncoded.length <= MAX_HASH_LENGTH) {
+    return { encoded: minimalEncoded, queryOnly: true }
   }
 
-  // Even query-only is too large
+  // Even minimal is too large
   return { encoded: null, queryOnly: true }
 }
 
 /**
- * Generate full share URL with compressed state in hash
+ * Generate full share URL with compressed config in hash
  */
-export function generateShareUrl(state: ShareableState): string | null {
-  const { encoded } = compressWithFallback(state)
+export function generateShareUrl(config: AnalysisConfig): string | null {
+  const { encoded } = compressWithFallback(config)
   if (!encoded) return null
 
   return `${window.location.origin}${window.location.pathname}#${SHARE_PREFIX}${encoded}`
@@ -139,4 +143,26 @@ export function clearShareHash(): void {
  */
 export function getMaxHashLength(): number {
   return MAX_HASH_LENGTH
+}
+
+// ============================================================================
+// Convenience Functions
+// ============================================================================
+
+/**
+ * Create a share URL from store's save() method output
+ * This is the primary entry point for creating share URLs.
+ */
+export function createShareUrl(config: AnalysisConfig): string | null {
+  return generateShareUrl(config)
+}
+
+/**
+ * Parse and validate share URL, returning AnalysisConfig or null
+ * This is the primary entry point for loading from share URLs.
+ */
+export function parseShareUrl(): AnalysisConfig | null {
+  const encoded = parseShareHash()
+  if (!encoded) return null
+  return decodeAndDecompress(encoded)
 }

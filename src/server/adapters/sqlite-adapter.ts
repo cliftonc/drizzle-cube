@@ -13,6 +13,57 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     return 'sqlite'
   }
 
+  // ============================================
+  // Funnel Analysis Methods
+  // ============================================
+
+  /**
+   * Build SQLite INTERVAL from ISO 8601 duration
+   * SQLite doesn't have native interval types, so we convert to seconds
+   * for arithmetic operations on Unix timestamps
+   */
+  buildIntervalFromISO(duration: string): SQL {
+    const totalSeconds = this.durationToSeconds(duration)
+    return sql`${totalSeconds}`
+  }
+
+  /**
+   * Build SQLite time difference in seconds
+   * SQLite timestamps are stored as Unix seconds, so simple subtraction works
+   * Returns (end - start) as seconds
+   */
+  buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
+    return sql`(${end} - ${start})`
+  }
+
+  /**
+   * Build SQLite timestamp + interval expression
+   * Since SQLite stores timestamps as Unix seconds, just add the seconds
+   */
+  buildDateAddInterval(timestamp: SQL, duration: string): SQL {
+    const totalSeconds = this.durationToSeconds(duration)
+    return sql`(${timestamp} + ${totalSeconds})`
+  }
+
+  /**
+   * Build SQLite conditional aggregation using CASE WHEN
+   * SQLite doesn't support FILTER clause, so we use CASE WHEN pattern
+   * Example: AVG(CASE WHEN step_1_time IS NOT NULL THEN time_diff END)
+   */
+  buildConditionalAggregation(
+    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
+    expr: SQL | null,
+    condition: SQL
+  ): SQL {
+    const fnName = aggFn.toUpperCase()
+    if (aggFn === 'count' && !expr) {
+      // COUNT(*) with condition -> COUNT(CASE WHEN condition THEN 1 END)
+      return sql`COUNT(CASE WHEN ${condition} THEN 1 END)`
+    }
+    // AVG/MIN/MAX/SUM -> AGG(CASE WHEN condition THEN expr END)
+    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
+  }
+
   /**
    * Build SQLite time dimension using date/datetime functions with modifiers
    * For integer timestamp columns (milliseconds), first convert to datetime

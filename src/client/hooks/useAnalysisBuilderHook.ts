@@ -14,7 +14,7 @@
  * IMPORTANT: This hook must be used within AnalysisBuilderStoreProvider
  */
 
-import { useCallback, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useCubeFeatures } from '../providers/CubeProvider'
 import {
   useAnalysisBuilderStore,
@@ -39,6 +39,8 @@ import type {
   Filter,
   QueryMergeStrategy,
   FunnelBindingKey,
+  AnalysisType,
+  FunnelStepState,
 } from '../types'
 import type {
   AnalysisBuilderState,
@@ -51,6 +53,7 @@ import type { ChartAvailabilityMap } from '../shared/chartDefaults'
 import type { DebugDataEntry } from './queries'
 import type { MultiQueryValidationResult } from '../utils/multiQueryValidation'
 import type { MetaField } from '../shared/types'
+import type { ValidationResult } from '../adapters/modeAdapter'
 
 // ============================================================================
 // Types
@@ -84,8 +87,28 @@ export interface UseAnalysisBuilderResult {
   multiQueryConfig: MultiQueryConfig | null
   multiQueryValidation: MultiQueryValidationResult | null
 
-  // Funnel State
+  // Funnel State (legacy - merge strategy mode)
   funnelBindingKey: FunnelBindingKey | null
+  /** Whether funnel mode is properly configured and ready for execution */
+  isFunnelModeEnabled: boolean
+
+  // Analysis Type State (new dedicated mode selection)
+  /** Current analysis type (query, multi, funnel) */
+  analysisType: AnalysisType
+  /** Selected cube for funnel mode (all steps use this cube) */
+  funnelCube: string | null
+  /** Dedicated funnel steps (when analysisType === 'funnel') */
+  funnelSteps: FunnelStepState[]
+  /** Index of currently active funnel step */
+  activeFunnelStepIndex: number
+  /** Time dimension for funnel temporal ordering */
+  funnelTimeDimension: string | null
+  /** Chart type for funnel mode (separate from query mode) */
+  funnelChartType: ChartType
+  /** Chart config for funnel mode (separate from query mode) */
+  funnelChartConfig: ChartAxisConfig
+  /** Display config for funnel mode (separate from query mode) */
+  funnelDisplayConfig: ChartDisplayConfig
 
   // Data Fetching
   executionStatus: ExecutionStatus
@@ -98,6 +121,16 @@ export interface UseAnalysisBuilderResult {
   debugDataPerQuery: DebugDataEntry[]
   /** In funnel mode, the actually executed queries with binding key dimension and IN filters */
   funnelExecutedQueries: CubeQuery[] | null
+  /** In funnel mode, the actual server query { funnel: {...} } sent to the API */
+  funnelServerQuery: unknown | null
+  /** In funnel mode, unified debug data (SQL, analysis, funnel metadata) */
+  funnelDebugData: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown | null
+    loading: boolean
+    error: Error | null
+    funnelMetadata?: unknown
+  } | null
 
   // Chart Configuration
   chartType: ChartType
@@ -132,6 +165,10 @@ export interface UseAnalysisBuilderResult {
   shareButtonState: 'idle' | 'copied' | 'copied-no-chart'
   canShare: boolean
 
+  // Adapter Validation (NEW - Phase 5)
+  /** Validation result from the adapter for the current analysis type */
+  adapterValidation: ValidationResult
+
   // Actions
   actions: {
     setActiveQueryIndex: (index: number) => void
@@ -154,6 +191,17 @@ export interface UseAnalysisBuilderResult {
     addQuery: () => void
     removeQuery: (index: number) => void
     setFunnelBindingKey: (bindingKey: FunnelBindingKey | null) => void
+    // Analysis Type actions
+    setAnalysisType: (type: AnalysisType) => void
+    // Funnel Mode actions (when analysisType === 'funnel')
+    setFunnelCube: (cube: string | null) => void
+    addFunnelStep: () => void
+    removeFunnelStep: (index: number) => void
+    updateFunnelStep: (index: number, updates: Partial<FunnelStepState>) => void
+    setActiveFunnelStepIndex: (index: number) => void
+    reorderFunnelSteps: (fromIndex: number, toIndex: number) => void
+    setFunnelTimeDimension: (dimension: string | null) => void
+    setFunnelDisplayConfig: (config: ChartDisplayConfig) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void
     setDisplayConfig: (config: ChartDisplayConfig) => void
@@ -171,6 +219,7 @@ export interface UseAnalysisBuilderResult {
     cancelAI: () => void
     share: () => Promise<void>
     clearQuery: () => void
+    clearCurrentMode: () => void
     refetch: () => void
     handleFieldSelected: (
       field: MetaField,
@@ -181,12 +230,13 @@ export interface UseAnalysisBuilderResult {
   }
 
   // Refs (for imperative access)
-  getQueryConfig: () => CubeQuery | MultiQueryConfig
+  getQueryConfig: () => CubeQuery | MultiQueryConfig | import('../types/funnel').ServerFunnelQuery
   getChartConfig: () => {
     chartType: ChartType
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
   }
+  getAnalysisType: () => AnalysisType
 }
 
 // ============================================================================
@@ -223,16 +273,52 @@ export function useAnalysisBuilder(
   // Get funnel binding key from store for funnel mode
   const funnelBindingKey = useAnalysisBuilderStore((s) => s.funnelBindingKey)
 
+  // Get funnel mode enabled state (includes filter-only step validation)
+  const isFunnelModeEnabled = useAnalysisBuilderStore((s) => s.isFunnelModeEnabled())
+
+  // Get new analysis type state
+  const analysisType = useAnalysisBuilderStore((s) => s.analysisType)
+  const funnelCube = useAnalysisBuilderStore((s) => s.funnelCube)
+  const funnelSteps = useAnalysisBuilderStore((s) => s.funnelSteps)
+  const activeFunnelStepIndex = useAnalysisBuilderStore((s) => s.activeFunnelStepIndex)
+  const funnelTimeDimension = useAnalysisBuilderStore((s) => s.funnelTimeDimension)
+  // Phase 4: Read from charts map instead of legacy fields
+  const funnelChartType = useAnalysisBuilderStore((s) => s.charts.funnel?.chartType || 'funnel')
+  const funnelChartConfig = useAnalysisBuilderStore((s) => s.charts.funnel?.chartConfig || {})
+
+  // Build server funnel query from dedicated funnelSteps (when analysisType === 'funnel')
+  // Note: funnelSteps must be in dependency array so query rebuilds when filters change
+  const buildFunnelQueryFromSteps = useAnalysisBuilderStore((s) => s.buildFunnelQueryFromSteps)
+  const serverFunnelQuery = useMemo(() => {
+    if (analysisType !== 'funnel') return null
+    return buildFunnelQueryFromSteps()
+  }, [analysisType, buildFunnelQueryFromSteps, funnelSteps])
+
+  // Compute effective isValidQuery that considers funnel mode
+  // In funnel mode, the query is valid when serverFunnelQuery is not null
+  const effectiveIsValidQuery = useMemo(() => {
+    if (analysisType === 'funnel') {
+      // Funnel mode: valid when we have a buildable funnel query
+      return serverFunnelQuery !== null
+    }
+    // Query/Multi mode: use the standard validation
+    return queryBuilder.isValidQuery ?? false
+  }, [analysisType, serverFunnelQuery, queryBuilder.isValidQuery])
+
   // 3. Query Execution (TanStack Query integration)
   const queryExecution = useAnalysisQueryExecution({
     currentQuery: queryBuilder.currentQuery,
     allQueries: queryBuilder.allQueries,
     multiQueryConfig: queryBuilder.multiQueryConfig,
     isMultiQueryMode: queryBuilder.isMultiQueryMode,
-    isValidQuery: queryBuilder.isValidQuery ?? false,
+    isValidQuery: effectiveIsValidQuery,
     initialData,
     mergeStrategy: queryBuilder.mergeStrategy,
     funnelBindingKey,
+    isFunnelModeEnabled,
+    // New: pass analysisType and serverFunnelQuery for explicit mode routing
+    analysisType,
+    serverFunnelQuery,
   })
 
   // 4. Chart Defaults (chart config, availability, smart defaults)
@@ -284,9 +370,29 @@ export function useAnalysisBuilder(
 
   // Utility actions
   const clearQuery = useAnalysisBuilderStore((state) => state.clearQuery)
+  const clearCurrentMode = useAnalysisBuilderStore((state) => state.clearCurrentMode)
 
-  // Funnel actions
+  // Funnel actions (legacy)
   const setFunnelBindingKey = useAnalysisBuilderStore((state) => state.setFunnelBindingKey)
+
+  // Analysis Type actions (new)
+  const setAnalysisType = useAnalysisBuilderStore((state) => state.setAnalysisType)
+
+  // Funnel Mode actions (new dedicated state)
+  const setFunnelCube = useAnalysisBuilderStore((state) => state.setFunnelCube)
+  const addFunnelStep = useAnalysisBuilderStore((state) => state.addFunnelStep)
+  const removeFunnelStep = useAnalysisBuilderStore((state) => state.removeFunnelStep)
+  const updateFunnelStep = useAnalysisBuilderStore((state) => state.updateFunnelStep)
+  const setActiveFunnelStepIndex = useAnalysisBuilderStore((state) => state.setActiveFunnelStepIndex)
+  const reorderFunnelSteps = useAnalysisBuilderStore((state) => state.reorderFunnelSteps)
+  const setFunnelTimeDimension = useAnalysisBuilderStore((state) => state.setFunnelTimeDimension)
+
+  // Funnel display config (for Display tab in funnel mode)
+  // Phase 4: Read from charts map
+  const funnelDisplayConfig = useAnalysisBuilderStore((state) =>
+    state.charts.funnel?.displayConfig || { showLegend: true, showGrid: true, showTooltip: true }
+  )
+  const setFunnelDisplayConfig = useAnalysisBuilderStore((state) => state.setFunnelDisplayConfig)
 
   // AI state and actions
   const aiState = useAnalysisBuilderStore((state) => state.aiState)
@@ -304,7 +410,21 @@ export function useAnalysisBuilder(
   // =========================================================================
 
   const shareButtonStateRef = useRef<'idle' | 'copied' | 'copied-no-chart'>('idle')
-  const canShare = queryBuilder.isValidQuery ?? false
+  const canShare = effectiveIsValidQuery
+
+  // =========================================================================
+  // Adapter Validation (NEW - Phase 5)
+  // =========================================================================
+
+  const getValidation = useAnalysisBuilderStore((state) => state.getValidation)
+  // Note: Dependencies trigger recomputation when store values change.
+  // getValidation reads values from store closure, but we need the memo to
+  // recompute when the underlying state changes.
+  const adapterValidation = useMemo(
+    () => getValidation(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getValidation, queryBuilder.queryStates, analysisType, funnelSteps, funnelBindingKey, funnelTimeDimension]
+  )
 
   // =========================================================================
   // Action Callbacks
@@ -369,6 +489,19 @@ export function useAnalysisBuilder(
 
   const getQueryConfig = useCallback(() => {
     const state = storeApi.getState()
+
+    // Handle dedicated funnel mode (analysisType === 'funnel')
+    if (state.analysisType === 'funnel') {
+      // Return ServerFunnelQuery format built from funnelSteps
+      const funnelQuery = state.buildFunnelQueryFromSteps()
+      if (funnelQuery) {
+        return funnelQuery
+      }
+      // Fallback to single query if funnel isn't properly configured yet
+      return state.buildCurrentQuery()
+    }
+
+    // Handle multi-query mode (legacy funnel mode with mergeStrategy === 'funnel' is included here)
     if (state.queryStates.length > 1) {
       return {
         queries: state.buildAllQueries(),
@@ -380,17 +513,35 @@ export function useAnalysisBuilder(
         stepTimeToConvert: state.stepTimeToConvert,
       }
     }
+
+    // Single query mode
     return state.buildCurrentQuery()
   }, [storeApi])
 
-  const getChartConfig = useCallback(
-    () => ({
+  const getChartConfig = useCallback(() => {
+    const state = storeApi.getState()
+
+    // Phase 4: Read from charts map based on analysis type
+    const config = state.charts[state.analysisType]
+    if (config) {
+      return {
+        chartType: config.chartType,
+        chartConfig: config.chartConfig,
+        displayConfig: config.displayConfig,
+      }
+    }
+
+    // Fallback to defaults
+    return {
       chartType: chartDefaults.chartType,
       chartConfig: chartDefaults.chartConfig,
       displayConfig: chartDefaults.displayConfig,
-    }),
-    [chartDefaults.chartType, chartDefaults.chartConfig, chartDefaults.displayConfig]
-  )
+    }
+  }, [storeApi, chartDefaults.chartType, chartDefaults.chartConfig, chartDefaults.displayConfig])
+
+  const getAnalysisType = useCallback(() => {
+    return storeApi.getState().analysisType
+  }, [storeApi])
 
   // =========================================================================
   // Return Value
@@ -409,8 +560,19 @@ export function useAnalysisBuilder(
     multiQueryConfig: queryBuilder.multiQueryConfig,
     multiQueryValidation: queryBuilder.multiQueryValidation,
 
-    // Funnel state
+    // Funnel state (legacy)
     funnelBindingKey,
+    isFunnelModeEnabled,
+
+    // Analysis Type state (new)
+    analysisType,
+    funnelCube,
+    funnelSteps,
+    activeFunnelStepIndex,
+    funnelTimeDimension,
+    funnelChartType,
+    funnelChartConfig,
+    funnelDisplayConfig,
 
     // Data fetching (from queryExecution)
     executionStatus: queryExecution.executionStatus,
@@ -419,11 +581,14 @@ export function useAnalysisBuilder(
     isLoading: queryExecution.isLoading,
     isFetching: queryExecution.isFetching,
     error: queryExecution.error,
-    isValidQuery: queryBuilder.isValidQuery ?? false,
+    isValidQuery: effectiveIsValidQuery,
     debugDataPerQuery: queryExecution.debugDataPerQuery,
     funnelExecutedQueries: queryExecution.funnelExecutedQueries,
+    funnelServerQuery: queryExecution.funnelServerQuery,
+    funnelDebugData: queryExecution.funnelDebugData,
 
     // Chart configuration (from chartDefaults)
+    // Note: Funnel chart type is determined by analysisType === 'funnel', not mergeStrategy
     chartType: chartDefaults.chartType,
     chartConfig: chartDefaults.chartConfig,
     displayConfig: chartDefaults.displayConfig,
@@ -456,6 +621,9 @@ export function useAnalysisBuilder(
     shareButtonState: shareButtonStateRef.current,
     canShare,
 
+    // Adapter validation (NEW - Phase 5)
+    adapterValidation,
+
     // Actions
     actions: {
       // Query state (from queryBuilder)
@@ -487,8 +655,21 @@ export function useAnalysisBuilder(
       addQuery: queryBuilder.addQuery,
       removeQuery: queryBuilder.removeQuery,
 
-      // Funnel
+      // Funnel (legacy)
       setFunnelBindingKey,
+
+      // Analysis Type (new)
+      setAnalysisType,
+
+      // Funnel Mode (new dedicated state)
+      setFunnelCube,
+      addFunnelStep,
+      removeFunnelStep,
+      updateFunnelStep,
+      setActiveFunnelStepIndex,
+      reorderFunnelSteps,
+      setFunnelTimeDimension,
+      setFunnelDisplayConfig,
 
       // Chart (from chartDefaults)
       setChartType: chartDefaults.setChartType,
@@ -516,6 +697,7 @@ export function useAnalysisBuilder(
 
       // Utility
       clearQuery,
+      clearCurrentMode,
       refetch: queryExecution.refetch,
       handleFieldSelected,
     },
@@ -523,5 +705,6 @@ export function useAnalysisBuilder(
     // Refs
     getQueryConfig,
     getChartConfig,
+    getAnalysisType,
   }
 }

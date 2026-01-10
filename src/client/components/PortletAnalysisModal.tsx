@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal'
 import AnalysisBuilder from './AnalysisBuilder'
-import type { AnalysisBuilderRef } from './AnalysisBuilder/types'
-import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter } from '../types'
+import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState } from './AnalysisBuilder/types'
+import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
+import type { AnalysisConfig } from '../types/analysisConfig'
+import { hasAnalysisConfig, migrateLegacyPortlet } from '../utils/configMigration'
 import {
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters
@@ -64,57 +66,111 @@ export default function PortletAnalysisModal({
       .map(df => df.filter)
   }, [dashboardFilters, portlet?.dashboardFilterMapping])
 
-  // Parse initial query from portlet and merge dashboard filters
+  // =========================================================================
+  // Phase 3: Load from analysisConfig if available, otherwise migrate legacy
+  // =========================================================================
+  const derivedConfig = useMemo<AnalysisConfig | null>(() => {
+    if (!portlet) return null
+
+    // Check for new analysisConfig field first
+    if (hasAnalysisConfig(portlet)) {
+      return portlet.analysisConfig!
+    }
+
+    // Migrate from legacy format
+    return migrateLegacyPortlet(portlet)
+  }, [portlet])
+
+  // Parse initial query from derived config and merge dashboard filters
   // AnalysisBuilder handles both single CubeQuery and MultiQueryConfig internally
   const initialQuery = useMemo<CubeQuery | MultiQueryConfig | undefined>(() => {
-    if (!portlet?.query) return undefined
-    try {
-      const parsed = JSON.parse(portlet.query)
+    if (!derivedConfig) return undefined
 
-      // Handle MultiQueryConfig
-      if (parsed && 'queries' in parsed && Array.isArray(parsed.queries)) {
-        return {
-          ...parsed,
-          queries: parsed.queries.map((q: CubeQuery) => ({
-            ...q,
-            // Merge regular dashboard filters (not universal time)
-            filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters, 'client'),
-            // Apply universal time filter dateRange to all time dimensions
-            timeDimensions: applyUniversalTimeFilters(
-              dashboardFilters,
-              portlet.dashboardFilterMapping,
-              q.timeDimensions
-            )
-          }))
-        }
-      }
+    // Get query from derived config
+    const query = derivedConfig.query
+    if (!query) return undefined
 
-      // Handle single CubeQuery
+    // Handle funnel mode - return the ServerFunnelQuery as-is (no filter merging)
+    if (derivedConfig.analysisType === 'funnel') {
+      // For funnel, query is ServerFunnelQuery - return as-is
+      return query as CubeQuery | MultiQueryConfig
+    }
+
+    // Handle MultiQueryConfig
+    if ('queries' in query && Array.isArray(query.queries)) {
       return {
-        ...parsed,
-        // Merge regular dashboard filters (not universal time)
-        filters: mergeDashboardAndPortletFilters(applicableFilters, parsed.filters, 'client'),
-        // Apply universal time filter dateRange to all time dimensions
-        timeDimensions: applyUniversalTimeFilters(
-          dashboardFilters,
-          portlet?.dashboardFilterMapping,
-          parsed.timeDimensions
-        )
+        ...query,
+        queries: query.queries.map((q: CubeQuery) => ({
+          ...q,
+          // Merge regular dashboard filters (not universal time)
+          filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters, 'client'),
+          // Apply universal time filter dateRange to all time dimensions
+          timeDimensions: applyUniversalTimeFilters(
+            dashboardFilters,
+            portlet?.dashboardFilterMapping,
+            q.timeDimensions
+          )
+        }))
       }
-    } catch {
-      return undefined
     }
-  }, [portlet?.query, applicableFilters, dashboardFilters, portlet?.dashboardFilterMapping])
 
-  // Initial chart config from portlet
-  const initialChartConfig = React.useMemo(() => {
-    if (!portlet) return undefined
+    // Handle single CubeQuery
+    const cubeQuery = query as CubeQuery
     return {
-      chartType: portlet.chartType,
-      chartConfig: portlet.chartConfig,
-      displayConfig: portlet.displayConfig
+      ...cubeQuery,
+      // Merge regular dashboard filters (not universal time)
+      filters: mergeDashboardAndPortletFilters(applicableFilters, cubeQuery.filters, 'client'),
+      // Apply universal time filter dateRange to all time dimensions
+      timeDimensions: applyUniversalTimeFilters(
+        dashboardFilters,
+        portlet?.dashboardFilterMapping,
+        cubeQuery.timeDimensions
+      )
     }
-  }, [portlet])
+  }, [derivedConfig, applicableFilters, dashboardFilters, portlet?.dashboardFilterMapping])
+
+  // Initial chart config from derived config
+  const initialChartConfig = useMemo(() => {
+    if (!derivedConfig) return undefined
+
+    // Get chart config for current mode
+    const modeCharts = derivedConfig.charts[derivedConfig.analysisType]
+    if (!modeCharts) return undefined
+
+    return {
+      chartType: modeCharts.chartType,
+      chartConfig: modeCharts.chartConfig,
+      displayConfig: modeCharts.displayConfig
+    }
+  }, [derivedConfig])
+
+  // Initial analysis type from derived config
+  const initialAnalysisType: AnalysisType | undefined = derivedConfig?.analysisType
+
+  // Initial funnel state from portlet (when analysisType === 'funnel')
+  // Note: The funnel query data is in derivedConfig.query, but we need to pass
+  // the store-level funnel state (funnelCube, funnelSteps, etc.) separately
+  const initialFunnelState: AnalysisBuilderInitialFunnelState | undefined = useMemo(() => {
+    if (derivedConfig?.analysisType !== 'funnel') return undefined
+
+    // For funnel mode, we need to extract funnel state from either:
+    // 1. The portlet's legacy fields (if present)
+    // 2. Parse from the ServerFunnelQuery in derivedConfig.query (Phase 4 will handle this)
+    // For now, use legacy fields if available
+    if (portlet?.funnelSteps) {
+      return {
+        funnelCube: portlet.funnelCube,
+        funnelSteps: portlet.funnelSteps,
+        funnelTimeDimension: portlet.funnelTimeDimension,
+        funnelBindingKey: portlet.funnelBindingKey,
+        funnelChartType: portlet.funnelChartType,
+        funnelChartConfig: portlet.funnelChartConfig,
+        funnelDisplayConfig: portlet.funnelDisplayConfig,
+      }
+    }
+
+    return undefined
+  }, [derivedConfig, portlet])
 
   // Reset form state when modal opens/closes or portlet changes
   useEffect(() => {
@@ -123,44 +179,90 @@ export default function PortletAnalysisModal({
     }
   }, [isOpen, portlet])
 
-  // Handle save
+  // Handle save - Phase 3 dual-write: both analysisConfig AND legacy fields
   const handleSave = useCallback(() => {
     if (!formTitle.trim()) {
       alert('Please enter a title for the portlet.')
       return
     }
 
-    // Get query config and chart config from AnalysisBuilder
-    // AnalysisBuilder returns either CubeQuery or MultiQueryConfig - we just stringify it
+    // Phase 3: Get AnalysisConfig from store.save()
+    const analysisConfig = builderRef.current?.getAnalysisConfig()
+
+    // Also get legacy fields for backward compatibility (dual-write)
     const queryConfig = builderRef.current?.getQueryConfig()
     const chartConfig = builderRef.current?.getChartConfig()
+    const analysisType = builderRef.current?.getAnalysisType?.() || 'query'
 
-    if (!queryConfig) {
+    // Get funnel state if in funnel mode
+    const funnelState = analysisType === 'funnel'
+      ? builderRef.current?.getFunnelState()
+      : undefined
+
+    if (!queryConfig || !analysisConfig) {
       alert('Please configure a query before saving.')
       return
     }
 
-    // Check if config has content - works for both single and multi-query
-    // For multi-query, check the first query; for single query, check directly
-    const firstQuery = 'queries' in queryConfig ? queryConfig.queries[0] : queryConfig
-    const hasContent =
-      (firstQuery?.measures && firstQuery.measures.length > 0) ||
-      (firstQuery?.dimensions && firstQuery.dimensions.length > 0) ||
-      (firstQuery?.timeDimensions && firstQuery.timeDimensions.length > 0)
+    // Check if config has content - varies by format type
+    let hasContent = false
+
+    // Check for ServerFunnelQuery format { funnel: {...} }
+    if ('funnel' in queryConfig && queryConfig.funnel) {
+      // Funnel mode: check for steps
+      hasContent = !!(queryConfig.funnel.steps && queryConfig.funnel.steps.length >= 2)
+    } else if ('queries' in queryConfig) {
+      // Multi-query: check the first query
+      const firstQuery = queryConfig.queries[0]
+      hasContent = !!(
+        (firstQuery?.measures && firstQuery.measures.length > 0) ||
+        (firstQuery?.dimensions && firstQuery.dimensions.length > 0) ||
+        (firstQuery?.timeDimensions && firstQuery.timeDimensions.length > 0)
+      )
+    } else {
+      // Single query: check directly (type narrowed to CubeQuery)
+      const cubeQuery = queryConfig as CubeQuery
+      hasContent = !!(
+        (cubeQuery.measures && cubeQuery.measures.length > 0) ||
+        (cubeQuery.dimensions && cubeQuery.dimensions.length > 0) ||
+        (cubeQuery.timeDimensions && cubeQuery.timeDimensions.length > 0)
+      )
+    }
 
     if (!hasContent) {
-      alert('Please add at least one metric or breakdown to your query.')
+      const message = analysisType === 'funnel'
+        ? 'Please add at least two funnel steps.'
+        : 'Please add at least one metric or breakdown to your query.'
+      alert(message)
       return
     }
 
-    // Build portlet config - just stringify whatever AnalysisBuilder returned
+    // Build portlet config with DUAL-WRITE:
+    // - analysisConfig: new canonical format
+    // - legacy fields: for backward compatibility
     const portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'> = {
       ...(portlet || {}),
       title: formTitle.trim(),
+
+      // === Phase 3: New canonical format ===
+      analysisConfig,
+
+      // === Legacy fields (dual-write for backward compatibility) ===
       query: JSON.stringify(queryConfig),
       chartType: chartConfig?.chartType || 'line',
       chartConfig: chartConfig?.chartConfig || {},
       displayConfig: chartConfig?.displayConfig || {},
+      analysisType,  // Save analysis type for proper rendering on load
+      // Save funnel state fields when in funnel mode
+      ...(funnelState && {
+        funnelCube: funnelState.funnelCube,
+        funnelSteps: funnelState.funnelSteps,
+        funnelTimeDimension: funnelState.funnelTimeDimension,
+        funnelBindingKey: funnelState.funnelBindingKey,
+        funnelChartType: funnelState.funnelChartType,
+        funnelChartConfig: funnelState.funnelChartConfig,
+        funnelDisplayConfig: funnelState.funnelDisplayConfig,
+      }),
       // Preserve existing position or use defaults for new portlets
       w: portlet?.w || 5,
       h: portlet?.h || 4
@@ -235,6 +337,8 @@ export default function PortletAnalysisModal({
             maxHeight="100%"
             initialQuery={initialQuery}
             initialChartConfig={initialChartConfig}
+            initialAnalysisType={initialAnalysisType}
+            initialFunnelState={initialFunnelState}
             initialData={initialData}
             colorPalette={colorPalette}
             disableLocalStorage={true}

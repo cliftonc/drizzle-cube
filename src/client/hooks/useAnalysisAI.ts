@@ -10,8 +10,22 @@
 import { useState, useCallback } from 'react'
 import type { AnalysisBuilderState, AIState } from '../components/AnalysisBuilder/types'
 import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
+import type { ServerFunnelQuery } from '../types/funnel'
+import type { AnalysisType, AnalysisConfig } from '../types/analysisConfig'
 import { sendGeminiMessage, extractTextFromResponse } from '../components/AIAssistant/utils'
 import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils'
+
+/**
+ * Check if a query object is a ServerFunnelQuery
+ */
+function isServerFunnelQuery(query: unknown): query is ServerFunnelQuery {
+  return (
+    typeof query === 'object' &&
+    query !== null &&
+    'funnel' in query &&
+    typeof (query as ServerFunnelQuery).funnel === 'object'
+  )
+}
 
 interface UseAnalysisAIOptions {
   /** Current state for snapshotting */
@@ -36,6 +50,16 @@ interface UseAnalysisAIOptions {
   setActiveView: (view: 'table' | 'chart') => void
   /** AI endpoint URL */
   aiEndpoint?: string
+  /** Current analysis type */
+  analysisType?: AnalysisType
+  /** Set analysis type (for switching to funnel mode) */
+  setAnalysisType?: (type: AnalysisType) => void
+  /** Load funnel config from ServerFunnelQuery */
+  loadFunnelFromServerQuery?: (query: ServerFunnelQuery) => void
+  /** Get full AnalysisConfig for snapshotting (for complete undo) */
+  getFullConfig?: () => AnalysisConfig
+  /** Load full AnalysisConfig (for restoring on cancel) */
+  loadFullConfig?: (config: AnalysisConfig) => void
 }
 
 interface UseAnalysisAIResult {
@@ -66,7 +90,12 @@ export function useAnalysisAI({
   setDisplayConfig,
   setUserManuallySelectedChart,
   setActiveView,
-  aiEndpoint = '/api/ai'
+  aiEndpoint = '/api/ai',
+  analysisType,
+  setAnalysisType,
+  loadFunnelFromServerQuery,
+  getFullConfig,
+  loadFullConfig
 }: UseAnalysisAIOptions): UseAnalysisAIResult {
   // AI state
   const [aiState, setAIState] = useState<AIState>({
@@ -75,13 +104,17 @@ export function useAnalysisAI({
     isGenerating: false,
     error: null,
     hasGeneratedQuery: false,
-    previousState: null
+    previousState: null,
+    previousConfig: null
   })
 
   /**
    * Open the AI panel and snapshot current state for undo
    */
   const handleOpenAI = useCallback(() => {
+    // Snapshot full config if available (for complete restore including funnel state)
+    const fullConfig = getFullConfig?.() ?? null
+
     setAIState({
       isOpen: true,
       userPrompt: '',
@@ -94,10 +127,12 @@ export function useAnalysisAI({
         filters: [...state.filters],
         chartType,
         chartConfig: { ...chartConfig },
-        displayConfig: { ...displayConfig }
-      }
+        displayConfig: { ...displayConfig },
+        analysisType: analysisType || 'query'
+      },
+      previousConfig: fullConfig
     })
-  }, [state.metrics, state.breakdowns, state.filters, chartType, chartConfig, displayConfig])
+  }, [state.metrics, state.breakdowns, state.filters, chartType, chartConfig, displayConfig, analysisType, getFullConfig])
 
   /**
    * Close the AI panel
@@ -136,39 +171,78 @@ export function useAnalysisAI({
 
       const responseText = extractTextFromResponse(response)
       const parsed = JSON.parse(responseText) as {
-        query?: CubeQuery
+        query?: CubeQuery | ServerFunnelQuery
         chartType?: ChartType
         chartConfig?: ChartAxisConfig
-      } | CubeQuery
+      } | CubeQuery | ServerFunnelQuery
 
       // Support both new format (with query/chartType/chartConfig) and legacy format (just query)
-      const query = ('query' in parsed && parsed.query) ? parsed.query : parsed as CubeQuery
+      const query = ('query' in parsed && parsed.query) ? parsed.query : parsed as CubeQuery | ServerFunnelQuery
       const aiChartType = ('chartType' in parsed) ? parsed.chartType : undefined
       const aiChartConfig = ('chartConfig' in parsed) ? parsed.chartConfig : undefined
+
+      // Check if AI generated a funnel query
+      if (isServerFunnelQuery(query)) {
+        // Switch to funnel mode and load the funnel config
+        if (setAnalysisType && loadFunnelFromServerQuery) {
+          setAnalysisType('funnel')
+          loadFunnelFromServerQuery(query)
+
+          // Apply funnel chart type
+          setChartType('funnel')
+          setUserManuallySelectedChart(true)
+
+          // Apply chart config if provided
+          if (aiChartConfig) {
+            setChartConfig(aiChartConfig)
+          }
+
+          // Switch to chart view
+          setActiveView('chart')
+
+          setAIState(prev => ({
+            ...prev,
+            isGenerating: false,
+            hasGeneratedQuery: true
+          }))
+          return
+        } else {
+          // Funnel mode not supported in current context
+          throw new Error('Funnel queries require funnel mode support. Please switch to funnel mode manually.')
+        }
+      }
+
+      // Handle regular CubeQuery
+      const cubeQuery = query as CubeQuery
 
       // Load query into builder state
       setState(prev => ({
         ...prev,
-        metrics: (query.measures || []).map((field, index) => ({
+        metrics: (cubeQuery.measures || []).map((field, index) => ({
           id: generateId(),
           field,
           label: generateMetricLabel(index)
         })),
         breakdowns: [
-          ...(query.dimensions || []).map((field) => ({
+          ...(cubeQuery.dimensions || []).map((field) => ({
             id: generateId(),
             field,
             isTimeDimension: false
           })),
-          ...(query.timeDimensions || []).map((td) => ({
+          ...(cubeQuery.timeDimensions || []).map((td) => ({
             id: generateId(),
             field: td.dimension,
             granularity: td.granularity,
             isTimeDimension: true
           }))
         ],
-        filters: query.filters || []
+        filters: cubeQuery.filters || []
       }))
+
+      // If we were in funnel mode, switch back to query mode
+      if (analysisType === 'funnel' && setAnalysisType) {
+        setAnalysisType('query')
+      }
 
       // Apply chart type if provided by AI
       if (aiChartType) {
@@ -196,7 +270,7 @@ export function useAnalysisAI({
         error: error instanceof Error ? error.message : 'Failed to generate query'
       }))
     }
-  }, [aiState.userPrompt, aiEndpoint, setState, setChartType, setUserManuallySelectedChart, setChartConfig, setActiveView])
+  }, [aiState.userPrompt, aiEndpoint, setState, setChartType, setUserManuallySelectedChart, setChartConfig, setActiveView, analysisType, setAnalysisType, loadFunnelFromServerQuery])
 
   /**
    * Accept the AI-generated query (keep changes, close panel)
@@ -208,7 +282,8 @@ export function useAnalysisAI({
       isGenerating: false,
       error: null,
       hasGeneratedQuery: false,
-      previousState: null
+      previousState: null,
+      previousConfig: null
     })
   }, [])
 
@@ -216,8 +291,11 @@ export function useAnalysisAI({
    * Cancel and restore previous state
    */
   const handleCancelAI = useCallback(() => {
-    // Restore previous state
-    if (aiState.previousState) {
+    // Prefer full config restore (handles funnel mode properly)
+    if (aiState.previousConfig && loadFullConfig) {
+      loadFullConfig(aiState.previousConfig)
+    } else if (aiState.previousState) {
+      // Fallback to individual state restore
       setState(prev => ({
         ...prev,
         metrics: aiState.previousState!.metrics,
@@ -227,6 +305,11 @@ export function useAnalysisAI({
       setChartType(aiState.previousState.chartType)
       setChartConfig(aiState.previousState.chartConfig)
       setDisplayConfig(aiState.previousState.displayConfig)
+
+      // Restore analysis type if it was changed
+      if (setAnalysisType && aiState.previousState.analysisType) {
+        setAnalysisType(aiState.previousState.analysisType)
+      }
     }
 
     // Close panel
@@ -236,9 +319,10 @@ export function useAnalysisAI({
       isGenerating: false,
       error: null,
       hasGeneratedQuery: false,
-      previousState: null
+      previousState: null,
+      previousConfig: null
     })
-  }, [aiState.previousState, setState, setChartType, setChartConfig, setDisplayConfig])
+  }, [aiState.previousState, aiState.previousConfig, setState, setChartType, setChartConfig, setDisplayConfig, setAnalysisType, loadFullConfig])
 
   return {
     aiState,

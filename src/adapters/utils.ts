@@ -108,10 +108,16 @@ export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
  * Helper function to handle dry-run logic for all adapters
  */
 export async function handleDryRun(
-  query: SemanticQuery, 
+  query: SemanticQuery,
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
+  // Check for funnel queries FIRST - they have their own dry-run path
+  // Funnel queries send { funnel: { ... } } and need special SQL generation
+  if (query.funnel && query.funnel.steps?.length >= 2) {
+    return handleFunnelDryRun(query, securityContext, semanticLayer)
+  }
+
   // Validate query structure and field existence
   const validation = semanticLayer.validateQuery(query)
   if (!validation.isValid) {
@@ -208,7 +214,7 @@ export async function handleDryRun(
  */
 export function formatCubeResponse(
   query: SemanticQuery,
-  result: { data: any[]; annotation?: any; cache?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } },
+  result: { data: any[]; annotation?: any; cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number } },
   semanticLayer: SemanticLayerCompiler
 ) {
   const dbType = getDatabaseType(semanticLayer)
@@ -348,4 +354,89 @@ export async function handleBatchRequest(
   })
 
   return { results }
+}
+
+/**
+ * Helper function to handle funnel dry-run logic
+ * Funnel queries have a different structure and generate CTE-based SQL
+ */
+async function handleFunnelDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  // Validate funnel query
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`Funnel query validation failed: ${validation.errors.join(', ')}`)
+  }
+
+  // Get the funnel SQL using the dedicated dry-run method
+  const sqlResult = await semanticLayer.dryRunFunnel(query, securityContext)
+
+  // Extract cube names from the funnel configuration
+  const referencedCubes = new Set<string>()
+  const funnel = query.funnel!
+
+  // Extract from binding key
+  if (typeof funnel.bindingKey === 'string') {
+    const [cubeName] = funnel.bindingKey.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  } else if (Array.isArray(funnel.bindingKey)) {
+    for (const mapping of funnel.bindingKey) {
+      referencedCubes.add(mapping.cube)
+    }
+  }
+
+  // Extract from time dimension
+  if (typeof funnel.timeDimension === 'string') {
+    const [cubeName] = funnel.timeDimension.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  } else if (Array.isArray(funnel.timeDimension)) {
+    for (const mapping of funnel.timeDimension) {
+      referencedCubes.add(mapping.cube)
+    }
+  }
+
+  // Extract from steps (multi-cube funnels have cube per step)
+  for (const step of funnel.steps) {
+    if ('cube' in step && step.cube) {
+      referencedCubes.add(step.cube)
+    }
+  }
+
+  // Build response structure
+  return {
+    queryType: 'funnelQuery',
+    normalizedQueries: [], // Funnel is a single unified query
+    queryOrder: Array.from(referencedCubes),
+    transformedQueries: [],
+    pivotQuery: {
+      query,
+      cubes: Array.from(referencedCubes)
+    },
+    sql: {
+      sql: [sqlResult.sql],
+      params: sqlResult.params || []
+    },
+    complexity: 'high', // Funnel queries are inherently complex (CTEs)
+    valid: true,
+    cubesUsed: Array.from(referencedCubes),
+    joinType: 'funnel_cte',
+    query,
+    // Funnel-specific metadata
+    funnel: {
+      stepCount: funnel.steps.length,
+      steps: funnel.steps.map((step, index) => ({
+        index,
+        name: step.name,
+        timeToConvert: step.timeToConvert,
+        cube: 'cube' in step ? step.cube : undefined
+      })),
+      bindingKey: funnel.bindingKey,
+      timeDimension: funnel.timeDimension,
+      includeTimeMetrics: funnel.includeTimeMetrics,
+      globalTimeWindow: funnel.globalTimeWindow
+    }
+  }
 }

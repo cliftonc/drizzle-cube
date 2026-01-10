@@ -337,7 +337,8 @@ export class SemanticLayerCompiler {
       measures,
       dimensions,
       segments: [], // Add segments support later if needed
-      relationships: relationships.length > 0 ? relationships : undefined
+      relationships: relationships.length > 0 ? relationships : undefined,
+      meta: cube.meta
     }
   }
 
@@ -383,6 +384,29 @@ export class SemanticLayerCompiler {
     const executor = new QueryExecutor(this.dbExecutor)
     const result = await executor.generateMultiCubeSQL(this.cubes, query, securityContext)
     
+    // Format the SQL using the appropriate dialect
+    const engineType = this.dbExecutor.getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
+  }
+
+  /**
+   * Get SQL for a funnel query without executing it (debugging)
+   * Returns the actual CTE-based SQL that would be executed for funnel queries
+   */
+  async dryRunFunnel(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const executor = new QueryExecutor(this.dbExecutor)
+    const result = await executor.dryRunFunnel(this.cubes, query, securityContext)
+
     // Format the SQL using the appropriate dialect
     const engineType = this.dbExecutor.getEngineType()
     return {
@@ -473,6 +497,27 @@ export function validateQueryAgainstCubes(
   query: SemanticQuery
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
+
+  // Check for funnel queries - these have their own validation path
+  // Skip standard validation for funnel queries (validated separately in executor)
+  if (query.funnel !== undefined && query.funnel.steps?.length >= 2) {
+    // Basic funnel validation here - full validation happens in executor
+    // Just ensure the cube referenced by bindingKey exists
+    const bindingKey = query.funnel.bindingKey
+    if (typeof bindingKey === 'string') {
+      const [cubeName] = bindingKey.split('.')
+      if (cubeName && !cubes.has(cubeName)) {
+        errors.push(`Funnel binding key cube not found: ${cubeName}`)
+      }
+    } else if (Array.isArray(bindingKey)) {
+      for (const mapping of bindingKey) {
+        if (!cubes.has(mapping.cube)) {
+          errors.push(`Funnel binding key cube not found: ${mapping.cube}`)
+        }
+      }
+    }
+    return { isValid: errors.length === 0, errors }
+  }
 
   // Track all referenced cubes
   const referencedCubes = new Set<string>()

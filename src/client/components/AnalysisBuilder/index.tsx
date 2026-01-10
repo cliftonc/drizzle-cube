@@ -28,7 +28,7 @@ import { useAnalysisBuilder } from '../../hooks/useAnalysisBuilderHook'
 import { useAnalysisBuilderStoreApi } from '../../stores/analysisBuilderStore'
 import { useAnalysisAI } from '../../hooks/useAnalysisAI'
 import { useAnalysisShare } from '../../hooks/useAnalysisShare'
-import { parseShareHash } from '../../utils/shareUtils'
+import { parseShareHash, decodeAndDecompress } from '../../utils/shareUtils'
 import type {
   AnalysisBuilderProps,
   AnalysisBuilderRef,
@@ -37,6 +37,7 @@ import FieldSearchModal from './FieldSearchModal'
 import AnalysisResultsPanel from './AnalysisResultsPanel'
 import AnalysisQueryPanel from './AnalysisQueryPanel'
 import AnalysisAIPanel from './AnalysisAIPanel'
+import AnalysisModeErrorBoundary from './AnalysisModeErrorBoundary'
 import type { MetaResponse } from '../../shared/types'
 
 /**
@@ -118,36 +119,75 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
         // The store handles this internally via setChartTypeManual
       },
       setActiveView: analysis.actions.setActiveView,
-      aiEndpoint: features?.aiEndpoint
+      aiEndpoint: features?.aiEndpoint,
+      // Funnel mode support
+      analysisType: analysis.analysisType,
+      setAnalysisType: analysis.actions.setAnalysisType,
+      loadFunnelFromServerQuery: (serverQuery) => {
+        // Create a FunnelAnalysisConfig and load it via the store
+        const funnelConfig = {
+          version: 1 as const,
+          analysisType: 'funnel' as const,
+          activeView: 'chart' as const,
+          charts: {
+            funnel: {
+              chartType: 'funnel' as const,
+              chartConfig: {},
+              displayConfig: {},
+            },
+          },
+          query: serverQuery,
+        }
+        storeApi.getState().load(funnelConfig)
+      },
+      // Full config snapshot/restore for complete undo (handles funnel mode properly)
+      getFullConfig: () => storeApi.getState().save(),
+      loadFullConfig: (config) => storeApi.getState().load(config),
     })
 
     // ========================================================================
     // Share Hook - Provides share URL functionality
+    // Uses store.save() to get AnalysisConfig directly (Phase 3)
     // ========================================================================
     const {
       shareButtonState,
       handleShare
     } = useAnalysisShare({
       isValidQuery: analysis.isValidQuery,
-      getQueryConfig: analysis.getQueryConfig,
-      chartType: analysis.chartType,
-      chartConfig: analysis.chartConfig,
-      displayConfig: analysis.displayConfig,
-      activeView: analysis.activeView
+      getAnalysisConfig: () => storeApi.getState().save(),
     })
 
     // ========================================================================
     // Derived Values
     // ========================================================================
 
-    // Check if query can be cleared
+    // Check if current mode can be cleared
     const canClear = useMemo(() => {
+      if (analysis.analysisType === 'funnel') {
+        // Funnel mode: can clear if there are steps, cube selected, or configuration
+        return (
+          analysis.funnelSteps.length > 0 ||
+          analysis.funnelCube !== null ||
+          analysis.funnelBindingKey !== null ||
+          analysis.funnelTimeDimension !== null
+        )
+      }
+      // Query mode: can clear if there are metrics, breakdowns, or filters
       return (
         analysis.queryState.metrics.length > 0 ||
         analysis.queryState.breakdowns.length > 0 ||
         analysis.queryState.filters.length > 0
       )
-    }, [analysis.queryState.metrics.length, analysis.queryState.breakdowns.length, analysis.queryState.filters.length])
+    }, [
+      analysis.analysisType,
+      analysis.funnelSteps.length,
+      analysis.funnelCube,
+      analysis.funnelBindingKey,
+      analysis.funnelTimeDimension,
+      analysis.queryState.metrics.length,
+      analysis.queryState.breakdowns.length,
+      analysis.queryState.filters.length
+    ])
 
     // ========================================================================
     // Expose API via ref
@@ -157,13 +197,42 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
       () => ({
         getQueryConfig: analysis.getQueryConfig,
         getChartConfig: analysis.getChartConfig,
+        getAnalysisType: analysis.getAnalysisType,
+        getFunnelState: () => {
+          // Read directly from store to ensure fresh values (same pattern as getQueryConfig/getChartConfig)
+          const state = storeApi.getState()
+          // Get funnel chart config from charts map (Phase 4 - use charts map)
+          const funnelConfig = state.charts.funnel || {
+            chartType: 'funnel' as const,
+            chartConfig: {},
+            displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
+          }
+          return {
+            funnelCube: state.funnelCube,
+            funnelSteps: state.funnelSteps,
+            funnelTimeDimension: state.funnelTimeDimension,
+            funnelBindingKey: state.funnelBindingKey,
+            funnelChartType: funnelConfig.chartType,
+            funnelChartConfig: funnelConfig.chartConfig,
+            funnelDisplayConfig: funnelConfig.displayConfig,
+            activeFunnelStepIndex: state.activeFunnelStepIndex,
+          }
+        },
+        // Phase 3: Complete AnalysisConfig from store.save()
+        getAnalysisConfig: () => storeApi.getState().save(),
         executeQuery: () => {
           // Manual execute would refetch - for now just invalidate cache
           // This could be enhanced to trigger a refetch
         },
         clearQuery: analysis.actions.clearQuery
       }),
-      [analysis.getQueryConfig, analysis.getChartConfig, analysis.actions.clearQuery]
+      [
+        analysis.getQueryConfig,
+        analysis.getChartConfig,
+        analysis.getAnalysisType,
+        analysis.actions.clearQuery,
+        storeApi
+      ]
     )
 
     // ========================================================================
@@ -212,7 +281,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               onActiveViewChange={analysis.actions.setActiveView}
               displayLimit={analysis.displayLimit}
               onDisplayLimitChange={analysis.actions.setDisplayLimit}
-              hasMetrics={analysis.queryState.metrics.length > 0}
+              hasMetrics={analysis.analysisType === 'funnel' ? (analysis.funnelSteps.length >= 2 && !!analysis.funnelBindingKey && !!analysis.funnelTimeDimension) : analysis.queryState.metrics.length > 0}
               // Debug props - per-query debug data for multi-query mode
               debugDataPerQuery={analysis.debugDataPerQuery}
               // Share props (hidden when viewing shared analysis with initialQuery)
@@ -223,8 +292,8 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               onRefreshClick={analysis.actions.refetch}
               canRefresh={analysis.isValidQuery}
               isRefreshing={analysis.isFetching}
-              // Clear props
-              onClearClick={analysis.actions.clearQuery}
+              // Clear props - use clearCurrentMode to handle both query and funnel modes
+              onClearClick={analysis.actions.clearCurrentMode}
               canClear={canClear}
               // AI props
               enableAI={features?.enableAI !== false}
@@ -235,13 +304,24 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               perQueryResults={analysis.perQueryResults ?? undefined}
               activeTableIndex={analysis.activeTableIndex}
               onActiveTableChange={analysis.actions.setActiveTableIndex}
+              // Analysis type (new) - primary way to detect mode
+              analysisType={analysis.analysisType}
+              // Legacy funnel mode prop (deprecated)
+              isFunnelMode={analysis.isFunnelModeEnabled}
+              // Funnel debug props
+              funnelServerQuery={analysis.funnelServerQuery}
+              funnelDebugData={analysis.funnelDebugData}
             />
           </div>
         </div>
 
         {/* Bottom/Right Panel - Query Builder */}
         <div className="w-full lg:w-96 flex-shrink-0 lg:h-full overflow-auto lg:overflow-hidden">
-          <AnalysisQueryPanel
+          <AnalysisModeErrorBoundary
+            analysisType={analysis.analysisType}
+            onSwitchToSafeMode={() => analysis.actions.setAnalysisType('query')}
+          >
+            <AnalysisQueryPanel
             metrics={analysis.queryState.metrics}
             breakdowns={analysis.effectiveBreakdowns}
             filters={analysis.queryState.filters}
@@ -282,10 +362,30 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             combinedMetrics={analysis.combinedMetrics}
             combinedBreakdowns={analysis.combinedBreakdowns}
             multiQueryValidation={analysis.multiQueryValidation}
-            // Funnel props
+            adapterValidation={analysis.adapterValidation}
+            // Funnel props (legacy - merge strategy mode)
             funnelBindingKey={analysis.funnelBindingKey}
             onFunnelBindingKeyChange={analysis.actions.setFunnelBindingKey}
+            // Analysis Type props (new)
+            analysisType={analysis.analysisType}
+            onAnalysisTypeChange={analysis.actions.setAnalysisType}
+            // Funnel Mode props (new dedicated state)
+            funnelCube={analysis.funnelCube}
+            funnelSteps={analysis.funnelSteps}
+            activeFunnelStepIndex={analysis.activeFunnelStepIndex}
+            funnelTimeDimension={analysis.funnelTimeDimension}
+            onFunnelCubeChange={analysis.actions.setFunnelCube}
+            onAddFunnelStep={analysis.actions.addFunnelStep}
+            onRemoveFunnelStep={analysis.actions.removeFunnelStep}
+            onUpdateFunnelStep={analysis.actions.updateFunnelStep}
+            onSelectFunnelStep={analysis.actions.setActiveFunnelStepIndex}
+            onReorderFunnelSteps={analysis.actions.reorderFunnelSteps}
+            onFunnelTimeDimensionChange={analysis.actions.setFunnelTimeDimension}
+            // Funnel display config (for Display tab in funnel mode)
+            funnelDisplayConfig={analysis.funnelDisplayConfig}
+            onFunnelDisplayConfigChange={analysis.actions.setFunnelDisplayConfig}
           />
+          </AnalysisModeErrorBoundary>
         </div>
 
         {/* Field Search Modal */}
@@ -318,20 +418,53 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
     const {
       initialQuery,
       initialChartConfig,
+      initialAnalysisType,
+      initialFunnelState,
       disableLocalStorage = false,
       ...innerProps
     } = props
 
-    const hasShareHash = Boolean(parseShareHash())
+    // Parse share URL synchronously to extract initial state before store creation
+    // This prevents the flash of wrong view (e.g., chart when share specifies table)
+    // and ensures analysisType is correct from the start (prevents useEffect race conditions)
+    const shareHash = parseShareHash()
+    const sharedState = shareHash ? decodeAndDecompress(shareHash) : null
+    const initialActiveViewFromShare = sharedState?.activeView
+    const initialAnalysisTypeFromShare = sharedState?.analysisType
+
+    // Phase 3: Extract funnel state from AnalysisConfig format
+    // For funnel mode, funnel config is in query.funnel, chart config is in charts.funnel
+    const initialFunnelStateFromShare = (() => {
+      if (!sharedState || sharedState.analysisType !== 'funnel') return undefined
+      const funnelQuery = 'funnel' in sharedState.query ? sharedState.query.funnel : null
+      if (!funnelQuery) return undefined
+
+      const funnelChartConfig = sharedState.charts?.funnel
+
+      return {
+        funnelCube: null, // Not stored in AnalysisConfig directly - will be derived from steps
+        funnelSteps: [], // Steps need to be reconstructed from ServerFunnelQuery format
+        funnelTimeDimension: typeof funnelQuery.timeDimension === 'string' ? funnelQuery.timeDimension : null,
+        funnelBindingKey: funnelQuery.bindingKey
+          ? { dimension: funnelQuery.bindingKey }
+          : null,
+        funnelChartType: funnelChartConfig?.chartType || 'funnel',
+        funnelChartConfig: funnelChartConfig?.chartConfig || {},
+        funnelDisplayConfig: funnelChartConfig?.displayConfig || {},
+      }
+    })()
 
     // Hide share button when using initialQuery (e.g., viewing a shared analysis)
-    const hideShare = !!initialQuery
+    const hideShare = !!initialQuery || !!initialFunnelState
 
     return (
       <AnalysisBuilderStoreProvider
         initialQuery={initialQuery}
         initialChartConfig={initialChartConfig}
-        disableLocalStorage={disableLocalStorage || !!initialQuery || hasShareHash}
+        initialAnalysisType={initialAnalysisType || initialAnalysisTypeFromShare}
+        initialFunnelState={initialFunnelState || initialFunnelStateFromShare}
+        initialActiveView={initialActiveViewFromShare}
+        disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!shareHash}
       >
         <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>

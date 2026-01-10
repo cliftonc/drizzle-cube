@@ -4,8 +4,11 @@
 // Core types
 export * from './core'
 
-// Query types  
+// Query types
 export * from './query'
+
+// Funnel analysis types
+export * from './funnel'
 
 // Cube definitions
 export * from './cube'

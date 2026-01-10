@@ -30,11 +30,12 @@ import type {
   MultiQueryConfig,
   FunnelBindingKey,
   FunnelConfig,
+  AnalysisType,
+  FunnelStepState,
 } from '../types'
+import type { ServerFunnelQuery } from '../types/funnel'
 import type {
   AnalysisBuilderState,
-  MetricItem,
-  BreakdownItem,
   QueryPanelTab,
   AIState,
 } from '../components/AnalysisBuilder/types'
@@ -42,13 +43,24 @@ import {
   generateId,
   generateMetricLabel,
   createInitialState,
-  buildCubeQuery,
   STORAGE_KEY,
 } from '../components/AnalysisBuilder/utils'
-import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
-import { findDateFilterForField } from '../components/AnalysisBuilder/utils'
-import { convertDateRangeTypeToValue } from '../shared/utils'
-import { getSmartChartDefaults } from '../shared/chartDefaults'
+import { adapterRegistry } from '../adapters/adapterRegistry'
+import { queryModeAdapter } from '../adapters/queryModeAdapter'
+import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
+import type { AnalysisConfig, ChartConfig, AnalysisWorkspace } from '../types/analysisConfig'
+import { isValidAnalysisConfig, isValidAnalysisWorkspace } from '../types/analysisConfig'
+import {
+  createCoreSlice,
+  createQuerySlice,
+  createFunnelSlice,
+  createUISlice,
+  createInitialCoreState,
+  createInitialQueryState,
+  createInitialFunnelState,
+} from './slices'
+
+// Note: Adapters are registered in coreSlice.ts (single registration point)
 
 // ============================================================================
 // Types
@@ -64,24 +76,45 @@ export type FieldModalMode = 'metrics' | 'breakdown'
  */
 export interface AnalysisBuilderStoreState {
   // =========================================================================
-  // Query State (Multi-query support)
+  // Analysis Type (Explicit mode selection)
+  // =========================================================================
+  /** Explicit analysis type - determines which mode is active */
+  analysisType: AnalysisType
+
+  // =========================================================================
+  // Per-Mode Chart Configuration (NEW - Phase 2)
+  // =========================================================================
+  /**
+   * Per-mode chart configuration map.
+   * Each mode owns its own chart settings, enabling mode switching
+   * without losing chart configurations.
+   */
+  charts: {
+    [K in AnalysisType]?: ChartConfig
+  }
+
+  /**
+   * Per-mode active view (table or chart) map.
+   * Each mode owns its own view preference, enabling mode switching
+   * without losing view preferences.
+   */
+  activeViews: {
+    [K in AnalysisType]?: 'table' | 'chart'
+  }
+
+  // =========================================================================
+  // Query State (Query/Multi modes)
   // =========================================================================
   /** Array of query states (one per tab) */
   queryStates: AnalysisBuilderState[]
   /** Index of the currently active query tab */
   activeQueryIndex: number
-  /** Strategy for merging multi-query results */
+  /** Strategy for merging multi-query results (used when queryStates.length > 1) */
   mergeStrategy: QueryMergeStrategy
 
   // =========================================================================
-  // Chart Configuration
+  // Chart Configuration (unified in charts map - Phase 4 cleanup)
   // =========================================================================
-  /** Current chart type */
-  chartType: ChartType
-  /** Chart axis configuration */
-  chartConfig: ChartAxisConfig
-  /** Chart display configuration */
-  displayConfig: ChartDisplayConfig
   /** Whether user manually selected chart type (disables auto-switch) */
   userManuallySelectedChart: boolean
   /** Current color palette name */
@@ -108,12 +141,21 @@ export interface AnalysisBuilderStoreState {
   aiState: AIState
 
   // =========================================================================
-  // Funnel State (when mergeStrategy === 'funnel')
+  // Funnel State (when analysisType === 'funnel')
   // =========================================================================
+  /** Selected cube for funnel mode (all steps use this cube) */
+  funnelCube: string | null
+  /** Dedicated funnel steps (separate from queryStates) */
+  funnelSteps: FunnelStepState[]
+  /** Index of currently active funnel step */
+  activeFunnelStepIndex: number
+  /** Time dimension for funnel temporal ordering */
+  funnelTimeDimension: string | null
   /** Binding key dimension that links funnel steps together */
   funnelBindingKey: FunnelBindingKey | null
-  /** Time window constraint for each step (ISO 8601 duration) */
+  /** @deprecated Use funnelSteps[].timeToConvert instead - kept for backward compat */
   stepTimeToConvert: (string | null)[]
+
 }
 
 /**
@@ -121,7 +163,13 @@ export interface AnalysisBuilderStoreState {
  */
 export interface AnalysisBuilderStoreActions {
   // =========================================================================
-  // Query State Actions
+  // Analysis Type Actions
+  // =========================================================================
+  /** Set the analysis type (switches between Query/Multi/Funnel modes) */
+  setAnalysisType: (type: AnalysisType) => void
+
+  // =========================================================================
+  // Query State Actions (Query/Multi modes)
   // =========================================================================
   /** Set all query states */
   setQueryStates: (states: AnalysisBuilderState[]) => void
@@ -238,24 +286,48 @@ export interface AnalysisBuilderStoreActions {
   restoreAIPreviousState: () => void
 
   // =========================================================================
-  // Funnel Actions (when mergeStrategy === 'funnel')
+  // Funnel Actions (when analysisType === 'funnel')
   // =========================================================================
+  /** Add a new funnel step */
+  addFunnelStep: () => void
+  /** Remove a funnel step by index */
+  removeFunnelStep: (index: number) => void
+  /** Update a funnel step by index */
+  updateFunnelStep: (index: number, updates: Partial<FunnelStepState>) => void
+  /** Set the active funnel step index */
+  setActiveFunnelStepIndex: (index: number) => void
+  /** Reorder funnel steps */
+  reorderFunnelSteps: (fromIndex: number, toIndex: number) => void
+  /** Set the time dimension for funnel */
+  setFunnelTimeDimension: (dimension: string | null) => void
   /** Set the funnel binding key */
   setFunnelBindingKey: (bindingKey: FunnelBindingKey | null) => void
-  /** Set time window for a specific step */
+  /** Set the funnel cube (clears binding key/time dimension, updates all steps) */
+  setFunnelCube: (cube: string | null) => void
+  /** @deprecated Set time window for a specific step - use updateFunnelStep instead */
   setStepTimeToConvert: (stepIndex: number, duration: string | null) => void
-  /** Build FunnelConfig from current state */
+  /** @deprecated Build FunnelConfig from queryStates - use buildFunnelQueryFromSteps instead */
   buildFunnelConfig: () => FunnelConfig | null
-  /** Check if in funnel mode */
+  /** Build ServerFunnelQuery from dedicated funnelSteps */
+  buildFunnelQueryFromSteps: () => ServerFunnelQuery | null
+  /** Check if in funnel mode (analysisType === 'funnel') */
   isFunnelMode: () => boolean
+  /** Check if funnel mode is properly configured and ready for execution */
+  isFunnelModeEnabled: () => boolean
+  /** Set funnel chart type */
+  setFunnelChartType: (type: ChartType) => void
+  /** Set funnel chart config */
+  setFunnelChartConfig: (config: ChartAxisConfig) => void
+  /** Set funnel display config */
+  setFunnelDisplayConfig: (config: ChartDisplayConfig) => void
 
   // =========================================================================
   // Utility Actions
   // =========================================================================
-  /** Clear the current query */
+  /** Clear only the current mode's state (preserves other modes) */
+  clearCurrentMode: () => void
+  /** @deprecated Clear the current query - use clearCurrentMode instead */
   clearQuery: () => void
-  /** Load state from URL share */
-  loadFromShare: (sharedState: SharedState) => void
   /** Get current state (helper accessor) */
   getCurrentState: () => AnalysisBuilderState
   /** Get merge keys (computed from Q1 breakdowns) */
@@ -270,17 +342,44 @@ export interface AnalysisBuilderStoreActions {
   buildMultiQueryConfig: () => MultiQueryConfig | null
   /** Reset store to initial state */
   reset: () => void
-}
 
-/**
- * Shared state from URL
- */
-export interface SharedState {
-  query: CubeQuery | MultiQueryConfig
-  chartType?: ChartType
-  chartConfig?: ChartAxisConfig
-  displayConfig?: ChartDisplayConfig
-  activeView?: 'table' | 'chart'
+  // =========================================================================
+  // Save/Load Actions (NEW - Phase 2)
+  // =========================================================================
+  /**
+   * Save current state to AnalysisConfig format.
+   * Delegates to the appropriate adapter based on analysisType.
+   * Use for share URLs and portlets (single-mode).
+   */
+  save: () => AnalysisConfig
+
+  /**
+   * Load state from AnalysisConfig.
+   * Delegates to the appropriate adapter based on config.analysisType.
+   * Use for share URLs and portlets (single-mode).
+   */
+  load: (config: AnalysisConfig) => void
+
+  /**
+   * Save ALL modes to AnalysisWorkspace format.
+   * Used for localStorage persistence to preserve state across mode switches.
+   */
+  saveWorkspace: () => AnalysisWorkspace
+
+  /**
+   * Load ALL modes from AnalysisWorkspace.
+   * Used for localStorage persistence to restore state for all modes.
+   */
+  loadWorkspace: (workspace: AnalysisWorkspace) => void
+
+  // =========================================================================
+  // Validation Actions (NEW - Phase 5)
+  // =========================================================================
+  /**
+   * Validate current state using the adapter for the current analysis type.
+   * Returns validation errors and warnings that can be displayed to the user.
+   */
+  getValidation: () => import('../adapters/modeAdapter').ValidationResult
 }
 
 /**
@@ -288,6 +387,17 @@ export interface SharedState {
  */
 export type AnalysisBuilderStore = AnalysisBuilderStoreState &
   AnalysisBuilderStoreActions
+
+/**
+ * Initial funnel state for creating a store instance.
+ * Chart configuration is handled via CreateStoreOptions.initialChartConfig instead.
+ */
+export interface InitialFunnelState {
+  funnelCube?: string | null
+  funnelSteps?: FunnelStepState[]
+  funnelTimeDimension?: string | null
+  funnelBindingKey?: FunnelBindingKey | null
+}
 
 /**
  * Options for creating a store instance
@@ -303,50 +413,16 @@ export interface CreateStoreOptions {
   }
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
+  /** Initial analysis type (query or funnel) */
+  initialAnalysisType?: AnalysisType
+  /** Initial funnel state (when analysisType === 'funnel') */
+  initialFunnelState?: InitialFunnelState
+  /** Initial active view (table or chart) - used to prevent flash when loading from share */
+  initialActiveView?: 'table' | 'chart'
 }
 
-// ============================================================================
-// Initial State
-// ============================================================================
-
-const initialQueryState = createInitialState()
-
-const initialAIState: AIState = {
-  isOpen: false,
-  userPrompt: '',
-  isGenerating: false,
-  error: null,
-  hasGeneratedQuery: false,
-  previousState: null,
-}
-
-const createDefaultState = (): AnalysisBuilderStoreState => ({
-  // Query state
-  queryStates: [initialQueryState],
-  activeQueryIndex: 0,
-  mergeStrategy: 'concat',
-
-  // Chart configuration
-  chartType: 'line',
-  chartConfig: {},
-  displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
-  userManuallySelectedChart: false,
-  localPaletteName: 'default',
-
-  // UI state
-  activeTab: 'query',
-  activeView: 'chart',
-  displayLimit: 100,
-  showFieldModal: false,
-  fieldModalMode: 'metrics',
-
-  // AI state
-  aiState: initialAIState,
-
-  // Funnel state
-  funnelBindingKey: null,
-  stepTimeToConvert: [],
-})
+// Note: Initial state is now handled by slice initializers
+// (createInitialCoreState, createInitialQueryState, createInitialFunnelState, createInitialUIState)
 
 // ============================================================================
 // Helper Functions
@@ -442,60 +518,196 @@ function isMultiQueryConfig(config: CubeQuery | MultiQueryConfig): config is Mul
 }
 
 /**
- * Build initial state from options
+ * Convert store creation options to AnalysisConfig.
+ * Returns null if no meaningful options are provided (use defaults).
  */
-function buildInitialState(options: CreateStoreOptions): AnalysisBuilderStoreState {
-  const defaultState = createDefaultState()
+function optionsToAnalysisConfig(options: CreateStoreOptions): AnalysisConfig | null {
+  // Handle funnel mode with funnel state
+  if (options.initialAnalysisType === 'funnel' && options.initialFunnelState) {
+    const defaultFunnelChart = funnelModeAdapter.getDefaultChartConfig()
+    // Use initialChartConfig for chart settings (legacy funnel chart fields removed)
+    const funnelChartConfig: ChartConfig = {
+      chartType: options.initialChartConfig?.chartType || defaultFunnelChart.chartType,
+      chartConfig: options.initialChartConfig?.chartConfig || defaultFunnelChart.chartConfig,
+      displayConfig: options.initialChartConfig?.displayConfig || defaultFunnelChart.displayConfig,
+    }
 
-  // If no initial query, return default state (localStorage will hydrate if enabled)
-  if (!options.initialQuery) {
-    // Apply initial chart config if provided (for cases like empty portlet with chart defaults)
-    if (options.initialChartConfig) {
-      return {
-        ...defaultState,
-        chartType: options.initialChartConfig.chartType || defaultState.chartType,
-        chartConfig: options.initialChartConfig.chartConfig || defaultState.chartConfig,
-        displayConfig: options.initialChartConfig.displayConfig || defaultState.displayConfig,
-        userManuallySelectedChart: !!options.initialChartConfig.chartType,
+    // Build funnel config via adapter's save method structure
+    const funnelState = {
+      funnelCube: options.initialFunnelState.funnelCube ?? null,
+      funnelSteps: options.initialFunnelState.funnelSteps || [],
+      activeFunnelStepIndex: 0,
+      funnelTimeDimension: options.initialFunnelState.funnelTimeDimension ?? null,
+      funnelBindingKey: options.initialFunnelState.funnelBindingKey ?? null,
+    }
+
+    return funnelModeAdapter.save(
+      funnelState,
+      { funnel: funnelChartConfig },
+      options.initialActiveView || 'chart'
+    )
+  }
+
+  // Handle query mode with initial query
+  if (options.initialQuery) {
+    const query = options.initialQuery
+    let queryStates: AnalysisBuilderState[]
+    let mergeStrategy: QueryMergeStrategy = 'concat'
+
+    if (isMultiQueryConfig(query)) {
+      queryStates = query.queries.map(queryToState)
+      if (query.mergeStrategy) {
+        mergeStrategy = query.mergeStrategy
       }
+    } else {
+      queryStates = [queryToState(query)]
     }
-    return defaultState
+
+    const defaultQueryChart = queryModeAdapter.getDefaultChartConfig()
+    const queryChartConfig: ChartConfig = {
+      chartType: options.initialChartConfig?.chartType || defaultQueryChart.chartType,
+      chartConfig: options.initialChartConfig?.chartConfig || defaultQueryChart.chartConfig,
+      displayConfig: options.initialChartConfig?.displayConfig || defaultQueryChart.displayConfig,
+    }
+
+    return queryModeAdapter.save(
+      { queryStates, activeQueryIndex: 0, mergeStrategy },
+      { query: queryChartConfig },
+      options.initialActiveView || 'chart'
+    )
   }
 
-  // Initialize from provided query
-  const query = options.initialQuery
-  let newQueryStates: AnalysisBuilderState[]
-  let newMergeStrategy = defaultState.mergeStrategy
-  let newFunnelBindingKey = defaultState.funnelBindingKey
-  let newStepTimeToConvert = defaultState.stepTimeToConvert
+  // Handle just chart config (no query)
+  if (options.initialChartConfig) {
+    const defaultQueryChart = queryModeAdapter.getDefaultChartConfig()
+    const queryChartConfig: ChartConfig = {
+      chartType: options.initialChartConfig.chartType || defaultQueryChart.chartType,
+      chartConfig: options.initialChartConfig.chartConfig || defaultQueryChart.chartConfig,
+      displayConfig: options.initialChartConfig.displayConfig || defaultQueryChart.displayConfig,
+    }
 
-  if (isMultiQueryConfig(query)) {
-    newQueryStates = query.queries.map(queryToState)
-    if (query.mergeStrategy) {
-      newMergeStrategy = query.mergeStrategy
-    }
-    // Restore funnel-specific config
-    if (query.funnelBindingKey !== undefined) {
-      newFunnelBindingKey = query.funnelBindingKey
-    }
-    if (query.stepTimeToConvert !== undefined) {
-      newStepTimeToConvert = query.stepTimeToConvert
-    }
-  } else {
-    newQueryStates = [queryToState(query)]
+    return queryModeAdapter.save(
+      { queryStates: [createInitialState()], activeQueryIndex: 0, mergeStrategy: 'concat' },
+      { query: queryChartConfig },
+      options.initialActiveView || 'chart'
+    )
   }
 
+  // Handle just active view
+  if (options.initialActiveView) {
+    // Return a minimal config with just activeView set
+    return queryModeAdapter.save(
+      { queryStates: [createInitialState()], activeQueryIndex: 0, mergeStrategy: 'concat' },
+      { query: queryModeAdapter.getDefaultChartConfig() },
+      options.initialActiveView
+    )
+  }
+
+  // No meaningful options - use store defaults
+  return null
+}
+
+// NOTE: createStoreActions has been replaced by slice composition.
+// See createAnalysisBuilderStore below which composes:
+// - createCoreSlice
+// - createQuerySlice
+// - createFunnelSlice
+// - createUISlice
+// - createCrossSliceActions
+
+
+// ============================================================================
+// Cross-Slice Actions
+// ============================================================================
+
+/**
+ * Cross-slice actions that coordinate state across multiple slices.
+ * These can't be in individual slices because they need to update state
+ * from multiple slices atomically.
+ */
+interface CrossSliceActions {
+  reset: () => void
+  clearCurrentMode: () => void
+  clearQuery: () => void
+  getValidation: () => { isValid: boolean; errors: string[]; warnings: string[] }
+}
+
+function createCrossSliceActions(
+  set: (
+    partial:
+      | Partial<AnalysisBuilderStore>
+      | ((state: AnalysisBuilderStore) => Partial<AnalysisBuilderStore>)
+  ) => void,
+  get: () => AnalysisBuilderStore
+): CrossSliceActions {
   return {
-    ...defaultState,
-    queryStates: newQueryStates,
-    activeQueryIndex: 0,
-    mergeStrategy: newMergeStrategy,
-    funnelBindingKey: newFunnelBindingKey,
-    stepTimeToConvert: newStepTimeToConvert,
-    chartType: options.initialChartConfig?.chartType || defaultState.chartType,
-    chartConfig: options.initialChartConfig?.chartConfig || defaultState.chartConfig,
-    displayConfig: options.initialChartConfig?.displayConfig || defaultState.displayConfig,
-    userManuallySelectedChart: !!options.initialChartConfig?.chartType,
+    reset: () => {
+      // Reset to default state using slice initializers
+      set({
+        ...createInitialCoreState(),
+        ...createInitialQueryState(),
+        ...createInitialFunnelState(),
+        // Apply adapter defaults for charts (may differ from slice defaults)
+        charts: {
+          query: queryModeAdapter.getDefaultChartConfig(),
+          funnel: funnelModeAdapter.getDefaultChartConfig(),
+        },
+        activeViews: {
+          query: 'chart',
+          funnel: 'chart',
+        },
+      } as Partial<AnalysisBuilderStore>)
+    },
+
+    clearCurrentMode: () =>
+      set((state) => {
+        switch (state.analysisType) {
+          case 'funnel':
+            // Use slice initializer for funnel state
+            return {
+              ...createInitialFunnelState(),
+              charts: {
+                ...state.charts,
+                funnel: funnelModeAdapter.getDefaultChartConfig(),
+              },
+            }
+          case 'query':
+          default:
+            // Use slice initializer for query state
+            return {
+              ...createInitialQueryState(),
+              userManuallySelectedChart: false,
+              charts: {
+                ...state.charts,
+                query: queryModeAdapter.getDefaultChartConfig(),
+              },
+            }
+        }
+      }),
+
+    clearQuery: () =>
+      set((state) => {
+        const newStates = [...state.queryStates]
+        newStates[state.activeQueryIndex] = createInitialState()
+        return {
+          queryStates: newStates,
+          userManuallySelectedChart: false,
+          charts: {
+            ...state.charts,
+            query: queryModeAdapter.getDefaultChartConfig(),
+          },
+        }
+      }),
+
+    getValidation: () => {
+      const state = get()
+      const adapter = adapterRegistry.get(state.analysisType)
+
+      // Use adapter's extractState method for mode-specific state
+      const modeState = adapter.extractState(state as unknown as Record<string, unknown>)
+
+      return adapter.validate(modeState)
+    },
   }
 }
 
@@ -504,821 +716,108 @@ function buildInitialState(options: CreateStoreOptions): AnalysisBuilderStoreSta
 // ============================================================================
 
 /**
- * Create store actions (shared between persisted and non-persisted stores)
- */
-function createStoreActions(
-  set: (partial: Partial<AnalysisBuilderStore> | ((state: AnalysisBuilderStore) => Partial<AnalysisBuilderStore>)) => void,
-  get: () => AnalysisBuilderStore,
-  initialState: AnalysisBuilderStoreState
-): AnalysisBuilderStoreActions {
-  return {
-    // =================================================================
-    // Query State Actions
-    // =================================================================
-
-    setQueryStates: (states) => set({ queryStates: states }),
-
-    updateQueryState: (index, updater) =>
-      set((state) => {
-        const newStates = [...state.queryStates]
-        newStates[index] = updater(newStates[index] || createInitialState())
-        return { queryStates: newStates }
-      }),
-
-    setActiveQueryIndex: (index) => set({ activeQueryIndex: index }),
-
-    setMergeStrategy: (strategy) =>
-      set((state) => {
-        // Auto-switch to funnel chart when entering funnel mode
-        if (strategy === 'funnel' && state.chartType !== 'funnel') {
-          return {
-            mergeStrategy: strategy,
-            chartType: 'funnel',
-            userManuallySelectedChart: false,
-          }
-        }
-        // Auto-switch away from funnel chart when leaving funnel mode
-        if (strategy !== 'funnel' && state.chartType === 'funnel') {
-          return {
-            mergeStrategy: strategy,
-            chartType: 'line',
-            userManuallySelectedChart: false,
-          }
-        }
-        return { mergeStrategy: strategy }
-      }),
-
-    // =================================================================
-    // Metrics Actions
-    // =================================================================
-
-    openMetricsModal: () =>
-      set({ showFieldModal: true, fieldModalMode: 'metrics' }),
-
-    addMetric: (field, label) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const newMetric: MetricItem = {
-          id: generateId(),
-          field,
-          label: label || generateMetricLabel(currentState.metrics.length),
-        }
-        newStates[index] = {
-          ...currentState,
-          metrics: [...currentState.metrics, newMetric],
-        }
-        return { queryStates: newStates }
-      }),
-
-    removeMetric: (id) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const fieldToRemove = currentState.metrics.find((m) => m.id === id)?.field
-        const newMetrics = currentState.metrics.filter((m) => m.id !== id)
-
-        // Clean up sort order for removed field
-        let newOrder = currentState.order
-        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
-          newOrder = { ...newOrder }
-          delete newOrder[fieldToRemove]
-          if (Object.keys(newOrder).length === 0) {
-            newOrder = undefined
-          }
-        }
-
-        newStates[index] = {
-          ...currentState,
-          metrics: newMetrics,
-          order: newOrder,
-        }
-        return { queryStates: newStates }
-      }),
-
-    toggleMetric: (fieldName) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const existingIndex = currentState.metrics.findIndex(
-          (m) => m.field === fieldName
-        )
-
-        if (existingIndex >= 0) {
-          // Remove existing
-          newStates[index] = {
-            ...currentState,
-            metrics: currentState.metrics.filter((_, i) => i !== existingIndex),
-            }
-        } else {
-          // Add new
-          const newMetric: MetricItem = {
-            id: generateId(),
-            field: fieldName,
-            label: generateMetricLabel(currentState.metrics.length),
-          }
-          newStates[index] = {
-            ...currentState,
-            metrics: [...currentState.metrics, newMetric],
-            }
-        }
-        return { queryStates: newStates }
-      }),
-
-    reorderMetrics: (fromIndex, toIndex) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const newMetrics = [...currentState.metrics]
-        const [movedItem] = newMetrics.splice(fromIndex, 1)
-        newMetrics.splice(toIndex, 0, movedItem)
-        newStates[index] = {
-          ...currentState,
-          metrics: newMetrics,
-        }
-        return { queryStates: newStates }
-      }),
-
-    // =================================================================
-    // Breakdowns Actions
-    // =================================================================
-
-    openBreakdownsModal: () =>
-      set({ showFieldModal: true, fieldModalMode: 'breakdown' }),
-
-    addBreakdown: (field, isTimeDimension, granularity) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-
-        // Check if we already have a time dimension (only allow one)
-        if (isTimeDimension) {
-          const hasExisting = currentState.breakdowns.some((b) => b.isTimeDimension)
-          if (hasExisting) return state
-        }
-
-        const newBreakdown: BreakdownItem = {
-          id: generateId(),
-          field,
-          isTimeDimension,
-          granularity: isTimeDimension ? granularity || 'month' : undefined,
-        }
-        newStates[index] = {
-          ...currentState,
-          breakdowns: [...currentState.breakdowns, newBreakdown],
-        }
-        return { queryStates: newStates }
-      }),
-
-    removeBreakdown: (id) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const fieldToRemove = currentState.breakdowns.find((b) => b.id === id)?.field
-        const newBreakdowns = currentState.breakdowns.filter((b) => b.id !== id)
-
-        // Clean up sort order for removed field
-        let newOrder = currentState.order
-        if (fieldToRemove && newOrder && newOrder[fieldToRemove]) {
-          newOrder = { ...newOrder }
-          delete newOrder[fieldToRemove]
-          if (Object.keys(newOrder).length === 0) {
-            newOrder = undefined
-          }
-        }
-
-        newStates[index] = {
-          ...currentState,
-          breakdowns: newBreakdowns,
-          order: newOrder,
-        }
-        return { queryStates: newStates }
-      }),
-
-    toggleBreakdown: (fieldName, isTimeDimension, granularity) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const existingIndex = currentState.breakdowns.findIndex(
-          (b) => b.field === fieldName
-        )
-
-        if (existingIndex >= 0) {
-          // Remove existing
-          newStates[index] = {
-            ...currentState,
-            breakdowns: currentState.breakdowns.filter((_, i) => i !== existingIndex),
-            }
-        } else {
-          // Check if we already have a time dimension
-          if (isTimeDimension) {
-            const hasExisting = currentState.breakdowns.some((b) => b.isTimeDimension)
-            if (hasExisting) return state
-          }
-
-          const newBreakdown: BreakdownItem = {
-            id: generateId(),
-            field: fieldName,
-            isTimeDimension,
-            granularity: isTimeDimension ? granularity || 'month' : undefined,
-          }
-          newStates[index] = {
-            ...currentState,
-            breakdowns: [...currentState.breakdowns, newBreakdown],
-            }
-        }
-        return { queryStates: newStates }
-      }),
-
-    setBreakdownGranularity: (id, granularity) =>
-      set((state) => {
-        const { mergeStrategy, activeQueryIndex, queryStates } = state
-        const newStates = [...queryStates]
-
-        // In merge mode, granularity changes update Q1 (source of truth)
-        if (mergeStrategy === 'merge' && activeQueryIndex > 0) {
-          newStates[0] = {
-            ...newStates[0],
-            breakdowns: newStates[0].breakdowns.map((b) =>
-              b.id === id ? { ...b, granularity } : b
-            ),
-            }
-        } else {
-          newStates[activeQueryIndex] = {
-            ...newStates[activeQueryIndex],
-            breakdowns: newStates[activeQueryIndex].breakdowns.map((b) =>
-              b.id === id ? { ...b, granularity } : b
-            ),
-            }
-        }
-        return { queryStates: newStates }
-      }),
-
-    toggleBreakdownComparison: (id) =>
-      set((state) => {
-        const { mergeStrategy, activeQueryIndex, queryStates, chartType } = state
-        const newStates = [...queryStates]
-
-        // Get source breakdowns based on mode
-        const sourceIndex = mergeStrategy === 'merge' && activeQueryIndex > 0 ? 0 : activeQueryIndex
-        const sourceState = newStates[sourceIndex]
-        const targetBreakdown = sourceState.breakdowns.find((b) => b.id === id)
-        const isEnabling = targetBreakdown && !targetBreakdown.enableComparison
-
-        let newChartType = chartType
-        let newChartConfig = state.chartConfig
-
-        // If enabling comparison, auto-add date filter and switch to line chart
-        if (isEnabling && targetBreakdown) {
-          const hasDateFilter = findDateFilterForField(
-            sourceState.filters,
-            targetBreakdown.field
-          )
-
-          if (!hasDateFilter) {
-            const newFilter: Filter = {
-              member: targetBreakdown.field,
-              operator: 'inDateRange',
-              values: [],
-              dateRange: convertDateRangeTypeToValue('last_30_days'),
-            } as Filter
-            newStates[sourceIndex] = {
-              ...sourceState,
-              filters: [...sourceState.filters, newFilter],
-            }
-          }
-
-          // Switch to line chart if not already
-          if (chartType !== 'line') {
-            newChartType = 'line'
-            const { chartConfig: smartConfig } = getSmartChartDefaults(
-              sourceState.metrics,
-              sourceState.breakdowns,
-              'line'
-            )
-            newChartConfig = smartConfig
-          }
-        }
-
-        // Update breakdowns with comparison toggle
-        const updatedBreakdowns = newStates[sourceIndex].breakdowns.map((b) => {
-          if (b.id === id) {
-            return { ...b, enableComparison: !b.enableComparison }
-          }
-          // Clear comparison from other time dimensions
-          if (b.isTimeDimension && b.enableComparison) {
-            return { ...b, enableComparison: false }
-          }
-          return b
-        })
-
-        newStates[sourceIndex] = {
-          ...newStates[sourceIndex],
-          breakdowns: updatedBreakdowns,
-        }
-
-        return {
-          queryStates: newStates,
-          chartType: newChartType,
-          chartConfig: newChartConfig,
-        }
-      }),
-
-    reorderBreakdowns: (fromIndex, toIndex) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const newBreakdowns = [...currentState.breakdowns]
-        const [movedItem] = newBreakdowns.splice(fromIndex, 1)
-        newBreakdowns.splice(toIndex, 0, movedItem)
-        newStates[index] = {
-          ...currentState,
-          breakdowns: newBreakdowns,
-        }
-        return { queryStates: newStates }
-      }),
-
-    // =================================================================
-    // Filters Actions
-    // =================================================================
-
-    setFilters: (filters) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        newStates[index] = {
-          ...newStates[index],
-          filters,
-        }
-        return { queryStates: newStates }
-      }),
-
-    dropFieldToFilter: (field) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const existingFilters = currentState.filters || []
-
-        // Check if we already have a filter for this field
-        const hasFilter = existingFilters.some(
-          (f) => 'member' in f && f.member === field
-        )
-        if (hasFilter) return state
-
-        const newFilter: Filter = {
-          member: field,
-          operator: 'set',
-          values: [],
-        }
-
-        let updatedFilters: Filter[]
-        if (existingFilters.length === 0) {
-          updatedFilters = [newFilter]
-        } else if (existingFilters.length === 1 && 'type' in existingFilters[0]) {
-          const group = existingFilters[0] as { type: 'and' | 'or'; filters: Filter[] }
-          updatedFilters = [{ ...group, filters: [...group.filters, newFilter] }]
-        } else {
-          updatedFilters = [{ type: 'and' as const, filters: [...existingFilters, newFilter] }]
-        }
-
-        newStates[index] = {
-          ...currentState,
-          filters: updatedFilters,
-        }
-        return { queryStates: newStates }
-      }),
-
-    setOrder: (fieldName, direction) =>
-      set((state) => {
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        const currentState = newStates[index] || createInitialState()
-        const newOrder = { ...(currentState.order || {}) }
-
-        if (direction === null) {
-          delete newOrder[fieldName]
-        } else {
-          newOrder[fieldName] = direction
-        }
-
-        newStates[index] = {
-          ...currentState,
-          order: Object.keys(newOrder).length > 0 ? newOrder : undefined,
-        }
-        return { queryStates: newStates }
-      }),
-
-    // =================================================================
-    // Multi-Query Actions
-    // =================================================================
-
-    addQuery: () =>
-      set((state) => {
-        const currentState = state.queryStates[state.activeQueryIndex] || createInitialState()
-        const newState: AnalysisBuilderState = {
-          ...createInitialState(),
-          metrics: [...currentState.metrics],
-          breakdowns: [...currentState.breakdowns],
-          filters: [...currentState.filters],
-        }
-        return {
-          queryStates: [...state.queryStates, newState],
-          activeQueryIndex: state.queryStates.length,
-        }
-      }),
-
-    removeQuery: (index) =>
-      set((state) => {
-        if (state.queryStates.length <= 1) return state
-        const newStates = state.queryStates.filter((_, i) => i !== index)
-        let newActiveIndex = state.activeQueryIndex
-        if (index === state.activeQueryIndex) {
-          newActiveIndex = Math.max(0, state.activeQueryIndex - 1)
-        } else if (index < state.activeQueryIndex) {
-          newActiveIndex = state.activeQueryIndex - 1
-        }
-        return { queryStates: newStates, activeQueryIndex: newActiveIndex }
-      }),
-
-    // =================================================================
-    // Chart Actions
-    // =================================================================
-
-    setChartType: (type) => set({ chartType: type }),
-
-    setChartTypeManual: (type) =>
-      set((state) => {
-        const currentState = state.queryStates[state.activeQueryIndex]
-
-        // If switching away from line, clear comparison
-        if (type !== 'line' && currentState) {
-          const hasComparison = currentState.breakdowns.some(
-            (b) => b.isTimeDimension && b.enableComparison
-          )
-          if (hasComparison) {
-            const newStates = [...state.queryStates]
-            newStates[state.activeQueryIndex] = {
-              ...currentState,
-              breakdowns: currentState.breakdowns.map((b) =>
-                b.isTimeDimension && b.enableComparison
-                  ? { ...b, enableComparison: false }
-                  : b
-              ),
-                }
-
-            const { chartConfig } = getSmartChartDefaults(
-              currentState.metrics,
-              currentState.breakdowns,
-              type
-            )
-
-            return {
-              queryStates: newStates,
-              chartType: type,
-              chartConfig,
-              userManuallySelectedChart: true,
-              activeView: 'chart',
-            }
-          }
-        }
-
-        const { chartConfig } = getSmartChartDefaults(
-          currentState?.metrics || [],
-          currentState?.breakdowns || [],
-          type
-        )
-
-        return {
-          chartType: type,
-          chartConfig,
-          userManuallySelectedChart: true,
-          activeView: 'chart',
-        }
-      }),
-
-    setChartConfig: (config) => set({ chartConfig: config, activeView: 'chart' }),
-
-    setDisplayConfig: (config) => set({ displayConfig: config, activeView: 'chart' }),
-
-    setLocalPaletteName: (name) => set({ localPaletteName: name }),
-
-    setUserManuallySelectedChart: (value) => set({ userManuallySelectedChart: value }),
-
-    // =================================================================
-    // UI Actions
-    // =================================================================
-
-    setActiveTab: (tab) => set({ activeTab: tab }),
-
-    setActiveView: (view) => set({ activeView: view }),
-
-    setDisplayLimit: (limit) => set({ displayLimit: limit }),
-
-    closeFieldModal: () => set({ showFieldModal: false }),
-
-    // =================================================================
-    // AI Actions
-    // =================================================================
-
-    openAI: () =>
-      set((state) => ({
-        aiState: { ...state.aiState, isOpen: true },
-      })),
-
-    closeAI: () =>
-      set((state) => ({
-        aiState: { ...state.aiState, isOpen: false },
-      })),
-
-    setAIPrompt: (prompt) =>
-      set((state) => ({
-        aiState: { ...state.aiState, userPrompt: prompt },
-      })),
-
-    setAIGenerating: (generating) =>
-      set((state) => ({
-        aiState: { ...state.aiState, isGenerating: generating },
-      })),
-
-    setAIError: (error) =>
-      set((state) => ({
-        aiState: { ...state.aiState, error },
-      })),
-
-    setAIHasGeneratedQuery: (hasQuery) =>
-      set((state) => ({
-        aiState: { ...state.aiState, hasGeneratedQuery: hasQuery },
-      })),
-
-    saveAIPreviousState: () =>
-      set((state) => {
-        const currentState = state.queryStates[state.activeQueryIndex]
-        return {
-          aiState: {
-            ...state.aiState,
-            previousState: currentState
-              ? {
-                  metrics: [...currentState.metrics],
-                  breakdowns: [...currentState.breakdowns],
-                  filters: [...currentState.filters],
-                  chartType: state.chartType,
-                  chartConfig: { ...state.chartConfig },
-                  displayConfig: { ...state.displayConfig },
-                }
-              : null,
-          },
-        }
-      }),
-
-    restoreAIPreviousState: () =>
-      set((state) => {
-        const prev = state.aiState.previousState
-        if (!prev) return state
-
-        const index = state.activeQueryIndex
-        const newStates = [...state.queryStates]
-        newStates[index] = {
-          ...(newStates[index] || createInitialState()),
-          metrics: prev.metrics,
-          breakdowns: prev.breakdowns,
-          filters: prev.filters,
-        }
-
-        return {
-          queryStates: newStates,
-          chartType: prev.chartType,
-          chartConfig: prev.chartConfig,
-          displayConfig: prev.displayConfig,
-          aiState: { ...initialAIState },
-        }
-      }),
-
-    // =================================================================
-    // Funnel Actions
-    // =================================================================
-
-    setFunnelBindingKey: (bindingKey) => set({ funnelBindingKey: bindingKey }),
-
-    setStepTimeToConvert: (stepIndex, duration) =>
-      set((state) => {
-        const newTimeToConvert = [...state.stepTimeToConvert]
-        // Ensure array is large enough
-        while (newTimeToConvert.length <= stepIndex) {
-          newTimeToConvert.push(null)
-        }
-        newTimeToConvert[stepIndex] = duration
-        return { stepTimeToConvert: newTimeToConvert }
-      }),
-
-    buildFunnelConfig: () => {
-      const state = get()
-      if (state.mergeStrategy !== 'funnel') return null
-      if (!state.funnelBindingKey) return null
-      if (state.queryStates.length < 2) return null
-
-      // Build queries for each step
-      const queries = state.queryStates.map((qs) =>
-        buildCubeQuery(qs.metrics, qs.breakdowns, qs.filters, qs.order)
-      )
-
-      // Generate step labels
-      const stepLabels = state.queryStates.map((_, i) => `Step ${i + 1}`)
-
-      return buildFunnelConfigFromQueries(
-        queries,
-        state.funnelBindingKey,
-        stepLabels,
-        state.stepTimeToConvert
-      )
-    },
-
-    isFunnelMode: () => get().mergeStrategy === 'funnel',
-
-    // =================================================================
-    // Utility Actions
-    // =================================================================
-
-    clearQuery: () =>
-      set((state) => {
-        const newStates = [...state.queryStates]
-        newStates[state.activeQueryIndex] = createInitialState()
-        return {
-          queryStates: newStates,
-          chartType: 'line',
-          chartConfig: {},
-          displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
-          userManuallySelectedChart: false,
-        }
-      }),
-
-    loadFromShare: (sharedState) =>
-      set((state) => {
-        const { query } = sharedState
-        let newQueryStates: AnalysisBuilderState[]
-        let newMergeStrategy = state.mergeStrategy
-        let newFunnelBindingKey = state.funnelBindingKey
-        let newStepTimeToConvert = state.stepTimeToConvert
-
-        if (isMultiQueryConfig(query)) {
-          newQueryStates = query.queries.map(queryToState)
-          if (query.mergeStrategy) {
-            newMergeStrategy = query.mergeStrategy
-          }
-          // Restore funnel-specific config from shared state
-          if (query.funnelBindingKey !== undefined) {
-            newFunnelBindingKey = query.funnelBindingKey
-          }
-          if (query.stepTimeToConvert !== undefined) {
-            newStepTimeToConvert = query.stepTimeToConvert
-          }
-        } else {
-          newQueryStates = [queryToState(query)]
-        }
-
-        return {
-          queryStates: newQueryStates,
-          activeQueryIndex: 0,
-          mergeStrategy: newMergeStrategy,
-          funnelBindingKey: newFunnelBindingKey,
-          stepTimeToConvert: newStepTimeToConvert,
-          chartType: sharedState.chartType || state.chartType,
-          chartConfig: sharedState.chartConfig || state.chartConfig,
-          displayConfig: sharedState.displayConfig || state.displayConfig,
-          activeView: sharedState.activeView || state.activeView,
-          userManuallySelectedChart: !!sharedState.chartType,
-        }
-      }),
-
-    getCurrentState: () => {
-      const state = get()
-      return state.queryStates[state.activeQueryIndex] || createInitialState()
-    },
-
-    getMergeKeys: () => {
-      const state = get()
-      if (state.mergeStrategy !== 'merge' || state.queryStates.length === 0) {
-        return undefined
-      }
-      const q1Breakdowns = state.queryStates[0].breakdowns
-      if (q1Breakdowns.length === 0) return undefined
-      return q1Breakdowns.map((b) => b.field)
-    },
-
-    isMultiQueryMode: () => {
-      const state = get()
-      if (state.queryStates.length <= 1) return false
-      const queriesWithContent = state.queryStates.filter(
-        (qs) => qs.metrics.length > 0 || qs.breakdowns.length > 0
-      )
-      return queriesWithContent.length > 1
-    },
-
-    buildCurrentQuery: () => {
-      const state = get()
-      const current = state.queryStates[state.activeQueryIndex] || createInitialState()
-      return buildCubeQuery(
-        current.metrics,
-        current.breakdowns,
-        current.filters,
-        current.order
-      )
-    },
-
-    buildAllQueries: () => {
-      const state = get()
-      // In merge mode, Q2+ use Q1's breakdowns (dimensions are shared/locked)
-      const q1Breakdowns = state.queryStates[0]?.breakdowns || []
-
-      return state.queryStates.map((qs, index) => {
-        // In merge mode, Q2+ inherit Q1's breakdowns
-        const breakdowns = state.mergeStrategy === 'merge' && index > 0
-          ? q1Breakdowns
-          : qs.breakdowns
-
-        return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order)
-      })
-    },
-
-    buildMultiQueryConfig: () => {
-      const state = get()
-      if (!get().isMultiQueryMode()) return null
-
-      const allQueries = get().buildAllQueries()
-      const validQueries = allQueries.filter(
-        (q) =>
-          (q.measures && q.measures.length > 0) ||
-          (q.dimensions && q.dimensions.length > 0) ||
-          (q.timeDimensions && q.timeDimensions.length > 0)
-      )
-
-      if (validQueries.length < 2) return null
-
-      return {
-        queries: validQueries,
-        mergeStrategy: state.mergeStrategy,
-        mergeKeys: get().getMergeKeys(),
-        queryLabels: validQueries.map((_, i) => `Q${i + 1}`),
-      }
-    },
-
-    reset: () => set(initialState),
-  }
-}
-
-/**
- * Create a new store instance with optional persistence
+ * Create a new store instance with optional persistence.
+ * Composes slices: coreSlice, querySlice, funnelSlice, uiSlice.
  */
 export function createAnalysisBuilderStore(options: CreateStoreOptions = {}) {
-  const initialState = buildInitialState(options)
+  // Convert options to AnalysisConfig for loading
+  const initialConfig = optionsToAnalysisConfig(options)
+
+  // Store creator function that composes all slices
+  const storeCreator = (
+    set: (
+      partial:
+        | Partial<AnalysisBuilderStore>
+        | ((state: AnalysisBuilderStore) => Partial<AnalysisBuilderStore>)
+    ) => void,
+    get: () => AnalysisBuilderStore,
+    store: StoreApi<AnalysisBuilderStore>
+  ) => ({
+    // Compose slices - they provide default state and actions
+    ...createCoreSlice(set, get, store),
+    ...createQuerySlice(set, get, store),
+    ...createFunnelSlice(set, get, store),
+    ...createUISlice(set, get, store),
+
+    // Cross-slice actions
+    ...createCrossSliceActions(set, get),
+  })
 
   // Create store with or without persistence
   if (options.disableLocalStorage) {
     // No persistence - for modal/portlet editing
-    return createStore<AnalysisBuilderStore>()(
-      devtools(
-        subscribeWithSelector((set, get) => ({
-          ...initialState,
-          ...createStoreActions(set, get, initialState),
-        })),
-        { name: 'AnalysisBuilderStore (no-persist)' }
-      )
+    const store = createStore<AnalysisBuilderStore>()(
+      devtools(subscribeWithSelector(storeCreator), {
+        name: 'AnalysisBuilderStore (no-persist)',
+      })
     )
+
+    // Apply initial config if provided
+    if (initialConfig) {
+      store.getState().load(initialConfig)
+    }
+
+    return store
   }
 
   // With persistence - for standalone mode
   return createStore<AnalysisBuilderStore>()(
     devtools(
       subscribeWithSelector(
-        persist(
-          (set, get) => ({
-            ...initialState,
-            ...createStoreActions(set, get, initialState),
-          }),
-          {
-            name: STORAGE_KEY,
-            partialize: (state) => ({
-              // Only persist these fields
-              queryStates: state.queryStates,
-              activeQueryIndex: state.queryStates.length > 1 ? state.activeQueryIndex : undefined,
-              mergeStrategy: state.queryStates.length > 1 ? state.mergeStrategy : undefined,
-              // Funnel binding key (only persist when in funnel mode)
-              funnelBindingKey: state.mergeStrategy === 'funnel' ? state.funnelBindingKey : undefined,
-              chartType: state.chartType,
-              chartConfig: state.chartConfig,
-              displayConfig: state.displayConfig,
-              activeView: state.activeView,
-            }),
-          }
-        )
+        persist(storeCreator, {
+          name: STORAGE_KEY,
+          // Use workspace format to preserve ALL modes' state
+          partialize: (state) => state.saveWorkspace(),
+          merge: (persisted, current) => {
+            // Try workspace format first (new format)
+            if (persisted && isValidAnalysisWorkspace(persisted)) {
+              return {
+                ...current,
+                _persistedWorkspace: persisted,
+              } as typeof current
+            }
+            // Backward compat: single AnalysisConfig (migrate to workspace on next save)
+            if (persisted && isValidAnalysisConfig(persisted)) {
+              return {
+                ...current,
+                _persistedConfig: persisted,
+              } as typeof current
+            }
+            // Invalid/legacy format - use current (fresh start)
+            // Also preserve initialConfig to apply if provided
+            if (initialConfig) {
+              return {
+                ...current,
+                _initialConfig: initialConfig,
+              } as typeof current
+            }
+            return current
+          },
+          onRehydrateStorage: () => (state) => {
+            // After rehydration, call loadWorkspace/load with persisted or initial config
+            if (state) {
+              if ((state as any)._persistedWorkspace) {
+                // New workspace format - load all modes
+                const workspace = (state as any)._persistedWorkspace as AnalysisWorkspace
+                delete (state as any)._persistedWorkspace
+                delete (state as any)._persistedConfig
+                delete (state as any)._initialConfig
+                state.loadWorkspace(workspace)
+              } else if ((state as any)._persistedConfig) {
+                // Legacy single-mode format - load only that mode
+                // Will be migrated to workspace on next save
+                const config = (state as any)._persistedConfig
+                delete (state as any)._persistedConfig
+                delete (state as any)._initialConfig
+                state.load(config)
+              } else if ((state as any)._initialConfig) {
+                const config = (state as any)._initialConfig
+                delete (state as any)._initialConfig
+                state.load(config)
+              }
+            }
+          },
+        })
       ),
       { name: 'AnalysisBuilderStore' }
     )
@@ -1349,6 +848,12 @@ export interface AnalysisBuilderStoreProviderProps {
   }
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
+  /** Initial analysis type (query or funnel) */
+  initialAnalysisType?: AnalysisType
+  /** Initial funnel state (when analysisType === 'funnel') */
+  initialFunnelState?: InitialFunnelState
+  /** Initial active view (table or chart) - used to prevent flash when loading from share */
+  initialActiveView?: 'table' | 'chart'
 }
 
 /**
@@ -1359,6 +864,9 @@ export function AnalysisBuilderStoreProvider({
   initialQuery,
   initialChartConfig,
   disableLocalStorage,
+  initialAnalysisType,
+  initialFunnelState,
+  initialActiveView,
 }: AnalysisBuilderStoreProviderProps) {
   // Create store instance once per provider mount
   const storeRef = useRef<StoreApi<AnalysisBuilderStore> | null>(null)
@@ -1368,6 +876,9 @@ export function AnalysisBuilderStoreProvider({
       initialQuery,
       initialChartConfig,
       disableLocalStorage,
+      initialAnalysisType,
+      initialFunnelState,
+      initialActiveView,
     })
   }
 
@@ -1430,13 +941,101 @@ export const selectFilters = (state: AnalysisBuilderStore) =>
   selectCurrentState(state).filters
 
 /**
- * Select chart configuration
+ * Select current chart config from the charts map (NEW - Phase 2)
+ * This is the preferred way to access chart configuration.
+ * Falls back to default chart config if mode's config is missing.
  */
-export const selectChartConfig = (state: AnalysisBuilderStore) => ({
-  chartType: state.chartType,
-  chartConfig: state.chartConfig,
-  displayConfig: state.displayConfig,
-})
+export const selectCurrentChartConfig = (state: AnalysisBuilderStore): ChartConfig => {
+  const config = state.charts[state.analysisType]
+  if (config) return config
+
+  // Fallback to adapter default (shouldn't happen in normal usage)
+  return adapterRegistry.get(state.analysisType).getDefaultChartConfig()
+}
+
+/**
+ * Select chart type from current mode's chart config
+ */
+export const selectChartType = (state: AnalysisBuilderStore): ChartType =>
+  selectCurrentChartConfig(state).chartType
+
+/**
+ * Select chart axis config from current mode's chart config
+ */
+export const selectChartAxisConfig = (state: AnalysisBuilderStore): ChartAxisConfig =>
+  selectCurrentChartConfig(state).chartConfig
+
+/**
+ * Select display config from current mode's chart config
+ */
+export const selectChartDisplayConfig = (state: AnalysisBuilderStore): ChartDisplayConfig =>
+  selectCurrentChartConfig(state).displayConfig
+
+/**
+ * Select chart configuration (returns mode-appropriate config)
+ * @deprecated Use selectCurrentChartConfig instead (reads from charts map)
+ */
+export const selectChartConfig = (state: AnalysisBuilderStore) => {
+  // Use charts map (Phase 2 approach)
+  const config = state.charts[state.analysisType]
+  if (config) {
+    return {
+      chartType: config.chartType,
+      chartConfig: config.chartConfig,
+      displayConfig: config.displayConfig,
+    }
+  }
+
+  // No fallback - charts map is the source of truth (Phase 4 cleanup)
+  // Return defaults if config is missing (shouldn't happen in practice)
+  return {
+    chartType: 'bar' as const,
+    chartConfig: {},
+    displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
+  }
+}
+
+/**
+ * Select query mode chart configuration (always returns query mode config)
+ */
+export const selectQueryModeChartConfig = (state: AnalysisBuilderStore) => {
+  // charts map is the source of truth (Phase 4 cleanup)
+  const config = state.charts.query
+  if (config) {
+    return {
+      chartType: config.chartType,
+      chartConfig: config.chartConfig,
+      displayConfig: config.displayConfig,
+    }
+  }
+  // Return defaults if config is missing (shouldn't happen in practice)
+  return {
+    chartType: 'bar' as const,
+    chartConfig: {},
+    displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
+  }
+}
+
+/**
+ * Select funnel mode chart configuration (always returns funnel mode config)
+ */
+export const selectFunnelModeChartConfig = (state: AnalysisBuilderStore) => {
+  // charts map is the source of truth (Phase 4 cleanup)
+  const config = state.charts.funnel
+  if (config) {
+    return {
+      chartType: config.chartType,
+      chartConfig: config.chartConfig,
+      displayConfig: config.displayConfig,
+    }
+  }
+  // Return defaults if config is missing (shouldn't happen in practice)
+  return {
+    chartType: 'funnel' as const,
+    chartConfig: {},
+    displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
+  }
+}
 
 /**
  * Select UI state
@@ -1450,20 +1049,36 @@ export const selectUIState = (state: AnalysisBuilderStore) => ({
 })
 
 /**
+ * Select analysis type
+ */
+export const selectAnalysisType = (state: AnalysisBuilderStore) => state.analysisType
+
+/**
  * Select multi-query state
  */
 export const selectMultiQueryState = (state: AnalysisBuilderStore) => ({
   queryStates: state.queryStates,
   activeQueryIndex: state.activeQueryIndex,
   mergeStrategy: state.mergeStrategy,
-  isMultiQueryMode: state.queryStates.length > 1,
+  // Multi-query mode is when we have more than one query in 'query' analysis type
+  isMultiQueryMode: state.analysisType === 'query' && state.queryStates.length > 1,
 })
 
 /**
- * Select funnel state
+ * Select funnel cube
+ */
+export const selectFunnelCube = (state: AnalysisBuilderStore) => state.funnelCube
+
+/**
+ * Select funnel state (new dedicated state)
  */
 export const selectFunnelState = (state: AnalysisBuilderStore) => ({
+  funnelCube: state.funnelCube,
+  funnelSteps: state.funnelSteps,
+  activeFunnelStepIndex: state.activeFunnelStepIndex,
+  funnelTimeDimension: state.funnelTimeDimension,
   funnelBindingKey: state.funnelBindingKey,
+  isFunnelMode: state.analysisType === 'funnel',
+  // Deprecated field kept for backward compat
   stepTimeToConvert: state.stepTimeToConvert,
-  isFunnelMode: state.mergeStrategy === 'funnel',
 })

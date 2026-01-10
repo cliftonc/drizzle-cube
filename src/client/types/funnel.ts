@@ -190,6 +190,12 @@ export interface FunnelChartData {
   stepIndex: number
   /** Optional fill color */
   fill?: string
+  /** Average seconds to reach this step from previous step (from server) */
+  avgSecondsToConvert?: number | null
+  /** Median seconds to reach this step from previous step (from server) */
+  medianSecondsToConvert?: number | null
+  /** 90th percentile seconds to reach this step (from server) */
+  p90SecondsToConvert?: number | null
 }
 
 /**
@@ -230,6 +236,12 @@ export interface UseFunnelQueryOptions {
   onComplete?: (result: FunnelExecutionResult) => void
   /** Callback when execution fails */
   onError?: (error: Error, stepIndex: number) => void
+  /**
+   * Pre-built server funnel query. When provided, skips building
+   * the server query from FunnelConfig and uses this directly.
+   * Use this with the new dedicated funnel mode (analysisType === 'funnel').
+   */
+  prebuiltServerQuery?: ServerFunnelQuery | null
 }
 
 /**
@@ -278,13 +290,39 @@ export interface UseFunnelQueryResult {
    * - Binding key dimension is automatically added if not present
    * - For steps 2+, an IN filter is added with binding key values from the previous step
    * Use these for debug/inspection to see what was actually sent to the server.
+   * @deprecated Server-side funnel execution doesn't use per-step queries. Use serverQuery instead.
    */
   executedQueries: CubeQuery[]
+
+  /**
+   * The actual server query sent to the API with { funnel: {...} }.
+   * This is a single unified query, not per-step queries.
+   * Use this for debug panel display to show what's actually executed.
+   */
+  serverQuery: ServerFunnelQuery | null
 }
 
 /**
- * Type guard to check if merge strategy is funnel mode
+ * Server-side funnel query format
+ * This is the { funnel: {...} } object sent to the server API
  */
-export function isFunnelMergeStrategy(strategy: string): strategy is 'funnel' {
-  return strategy === 'funnel'
+export interface ServerFunnelQuery {
+  funnel: {
+    bindingKey: string | { cube: string; dimension: string }[]
+    timeDimension: string | { cube: string; dimension: string }[]
+    steps: ServerFunnelStep[]
+    includeTimeMetrics?: boolean
+    globalTimeWindow?: string
+  }
 }
+
+/**
+ * Server-side funnel step format
+ */
+export interface ServerFunnelStep {
+  name: string
+  cube?: string
+  filter?: unknown
+  timeToConvert?: string
+}
+

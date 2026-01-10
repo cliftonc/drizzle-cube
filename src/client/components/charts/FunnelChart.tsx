@@ -4,12 +4,17 @@
  * Visualizes funnel data showing conversion rates between steps.
  * Uses horizontal bars with percentage widths to represent the funnel shape.
  * Works with data from useFunnelQuery hook which provides FunnelChartData.
+ *
+ * When displayConfig.showFunnelTimeMetrics is enabled, displays time-to-convert
+ * metrics from server-side funnel execution (avg, median, P90 seconds).
  */
 
 import React, { useMemo } from 'react'
+import { FunnelChart as RechartsFunnelChart, Funnel, LabelList, Tooltip, Cell, ResponsiveContainer } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
 import type { FunnelChartData } from '../../types/funnel'
+import { formatDuration } from '../../utils/funnelExecution'
 
 // Color gradient for funnel steps (darker to lighter)
 const FUNNEL_COLORS = [
@@ -44,6 +49,28 @@ function isFunnelData(data: unknown[]): data is FunnelChartData[] {
 }
 
 /**
+ * Render time metrics based on config options - returns array of lines for vertical stacking
+ */
+function getTimeMetricsLines(
+  step: FunnelChartData,
+  showAvg: boolean,
+  showMedian: boolean,
+  showP90: boolean
+): string[] {
+  const lines: string[] = []
+  if (showAvg && step.avgSecondsToConvert != null) {
+    lines.push(`Avg: ${formatDuration(step.avgSecondsToConvert)}`)
+  }
+  if (showMedian && step.medianSecondsToConvert != null) {
+    lines.push(`Med: ${formatDuration(step.medianSecondsToConvert)}`)
+  }
+  if (showP90 && step.p90SecondsToConvert != null) {
+    lines.push(`P90: ${formatDuration(step.p90SecondsToConvert)}`)
+  }
+  return lines
+}
+
+/**
  * FunnelChart Component
  *
  * Renders a funnel visualization from FunnelChartData array.
@@ -60,6 +87,14 @@ const FunnelChart = React.memo(function FunnelChart({
   const customStepLabels = displayConfig?.funnelStepLabels
   const orientation = displayConfig?.funnelOrientation || 'horizontal'
   const isVertical = orientation === 'vertical'
+  const funnelStyle = displayConfig?.funnelStyle ?? 'bars'
+  const showConversion = displayConfig?.showFunnelConversion ?? true
+
+  // Time metrics - individual toggles with backward compat for showFunnelTimeMetrics
+  const showAvgTime = displayConfig?.showFunnelAvgTime ??
+    (displayConfig?.showFunnelTimeMetrics ?? false) // backward compat
+  const showMedianTime = displayConfig?.showFunnelMedianTime ?? false
+  const showP90Time = displayConfig?.showFunnelP90Time ?? false
 
   // Transform data if needed
   const funnelData = useMemo<FunnelChartData[]>(() => {
@@ -131,6 +166,77 @@ const FunnelChart = React.memo(function FunnelChart({
 
   const paletteColors = colorPalette?.colors || CHART_COLORS
 
+  // Render Recharts Funnel style (trapezoid shape)
+  if (funnelStyle === 'funnel') {
+    // Recharts FunnelChart layout: 'horizontal' = funnel flows left-to-right, 'vertical' = top-to-bottom (default)
+    // Our config: 'horizontal' orientation = standard top-to-bottom funnel
+    //             'vertical' orientation = left-to-right funnel
+    const rechartsLayout: 'horizontal' | 'vertical' = isVertical ? 'horizontal' : 'vertical'
+
+    return (
+      <div className="relative w-full h-full flex flex-col" style={{ height }}>
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsFunnelChart layout={rechartsLayout}>
+              <Tooltip
+                formatter={(value) => typeof value === 'number' ? value.toLocaleString() : String(value)}
+                contentStyle={{
+                  backgroundColor: 'var(--dc-surface)',
+                  border: '1px solid var(--dc-border)',
+                  borderRadius: '4px',
+                }}
+              />
+              <Funnel
+                dataKey="value"
+                nameKey="name"
+                data={funnelData}
+                isAnimationActive
+              >
+                {funnelData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={getStepColor(index, paletteColors)} />
+                ))}
+                <LabelList
+                  position="right"
+                  dataKey="name"
+                  fill="var(--dc-text)"
+                  style={{ fontSize: '12px' }}
+                />
+                <LabelList
+                  position="center"
+                  dataKey="percentage"
+                  formatter={(v) => typeof v === 'number' ? `${v.toFixed(1)}%` : String(v)}
+                  fill="#fff"
+                  style={{ fontSize: '11px', fontWeight: 500 }}
+                />
+              </Funnel>
+            </RechartsFunnelChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Summary Footer */}
+        {!displayConfig?.hideSummaryFooter && (
+          <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
+            <div className="flex items-center justify-between text-sm">
+              <div className="text-dc-text-muted">
+                <span className="font-medium">{funnelData.length}</span> steps
+              </div>
+              <div className="text-dc-text">
+                <span className="text-dc-text-muted">Overall:</span>{' '}
+                <span className="font-medium">
+                  {firstStepValue > 0
+                    ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
+                    : '0%'}
+                </span>
+              </div>
+              <div className="text-dc-text-muted">
+                {funnelData[funnelData.length - 1]?.value.toLocaleString() || 0} / {firstStepValue.toLocaleString()} completed
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // Render vertical orientation (bars grow from bottom to top, steps laid out horizontally)
   if (isVertical) {
     return (
@@ -147,13 +253,24 @@ const FunnelChart = React.memo(function FunnelChart({
             // Use custom label if provided, otherwise fall back to step name
             const displayName = customStepLabels?.[index] || step.name
 
+            const timeMetricsLines = getTimeMetricsLines(step, showAvgTime, showMedianTime, showP90Time)
+            const metricsCount = timeMetricsLines.length
+
             return (
               <div key={step.name} className="flex flex-col items-center gap-2 flex-1 max-w-32 h-full">
                 {/* Conversion Rate from Previous (top) */}
-                <div className="h-5 flex-shrink-0">
+                <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'min-h-16' : 'min-h-10') : 'h-5'} flex-shrink-0 text-center`}>
                   {stepConversionRate !== null ? (
                     <div className="text-xs text-dc-text-secondary">
-                      → {stepConversionRate.toFixed(1)}%
+                      {showConversion && <span>→ {stepConversionRate.toFixed(1)}%</span>}
+                      {/* Time metrics (when enabled) */}
+                      {metricsCount > 0 && (
+                        <div className="text-dc-text-muted mt-0.5 space-y-0.5">
+                          {timeMetricsLines.map((line, i) => (
+                            <div key={i}>⏱ {line}</div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-xs text-dc-text-muted">—</div>
@@ -238,6 +355,8 @@ const FunnelChart = React.memo(function FunnelChart({
 
           // Use custom label if provided, otherwise fall back to step name
           const displayName = customStepLabels?.[index] || step.name
+          const timeMetricsLines = getTimeMetricsLines(step, showAvgTime, showMedianTime, showP90Time)
+          const metricsCount = timeMetricsLines.length
 
           return (
             <div key={step.name} className="flex items-center gap-3">
@@ -277,10 +396,18 @@ const FunnelChart = React.memo(function FunnelChart({
               </div>
 
               {/* Conversion Rate from Previous */}
-              <div className="w-16 flex-shrink-0 text-left">
+              <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'w-36' : 'w-28') : 'w-16'} flex-shrink-0 text-left`}>
                 {stepConversionRate !== null ? (
                   <div className="text-xs text-dc-text-secondary">
-                    ↓ {stepConversionRate.toFixed(1)}%
+                    {showConversion && <span>↓ {stepConversionRate.toFixed(1)}%</span>}
+                    {/* Time metrics (when enabled) */}
+                    {metricsCount > 0 && (
+                      <div className="text-dc-text-muted mt-0.5 space-y-0.5">
+                        {timeMetricsLines.map((line, i) => (
+                          <div key={i}>⏱ {line}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-xs text-dc-text-muted">—</div>

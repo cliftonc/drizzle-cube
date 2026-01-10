@@ -23,6 +23,11 @@ const QueryBuilderShim = forwardRef<QueryBuilderRef, QueryBuilderProps>(
         if (!config) {
           return { measures: [], dimensions: [] }
         }
+        // If funnel query, return empty query for backward compatibility
+        // (QueryBuilder interface doesn't support funnel mode)
+        if ('funnel' in config) {
+          return { measures: [], dimensions: [] }
+        }
         // If multi-query, return first query for backward compatibility
         if ('queries' in config) {
           return config.queries[0] || { measures: [], dimensions: [] }

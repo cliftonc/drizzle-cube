@@ -4,25 +4,22 @@
  * Manages:
  * - Share button state (idle, copied, copied-no-chart)
  * - Share URL generation and clipboard copy
+ *
+ * Phase 3: Now uses store.save() to get AnalysisConfig directly.
  */
 
 import { useState, useCallback } from 'react'
-import type { CubeQuery, ChartType, ChartAxisConfig, ChartDisplayConfig, MultiQueryConfig } from '../types'
+import type { AnalysisConfig } from '../types/analysisConfig'
 import { compressWithFallback } from '../utils/shareUtils'
 
 interface UseAnalysisShareOptions {
   /** Whether the current query is valid */
   isValidQuery: boolean
-  /** Getter for the query config (matches AnalysisBuilder save format) */
-  getQueryConfig: () => CubeQuery | MultiQueryConfig
-  /** Current chart type */
-  chartType: ChartType
-  /** Current chart config */
-  chartConfig: ChartAxisConfig
-  /** Current display config */
-  displayConfig: ChartDisplayConfig
-  /** Current active view */
-  activeView: 'table' | 'chart'
+  /**
+   * Getter for the AnalysisConfig (from store.save())
+   * This is the new Phase 3 API - returns complete AnalysisConfig
+   */
+  getAnalysisConfig: () => AnalysisConfig
 }
 
 interface UseAnalysisShareResult {
@@ -34,11 +31,7 @@ interface UseAnalysisShareResult {
 
 export function useAnalysisShare({
   isValidQuery,
-  getQueryConfig,
-  chartType,
-  chartConfig,
-  displayConfig,
-  activeView
+  getAnalysisConfig,
 }: UseAnalysisShareOptions): UseAnalysisShareResult {
   const [shareButtonState, setShareButtonState] = useState<'idle' | 'copied' | 'copied-no-chart'>('idle')
 
@@ -48,20 +41,13 @@ export function useAnalysisShare({
   const handleShare = useCallback(async () => {
     if (!isValidQuery) return
 
-    const queryConfig = getQueryConfig()
+    // Get AnalysisConfig from store's save() method
+    const config = getAnalysisConfig()
 
-    const shareableState = {
-      query: queryConfig,
-      chartType,
-      chartConfig,
-      displayConfig,
-      activeView
-    }
+    // Try full config first, fall back to minimal if too large
+    const { encoded, queryOnly } = compressWithFallback(config)
 
-    // Try full state first, fall back to query-only if too large
-    const { encoded, queryOnly } = compressWithFallback(shareableState)
-
-    // If even query-only is too large, don't share
+    // If even minimal is too large, don't share
     if (!encoded) {
       return
     }
@@ -87,7 +73,7 @@ export function useAnalysisShare({
     setTimeout(() => {
       setShareButtonState('idle')
     }, 2000)
-  }, [isValidQuery, getQueryConfig, chartType, chartConfig, displayConfig, activeView])
+  }, [isValidQuery, getAnalysisConfig])
 
   return {
     shareButtonState,

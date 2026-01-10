@@ -223,3 +223,67 @@ export function useDryRunQueries(options: {
 
   return useMultiDryRunQueries(queriesToFetch, { skip, staleTime })
 }
+
+/**
+ * Debug data entry for funnel queries
+ */
+export interface FunnelDebugDataEntry extends DebugDataEntry {
+  /** Funnel-specific metadata from server */
+  funnelMetadata?: {
+    stepCount: number
+    steps: Array<{
+      index: number
+      name: string
+      timeToConvert?: string
+      cube?: string
+    }>
+    bindingKey: unknown
+    timeDimension: unknown
+  }
+}
+
+/**
+ * TanStack Query hook for funnel query dry-run (debug) data
+ *
+ * Usage:
+ * ```tsx
+ * const { debugData } = useFunnelDryRunQuery(serverQuery, { skip: !isFunnelMode })
+ * ```
+ */
+export function useFunnelDryRunQuery(
+  serverQuery: unknown | null,
+  options: UseDryRunQueryOptions = {}
+): { debugData: FunnelDebugDataEntry; refetch: () => void } {
+  const { skip = false, staleTime = 5 * 60 * 1000 } = options
+  const { cubeApi } = useCubeApi()
+
+  const queryResult = useQuery({
+    queryKey: ['cube', 'dryRun', 'funnel', serverQuery ? stableStringify(serverQuery) : null] as const,
+    queryFn: async () => {
+      if (!serverQuery) throw new Error('No funnel query provided')
+      // Send the funnel query to dry-run endpoint
+      // The server will detect it's a funnel query and use dryRunFunnel
+      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
+      return {
+        sql: result.sql,
+        analysis: result.analysis,
+        funnelMetadata: (result as unknown as { funnel?: unknown }).funnel,
+      }
+    },
+    enabled: !!serverQuery && !skip,
+    staleTime,
+  })
+
+  const debugData: FunnelDebugDataEntry = {
+    sql: queryResult.data?.sql ?? null,
+    analysis: queryResult.data?.analysis ?? null,
+    loading: queryResult.isLoading,
+    error: queryResult.error ?? null,
+    funnelMetadata: queryResult.data?.funnelMetadata as FunnelDebugDataEntry['funnelMetadata'],
+  }
+
+  return {
+    debugData,
+    refetch: () => queryResult.refetch(),
+  }
+}

@@ -1,40 +1,33 @@
 /**
- * useFunnelQuery - Hook for sequential funnel query execution
+ * useFunnelQuery - Hook for server-side funnel query execution
  *
- * Unlike useMultiCubeLoadQuery which executes queries in parallel,
- * this hook executes queries sequentially where each step filters
- * based on binding key values from the previous step's results.
+ * Executes funnel queries on the server using a single SQL query with
+ * CTE-based generation. This provides:
+ * - True temporal ordering (step N must occur AFTER step N-1)
+ * - Time window enforcement (timeToConvert constraints)
+ * - No binding key value limits
+ * - Time-to-convert metrics (avg, median, P90)
  *
- * Features:
- * - Sequential execution with binding key propagation
- * - Progressive loading (shows results as each step completes)
- * - Built-in debouncing
- * - Per-step error tracking
- * - Conversion rate calculation
+ * Previously this hook used client-side sequential execution. The server-side
+ * approach is strictly better and the data shapes are compatible.
  */
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCubeApi } from '../../providers/CubeApiProvider'
-import { cleanQueryForServer } from '../../shared/utils'
 import { useDebounceQuery } from '../useDebounceQuery'
-import type { CubeQuery, CubeResultSet } from '../../types'
+import type { CubeQuery } from '../../types'
 import type {
   FunnelConfig,
-  FunnelStepResult,
-  FunnelExecutionResult,
   FunnelChartData,
   UseFunnelQueryOptions,
   UseFunnelQueryResult,
+  FunnelStepResult,
+  FunnelExecutionResult,
 } from '../../types/funnel'
 import {
-  getBindingKeyField,
-  extractBindingKeyValues,
-  buildStepQuery,
-  buildStepResult,
-  buildFunnelResult,
-  buildFunnelChartData,
-  shouldStopFunnelExecution,
-  DEFAULT_BINDING_KEY_LIMIT,
+  buildServerFunnelQuery,
+  transformServerFunnelResult,
 } from '../../utils/funnelExecution'
 
 // Default debounce delay in milliseconds
@@ -56,12 +49,16 @@ function isValidFunnelConfig(config: FunnelConfig | null): boolean {
   }
 
   // Check that each step has a valid query
+  // For funnels, a step can have:
+  // - measures/dimensions/timeDimensions (standard fields), OR
+  // - filters only (the binding key dimension is auto-added by buildStepQuery)
   for (const step of config.steps) {
     const query = step.query
     const hasFields =
       (query.measures && query.measures.length > 0) ||
       (query.dimensions && query.dimensions.length > 0) ||
-      (query.timeDimensions && query.timeDimensions.length > 0)
+      (query.timeDimensions && query.timeDimensions.length > 0) ||
+      (query.filters && query.filters.length > 0)
     if (!hasFields) return false
   }
 
@@ -69,21 +66,17 @@ function isValidFunnelConfig(config: FunnelConfig | null): boolean {
 }
 
 /**
- * Hook for sequential funnel query execution
+ * Hook for server-side funnel query execution
  *
  * Usage:
  * ```tsx
- * const { result, isExecuting, execute, stepResults, chartData } = useFunnelQuery(config, {
+ * const { chartData, isExecuting, error } = useFunnelQuery(config, {
  *   debounceMs: 300,
  *   skip: !hasBindingKey
  * })
  *
- * // Results show progressively as each step completes
- * {stepResults.map((step, i) => (
- *   <div key={i}>
- *     {step.stepName}: {step.count} ({step.conversionRate}% from previous)
- *   </div>
- * ))}
+ * // Results available after single server request
+ * <FunnelChart data={chartData} />
  * ```
  */
 export function useFunnelQuery(
@@ -93,12 +86,13 @@ export function useFunnelQuery(
   const {
     skip = false,
     debounceMs = DEFAULT_DEBOUNCE_MS,
-    onStepComplete,
     onComplete,
     onError,
+    prebuiltServerQuery,
   } = options
 
   const { cubeApi } = useCubeApi()
+  const queryClient = useQueryClient()
 
   // Validate config
   const isValidConfig = isValidFunnelConfig(config)
@@ -110,251 +104,247 @@ export function useFunnelQuery(
     debounceMs,
   })
 
-  // State
-  const [result, setResult] = useState<FunnelExecutionResult | null>(null)
-  const [stepResults, setStepResults] = useState<FunnelStepResult[]>([])
-  const [status, setStatus] = useState<FunnelExecutionResult['status']>('idle')
-  const [currentStepIndex, setCurrentStepIndex] = useState<number | null>(null)
-  const [error, setError] = useState<Error | null>(null)
-  // Track the actually executed queries (with binding key dimension and IN filters)
-  const [executedQueries, setExecutedQueries] = useState<CubeQuery[]>([])
-
-  // Ref to track execution cancellation
-  const executionIdRef = useRef<number>(0)
-  const abortControllerRef = useRef<AbortController | null>(null)
-
-  // Reset state when config changes significantly
-  useEffect(() => {
-    if (!debouncedConfig) {
-      setResult(null)
-      setStepResults([])
-      setStatus('idle')
-      setCurrentStepIndex(null)
-      setError(null)
+  // Build server query from config (or use prebuilt if provided)
+  const serverQuery = useMemo(() => {
+    // If prebuiltServerQuery is provided, use it directly
+    if (prebuiltServerQuery) {
+      return prebuiltServerQuery
     }
-  }, [debouncedConfig])
 
-  /**
-   * Execute the funnel query sequentially
-   */
-  const execute = useCallback(async (): Promise<FunnelExecutionResult | null> => {
+    // Otherwise build from config (legacy mode)
     if (!debouncedConfig || !isValidConfig) {
       return null
     }
 
-    // Cancel any previous execution
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    // Create new execution context
-    const executionId = ++executionIdRef.current
-    abortControllerRef.current = new AbortController()
-
-    // Reset state for new execution
-    setStatus('executing')
-    setError(null)
-    setStepResults([])
-    setCurrentStepIndex(0)
-    setExecutedQueries([])
-
-    const config = debouncedConfig
-    const countUnique = config.countUnique !== false
-    const bindingKeyLimit = config.bindingKeyLimit ?? DEFAULT_BINDING_KEY_LIMIT
-    const accumulatedResults: FunnelStepResult[] = []
-    const accumulatedQueries: CubeQuery[] = []
-    let currentBindingKeyValues: (string | number)[] = []
-    let firstStepCount = 0
-    let executionError: Error | null = null
-
     try {
-      for (let i = 0; i < config.steps.length; i++) {
-        // Check if execution was cancelled
-        if (executionIdRef.current !== executionId) {
-          return null
-        }
-
-        const step = config.steps[i]
-        setCurrentStepIndex(i)
-
-        // Build query with binding key filter
-        const stepQuery = buildStepQuery(
-          step,
-          config.bindingKey,
-          i === 0 ? null : currentBindingKeyValues
-        )
-
-        // Clean query for server
-        const serverQuery = cleanQueryForServer(stepQuery)
-
-        // Execute step query
-        const startTime = performance.now()
-        let resultSet: CubeResultSet
-        let stepError: Error | null = null
-        let data: unknown[] = []
-
-        try {
-          resultSet = await cubeApi.load(serverQuery)
-          data = resultSet.rawData()
-        } catch (err) {
-          stepError = err instanceof Error ? err : new Error(String(err))
-          onError?.(stepError, i)
-        }
-
-        const executionTime = performance.now() - startTime
-
-        // Get binding key field for this step
-        const bindingKeyField = getBindingKeyField(config.bindingKey, stepQuery)
-
-        // Extract binding key values for next step (with limit applied)
-        if (!stepError) {
-          const extracted = extractBindingKeyValues(data, bindingKeyField, bindingKeyLimit)
-          currentBindingKeyValues = extracted.values
-        }
-
-        // Track first step count (uses total count before limiting)
-        if (i === 0 && !stepError) {
-          const extracted = extractBindingKeyValues(data, bindingKeyField, 0) // No limit for counting
-          firstStepCount = countUnique
-            ? extracted.totalCount
-            : data.length
-        }
-
-        // Build step result (includes limit for binding key extraction)
-        const previousCount = i === 0 ? null : accumulatedResults[i - 1]?.count || 0
-        const stepResult = buildStepResult(
-          step,
-          i,
-          data,
-          bindingKeyField,
-          countUnique,
-          previousCount,
-          firstStepCount,
-          executionTime,
-          stepError,
-          bindingKeyLimit
-        )
-
-        accumulatedResults.push(stepResult)
-        accumulatedQueries.push(stepQuery)
-
-        // Update state progressively
-        setStepResults([...accumulatedResults])
-        setExecutedQueries([...accumulatedQueries])
-
-        // Callback for step completion
-        onStepComplete?.(stepResult)
-
-        // Check if we should stop execution
-        if (shouldStopFunnelExecution(stepResult)) {
-          if (stepResult.error) {
-            executionError = stepResult.error
-          }
-          break
-        }
-      }
-    } catch (err) {
-      executionError = err instanceof Error ? err : new Error(String(err))
-    }
-
-    // Check if execution was cancelled
-    if (executionIdRef.current !== executionId) {
+      const result = buildServerFunnelQuery(
+        debouncedConfig.steps.map(s => s.query),
+        debouncedConfig.bindingKey,
+        debouncedConfig.steps.map(s => s.name),
+        debouncedConfig.steps.map(s => s.timeToConvert || null),
+        true // includeTimeMetrics
+      )
+      return result
+    } catch (error) {
+      console.error('Failed to build server funnel query:', error)
       return null
     }
+  }, [prebuiltServerQuery, debouncedConfig, isValidConfig])
 
-    // Build final result
-    const finalStatus: FunnelExecutionResult['status'] = executionError
-      ? 'error'
-      : accumulatedResults.length < config.steps.length
-        ? 'partial'
-        : 'success'
+  // Create stable query key
+  // Include step count explicitly to ensure cache invalidation when steps change
+  const queryKey = useMemo(() => {
+    if (!serverQuery) return ['cube', 'funnel', null] as const
+    const stepCount = serverQuery.funnel?.steps?.length || 0
+    return ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)] as const
+  }, [serverQuery])
 
-    const finalResult = buildFunnelResult(
-      config,
-      accumulatedResults,
-      finalStatus,
-      executionError,
-      null
+  // Execute funnel query via TanStack Query
+  const queryResult = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!serverQuery) {
+        throw new Error('No server query available')
+      }
+
+      const startTime = performance.now()
+
+      try {
+        // Send funnel query to server (single request)
+        const resultSet = await cubeApi.load(serverQuery as unknown as CubeQuery)
+        const rawData = resultSet.rawData()
+        const executionTime = performance.now() - startTime
+
+        return {
+          rawData,
+          executionTime,
+        }
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error))
+        onError?.(err, 0)
+        throw err
+      }
+    },
+    // Enable when we have a server query (either prebuilt or built from config)
+    enabled: !skip && !!serverQuery,
+    staleTime: 60000, // 1 minute cache
+    gcTime: 5 * 60 * 1000, // 5 minute garbage collection
+  })
+
+  // Get step names from either config or prebuilt server query
+  const stepNames = useMemo(() => {
+    if (prebuiltServerQuery?.funnel?.steps) {
+      return prebuiltServerQuery.funnel.steps.map(s => s.name)
+    }
+    return debouncedConfig?.steps?.map(s => s.name)
+  }, [prebuiltServerQuery, debouncedConfig])
+
+  // Get expected step count from either config or prebuilt server query
+  const expectedStepCount = useMemo(() => {
+    if (prebuiltServerQuery?.funnel?.steps) {
+      return prebuiltServerQuery.funnel.steps.length
+    }
+    return debouncedConfig?.steps?.length || 0
+  }, [prebuiltServerQuery, debouncedConfig])
+
+  // Transform server result to chart data
+  // Validate step count matches to prevent showing stale data during transitions
+  const chartData = useMemo<FunnelChartData[]>(() => {
+    if (!queryResult.data?.rawData) return []
+
+    // Check if data step count matches expected step count
+    const dataStepCount = queryResult.data.rawData.length
+
+    if (dataStepCount !== expectedStepCount) {
+      // Data is stale (from a different query) - don't return it
+      // This prevents showing mismatched step counts while a new query loads
+      return []
+    }
+
+    return transformServerFunnelResult(
+      queryResult.data.rawData,
+      stepNames
     )
+  }, [queryResult.data, expectedStepCount, stepNames])
 
-    setResult(finalResult)
-    setStatus(finalStatus)
-    setCurrentStepIndex(null)
-    setError(executionError)
+  // Build step results from chart data (for backward compatibility)
+  const stepResults = useMemo<FunnelStepResult[]>(() => {
+    if (!chartData.length) return []
 
-    // Callback for completion
-    onComplete?.(finalResult)
+    const firstCount = chartData[0]?.value || 0
 
-    return finalResult
-  }, [debouncedConfig, isValidConfig, cubeApi, onStepComplete, onComplete, onError])
+    return chartData.map((data, index) => ({
+      stepIndex: index,
+      stepName: data.name,
+      // Get step ID from config, or generate one for prebuilt queries
+      stepId: debouncedConfig?.steps?.[index]?.id || `step-${index}`,
+      data: [], // Raw data not available from server funnel
+      bindingKeyValues: [], // Not available from server funnel
+      bindingKeyTotalCount: 0,
+      count: data.value,
+      conversionRate: data.conversionRate !== null ? data.conversionRate / 100 : null,
+      cumulativeConversionRate: firstCount > 0 ? data.value / firstCount : 0,
+      executionTime: queryResult.data?.executionTime || 0,
+      error: null,
+    }))
+  }, [chartData, debouncedConfig, queryResult.data?.executionTime])
+
+  // Build full result for compatibility
+  const result = useMemo<FunnelExecutionResult | null>(() => {
+    // Need either config or prebuilt query for results
+    if (!chartData.length) return null
+    if (!debouncedConfig && !prebuiltServerQuery) return null
+
+    const firstCount = chartData[0]?.value || 0
+    const lastCount = chartData[chartData.length - 1]?.value || 0
+
+    // Create a config object (use debouncedConfig if available, else synthesize from prebuilt)
+    const effectiveConfig: FunnelConfig = debouncedConfig || {
+      id: 'prebuilt-funnel',
+      name: 'Funnel Analysis',
+      bindingKey: {
+        dimension: typeof prebuiltServerQuery?.funnel?.bindingKey === 'string'
+          ? prebuiltServerQuery.funnel.bindingKey
+          : prebuiltServerQuery?.funnel?.bindingKey?.[0]?.dimension || ''
+      },
+      steps: (prebuiltServerQuery?.funnel?.steps || []).map((s, i) => ({
+        id: `step-${i}`,
+        name: s.name,
+        query: { filters: s.filter ? [s.filter as unknown as import('../../types').Filter] : [] },
+        timeToConvert: s.timeToConvert || undefined,
+      })),
+    }
+
+    const fullResult: FunnelExecutionResult = {
+      config: effectiveConfig,
+      steps: stepResults,
+      summary: {
+        totalEntries: firstCount,
+        totalCompletions: lastCount,
+        overallConversionRate: firstCount > 0 ? lastCount / firstCount : 0,
+        totalExecutionTime: queryResult.data?.executionTime || 0,
+      },
+      chartData,
+      status: queryResult.isError
+        ? 'error'
+        : queryResult.isLoading
+          ? 'executing'
+          : queryResult.isSuccess
+            ? 'success'
+            : 'idle',
+      error: queryResult.error as Error | null,
+      currentStepIndex: null,
+    }
+
+    // Call completion callback
+    if (queryResult.isSuccess && !queryResult.isFetching) {
+      onComplete?.(fullResult)
+    }
+
+    return fullResult
+  }, [debouncedConfig, prebuiltServerQuery, chartData, stepResults, queryResult, onComplete])
+
+  // Determine current status
+  const status: FunnelExecutionResult['status'] = queryResult.isError
+    ? 'error'
+    : queryResult.isLoading
+      ? 'executing'
+      : queryResult.isSuccess
+        ? 'success'
+        : 'idle'
 
   /**
-   * Cancel current execution
+   * Manually execute/refetch the funnel query
+   */
+  const execute = useCallback(async (): Promise<FunnelExecutionResult | null> => {
+    // Allow execution if we have a serverQuery (either from prebuiltServerQuery or built from config)
+    if (!serverQuery) return null
+
+    try {
+      await queryResult.refetch()
+      return result
+    } catch {
+      return result
+    }
+  }, [serverQuery, queryResult, result])
+
+  /**
+   * Cancel is a no-op for TanStack Query (handled automatically)
    */
   const cancel = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-    }
-    executionIdRef.current++
-    setStatus('idle')
-    setCurrentStepIndex(null)
+    // TanStack Query handles cancellation automatically
   }, [])
 
   /**
-   * Reset to initial state
+   * Reset clears the query cache
    */
   const reset = useCallback(() => {
-    cancel()
-    setResult(null)
-    setStepResults([])
-    setError(null)
-  }, [cancel])
-
-  // Auto-execute when debounced config changes (if not skipped)
-  useEffect(() => {
-    if (debouncedConfig && !skip && isValidConfig) {
-      execute()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedConfig, skip, isValidConfig])
-
-  // Compute step loading states
-  const stepLoadingStates = useMemo(() => {
-    if (!debouncedConfig) return []
-    return debouncedConfig.steps.map((_, i) => {
-      if (status !== 'executing') return false
-      return currentStepIndex !== null && i >= currentStepIndex
-    })
-  }, [debouncedConfig, status, currentStepIndex])
-
-  // Compute chart data from step results
-  const chartData: FunnelChartData[] = useMemo(() => {
-    return buildFunnelChartData(stepResults)
-  }, [stepResults])
+    queryClient.removeQueries({ queryKey })
+  }, [queryClient, queryKey])
 
   return {
     result,
     status,
-    isExecuting: status === 'executing',
+    isExecuting: queryResult.isLoading || queryResult.isFetching,
     isDebouncing,
-    currentStepIndex,
-    stepLoadingStates,
+    currentStepIndex: null, // Not applicable for server-side execution
+    stepLoadingStates: [], // Not applicable for server-side execution
     stepResults,
     chartData,
-    error,
+    error: queryResult.error as Error | null,
     execute,
     cancel,
     reset,
-    // Expose the actually executed queries (with binding key dimension + IN filters)
-    // for debug/inspection purposes
-    executedQueries,
+    // Not exposing executedQueries - server builds the query internally
+    executedQueries: [],
+    // Expose the server query for debug panel display
+    // This is the actual { funnel: {...} } query sent to the server
+    serverQuery,
   }
 }
 
 /**
  * Create a stable query key for funnel queries
- * (useful if we want to integrate with TanStack Query in the future)
  */
 export function createFunnelQueryKey(
   config: FunnelConfig | null

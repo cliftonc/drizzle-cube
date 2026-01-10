@@ -12,11 +12,10 @@ import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
 import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
-import type { AnalyticsPortletProps, MultiQueryConfig } from '../types'
-import { isMultiQueryConfig } from '../types'
+import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
+import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 import { cleanQueryForServer } from '../shared/utils'
-import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
 
 
 interface AnalyticsPortletRef {
@@ -70,12 +69,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     return dashboardFilters?.filter(df => !df.isUniversalTime)
   }, [dashboardFilters])
 
-  // Parse query from JSON string, merge dashboard filters, and include refresh counter to force re-query
-  // Supports both single CubeQuery and MultiQueryConfig formats
-  const { queryObject, multiQueryConfig } = useMemo(() => {
+  // Parse query from JSON string, merge dashboard filters, and detect query type
+  // Supports: CubeQuery, MultiQueryConfig, and ServerFunnelQuery formats
+  const { queryObject, multiQueryConfig, serverFunnelQuery } = useMemo(() => {
     // Skip query parsing for charts that don't need queries
     if (shouldSkipQuery) {
-      return { queryObject: null, multiQueryConfig: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null }
     }
 
     try {
@@ -83,6 +82,77 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
       // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
       const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
+
+      // Check if this is a ServerFunnelQuery format { funnel: {...} }
+      if (isServerFunnelQuery(parsed)) {
+        const funnelQuery = parsed as ServerFunnelQuery
+
+        // Apply dashboard filters to funnel query:
+        // 1. Regular filters → merge into step 0's filter
+        // 2. Universal time filters → apply as inDateRange filter on step 0
+
+        // Clone the funnel query to avoid mutating the original
+        const modifiedFunnel = { ...funnelQuery, funnel: { ...funnelQuery.funnel, steps: [...funnelQuery.funnel.steps] } }
+
+        // Get applicable dashboard filters (non-universal time)
+        if (applicableFilters.length > 0 && modifiedFunnel.funnel.steps.length > 0) {
+          // Clone step 0
+          const step0 = { ...modifiedFunnel.funnel.steps[0] }
+
+          // Merge dashboard filters with step 0's existing filter
+          const existingFilters = step0.filter ? (Array.isArray(step0.filter) ? step0.filter : [step0.filter]) : []
+          const mergedFilters = mergeDashboardAndPortletFilters(applicableFilters, existingFilters as any)
+
+          step0.filter = mergedFilters
+          modifiedFunnel.funnel.steps[0] = step0
+        }
+
+        // Apply universal time filters as inDateRange filter on step 0
+        const universalTimeFilters = dashboardFilters?.filter(df =>
+          df.isUniversalTime && dashboardFilterMapping?.includes(df.id)
+        )
+        if (universalTimeFilters && universalTimeFilters.length > 0 && modifiedFunnel.funnel.steps.length > 0) {
+          const timeFilter = universalTimeFilters[0]
+          if ('member' in timeFilter.filter) {
+            const simpleFilter = timeFilter.filter as { member: string; operator: string; values?: string[]; dateRange?: string }
+
+            // Get the date range value from either dateRange property or values[0]
+            const dateRangeValue = simpleFilter.dateRange || (simpleFilter.values?.[0])
+
+            if (dateRangeValue) {
+              // Clone step 0 and add time filter
+              const step0 = { ...modifiedFunnel.funnel.steps[0] }
+
+              // Get the time dimension from the funnel config
+              let timeDimMember: string | undefined
+              if (typeof modifiedFunnel.funnel.timeDimension === 'string') {
+                timeDimMember = modifiedFunnel.funnel.timeDimension
+              } else if (Array.isArray(modifiedFunnel.funnel.timeDimension) && modifiedFunnel.funnel.timeDimension.length > 0) {
+                const td = modifiedFunnel.funnel.timeDimension[0]
+                timeDimMember = `${td.cube}.${td.dimension}`
+              }
+
+              if (timeDimMember) {
+                // Create inDateRange filter for the time dimension
+                // Format: { member, operator: 'inDateRange', values: [], dateRange: 'this month' }
+                const timeRangeFilter = {
+                  member: timeDimMember,
+                  operator: 'inDateRange',
+                  values: [] as string[],
+                  dateRange: dateRangeValue
+                }
+
+                // Merge with existing filters on step 0
+                const existingFilters = step0.filter ? (Array.isArray(step0.filter) ? step0.filter : [step0.filter]) : []
+                step0.filter = [...existingFilters, timeRangeFilter]
+                modifiedFunnel.funnel.steps[0] = step0
+              }
+            }
+          }
+        }
+
+        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel }
+      }
 
       // Check if this is a multi-query configuration
       if (isMultiQueryConfig(parsed)) {
@@ -95,7 +165,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
           }))
         }
-        return { queryObject: null, multiQueryConfig: multiConfig }
+        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null }
       }
 
       // Single query: existing behavior
@@ -112,31 +182,30 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           filters: mergedFilters,
           timeDimensions: mergedTimeDimensions
         },
-        multiQueryConfig: null
+        multiQueryConfig: null,
+        serverFunnelQuery: null
       }
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
-      return { queryObject: null, multiQueryConfig: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null }
     }
   }, [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
   // Determine whether to skip queries based on various conditions
   const isMultiQuery = multiQueryConfig !== null
-  const isFunnelMode = isMultiQuery && multiQueryConfig?.mergeStrategy === 'funnel'
-  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery
+  // Funnel mode: ServerFunnelQuery format (dedicated funnel mode)
+  // Note: Legacy mergeStrategy === 'funnel' is no longer supported
+  const isFunnelMode = serverFunnelQuery !== null
+  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode
   const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode
   const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
 
   // Query client for cache invalidation
   const queryClient = useQueryClient()
 
-  // Build funnel config when in funnel mode
-  const funnelConfig = useMemo(() => {
-    if (!isFunnelMode || !multiQueryConfig?.funnelBindingKey || !multiQueryConfig.queries || multiQueryConfig.queries.length < 2) {
-      return null
-    }
-    return buildFunnelConfigFromQueries(multiQueryConfig.queries, multiQueryConfig.funnelBindingKey)
-  }, [isFunnelMode, multiQueryConfig?.funnelBindingKey, multiQueryConfig?.queries])
+  // Note: Legacy funnel config via mergeStrategy === 'funnel' is no longer supported
+  // Funnel mode now uses ServerFunnelQuery format exclusively
+  const funnelConfig = null
 
   // Use single query hook with TanStack Query (skip if multi-query or other skip conditions)
   const singleQueryResult = useCubeLoadQuery(queryObject, {
@@ -152,10 +221,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     debounceMs: 100, // Lower debounce for portlets (faster response)
   })
 
-  // Use funnel query hook (only for funnel mode)
+  // Use funnel query hook (supports both legacy funnelConfig and new serverFunnelQuery)
   const funnelQueryResult = useFunnelQuery(funnelConfig, {
-    skip: shouldSkipFunnel || !funnelConfig,
+    skip: shouldSkipFunnel || (!funnelConfig && !serverFunnelQuery),
     debounceMs: 100,
+    // Pass prebuilt ServerFunnelQuery directly (new dedicated funnel mode)
+    prebuiltServerQuery: serverFunnelQuery,
   })
 
   // Combine results from all hooks
@@ -185,15 +256,18 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Invalidates cache and forces a fresh fetch from the server
   useImperativeHandle(ref, () => ({
     refresh: () => {
-      if (isFunnelMode) {
-        // For funnel mode, re-execute the funnel query
-        funnelQueryResult.execute()
+      if (isFunnelMode && serverFunnelQuery) {
+        // For funnel mode, invalidate cache first then re-execute
+        // Funnel query key format: ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)]
+        const stepCount = serverFunnelQuery.funnel?.steps?.length || 0
+        const queryKey = ['cube', 'funnel', stepCount, JSON.stringify(serverFunnelQuery)] as const
+        queryClient.invalidateQueries({ queryKey })
       } else if (isMultiQuery && multiQueryConfig) {
         // Invalidate cache for this specific multi-query, then refetch
         // Clean each query to match the cache key format used by useMultiCubeLoadQuery
         const cleanedConfig = {
           ...multiQueryConfig,
-          queries: multiQueryConfig.queries.map(q => cleanQueryForServer(q))
+          queries: multiQueryConfig.queries.map((q: CubeQuery) => cleanQueryForServer(q))
         }
         queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
       } else if (queryObject) {
@@ -203,7 +277,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
       }
     }
-  }), [isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, funnelQueryResult])
+  }), [isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFunnelQuery])
 
   const handleRetry = useCallback(() => {
     if (isFunnelMode) {
@@ -218,7 +292,23 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
   // Send debug data to parent when ready (must be before any returns)
   useEffect(() => {
-    if (onDebugDataReadyRef.current && chartConfig && queryObject && resultSet && !error) {
+    if (!onDebugDataReadyRef.current || error) return
+
+    // Handle funnel mode
+    if (isFunnelMode && multiQueryData && multiQueryData.length > 0) {
+      onDebugDataReadyRef.current({
+        chartConfig: chartConfig || {},
+        displayConfig: displayConfig || {},
+        queryObject: serverFunnelQuery as unknown as Record<string, unknown>,
+        data: multiQueryData,
+        chartType,
+        cacheInfo: undefined
+      })
+      return
+    }
+
+    // Handle single query mode
+    if (chartConfig && queryObject && resultSet) {
       const getData = () => {
         switch (chartType) {
           case 'pie':
@@ -241,7 +331,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         })
       }
     }
-  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error]) // Use ref for callback to prevent infinite loops
+  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, multiQueryData, serverFunnelQuery]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided when required (not required for skipQuery charts)
   // Check if any dropZones are mandatory for this chart type
@@ -324,9 +414,14 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     }
 
     // Check for valid data based on query type
-    const hasValidData = isMultiQuery
-      ? (multiQueryData !== null && multiQueryConfig !== null)
-      : (resultSet !== null && queryObject !== null)
+    // Funnel mode uses multiQueryData from funnelQueryResult.chartData
+    // Multi-query mode uses multiQueryData from multiQueryResult.data
+    // Single query mode uses resultSet from singleQueryResult
+    const hasValidData = isFunnelMode
+      ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
+      : isMultiQuery
+        ? (multiQueryData !== null && multiQueryConfig !== null)
+        : (resultSet !== null && queryObject !== null)
 
     if (!hasValidData) {
       return (
@@ -345,6 +440,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     // Return empty array for charts that don't use query data
     if (shouldSkipQuery) {
       return []
+    }
+
+    // Funnel mode: return chartData from funnelQueryResult
+    if (isFunnelMode) {
+      return multiQueryData || []
     }
 
     // Multi-query: return merged data directly

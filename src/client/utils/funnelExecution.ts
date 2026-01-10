@@ -107,6 +107,9 @@ export interface ExtractedBindingKeyValues {
 /**
  * Extract unique values for the binding key from query result data
  *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution is now the default approach.
+ *
  * @param data - Raw data from query result
  * @param bindingKeyField - The field name to extract values from
  * @param limit - Maximum number of values to return (default: DEFAULT_BINDING_KEY_LIMIT)
@@ -157,6 +160,9 @@ export function extractBindingKeyValues(
 /**
  * Build a step query with binding key filter applied.
  *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution is now the default approach.
+ *
  * For the first step (no previous values), returns the original query
  * with the binding key dimension ensured.
  *
@@ -198,6 +204,9 @@ export function buildStepQuery(
 
 /**
  * Calculate conversion metrics for a step
+ *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution now calculates metrics directly.
  */
 export function calculateStepMetrics(
   currentCount: number,
@@ -220,6 +229,9 @@ export function calculateStepMetrics(
 
 /**
  * Build a funnel step result from query execution
+ *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution now returns results directly.
  */
 export function buildStepResult(
   step: FunnelStep,
@@ -269,6 +281,9 @@ export function buildStepResult(
 
 /**
  * Convert step results to chart-ready data format
+ *
+ * @deprecated Use transformServerFunnelResult() instead.
+ * Server-side funnel execution returns data in a compatible format.
  */
 export function buildFunnelChartData(
   stepResults: FunnelStepResult[]
@@ -288,6 +303,9 @@ export function buildFunnelChartData(
 
 /**
  * Build the complete funnel execution result
+ *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution now builds results directly.
  */
 export function buildFunnelResult(
   config: FunnelConfig,
@@ -318,6 +336,9 @@ export function buildFunnelResult(
 
 /**
  * Create an empty/initial funnel result
+ *
+ * @deprecated This function was used for client-side funnel execution.
+ * Server-side funnel execution manages state differently.
  */
 export function createEmptyFunnelResult(
   config: FunnelConfig
@@ -341,6 +362,11 @@ export function createEmptyFunnelResult(
 /**
  * Build a FunnelConfig from multi-query config state.
  * Used to convert AnalysisBuilder state to funnel configuration.
+ *
+ * @deprecated Use the dedicated funnel mode (analysisType === 'funnel') instead.
+ * This function supports backward compatibility with legacy multi-query funnel mode
+ * (mergeStrategy === 'funnel'). For new implementations, use the dedicated funnel
+ * state in the store which provides better UX with step-based configuration.
  *
  * @param queries - Array of CubeQuery objects (one per step)
  * @param bindingKey - The binding key configuration
@@ -402,4 +428,260 @@ export function isFunnelData(data: unknown[]): boolean {
     data[0] !== null &&
     '__stepIndex' in data[0]
   )
+}
+
+// =============================================================================
+// Server-Side Funnel Support
+// =============================================================================
+
+/**
+ * Server-side funnel step definition (for FunnelQueryConfig)
+ */
+export interface ServerFunnelStep {
+  name: string
+  filter?: SimpleFilter | SimpleFilter[]
+  timeToConvert?: string
+}
+
+/**
+ * Server-side funnel query configuration
+ */
+export interface ServerFunnelQueryConfig {
+  bindingKey: string | FunnelBindingKeyMapping[]
+  timeDimension: string | Array<{ cube: string; dimension: string }>
+  steps: ServerFunnelStep[]
+  includeTimeMetrics?: boolean
+  globalTimeWindow?: string
+}
+
+/**
+ * Server-side funnel result row
+ */
+export interface ServerFunnelResultRow {
+  step: string
+  stepIndex: number
+  count: number
+  conversionRate: number | null
+  cumulativeConversionRate: number
+  avgSecondsToConvert?: number | null
+  medianSecondsToConvert?: number | null
+  p90SecondsToConvert?: number | null
+  minSecondsToConvert?: number | null
+  maxSecondsToConvert?: number | null
+}
+
+/**
+ * Query shape for server-side funnel execution
+ */
+export interface ServerFunnelQuery {
+  funnel: ServerFunnelQueryConfig
+}
+
+/**
+ * Build a server-side funnel query from client state.
+ *
+ * Transforms the client-side FunnelConfig format into a SemanticQuery
+ * with `funnel` property that the server can execute.
+ *
+ * @param queries - Array of CubeQuery objects (one per step)
+ * @param bindingKey - The binding key configuration
+ * @param stepLabels - Optional labels for each step
+ * @param stepTimeToConvert - Optional time window for each step (ISO 8601 duration)
+ * @param includeTimeMetrics - Whether to include time-to-convert metrics
+ * @returns Query object with funnel configuration for server execution
+ */
+export function buildServerFunnelQuery(
+  queries: CubeQuery[],
+  bindingKey: FunnelBindingKey,
+  stepLabels?: string[],
+  stepTimeToConvert?: (string | null)[],
+  includeTimeMetrics: boolean = true
+): ServerFunnelQuery {
+  // 1. Unwrap binding key from client format (client wraps in { dimension: ... })
+  const serverBindingKey = bindingKey.dimension
+
+  // 2. Extract time dimension from queries
+  const timeDimension = extractTimeDimensionFromQueries(queries, bindingKey)
+
+  // 3. Convert each CubeQuery to a server FunnelStep
+  const steps: ServerFunnelStep[] = queries.map((query, index) => {
+    const step: ServerFunnelStep = {
+      name: stepLabels?.[index] || `Step ${index + 1}`,
+    }
+
+    // Extract filters from query
+    const filter = extractFiltersFromQuery(query)
+    if (filter) {
+      step.filter = filter
+    }
+
+    // Add time-to-convert constraint if specified
+    const timeConstraint = stepTimeToConvert?.[index]
+    if (timeConstraint) {
+      step.timeToConvert = timeConstraint
+    }
+
+    return step
+  })
+
+  return {
+    funnel: {
+      bindingKey: serverBindingKey,
+      timeDimension,
+      steps,
+      includeTimeMetrics,
+    },
+  }
+}
+
+/**
+ * Extract time dimension from queries.
+ *
+ * For single-cube funnels, returns the first time dimension found.
+ * For cross-cube funnels (with binding key mappings), builds a mapping array.
+ *
+ * @param queries - Array of CubeQuery objects
+ * @param bindingKey - The binding key configuration (to detect cross-cube)
+ * @returns Time dimension string or mapping array
+ */
+function extractTimeDimensionFromQueries(
+  queries: CubeQuery[],
+  bindingKey: FunnelBindingKey
+): string | Array<{ cube: string; dimension: string }> {
+  // Check if this is a cross-cube funnel
+  const isCrossCube = Array.isArray(bindingKey.dimension)
+
+  if (!isCrossCube) {
+    // Single-cube: find first time dimension
+    for (const query of queries) {
+      if (query.timeDimensions?.length) {
+        return query.timeDimensions[0].dimension
+      }
+    }
+    // Fallback: try to infer from measures/dimensions
+    const cubeName = getCubeNameFromQuery(queries[0])
+    if (cubeName) {
+      return `${cubeName}.createdAt` // Common convention
+    }
+    throw new Error('Funnel requires at least one time dimension in step queries')
+  }
+
+  // Cross-cube: build mapping for each cube
+  const mappings: Array<{ cube: string; dimension: string }> = []
+  const bindingMappings = bindingKey.dimension as FunnelBindingKeyMapping[]
+
+  for (const mapping of bindingMappings) {
+    // Find time dimension for this cube from queries
+    const cubeQuery = queries.find(q => getCubeNameFromQuery(q) === mapping.cube)
+    if (cubeQuery?.timeDimensions?.length) {
+      mappings.push({
+        cube: mapping.cube,
+        dimension: cubeQuery.timeDimensions[0].dimension,
+      })
+    } else {
+      // Fallback to common convention
+      mappings.push({
+        cube: mapping.cube,
+        dimension: `${mapping.cube}.createdAt`,
+      })
+    }
+  }
+
+  return mappings
+}
+
+/**
+ * Extract filters from a CubeQuery for server funnel step.
+ *
+ * @param query - The CubeQuery
+ * @returns Filter or array of filters, or undefined if no filters
+ */
+function extractFiltersFromQuery(query: CubeQuery): SimpleFilter | SimpleFilter[] | undefined {
+  if (!query.filters?.length) {
+    return undefined
+  }
+
+  // Filter out any binding key filters (server handles those)
+  const filters = query.filters.filter(f => {
+    // Keep only SimpleFilter with member (not grouped filters for now)
+    if ('member' in f) {
+      return true
+    }
+    return false
+  }) as SimpleFilter[]
+
+  if (filters.length === 0) {
+    return undefined
+  }
+
+  if (filters.length === 1) {
+    return filters[0]
+  }
+
+  return filters
+}
+
+/**
+ * Transform server funnel result rows to client FunnelChartData format.
+ *
+ * Maps the server's FunnelResultRow[] to the client's FunnelChartData[]
+ * format expected by FunnelChart component.
+ *
+ * @param serverResult - Raw data from server (FunnelResultRow[])
+ * @param stepNames - Optional step names to override server names
+ * @returns FunnelChartData[] ready for FunnelChart component
+ */
+export function transformServerFunnelResult(
+  serverResult: unknown[],
+  stepNames?: string[]
+): FunnelChartData[] {
+  if (!serverResult?.length) {
+    return []
+  }
+
+  const rows = serverResult as ServerFunnelResultRow[]
+
+  return rows.map((row, index) => ({
+    // Map server fields to client format
+    name: stepNames?.[index] || row.step,
+    value: row.count,
+    // Convert cumulative rate to percentage
+    percentage: row.cumulativeConversionRate * 100,
+    // Convert step-to-step rate to percentage (null for first step)
+    conversionRate: row.conversionRate !== null ? row.conversionRate * 100 : null,
+    stepIndex: row.stepIndex,
+    // Include time metrics for optional display
+    avgSecondsToConvert: row.avgSecondsToConvert,
+    medianSecondsToConvert: row.medianSecondsToConvert,
+    p90SecondsToConvert: row.p90SecondsToConvert,
+  }))
+}
+
+/**
+ * Format a duration in seconds to a human-readable string.
+ *
+ * @param seconds - Duration in seconds
+ * @returns Formatted string (e.g., "45s", "2.5m", "1.3h", "3.2d")
+ */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) {
+    return '-'
+  }
+
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`
+  }
+
+  if (seconds < 3600) {
+    const minutes = seconds / 60
+    return minutes < 10 ? `${minutes.toFixed(1)}m` : `${Math.round(minutes)}m`
+  }
+
+  if (seconds < 86400) {
+    const hours = seconds / 3600
+    return hours < 10 ? `${hours.toFixed(1)}h` : `${Math.round(hours)}h`
+  }
+
+  const days = seconds / 86400
+  return days < 10 ? `${days.toFixed(1)}d` : `${Math.round(days)}d`
 }
