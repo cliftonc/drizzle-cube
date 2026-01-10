@@ -5,6 +5,7 @@ import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState } from './An
 import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
 import { hasAnalysisConfig, migrateLegacyPortlet } from '../utils/configMigration'
+import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import {
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters
@@ -153,11 +154,8 @@ export default function PortletAnalysisModal({
   const initialFunnelState: AnalysisBuilderInitialFunnelState | undefined = useMemo(() => {
     if (derivedConfig?.analysisType !== 'funnel') return undefined
 
-    // For funnel mode, we need to extract funnel state from either:
-    // 1. The portlet's legacy fields (if present)
-    // 2. Parse from the ServerFunnelQuery in derivedConfig.query (Phase 4 will handle this)
-    // For now, use legacy fields if available
-    if (portlet?.funnelSteps) {
+    // Option 1: Use legacy fields if present (backward compatibility)
+    if (portlet?.funnelSteps && portlet.funnelSteps.length > 0) {
       return {
         funnelCube: portlet.funnelCube,
         funnelSteps: portlet.funnelSteps,
@@ -166,6 +164,21 @@ export default function PortletAnalysisModal({
         funnelChartType: portlet.funnelChartType,
         funnelChartConfig: portlet.funnelChartConfig,
         funnelDisplayConfig: portlet.funnelDisplayConfig,
+      }
+    }
+
+    // Option 2: Parse from analysisConfig.query (Phase 4 implementation)
+    // This handles the case where only analysisConfig exists (no legacy fields)
+    if (derivedConfig.query && 'funnel' in derivedConfig.query) {
+      // Use adapter's conversion logic - already handles all formats
+      const funnelState = funnelModeAdapter.load(derivedConfig)
+      const chartConfig = derivedConfig.charts?.funnel
+
+      return {
+        ...funnelState,
+        funnelChartType: chartConfig?.chartType,
+        funnelChartConfig: chartConfig?.chartConfig,
+        funnelDisplayConfig: chartConfig?.displayConfig,
       }
     }
 

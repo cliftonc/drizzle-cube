@@ -19,7 +19,7 @@ export { funnelModeAdapter } from './funnelModeAdapter'
 export type { FunnelSliceState } from './funnelModeAdapter'
 
 // ============================================================================
-// Adapter Registration
+// Adapter Registration (Optional - Built-in adapters auto-initialize on access)
 // ============================================================================
 
 import { adapterRegistry } from './adapterRegistry'
@@ -27,20 +27,25 @@ import { queryModeAdapter } from './queryModeAdapter'
 import { funnelModeAdapter } from './funnelModeAdapter'
 
 /**
- * Initialize and register all adapters.
- * Call this once at application startup.
+ * Manually initialize and register all adapters.
+ *
+ * Note: This function is no longer required to be called. Built-in adapters
+ * (query, funnel) are now automatically initialized on first access to the
+ * registry. This function is kept for backward compatibility and for cases
+ * where explicit early initialization is preferred.
  *
  * @example
- * // In your app's entry point:
+ * // Optional - adapters auto-initialize on first use
  * import { initializeAdapters } from './adapters'
  * initializeAdapters()
  */
 export function initializeAdapters(): void {
   // Register built-in adapters
+  // Safe to call multiple times - registry ignores duplicates
   adapterRegistry.register(queryModeAdapter)
   adapterRegistry.register(funnelModeAdapter)
 }
 
-// Auto-register adapters on import
-// This ensures adapters are available as soon as this module is imported
-initializeAdapters()
+// Note: Auto-registration removed to avoid tree-shaking issues.
+// Adapters now self-initialize on first registry access.
+// See adapterRegistry.ts ensureBuiltInAdaptersInitialized()
