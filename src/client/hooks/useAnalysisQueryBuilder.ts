@@ -83,12 +83,15 @@ export function useAnalysisQueryBuilder(): UseAnalysisQueryBuilderResult {
   const multiQueryConfig = useMemo(() => {
     if (queryStates.length <= 1) return null
 
-    const validQueries = allQueries.filter(
-      (q) =>
+    // Filter to queries that have at least one measure, dimension, or time dimension
+    // Note: Legacy mergeStrategy === 'funnel' is no longer supported
+    const validQueries = allQueries.filter((q) => {
+      return (
         (q.measures && q.measures.length > 0) ||
         (q.dimensions && q.dimensions.length > 0) ||
         (q.timeDimensions && q.timeDimensions.length > 0)
-    )
+      )
+    })
 
     if (validQueries.length < 2) return null
 

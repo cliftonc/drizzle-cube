@@ -45,6 +45,19 @@ export {
 // Export cache providers
 export { MemoryCacheProvider } from './cache-providers'
 
+// Export AI prompt templates
+export {
+  STEP0_VALIDATION_PROMPT,
+  SYSTEM_PROMPT_TEMPLATE,
+  STEP1_SYSTEM_PROMPT,
+  STEP2_SYSTEM_PROMPT,
+  buildStep0Prompt,
+  buildSystemPrompt,
+  buildStep1Prompt,
+  buildStep2Prompt
+} from './prompts'
+export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts'
+
 // Import types for use in utility functions
 import type { DrizzleDatabase } from './types'
 import { SemanticLayerCompiler } from './compiler'

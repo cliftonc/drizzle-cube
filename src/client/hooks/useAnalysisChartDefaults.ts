@@ -3,10 +3,15 @@
  *
  * Manages chart configuration, availability, and smart defaulting.
  * Handles color palette resolution and chart type auto-switching.
+ *
+ * Returns mode-appropriate chart config based on analysisType:
+ * - Query mode: uses chartType, chartConfig, displayConfig
+ * - Funnel mode: uses funnelChartType, funnelChartConfig, funnelDisplayConfig
  */
 
-import { useMemo, useEffect, useRef } from 'react'
-import { useAnalysisBuilderStore } from '../stores/analysisBuilderStore'
+import { useMemo, useEffect, useRef, useCallback } from 'react'
+import { useAnalysisBuilderStore, selectChartConfig } from '../stores/analysisBuilderStore'
+import { useShallow } from 'zustand/react/shallow'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../shared/chartDefaults'
 import { getColorPalette, type ColorPalette } from '../utils/colorPalettes'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
@@ -52,20 +57,76 @@ export function useAnalysisChartDefaults(
 ): UseAnalysisChartDefaultsResult {
   const { externalColorPalette, combinedMetrics, combinedBreakdowns, hasDebounced } = options
 
-  // Store state
-  const chartType = useAnalysisBuilderStore((state) => state.chartType)
-  const chartConfig = useAnalysisBuilderStore((state) => state.chartConfig)
-  const displayConfig = useAnalysisBuilderStore((state) => state.displayConfig)
+  // Get analysis type to determine which config to use
+  const analysisType = useAnalysisBuilderStore((state) => state.analysisType)
+
+  // Use the mode-aware selector to get the appropriate chart config
+  const { chartType, chartConfig, displayConfig } = useAnalysisBuilderStore(useShallow(selectChartConfig))
+
+  // Store state (shared)
   const userManuallySelectedChart = useAnalysisBuilderStore((state) => state.userManuallySelectedChart)
   const localPaletteName = useAnalysisBuilderStore((state) => state.localPaletteName)
 
-  // Store actions
-  const setChartType = useAnalysisBuilderStore((state) => state.setChartType)
+  // Store actions - Query mode
   const setChartTypeManual = useAnalysisBuilderStore((state) => state.setChartTypeManual)
-  const setChartConfig = useAnalysisBuilderStore((state) => state.setChartConfig)
-  const setDisplayConfig = useAnalysisBuilderStore((state) => state.setDisplayConfig)
+  const setQueryChartConfig = useAnalysisBuilderStore((state) => state.setChartConfig)
+  const setQueryDisplayConfig = useAnalysisBuilderStore((state) => state.setDisplayConfig)
+
+  // Store actions - Funnel mode
+  const setFunnelChartType = useAnalysisBuilderStore((state) => state.setFunnelChartType)
+  const setFunnelChartConfig = useAnalysisBuilderStore((state) => state.setFunnelChartConfig)
+  const setFunnelDisplayConfig = useAnalysisBuilderStore((state) => state.setFunnelDisplayConfig)
+
+  // Shared actions
   const setLocalPaletteName = useAnalysisBuilderStore((state) => state.setLocalPaletteName)
   const setUserManuallySelectedChart = useAnalysisBuilderStore((state) => state.setUserManuallySelectedChart)
+
+  // Mode-aware setters - route to appropriate store action based on analysis type
+  const setChartType = useCallback(
+    (type: ChartType) => {
+      if (analysisType === 'funnel') {
+        setFunnelChartType(type)
+      } else {
+        setChartTypeManual(type)
+        const { chartConfig: smartConfig } = getSmartChartDefaults(
+          combinedMetrics,
+          combinedBreakdowns,
+          type
+        )
+        setQueryChartConfig(smartConfig)
+      }
+    },
+    [
+      analysisType,
+      combinedMetrics,
+      combinedBreakdowns,
+      setFunnelChartType,
+      setChartTypeManual,
+      setQueryChartConfig,
+    ]
+  )
+
+  const setChartConfig = useCallback(
+    (config: ChartAxisConfig) => {
+      if (analysisType === 'funnel') {
+        setFunnelChartConfig(config)
+      } else {
+        setQueryChartConfig(config)
+      }
+    },
+    [analysisType, setFunnelChartConfig, setQueryChartConfig]
+  )
+
+  const setDisplayConfig = useCallback(
+    (config: ChartDisplayConfig) => {
+      if (analysisType === 'funnel') {
+        setFunnelDisplayConfig(config)
+      } else {
+        setQueryDisplayConfig(config)
+      }
+    },
+    [analysisType, setFunnelDisplayConfig, setQueryDisplayConfig]
+  )
 
   // Chart availability
   const chartAvailability = useMemo(
@@ -156,8 +217,8 @@ export function useAnalysisChartDefaults(
     chartAvailability,
     userManuallySelectedChart,
 
-    // Actions - use manual setter for user interactions
-    setChartType: setChartTypeManual,
+    // Actions - mode-aware setters route to appropriate store fields
+    setChartType,
     setChartConfig,
     setDisplayConfig,
     setLocalPaletteName,

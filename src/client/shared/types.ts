@@ -16,6 +16,15 @@ export interface MetaField {
   description?: string              // Optional description
 }
 
+export interface MetaCubeRelationship {
+  targetCube: string
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+  joinFields?: Array<{
+    sourceField: string
+    targetField: string
+  }>
+}
+
 export interface MetaCube {
   name: string                      // e.g., "Employees"
   title: string                     // e.g., "Employee Analytics"
@@ -23,6 +32,7 @@ export interface MetaCube {
   measures: MetaField[]             // e.g., "Employees.count"
   dimensions: MetaField[]           // e.g., "Employees.name"
   segments: MetaField[]             // Currently empty in examples
+  relationships?: MetaCubeRelationship[]  // Optional join relationships to other cubes
 }
 
 export interface MetaResponse {

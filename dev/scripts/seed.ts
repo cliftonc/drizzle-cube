@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http'
 import postgres from 'postgres'
 import { neon } from '@neondatabase/serverless'
-import { employees, departments, productivity, analyticsPages, settings, schema } from '../server/schema'
+import { employees, departments, productivity, prEvents, analyticsPages, settings, schema } from '../server/schema'
 import { productivityDashboardConfig } from '../server/dashboard-config'
 
 // Default connection string for CLI usage
@@ -159,7 +159,7 @@ const sampleEmployees = [
 // Employee role-based productivity profiles
 const employeeProfiles: Record<number, { role: string; linesOfCodeBase: number; pullRequestsBase: number; deploymentsBase: number }> = {
   1: { role: 'Senior Engineer', linesOfCodeBase: 300, pullRequestsBase: 8, deploymentsBase: 2 },    // Alex Chen
-  2: { role: 'Engineer', linesOfCodeBase: 250, pullRequestsBase: 6, deploymentsBase: 1 },           // Sarah Johnson  
+  2: { role: 'Engineer', linesOfCodeBase: 250, pullRequestsBase: 6, deploymentsBase: 1 },           // Sarah Johnson
   3: { role: 'DevOps Engineer', linesOfCodeBase: 150, pullRequestsBase: 4, deploymentsBase: 5 },    // Mike Rodriguez
   4: { role: 'QA Engineer', linesOfCodeBase: 100, pullRequestsBase: 12, deploymentsBase: 0 },       // Emily Davis
   5: { role: 'Junior Engineer', linesOfCodeBase: 180, pullRequestsBase: 4, deploymentsBase: 0 },    // James Wilson
@@ -170,6 +170,35 @@ const employeeProfiles: Record<number, { role: string; linesOfCodeBase: number; 
   10: { role: 'Sales Account Mgr', linesOfCodeBase: 0, pullRequestsBase: 0, deploymentsBase: 0 },   // Nina Patel
   11: { role: 'HR Director', linesOfCodeBase: 0, pullRequestsBase: 1, deploymentsBase: 0 },         // Robert Taylor
   12: { role: 'HR Recruiter', linesOfCodeBase: 0, pullRequestsBase: 0, deploymentsBase: 0 }         // Jennifer Lee
+}
+
+// PR Event types for funnel analysis
+const PR_EVENT_TYPES = [
+  'created',
+  'review_requested',
+  'reviewed',
+  'changes_requested',
+  'approved',
+  'merged',
+  'closed'
+] as const
+
+type PREventType = typeof PR_EVENT_TYPES[number]
+
+// Employee PR activity profiles (PRs per month)
+const employeePRProfiles: Record<number, { prActivityBase: number; canReview: boolean }> = {
+  1: { prActivityBase: 12, canReview: true },   // Alex Chen - Senior, high PR volume
+  2: { prActivityBase: 8, canReview: true },    // Sarah Johnson - Mid-level
+  3: { prActivityBase: 5, canReview: true },    // Mike Rodriguez - DevOps (config PRs)
+  4: { prActivityBase: 3, canReview: true },    // Emily Davis - QA (test PRs)
+  5: { prActivityBase: 6, canReview: false },   // James Wilson - Junior (no review auth)
+  6: { prActivityBase: 0, canReview: false },   // Lisa Martinez - Marketing (no PRs)
+  7: { prActivityBase: 0, canReview: false },   // David Kim - Marketing
+  8: { prActivityBase: 0, canReview: false },   // Rachel Green - Marketing
+  9: { prActivityBase: 0, canReview: false },   // Tom Anderson - Sales
+  10: { prActivityBase: 0, canReview: false },  // Nina Patel - Sales
+  11: { prActivityBase: 0, canReview: false },  // Robert Taylor - HR
+  12: { prActivityBase: 0, canReview: false }   // Jennifer Lee - HR
 }
 
 // Generate comprehensive productivity data from 2024 to current date
@@ -264,16 +293,223 @@ function generateProductivityData(insertedEmployees: any[]): any[] {
 function isHolidayDate(date: Date): boolean {
   const month = date.getMonth() + 1
   const day = date.getDate()
-  
+
   // Major US holidays
   const holidays = [
     [1, 1],   // New Year's Day
-    [7, 4],   // Independence Day  
+    [7, 4],   // Independence Day
     [11, 11], // Veterans Day
     [12, 25], // Christmas
   ]
-  
+
   return holidays.some(([m, d]) => month === m && day === d)
+}
+
+// Helper functions for PR event generation
+function randomDateInRange(start: Date, end: Date): Date {
+  const startTime = start.getTime()
+  const endTime = end.getTime()
+  return new Date(startTime + Math.random() * (endTime - startTime))
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+  return new Date(date.getTime() + minutes * 60 * 1000)
+}
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+interface PREventData {
+  prNumber: number
+  eventType: PREventType
+  employeeId: number
+  organisationId: number
+  timestamp: Date
+}
+
+// Generate PR event sequence for a single PR
+function generatePREventSequence(
+  prNumber: number,
+  authorId: number,
+  reviewers: { id: number }[],
+  createdDate: Date
+): PREventData[] {
+  const events: PREventData[] = []
+  let currentTime = new Date(createdDate)
+
+  // 1. CREATED (100% - always happens)
+  events.push({
+    prNumber,
+    eventType: 'created',
+    employeeId: authorId,
+    organisationId: 1,
+    timestamp: new Date(currentTime)
+  })
+
+  // 2. REVIEW_REQUESTED (95% of PRs request review)
+  if (Math.random() < 0.95 && reviewers.length > 0) {
+    currentTime = addMinutes(currentTime, randomInt(5, 60))
+    const reviewer = reviewers[Math.floor(Math.random() * reviewers.length)]
+    events.push({
+      prNumber,
+      eventType: 'review_requested',
+      employeeId: reviewer.id,
+      organisationId: 1,
+      timestamp: new Date(currentTime)
+    })
+
+    // 3. REVIEWED / CHANGES_REQUESTED / APPROVED (85% get some review)
+    if (Math.random() < 0.85) {
+      currentTime = addMinutes(currentTime, randomInt(30, 480)) // 30 min to 8 hours
+
+      // Determine review outcome
+      const outcomeRoll = Math.random()
+      if (outcomeRoll < 0.2) {
+        // 20% - Just comments (reviewed)
+        events.push({
+          prNumber,
+          eventType: 'reviewed',
+          employeeId: reviewer.id,
+          organisationId: 1,
+          timestamp: new Date(currentTime)
+        })
+        // May get approved later (70% chance)
+        if (Math.random() < 0.7) {
+          currentTime = addMinutes(currentTime, randomInt(60, 1440))
+          events.push({
+            prNumber,
+            eventType: 'approved',
+            employeeId: reviewer.id,
+            organisationId: 1,
+            timestamp: new Date(currentTime)
+          })
+        }
+      } else if (outcomeRoll < 0.4) {
+        // 20% - Changes requested
+        events.push({
+          prNumber,
+          eventType: 'changes_requested',
+          employeeId: reviewer.id,
+          organisationId: 1,
+          timestamp: new Date(currentTime)
+        })
+        // 60% eventually get approved after changes
+        if (Math.random() < 0.6) {
+          currentTime = addMinutes(currentTime, randomInt(120, 2880)) // 2 hours to 2 days
+          events.push({
+            prNumber,
+            eventType: 'approved',
+            employeeId: reviewer.id,
+            organisationId: 1,
+            timestamp: new Date(currentTime)
+          })
+        }
+      } else {
+        // 60% - Direct approval
+        events.push({
+          prNumber,
+          eventType: 'approved',
+          employeeId: reviewer.id,
+          organisationId: 1,
+          timestamp: new Date(currentTime)
+        })
+      }
+    }
+  }
+
+  // 4. MERGED or CLOSED (final state)
+  const hasApproval = events.some(e => e.eventType === 'approved')
+  if (hasApproval && Math.random() < 0.9) {
+    // 90% of approved PRs get merged
+    currentTime = addMinutes(currentTime, randomInt(10, 120))
+    events.push({
+      prNumber,
+      eventType: 'merged',
+      employeeId: authorId,
+      organisationId: 1,
+      timestamp: new Date(currentTime)
+    })
+  } else if (Math.random() < 0.3) {
+    // 30% of unapproved PRs get closed
+    currentTime = addMinutes(currentTime, randomInt(1440, 10080)) // 1-7 days
+    events.push({
+      prNumber,
+      eventType: 'closed',
+      employeeId: authorId,
+      organisationId: 1,
+      timestamp: new Date(currentTime)
+    })
+  }
+  // Else: PR remains open (realistic - some PRs go stale)
+
+  return events
+}
+
+// Generate PR events data for all employees
+function generatePREventsData(insertedEmployees: { id: number; active: boolean }[]): PREventData[] {
+  const allPREvents: PREventData[] = []
+  const startDate = new Date('2024-01-01')
+  const endDate = new Date()
+
+  let globalPRCounter = 1
+
+  // Get employees with PR activity
+  const prActiveEmployees = insertedEmployees.filter((emp, index) => {
+    const profile = employeePRProfiles[index + 1]
+    return profile && profile.prActivityBase > 0 && emp.active
+  })
+
+  // Get reviewers (employees who can review)
+  const reviewerEmployees = insertedEmployees.filter((emp, index) => {
+    const profile = employeePRProfiles[index + 1]
+    return profile && profile.canReview && emp.active
+  })
+
+  // Generate PRs month by month
+  for (let date = new Date(startDate); date <= endDate; date.setMonth(date.getMonth() + 1)) {
+    const monthStart = new Date(date)
+    const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+
+    // Ensure we don't go past current date
+    const effectiveMonthEnd = monthEnd > endDate ? endDate : monthEnd
+
+    // Each active engineer creates PRs this month
+    for (const employee of prActiveEmployees) {
+      const employeeIndex = insertedEmployees.indexOf(employee) + 1
+      const profile = employeePRProfiles[employeeIndex]
+
+      if (!profile) continue
+
+      // Monthly variation in PR count (70% to 130% of base)
+      const monthlyPRCount = Math.round(
+        profile.prActivityBase * (0.7 + Math.random() * 0.6)
+      )
+
+      for (let i = 0; i < monthlyPRCount; i++) {
+        const prNumber = globalPRCounter++
+        const prCreatedDate = randomDateInRange(monthStart, effectiveMonthEnd)
+
+        // Get reviewers excluding the author
+        const availableReviewers = reviewerEmployees.filter(r => r.id !== employee.id)
+
+        // Generate event sequence for this PR
+        const prEventSequence = generatePREventSequence(
+          prNumber,
+          employee.id,
+          availableReviewers,
+          prCreatedDate
+        )
+
+        allPREvents.push(...prEventSequence)
+      }
+    }
+  }
+
+  // Sort all events by timestamp for realistic ordering
+  allPREvents.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+
+  return allPREvents
 }
 
 // Use shared dashboard configuration
@@ -298,6 +534,7 @@ export async function executeSeed(db?: any, connectionString?: string) {
   try {
     // Clear existing data
     console.log('🧹 Clearing existing data...')
+    await database.delete(prEvents)
     await database.delete(productivity)
     await database.delete(employees)
     await database.delete(departments)
@@ -343,7 +580,25 @@ export async function executeSeed(db?: any, connectionString?: string) {
     }
     
     console.log(`✅ Inserted ${insertedProductivityCount} productivity records`)
-    
+
+    // Generate and insert PR events data
+    console.log('🔀 Generating PR events data...')
+    const prEventsData = generatePREventsData(insertedEmployees)
+    console.log(`🔀 Generated ${prEventsData.length} PR event records`)
+
+    // Insert PR events in batches
+    const prEventsBatchSize = 1000
+    let insertedPREventsCount = 0
+
+    for (let i = 0; i < prEventsData.length; i += prEventsBatchSize) {
+      const batch = prEventsData.slice(i, i + prEventsBatchSize)
+      await database.insert(prEvents).values(batch)
+      insertedPREventsCount += batch.length
+      console.log(`🔀 Inserted PR events batch: ${insertedPREventsCount}/${prEventsData.length}`)
+    }
+
+    console.log(`✅ Inserted ${insertedPREventsCount} PR event records`)
+
     // Insert sample analytics page
     console.log('📊 Inserting sample analytics page...')
     const insertedPage = await database.insert(analyticsPages)

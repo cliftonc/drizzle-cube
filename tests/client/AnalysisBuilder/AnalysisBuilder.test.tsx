@@ -7,9 +7,7 @@ import React, { createRef } from 'react'
 import { render, waitFor, act, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CubeResultSet } from '../../../src/client/types'
-
-// Storage key constant (must match the one in index.tsx)
-const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
+import { STORAGE_KEY } from '../../../src/client/components/AnalysisBuilder/utils/storageUtils'
 
 // Mock useCubeMeta/useCubeFeatures
 const mockMeta = {
@@ -145,6 +143,7 @@ vi.mock('../../../src/client/components/AnalysisBuilder/AnalysisAIPanel', () => 
 // Mock share utils
 vi.mock('../../../src/client/utils/shareUtils', () => ({
   compressWithFallback: vi.fn().mockResolvedValue('compressed'),
+  parseShareUrl: vi.fn().mockReturnValue(null),
   parseShareHash: vi.fn().mockReturnValue(null),
   decodeAndDecompress: vi.fn().mockResolvedValue(null),
   clearShareHash: vi.fn()
@@ -255,8 +254,8 @@ describe('AnalysisBuilder', () => {
       render(<AnalysisBuilder />)
 
       const queryPanel = screen.getByTestId('query-panel')
-      // Default chart type is 'line' when smart defaults apply
-      expect(queryPanel.getAttribute('data-chart-type')).toBe('line')
+      // Default chart type is 'bar' from queryModeAdapter.getDefaultChartConfig()
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('bar')
     })
 
     it('should render with initial query', () => {
@@ -387,19 +386,25 @@ describe('AnalysisBuilder', () => {
     })
 
     it('should load state from localStorage on mount', () => {
-      // Pre-save state to localStorage (Zustand persist format)
+      // Pre-save state to localStorage (Zustand persist format with AnalysisConfig)
       const savedState = {
         state: {
-          queryStates: [{
-            metrics: [{ id: '1', field: 'Employees.avgSalary', label: 'A' }],
-            breakdowns: [],
+          // AnalysisConfig format
+          version: 1,
+          analysisType: 'query',
+          activeView: 'chart',
+          charts: {
+            query: {
+              chartType: 'line',
+              chartConfig: {},
+              displayConfig: { showLegend: true, showGrid: true, showTooltip: true },
+            },
+          },
+          query: {
+            measures: ['Employees.avgSalary'],
+            dimensions: [],
             filters: [],
-            order: null
-          }],
-          chartType: 'line',
-          chartConfig: {},
-          displayConfig: {},
-          activeView: 'chart'
+          },
         },
         version: 0
       }

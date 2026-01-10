@@ -39,11 +39,15 @@ export const funnelChartConfig: ChartTypeConfig = {
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
-      key: 'hideSummaryFooter',
-      label: 'Hide Summary Footer',
-      type: 'boolean',
-      defaultValue: false,
-      description: 'Hide the summary footer showing steps count and overall conversion'
+      key: 'funnelStyle',
+      label: 'Funnel Style',
+      type: 'buttonGroup',
+      defaultValue: 'bars',
+      options: [
+        { value: 'bars', label: 'Bars' },
+        { value: 'funnel', label: 'Funnel' }
+      ],
+      description: 'Visualization style'
     },
     {
       key: 'funnelOrientation',
@@ -56,11 +60,39 @@ export const funnelChartConfig: ChartTypeConfig = {
       ]
     },
     {
-      key: 'funnelStepLabels',
-      label: 'Step Labels',
-      type: 'stringArray',
-      placeholder: 'Enter label for each step (one per line)',
-      description: 'Custom labels for funnel steps (e.g., "Signup", "Activation", "Purchase"). Leave empty to use default step names.'
+      key: 'hideSummaryFooter',
+      label: 'Hide Summary Footer',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Hide the summary footer showing steps count and overall conversion'
+    },
+    {
+      key: 'showFunnelConversion',
+      label: 'Show Conversion Rate',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Display step-to-step conversion percentage'
+    },
+    {
+      key: 'showFunnelAvgTime',
+      label: 'Show Avg Time',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Display average time to convert'
+    },
+    {
+      key: 'showFunnelMedianTime',
+      label: 'Show Median Time',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Display median time to convert'
+    },
+    {
+      key: 'showFunnelP90Time',
+      label: 'Show P90 Time',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Display 90th percentile time to convert'
     }
   ]
 }

@@ -13,6 +13,81 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
     return 'mysql'
   }
 
+  // ============================================
+  // Funnel Analysis Methods
+  // ============================================
+
+  /**
+   * Build MySQL INTERVAL from ISO 8601 duration
+   * MySQL uses DATE_ADD with INTERVAL syntax but intervals must be added separately
+   * For simplicity, we convert to seconds for consistent handling
+   */
+  buildIntervalFromISO(duration: string): SQL {
+    const parsed = this.parseISODuration(duration)
+    const parts: string[] = []
+
+    // MySQL allows multiple interval additions but for simplicity convert to a single unit
+    // We'll use the most significant unit
+    if (parsed.years) parts.push(`${parsed.years} YEAR`)
+    if (parsed.months) parts.push(`${parsed.months} MONTH`)
+    if (parsed.days) parts.push(`${parsed.days} DAY`)
+    if (parsed.hours) parts.push(`${parsed.hours} HOUR`)
+    if (parsed.minutes) parts.push(`${parsed.minutes} MINUTE`)
+    if (parsed.seconds) parts.push(`${parsed.seconds} SECOND`)
+
+    // For MySQL, return the interval as seconds for consistent arithmetic
+    const totalSeconds = this.durationToSeconds(duration)
+    return sql`${totalSeconds}`
+  }
+
+  /**
+   * Build MySQL time difference in seconds using TIMESTAMPDIFF
+   * Returns (end - start) as seconds
+   */
+  buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
+    return sql`TIMESTAMPDIFF(SECOND, ${start}, ${end})`
+  }
+
+  /**
+   * Build MySQL timestamp + interval expression
+   * Uses DATE_ADD function
+   */
+  buildDateAddInterval(timestamp: SQL, duration: string): SQL {
+    const parsed = this.parseISODuration(duration)
+
+    // MySQL DATE_ADD supports multiple interval additions
+    // Build a chain of DATE_ADD calls for each component
+    let result: SQL = timestamp
+
+    if (parsed.years) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.years} YEAR)`
+    if (parsed.months) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.months} MONTH)`
+    if (parsed.days) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.days} DAY)`
+    if (parsed.hours) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.hours} HOUR)`
+    if (parsed.minutes) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.minutes} MINUTE)`
+    if (parsed.seconds) result = sql`DATE_ADD(${result}, INTERVAL ${parsed.seconds} SECOND)`
+
+    return result
+  }
+
+  /**
+   * Build MySQL conditional aggregation using CASE WHEN
+   * MySQL doesn't support FILTER clause, so we use CASE WHEN pattern
+   * Example: AVG(CASE WHEN step_1_time IS NOT NULL THEN time_diff END)
+   */
+  buildConditionalAggregation(
+    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
+    expr: SQL | null,
+    condition: SQL
+  ): SQL {
+    const fnName = aggFn.toUpperCase()
+    if (aggFn === 'count' && !expr) {
+      // COUNT(*) with condition -> COUNT(CASE WHEN condition THEN 1 END)
+      return sql`COUNT(CASE WHEN ${condition} THEN 1 END)`
+    }
+    // AVG/MIN/MAX/SUM -> AGG(CASE WHEN condition THEN expr END)
+    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
+  }
+
   /**
    * Build MySQL time dimension using DATE_FORMAT function
    * MySQL equivalent to PostgreSQL's DATE_TRUNC

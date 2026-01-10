@@ -242,9 +242,10 @@ app.use('/api/analytics-pages/*', async (c, next) => {
 })
 app.route('/api/analytics-pages', analyticsApp)
 
-// Mount AI routes with database access
+// Mount AI routes with database access and security context extractor
 app.use('/api/ai/*', async (c, next) => {
   c.set('db', db)
+  c.set('extractSecurityContext', extractSecurityContext)
   await next()
 })
 app.route('/api/ai', aiApp)

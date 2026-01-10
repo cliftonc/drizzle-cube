@@ -4,6 +4,7 @@
  */
 
 import type { TimeGranularity } from './core'
+import type { FunnelQueryConfig } from './funnel'
 
 /**
  * Semantic query structure (Cube.js compatible)
@@ -22,6 +23,27 @@ export interface SemanticQuery {
    * Default: 0
    */
   fillMissingDatesValue?: number | null
+
+  /**
+   * Funnel analysis configuration for query-time funnel definition.
+   * When specified, the query executes as a funnel analysis instead of
+   * standard measures/dimensions aggregation.
+   *
+   * @example
+   * ```typescript
+   * {
+   *   funnel: {
+   *     bindingKey: 'Events.userId',
+   *     timeDimension: 'Events.timestamp',
+   *     steps: [
+   *       { name: 'Signup', filter: { member: 'Events.eventType', operator: 'equals', values: ['signup'] } },
+   *       { name: 'Activation', filter: { member: 'Events.eventType', operator: 'equals', values: ['activation'] }, timeToConvert: 'P7D' }
+   *     ]
+   *   }
+   * }
+   * ```
+   */
+  funnel?: FunnelQueryConfig
 }
 
 /**

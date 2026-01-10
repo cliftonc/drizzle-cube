@@ -63,6 +63,51 @@ export interface DatabaseAdapter {
    */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
 
+  // ============================================
+  // Funnel Analysis Methods
+  // ============================================
+
+  /**
+   * Build SQL INTERVAL from ISO 8601 duration string
+   * Used for time window constraints in funnel analysis
+   * @param duration - ISO 8601 duration (e.g., "P7D" for 7 days, "PT1H" for 1 hour)
+   * @returns SQL expression representing the interval
+   */
+  buildIntervalFromISO(duration: string): SQL
+
+  /**
+   * Build time difference expression in seconds between two timestamps
+   * Used for calculating time-to-convert metrics in funnel analysis
+   * @param end - End timestamp expression
+   * @param start - Start timestamp expression
+   * @returns SQL expression for (end - start) in seconds
+   */
+  buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL
+
+  /**
+   * Build expression to add an ISO 8601 duration to a timestamp
+   * Used for time window constraint checks in funnel analysis
+   * @param timestamp - Base timestamp expression
+   * @param duration - ISO 8601 duration to add
+   * @returns SQL expression for timestamp + interval
+   */
+  buildDateAddInterval(timestamp: SQL, duration: string): SQL
+
+  /**
+   * Build conditional aggregation with database-specific syntax
+   * Used for single-pass funnel metrics aggregation
+   * PostgreSQL uses FILTER clause, MySQL/SQLite use CASE WHEN
+   * @param aggFn - Aggregation function: 'count' | 'avg' | 'min' | 'max' | 'sum'
+   * @param expr - Expression to aggregate (null for COUNT(*))
+   * @param condition - Condition for filtering
+   * @returns SQL for conditional aggregation
+   */
+  buildConditionalAggregation(
+    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
+    expr: SQL | null,
+    condition: SQL
+  ): SQL
+
   /**
    * Build time dimension expression with granularity truncation
    * @param granularity - Time granularity (day, month, year, etc.)
@@ -203,6 +248,13 @@ export interface DatabaseAdapter {
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+
+  // Funnel analysis methods
+  abstract buildIntervalFromISO(duration: string): SQL
+  abstract buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL
+  abstract buildDateAddInterval(timestamp: SQL, duration: string): SQL
+  abstract buildConditionalAggregation(aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum', expr: SQL | null, condition: SQL): SQL
+
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
@@ -249,5 +301,57 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
       default:
         return value
     }
+  }
+
+  /**
+   * Parse ISO 8601 duration into components
+   * Supports P[n]Y[n]M[n]DT[n]H[n]M[n]S format
+   * @param duration - ISO 8601 duration string (e.g., "P7D", "PT1H30M", "P1DT2H")
+   * @returns Parsed duration components
+   */
+  protected parseISODuration(duration: string): {
+    years: number
+    months: number
+    days: number
+    hours: number
+    minutes: number
+    seconds: number
+  } {
+    const result = { years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 }
+
+    // Match ISO 8601 duration pattern
+    const pattern = /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/
+    const match = duration.match(pattern)
+
+    if (!match) {
+      throw new Error(`Invalid ISO 8601 duration format: ${duration}`)
+    }
+
+    result.years = parseInt(match[1] || '0', 10)
+    result.months = parseInt(match[2] || '0', 10)
+    result.days = parseInt(match[3] || '0', 10)
+    result.hours = parseInt(match[4] || '0', 10)
+    result.minutes = parseInt(match[5] || '0', 10)
+    result.seconds = parseFloat(match[6] || '0')
+
+    return result
+  }
+
+  /**
+   * Convert ISO 8601 duration to total seconds
+   * Note: Months and years are approximated (30 days/month, 365 days/year)
+   * @param duration - ISO 8601 duration string
+   * @returns Total seconds
+   */
+  protected durationToSeconds(duration: string): number {
+    const parsed = this.parseISODuration(duration)
+    return (
+      parsed.years * 365 * 24 * 60 * 60 +
+      parsed.months * 30 * 24 * 60 * 60 +
+      parsed.days * 24 * 60 * 60 +
+      parsed.hours * 60 * 60 +
+      parsed.minutes * 60 +
+      parsed.seconds
+    )
   }
 }

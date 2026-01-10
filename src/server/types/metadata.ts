@@ -28,6 +28,8 @@ export interface CubeMetadata {
   dimensions: DimensionMetadata[]
   segments: any[]
   relationships?: CubeRelationshipMetadata[]
+  /** Additional cube metadata (e.g., eventStream configuration for funnel queries) */
+  meta?: Record<string, any>
 }
 
 /**

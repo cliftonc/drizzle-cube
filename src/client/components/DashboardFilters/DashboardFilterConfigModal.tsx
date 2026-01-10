@@ -601,7 +601,8 @@ export default function DashboardFilterConfigModal({
       >
         <div
           ref={containerRef}
-          className="bg-dc-surface rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto"
+          className="bg-dc-surface rounded-lg border border-dc-border max-w-md w-full max-h-[90vh] overflow-auto"
+          style={{ boxShadow: 'var(--dc-shadow-xl)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

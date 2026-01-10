@@ -8,7 +8,11 @@ import type { Filter } from '../../../types'
 import type { MetricItem, BreakdownItem, AnalysisBuilderState, AnalysisBuilderStorageState } from '../types'
 
 // Storage key for localStorage persistence
-export const STORAGE_KEY = 'drizzle-cube-analysis-builder-state'
+// v3: Uses slice composition and AnalysisConfig format (clean break from v2)
+export const STORAGE_KEY = 'drizzle-cube-analysis-builder-v3'
+
+/** @deprecated Use STORAGE_KEY instead */
+export const STORAGE_KEY_V2 = 'drizzle-cube-analysis-builder-v2'
 
 /**
  * Create initial empty state for AnalysisBuilder

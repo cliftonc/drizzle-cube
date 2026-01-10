@@ -11,6 +11,8 @@ interface ChartTypeSelectorProps {
   compact?: boolean
   /** Map of chart type availability - when provided, unavailable charts are disabled */
   availability?: ChartAvailabilityMap
+  /** Chart types to exclude from the list (e.g., ['funnel'] to hide funnel in query mode) */
+  excludeTypes?: ChartType[]
 }
 
 // Chart type display names (defined outside component to avoid recreation)
@@ -38,12 +40,14 @@ export default function ChartTypeSelector({
   onTypeChange,
   className = '',
   compact = false,
-  availability
+  availability,
+  excludeTypes = []
 }: ChartTypeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  // Get chart types and sort alphabetically by label
+  // Get chart types, filter excluded ones, and sort alphabetically by label
   const chartTypes = (Object.entries(chartConfigRegistry) as [ChartType, typeof chartConfigRegistry[keyof typeof chartConfigRegistry]][])
+    .filter(([type]) => !excludeTypes.includes(type))
     .sort((a, b) => {
       const labelA = chartTypeLabels[a[0]] || a[0]
       const labelB = chartTypeLabels[b[0]] || b[0]

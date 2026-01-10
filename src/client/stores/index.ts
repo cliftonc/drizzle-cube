@@ -35,7 +35,6 @@ export {
   type AnalysisBuilderStoreState,
   type AnalysisBuilderStoreActions,
   type FieldModalMode,
-  type SharedState,
   type CreateStoreOptions,
   type AnalysisBuilderStoreProviderProps,
 } from './analysisBuilderStore.js'

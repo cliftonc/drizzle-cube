@@ -16,8 +16,8 @@ export interface CubeMetaField {
 
 export interface CubeMetaRelationship {
   targetCube: string
-  relationship: 'belongsTo' | 'hasOne' | 'hasMany'
-  joinFields: Array<{
+  relationship: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+  joinFields?: Array<{
     sourceField: string
     targetField: string
   }>
@@ -31,6 +31,14 @@ export interface CubeMetaCube {
   dimensions: CubeMetaField[]
   segments: CubeMetaField[]
   relationships?: CubeMetaRelationship[]
+  /** Additional cube metadata (e.g., eventStream configuration for funnel queries) */
+  meta?: {
+    eventStream?: {
+      bindingKey: string
+      timeDimension: string
+    }
+    [key: string]: any
+  }
 }
 
 export interface CubeMeta {
@@ -171,18 +179,52 @@ export interface ChartDisplayConfig {
   hideSummaryFooter?: boolean
   /** Funnel orientation: horizontal (bars left to right) or vertical (bars bottom to top) */
   funnelOrientation?: 'horizontal' | 'vertical'
+  /** @deprecated Use showFunnelAvgTime, showFunnelMedianTime, showFunnelP90Time instead */
+  showFunnelTimeMetrics?: boolean
+  /** Funnel visualization style: 'bars' (horizontal bars) or 'funnel' (trapezoid funnel shape) */
+  funnelStyle?: 'bars' | 'funnel'
+  /** Show step-to-step conversion rate (default: true) */
+  showFunnelConversion?: boolean
+  /** Show average time-to-convert metric in funnel charts */
+  showFunnelAvgTime?: boolean
+  /** Show median time-to-convert metric in funnel charts */
+  showFunnelMedianTime?: boolean
+  /** Show P90 time-to-convert metric in funnel charts */
+  showFunnelP90Time?: boolean
 }
 
 // Portlet configuration
 export interface PortletConfig {
   id: string
   title: string
-  query: string // JSON string of cube query
+
+  /**
+   * Phase 3: New canonical format for analysis configuration.
+   * When present, this is the source of truth for all query/chart config.
+   * During migration: both analysisConfig AND legacy fields are written (dual-write).
+   */
+  analysisConfig?: import('./types/analysisConfig').AnalysisConfig
+
+  // === Legacy fields (kept for backward compatibility) ===
+  // These will be deprecated once all clients migrate to analysisConfig.
+  query: string // JSON string of cube query (CubeQuery, MultiQueryConfig, or ServerFunnelQuery)
   chartType: ChartType
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
   eagerLoad?: boolean // Force immediate loading (overrides dashboard lazy loading setting)
+  analysisType?: AnalysisType // Optional - defaults to 'query' when undefined (backward compatible)
+
+  // Funnel mode state (when analysisType === 'funnel')
+  // These fields store the complete funnel configuration for save/load persistence
+  funnelCube?: string | null
+  funnelSteps?: FunnelStepState[]
+  funnelTimeDimension?: string | null
+  funnelBindingKey?: FunnelBindingKey | null
+  funnelChartType?: ChartType
+  funnelChartConfig?: ChartAxisConfig
+  funnelDisplayConfig?: ChartDisplayConfig
+
   w: number // Grid width
   h: number // Grid height
   x: number // Grid x position
@@ -219,6 +261,27 @@ export interface DashboardConfig {
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
   eagerLoad?: boolean // Force immediate loading for all portlets (default: false, lazy load enabled)
+}
+
+// Analysis type for explicit mode selection in AnalysisBuilder
+// 'query' supports both single and multi-query (add more queries via + button)
+export type AnalysisType = 'query' | 'funnel'
+
+/**
+ * State for a single funnel step (dedicated for Funnel mode)
+ * Each step represents a stage in the funnel with its own cube and filters
+ */
+export interface FunnelStepState {
+  /** Unique step identifier */
+  id: string
+  /** Display name for the step (e.g., "Signup", "Purchase") */
+  name: string
+  /** Which cube this step uses (for multi-cube funnels) */
+  cube: string
+  /** Filters that define which events qualify for this step */
+  filters: Filter[]
+  /** Time window from previous step (ISO 8601 duration, e.g., "P7D" for 7 days) */
+  timeToConvert?: string
 }
 
 // Filter types - hierarchical structure supporting AND/OR logic
@@ -288,21 +351,22 @@ export interface CubeQuery {
  * Merge strategy for combining multiple query results
  * - 'concat': Append rows with __queryIndex marker (for separate series per query)
  * - 'merge': Align data by common dimension key (for combined visualization)
- * - 'funnel': Execute queries sequentially, filtering each step by binding key from previous step
+ *
+ * Note: For funnel analysis, use the dedicated funnel mode (analysisType === 'funnel')
  */
-export type QueryMergeStrategy = 'concat' | 'merge' | 'funnel'
+export type QueryMergeStrategy = 'concat' | 'merge'
 
 /**
  * Configuration for multi-query portlets
  * Detected by presence of 'queries' array property
+ *
+ * Note: For funnel analysis, use the dedicated funnel mode (analysisType === 'funnel')
  */
 export interface MultiQueryConfig {
   queries: CubeQuery[]
   mergeStrategy: QueryMergeStrategy
   mergeKeys?: string[]        // Dimensions to align on (for 'merge' strategy) - composite key
   queryLabels?: string[]      // User-defined labels per query
-  funnelBindingKey?: FunnelBindingKey | null  // Binding key for funnel strategy
-  stepTimeToConvert?: (string | null)[]       // Time window per step (ISO 8601 duration)
 }
 
 /**
@@ -425,6 +489,18 @@ export type {
   FunnelValidationResult,
   UseFunnelQueryOptions,
   UseFunnelQueryResult,
+  ServerFunnelQuery,
 } from './types/funnel'
 
-export { isFunnelMergeStrategy } from './types/funnel'
+/**
+ * Type guard to detect server funnel query format
+ * Used to distinguish { funnel: {...} } from CubeQuery or MultiQueryConfig
+ */
+export function isServerFunnelQuery(obj: unknown): obj is import('./types/funnel').ServerFunnelQuery {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'funnel' in obj &&
+    typeof (obj as { funnel: unknown }).funnel === 'object'
+  )
+}

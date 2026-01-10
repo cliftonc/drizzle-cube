@@ -8,6 +8,13 @@ import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import type { DrizzleDatabase } from '../../src/server/index.js'
 import { SemanticLayerCompiler } from '../../src/server/index.js'
+import {
+  buildStep0Prompt,
+  buildSystemPrompt,
+  buildStep1Prompt,
+  buildStep2Prompt
+} from '../../src/server/prompts/index.js'
+import type { Step0Result, Step1Result } from '../../src/server/prompts/index.js'
 import { settings, schema } from './schema.js'
 import { allCubes } from './cubes.js'
 
@@ -22,101 +29,6 @@ interface GeminiMessageRequest {
 interface AIGenerateRequest {
   text: string
 }
-
-// System prompt template for the server
-const SYSTEM_PROMPT_TEMPLATE = `You are a helpful AI assistant for analyzing business data using Cube.js/Drizzle-Cube semantic layer.
-
-Given the following cube schema and user query, generate a valid JSON response containing a query AND chart configuration.
-
-CUBE SCHEMA:
-{CUBE_SCHEMA}
-
-RESPONSE FORMAT:
-Return a JSON object with these fields:
-{
-  "query": { /* Cube.js query object */ },
-  "chartType": "line"|"bar"|"area"|"pie"|"scatter"|"bubble"|"table",
-  "chartConfig": {
-    "xAxis": string[],     // Dimensions/timeDimensions for X axis
-    "yAxis": string[],     // Measures for Y axis
-    "series": string[],    // Optional: dimension for grouping into multiple series
-    "sizeField": string,   // Bubble chart only: measure for bubble size
-    "colorField": string   // Bubble chart only: dimension/measure for color
-  }
-}
-
-QUERY STRUCTURE:
-{
-  dimensions?: string[], // dimension names from CUBE SCHEMA
-  measures?: string[], // measure names from CUBE SCHEMA
-  timeDimensions?: [{
-    dimension: string, // time dimension from CUBE SCHEMA
-    granularity?: 'second'|'minute'|'hour'|'day'|'week'|'month'|'quarter'|'year',
-    dateRange?: [string, string] | string // 'last year' 'this year' ['2024-01-01','2024-12-31'] or lowercase relative strings below
-  }],
-  filters?: [{
-    member: string, // dimension/measure from CUBE SCHEMA
-    operator: 'equals'|'notEquals'|'contains'|'notContains'|'startsWith'|'endsWith'|'gt'|'gte'|'lt'|'lte'|'inDateRange'|'notInDateRange'|'beforeDate'|'afterDate'|'set'|'notSet',
-    values?: any[] // required unless set/notSet
-  }],
-  order?: {[member: string]: 'asc'|'desc'}, // member from dimensions/measures/timeDimensions
-  limit?: number,
-  offset?: number
-}
-
-Valid dateRange strings (MUST be lower case): 'today'|'yesterday'|'tomorrow'|'last 7 days'|'last 30 days'|'last week'|'last month'|'last quarter'|'last year'|'this week'|'this month'|'this quarter'|'this year'|'next week'|'next month'|'next quarter'|'next year'
-CRITICAL: All dateRange strings must be lowercase. Never capitalize (e.g., use 'last 7 days' NOT 'Last 7 days').
-
-CHART TYPE SELECTION:
-- "line": For trends over time ONLY (requires timeDimensions, NOT for correlations)
-- "bar": For comparing categories or values across groups (NOT for correlations)
-- "area": For cumulative trends over time (requires timeDimensions)
-- "pie": For showing proportions of a whole (single measure, one dimension, few categories)
-- "scatter": ALWAYS use for correlation, relationship, or comparison between TWO numeric values
-- "bubble": ALWAYS use for correlation between THREE measures (x, y, size) with category labels
-- "table": For detailed data inspection or when chart doesn't make sense
-
-CRITICAL CORRELATION DETECTION:
-If the user query contains ANY of these words, YOU MUST use "scatter" or "bubble" chart:
-- "correlation", "correlate", "correlated"
-- "relationship", "relate", "related"
-- "vs", "versus", "against"
-- "compare", "comparison"
-- "association", "associated"
-- "link", "linked", "connection"
-When 2 measures: use "scatter"
-When 3+ measures: use "bubble" (xAxis=measure1, yAxis=measure2, sizeField=measure3)
-NEVER use "line" for correlation queries - line charts are ONLY for time-series data.
-
-CHART CONFIGURATION RULES:
-- xAxis: Put the grouping dimension or time dimension here
-- yAxis: Put the measure(s) to visualize here
-- series: Use when you want multiple lines/bars per category (e.g., breakdown by status)
-- For time-series analysis: xAxis = [time dimension name], yAxis = [measures]
-- For categorical analysis: xAxis = [category dimension], yAxis = [measures]
-- For scatter/bubble charts (correlation analysis):
-  - Scatter: xAxis = [measure1], yAxis = [measure2], series = [optional grouping dimension]
-  - Bubble: xAxis = [measure1], yAxis = [measure2], sizeField = measure3, series = [label dimension]
-
-DIMENSION SELECTION RULES:
-1. ALWAYS prefer .name fields over .id fields (e.g., use "Employees.name" NOT "Employees.id")
-2. NEVER use fields ending with "Id" as dimensions unless specifically requested
-3. When analyzing trends over time, ALWAYS include an appropriate timeDimension with granularity
-4. For "by" queries (e.g., "sales by region"), use the category as the xAxis dimension
-5. Choose descriptive string dimensions over numeric ID fields
-
-QUERY RULES:
-1. Only use measures, dimensions, and time dimensions that exist in the schema above
-2. Return ONLY valid JSON - no explanations or markdown
-3. Use proper Cube.js query format with measures, dimensions, timeDimensions, filters, etc.
-4. For time-based queries, always specify appropriate granularity (day, week, month, year)
-5. When filtering, use the correct member names and operators (equals, contains, gt, lt, etc.)
-6. At least one measure or dimension is required
-
-USER QUERY:
-{USER_PROMPT}
-
-Return the JSON response:`
 
 interface GeminiMessageResponse {
   candidates: Array<{
@@ -136,7 +48,49 @@ interface GeminiMessageResponse {
 }
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
-const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview'
+
+// Default models for each step (can be overridden via GEMINI_MODEL env var)
+// Format: "step0,step1,step2" or single model for all steps
+// Step 0: Validation (fast/cheap recommended)
+// Step 1: Shape analysis (fast/cheap recommended)
+// Step 2: Query generation (more capable model recommended)
+const DEFAULT_GEMINI_MODELS = {
+  step0: 'gemini-2.0-flash-lite',      // Fast validation
+  step1: 'gemini-2.0-flash-lite',      // Fast shape analysis
+  step2: 'gemini-2.5-flash-preview-05-20'  // Full query generation
+}
+
+/**
+ * Parse comma-delimited model string into per-step models
+ * Format: "step0,step1,step2" or single model for all
+ * Examples:
+ *   "gemini-2.5-flash" -> all steps use gemini-2.5-flash
+ *   "gemini-2.0-flash-lite,gemini-2.0-flash-lite,gemini-2.5-flash" -> step0/1 use lite, step2 uses flash
+ */
+function parseModelConfig(modelEnv: string | undefined): { step0: string; step1: string; step2: string } {
+  if (!modelEnv) {
+    return DEFAULT_GEMINI_MODELS
+  }
+
+  const parts = modelEnv.split(',').map(s => s.trim()).filter(Boolean)
+
+  if (parts.length === 1) {
+    // Single model for all steps
+    return { step0: parts[0], step1: parts[0], step2: parts[0] }
+  }
+
+  if (parts.length === 2) {
+    // Two models: first for step0/1, second for step2
+    return { step0: parts[0], step1: parts[0], step2: parts[1] }
+  }
+
+  if (parts.length >= 3) {
+    // Three models: one for each step
+    return { step0: parts[0], step1: parts[1], step2: parts[2] }
+  }
+
+  return DEFAULT_GEMINI_MODELS
+}
 
 // Prompt validation configuration
 const MAX_PROMPT_LENGTH = 500
@@ -217,13 +171,6 @@ function validatePrompt(text: string): { isValid: boolean; message?: string } {
   return { isValid: true }
 }
 
-// Build system prompt with cube schema and user prompt
-function buildSystemPrompt(cubeSchema: string, userPrompt: string): string {
-  return SYSTEM_PROMPT_TEMPLATE
-    .replace('{CUBE_SCHEMA}', cubeSchema)
-    .replace('{USER_PROMPT}', userPrompt)
-}
-
 // Get cube schema for the AI prompt from the actual semantic layer
 function formatCubeSchemaForAI(db: DrizzleDatabase): string {
   try {
@@ -283,6 +230,14 @@ function formatCubeSchemaForAI(db: DrizzleDatabase): string {
       if (Object.keys(timeDimensions).length > 0) {
         cubes[cube.name].timeDimensions = timeDimensions
       }
+
+      // Include eventStream metadata if present (enables funnel analysis)
+      if (cube.meta?.eventStream) {
+        cubes[cube.name].eventStream = {
+          bindingKey: cube.meta.eventStream.bindingKey,
+          timeDimension: cube.meta.eventStream.timeDimension
+        }
+      }
     }
 
     return JSON.stringify({ cubes }, null, 2)
@@ -300,6 +255,90 @@ function formatCubeSchemaForAI(db: DrizzleDatabase): string {
   }
 }
 
+// Helper to query distinct values for a dimension
+async function getDistinctValues(
+  db: DrizzleDatabase,
+  fieldName: string,
+  securityContext: { organisationId: number },
+  limit: number = 100
+): Promise<string[]> {
+  try {
+    // Create semantic layer for the query
+    const semanticLayer = new SemanticLayerCompiler({
+      drizzle: db,
+      schema,
+      engineType: 'postgres'
+    })
+
+    // Register all cubes
+    allCubes.forEach(cube => {
+      semanticLayer.registerCube(cube)
+    })
+
+    // Execute a simple query to get distinct values
+    const result = await semanticLayer.execute({
+      dimensions: [fieldName],
+      limit,
+      order: { [fieldName]: 'asc' }
+    }, securityContext)
+
+    // Extract unique values from the result
+    return result.data
+      .map((row: any) => row[fieldName])
+      .filter((v: any) => v !== null && v !== undefined && v !== '')
+  } catch (err) {
+    console.warn(`Failed to get distinct values for ${fieldName}:`, err)
+    return []
+  }
+}
+
+// Helper to call Gemini API
+async function callGemini(
+  prompt: string,
+  apiKey: string,
+  model: string
+): Promise<string> {
+  const url = `${GEMINI_BASE_URL}/models/${model}:generateContent`
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-goog-api-key': apiKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: prompt }]
+      }]
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorText}`)
+  }
+
+  const data: GeminiMessageResponse = await response.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+
+  if (!text) {
+    throw new Error('No response text from Gemini')
+  }
+
+  return text
+}
+
+// Parse JSON from AI response (handles markdown code blocks)
+function parseAIResponse(text: string): any {
+  // Remove markdown code blocks if present
+  let cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim()
+
+  return JSON.parse(cleaned)
+}
+
 // Get environment variable helper - works in both Node.js and Worker contexts
 function getEnvVar(c: any, key: string, fallback: string = ''): string {
   // Try worker/cloudflare env first
@@ -315,8 +354,14 @@ function getEnvVar(c: any, key: string, fallback: string = ''): string {
 
 const GEMINI_CALLS_KEY = 'gemini-ai-calls'
 
+interface SecurityContext {
+  organisationId: number
+  userId?: number
+}
+
 interface Variables {
   db: DrizzleDatabase
+  extractSecurityContext: (c: any) => Promise<SecurityContext>
 }
 
 // Extended interface to support both Node.js and Worker environments
@@ -422,50 +467,113 @@ aiApp.post('/generate', async (c) => {
       }, 400)
     }
 
-    // Build the complete system prompt with cube schema and user input
+    // Parse model configuration (supports comma-delimited: "step0,step1,step2")
+    const modelConfig = parseModelConfig(getEnvVar(c, 'GEMINI_MODEL'))
     const cubeSchema = formatCubeSchemaForAI(db)
-    const finalPrompt = buildSystemPrompt(cubeSchema, sanitizedUserPrompt)
 
-    // Create Gemini request body with complete system + user prompt
-    const geminiBody: GeminiMessageRequest = {
-      contents: [{
-        parts: [{ text: finalPrompt }]
-      }]
+    // Get security context for dimension value queries
+    const extractSecurityContext = c.get('extractSecurityContext')
+    let securityContext: SecurityContext = { organisationId: 1 }
+    if (extractSecurityContext) {
+      try {
+        securityContext = await extractSecurityContext(c)
+      } catch (err) {
+        console.warn('Failed to extract security context, using default:', err)
+      }
     }
 
-    const geminiModel = getEnvVar(c, 'GEMINI_MODEL', DEFAULT_GEMINI_MODEL)
-    const url = `${GEMINI_BASE_URL}/models/${geminiModel}:generateContent`
-    const requestHeaders = {
-      'X-goog-api-key': apiKey,
-      'Content-Type': 'application/json'
+    // STEP 0: Validate input for security and relevance
+    console.log('[AI] Step 0: Validating input...', { model: modelConfig.step0 })
+    const step0Prompt = buildStep0Prompt(sanitizedUserPrompt)
+    const step0Response = await callGemini(step0Prompt, apiKey, modelConfig.step0)
+
+    let step0Result: Step0Result
+    try {
+      step0Result = parseAIResponse(step0Response)
+    } catch (err) {
+      console.error('[AI] Failed to parse Step 0 response:', step0Response)
+      // If validation parsing fails, continue cautiously (already passed basic sanitization)
+      step0Result = { isValid: true, explanation: 'Validation parse failed, proceeding with caution' }
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: requestHeaders,
-      body: JSON.stringify(geminiBody)
-    })
+    console.log('[AI] Step 0 result:', JSON.stringify(step0Result, null, 2))
 
-    if (!response.ok) {
-      const errorText = await response.text()
+    // Reject invalid inputs
+    if (!step0Result.isValid) {
+      const rejectionMessages: Record<string, string> = {
+        injection: 'Your request appears to contain instructions that could compromise the system.',
+        security: 'Your request appears to be attempting to access unauthorized data.',
+        off_topic: 'Your request doesn\'t appear to be related to data analysis. Try asking about metrics, trends, or reports.',
+        unclear: 'Your request is too vague. Please provide more details about what data you\'d like to analyze.'
+      }
+
       return c.json({
-        error: `Failed to generate content: ${response.status} ${response.statusText}`,
-        details: errorText,
-        usingUserKey
-      }, response.status as any)
+        error: 'Request rejected',
+        message: rejectionMessages[step0Result.rejectionReason || 'unclear'] || step0Result.explanation,
+        rejectionReason: step0Result.rejectionReason,
+        suggestion: 'Please rephrase your request to focus on data analysis.'
+      }, 400)
     }
 
-    const data: GeminiMessageResponse = await response.json()
+    // STEP 1: Determine query shape and what dimensions need values
+    console.log('[AI] Step 1: Determining query shape...', { model: modelConfig.step1 })
+    const step1Prompt = buildStep1Prompt(cubeSchema, sanitizedUserPrompt)
+    const step1Response = await callGemini(step1Prompt, apiKey, modelConfig.step1)
 
-    // Extract the query from Gemini response
-    const queryText = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (!queryText) {
+    let step1Result: Step1Result
+    try {
+      step1Result = parseAIResponse(step1Response)
+    } catch (err) {
+      console.error('[AI] Failed to parse Step 1 response:', step1Response)
+      // Fall back to single-step if Step 1 parsing fails
+      const finalPrompt = buildSystemPrompt(cubeSchema, sanitizedUserPrompt)
+      const queryText = await callGemini(finalPrompt, apiKey, modelConfig.step2)
       return c.json({
-        error: 'No query generated by AI',
-        details: 'AI response did not contain a valid query'
-      }, 500)
+        query: queryText,
+        rateLimit: usingUserKey ? undefined : {
+          usingServerKey: true,
+          dailyLimit: MAX_GEMINI_CALLS
+        }
+      })
     }
+
+    console.log('[AI] Step 1 result:', JSON.stringify(step1Result, null, 2))
+
+    // If no dimensions need values, use single-step generation
+    if (!step1Result.dimensionsNeedingValues?.length) {
+      console.log('[AI] No dimensions need values, using single-step generation')
+      const finalPrompt = buildSystemPrompt(cubeSchema, sanitizedUserPrompt)
+      const queryText = await callGemini(finalPrompt, apiKey, modelConfig.step2)
+      return c.json({
+        query: queryText,
+        rateLimit: usingUserKey ? undefined : {
+          usingServerKey: true,
+          dailyLimit: MAX_GEMINI_CALLS
+        }
+      })
+    }
+
+    // STEP 2: Fetch actual values for requested dimensions
+    console.log('[AI] Step 2: Fetching dimension values for:', step1Result.dimensionsNeedingValues)
+    const dimensionValues: Record<string, string[]> = {}
+
+    for (const dim of step1Result.dimensionsNeedingValues) {
+      try {
+        const values = await getDistinctValues(db, dim, securityContext)
+        dimensionValues[dim] = values
+        console.log(`[AI] Values for ${dim}:`, values)
+      } catch (err) {
+        console.warn(`[AI] Failed to get values for ${dim}:`, err)
+        dimensionValues[dim] = []
+      }
+    }
+
+    // STEP 3: Complete query with actual values
+    console.log('[AI] Step 3: Completing query with actual values...', { model: modelConfig.step2 })
+    const step2Prompt = buildStep2Prompt(cubeSchema, sanitizedUserPrompt, dimensionValues)
+    const queryText = await callGemini(step2Prompt, apiKey, modelConfig.step2)
+
+    console.log('[AI] Final query generated successfully')
 
     // Return simplified format
     return c.json({
@@ -473,6 +581,11 @@ aiApp.post('/generate', async (c) => {
       rateLimit: usingUserKey ? undefined : {
         usingServerKey: true,
         dailyLimit: MAX_GEMINI_CALLS
+      },
+      _debug: {
+        multiStep: true,
+        dimensionsQueried: Object.keys(dimensionValues),
+        models: modelConfig
       }
     })
   } catch (error) {
@@ -488,17 +601,28 @@ aiApp.post('/generate', async (c) => {
 aiApp.get('/health', (c) => {
   const hasServerApiKey = !!getEnvVar(c, 'GEMINI_API_KEY')
   const MAX_GEMINI_CALLS = parseInt(getEnvVar(c, 'MAX_GEMINI_CALLS', '100'))
-  const geminiModel = getEnvVar(c, 'GEMINI_MODEL', DEFAULT_GEMINI_MODEL)
+  const modelConfig = parseModelConfig(getEnvVar(c, 'GEMINI_MODEL'))
 
   return c.json({
     status: 'ok',
     provider: 'Google Gemini',
-    model: geminiModel,
+    models: {
+      step0: { model: modelConfig.step0, purpose: 'Input validation (fast/cheap)' },
+      step1: { model: modelConfig.step1, purpose: 'Query shape analysis (fast/cheap)' },
+      step2: { model: modelConfig.step2, purpose: 'Query generation (capable)' }
+    },
+    modelConfig: 'Set GEMINI_MODEL as comma-delimited "step0,step1,step2" or single model for all',
     server_key_configured: hasServerApiKey,
     endpoints: {
       'POST /api/ai/generate': 'Generate content with Gemini (rate limited without user key)',
       'GET /api/ai/health': 'This endpoint'
     },
+    pipeline: [
+      'Step 0: Validate input for security/relevance',
+      'Step 1: Analyze query shape, identify dimensions needing values',
+      'Step 2: Fetch dimension values from DB (with security context)',
+      'Step 3: Generate final query with actual values'
+    ],
     rateLimit: {
       dailyLimit: MAX_GEMINI_CALLS,
       note: 'Rate limit applies only when using server API key. Bypass by providing X-API-Key header.'
@@ -506,7 +630,8 @@ aiApp.get('/health', (c) => {
     validation: {
       maxPromptLength: MAX_PROMPT_LENGTH,
       minPromptLength: MIN_PROMPT_LENGTH,
-      sanitization: 'HTML tags, control characters, and suspicious patterns are filtered'
+      sanitization: 'HTML tags, control characters, and suspicious patterns are filtered',
+      step0Validation: 'AI-based validation for injection, security, and relevance'
     }
   })
 })

@@ -41,6 +41,18 @@ export const productivity = pgTable('productivity', {
   createdAt: timestamp('created_at').defaultNow()
 })
 
+// PR Events table - tracks PR lifecycle events for funnel analysis
+// Event types: created, review_requested, reviewed, changes_requested, approved, merged, closed
+export const prEvents = pgTable('pr_events', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  prNumber: integer('pr_number').notNull(),
+  eventType: text('event_type').notNull(),
+  employeeId: integer('employee_id').notNull(),
+  organisationId: integer('organisation_id').notNull(),
+  timestamp: timestamp('timestamp').notNull(),
+  createdAt: timestamp('created_at').defaultNow()
+})
+
 // Analytics Pages table - for storing dashboard configurations
 export const analyticsPages = pgTable('analytics_pages', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
@@ -89,7 +101,8 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
     fields: [employees.departmentId],
     references: [departments.id]
   }),
-  productivityMetrics: many(productivity)
+  productivityMetrics: many(productivity),
+  prEvents: many(prEvents)
 }))
 
 export const departmentsRelations = relations(departments, ({ many }) => ({
@@ -103,16 +116,25 @@ export const productivityRelations = relations(productivity, ({ one }) => ({
   })
 }))
 
+export const prEventsRelations = relations(prEvents, ({ one }) => ({
+  employee: one(employees, {
+    fields: [prEvents.employeeId],
+    references: [employees.id]
+  })
+}))
+
 // Export schema for use with Drizzle
-export const schema = { 
-  employees, 
+export const schema = {
+  employees,
   departments,
   productivity,
+  prEvents,
   analyticsPages,
   settings,
   employeesRelations,
   departmentsRelations,
-  productivityRelations
+  productivityRelations,
+  prEventsRelations
 }
 
 export type Schema = typeof schema

@@ -27,6 +27,8 @@ interface AnalysisFilterSectionProps {
   onFiltersChange: (filters: Filter[]) => void
   /** Callback when a field is dropped from another section */
   onFieldDropped?: (field: string) => void
+  /** Only allow dimension filters (no measures) - used for funnel step filters */
+  dimensionsOnly?: boolean
 }
 
 /**
@@ -125,7 +127,8 @@ export default function AnalysisFilterSection({
   filters,
   schema,
   onFiltersChange,
-  onFieldDropped
+  onFieldDropped,
+  dimensionsOnly = false
 }: AnalysisFilterSectionProps) {
   const [showFieldModal, setShowFieldModal] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -337,7 +340,7 @@ export default function AnalysisFilterSection({
         )}
       </div>
 
-      {/* Field Search Modal - mode 'filter' shows all fields (measures + dimensions) */}
+      {/* Field Search Modal - mode determines which field types to show */}
       <FieldSearchModal
         isOpen={showFieldModal}
         onClose={() => {
@@ -345,7 +348,7 @@ export default function AnalysisFilterSection({
           pendingAddPath.current = []
         }}
         onSelect={handleFieldSelected}
-        mode="filter"
+        mode={dimensionsOnly ? 'dimensionFilter' : 'filter'}
         schema={schema}
         selectedFields={selectedFields}
       />

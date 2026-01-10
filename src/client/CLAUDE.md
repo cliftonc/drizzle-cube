@@ -461,6 +461,231 @@ type Filter = SimpleFilter | GroupFilter
 
 ---
 
+## Analysis Mode Adapter Architecture
+
+The AnalysisBuilder supports multiple analysis modes (query, funnel, and future: flow, retention, cohort) through a **mode adapter pattern**. This keeps mode-specific logic encapsulated while the core store remains mode-agnostic.
+
+### Core Concepts
+
+```
+AnalysisBuilder → Store → Adapter Registry → Mode Adapter → AnalysisConfig
+                     ↓            ↓
+              charts map     Validation
+```
+
+**Key Components**:
+- **AnalysisConfig** (`src/client/types/analysisConfig.ts`) - Unified persistence format
+- **ModeAdapter** (`src/client/adapters/modeAdapter.ts`) - Interface for mode-specific logic
+- **AdapterRegistry** (`src/client/adapters/adapterRegistry.ts`) - Central adapter lookup
+- **Charts Map** - Per-mode chart configuration storage
+
+### AnalysisConfig Format
+
+The canonical format for persisting analysis state:
+
+```typescript
+interface AnalysisConfig {
+  version: 1
+  analysisType: 'query' | 'funnel'  // Future: 'flow' | 'retention' | 'cohort'
+  activeView: 'table' | 'chart'
+  charts: Partial<Record<AnalysisType, ChartConfig>>
+  query: CubeQuery | MultiQueryConfig | ServerFunnelQuery
+}
+
+interface ChartConfig {
+  chartType: ChartType
+  chartConfig: ChartAxisConfig
+  displayConfig: ChartDisplayConfig
+}
+```
+
+**Usage**:
+```typescript
+// Saving (store → config)
+const config = store.save()  // Returns AnalysisConfig
+
+// Loading (config → store)
+store.load(config)  // Restores state from AnalysisConfig
+
+// Sharing
+const shareUrl = compressAndEncode(store.save())
+```
+
+### ModeAdapter Interface
+
+Each analysis mode implements this interface:
+
+```typescript
+interface ModeAdapter<TUIState> {
+  // Identity
+  readonly type: AnalysisType
+
+  // Initialization
+  createInitial(): TUIState
+
+  // State extraction (required for workspace persistence)
+  extractState(storeState: Record<string, unknown>): TUIState
+
+  // Persistence
+  load(config: AnalysisConfig): TUIState
+  save(state: TUIState, charts: ChartMap, activeView: View): AnalysisConfig
+  canLoad(config: unknown): config is AnalysisConfig
+
+  // Validation
+  validate(state: TUIState): ValidationResult
+
+  // Actions
+  clear(state: TUIState): TUIState
+
+  // Chart defaults
+  getDefaultChartConfig(): ChartConfig
+}
+```
+
+**Important**: The `extractState()` method is required for `saveWorkspace()`/`loadWorkspace()` to properly persist all modes to localStorage. It extracts mode-specific fields from the full store state.
+
+### Charts Map Pattern
+
+Instead of separate `chartType`, `funnelChartType` fields, all chart config is stored in a mode-indexed map:
+
+```typescript
+// In store state
+charts: Partial<Record<AnalysisType, ChartConfig>>
+
+// Example state
+{
+  charts: {
+    query: { chartType: 'bar', chartConfig: {...}, displayConfig: {...} },
+    funnel: { chartType: 'funnel', chartConfig: {...}, displayConfig: {...} }
+  }
+}
+
+// Access current mode's chart config
+const chartConfig = state.charts[state.analysisType]
+
+// Set chart type for current mode
+setChartType: (type) => set((state) => ({
+  charts: {
+    ...state.charts,
+    [state.analysisType]: {
+      ...state.charts[state.analysisType],
+      chartType: type
+    }
+  }
+}))
+```
+
+### Existing Adapters
+
+**Query Mode Adapter** (`src/client/adapters/queryModeAdapter.ts`):
+- Handles single queries and multi-query configurations
+- Converts between `AnalysisBuilderState[]` and `CubeQuery | MultiQueryConfig`
+- Default chart: bar chart
+
+**Funnel Mode Adapter** (`src/client/adapters/funnelModeAdapter.ts`):
+- Handles funnel step configuration
+- Converts between `FunnelSliceState` and `ServerFunnelQuery`
+- Validates binding key, time dimension, and step requirements
+- Default chart: funnel chart
+
+### Adding a New Analysis Mode
+
+To add a new analysis type (e.g., "retention"):
+
+1. **Define the AnalysisType** in `src/client/types/analysisConfig.ts`:
+   ```typescript
+   export type AnalysisType = 'query' | 'funnel' | 'retention'
+   ```
+
+2. **Create the adapter** in `src/client/adapters/retentionModeAdapter.ts`:
+   ```typescript
+   export interface RetentionSliceState {
+     cohortDimension: string | null
+     retentionPeriod: 'day' | 'week' | 'month'
+     // ... retention-specific state
+   }
+
+   export const retentionModeAdapter: ModeAdapter<RetentionSliceState> = {
+     type: 'retention',
+
+     createInitial() { return { cohortDimension: null, retentionPeriod: 'day' } },
+
+     // Required for saveWorkspace/loadWorkspace
+     extractState(storeState: Record<string, unknown>): RetentionSliceState {
+       return {
+         cohortDimension: storeState.cohortDimension as string | null,
+         retentionPeriod: storeState.retentionPeriod as 'day' | 'week' | 'month',
+       }
+     },
+
+     validate(state) {
+       const errors = []
+       if (!state.cohortDimension) errors.push('Cohort dimension required')
+       return { isValid: errors.length === 0, errors, warnings: [] }
+     },
+
+     // ... implement other methods (load, save, canLoad, clear, getDefaultChartConfig)
+   }
+   ```
+
+3. **Register the adapter** in `src/client/adapters/index.ts`:
+   ```typescript
+   import { retentionModeAdapter } from './retentionModeAdapter'
+
+   export function initializeAdapters(): void {
+     adapterRegistry.register(queryModeAdapter)
+     adapterRegistry.register(funnelModeAdapter)
+     adapterRegistry.register(retentionModeAdapter)  // Add here
+   }
+   ```
+
+4. **Add store state** for the new mode in `analysisBuilderStore.tsx`:
+   ```typescript
+   // Add to store state interface
+   retentionState: RetentionSliceState
+
+   // Initialize in createStore
+   ...retentionModeAdapter.createInitial(),
+   ```
+
+5. **Add UI component** for mode-specific content:
+   ```typescript
+   // Create src/client/components/AnalysisBuilder/RetentionModeContent.tsx
+   ```
+
+6. **Update AnalysisTypeSelector** to include the new option
+
+### Validation System
+
+Adapters validate mode-specific state and return structured errors/warnings:
+
+```typescript
+interface ValidationResult {
+  isValid: boolean
+  errors: string[]    // Prevent execution
+  warnings: string[]  // Show but allow execution
+}
+
+// Usage in hook
+const validation = store.getValidation()
+// Displayed in AnalysisQueryPanel
+```
+
+### Error Boundaries
+
+Mode switching is wrapped in `AnalysisModeErrorBoundary` to catch adapter errors:
+
+```typescript
+<AnalysisModeErrorBoundary
+  analysisType={analysisType}
+  onSwitchToSafeMode={() => setAnalysisType('query')}
+>
+  <AnalysisQueryPanel {...props} />
+</AnalysisModeErrorBoundary>
+```
+
+---
+
 ## Modular Export System
 
 ### Entry Points
@@ -540,6 +765,16 @@ const store = create((set) => ({
 - `src/client/stores/analysisBuilderStore.tsx` - AnalysisBuilder store
 - `src/client/stores/dashboardStore.tsx` - Dashboard store
 - `src/client/stores/index.ts` - Store exports
+
+### Mode Adapters (NEW)
+- `src/client/adapters/modeAdapter.ts` - ModeAdapter interface and ValidationResult type
+- `src/client/adapters/adapterRegistry.ts` - Central adapter lookup
+- `src/client/adapters/queryModeAdapter.ts` - Query mode adapter
+- `src/client/adapters/funnelModeAdapter.ts` - Funnel mode adapter
+- `src/client/adapters/index.ts` - Adapter exports and auto-registration
+
+### Config Types (NEW)
+- `src/client/types/analysisConfig.ts` - AnalysisConfig, ChartConfig types
 
 ### Data Fetching
 - `src/client/hooks/queries/useCubeLoadQuery.ts` - Primary data fetching hook

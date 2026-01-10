@@ -6,13 +6,13 @@
  * - Skip behavior
  * - Query key generation
  *
- * Note: Sequential execution tests with mocked async behavior are complex
- * with fake timers. The core execution logic is tested via the utility
- * functions in funnelExecution.test.ts.
+ * Note: The hook now uses TanStack Query for server-side execution.
+ * Tests focus on validation, skip behavior, and initial state.
  */
 
 import React from 'react'
 import { renderHook, act } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useFunnelQuery, createFunnelQueryKey } from '../../../src/client/hooks/queries/useFunnelQuery'
 import type { FunnelConfig } from '../../../src/client/types/funnel'
@@ -38,6 +38,22 @@ vi.mock('../../../src/client/providers/CubeApiProvider', () => ({
 vi.mock('../../../src/client/shared/utils', () => ({
   cleanQueryForServer: vi.fn((query: unknown) => query),
 }))
+
+// Create a wrapper with QueryClientProvider for testing
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  )
+}
 
 // Valid test config
 const validFunnelConfig: FunnelConfig = {
@@ -70,7 +86,7 @@ describe('useFunnelQuery', () => {
 
   describe('config validation', () => {
     it('should return idle status for null config', () => {
-      const { result } = renderHook(() => useFunnelQuery(null))
+      const { result } = renderHook(() => useFunnelQuery(null), { wrapper: createWrapper() })
 
       expect(result.current.status).toBe('idle')
       expect(result.current.result).toBeNull()
@@ -83,7 +99,7 @@ describe('useFunnelQuery', () => {
         steps: [validFunnelConfig.steps[0]],
       }
 
-      const { result } = renderHook(() => useFunnelQuery(invalidConfig))
+      const { result } = renderHook(() => useFunnelQuery(invalidConfig), { wrapper: createWrapper() })
 
       expect(result.current.status).toBe('idle')
     })
@@ -94,7 +110,7 @@ describe('useFunnelQuery', () => {
         bindingKey: { dimension: '' },
       }
 
-      const { result } = renderHook(() => useFunnelQuery(invalidConfig))
+      const { result } = renderHook(() => useFunnelQuery(invalidConfig), { wrapper: createWrapper() })
 
       expect(result.current.status).toBe('idle')
     })
@@ -105,7 +121,7 @@ describe('useFunnelQuery', () => {
         bindingKey: { dimension: [] },
       }
 
-      const { result } = renderHook(() => useFunnelQuery(invalidConfig))
+      const { result } = renderHook(() => useFunnelQuery(invalidConfig), { wrapper: createWrapper() })
 
       expect(result.current.status).toBe('idle')
     })
@@ -119,7 +135,7 @@ describe('useFunnelQuery', () => {
         ],
       }
 
-      const { result } = renderHook(() => useFunnelQuery(invalidConfig))
+      const { result } = renderHook(() => useFunnelQuery(invalidConfig), { wrapper: createWrapper() })
 
       expect(result.current.status).toBe('idle')
     })
@@ -128,7 +144,8 @@ describe('useFunnelQuery', () => {
   describe('skip behavior', () => {
     it('should not execute when skip is true', async () => {
       const { result } = renderHook(() =>
-        useFunnelQuery(validFunnelConfig, { skip: true, debounceMs: 0 })
+        useFunnelQuery(validFunnelConfig, { skip: true, debounceMs: 0 }),
+        { wrapper: createWrapper() }
       )
 
       // Advance timers to clear any debounce
@@ -144,7 +161,8 @@ describe('useFunnelQuery', () => {
   describe('debouncing', () => {
     it('should show debouncing state initially for valid config', () => {
       const { result } = renderHook(() =>
-        useFunnelQuery(validFunnelConfig, { debounceMs: 300 })
+        useFunnelQuery(validFunnelConfig, { debounceMs: 300 }),
+        { wrapper: createWrapper() }
       )
 
       // Should be debouncing initially with valid config
@@ -154,7 +172,7 @@ describe('useFunnelQuery', () => {
 
   describe('initial state', () => {
     it('should have empty step results initially', () => {
-      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig))
+      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig), { wrapper: createWrapper() })
 
       expect(result.current.stepResults).toEqual([])
       expect(result.current.chartData).toEqual([])
@@ -162,7 +180,7 @@ describe('useFunnelQuery', () => {
     })
 
     it('should have null result initially', () => {
-      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig))
+      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig), { wrapper: createWrapper() })
 
       expect(result.current.result).toBeNull()
       expect(result.current.error).toBeNull()
@@ -170,7 +188,7 @@ describe('useFunnelQuery', () => {
     })
 
     it('should provide execute, cancel, and reset functions', () => {
-      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig))
+      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig), { wrapper: createWrapper() })
 
       expect(typeof result.current.execute).toBe('function')
       expect(typeof result.current.cancel).toBe('function')
@@ -181,7 +199,8 @@ describe('useFunnelQuery', () => {
   describe('cancel behavior', () => {
     it('should set status to idle on cancel', () => {
       const { result } = renderHook(() =>
-        useFunnelQuery(validFunnelConfig, { debounceMs: 0 })
+        useFunnelQuery(validFunnelConfig, { debounceMs: 0 }),
+        { wrapper: createWrapper() }
       )
 
       act(() => {
@@ -196,7 +215,8 @@ describe('useFunnelQuery', () => {
   describe('reset behavior', () => {
     it('should clear all state on reset', () => {
       const { result } = renderHook(() =>
-        useFunnelQuery(validFunnelConfig, { debounceMs: 0 })
+        useFunnelQuery(validFunnelConfig, { debounceMs: 0 }),
+        { wrapper: createWrapper() }
       )
 
       act(() => {
@@ -211,16 +231,16 @@ describe('useFunnelQuery', () => {
 
   describe('step loading states', () => {
     it('should return empty array when config has no steps', () => {
-      const { result } = renderHook(() => useFunnelQuery(null))
+      const { result } = renderHook(() => useFunnelQuery(null), { wrapper: createWrapper() })
 
       expect(result.current.stepLoadingStates).toEqual([])
     })
 
-    it('should return correct length for valid config', () => {
-      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig))
+    it('should return empty array for server-side execution', () => {
+      const { result } = renderHook(() => useFunnelQuery(validFunnelConfig), { wrapper: createWrapper() })
 
-      // stepLoadingStates should match number of steps
-      expect(result.current.stepLoadingStates.length).toBe(0) // Before debounce completes, debouncedConfig is null
+      // stepLoadingStates is always empty for server-side execution (no progressive loading)
+      expect(result.current.stepLoadingStates).toEqual([])
     })
   })
 })

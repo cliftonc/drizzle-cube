@@ -5,11 +5,12 @@
  * Used in the left panel of AnalysisBuilder.
  */
 
-import { useState, useEffect, useMemo, memo } from 'react'
+import { useState, useEffect, useMemo, memo, useRef } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
 import { QueryAnalysisPanel, CodeBlock } from '../../shared'
+import ConfirmModal from '../ConfirmModal'
 import ColorPaletteSelector from '../ColorPaletteSelector'
 
 /**
@@ -62,12 +63,22 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   queryCount = 1,
   perQueryResults,
   activeTableIndex = 0,
-  onActiveTableChange
+  onActiveTableChange,
+  // Analysis type (new) - primary way to detect funnel mode
+  analysisType,
+  // Legacy funnel mode prop (deprecated - use analysisType === 'funnel' instead)
+  isFunnelMode: isFunnelModeProp = false,
+  // Funnel-specific debug props
+  funnelServerQuery,
+  funnelDebugData
 }: AnalysisResultsPanelProps) {
+  // Determine funnel mode from analysisType (preferred) or legacy prop
+  const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
   // Active debug query tab (independent of main query tabs)
   const [activeDebugIndex, setActiveDebugIndex] = useState(0)
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false)
 
   // Clamp activeDebugIndex when queries are removed
   useEffect(() => {
@@ -95,12 +106,28 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Determine if we're showing funnel executed queries (for visual indicator)
   const isShowingFunnelQuery = Boolean(funnelExecutedQueries?.length && funnelExecutedQueries[activeDebugIndex])
-  // Force table view when no metrics are selected
+  // Track if this effect has run once - skip forcing table view on the first run
+  // to allow share URLs and portlet configs to restore their saved view
+  const isFirstRunRef = useRef(true)
+
+  // Force table view when no metrics are selected (only for query mode)
+  // In funnel mode, we allow chart view even during loading since funnel charts
+  // don't require traditional "metrics" - they have funnel steps instead
   useEffect(() => {
+    // Skip on first run to allow share/portlet state to load first
+    if (isFirstRunRef.current) {
+      isFirstRunRef.current = false
+      return
+    }
+
+    // Don't force table view in funnel mode - funnel charts work differently
+    // Check both analysisType directly AND computed isFunnelMode to avoid stale closure issues
+    if (analysisType === 'funnel' || isFunnelMode) return
+
     if (!hasMetrics && activeView === 'chart') {
       onActiveViewChange('table')
     }
-  }, [hasMetrics, activeView, onActiveViewChange])
+  }, [hasMetrics, activeView, onActiveViewChange, isFunnelMode, analysisType])
 
   // Create a combined query object for the chart (includes measures from ALL queries)
   const combinedQueryForChart = useMemo(() => {
@@ -286,8 +313,177 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     )
   }
 
-  // Render debug view
-  const renderDebug = () => (
+  // Type for funnel metadata
+  interface FunnelMetadata {
+    stepCount: number
+    steps: Array<{
+      index: number
+      name: string
+      timeToConvert?: string
+      cube?: string
+    }>
+    bindingKey: unknown
+    timeDimension: unknown
+  }
+
+  // Render debug view for funnel mode (unified single query view)
+  const renderFunnelDebug = () => {
+    const funnelSql = funnelDebugData?.sql
+    const funnelLoading = funnelDebugData?.loading || false
+    const funnelError = funnelDebugData?.error
+    const funnelMeta = funnelDebugData?.funnelMetadata as FunnelMetadata | undefined
+
+    return (
+      <div className="p-4 space-y-4 overflow-auto h-full">
+        {/* Funnel Mode Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Funnel Query</span>
+          {funnelMeta?.stepCount && (
+            <span className="text-xs text-dc-text-muted">
+              {funnelMeta.stepCount} steps
+            </span>
+          )}
+          {funnelLoading && (
+            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+          )}
+        </div>
+
+        {/* Execution Error Banner (if any) */}
+        {executionError && (
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
+            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+              Execution Error
+            </h4>
+            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+          </div>
+        )}
+
+        {/* Funnel Server Query and Generated SQL in 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Server Query (the actual { funnel: {...} } sent to server) */}
+          <div>
+            {funnelServerQuery ? (
+              <CodeBlock
+                code={JSON.stringify(funnelServerQuery, null, 2)}
+                language="json"
+                title="Funnel Server Query"
+                height="20rem"
+              />
+            ) : (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Server Query</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
+                  No funnel query configured
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Generated SQL (the unified CTE-based funnel SQL) */}
+          <div>
+            {funnelLoading ? (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto animate-pulse">
+                  Loading funnel SQL...
+                </div>
+              </>
+            ) : funnelError ? (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-80 overflow-auto">
+                  {funnelError.message}
+                </div>
+              </>
+            ) : funnelSql ? (
+              <CodeBlock
+                code={
+                  funnelSql.sql +
+                  (funnelSql.params && funnelSql.params.length > 0
+                    ? '\n\n-- Parameters:\n' + JSON.stringify(funnelSql.params, null, 2)
+                    : '')
+                }
+                language="sql"
+                title="Generated SQL (CTE-based)"
+                height="20rem"
+              />
+            ) : (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
+                  Configure funnel binding key to generate SQL
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Funnel Metadata (step info) */}
+        {funnelMeta && (
+          <div>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Steps</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
+              <div className="flex flex-wrap gap-2">
+                {funnelMeta.steps.map((step, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-dc-bg border border-dc-border rounded text-sm">
+                    <span className="w-5 h-5 flex items-center justify-center bg-dc-accent text-white text-xs rounded-full">
+                      {idx + 1}
+                    </span>
+                    <span className="text-dc-text">{step.name}</span>
+                    {step.timeToConvert && (
+                      <span className="text-xs text-dc-text-muted">({step.timeToConvert})</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chart Config & Display Config in 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <CodeBlock
+              code={JSON.stringify(chartConfig, null, 2)}
+              language="json"
+              title="Chart Config"
+              height="16rem"
+            />
+          </div>
+          <div>
+            <CodeBlock
+              code={JSON.stringify(displayConfig, null, 2)}
+              language="json"
+              title="Display Config"
+              height="16rem"
+            />
+          </div>
+        </div>
+
+        {/* Server Response - full width */}
+        <div>
+          {executionResults ? (
+            <CodeBlock
+              code={JSON.stringify(executionResults, null, 2)}
+              language="json"
+              title={`Server Response (${executionResults.length} rows)`}
+              maxHeight="24rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                No results yet
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Render debug view (multi-query or single query)
+  const renderStandardDebug = () => (
     <div className="p-4 space-y-4 overflow-auto h-full">
       {/* Query tabs for multi-query mode */}
       {debugDataPerQuery.length > 1 && (
@@ -456,8 +652,17 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
-  // Determine if we're in multi-query mode
-  const isMultiQuery = queryCount > 1 && perQueryResults && perQueryResults.length > 1
+  // Route to appropriate debug view based on mode
+  const renderDebug = () => {
+    if (isFunnelMode) {
+      return renderFunnelDebug()
+    }
+    return renderStandardDebug()
+  }
+
+  // Determine if we're in multi-query mode (but NOT funnel mode)
+  // Funnel mode always shows unified results, not per-query tables
+  const isMultiQuery = !isFunnelMode && queryCount > 1 && perQueryResults && perQueryResults.length > 1
 
   // Render table - uses per-query results in multi-query mode
   const renderTable = (tableIndex?: number) => {
@@ -659,9 +864,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             {/* Clear Button */}
             {onClearClick && canClear && (
               <button
-                onClick={onClearClick}
+                onClick={() => setIsClearConfirmOpen(true)}
                 className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover border border-dc-border rounded transition-colors"
-                title="Clear all query data"
+                title={isFunnelMode ? 'Clear funnel' : 'Clear all query data'}
               >
                 <TrashIcon className="w-3 h-3" />
                 <span className="hidden sm:inline">Clear</span>
@@ -831,6 +1036,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
       {/* Overlay states */}
       {(executionStatus === 'loading' || executionStatus === 'refreshing') && hasResults && renderOverlaySpinner()}
+
+      {onClearClick && (
+        <ConfirmModal
+          isOpen={isClearConfirmOpen}
+          onClose={() => setIsClearConfirmOpen(false)}
+          onConfirm={() => {
+            onClearClick()
+            setIsClearConfirmOpen(false)
+          }}
+          title={isFunnelMode ? 'Clear Funnel' : 'Clear Query'}
+          message={
+            <>
+              {isFunnelMode
+                ? 'Are you sure you want to clear this funnel? This action cannot be undone.'
+                : 'Are you sure you want to clear this query? This action cannot be undone.'}
+            </>
+          }
+          confirmText="Clear"
+          confirmVariant="warning"
+        />
+      )}
     </div>
   )
 })

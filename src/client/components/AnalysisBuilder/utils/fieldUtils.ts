@@ -80,7 +80,7 @@ export function getFieldType(field: MetaField): FieldType {
  */
 export function schemaToFieldOptions(
   schema: MetaResponse | null,
-  mode: 'metrics' | 'breakdown' | 'filter'
+  mode: 'metrics' | 'breakdown' | 'filter' | 'dimensionFilter'
 ): FieldOption[] {
   if (!schema) return []
 
@@ -100,8 +100,9 @@ export function schemaToFieldOptions(
           fieldType: 'measure'
         })
       }
-    } else if (mode === 'breakdown') {
+    } else if (mode === 'breakdown' || mode === 'dimensionFilter') {
       // Add dimensions only (both regular and time)
+      // 'dimensionFilter' is used for funnel step filters where measures don't work
       for (const dimension of cube.dimensions) {
         const isTime = dimension.type === 'time'
         options.push({
@@ -206,4 +207,61 @@ export function getCubeTitle(cubeName: string, schema: MetaResponse | null): str
   if (!schema) return cubeName
   const cube = schema.cubes.find((c) => c.name === cubeName)
   return cube?.title || cubeName
+}
+
+/**
+ * Get all cubes reachable from a source cube via join relationships
+ * Includes the source cube itself plus all cubes it has joins to
+ *
+ * @param sourceCube - Name of the cube to find related cubes for
+ * @param schema - Full schema with all cubes
+ * @returns Set of cube names that are reachable from the source
+ */
+export function getRelatedCubeNames(
+  sourceCube: string,
+  schema: MetaResponse | null
+): Set<string> {
+  const related = new Set<string>()
+
+  if (!schema) return related
+
+  // Always include the source cube
+  related.add(sourceCube)
+
+  // Find the source cube and get its relationships
+  const cube = schema.cubes.find((c) => c.name === sourceCube)
+  if (!cube || !cube.relationships) return related
+
+  // Add all directly related cubes
+  for (const rel of cube.relationships) {
+    related.add(rel.targetCube)
+  }
+
+  return related
+}
+
+/**
+ * Filter schema to include only cubes reachable from a source cube
+ * This is used for funnel step filters where cross-cube filtering is supported
+ *
+ * @param sourceCube - Name of the cube to find related cubes for
+ * @param schema - Full schema with all cubes
+ * @returns Filtered schema containing only reachable cubes
+ */
+export function getRelatedCubesSchema(
+  sourceCube: string,
+  schema: MetaResponse | null
+): MetaResponse | null {
+  if (!schema) return null
+
+  const relatedNames = getRelatedCubeNames(sourceCube, schema)
+
+  return {
+    cubes: schema.cubes
+      .filter((c) => relatedNames.has(c.name))
+      .map((c) => ({
+        ...c,
+        description: c.description || '',
+      })),
+  }
 }

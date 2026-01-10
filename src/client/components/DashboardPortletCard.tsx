@@ -208,9 +208,15 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
             {editable && isEditMode && debugData && (
               <div
-                onMouseDown={(event) => event.stopPropagation()}
+                onMouseDown={(event) => {
+                  event.stopPropagation()
+                  event.preventDefault()
+                }}
                 onClick={(event) => event.stopPropagation()}
-                onTouchStart={(event) => event.stopPropagation()}
+                onTouchStart={(event) => {
+                  event.stopPropagation()
+                  event.preventDefault()
+                }}
                 onTouchEnd={(event) => event.stopPropagation()}
               >
                 <DebugModal
@@ -226,9 +232,15 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           </div>
           <div
             className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => {
+              event.stopPropagation()
+              event.preventDefault()
+            }}
             onClick={(event) => event.stopPropagation()}
-            onTouchStart={(event) => event.stopPropagation()}
+            onTouchStart={(event) => {
+              event.stopPropagation()
+              event.preventDefault()
+            }}
             onTouchEnd={(event) => event.stopPropagation()}
           >
             {/* Cache indicator - show when result was served from cache */}

@@ -60,7 +60,9 @@ export default function FilterConfigModal({
   const [numberValue, setNumberValue] = useState(1)
   const [searchText, setSearchText] = useState('')
   const [modalPosition, setModalPosition] = useState<{ top?: number; bottom?: number; left: number } | null>(null)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
+  const valueListRef = useRef<HTMLDivElement>(null)
 
   // Debounce search text for API calls
   const debouncedSearchText = useDebounce(searchText, 300)
@@ -150,7 +152,21 @@ export default function FilterConfigModal({
     if (isValueDropdownOpen && shouldShowComboBox && searchValues) {
       searchValues('', true)
     }
+    // Reset highlighted index when dropdown opens/closes
+    if (!isValueDropdownOpen) {
+      setHighlightedIndex(-1)
+    }
   }, [isValueDropdownOpen, shouldShowComboBox, searchValues])
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && valueListRef.current) {
+      const highlightedElement = valueListRef.current.children[highlightedIndex] as HTMLElement
+      if (highlightedElement) {
+        highlightedElement.scrollIntoView({ block: 'nearest' })
+      }
+    }
+  }, [highlightedIndex])
 
   // Search when debounced text changes
   useEffect(() => {
@@ -213,17 +229,28 @@ export default function FilterConfigModal({
   }, [filter.member])
 
   // Handle value selection from combo box
-  const handleValueSelect = useCallback((value: unknown) => {
+  const handleValueSelect = useCallback((value: unknown, event?: React.MouseEvent | { shiftKey: boolean }) => {
+    const isShiftHeld = event?.shiftKey ?? false
     const values = filter.values || []
+
     if (operatorMeta?.supportsMultipleValues) {
-      if (!values.includes(value)) {
+      if (values.includes(value)) {
+        // Toggle off - remove the value
+        setFilter({ ...filter, values: values.filter((v: unknown) => v !== value) })
+      } else {
+        // Add the value
         setFilter({ ...filter, values: [...values, value] })
+      }
+      // Close dropdown unless shift is held
+      if (!isShiftHeld) {
+        setIsValueDropdownOpen(false)
       }
     } else {
       setFilter({ ...filter, values: [value] })
       setIsValueDropdownOpen(false)
     }
     setSearchText('')
+    setHighlightedIndex(-1)
   }, [filter, operatorMeta?.supportsMultipleValues])
 
   // Handle value removal
@@ -231,6 +258,37 @@ export default function FilterConfigModal({
     const values = (filter.values || []).filter((v: unknown) => v !== valueToRemove)
     setFilter({ ...filter, values })
   }, [filter])
+
+  // Handle keyboard navigation in value dropdown
+  const handleValueKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!isValueDropdownOpen || distinctValues.length === 0) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightedIndex(prev =>
+          prev < distinctValues.length - 1 ? prev + 1 : 0
+        )
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightedIndex(prev =>
+          prev > 0 ? prev - 1 : distinctValues.length - 1
+        )
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (highlightedIndex >= 0 && highlightedIndex < distinctValues.length) {
+          handleValueSelect(distinctValues[highlightedIndex], { shiftKey: e.shiftKey })
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setIsValueDropdownOpen(false)
+        setHighlightedIndex(-1)
+        break
+    }
+  }, [isValueDropdownOpen, distinctValues, highlightedIndex, handleValueSelect])
 
   // Handle direct text/number input
   const handleDirectInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -498,12 +556,16 @@ export default function FilterConfigModal({
 
             {isValueDropdownOpen && (
               <div className="absolute z-[60] left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded shadow-lg max-h-56 overflow-hidden">
-                {/* Search input */}
+                {/* Search input with keyboard navigation */}
                 <div className="p-2 border-b border-dc-border">
                   <input
                     type="text"
                     value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
+                    onChange={(e) => {
+                      setSearchText(e.target.value)
+                      setHighlightedIndex(-1)
+                    }}
+                    onKeyDown={handleValueKeyDown}
                     placeholder="Search..."
                     className="w-full text-sm border border-dc-border rounded px-3 py-2 bg-dc-surface text-dc-text"
                     autoFocus
@@ -511,7 +573,7 @@ export default function FilterConfigModal({
                 </div>
 
                 {/* Values list */}
-                <div className="max-h-40 overflow-y-auto">
+                <div ref={valueListRef} className="max-h-40 overflow-y-auto">
                   {valuesLoading ? (
                     <div className="px-3 py-2 text-sm text-dc-text-muted">Loading...</div>
                   ) : valuesError ? (
@@ -521,12 +583,17 @@ export default function FilterConfigModal({
                   ) : (
                     distinctValues.map((value, index) => {
                       const isSelected = filter.values?.includes(value)
+                      const isHighlighted = index === highlightedIndex
                       return (
                         <button
                           key={`${value}-${index}`}
-                          onClick={() => handleValueSelect(value)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover ${
-                            isSelected ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
+                          onClick={(e) => handleValueSelect(value, e)}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            isHighlighted
+                              ? 'bg-dc-surface-hover'
+                              : ''
+                          } ${
+                            isSelected ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text hover:bg-dc-surface-hover'
                           }`}
                         >
                           {String(value)}
@@ -539,6 +606,13 @@ export default function FilterConfigModal({
               </div>
             )}
           </div>
+
+          {/* Helper text for multi-select */}
+          {operatorMeta?.supportsMultipleValues && (
+            <p className="text-xs text-dc-text-muted">
+              Hold Shift to select multiple values
+            </p>
+          )}
         </div>
       )
     }
@@ -569,8 +643,8 @@ export default function FilterConfigModal({
   }
 
   const modalClassName = modalPosition
-    ? 'bg-dc-surface rounded-lg shadow-xl'
-    : 'bg-dc-surface rounded-lg shadow-xl max-w-md w-full'
+    ? 'bg-dc-surface rounded-lg border border-dc-border'
+    : 'bg-dc-surface rounded-lg border border-dc-border max-w-md w-full'
 
   return (
     <>
@@ -582,7 +656,7 @@ export default function FilterConfigModal({
         <div
           ref={containerRef}
           className={modalClassName}
-          style={getModalStyle()}
+          style={{ ...getModalStyle(), boxShadow: 'var(--dc-shadow-xl)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
