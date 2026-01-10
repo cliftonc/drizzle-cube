@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
-import { select, scaleQuantize, max, min } from 'd3'
+import { select, scaleQuantize, max, min, transition as _transition } from 'd3'
+// _transition import is for side effects only - it extends Selection.prototype with .transition() method
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
 import { formatTimeValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
