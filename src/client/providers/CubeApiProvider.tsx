@@ -34,7 +34,7 @@ export function CubeApiProvider({
   token: initialToken,
   options = {},
   enableBatching = true,
-  batchDelayMs = 100,
+  batchDelayMs = 50,
   children
 }: CubeApiProviderProps) {
   const baseConfig = useMemo(

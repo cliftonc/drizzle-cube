@@ -199,30 +199,42 @@ export interface PortletConfig {
   title: string
 
   /**
-   * Phase 3: New canonical format for analysis configuration.
-   * When present, this is the source of truth for all query/chart config.
-   * During migration: both analysisConfig AND legacy fields are written (dual-write).
+   * Canonical format for analysis configuration.
+   * This is the single source of truth for all query/chart config.
+   * New portlets only save this field. Legacy portlets are migrated on-the-fly.
    */
   analysisConfig?: import('./types/analysisConfig').AnalysisConfig
 
-  // === Legacy fields (kept for backward compatibility) ===
-  // These will be deprecated once all clients migrate to analysisConfig.
-  query: string // JSON string of cube query (CubeQuery, MultiQueryConfig, or ServerFunnelQuery)
-  chartType: ChartType
+  // === Legacy fields (deprecated - for backward compatibility only) ===
+  // These fields are optional and only used for reading old configurations.
+  // New portlets do not write these fields.
+  /** @deprecated Use analysisConfig.query instead */
+  query?: string // JSON string of cube query (CubeQuery, MultiQueryConfig, or ServerFunnelQuery)
+  /** @deprecated Use analysisConfig.charts[mode].chartType instead */
+  chartType?: ChartType
+  /** @deprecated Use analysisConfig.charts[mode].chartConfig instead */
   chartConfig?: ChartAxisConfig
+  /** @deprecated Use analysisConfig.charts[mode].displayConfig instead */
   displayConfig?: ChartDisplayConfig
   dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
   eagerLoad?: boolean // Force immediate loading (overrides dashboard lazy loading setting)
+  /** @deprecated Use analysisConfig.analysisType instead */
   analysisType?: AnalysisType // Optional - defaults to 'query' when undefined (backward compatible)
 
-  // Funnel mode state (when analysisType === 'funnel')
-  // These fields store the complete funnel configuration for save/load persistence
+  // Funnel mode state (deprecated - now stored in analysisConfig)
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelCube?: string | null
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelSteps?: FunnelStepState[]
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelTimeDimension?: string | null
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelBindingKey?: FunnelBindingKey | null
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelChartType?: ChartType
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelChartConfig?: ChartAxisConfig
+  /** @deprecated Use analysisConfig for funnel mode */
   funnelDisplayConfig?: ChartDisplayConfig
 
   w: number // Grid width

@@ -6,6 +6,7 @@
  */
 
 import type { Filter, DashboardFilter, CubeMeta, GroupFilter, DashboardConfig, SimpleFilter } from '../types'
+import { ensureAnalysisConfig } from './configMigration'
 
 /**
  * Check if a filter should be included in the query (has valid values or doesn't require values)
@@ -265,39 +266,51 @@ export function extractDashboardFields(
   // Iterate through all portlets
   dashboardConfig.portlets.forEach(portlet => {
     try {
-      // Parse the query JSON
-      const query = JSON.parse(portlet.query)
+      // Get query from analysisConfig (migrating legacy format if needed)
+      const normalizedPortlet = ensureAnalysisConfig(portlet)
+      const query = normalizedPortlet.analysisConfig.query
 
-      // Extract measures
-      if (query.measures && Array.isArray(query.measures)) {
-        query.measures.forEach((measure: string) => measures.add(measure))
+      // Helper to extract fields from a CubeQuery
+      const extractFromCubeQuery = (cubeQuery: any) => {
+        if (cubeQuery.measures && Array.isArray(cubeQuery.measures)) {
+          cubeQuery.measures.forEach((measure: string) => measures.add(measure))
+        }
+        if (cubeQuery.dimensions && Array.isArray(cubeQuery.dimensions)) {
+          cubeQuery.dimensions.forEach((dimension: string) => dimensions.add(dimension))
+        }
+        if (cubeQuery.timeDimensions && Array.isArray(cubeQuery.timeDimensions)) {
+          cubeQuery.timeDimensions.forEach((td: any) => {
+            if (td.dimension) {
+              timeDimensions.add(td.dimension)
+            }
+          })
+        }
+        if (cubeQuery.filters) {
+          extractFieldsFromFilters(cubeQuery.filters).forEach(field => {
+            dimensions.add(field)
+          })
+        }
       }
 
-      // Extract dimensions
-      if (query.dimensions && Array.isArray(query.dimensions)) {
-        query.dimensions.forEach((dimension: string) => dimensions.add(dimension))
-      }
-
-      // Extract timeDimensions
-      if (query.timeDimensions && Array.isArray(query.timeDimensions)) {
-        query.timeDimensions.forEach((td: any) => {
-          if (td.dimension) {
-            timeDimensions.add(td.dimension)
-          }
-        })
-      }
-
-      // Also extract from filters to catch any filtered fields
-      if (query.filters) {
-        extractFieldsFromFilters(query.filters).forEach(field => {
-          // Try to determine if it's a measure, dimension, or timeDimension
-          // by checking cube metadata or convention (add to dimensions by default)
-          dimensions.add(field)
-        })
+      // Handle different query types
+      if ('funnel' in query) {
+        // ServerFunnelQuery - extract time dimension from funnel config
+        const funnelQuery = query as any
+        if (funnelQuery.funnel?.timeDimension) {
+          timeDimensions.add(funnelQuery.funnel.timeDimension)
+        }
+        // Could also extract binding key dimensions if needed
+      } else if ('queries' in query) {
+        // MultiQueryConfig - extract from all sub-queries
+        const multiQuery = query as any
+        multiQuery.queries.forEach((subQuery: any) => extractFromCubeQuery(subQuery))
+      } else {
+        // Single CubeQuery
+        extractFromCubeQuery(query)
       }
     } catch (e) {
-      // Skip portlets with invalid query JSON
-      console.warn('Failed to parse portlet query:', portlet.id, e)
+      // Skip portlets with invalid query
+      console.warn('Failed to extract fields from portlet:', portlet.id, e)
     }
   })
 

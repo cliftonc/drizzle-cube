@@ -20,6 +20,7 @@ import type {
   MultiQueryConfig,
   FunnelBindingKey,
   QueryMergeStrategy,
+  PortletConfig,
 } from '../types'
 import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel'
 
@@ -372,4 +373,37 @@ export function hasAnalysisConfig(
     'analysisConfig' in portlet &&
     isValidAnalysisConfig((portlet as { analysisConfig: unknown }).analysisConfig)
   )
+}
+
+/**
+ * Ensure a portlet has analysisConfig, migrating from legacy format if needed.
+ *
+ * This is the primary entry point for rendering portlets - it guarantees
+ * that analysisConfig exists, either by using the existing one or by
+ * converting legacy fields on-the-fly.
+ *
+ * @param portlet - PortletConfig which may or may not have analysisConfig
+ * @returns PortletConfig with analysisConfig guaranteed to exist
+ */
+export function ensureAnalysisConfig(
+  portlet: PortletConfig
+): PortletConfig & { analysisConfig: AnalysisConfig } {
+  // If already has valid analysisConfig, return as-is
+  if (hasAnalysisConfig(portlet)) {
+    return portlet as PortletConfig & { analysisConfig: AnalysisConfig }
+  }
+
+  // Migrate from legacy fields
+  const analysisConfig = migrateLegacyPortlet({
+    query: portlet.query ?? '{}',
+    chartType: portlet.chartType,
+    chartConfig: portlet.chartConfig,
+    displayConfig: portlet.displayConfig,
+    analysisType: portlet.analysisType,
+    funnelChartType: portlet.funnelChartType,
+    funnelChartConfig: portlet.funnelChartConfig,
+    funnelDisplayConfig: portlet.funnelDisplayConfig,
+  })
+
+  return { ...portlet, analysisConfig }
 }

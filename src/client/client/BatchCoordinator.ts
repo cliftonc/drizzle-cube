@@ -22,7 +22,7 @@ export class BatchCoordinator {
   private batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>
   private delayMs: number
 
-  constructor(batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>, delayMs: number = 100) {
+  constructor(batchExecutor: (queries: CubeQuery[]) => Promise<CubeResultSet[]>, delayMs: number = 50) {
     this.batchExecutor = batchExecutor
     this.delayMs = delayMs
   }

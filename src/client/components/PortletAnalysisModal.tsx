@@ -4,7 +4,7 @@ import AnalysisBuilder from './AnalysisBuilder'
 import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState } from './AnalysisBuilder/types'
 import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
-import { hasAnalysisConfig, migrateLegacyPortlet } from '../utils/configMigration'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import {
   mergeDashboardAndPortletFilters,
@@ -68,18 +68,14 @@ export default function PortletAnalysisModal({
   }, [dashboardFilters, portlet?.dashboardFilterMapping])
 
   // =========================================================================
-  // Phase 3: Load from analysisConfig if available, otherwise migrate legacy
+  // Load from analysisConfig (migrating from legacy format if needed)
   // =========================================================================
   const derivedConfig = useMemo<AnalysisConfig | null>(() => {
     if (!portlet) return null
 
-    // Check for new analysisConfig field first
-    if (hasAnalysisConfig(portlet)) {
-      return portlet.analysisConfig!
-    }
-
-    // Migrate from legacy format
-    return migrateLegacyPortlet(portlet)
+    // Use ensureAnalysisConfig which handles both new and legacy formats
+    const normalizedPortlet = ensureAnalysisConfig(portlet)
+    return normalizedPortlet.analysisConfig
   }, [portlet])
 
   // Parse initial query from derived config and merge dashboard filters
@@ -192,41 +188,32 @@ export default function PortletAnalysisModal({
     }
   }, [isOpen, portlet])
 
-  // Handle save - Phase 3 dual-write: both analysisConfig AND legacy fields
+  // Handle save - Phase 4: Only save analysisConfig (no more dual-write)
   const handleSave = useCallback(() => {
     if (!formTitle.trim()) {
       alert('Please enter a title for the portlet.')
       return
     }
 
-    // Phase 3: Get AnalysisConfig from store.save()
+    // Get AnalysisConfig from store - this is the only format we save now
     const analysisConfig = builderRef.current?.getAnalysisConfig()
 
-    // Also get legacy fields for backward compatibility (dual-write)
-    const queryConfig = builderRef.current?.getQueryConfig()
-    const chartConfig = builderRef.current?.getChartConfig()
-    const analysisType = builderRef.current?.getAnalysisType?.() || 'query'
-
-    // Get funnel state if in funnel mode
-    const funnelState = analysisType === 'funnel'
-      ? builderRef.current?.getFunnelState()
-      : undefined
-
-    if (!queryConfig || !analysisConfig) {
+    if (!analysisConfig) {
       alert('Please configure a query before saving.')
       return
     }
 
-    // Check if config has content - varies by format type
+    // Validate content based on analysis type
+    const { query, analysisType } = analysisConfig
     let hasContent = false
 
     // Check for ServerFunnelQuery format { funnel: {...} }
-    if ('funnel' in queryConfig && queryConfig.funnel) {
+    if ('funnel' in query && query.funnel) {
       // Funnel mode: check for steps
-      hasContent = !!(queryConfig.funnel.steps && queryConfig.funnel.steps.length >= 2)
-    } else if ('queries' in queryConfig) {
+      hasContent = !!(query.funnel.steps && query.funnel.steps.length >= 2)
+    } else if ('queries' in query) {
       // Multi-query: check the first query
-      const firstQuery = queryConfig.queries[0]
+      const firstQuery = query.queries[0]
       hasContent = !!(
         (firstQuery?.measures && firstQuery.measures.length > 0) ||
         (firstQuery?.dimensions && firstQuery.dimensions.length > 0) ||
@@ -234,7 +221,7 @@ export default function PortletAnalysisModal({
       )
     } else {
       // Single query: check directly (type narrowed to CubeQuery)
-      const cubeQuery = queryConfig as CubeQuery
+      const cubeQuery = query as CubeQuery
       hasContent = !!(
         (cubeQuery.measures && cubeQuery.measures.length > 0) ||
         (cubeQuery.dimensions && cubeQuery.dimensions.length > 0) ||
@@ -250,32 +237,18 @@ export default function PortletAnalysisModal({
       return
     }
 
-    // Build portlet config with DUAL-WRITE:
-    // - analysisConfig: new canonical format
-    // - legacy fields: for backward compatibility
+    // Build portlet config with ONLY analysisConfig (no more legacy fields)
     const portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'> = {
       ...(portlet || {}),
       title: formTitle.trim(),
 
-      // === Phase 3: New canonical format ===
+      // === Canonical format - single source of truth ===
       analysisConfig,
 
-      // === Legacy fields (dual-write for backward compatibility) ===
-      query: JSON.stringify(queryConfig),
-      chartType: chartConfig?.chartType || 'line',
-      chartConfig: chartConfig?.chartConfig || {},
-      displayConfig: chartConfig?.displayConfig || {},
-      analysisType,  // Save analysis type for proper rendering on load
-      // Save funnel state fields when in funnel mode
-      ...(funnelState && {
-        funnelCube: funnelState.funnelCube,
-        funnelSteps: funnelState.funnelSteps,
-        funnelTimeDimension: funnelState.funnelTimeDimension,
-        funnelBindingKey: funnelState.funnelBindingKey,
-        funnelChartType: funnelState.funnelChartType,
-        funnelChartConfig: funnelState.funnelChartConfig,
-        funnelDisplayConfig: funnelState.funnelDisplayConfig,
-      }),
+      // Preserve dashboard filter mapping and eager load settings
+      dashboardFilterMapping: portlet?.dashboardFilterMapping,
+      eagerLoad: portlet?.eagerLoad,
+
       // Preserve existing position or use defaults for new portlets
       w: portlet?.w || 5,
       h: portlet?.h || 4

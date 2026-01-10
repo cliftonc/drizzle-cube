@@ -12,6 +12,7 @@ const RefreshIcon = getIcon('refresh')
 import { ScrollContainerProvider } from '../providers/ScrollContainerContext'
 import type { DashboardFilter, DashboardConfig } from '../types'
 import type { ColorPalette } from '../utils/colorPalettes'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 
 /**
  * Finds the nearest scrollable ancestor of an element.
@@ -94,10 +95,19 @@ export default function MobileStackedLayout({
     <ScrollContainerProvider value={scrollContainer}>
       <div ref={setContainerRef} className="mobile-stacked-layout space-y-4 px-2">
         {sortedPortlets.map(portlet => {
+        // Normalize portlet to ensure analysisConfig exists (on-the-fly migration)
+        const normalizedPortlet = ensureAnalysisConfig(portlet)
+        const { analysisConfig } = normalizedPortlet
+        const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
+        const renderQuery = JSON.stringify(analysisConfig.query)
+        const renderChartType = chartModeConfig?.chartType || 'line'
+        const renderChartConfig = chartModeConfig?.chartConfig
+        const renderDisplayConfig = chartModeConfig?.displayConfig
+
         // Calculate height: use stored h * rowHeight (80px), with minimum
         const portletHeight = Math.max(300, portlet.h * 80)
         // Header is approximately 40px when shown
-        const headerHeight = portlet.displayConfig?.hideHeader ? 0 : 40
+        const headerHeight = renderDisplayConfig?.hideHeader ? 0 : 40
         // Content height = total - header - padding (py-3 = 24px)
         const contentHeight = portletHeight - headerHeight - 24
 
@@ -112,7 +122,7 @@ export default function MobileStackedLayout({
             }}
           >
             {/* Portlet Header - Simplified for mobile (no edit controls) */}
-            {!portlet.displayConfig?.hideHeader && (
+            {!renderDisplayConfig?.hideHeader && (
               <div className="flex items-center justify-between px-3 py-2 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg">
                 <h3 className="font-semibold text-sm text-dc-text truncate flex-1">
                   {portlet.title}
@@ -136,10 +146,10 @@ export default function MobileStackedLayout({
             >
               <AnalyticsPortlet
                 ref={el => { portletComponentRefs.current[portlet.id] = el }}
-                query={portlet.query}
-                chartType={portlet.chartType}
-                chartConfig={portlet.chartConfig}
-                displayConfig={portlet.displayConfig}
+                query={renderQuery}
+                chartType={renderChartType}
+                chartConfig={renderChartConfig}
+                displayConfig={renderDisplayConfig}
                 dashboardFilters={dashboardFilters}
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}

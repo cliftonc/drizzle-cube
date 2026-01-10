@@ -118,7 +118,7 @@ export function useCubeLoadQuery(
     keepPreviousData = true,
   } = options
 
-  const { cubeApi } = useCubeApi()
+  const { cubeApi, batchCoordinator, enableBatching } = useCubeApi()
   const queryClient = useQueryClient()
 
   // Validate query
@@ -145,6 +145,13 @@ export function useCubeLoadQuery(
     queryKey: createQueryKey(serverQuery),
     queryFn: async () => {
       if (!serverQuery) throw new Error('No query provided')
+
+      // Use batch coordinator if enabled (collects queries for 100ms window)
+      if (enableBatching && batchCoordinator) {
+        return batchCoordinator.register(serverQuery)
+      }
+
+      // Fall back to direct load when batching disabled
       return cubeApi.load(serverQuery)
     },
     enabled: !!serverQuery && !skip,

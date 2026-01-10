@@ -3,10 +3,11 @@
  * Simple wrapper for individual portlets
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { PortletConfig } from '../types'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 
 interface PortletContainerProps {
   portlet: PortletConfig
@@ -23,6 +24,17 @@ export default function PortletContainer({
   onDelete,
   onRefresh
 }: PortletContainerProps) {
+  // Normalize portlet to ensure analysisConfig exists (on-the-fly migration)
+  const normalizedPortlet = useMemo(() => ensureAnalysisConfig(portlet), [portlet])
+  const { analysisConfig } = normalizedPortlet
+
+  // Extract rendering props from analysisConfig
+  const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
+  const renderQuery = useMemo(() => JSON.stringify(analysisConfig.query), [analysisConfig.query])
+  const renderChartType = chartModeConfig?.chartType || 'line'
+  const renderChartConfig = chartModeConfig?.chartConfig
+  const renderDisplayConfig = chartModeConfig?.displayConfig
+
   const [debugData, setDebugData] = useState<{
     chartConfig: any
     displayConfig: any
@@ -105,10 +117,10 @@ export default function PortletContainer({
       {/* Content */}
       <div className="px-2 py-3 md:px-4 md:pt-6 md:pb-4 flex-1 min-h-0">
         <AnalyticsPortlet
-          query={portlet.query}
-          chartType={portlet.chartType}
-          chartConfig={portlet.chartConfig}
-          displayConfig={portlet.displayConfig}
+          query={renderQuery}
+          chartType={renderChartType}
+          chartConfig={renderChartConfig}
+          displayConfig={renderDisplayConfig}
           title={portlet.title}
           height="100%"
           onDebugDataReady={handleDebugDataReady}

@@ -1,9 +1,10 @@
-import React, { useCallback, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
+import React, { useCallback, useMemo, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
 import type { DashboardFilter, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 
 // Constant style object to prevent re-renders from inline object recreation
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
@@ -121,6 +122,17 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   callbacks,
   icons
 }: DashboardPortletCardProps) {
+  // Normalize portlet to ensure analysisConfig exists (on-the-fly migration from legacy format)
+  const normalizedPortlet = useMemo(() => ensureAnalysisConfig(portlet), [portlet])
+  const { analysisConfig } = normalizedPortlet
+
+  // Extract rendering props from analysisConfig
+  const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
+  const renderQuery = useMemo(() => JSON.stringify(analysisConfig.query), [analysisConfig.query])
+  const renderChartType = chartModeConfig?.chartType || 'line'
+  const renderChartConfig = chartModeConfig?.chartConfig
+  const renderDisplayConfig = chartModeConfig?.displayConfig
+
   // Get state from Zustand store - automatic memoization via selectors
   const isEditMode = useDashboardStore(state => state.isEditMode)
   const selectedFilterId = useDashboardStore(state => state.selectedFilterId)
@@ -195,7 +207,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       }}
       {...restContainerProps}
     >
-      {(!portlet.displayConfig?.hideHeader || isEditMode) && (
+      {(!renderDisplayConfig?.hideHeader || isEditMode) && (
         <div
           className={mergedHeaderClassName}
           style={headerStyle}
@@ -361,10 +373,10 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
         <AnalyticsPortlet
           ref={el => setPortletComponentRef(portlet.id, el)}
-          query={portlet.query}
-          chartType={portlet.chartType}
-          chartConfig={portlet.chartConfig}
-          displayConfig={portlet.displayConfig}
+          query={renderQuery}
+          chartType={renderChartType}
+          chartConfig={renderChartConfig}
+          displayConfig={renderDisplayConfig}
           dashboardFilters={dashboardFilters}
           dashboardFilterMapping={portlet.dashboardFilterMapping}
           eagerLoad={portlet.eagerLoad ?? configEagerLoad ?? false}

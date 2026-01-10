@@ -76,14 +76,14 @@ describe('BatchCoordinator', () => {
       expect(mockBatchExecutor).not.toHaveBeenCalled()
     })
 
-    it('should execute after the default delay (100ms)', async () => {
+    it('should execute after the default delay (50ms)', async () => {
       mockBatchExecutor.mockResolvedValue([createMockResult()])
       const coordinator = new BatchCoordinator(mockBatchExecutor)
 
       coordinator.register(createMockQuery())
 
       // Advance time just before the delay
-      await vi.advanceTimersByTimeAsync(99)
+      await vi.advanceTimersByTimeAsync(49)
       expect(mockBatchExecutor).not.toHaveBeenCalled()
 
       // Advance past the delay
@@ -113,18 +113,18 @@ describe('BatchCoordinator', () => {
       ])
       const coordinator = new BatchCoordinator(mockBatchExecutor)
 
-      // Register queries at different times within the window
+      // Register queries at different times within the window (50ms default)
       coordinator.register(createMockQuery(['A.count']))
-      await vi.advanceTimersByTimeAsync(30)
+      await vi.advanceTimersByTimeAsync(15)
       coordinator.register(createMockQuery(['B.count']))
-      await vi.advanceTimersByTimeAsync(30)
+      await vi.advanceTimersByTimeAsync(15)
       coordinator.register(createMockQuery(['C.count']))
 
-      // Flush hasn't happened yet
+      // Flush hasn't happened yet (only 30ms elapsed)
       expect(mockBatchExecutor).not.toHaveBeenCalled()
 
-      // Advance to trigger flush
-      await vi.advanceTimersByTimeAsync(50)
+      // Advance to trigger flush (need 20 more ms to reach 50ms)
+      await vi.advanceTimersByTimeAsync(25)
 
       // All queries should be in a single batch
       expect(mockBatchExecutor).toHaveBeenCalledTimes(1)
@@ -143,7 +143,7 @@ describe('BatchCoordinator', () => {
 
       expect(coordinator.getQueueSize()).toBe(1)
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(coordinator.getQueueSize()).toBe(0)
     })
@@ -160,7 +160,7 @@ describe('BatchCoordinator', () => {
       const coordinator = new BatchCoordinator(mockBatchExecutor)
 
       queries.forEach(q => coordinator.register(q))
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(mockBatchExecutor).toHaveBeenCalledWith(queries)
     })
@@ -171,7 +171,7 @@ describe('BatchCoordinator', () => {
       const coordinator = new BatchCoordinator(mockBatchExecutor)
 
       const promise = coordinator.register(query)
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       const result = await promise
       expect(result.rawData()).toEqual([{ 'Single.count': 42 }])
@@ -184,7 +184,7 @@ describe('BatchCoordinator', () => {
       coordinator.register(createMockQuery())
       coordinator.clear()
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(mockBatchExecutor).not.toHaveBeenCalled()
     })
@@ -204,7 +204,7 @@ describe('BatchCoordinator', () => {
       const promise2 = coordinator.register(createMockQuery(['B.count']))
       const promise3 = coordinator.register(createMockQuery(['C.count']))
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       const [result1, result2, result3] = await Promise.all([promise1, promise2, promise3])
 
@@ -225,7 +225,7 @@ describe('BatchCoordinator', () => {
         coordinator.register(createMockQuery([`${name}.count`]))
       )
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       const results = await Promise.all(promises)
 
@@ -249,7 +249,7 @@ describe('BatchCoordinator', () => {
       promise1.catch(catchHandler)
       promise2.catch(catchHandler)
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       // Wait for all rejection handlers to complete
       await vi.waitFor(() => {
@@ -277,7 +277,7 @@ describe('BatchCoordinator', () => {
       const catchHandler = vi.fn()
       promise2.catch(catchHandler)
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       // Wait for rejection handler to complete
       await vi.waitFor(() => {
@@ -303,7 +303,7 @@ describe('BatchCoordinator', () => {
       const catchHandler = vi.fn()
       promise.catch(catchHandler)
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       // Wait for rejection handler to complete
       await vi.waitFor(() => {
@@ -322,7 +322,7 @@ describe('BatchCoordinator', () => {
       mockBatchExecutor.mockResolvedValueOnce([createMockResult([{ batch: 1 }])])
       const promise1 = coordinator.register(createMockQuery(['First.count']))
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
       const result1 = await promise1
       expect(result1.rawData()).toEqual([{ batch: 1 }])
       expect(mockBatchExecutor).toHaveBeenCalledTimes(1)
@@ -331,7 +331,7 @@ describe('BatchCoordinator', () => {
       mockBatchExecutor.mockResolvedValueOnce([createMockResult([{ batch: 2 }])])
       const promise2 = coordinator.register(createMockQuery(['Second.count']))
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
       const result2 = await promise2
       expect(result2.rawData()).toEqual([{ batch: 2 }])
       expect(mockBatchExecutor).toHaveBeenCalledTimes(2)
@@ -351,7 +351,7 @@ describe('BatchCoordinator', () => {
       const promise1 = coordinator.register(createMockQuery(['First.count']))
 
       // Start executing first batch
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       // Add second query while first batch is executing
       mockBatchExecutor.mockResolvedValueOnce([createMockResult([{ batch: 2 }])])
@@ -363,7 +363,7 @@ describe('BatchCoordinator', () => {
       expect(result1.rawData()).toEqual([{ batch: 1 }])
 
       // Execute second batch
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
       const result2 = await promise2
       expect(result2.rawData()).toEqual([{ batch: 2 }])
     })
@@ -382,7 +382,7 @@ describe('BatchCoordinator', () => {
         coordinator.register(createMockQuery([`Query${i}.count`]))
       )
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       const resolvedResults = await Promise.all(promises)
 
@@ -399,7 +399,7 @@ describe('BatchCoordinator', () => {
 
       const promise = coordinator.register(createMockQuery())
 
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       // Result will be undefined since there's no matching result
       const result = await promise
@@ -428,7 +428,7 @@ describe('BatchCoordinator', () => {
       const coordinator = new BatchCoordinator(mockBatchExecutor)
 
       const promise = coordinator.register(complexQuery)
-      await vi.advanceTimersByTimeAsync(100)
+      await vi.advanceTimersByTimeAsync(50)
 
       expect(mockBatchExecutor).toHaveBeenCalledWith([complexQuery])
       const result = await promise
