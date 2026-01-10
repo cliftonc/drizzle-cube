@@ -10,14 +10,18 @@ import {
   useCubeLoadQuery,
   useMultiCubeLoadQuery,
   useFunnelQuery,
+  useFlowQuery,
   useDryRunQueries,
   useFunnelDryRunQuery,
+  useFlowDryRunQuery,
   type DebugDataEntry,
   type FunnelDebugDataEntry,
+  type FlowDebugDataEntry,
 } from './queries'
 import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType } from '../types'
 import type { ExecutionStatus } from '../components/AnalysisBuilder/types'
 import type { ServerFunnelQuery } from '../types/funnel'
+import type { ServerFlowQuery, FlowChartData } from '../types/flow'
 import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
 
 export interface UseAnalysisQueryExecutionOptions {
@@ -53,6 +57,11 @@ export interface UseAnalysisQueryExecutionOptions {
    * Used when analysisType === 'funnel' with the new dedicated funnel state.
    */
   serverFunnelQuery?: ServerFunnelQuery | null
+  /**
+   * Pre-built server flow query from store's buildFlowQuery().
+   * Used when analysisType === 'flow' with the new dedicated flow state.
+   */
+  serverFlowQuery?: ServerFlowQuery | null
 }
 
 export interface UseAnalysisQueryExecutionResult {
@@ -92,6 +101,19 @@ export interface UseAnalysisQueryExecutionResult {
    * Contains the funnel SQL and funnel-specific metadata
    */
   funnelDebugData: FunnelDebugDataEntry | null
+  /**
+   * The server flow query being executed (when analysisType === 'flow')
+   */
+  flowServerQuery: ServerFlowQuery | null
+  /**
+   * Flow chart data (nodes and links for Sankey visualization)
+   */
+  flowChartData: FlowChartData | null
+  /**
+   * Debug data specifically for flow mode
+   * Contains the flow SQL and flow-specific metadata
+   */
+  flowDebugData: FlowDebugDataEntry | null
 }
 
 export function useAnalysisQueryExecution(
@@ -109,12 +131,16 @@ export function useAnalysisQueryExecution(
     isFunnelModeEnabled,
     analysisType,
     serverFunnelQuery,
+    serverFlowQuery,
   } = options
 
   // Determine execution mode based on analysisType
   // Note: Legacy mergeStrategy === 'funnel' is no longer supported
   // Funnel mode is now exclusively determined by analysisType === 'funnel'
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeEnabled
+
+  // Flow mode is exclusively determined by analysisType === 'flow'
+  const isFlowMode = analysisType === 'flow'
 
   // Multi mode is 'query' analysis type with multiple queries
   const isMultiMode = analysisType === 'query' && isMultiQueryMode
@@ -154,11 +180,17 @@ export function useAnalysisQueryExecution(
     prebuiltServerQuery: isNewFunnelMode ? serverFunnelQuery : undefined,
   })
 
-  // Dry-run queries for debug data (skip in funnel mode)
+  // Flow query execution
+  const flowQueryResult = useFlowQuery(serverFlowQuery ?? null, {
+    skip: !isFlowMode || !serverFlowQuery,
+    debounceMs: 300,
+  })
+
+  // Dry-run queries for debug data (skip in funnel and flow mode)
   const dryRunResult = useDryRunQueries({
     queries: isMultiQueryMode ? allQueries : [currentQuery],
     isMultiQueryMode,
-    skip: !isValidQuery || isFunnelMode,
+    skip: !isValidQuery || isFunnelMode || isFlowMode,
   })
 
   // Funnel dry-run query (only in funnel mode)
@@ -168,48 +200,66 @@ export function useAnalysisQueryExecution(
     { skip: !isFunnelMode || !funnelQueryResult.serverQuery }
   )
 
+  // Flow dry-run query (only in flow mode)
+  // Use the serverQuery from useFlowQuery to get the unified flow SQL
+  const flowDryRunResult = useFlowDryRunQuery(
+    flowQueryResult.serverQuery,
+    { skip: !isFlowMode || !flowQueryResult.serverQuery }
+  )
+
   // Unify results based on mode
-  const isLoading = isFunnelMode
-    ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
-    : isMultiMode
-      ? multiQueryResult.isLoading
-      : singleQueryResult.isLoading
-  const isFetching = isFunnelMode
-    ? funnelQueryResult.isExecuting
-    : isMultiMode
-      ? multiQueryResult.isFetching
-      : singleQueryResult.isFetching
-  const error = isFunnelMode
-    ? funnelQueryResult.error
-    : isMultiMode
-      ? multiQueryResult.error
-      : singleQueryResult.error
+  const isLoading = isFlowMode
+    ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
+    : isFunnelMode
+      ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
+      : isMultiMode
+        ? multiQueryResult.isLoading
+        : singleQueryResult.isLoading
+  const isFetching = isFlowMode
+    ? flowQueryResult.isFetching
+    : isFunnelMode
+      ? funnelQueryResult.isExecuting
+      : isMultiMode
+        ? multiQueryResult.isFetching
+        : singleQueryResult.isFetching
+  const error = isFlowMode
+    ? flowQueryResult.error
+    : isFunnelMode
+      ? funnelQueryResult.error
+      : isMultiMode
+        ? multiQueryResult.error
+        : singleQueryResult.error
 
   // Has debounced (for smart defaults trigger)
   const hasDebounced = Boolean(
     singleQueryResult.debouncedQuery ||
     multiQueryResult.debouncedConfig ||
-    !funnelQueryResult.isDebouncing // Funnel has debounced when not debouncing
+    !funnelQueryResult.isDebouncing || // Funnel has debounced when not debouncing
+    !flowQueryResult.isDebouncing // Flow has debounced when not debouncing
   )
 
   // Unified refetch function
   const refetch = useCallback(() => {
-    if (isFunnelMode) {
+    if (isFlowMode) {
+      flowQueryResult.refetch()
+    } else if (isFunnelMode) {
       funnelQueryResult.execute()
     } else if (isMultiMode) {
       multiQueryResult.refetch()
     } else {
       singleQueryResult.refetch()
     }
-  }, [isFunnelMode, isMultiMode, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }, [isFlowMode, isFunnelMode, isMultiMode, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   // Execution status
   const executionStatus: ExecutionStatus = useMemo(() => {
-    const hasResults = isFunnelMode
-      ? funnelQueryResult.chartData
-      : isMultiMode
-        ? multiQueryResult.data
-        : singleQueryResult.rawData
+    const hasResults = isFlowMode
+      ? flowQueryResult.data
+      : isFunnelMode
+        ? funnelQueryResult.chartData
+        : isMultiMode
+          ? multiQueryResult.data
+          : singleQueryResult.rawData
     if (initialData && initialData.length > 0 && !hasResults) return 'success'
     if (!isValidQuery) return 'idle'
     if (isLoading && !hasResults) return 'loading'
@@ -217,10 +267,15 @@ export function useAnalysisQueryExecution(
     if (error) return 'error'
     if (hasResults) return 'success'
     return 'idle'
-  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, initialData, isMultiMode, isFunnelMode])
+  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, initialData, isMultiMode, isFunnelMode, isFlowMode])
 
   // Execution results
   const executionResults = useMemo(() => {
+    // Flow mode returns Sankey chart data directly
+    if (isFlowMode && flowQueryResult.data) {
+      // Wrap in array for consistency with other modes
+      return [flowQueryResult.data] as unknown[]
+    }
     // Funnel mode returns chart data directly
     if (isFunnelMode && funnelQueryResult.chartData) {
       return funnelQueryResult.chartData as unknown[]
@@ -235,7 +290,7 @@ export function useAnalysisQueryExecution(
       return initialData
     }
     return null
-  }, [singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, initialData, isMultiMode, isFunnelMode])
+  }, [singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, initialData, isMultiMode, isFunnelMode, isFlowMode])
 
   // Per-query results for table view (or per-step for funnel)
   const perQueryResults = useMemo(() => {
@@ -258,6 +313,13 @@ export function useAnalysisQueryExecution(
   // Funnel debug data (unified SQL for funnel mode)
   const funnelDebugData = isFunnelMode ? funnelDryRunResult.debugData : null
 
+  // Flow-related values
+  const flowServerQuery = isFlowMode ? flowQueryResult.serverQuery : null
+  const flowChartData = isFlowMode ? flowQueryResult.data : null
+
+  // Flow debug data (unified SQL for flow mode)
+  const flowDebugData = isFlowMode ? flowDryRunResult.debugData : null
+
   return {
     executionStatus,
     executionResults,
@@ -271,5 +333,8 @@ export function useAnalysisQueryExecution(
     funnelExecutedQueries,
     funnelServerQuery,
     funnelDebugData,
+    flowServerQuery,
+    flowChartData,
+    flowDebugData,
   }
 }

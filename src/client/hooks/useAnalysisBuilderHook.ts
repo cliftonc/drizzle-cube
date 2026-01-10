@@ -110,6 +110,24 @@ export interface UseAnalysisBuilderResult {
   /** Display config for funnel mode (separate from query mode) */
   funnelDisplayConfig: ChartDisplayConfig
 
+  // Flow Mode State (when analysisType === 'flow')
+  /** Selected cube for flow mode */
+  flowCube: string | null
+  /** Binding key for flow mode (entity linking) */
+  flowBindingKey: FunnelBindingKey | null
+  /** Time dimension for flow mode (event ordering) */
+  flowTimeDimension: string | null
+  /** Event dimension for flow mode (node labels in Sankey) */
+  eventDimension: string | null
+  /** Starting step configuration */
+  startingStep: import('../types/flow').FlowStartingStep
+  /** Number of steps to explore before starting step */
+  stepsBefore: number
+  /** Number of steps to explore after starting step */
+  stepsAfter: number
+  /** Display config for flow mode */
+  flowDisplayConfig: ChartDisplayConfig
+
   // Data Fetching
   executionStatus: ExecutionStatus
   executionResults: unknown[] | null
@@ -130,6 +148,16 @@ export interface UseAnalysisBuilderResult {
     loading: boolean
     error: Error | null
     funnelMetadata?: unknown
+  } | null
+  /** In flow mode, the actual server query { flow: {...} } sent to the API */
+  flowServerQuery: unknown | null
+  /** In flow mode, unified debug data (SQL, analysis, flow metadata) */
+  flowDebugData: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown | null
+    loading: boolean
+    error: Error | null
+    flowMetadata?: unknown
   } | null
 
   // Chart Configuration
@@ -202,6 +230,16 @@ export interface UseAnalysisBuilderResult {
     reorderFunnelSteps: (fromIndex: number, toIndex: number) => void
     setFunnelTimeDimension: (dimension: string | null) => void
     setFunnelDisplayConfig: (config: ChartDisplayConfig) => void
+    // Flow Mode actions (when analysisType === 'flow')
+    setFlowCube: (cube: string | null) => void
+    setFlowBindingKey: (key: FunnelBindingKey | null) => void
+    setFlowTimeDimension: (dim: string | null) => void
+    setEventDimension: (dim: string | null) => void
+    setStartingStepName: (name: string) => void
+    setStartingStepFilters: (filters: Filter[]) => void
+    setStepsBefore: (count: number) => void
+    setStepsAfter: (count: number) => void
+    setFlowDisplayConfig: (config: ChartDisplayConfig) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void
     setDisplayConfig: (config: ChartDisplayConfig) => void
@@ -273,18 +311,45 @@ export function useAnalysisBuilder(
   // Get funnel binding key from store for funnel mode
   const funnelBindingKey = useAnalysisBuilderStore((s) => s.funnelBindingKey)
 
-  // Get funnel mode enabled state (includes filter-only step validation)
-  const isFunnelModeEnabled = useAnalysisBuilderStore((s) => s.isFunnelModeEnabled())
-
-  // Get new analysis type state
+  // Get analysis type state (must be before computed values that use it)
   const analysisType = useAnalysisBuilderStore((s) => s.analysisType)
   const funnelCube = useAnalysisBuilderStore((s) => s.funnelCube)
   const funnelSteps = useAnalysisBuilderStore((s) => s.funnelSteps)
   const activeFunnelStepIndex = useAnalysisBuilderStore((s) => s.activeFunnelStepIndex)
   const funnelTimeDimension = useAnalysisBuilderStore((s) => s.funnelTimeDimension)
+
+  // Get funnel mode enabled state (computed to avoid function call in selector)
+  // This includes filter-only step validation
+  const isFunnelModeEnabled = useMemo(() => {
+    if (analysisType !== 'funnel') return false
+    if (!funnelBindingKey?.dimension) return false
+    if (!funnelTimeDimension) return false
+    if (!funnelSteps || funnelSteps.length < 2) return false
+    // All steps must have at least one filter
+    return funnelSteps.every((step) => step.filters.length > 0)
+  }, [analysisType, funnelBindingKey, funnelTimeDimension, funnelSteps])
   // Phase 4: Read from charts map instead of legacy fields
-  const funnelChartType = useAnalysisBuilderStore((s) => s.charts.funnel?.chartType || 'funnel')
-  const funnelChartConfig = useAnalysisBuilderStore((s) => s.charts.funnel?.chartConfig || {})
+  // Use stable selectors to avoid infinite loop from creating new objects
+  const funnelChartType = useAnalysisBuilderStore((s) => s.charts.funnel?.chartType) || 'funnel'
+  const funnelChartConfigFromStore = useAnalysisBuilderStore((s) => s.charts.funnel?.chartConfig)
+  const funnelChartConfig = useMemo(() => funnelChartConfigFromStore || {}, [funnelChartConfigFromStore])
+
+  // Get flow mode state
+  const flowCube = useAnalysisBuilderStore((s) => s.flowCube)
+  const flowBindingKey = useAnalysisBuilderStore((s) => s.flowBindingKey)
+  const flowTimeDimension = useAnalysisBuilderStore((s) => s.flowTimeDimension)
+  const eventDimension = useAnalysisBuilderStore((s) => s.eventDimension)
+  const startingStep = useAnalysisBuilderStore((s) => s.startingStep)
+  const stepsBefore = useAnalysisBuilderStore((s) => s.stepsBefore)
+  const stepsAfter = useAnalysisBuilderStore((s) => s.stepsAfter)
+  // Flow display config from charts map - use stable selector to avoid infinite loop
+  const flowDisplayConfigFromStore = useAnalysisBuilderStore((state) => state.charts.flow?.displayConfig)
+  const flowDisplayConfig = useMemo(
+    () => flowDisplayConfigFromStore || { showLegend: true, showGrid: true, showTooltip: true },
+    [flowDisplayConfigFromStore]
+  )
+  // Flow chart type from charts map - needed for outputMode in query
+  const flowChartType = useAnalysisBuilderStore((state) => state.charts.flow?.chartType) || 'sankey'
 
   // Build server funnel query from dedicated funnelSteps (when analysisType === 'funnel')
   // Note: funnelSteps must be in dependency array so query rebuilds when filters change
@@ -292,18 +357,34 @@ export function useAnalysisBuilder(
   const serverFunnelQuery = useMemo(() => {
     if (analysisType !== 'funnel') return null
     return buildFunnelQueryFromSteps()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- funnelSteps triggers rebuild when step filters change
   }, [analysisType, buildFunnelQueryFromSteps, funnelSteps])
 
-  // Compute effective isValidQuery that considers funnel mode
+  const buildFlowQuery = useAnalysisBuilderStore((s) => s.buildFlowQuery)
+
+  // Build server flow query (when analysisType === 'flow')
+  // Note: flowChartType is included because it determines outputMode (sankey vs sunburst aggregation)
+  const serverFlowQuery = useMemo(() => {
+    if (analysisType !== 'flow') return null
+    return buildFlowQuery()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flow config values trigger rebuild when they change in store
+  }, [analysisType, buildFlowQuery, flowCube, flowBindingKey, flowTimeDimension, eventDimension, startingStep, stepsBefore, stepsAfter, flowChartType])
+
+  // Compute effective isValidQuery that considers funnel and flow modes
   // In funnel mode, the query is valid when serverFunnelQuery is not null
+  // In flow mode, the query is valid when serverFlowQuery is not null
   const effectiveIsValidQuery = useMemo(() => {
+    if (analysisType === 'flow') {
+      // Flow mode: valid when we have a buildable flow query
+      return serverFlowQuery !== null
+    }
     if (analysisType === 'funnel') {
       // Funnel mode: valid when we have a buildable funnel query
       return serverFunnelQuery !== null
     }
     // Query/Multi mode: use the standard validation
     return queryBuilder.isValidQuery ?? false
-  }, [analysisType, serverFunnelQuery, queryBuilder.isValidQuery])
+  }, [analysisType, serverFlowQuery, serverFunnelQuery, queryBuilder.isValidQuery])
 
   // 3. Query Execution (TanStack Query integration)
   const queryExecution = useAnalysisQueryExecution({
@@ -319,6 +400,8 @@ export function useAnalysisBuilder(
     // New: pass analysisType and serverFunnelQuery for explicit mode routing
     analysisType,
     serverFunnelQuery,
+    // Flow mode: pass serverFlowQuery
+    serverFlowQuery,
   })
 
   // 4. Chart Defaults (chart config, availability, smart defaults)
@@ -388,11 +471,38 @@ export function useAnalysisBuilder(
   const setFunnelTimeDimension = useAnalysisBuilderStore((state) => state.setFunnelTimeDimension)
 
   // Funnel display config (for Display tab in funnel mode)
-  // Phase 4: Read from charts map
-  const funnelDisplayConfig = useAnalysisBuilderStore((state) =>
-    state.charts.funnel?.displayConfig || { showLegend: true, showGrid: true, showTooltip: true }
+  // Phase 4: Read from charts map - use stable selector to avoid infinite loop
+  const funnelDisplayConfigFromStore = useAnalysisBuilderStore((state) => state.charts.funnel?.displayConfig)
+  const funnelDisplayConfig = useMemo(
+    () => funnelDisplayConfigFromStore || { showLegend: true, showGrid: true, showTooltip: true },
+    [funnelDisplayConfigFromStore]
   )
   const setFunnelDisplayConfig = useAnalysisBuilderStore((state) => state.setFunnelDisplayConfig)
+
+  // Flow Mode actions
+  const setFlowCube = useAnalysisBuilderStore((state) => state.setFlowCube)
+  const setFlowBindingKey = useAnalysisBuilderStore((state) => state.setFlowBindingKey)
+  const setFlowTimeDimension = useAnalysisBuilderStore((state) => state.setFlowTimeDimension)
+  const setEventDimension = useAnalysisBuilderStore((state) => state.setEventDimension)
+  const setStartingStepName = useAnalysisBuilderStore((state) => state.setStartingStepName)
+  const setStartingStepFilters = useAnalysisBuilderStore((state) => state.setStartingStepFilters)
+  const setStepsBefore = useAnalysisBuilderStore((state) => state.setStepsBefore)
+  const setStepsAfter = useAnalysisBuilderStore((state) => state.setStepsAfter)
+  // Flow display config action - creates setFlowDisplayConfig wrapper using charts map pattern
+  const setFlowDisplayConfig = useCallback(
+    (config: ChartDisplayConfig) => {
+      storeApi.setState((state) => ({
+        charts: {
+          ...state.charts,
+          flow: {
+            ...(state.charts.flow || { chartType: 'sankey', chartConfig: {}, displayConfig: {} }),
+            displayConfig: config,
+          },
+        },
+      }))
+    },
+    [storeApi]
+  )
 
   // AI state and actions
   const aiState = useAnalysisBuilderStore((state) => state.aiState)
@@ -423,7 +533,23 @@ export function useAnalysisBuilder(
   const adapterValidation = useMemo(
     () => getValidation(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [getValidation, queryBuilder.queryStates, analysisType, funnelSteps, funnelBindingKey, funnelTimeDimension]
+    [
+      getValidation,
+      queryBuilder.queryStates,
+      analysisType,
+      // Funnel deps
+      funnelSteps,
+      funnelBindingKey,
+      funnelTimeDimension,
+      // Flow deps
+      flowCube,
+      flowBindingKey,
+      flowTimeDimension,
+      eventDimension,
+      startingStep,
+      stepsBefore,
+      stepsAfter,
+    ]
   )
 
   // =========================================================================
@@ -574,6 +700,16 @@ export function useAnalysisBuilder(
     funnelChartConfig,
     funnelDisplayConfig,
 
+    // Flow state (new)
+    flowCube,
+    flowBindingKey,
+    flowTimeDimension,
+    eventDimension,
+    startingStep,
+    stepsBefore,
+    stepsAfter,
+    flowDisplayConfig,
+
     // Data fetching (from queryExecution)
     executionStatus: queryExecution.executionStatus,
     executionResults: queryExecution.executionResults,
@@ -586,6 +722,8 @@ export function useAnalysisBuilder(
     funnelExecutedQueries: queryExecution.funnelExecutedQueries,
     funnelServerQuery: queryExecution.funnelServerQuery,
     funnelDebugData: queryExecution.funnelDebugData,
+    flowServerQuery: queryExecution.flowServerQuery,
+    flowDebugData: queryExecution.flowDebugData,
 
     // Chart configuration (from chartDefaults)
     // Note: Funnel chart type is determined by analysisType === 'funnel', not mergeStrategy
@@ -670,6 +808,17 @@ export function useAnalysisBuilder(
       reorderFunnelSteps,
       setFunnelTimeDimension,
       setFunnelDisplayConfig,
+
+      // Flow Mode actions
+      setFlowCube,
+      setFlowBindingKey,
+      setFlowTimeDimension,
+      setEventDimension,
+      setStartingStepName,
+      setStartingStepFilters,
+      setStepsBefore,
+      setStepsAfter,
+      setFlowDisplayConfig,
 
       // Chart (from chartDefaults)
       setChartType: chartDefaults.setChartType,

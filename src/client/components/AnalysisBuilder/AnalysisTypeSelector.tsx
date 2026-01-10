@@ -13,6 +13,7 @@ import { getIcon } from '../../icons'
 
 const ChartBarIcon = getIcon('chartBar')
 const ChartFunnelIcon = getIcon('chartFunnel')
+const ChartSankeyIcon = getIcon('chartSankey')
 
 interface AnalysisTypeSelectorProps {
   /** Currently selected analysis type */
@@ -42,6 +43,12 @@ const typeOptions: TypeOption[] = [
     label: 'Funnel',
     description: 'Sequential conversion analysis',
     icon: ChartFunnelIcon,
+  },
+  {
+    type: 'flow',
+    label: 'Flow',
+    description: 'Bidirectional path analysis with Sankey visualization',
+    icon: ChartSankeyIcon,
   },
 ]
 

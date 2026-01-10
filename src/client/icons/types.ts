@@ -96,6 +96,8 @@ export interface IconRegistry {
   chartKpiText: IconDefinition
   chartMarkdown: IconDefinition
   chartFunnel: IconDefinition
+  chartSankey: IconDefinition
+  chartSunburst: IconDefinition
 
   // Measure type icons
   measureCount: IconDefinition

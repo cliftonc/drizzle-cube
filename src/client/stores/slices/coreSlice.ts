@@ -17,6 +17,7 @@ import {
   adapterRegistry,
   queryModeAdapter,
   funnelModeAdapter,
+  flowModeAdapter,
 } from '../../adapters'
 import type {
   AnalysisConfig,
@@ -25,6 +26,7 @@ import type {
   AnalysisWorkspace,
   QueryAnalysisConfig,
   FunnelAnalysisConfig,
+  FlowAnalysisConfig,
 } from '../../types/analysisConfig'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
 
@@ -146,12 +148,14 @@ export const createInitialCoreState = (): CoreSliceState => ({
   charts: {
     query: queryModeAdapter.getDefaultChartConfig(),
     funnel: funnelModeAdapter.getDefaultChartConfig(),
+    flow: flowModeAdapter.getDefaultChartConfig(),
   },
 
   // Per-mode active view preference
   activeViews: {
     query: 'chart',
     funnel: 'chart',
+    flow: 'chart',
   },
 
   userManuallySelectedChart: false,
@@ -422,12 +426,23 @@ export const createCoreSlice: StateCreator<
       funnelActiveView
     ) as FunnelAnalysisConfig
 
+    // Save flow mode state using adapter's extractState
+    const flowAdapter = adapterRegistry.get('flow')
+    const flowModeState = flowAdapter.extractState(stateAsRecord)
+    const flowActiveView = state.activeViews.flow ?? state.activeView ?? 'chart'
+    const flowConfig = flowAdapter.save(
+      flowModeState,
+      state.charts,
+      flowActiveView
+    ) as FlowAnalysisConfig
+
     return {
       version: 1,
       activeType: state.analysisType,
       modes: {
         query: queryConfig,
         funnel: funnelConfig,
+        flow: flowConfig,
       },
     }
   },
@@ -435,9 +450,11 @@ export const createCoreSlice: StateCreator<
   loadWorkspace: (workspace: AnalysisWorkspace): void => {
     const queryAdapter = adapterRegistry.get('query')
     const funnelAdapter = adapterRegistry.get('funnel')
+    const flowAdapter = adapterRegistry.get('flow')
 
     let queryModeState: Record<string, unknown> = {}
     let funnelModeState: Record<string, unknown> = {}
+    let flowModeState: Record<string, unknown> = {}
     let mergedCharts = { ...get().charts }
     let mergedActiveViews = { ...get().activeViews }
 
@@ -455,6 +472,13 @@ export const createCoreSlice: StateCreator<
       mergedActiveViews.funnel = workspace.modes.funnel.activeView ?? 'chart'
     }
 
+    // Load flow mode if present
+    if (workspace.modes.flow && flowAdapter.canLoad(workspace.modes.flow)) {
+      flowModeState = flowAdapter.load(workspace.modes.flow) as Record<string, unknown>
+      mergedCharts = { ...mergedCharts, ...workspace.modes.flow.charts }
+      mergedActiveViews.flow = workspace.modes.flow.activeView ?? 'chart'
+    }
+
     // Determine activeView from the active mode's config
     const activeConfig = workspace.modes[workspace.activeType]
     const activeView = activeConfig?.activeView ?? 'chart'
@@ -466,6 +490,7 @@ export const createCoreSlice: StateCreator<
       activeView,
       ...queryModeState,
       ...funnelModeState,
+      ...flowModeState,
     })
   },
 })

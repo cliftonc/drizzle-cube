@@ -40,6 +40,7 @@ import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 import { ComparisonQueryBuilder } from './comparison-query-builder'
 import { FunnelQueryBuilder } from './funnel-query-builder'
+import { FlowQueryBuilder } from './flow-query-builder'
 
 export class QueryExecutor {
   private queryBuilder: QueryBuilder
@@ -48,6 +49,7 @@ export class QueryExecutor {
   private databaseAdapter: DatabaseAdapter
   private comparisonQueryBuilder: ComparisonQueryBuilder
   private funnelQueryBuilder: FunnelQueryBuilder
+  private flowQueryBuilder: FlowQueryBuilder
   private cacheConfig?: CacheConfig
 
   constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
@@ -61,6 +63,7 @@ export class QueryExecutor {
     this.cteBuilder = new CTEBuilder(this.queryBuilder)
     this.comparisonQueryBuilder = new ComparisonQueryBuilder(this.databaseAdapter)
     this.funnelQueryBuilder = new FunnelQueryBuilder(this.databaseAdapter)
+    this.flowQueryBuilder = new FlowQueryBuilder(this.databaseAdapter)
     this.cacheConfig = cacheConfig
   }
 
@@ -82,8 +85,16 @@ export class QueryExecutor {
         }
         // Skip standard validation for funnel queries and go directly to execution
         // (after cache check below)
+      } else if (this.flowQueryBuilder.hasFlow(query)) {
+        // Validate flow configuration separately
+        const flowValidation = this.flowQueryBuilder.validateConfig(query.flow!, cubes)
+        if (!flowValidation.isValid) {
+          throw new Error(`Flow validation failed: ${flowValidation.errors.join(', ')}`)
+        }
+        // Skip standard validation for flow queries and go directly to execution
+        // (after cache check below)
       } else {
-        // Standard validation for non-funnel queries
+        // Standard validation for non-funnel/non-flow queries
         const validation = validateQueryAgainstCubes(cubes, query)
         if (!validation.isValid) {
           throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
@@ -141,6 +152,11 @@ export class QueryExecutor {
       // Check for funnel queries and route to funnel execution
       if (this.funnelQueryBuilder.hasFunnel(query)) {
         return this.executeFunnelQueryWithCache(cubes, query, securityContext, cacheKey)
+      }
+
+      // Check for flow queries and route to flow execution
+      if (this.flowQueryBuilder.hasFlow(query)) {
+        return this.executeFlowQueryWithCache(cubes, query, securityContext, cacheKey)
       }
 
       // Create filter cache for parameter deduplication across CTEs
@@ -455,6 +471,102 @@ export class QueryExecutor {
 
     return {
       data: funnelRows as unknown as Record<string, unknown>[],
+      annotation
+    }
+  }
+
+  /**
+   * Execute a flow query with caching support
+   */
+  private async executeFlowQueryWithCache(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    cacheKey: string | undefined
+  ): Promise<QueryResult> {
+    const result = await this.executeFlowQuery(cubes, query, securityContext)
+
+    // Cache result before returning
+    if (cacheKey && this.cacheConfig?.provider) {
+      try {
+        const startTime = Date.now()
+        await this.cacheConfig.provider.set(
+          cacheKey,
+          result,
+          this.cacheConfig.defaultTtlMs ?? 300000
+        )
+        this.cacheConfig.onCacheEvent?.({
+          type: 'set',
+          key: cacheKey,
+          durationMs: Date.now() - startTime
+        })
+      } catch (error) {
+        this.cacheConfig.onError?.(error as Error, 'set')
+      }
+    }
+
+    // Return result with cache metadata (miss - freshly computed)
+    return {
+      ...result,
+      cache: {
+        hit: false
+      }
+    }
+  }
+
+  /**
+   * Execute a flow analysis query
+   * Produces Sankey diagram data (nodes and links)
+   */
+  private async executeFlowQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    const config = query.flow!
+
+    // Validate flow configuration
+    const validation = this.flowQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Flow validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build flow query using Drizzle query builder
+    const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
+
+    // Execute the query
+    const rawResult = await flowQuery as unknown as Record<string, unknown>[]
+
+    // Transform to FlowResultRow (nodes and links)
+    const flowData = this.flowQueryBuilder.transformResult(rawResult)
+
+    // Build annotation with flow metadata
+    const annotation: QueryResult['annotation'] & { flow?: unknown } = {
+      measures: {} as Record<string, MeasureAnnotation>,
+      dimensions: {} as Record<string, DimensionAnnotation>,
+      segments: {},
+      timeDimensions: {} as Record<string, TimeDimensionAnnotation>
+    }
+
+    // Add flow metadata to annotation
+    ;(annotation as any).flow = {
+      config,
+      startingStep: {
+        name: config.startingStep.name,
+      },
+      stepsBefore: config.stepsBefore,
+      stepsAfter: config.stepsAfter,
+    }
+
+    return {
+      data: [flowData] as unknown as Record<string, unknown>[],
       annotation
     }
   }
@@ -1115,6 +1227,47 @@ export class QueryExecutor {
     // Use .toSQL() to get the SQL string and parameters
     // This now works because buildFunnelQuery returns a Drizzle query builder
     const sqlObj = funnelQuery.toSQL()
+
+    return {
+      sql: sqlObj.sql,
+      params: sqlObj.params
+    }
+  }
+
+  /**
+   * Generate SQL for a flow query without execution (dry-run)
+   * Returns the actual CTE-based SQL that would be executed
+   */
+  async dryRunFlow(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    // Validate flow query
+    if (!this.flowQueryBuilder.hasFlow(query)) {
+      throw new Error('Query does not contain a valid flow configuration')
+    }
+
+    const config = query.flow!
+
+    // Validate flow configuration
+    const validation = this.flowQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Flow validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build flow query using Drizzle query builder
+    const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
+
+    // Use .toSQL() to get the SQL string and parameters
+    const sqlObj = flowQuery.toSQL()
 
     return {
       sql: sqlObj.sql,

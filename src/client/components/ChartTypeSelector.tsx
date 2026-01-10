@@ -30,7 +30,9 @@ const chartTypeLabels: Record<ChartType, string> = {
   pie: 'Pie Chart',
   radar: 'Radar Chart',
   radialBar: 'Radial Bar Chart',
+  sankey: 'Sankey Chart',
   scatter: 'Scatter Plot',
+  sunburst: 'Sunburst Chart',
   table: 'Data Table',
   treemap: 'TreeMap'
 }

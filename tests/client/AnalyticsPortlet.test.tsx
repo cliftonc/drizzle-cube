@@ -79,6 +79,23 @@ vi.mock('../../src/client/hooks/queries/useFunnelQuery', () => ({
   useFunnelQuery: vi.fn(() => mockUseFunnelQueryResult)
 }))
 
+// Mock useFlowQuery (used for flow/sankey chart portlets)
+let mockUseFlowQueryResult = {
+  data: null,
+  rawData: null,
+  isLoading: false,
+  isFetching: false,
+  isDebouncing: false,
+  isExecuting: false,
+  error: null,
+  refetch: vi.fn(),
+  reset: vi.fn(),
+  serverQuery: null
+}
+vi.mock('../../src/client/hooks/queries/useFlowQuery', () => ({
+  useFlowQuery: vi.fn(() => mockUseFlowQueryResult)
+}))
+
 // Mock useScrollContainer
 vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)

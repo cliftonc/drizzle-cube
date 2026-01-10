@@ -287,3 +287,67 @@ export function useFunnelDryRunQuery(
     refetch: () => queryResult.refetch(),
   }
 }
+
+/**
+ * Debug data entry for flow queries
+ */
+export interface FlowDebugDataEntry extends DebugDataEntry {
+  /** Flow-specific metadata from server */
+  flowMetadata?: {
+    stepsBefore: number
+    stepsAfter: number
+    bindingKey: unknown
+    timeDimension: unknown
+    eventDimension: string
+    startingStep: {
+      name: string
+      filter: unknown
+    }
+  }
+}
+
+/**
+ * TanStack Query hook for flow query dry-run (debug) data
+ *
+ * Usage:
+ * ```tsx
+ * const { debugData } = useFlowDryRunQuery(serverQuery, { skip: !isFlowMode })
+ * ```
+ */
+export function useFlowDryRunQuery(
+  serverQuery: unknown | null,
+  options: UseDryRunQueryOptions = {}
+): { debugData: FlowDebugDataEntry; refetch: () => void } {
+  const { skip = false, staleTime = 5 * 60 * 1000 } = options
+  const { cubeApi } = useCubeApi()
+
+  const queryResult = useQuery({
+    queryKey: ['cube', 'dryRun', 'flow', serverQuery ? stableStringify(serverQuery) : null] as const,
+    queryFn: async () => {
+      if (!serverQuery) throw new Error('No flow query provided')
+      // Send the flow query to dry-run endpoint
+      // The server will detect it's a flow query and use dryRunFlow
+      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
+      return {
+        sql: result.sql,
+        analysis: result.analysis,
+        flowMetadata: (result as unknown as { flow?: unknown }).flow,
+      }
+    },
+    enabled: !!serverQuery && !skip,
+    staleTime,
+  })
+
+  const debugData: FlowDebugDataEntry = {
+    sql: queryResult.data?.sql ?? null,
+    analysis: queryResult.data?.analysis ?? null,
+    loading: queryResult.isLoading,
+    error: queryResult.error ?? null,
+    flowMetadata: queryResult.data?.flowMetadata as FlowDebugDataEntry['flowMetadata'],
+  }
+
+  return {
+    debugData,
+    refetch: () => queryResult.refetch(),
+  }
+}

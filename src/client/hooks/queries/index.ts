@@ -42,9 +42,11 @@ export {
   useMultiDryRunQueries,
   useDryRunQueries,
   useFunnelDryRunQuery,
+  useFlowDryRunQuery,
   createDryRunQueryKey,
   type DebugDataEntry,
   type FunnelDebugDataEntry,
+  type FlowDebugDataEntry,
   type UseDryRunQueryOptions,
   type UseDryRunQueryResult,
   type UseMultiDryRunQueriesOptions,
@@ -56,3 +58,11 @@ export {
   useFunnelQuery,
   createFunnelQueryKey,
 } from './useFunnelQuery'
+
+// Flow query data loading (bidirectional Sankey)
+export {
+  useFlowQuery,
+  createFlowQueryKey,
+  type UseFlowQueryOptions,
+  type UseFlowQueryResult,
+} from './useFlowQuery'

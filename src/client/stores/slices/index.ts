@@ -32,6 +32,15 @@ export {
   type FunnelSliceActions,
 } from './funnelSlice'
 
+// Flow slice - flow analysis, starting step, depth config
+export {
+  createFlowSlice,
+  createInitialFlowState,
+  type FlowSlice,
+  type FlowSliceState,
+  type FlowSliceActions,
+} from './flowSlice'
+
 // UI slice - tabs, views, modals, AI state
 export {
   createUISlice,

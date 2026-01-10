@@ -20,6 +20,7 @@ import type {
   MultiQueryConfig,
 } from '../types'
 import type { ServerFunnelQuery } from './funnel'
+import type { ServerFlowQuery } from './flow'
 
 // ============================================================================
 // Chart Configuration
@@ -40,9 +41,9 @@ export interface ChartConfig {
 
 /**
  * Analysis type discriminator
- * Future modes: 'flow', 'retention', 'cohort'
+ * Future modes: 'retention', 'cohort'
  */
-export type AnalysisType = 'query' | 'funnel'
+export type AnalysisType = 'query' | 'funnel' | 'flow'
 
 // ============================================================================
 // Base Configuration
@@ -114,13 +115,33 @@ export interface FunnelAnalysisConfig extends AnalysisConfigBase {
 }
 
 // ============================================================================
+// Flow Mode Configuration
+// ============================================================================
+
+/**
+ * Flow mode config - for bidirectional flow analysis
+ *
+ * The `query` field is the ServerFlowQuery which can be sent
+ * directly to the server for execution.
+ */
+export interface FlowAnalysisConfig extends AnalysisConfigBase {
+  analysisType: 'flow'
+
+  /**
+   * Server flow query - executable as-is.
+   * Contains bindingKey, timeDimension, eventDimension, startingStep, and depth config.
+   */
+  query: ServerFlowQuery
+}
+
+// ============================================================================
 // Union Type
 // ============================================================================
 
 /**
  * AnalysisConfig - union of all analysis mode configurations
  */
-export type AnalysisConfig = QueryAnalysisConfig | FunnelAnalysisConfig
+export type AnalysisConfig = QueryAnalysisConfig | FunnelAnalysisConfig | FlowAnalysisConfig
 
 // ============================================================================
 // Type Guards
@@ -137,6 +158,12 @@ export const isQueryConfig = (c: AnalysisConfig): c is QueryAnalysisConfig =>
  */
 export const isFunnelConfig = (c: AnalysisConfig): c is FunnelAnalysisConfig =>
   c.analysisType === 'funnel'
+
+/**
+ * Check if config is for flow mode
+ */
+export const isFlowConfig = (c: AnalysisConfig): c is FlowAnalysisConfig =>
+  c.analysisType === 'flow'
 
 /**
  * Check if a query config contains multiple queries
@@ -165,7 +192,7 @@ export const isValidAnalysisConfig = (
   if (c.version !== 1) return false
 
   // Check analysisType
-  if (c.analysisType !== 'query' && c.analysisType !== 'funnel') return false
+  if (c.analysisType !== 'query' && c.analysisType !== 'funnel' && c.analysisType !== 'flow') return false
 
   // Check query exists
   if (!c.query || typeof c.query !== 'object') return false
@@ -224,6 +251,35 @@ export const createDefaultFunnelConfig = (): FunnelAnalysisConfig => ({
 })
 
 /**
+ * Create a default empty flow analysis config
+ */
+export const createDefaultFlowConfig = (): FlowAnalysisConfig => ({
+  version: 1,
+  analysisType: 'flow',
+  activeView: 'chart',
+  charts: {
+    flow: {
+      chartType: 'sankey',
+      chartConfig: {},
+      displayConfig: {},
+    },
+  },
+  query: {
+    flow: {
+      bindingKey: '',
+      timeDimension: '',
+      eventDimension: '',
+      startingStep: {
+        name: '',
+        filter: undefined,
+      },
+      stepsBefore: 3,
+      stepsAfter: 3,
+    },
+  },
+})
+
+/**
  * Create a default config for the given analysis type
  */
 export const createDefaultConfig = (
@@ -232,6 +288,8 @@ export const createDefaultConfig = (
   switch (type) {
     case 'funnel':
       return createDefaultFunnelConfig()
+    case 'flow':
+      return createDefaultFlowConfig()
     case 'query':
     default:
       return createDefaultQueryConfig()
@@ -247,7 +305,7 @@ export const createDefaultConfig = (
  *
  * Unlike AnalysisConfig (which represents a single analysis mode),
  * AnalysisWorkspace preserves state for ALL modes. This prevents state
- * loss when switching between query and funnel modes.
+ * loss when switching between query, funnel, and flow modes.
  *
  * Usage:
  * - localStorage persistence → AnalysisWorkspace (preserves all modes)
@@ -269,6 +327,7 @@ export interface AnalysisWorkspace {
   modes: {
     query?: QueryAnalysisConfig
     funnel?: FunnelAnalysisConfig
+    flow?: FlowAnalysisConfig
   }
 }
 
@@ -286,7 +345,7 @@ export const isValidAnalysisWorkspace = (
   if (w.version !== 1) return false
 
   // Check activeType
-  if (w.activeType !== 'query' && w.activeType !== 'funnel') return false
+  if (w.activeType !== 'query' && w.activeType !== 'funnel' && w.activeType !== 'flow') return false
 
   // Check modes exists and is an object
   if (!w.modes || typeof w.modes !== 'object') return false
@@ -295,7 +354,7 @@ export const isValidAnalysisWorkspace = (
 }
 
 /**
- * Create a default empty workspace with both modes initialized
+ * Create a default empty workspace with all modes initialized
  */
 export const createDefaultWorkspace = (): AnalysisWorkspace => ({
   version: 1,
@@ -303,5 +362,6 @@ export const createDefaultWorkspace = (): AnalysisWorkspace => ({
   modes: {
     query: createDefaultQueryConfig(),
     funnel: createDefaultFunnelConfig(),
+    flow: createDefaultFlowConfig(),
   },
 })

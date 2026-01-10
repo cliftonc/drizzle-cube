@@ -70,10 +70,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   isFunnelMode: isFunnelModeProp = false,
   // Funnel-specific debug props
   funnelServerQuery,
-  funnelDebugData
+  funnelDebugData,
+  // Flow-specific debug props
+  flowServerQuery,
+  flowDebugData
 }: AnalysisResultsPanelProps) {
   // Determine funnel mode from analysisType (preferred) or legacy prop
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
+  // Determine flow mode from analysisType
+  const isFlowMode = analysisType === 'flow'
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
   // Active debug query tab (independent of main query tabs)
@@ -120,9 +125,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       return
     }
 
-    // Don't force table view in funnel mode - funnel charts work differently
+    // Don't force table view in funnel or flow mode - they work differently
     // Check both analysisType directly AND computed isFunnelMode to avoid stale closure issues
-    if (analysisType === 'funnel' || isFunnelMode) return
+    if (analysisType === 'funnel' || analysisType === 'flow' || isFunnelMode) return
 
     if (!hasMetrics && activeView === 'chart') {
       onActiveViewChange('table')
@@ -283,13 +288,19 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       )
     }
 
-    if (!isValidChartType(chartType)) {
+    // Determine effective chart type (handles sankey/sunburst toggle)
+    const effectiveChartType = chartType === 'sankey' &&
+      (displayConfig as Record<string, unknown>)?.flowVisualization === 'sunburst'
+        ? 'sunburst'
+        : chartType
+
+    if (!isValidChartType(effectiveChartType)) {
       return (
         <div className="flex items-center justify-center h-full text-dc-text-muted">
           <div className="text-center">
             <WarningIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
-            <div className="text-xs">{chartType}</div>
+            <div className="text-xs">{effectiveChartType}</div>
           </div>
         </div>
       )
@@ -297,7 +308,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     return (
       <LazyChart
-        chartType={chartType}
+        chartType={effectiveChartType}
         data={executionResults}
         chartConfig={chartConfig}
         displayConfig={displayConfig}
@@ -467,6 +478,174 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               code={JSON.stringify(executionResults, null, 2)}
               language="json"
               title={`Server Response (${executionResults.length} rows)`}
+              maxHeight="24rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                No results yet
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Render debug view for flow mode (unified single query view)
+  const renderFlowDebug = () => {
+    const flowSql = flowDebugData?.sql
+    const flowLoading = flowDebugData?.loading || false
+    const flowError = flowDebugData?.error
+    const flowMeta = flowDebugData?.flowMetadata as {
+      stepsBefore?: number
+      stepsAfter?: number
+      bindingKey?: unknown
+      timeDimension?: unknown
+      eventDimension?: string
+      startingStep?: { name?: string; filter?: unknown }
+    } | undefined
+
+    return (
+      <div className="p-4 space-y-4 overflow-auto h-full">
+        {/* Flow Mode Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Flow Query</span>
+          {flowMeta && (
+            <span className="text-xs text-dc-text-muted">
+              {flowMeta.stepsBefore} before, {flowMeta.stepsAfter} after
+            </span>
+          )}
+          {flowLoading && (
+            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+          )}
+        </div>
+
+        {/* Execution Error Banner (if any) */}
+        {executionError && (
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
+            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+              Execution Error
+            </h4>
+            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+          </div>
+        )}
+
+        {/* Flow Server Query and Generated SQL in 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Server Query (the actual { flow: {...} } sent to server) */}
+          <div>
+            {flowServerQuery ? (
+              <CodeBlock
+                code={JSON.stringify(flowServerQuery, null, 2)}
+                language="json"
+                title="Flow Server Query"
+                height="20rem"
+              />
+            ) : (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Server Query</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
+                  No flow query configured
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Generated SQL (the unified CTE-based flow SQL) */}
+          <div>
+            {flowLoading ? (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto animate-pulse">
+                  Loading flow SQL...
+                </div>
+              </>
+            ) : flowError ? (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-80 overflow-auto">
+                  {flowError.message}
+                </div>
+              </>
+            ) : flowSql ? (
+              <CodeBlock
+                code={
+                  flowSql.sql +
+                  (flowSql.params && flowSql.params.length > 0
+                    ? '\n\n-- Parameters:\n' + JSON.stringify(flowSql.params, null, 2)
+                    : '')
+                }
+                language="sql"
+                title="Generated SQL (CTE-based)"
+                height="20rem"
+              />
+            ) : (
+              <>
+                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
+                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
+                  Configure flow to generate SQL
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Flow Metadata */}
+        {flowMeta && (
+          <div>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Configuration</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-dc-text-muted">Starting Step:</span>{' '}
+                  <span className="text-dc-text">{flowMeta.startingStep?.name || 'Not set'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Event Dimension:</span>{' '}
+                  <span className="text-dc-text">{flowMeta.eventDimension || 'Not set'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Steps Before:</span>{' '}
+                  <span className="text-dc-text">{flowMeta.stepsBefore ?? 'Not set'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Steps After:</span>{' '}
+                  <span className="text-dc-text">{flowMeta.stepsAfter ?? 'Not set'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chart Config & Display Config in 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <CodeBlock
+              code={JSON.stringify(chartConfig, null, 2)}
+              language="json"
+              title="Chart Config"
+              height="16rem"
+            />
+          </div>
+          <div>
+            <CodeBlock
+              code={JSON.stringify(displayConfig, null, 2)}
+              language="json"
+              title="Display Config"
+              height="16rem"
+            />
+          </div>
+        </div>
+
+        {/* Server Response - full width */}
+        <div>
+          {executionResults ? (
+            <CodeBlock
+              code={JSON.stringify(executionResults, null, 2)}
+              language="json"
+              title="Server Response (Sankey Data)"
               maxHeight="24rem"
             />
           ) : (
@@ -654,6 +833,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Route to appropriate debug view based on mode
   const renderDebug = () => {
+    if (isFlowMode) {
+      return renderFlowDebug()
+    }
     if (isFunnelMode) {
       return renderFunnelDebug()
     }
@@ -663,6 +845,138 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Determine if we're in multi-query mode (but NOT funnel mode)
   // Funnel mode always shows unified results, not per-query tables
   const isMultiQuery = !isFunnelMode && queryCount > 1 && perQueryResults && perQueryResults.length > 1
+
+  // Render flow-specific table view showing nodes and links
+  const renderFlowTable = () => {
+    // Flow results from server are wrapped: [{ nodes: [...], links: [...] }]
+    // The executor returns data: [flowData] where flowData = { nodes, links }
+    let nodes: Record<string, unknown>[] = []
+    let links: Record<string, unknown>[] = []
+
+    if (!executionResults || (Array.isArray(executionResults) && executionResults.length === 0)) {
+      return (
+        <div className="flex items-center justify-center h-full text-dc-text-muted">
+          <div className="text-center">
+            <TableIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="text-sm font-semibold mb-1">No flow data to display</div>
+            <div className="text-xs">Configure flow analysis to see results</div>
+          </div>
+        </div>
+      )
+    }
+
+    // Server returns [{ nodes: [...], links: [...] }] - unwrap the first element
+    if (Array.isArray(executionResults) && executionResults.length > 0) {
+      const firstResult = executionResults[0] as Record<string, unknown>
+      // Check if it's flow data structure (has nodes/links arrays)
+      if (firstResult && 'nodes' in firstResult && 'links' in firstResult) {
+        nodes = (firstResult.nodes || []) as Record<string, unknown>[]
+        links = (firstResult.links || []) as Record<string, unknown>[]
+      } else if ('record_type' in firstResult) {
+        // Fallback: raw format with record_type discriminator
+        nodes = executionResults.filter((r: Record<string, unknown>) => r.record_type === 'node')
+        links = executionResults.filter((r: Record<string, unknown>) => r.record_type === 'link')
+      }
+    }
+
+    // If no data after parsing, show empty state
+    if (nodes.length === 0 && links.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-full text-dc-text-muted">
+          <div className="text-center">
+            <TableIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <div className="text-sm font-semibold mb-1">No flow data to display</div>
+            <div className="text-xs">Configure flow analysis to see results</div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="h-full overflow-auto p-4 space-y-6">
+        {/* Nodes Table */}
+        <div>
+          <h3 className="text-sm font-semibold text-dc-text mb-2">
+            Nodes ({nodes.length})
+          </h3>
+          <div className="border border-dc-border rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-dc-surface-secondary">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">Layer</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">Name</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-dc-text-muted uppercase tracking-wider">Count</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dc-border bg-dc-surface">
+                {nodes
+                  .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (a.layer as number) - (b.layer as number))
+                  .map((node: Record<string, unknown>, idx: number) => (
+                    <tr key={idx} className="hover:bg-dc-surface-hover">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium ${
+                          (node.layer as number) === 0
+                            ? 'bg-dc-primary text-white'
+                            : (node.layer as number) < 0
+                              ? 'bg-dc-accent-bg text-dc-accent'
+                              : 'bg-dc-success-bg text-dc-success'
+                        }`}>
+                          {(node.layer as number) === 0 ? '★' : node.layer as number}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-dc-text">{node.name as string}</td>
+                      <td className="px-3 py-2 text-right text-dc-text font-mono">
+                        {(node.value as number)?.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Links Table */}
+        <div>
+          <h3 className="text-sm font-semibold text-dc-text mb-2">
+            Transitions ({links.length})
+          </h3>
+          <div className="border border-dc-border rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-dc-surface-secondary">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">From</th>
+                  <th className="px-3 py-2 text-center text-xs font-medium text-dc-text-muted uppercase tracking-wider">→</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">To</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-dc-text-muted uppercase tracking-wider">Count</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dc-border bg-dc-surface">
+                {links.map((link: Record<string, unknown>, idx: number) => {
+                  // SankeyLink uses `source` and `target` (transformed), fallback to source_id/target_id (raw)
+                  const sourceId = (link.source || link.source_id) as string || ''
+                  const targetId = (link.target || link.target_id) as string || ''
+                  // IDs are like "before_5_created" or "start_created" - extract the event name
+                  const sourceName = sourceId.split('_').slice(-1)[0] || sourceId
+                  const targetName = targetId.split('_').slice(-1)[0] || targetId
+
+                  return (
+                    <tr key={idx} className="hover:bg-dc-surface-hover">
+                      <td className="px-3 py-2 text-dc-text">{sourceName}</td>
+                      <td className="px-3 py-2 text-center text-dc-text-muted">→</td>
+                      <td className="px-3 py-2 text-dc-text">{targetName}</td>
+                      <td className="px-3 py-2 text-right text-dc-text font-mono">
+                        {(link.value as number)?.toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Render table - uses per-query results in multi-query mode
   const renderTable = (tableIndex?: number) => {
@@ -931,6 +1245,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             renderDebug()
           ) : activeView === 'chart' ? (
             <div className="p-4 h-full">{renderChart()}</div>
+          ) : isFlowMode ? (
+            <div className="h-full" key="table-flow">{renderFlowTable()}</div>
           ) : isMultiQuery ? (
             <div className="h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
           ) : (
@@ -942,18 +1258,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {!showDebug && (
           <div className="px-4 py-3 border-t border-dc-border bg-dc-surface flex justify-center flex-shrink-0">
             <div className="flex items-center bg-dc-surface-secondary border border-dc-border rounded-md overflow-hidden">
-              {/* Chart button */}
+              {/* Chart button - always enabled for flow/funnel modes which don't need traditional metrics */}
               <button
-                onClick={() => hasMetrics && onActiveViewChange('chart')}
-                disabled={!hasMetrics}
+                onClick={() => (hasMetrics || isFlowMode || isFunnelMode) && onActiveViewChange('chart')}
+                disabled={!hasMetrics && !isFlowMode && !isFunnelMode}
                 className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeView === 'chart'
                     ? 'bg-dc-primary text-white'
-                    : !hasMetrics
+                    : (!hasMetrics && !isFlowMode && !isFunnelMode)
                       ? 'text-dc-text-disabled bg-dc-surface-tertiary cursor-not-allowed'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                 }`}
-                title={hasMetrics ? 'Chart view' : 'Add metrics to enable chart view'}
+                title={(hasMetrics || isFlowMode || isFunnelMode) ? 'Chart view' : 'Add metrics to enable chart view'}
               >
                 <ChartIcon className="w-4 h-4" />
                 Chart

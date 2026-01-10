@@ -118,6 +118,12 @@ export async function handleDryRun(
     return handleFunnelDryRun(query, securityContext, semanticLayer)
   }
 
+  // Check for flow queries - they have their own dry-run path
+  // Flow queries send { flow: { ... } } and need special SQL generation
+  if (query.flow && query.flow.bindingKey && query.flow.eventDimension) {
+    return handleFlowDryRun(query, securityContext, semanticLayer)
+  }
+
   // Validate query structure and field existence
   const validation = semanticLayer.validateQuery(query)
   if (!validation.isValid) {
@@ -437,6 +443,82 @@ async function handleFunnelDryRun(
       timeDimension: funnel.timeDimension,
       includeTimeMetrics: funnel.includeTimeMetrics,
       globalTimeWindow: funnel.globalTimeWindow
+    }
+  }
+}
+
+/**
+ * Helper function to handle flow dry-run logic
+ * Flow queries have a different structure and generate CTE-based SQL
+ */
+async function handleFlowDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  // Validate flow query
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`Flow query validation failed: ${validation.errors.join(', ')}`)
+  }
+
+  // Get the flow SQL using the dedicated dry-run method
+  const sqlResult = await semanticLayer.dryRunFlow(query, securityContext)
+
+  // Extract cube names from the flow configuration
+  const referencedCubes = new Set<string>()
+  const flow = query.flow!
+
+  // Extract from binding key
+  if (typeof flow.bindingKey === 'string') {
+    const [cubeName] = flow.bindingKey.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  } else if (Array.isArray(flow.bindingKey)) {
+    for (const mapping of flow.bindingKey) {
+      referencedCubes.add(mapping.cube)
+    }
+  }
+
+  // Extract from time dimension
+  if (typeof flow.timeDimension === 'string') {
+    const [cubeName] = flow.timeDimension.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  }
+
+  // Extract from event dimension
+  if (typeof flow.eventDimension === 'string') {
+    const [cubeName] = flow.eventDimension.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  }
+
+  // Build response structure
+  return {
+    queryType: 'flowQuery',
+    normalizedQueries: [], // Flow is a single unified query
+    queryOrder: Array.from(referencedCubes),
+    transformedQueries: [],
+    pivotQuery: {
+      measures: [],
+      dimensions: [],
+      timeDimensions: [],
+      order: {},
+      filters: [],
+      queryType: 'flowQuery',
+      joinType: 'flow_cte',
+      query,
+      // Flow-specific metadata
+      flow: {
+        stepsBefore: flow.stepsBefore,
+        stepsAfter: flow.stepsAfter,
+        bindingKey: flow.bindingKey,
+        timeDimension: flow.timeDimension,
+        eventDimension: flow.eventDimension,
+        startingStep: flow.startingStep
+      }
+    },
+    sql: {
+      sql: sqlResult.sql,
+      params: sqlResult.params || []
     }
   }
 }

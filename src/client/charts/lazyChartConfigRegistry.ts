@@ -28,6 +28,8 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   kpiText: () => import('../components/charts/KpiText.config'),
   markdown: () => import('../components/charts/MarkdownChart.config'),
   funnel: () => import('../components/charts/FunnelChart.config'),
+  sankey: () => import('../components/charts/SankeyChart.config'),
+  sunburst: () => import('../components/charts/SunburstChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -48,6 +50,8 @@ const configExportNames: Record<ChartType, string> = {
   kpiText: 'kpiTextConfig',
   markdown: 'markdownConfig',
   funnel: 'funnelChartConfig',
+  sankey: 'sankeyChartConfig',
+  sunburst: 'sunburstChartConfig',
 }
 
 // Cache for loaded configs

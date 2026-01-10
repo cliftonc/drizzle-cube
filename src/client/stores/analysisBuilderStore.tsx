@@ -34,6 +34,7 @@ import type {
   FunnelStepState,
 } from '../types'
 import type { ServerFunnelQuery } from '../types/funnel'
+import type { ServerFlowQuery, FlowStartingStep } from '../types/flow'
 import type {
   AnalysisBuilderState,
   QueryPanelTab,
@@ -48,16 +49,19 @@ import {
 import { adapterRegistry } from '../adapters/adapterRegistry'
 import { queryModeAdapter } from '../adapters/queryModeAdapter'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
+import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import type { AnalysisConfig, ChartConfig, AnalysisWorkspace } from '../types/analysisConfig'
 import { isValidAnalysisConfig, isValidAnalysisWorkspace } from '../types/analysisConfig'
 import {
   createCoreSlice,
   createQuerySlice,
   createFunnelSlice,
+  createFlowSlice,
   createUISlice,
   createInitialCoreState,
   createInitialQueryState,
   createInitialFunnelState,
+  createInitialFlowState,
 } from './slices'
 
 // Note: Adapters are registered in coreSlice.ts (single registration point)
@@ -156,6 +160,23 @@ export interface AnalysisBuilderStoreState {
   /** @deprecated Use funnelSteps[].timeToConvert instead - kept for backward compat */
   stepTimeToConvert: (string | null)[]
 
+  // =========================================================================
+  // Flow State (when analysisType === 'flow')
+  // =========================================================================
+  /** Selected cube for flow mode (must be an eventStream cube) */
+  flowCube: string | null
+  /** Binding key that links events to entities */
+  flowBindingKey: FunnelBindingKey | null
+  /** Time dimension for event ordering */
+  flowTimeDimension: string | null
+  /** Starting step configuration (anchor point for exploration) */
+  startingStep: FlowStartingStep
+  /** Number of steps to explore before starting step (1-5) */
+  stepsBefore: number
+  /** Number of steps to explore after starting step (1-5) */
+  stepsAfter: number
+  /** Event dimension that categorizes events (node labels) */
+  eventDimension: string | null
 }
 
 /**
@@ -322,6 +343,38 @@ export interface AnalysisBuilderStoreActions {
   setFunnelDisplayConfig: (config: ChartDisplayConfig) => void
 
   // =========================================================================
+  // Flow Actions (when analysisType === 'flow')
+  // =========================================================================
+  /** Set the flow cube (clears binding key/time dimension) */
+  setFlowCube: (cube: string | null) => void
+  /** Set the flow binding key */
+  setFlowBindingKey: (key: FunnelBindingKey | null) => void
+  /** Set the flow time dimension */
+  setFlowTimeDimension: (dim: string | null) => void
+  /** Set the event dimension */
+  setEventDimension: (dim: string | null) => void
+  /** Set the starting step name */
+  setStartingStepName: (name: string) => void
+  /** Set all starting step filters at once */
+  setStartingStepFilters: (filters: Filter[]) => void
+  /** Add a filter to the starting step */
+  addStartingStepFilter: (filter: Filter) => void
+  /** Remove a filter from the starting step by index */
+  removeStartingStepFilter: (index: number) => void
+  /** Update a filter in the starting step by index */
+  updateStartingStepFilter: (index: number, filter: Filter) => void
+  /** Set the number of steps to explore before starting step */
+  setStepsBefore: (count: number) => void
+  /** Set the number of steps to explore after starting step */
+  setStepsAfter: (count: number) => void
+  /** Check if in flow mode (analysisType === 'flow') */
+  isFlowMode: () => boolean
+  /** Check if flow mode is properly configured and ready for execution */
+  isFlowModeEnabled: () => boolean
+  /** Build ServerFlowQuery from flow state */
+  buildFlowQuery: () => ServerFlowQuery | null
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Clear only the current mode's state (preserves other modes) */
@@ -399,6 +452,16 @@ export interface InitialFunnelState {
   funnelBindingKey?: FunnelBindingKey | null
 }
 
+export interface InitialFlowState {
+  flowCube?: string | null
+  flowBindingKey?: FunnelBindingKey | null
+  flowTimeDimension?: string | null
+  startingStep?: FlowStartingStep
+  stepsBefore?: number
+  stepsAfter?: number
+  eventDimension?: string | null
+}
+
 /**
  * Options for creating a store instance
  */
@@ -417,6 +480,8 @@ export interface CreateStoreOptions {
   initialAnalysisType?: AnalysisType
   /** Initial funnel state (when analysisType === 'funnel') */
   initialFunnelState?: InitialFunnelState
+  /** Initial flow state (when analysisType === 'flow') */
+  initialFlowState?: InitialFlowState
   /** Initial active view (table or chart) - used to prevent flash when loading from share */
   initialActiveView?: 'table' | 'chart'
 }
@@ -548,6 +613,34 @@ function optionsToAnalysisConfig(options: CreateStoreOptions): AnalysisConfig | 
     )
   }
 
+  // Handle flow mode with flow state
+  if (options.initialAnalysisType === 'flow' && options.initialFlowState) {
+    const defaultFlowChart = flowModeAdapter.getDefaultChartConfig()
+    // Use initialChartConfig for chart settings
+    const flowChartConfig: ChartConfig = {
+      chartType: options.initialChartConfig?.chartType || defaultFlowChart.chartType,
+      chartConfig: options.initialChartConfig?.chartConfig || defaultFlowChart.chartConfig,
+      displayConfig: options.initialChartConfig?.displayConfig || defaultFlowChart.displayConfig,
+    }
+
+    // Build flow config via adapter's save method structure
+    const flowState = {
+      flowCube: options.initialFlowState.flowCube ?? null,
+      flowBindingKey: options.initialFlowState.flowBindingKey ?? null,
+      flowTimeDimension: options.initialFlowState.flowTimeDimension ?? null,
+      startingStep: options.initialFlowState.startingStep || { name: '', filters: [] },
+      stepsBefore: options.initialFlowState.stepsBefore ?? 3,
+      stepsAfter: options.initialFlowState.stepsAfter ?? 3,
+      eventDimension: options.initialFlowState.eventDimension ?? null,
+    }
+
+    return flowModeAdapter.save(
+      flowState,
+      { flow: flowChartConfig },
+      options.initialActiveView || 'chart'
+    )
+  }
+
   // Handle query mode with initial query
   if (options.initialQuery) {
     const query = options.initialQuery
@@ -647,14 +740,17 @@ function createCrossSliceActions(
         ...createInitialCoreState(),
         ...createInitialQueryState(),
         ...createInitialFunnelState(),
+        ...createInitialFlowState(),
         // Apply adapter defaults for charts (may differ from slice defaults)
         charts: {
           query: queryModeAdapter.getDefaultChartConfig(),
           funnel: funnelModeAdapter.getDefaultChartConfig(),
+          flow: flowModeAdapter.getDefaultChartConfig(),
         },
         activeViews: {
           query: 'chart',
           funnel: 'chart',
+          flow: 'chart',
         },
       } as Partial<AnalysisBuilderStore>)
     },
@@ -669,6 +765,15 @@ function createCrossSliceActions(
               charts: {
                 ...state.charts,
                 funnel: funnelModeAdapter.getDefaultChartConfig(),
+              },
+            }
+          case 'flow':
+            // Use slice initializer for flow state
+            return {
+              ...createInitialFlowState(),
+              charts: {
+                ...state.charts,
+                flow: flowModeAdapter.getDefaultChartConfig(),
               },
             }
           case 'query':
@@ -737,6 +842,7 @@ export function createAnalysisBuilderStore(options: CreateStoreOptions = {}) {
     ...createCoreSlice(set, get, store),
     ...createQuerySlice(set, get, store),
     ...createFunnelSlice(set, get, store),
+    ...createFlowSlice(set, get, store),
     ...createUISlice(set, get, store),
 
     // Cross-slice actions
@@ -852,6 +958,8 @@ export interface AnalysisBuilderStoreProviderProps {
   initialAnalysisType?: AnalysisType
   /** Initial funnel state (when analysisType === 'funnel') */
   initialFunnelState?: InitialFunnelState
+  /** Initial flow state (when analysisType === 'flow') */
+  initialFlowState?: InitialFlowState
   /** Initial active view (table or chart) - used to prevent flash when loading from share */
   initialActiveView?: 'table' | 'chart'
 }
@@ -866,6 +974,7 @@ export function AnalysisBuilderStoreProvider({
   disableLocalStorage,
   initialAnalysisType,
   initialFunnelState,
+  initialFlowState,
   initialActiveView,
 }: AnalysisBuilderStoreProviderProps) {
   // Create store instance once per provider mount
@@ -878,6 +987,7 @@ export function AnalysisBuilderStoreProvider({
       disableLocalStorage,
       initialAnalysisType,
       initialFunnelState,
+      initialFlowState,
       initialActiveView,
     })
   }

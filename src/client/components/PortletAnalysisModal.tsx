@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal'
 import AnalysisBuilder from './AnalysisBuilder'
-import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState } from './AnalysisBuilder/types'
+import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState, AnalysisBuilderInitialFlowState } from './AnalysisBuilder/types'
 import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
 import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
+import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import {
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters
@@ -181,6 +182,27 @@ export default function PortletAnalysisModal({
     return undefined
   }, [derivedConfig, portlet])
 
+  // Initial flow state from portlet (when analysisType === 'flow')
+  const initialFlowState: AnalysisBuilderInitialFlowState | undefined = useMemo(() => {
+    if (derivedConfig?.analysisType !== 'flow') return undefined
+
+    // Parse from analysisConfig.query
+    if (derivedConfig.query && 'flow' in derivedConfig.query) {
+      // Use adapter's conversion logic
+      const flowState = flowModeAdapter.load(derivedConfig)
+      const chartConfig = derivedConfig.charts?.flow
+
+      return {
+        ...flowState,
+        flowChartType: chartConfig?.chartType,
+        flowChartConfig: chartConfig?.chartConfig,
+        flowDisplayConfig: chartConfig?.displayConfig,
+      }
+    }
+
+    return undefined
+  }, [derivedConfig])
+
   // Reset form state when modal opens/closes or portlet changes
   useEffect(() => {
     if (isOpen) {
@@ -207,8 +229,16 @@ export default function PortletAnalysisModal({
     const { query, analysisType } = analysisConfig
     let hasContent = false
 
-    // Check for ServerFunnelQuery format { funnel: {...} }
-    if ('funnel' in query && query.funnel) {
+    // Check for ServerFlowQuery format { flow: {...} }
+    if ('flow' in query && query.flow) {
+      // Flow mode: check for required configuration
+      hasContent = !!(
+        query.flow.bindingKey &&
+        query.flow.timeDimension &&
+        query.flow.eventDimension &&
+        query.flow.startingStep?.filter
+      )
+    } else if ('funnel' in query && query.funnel) {
       // Funnel mode: check for steps
       hasContent = !!(query.funnel.steps && query.funnel.steps.length >= 2)
     } else if ('queries' in query) {
@@ -230,9 +260,14 @@ export default function PortletAnalysisModal({
     }
 
     if (!hasContent) {
-      const message = analysisType === 'funnel'
-        ? 'Please add at least two funnel steps.'
-        : 'Please add at least one metric or breakdown to your query.'
+      let message: string
+      if (analysisType === 'flow') {
+        message = 'Please configure the flow analysis (binding key, time dimension, event dimension, and starting step filter).'
+      } else if (analysisType === 'funnel') {
+        message = 'Please add at least two funnel steps.'
+      } else {
+        message = 'Please add at least one metric or breakdown to your query.'
+      }
       alert(message)
       return
     }
@@ -325,6 +360,7 @@ export default function PortletAnalysisModal({
             initialChartConfig={initialChartConfig}
             initialAnalysisType={initialAnalysisType}
             initialFunnelState={initialFunnelState}
+            initialFlowState={initialFlowState}
             initialData={initialData}
             colorPalette={colorPalette}
             disableLocalStorage={true}

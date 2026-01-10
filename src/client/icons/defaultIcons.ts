@@ -67,6 +67,8 @@ import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
+import chartSankey from '@iconify-icons/tabler/chart-sankey'
+import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
 import table from '@iconify-icons/tabler/table'
 import calendarStats from '@iconify-icons/tabler/calendar-stats'
 import number from '@iconify-icons/tabler/number'
@@ -136,6 +138,8 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartKpiText: { icon: typography, category: 'chart' },
   chartMarkdown: { icon: fileText, category: 'chart' },
   chartFunnel: { icon: funnel, category: 'chart' },
+  chartSankey: { icon: chartSankey, category: 'chart' },
+  chartSunburst: { icon: chartDonut4, category: 'chart' },
 
   // Measure type icons (solid)
   measureCount: { icon: bars3BottomLeftSolid, category: 'measure' },

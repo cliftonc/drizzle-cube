@@ -14,6 +14,8 @@ import { kpiDeltaConfig } from '../components/charts/KpiDelta.config'
 import { kpiTextConfig } from '../components/charts/KpiText.config'
 import { markdownConfig } from '../components/charts/MarkdownChart.config'
 import { funnelChartConfig } from '../components/charts/FunnelChart.config'
+import { sankeyChartConfig } from '../components/charts/SankeyChart.config'
+import { sunburstChartConfig } from '../components/charts/SunburstChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -36,4 +38,6 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   kpiText: kpiTextConfig,
   markdown: markdownConfig,
   funnel: funnelChartConfig,
+  sankey: sankeyChartConfig,
+  sunburst: sunburstChartConfig,
 }

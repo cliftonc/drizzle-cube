@@ -428,6 +428,29 @@ export class SemanticLayerCompiler {
   }
 
   /**
+   * Get SQL for a flow query without executing it (debugging)
+   * Returns the actual CTE-based SQL that would be executed for flow queries
+   */
+  async dryRunFlow(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const executor = new QueryExecutor(this.dbExecutor)
+    const result = await executor.dryRunFlow(this.cubes, query, securityContext)
+
+    // Format the SQL using the appropriate dialect
+    const engineType = this.dbExecutor.getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
+  }
+
+  /**
    * Check if a cube exists
    */
   hasCube(name: string): boolean {
@@ -526,6 +549,21 @@ export function validateQueryAgainstCubes(
         if (!cubes.has(mapping.cube)) {
           errors.push(`Funnel binding key cube not found: ${mapping.cube}`)
         }
+      }
+    }
+    return { isValid: errors.length === 0, errors }
+  }
+
+  // Check for flow queries - these have their own validation path
+  // Skip standard validation for flow queries (validated separately in executor)
+  if (query.flow !== undefined && query.flow.startingStep !== undefined && query.flow.eventDimension !== undefined) {
+    // Basic flow validation here - full validation happens in executor
+    // Just ensure the cube referenced by bindingKey exists
+    const bindingKey = query.flow.bindingKey
+    if (typeof bindingKey === 'string') {
+      const [cubeName] = bindingKey.split('.')
+      if (cubeName && !cubes.has(cubeName)) {
+        errors.push(`Flow binding key cube not found: ${cubeName}`)
       }
     }
     return { isValid: errors.length === 0, errors }

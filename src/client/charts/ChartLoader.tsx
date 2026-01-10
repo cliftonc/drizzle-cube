@@ -32,6 +32,8 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   kpiText: () => import('../components/charts/KpiText'),
   markdown: () => import('../components/charts/MarkdownChart'),
   funnel: () => import('../components/charts/FunnelChart'),
+  sankey: () => import('../components/charts/SankeyChart'),
+  sunburst: () => import('../components/charts/SunburstChart'),
 }
 
 /**

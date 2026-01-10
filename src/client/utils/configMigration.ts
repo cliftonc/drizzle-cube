@@ -9,6 +9,7 @@ import type {
   AnalysisConfig,
   QueryAnalysisConfig,
   FunnelAnalysisConfig,
+  FlowAnalysisConfig,
   ChartConfig,
 } from '../types/analysisConfig'
 import { createDefaultQueryConfig, isValidAnalysisConfig } from '../types/analysisConfig'
@@ -23,6 +24,7 @@ import type {
   PortletConfig,
 } from '../types'
 import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel'
+import type { ServerFlowQuery } from '../types/flow'
 
 // ============================================================================
 // Legacy Portlet Format
@@ -103,6 +105,18 @@ function isServerFunnelQuery(query: unknown): query is ServerFunnelQuery {
   )
 }
 
+/**
+ * Check if a query is a ServerFlowQuery
+ */
+function isServerFlowQuery(query: unknown): query is ServerFlowQuery {
+  return (
+    typeof query === 'object' &&
+    query !== null &&
+    'flow' in query &&
+    typeof (query as ServerFlowQuery).flow === 'object'
+  )
+}
+
 // ============================================================================
 // Migration Functions
 // ============================================================================
@@ -112,13 +126,22 @@ function isServerFunnelQuery(query: unknown): query is ServerFunnelQuery {
  */
 function extractChartConfig(
   portlet: LegacyPortlet,
-  analysisType: 'query' | 'funnel'
+  analysisType: 'query' | 'funnel' | 'flow'
 ): ChartConfig {
   if (analysisType === 'funnel') {
     return {
       chartType: portlet.funnelChartType || portlet.chartType || 'funnel',
       chartConfig: portlet.funnelChartConfig || portlet.chartConfig || {},
       displayConfig: portlet.funnelDisplayConfig || portlet.displayConfig || {},
+    }
+  }
+
+  if (analysisType === 'flow') {
+    // Flow uses sankey chart by default
+    return {
+      chartType: portlet.chartType || 'sankey',
+      chartConfig: portlet.chartConfig || {},
+      displayConfig: portlet.displayConfig || {},
     }
   }
 
@@ -136,6 +159,7 @@ function extractChartConfig(
  * - Single CubeQuery → QueryAnalysisConfig
  * - MultiQueryConfig → QueryAnalysisConfig
  * - ServerFunnelQuery → FunnelAnalysisConfig
+ * - ServerFlowQuery → FlowAnalysisConfig
  * - Legacy mergeStrategy:'funnel' → FunnelAnalysisConfig (via migrateLegacyFunnelMerge)
  *
  * @param portlet - Legacy portlet with query string
@@ -144,6 +168,20 @@ function extractChartConfig(
 export function migrateLegacyPortlet(portlet: LegacyPortlet): AnalysisConfig {
   try {
     const query = JSON.parse(portlet.query)
+
+    // Check if it's a ServerFlowQuery
+    if (isServerFlowQuery(query)) {
+      const chartConfig = extractChartConfig(portlet, 'flow')
+      return {
+        version: 1,
+        analysisType: 'flow',
+        activeView: 'chart',
+        charts: {
+          flow: chartConfig,
+        },
+        query,
+      } as FlowAnalysisConfig
+    }
 
     // Check if it's already a ServerFunnelQuery
     if (isServerFunnelQuery(query)) {
@@ -394,12 +432,14 @@ export function ensureAnalysisConfig(
   }
 
   // Migrate from legacy fields
+  // Note: 'flow' type doesn't have legacy format - filter to only query/funnel
+  const legacyAnalysisType = portlet.analysisType === 'flow' ? undefined : portlet.analysisType
   const analysisConfig = migrateLegacyPortlet({
     query: portlet.query ?? '{}',
     chartType: portlet.chartType,
     chartConfig: portlet.chartConfig,
     displayConfig: portlet.displayConfig,
-    analysisType: portlet.analysisType,
+    analysisType: legacyAnalysisType,
     funnelChartType: portlet.funnelChartType,
     funnelChartConfig: portlet.funnelChartConfig,
     funnelDisplayConfig: portlet.funnelDisplayConfig,

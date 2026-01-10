@@ -77,7 +77,9 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     order: query.order ? sortObject(query.order) : undefined,
     fillMissingDatesValue: query.fillMissingDatesValue,
     // Include funnel config in cache key for proper cache invalidation
-    funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined
+    funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined,
+    // Include flow config in cache key for proper cache invalidation
+    flow: query.flow ? normalizeFlowConfig(query.flow) : undefined
   }
 }
 
@@ -109,6 +111,37 @@ function normalizeFunnelConfig(funnel: NonNullable<SemanticQuery['funnel']>): No
     }),
     includeTimeMetrics: funnel.includeTimeMetrics,
     globalTimeWindow: funnel.globalTimeWindow
+  }
+}
+
+/**
+ * Normalize flow config for consistent hashing
+ * Ensures all flow parameters are included in cache key
+ *
+ * @param flow - The flow config to normalize
+ * @returns Normalized flow config
+ */
+function normalizeFlowConfig(flow: NonNullable<SemanticQuery['flow']>): NonNullable<SemanticQuery['flow']> {
+  return {
+    bindingKey: flow.bindingKey,
+    timeDimension: flow.timeDimension,
+    eventDimension: flow.eventDimension,
+    // Normalize starting step - sort filters for consistent hashing
+    startingStep: {
+      name: flow.startingStep.name,
+      filter: flow.startingStep.filter
+        ? (Array.isArray(flow.startingStep.filter)
+            ? sortFilters(flow.startingStep.filter)
+            : sortFilters([flow.startingStep.filter])[0])
+        : undefined
+    },
+    // CRITICAL: Include step counts in cache key
+    stepsBefore: flow.stepsBefore,
+    stepsAfter: flow.stepsAfter,
+    // Include optional entity limit if present
+    entityLimit: flow.entityLimit,
+    // CRITICAL: Include outputMode - affects aggregation strategy (sankey vs sunburst)
+    outputMode: flow.outputMode
   }
 }
 

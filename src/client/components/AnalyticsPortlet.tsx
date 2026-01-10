@@ -6,7 +6,7 @@
 import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
+import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, useFlowQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
@@ -14,6 +14,8 @@ import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
 import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
 import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
+import type { ServerFlowQuery } from '../types/flow'
+import { isServerFlowQuery } from '../types/flow'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 import { cleanQueryForServer } from '../shared/utils'
 
@@ -70,11 +72,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }, [dashboardFilters])
 
   // Parse query from JSON string, merge dashboard filters, and detect query type
-  // Supports: CubeQuery, MultiQueryConfig, and ServerFunnelQuery formats
-  const { queryObject, multiQueryConfig, serverFunnelQuery } = useMemo(() => {
+  // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, and ServerFlowQuery formats
+  const { queryObject, multiQueryConfig, serverFunnelQuery, serverFlowQuery } = useMemo(() => {
     // Skip query parsing for charts that don't need queries
     if (shouldSkipQuery) {
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null }
     }
 
     try {
@@ -82,6 +84,18 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
       // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
       const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
+
+      // Check if this is a ServerFlowQuery format { flow: {...} }
+      if (isServerFlowQuery(parsed)) {
+        const flowQuery = parsed as ServerFlowQuery
+        // Flow queries don't have dashboard filter merging yet (could be added later)
+        return {
+          queryObject: null,
+          multiQueryConfig: null,
+          serverFunnelQuery: null,
+          serverFlowQuery: flowQuery
+        }
+      }
 
       // Check if this is a ServerFunnelQuery format { funnel: {...} }
       if (isServerFunnelQuery(parsed)) {
@@ -151,7 +165,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           }
         }
 
-        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel }
+        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel, serverFlowQuery: null }
       }
 
       // Check if this is a multi-query configuration
@@ -165,7 +179,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
           }))
         }
-        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null }
+        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null, serverFlowQuery: null }
       }
 
       // Single query: existing behavior
@@ -183,11 +197,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           timeDimensions: mergedTimeDimensions
         },
         multiQueryConfig: null,
-        serverFunnelQuery: null
+        serverFunnelQuery: null,
+        serverFlowQuery: null
       }
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null }
     }
   }, [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
@@ -196,9 +211,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Funnel mode: ServerFunnelQuery format (dedicated funnel mode)
   // Note: Legacy mergeStrategy === 'funnel' is no longer supported
   const isFunnelMode = serverFunnelQuery !== null
-  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode
-  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode
+  // Flow mode: ServerFlowQuery format (dedicated flow mode for Sankey charts)
+  const isFlowMode = serverFlowQuery !== null
+  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode
+  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode || isFlowMode
   const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
+  const shouldSkipFlow = !isFlowMode || shouldSkipQuery || (!eagerLoad && !isVisible)
 
   // Query client for cache invalidation
   const queryClient = useQueryClient()
@@ -229,34 +247,55 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     prebuiltServerQuery: serverFunnelQuery,
   })
 
+  // Use flow query hook for Sankey chart data
+  const flowQueryResult = useFlowQuery(serverFlowQuery, {
+    skip: shouldSkipFlow,
+    debounceMs: 100,
+  })
+
   // Combine results from all hooks
   const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
-  const isLoading = isFunnelMode
-    ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
-    : isMultiQuery
-      ? multiQueryResult.isLoading
-      : singleQueryResult.isLoading
-  const isFetching = isFunnelMode
-    ? funnelQueryResult.isExecuting
-    : isMultiQuery
-      ? multiQueryResult.isFetching
-      : singleQueryResult.isFetching
-  const error = isFunnelMode
-    ? funnelQueryResult.error
-    : isMultiQuery
-      ? multiQueryResult.error
-      : singleQueryResult.error
-  const multiQueryData = isFunnelMode
-    ? (funnelQueryResult.chartData as unknown[] | null)
-    : isMultiQuery
-      ? multiQueryResult.data
-      : null
+  const isLoading = isFlowMode
+    ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
+    : isFunnelMode
+      ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
+      : isMultiQuery
+        ? multiQueryResult.isLoading
+        : singleQueryResult.isLoading
+  const isFetching = isFlowMode
+    ? flowQueryResult.isFetching
+    : isFunnelMode
+      ? funnelQueryResult.isExecuting
+      : isMultiQuery
+        ? multiQueryResult.isFetching
+        : singleQueryResult.isFetching
+  const error = isFlowMode
+    ? flowQueryResult.error
+    : isFunnelMode
+      ? funnelQueryResult.error
+      : isMultiQuery
+        ? multiQueryResult.error
+        : singleQueryResult.error
+  const multiQueryData = isFlowMode
+    ? null  // Flow returns data in flowQueryResult.data (nodes/links structure)
+    : isFunnelMode
+      ? (funnelQueryResult.chartData as unknown[] | null)
+      : isMultiQuery
+        ? multiQueryResult.data
+        : null
+  // Flow data is separate since it has a different structure (nodes/links vs array)
+  const flowChartData = isFlowMode ? flowQueryResult.data : null
 
   // Expose refresh function through ref
   // Invalidates cache and forces a fresh fetch from the server
   useImperativeHandle(ref, () => ({
     refresh: () => {
-      if (isFunnelMode && serverFunnelQuery) {
+      if (isFlowMode && serverFlowQuery) {
+        // For flow mode, invalidate cache first then re-execute
+        // Flow query key format: ['cube', 'flow', JSON.stringify(serverQuery)]
+        const queryKey = ['cube', 'flow', JSON.stringify(serverFlowQuery)] as const
+        queryClient.invalidateQueries({ queryKey })
+      } else if (isFunnelMode && serverFunnelQuery) {
         // For funnel mode, invalidate cache first then re-execute
         // Funnel query key format: ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)]
         const stepCount = serverFunnelQuery.funnel?.steps?.length || 0
@@ -277,17 +316,19 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
       }
     }
-  }), [isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFunnelQuery])
+  }), [isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFlowQuery, serverFunnelQuery])
 
   const handleRetry = useCallback(() => {
-    if (isFunnelMode) {
+    if (isFlowMode) {
+      flowQueryResult.refetch()
+    } else if (isFunnelMode) {
       funnelQueryResult.execute()
     } else if (isMultiQuery) {
       multiQueryResult.refetch()
     } else {
       singleQueryResult.refetch()
     }
-  }, [isFunnelMode, isMultiQuery, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }, [isFlowMode, isFunnelMode, isMultiQuery, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
 
   // Send debug data to parent when ready (must be before any returns)
@@ -414,14 +455,17 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     }
 
     // Check for valid data based on query type
+    // Flow mode uses flowChartData from flowQueryResult.data
     // Funnel mode uses multiQueryData from funnelQueryResult.chartData
     // Multi-query mode uses multiQueryData from multiQueryResult.data
     // Single query mode uses resultSet from singleQueryResult
-    const hasValidData = isFunnelMode
-      ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
-      : isMultiQuery
-        ? (multiQueryData !== null && multiQueryConfig !== null)
-        : (resultSet !== null && queryObject !== null)
+    const hasValidData = isFlowMode
+      ? (flowChartData !== null && serverFlowQuery !== null)
+      : isFunnelMode
+        ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
+        : isMultiQuery
+          ? (multiQueryData !== null && multiQueryConfig !== null)
+          : (resultSet !== null && queryObject !== null)
 
     if (!hasValidData) {
       return (
@@ -436,10 +480,18 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }
 
   // Get data based on chart type needs
-  const getData = () => {
+  // Returns array data for most charts, or FlowChartData for Sankey
+  // Note: FlowChartData is cast to any[] for ChartProps compatibility - Sankey chart handles internally
+  const getData = (): unknown => {
     // Return empty array for charts that don't use query data
     if (shouldSkipQuery) {
       return []
+    }
+
+    // Flow mode: return flowChartData (nodes/links structure) from flowQueryResult
+    // Sankey chart expects { nodes: [], links: [] } structure
+    if (isFlowMode) {
+      return flowChartData || { nodes: [], links: [] }
     }
 
     // Funnel mode: return chartData from funnelQueryResult
@@ -466,7 +518,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     }
   }
 
-  const data = getData()
+  // Cast to any[] for ChartProps - specific charts (like Sankey) handle their own data format
+  const data = getData() as unknown as unknown[]
 
   // Render appropriate chart component using lazy loading
   // Each chart type is dynamically imported for code splitting
@@ -474,24 +527,30 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     try {
       const chartHeight = height
 
+      // Determine effective chart type (handles sankey/sunburst toggle)
+      const effectiveChartType = chartType === 'sankey' &&
+        (displayConfig as Record<string, unknown>)?.flowVisualization === 'sunburst'
+          ? 'sunburst'
+          : chartType
+
       // Handle unsupported chart types
-      if (!isValidChartType(chartType)) {
+      if (!isValidChartType(effectiveChartType)) {
         return (
           <div className="flex items-center justify-center w-full" style={{ height }}>
             <div className="text-center text-dc-text-muted">
               <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
-              <div className="text-xs">{chartType}</div>
+              <div className="text-xs">{effectiveChartType}</div>
             </div>
           </div>
         )
       }
 
       // For markdown chart, use empty data array
-      const chartData = chartType === 'markdown' ? [] : data
+      const chartData = effectiveChartType === 'markdown' ? [] : data
 
       return (
         <LazyChart
-          chartType={chartType}
+          chartType={effectiveChartType}
           data={chartData}
           chartConfig={chartConfig}
           displayConfig={displayConfig}

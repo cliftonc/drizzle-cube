@@ -19,6 +19,7 @@ import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import FunnelBindingKeySelector from './FunnelBindingKeySelector'
 import AnalysisTypeSelector from './AnalysisTypeSelector'
 import FunnelModeContent from './FunnelModeContent'
+import FlowModeContent from './FlowModeContent'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -100,6 +101,23 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   // Funnel display config (for Display tab)
   funnelDisplayConfig,
   onFunnelDisplayConfigChange,
+  // Flow Mode props
+  flowCube,
+  flowBindingKey,
+  flowTimeDimension,
+  eventDimension,
+  startingStep,
+  stepsBefore = 3,
+  stepsAfter = 3,
+  onFlowCubeChange,
+  onFlowBindingKeyChange,
+  onFlowTimeDimensionChange,
+  onEventDimensionChange,
+  onStartingStepFiltersChange,
+  onStepsBeforeChange,
+  onStepsAfterChange,
+  flowDisplayConfig,
+  onFlowDisplayConfigChange,
 }: AnalysisQueryPanelProps) {
   // Mark unused props
   void _validationStatus
@@ -109,6 +127,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   // Note: Legacy mergeStrategy === 'funnel' is no longer supported
   // Funnel mode is determined by analysisType === 'funnel'
   const isFunnelMode = analysisType === 'funnel'
+  // Flow mode is determined by analysisType === 'flow'
+  const isFlowMode = analysisType === 'flow'
 
   // Alias for clarity - same as isFunnelMode now
   const isNewFunnelMode = analysisType === 'funnel'
@@ -190,6 +210,32 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           displayConfig={funnelDisplayConfig}
           colorPalette={colorPalette}
           onDisplayConfigChange={onFunnelDisplayConfigChange}
+        />
+      ) : isFlowMode && onFlowCubeChange && onFlowBindingKeyChange && onFlowTimeDimensionChange && onEventDimensionChange && onStartingStepFiltersChange && onStepsBeforeChange && onStepsAfterChange && startingStep ? (
+        /* Flow Mode - dedicated UI when analysisType === 'flow' */
+        <FlowModeContent
+          flowCube={flowCube ?? null}
+          flowBindingKey={flowBindingKey ?? null}
+          flowTimeDimension={flowTimeDimension ?? null}
+          eventDimension={eventDimension ?? null}
+          startingStep={startingStep}
+          stepsBefore={stepsBefore}
+          stepsAfter={stepsAfter}
+          schema={schema as CubeMeta | null}
+          onCubeChange={onFlowCubeChange}
+          onBindingKeyChange={onFlowBindingKeyChange}
+          onTimeDimensionChange={onFlowTimeDimensionChange}
+          onEventDimensionChange={onEventDimensionChange}
+          onStartingStepFiltersChange={onStartingStepFiltersChange}
+          onStepsBeforeChange={onStepsBeforeChange}
+          onStepsAfterChange={onStepsAfterChange}
+          // Chart type (now core - affects query aggregation)
+          chartType={chartType}
+          onChartTypeChange={onChartTypeChange}
+          // Display tab props
+          displayConfig={flowDisplayConfig}
+          colorPalette={colorPalette}
+          onDisplayConfigChange={onFlowDisplayConfigChange}
         />
       ) : (
         <>

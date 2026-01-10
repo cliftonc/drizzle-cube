@@ -37,6 +37,8 @@ export {
   type FieldModalMode,
   type CreateStoreOptions,
   type AnalysisBuilderStoreProviderProps,
+  type InitialFunnelState,
+  type InitialFlowState,
 } from './analysisBuilderStore.js'
 
 // ============================================================================

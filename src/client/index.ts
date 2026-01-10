@@ -76,6 +76,9 @@ export {
   // Funnel query hook
   useFunnelQuery,
   createFunnelQueryKey,
+  // Flow query hook
+  useFlowQuery,
+  createFlowQueryKey,
 } from './hooks/queries'
 export type {
   UseCubeMetaQueryOptions,
@@ -85,6 +88,9 @@ export type {
   UseMultiCubeLoadQueryOptions,
   UseMultiCubeLoadQueryResult,
   DebugDataEntry,
+  // Flow query types
+  UseFlowQueryOptions,
+  UseFlowQueryResult,
 } from './hooks/queries'
 
 // Master coordination hook for AnalysisBuilder
@@ -195,10 +201,19 @@ export type {
   FunnelValidationResult,
   UseFunnelQueryOptions,
   UseFunnelQueryResult,
+  // Flow types
+  ServerFlowQuery,
+  FlowQueryConfig,
+  FlowChartData,
+  FlowSliceState,
+  SankeyNode,
+  SankeyLink,
+  FlowStartingStep,
+  FlowResultRow,
 } from './types'
 
 // Multi-query type guard
-export { isMultiQueryConfig } from './types'
+export { isMultiQueryConfig, isServerFunnelQuery, isServerFlowQuery, isSankeyData } from './types'
 
 // Chart configuration types
 export type {

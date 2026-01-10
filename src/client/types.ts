@@ -68,6 +68,8 @@ export type ChartType =
   | 'kpiText'
   | 'markdown'
   | 'funnel'
+  | 'sankey'
+  | 'sunburst'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
@@ -277,7 +279,9 @@ export interface DashboardConfig {
 
 // Analysis type for explicit mode selection in AnalysisBuilder
 // 'query' supports both single and multi-query (add more queries via + button)
-export type AnalysisType = 'query' | 'funnel'
+// 'funnel' for funnel analysis with sequential steps
+// 'flow' for bidirectional flow analysis with Sankey visualization
+export type AnalysisType = 'query' | 'funnel' | 'flow'
 
 /**
  * State for a single funnel step (dedicated for Funnel mode)
@@ -516,3 +520,18 @@ export function isServerFunnelQuery(obj: unknown): obj is import('./types/funnel
     typeof (obj as { funnel: unknown }).funnel === 'object'
   )
 }
+
+// Re-export flow types
+export type {
+  FlowStartingStep,
+  ServerFlowQuery,
+  FlowQueryConfig,
+  SankeyNode,
+  SankeyLink,
+  FlowResultRow,
+  FlowChartData,
+  FlowSliceState,
+  FlowSliceActions,
+} from './types/flow'
+
+export { isServerFlowQuery, isSankeyData } from './types/flow'

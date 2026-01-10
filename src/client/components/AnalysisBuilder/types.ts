@@ -340,6 +340,40 @@ export interface AnalysisQueryPanelProps {
   funnelDisplayConfig?: ChartDisplayConfig
   /** Callback when funnel display config changes */
   onFunnelDisplayConfigChange?: (config: ChartDisplayConfig) => void
+
+  // Flow Mode props (when analysisType === 'flow')
+  /** Selected cube for flow analysis */
+  flowCube?: string | null
+  /** Binding key for flow mode (entity linking) */
+  flowBindingKey?: FunnelBindingKey | null
+  /** Time dimension for flow mode (event ordering) */
+  flowTimeDimension?: string | null
+  /** Event dimension for flow mode (node labels in Sankey) */
+  eventDimension?: string | null
+  /** Starting step configuration for flow mode */
+  startingStep?: import('../../types/flow').FlowStartingStep
+  /** Number of steps to explore before starting step */
+  stepsBefore?: number
+  /** Number of steps to explore after starting step */
+  stepsAfter?: number
+  /** Callback when flow cube changes */
+  onFlowCubeChange?: (cube: string | null) => void
+  /** Callback when flow binding key changes */
+  onFlowBindingKeyChange?: (key: FunnelBindingKey | null) => void
+  /** Callback when flow time dimension changes */
+  onFlowTimeDimensionChange?: (dim: string | null) => void
+  /** Callback when event dimension changes */
+  onEventDimensionChange?: (dim: string | null) => void
+  /** Callback when starting step filters change */
+  onStartingStepFiltersChange?: (filters: Filter[]) => void
+  /** Callback when steps before changes */
+  onStepsBeforeChange?: (count: number) => void
+  /** Callback when steps after changes */
+  onStepsAfterChange?: (count: number) => void
+  /** Flow display config (for Display tab in flow mode) */
+  flowDisplayConfig?: ChartDisplayConfig
+  /** Callback when flow display config changes */
+  onFlowDisplayConfigChange?: (config: ChartDisplayConfig) => void
 }
 
 /**
@@ -456,6 +490,22 @@ export interface AnalysisResultsPanelProps {
     loading: boolean
     error: Error | null
     funnelMetadata?: unknown
+  } | null
+  /**
+   * The actual server flow query { flow: {...} } sent to the server.
+   * Use this for debug display instead of per-query debug data.
+   */
+  flowServerQuery?: unknown
+  /**
+   * Unified debug data for flow queries (SQL, analysis, loading/error state).
+   * Contains the CTE-based SQL for the flow analysis.
+   */
+  flowDebugData?: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown
+    loading: boolean
+    error: Error | null
+    flowMetadata?: unknown
   } | null
 }
 
@@ -607,6 +657,22 @@ export interface AnalysisBuilderInitialFunnelState {
 }
 
 /**
+ * Initial flow state for AnalysisBuilder (matches FlowSliceState in store)
+ */
+export interface AnalysisBuilderInitialFlowState {
+  flowCube?: string | null
+  flowBindingKey?: FunnelBindingKey | null
+  flowTimeDimension?: string | null
+  startingStep?: import('../../types/flow').FlowStartingStep
+  stepsBefore?: number
+  stepsAfter?: number
+  eventDimension?: string | null
+  flowChartType?: ChartType
+  flowChartConfig?: ChartAxisConfig
+  flowDisplayConfig?: ChartDisplayConfig
+}
+
+/**
  * Props for the main AnalysisBuilder component
  */
 export interface AnalysisBuilderProps {
@@ -630,6 +696,8 @@ export interface AnalysisBuilderProps {
   initialAnalysisType?: AnalysisType
   /** Initial funnel state (when initialAnalysisType === 'funnel') */
   initialFunnelState?: AnalysisBuilderInitialFunnelState
+  /** Initial flow state (when initialAnalysisType === 'flow') */
+  initialFlowState?: AnalysisBuilderInitialFlowState
   /** Initial data to display (avoids re-fetching when editing existing portlets) */
   initialData?: any[]
   /** Color palette for chart visualization */

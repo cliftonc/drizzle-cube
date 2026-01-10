@@ -269,7 +269,13 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               resultsStale={analysis.isLoading && analysis.executionResults !== null}
               chartType={analysis.chartType}
               chartConfig={analysis.chartConfig}
-              displayConfig={analysis.displayConfig}
+              displayConfig={
+                analysis.analysisType === 'flow'
+                  ? analysis.flowDisplayConfig
+                  : analysis.analysisType === 'funnel'
+                    ? analysis.funnelDisplayConfig
+                    : analysis.displayConfig
+              }
               colorPalette={analysis.colorPalette}
               // Only show palette selector in standalone mode (not when editing portlet)
               currentPaletteName={!externalColorPalette ? analysis.localPaletteName : undefined}
@@ -311,6 +317,9 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               // Funnel debug props
               funnelServerQuery={analysis.funnelServerQuery}
               funnelDebugData={analysis.funnelDebugData}
+              // Flow debug props
+              flowServerQuery={analysis.flowServerQuery}
+              flowDebugData={analysis.flowDebugData}
             />
           </div>
         </div>
@@ -384,6 +393,23 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             // Funnel display config (for Display tab in funnel mode)
             funnelDisplayConfig={analysis.funnelDisplayConfig}
             onFunnelDisplayConfigChange={analysis.actions.setFunnelDisplayConfig}
+            // Flow Mode props
+            flowCube={analysis.flowCube}
+            flowBindingKey={analysis.flowBindingKey}
+            flowTimeDimension={analysis.flowTimeDimension}
+            eventDimension={analysis.eventDimension}
+            startingStep={analysis.startingStep}
+            stepsBefore={analysis.stepsBefore}
+            stepsAfter={analysis.stepsAfter}
+            onFlowCubeChange={analysis.actions.setFlowCube}
+            onFlowBindingKeyChange={analysis.actions.setFlowBindingKey}
+            onFlowTimeDimensionChange={analysis.actions.setFlowTimeDimension}
+            onEventDimensionChange={analysis.actions.setEventDimension}
+            onStartingStepFiltersChange={analysis.actions.setStartingStepFilters}
+            onStepsBeforeChange={analysis.actions.setStepsBefore}
+            onStepsAfterChange={analysis.actions.setStepsAfter}
+            flowDisplayConfig={analysis.flowDisplayConfig}
+            onFlowDisplayConfigChange={analysis.actions.setFlowDisplayConfig}
           />
           </AnalysisModeErrorBoundary>
         </div>
@@ -420,6 +446,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       initialChartConfig,
       initialAnalysisType,
       initialFunnelState,
+      initialFlowState,
       disableLocalStorage = false,
       ...innerProps
     } = props
@@ -454,8 +481,45 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
     })()
 
+    // Extract flow state from AnalysisConfig format (for share URLs)
+    const initialFlowStateFromShare = (() => {
+      if (!sharedState || sharedState.analysisType !== 'flow') return undefined
+      const flowQuery = 'flow' in sharedState.query ? sharedState.query.flow : null
+      if (!flowQuery) return undefined
+
+      const flowChartConfig = sharedState.charts?.flow
+
+      return {
+        flowCube: null, // Not stored in AnalysisConfig directly
+        flowBindingKey: flowQuery.bindingKey
+          ? (typeof flowQuery.bindingKey === 'string'
+              ? { dimension: flowQuery.bindingKey }
+              : { dimension: flowQuery.bindingKey[0]?.dimension || '' })
+          : null,
+        flowTimeDimension: typeof flowQuery.timeDimension === 'string'
+          ? flowQuery.timeDimension
+          : flowQuery.timeDimension?.[0]?.dimension || null,
+        startingStep: flowQuery.startingStep
+          ? {
+              name: flowQuery.startingStep.name || '',
+              filters: Array.isArray(flowQuery.startingStep.filter)
+                ? flowQuery.startingStep.filter
+                : flowQuery.startingStep.filter
+                  ? [flowQuery.startingStep.filter]
+                  : [],
+            }
+          : { name: '', filters: [] },
+        stepsBefore: flowQuery.stepsBefore ?? 3,
+        stepsAfter: flowQuery.stepsAfter ?? 3,
+        eventDimension: flowQuery.eventDimension || null,
+        flowChartType: flowChartConfig?.chartType || 'sankey',
+        flowChartConfig: flowChartConfig?.chartConfig || {},
+        flowDisplayConfig: flowChartConfig?.displayConfig || {},
+      }
+    })()
+
     // Hide share button when using initialQuery (e.g., viewing a shared analysis)
-    const hideShare = !!initialQuery || !!initialFunnelState
+    const hideShare = !!initialQuery || !!initialFunnelState || !!initialFlowState
 
     return (
       <AnalysisBuilderStoreProvider
@@ -463,8 +527,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         initialChartConfig={initialChartConfig}
         initialAnalysisType={initialAnalysisType || initialAnalysisTypeFromShare}
         initialFunnelState={initialFunnelState || initialFunnelStateFromShare}
+        initialFlowState={initialFlowState || initialFlowStateFromShare}
         initialActiveView={initialActiveViewFromShare}
-        disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!shareHash}
+        disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!initialFlowState || !!shareHash}
       >
         <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>

@@ -5,6 +5,7 @@
 
 import type { TimeGranularity } from './core'
 import type { FunnelQueryConfig } from './funnel'
+import type { FlowQueryConfig } from './flow'
 
 /**
  * Semantic query structure (Cube.js compatible)
@@ -44,6 +45,33 @@ export interface SemanticQuery {
    * ```
    */
   funnel?: FunnelQueryConfig
+
+  /**
+   * Flow analysis configuration for bidirectional path exploration.
+   * When specified, the query executes as a flow analysis instead of
+   * standard measures/dimensions aggregation.
+   *
+   * Flow analysis explores paths BEFORE and AFTER a defined starting step,
+   * producing Sankey diagram data (nodes and links).
+   *
+   * @example
+   * ```typescript
+   * {
+   *   flow: {
+   *     bindingKey: 'Events.userId',
+   *     timeDimension: 'Events.timestamp',
+   *     eventDimension: 'Events.eventType',
+   *     startingStep: {
+   *       name: 'Purchase',
+   *       filter: { member: 'Events.eventType', operator: 'equals', values: ['purchase'] }
+   *     },
+   *     stepsBefore: 3,
+   *     stepsAfter: 2
+   *   }
+   * }
+   * ```
+   */
+  flow?: FlowQueryConfig
 }
 
 /**
