@@ -272,6 +272,9 @@ export interface UseFunnelQueryResult {
   /** Chart-ready data */
   chartData: FunnelChartData[]
 
+  /** Cache metadata when served from cache */
+  cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
+
   /** Error if execution failed */
   error: Error | null
 
@@ -325,4 +328,3 @@ export interface ServerFunnelStep {
   filter?: unknown
   timeToConvert?: string
 }
-

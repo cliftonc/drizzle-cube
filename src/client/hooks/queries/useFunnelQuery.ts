@@ -154,10 +154,12 @@ export function useFunnelQuery(
         const resultSet = await cubeApi.load(serverQuery as unknown as CubeQuery)
         const rawData = resultSet.rawData()
         const executionTime = performance.now() - startTime
+        const cacheInfo = resultSet.cacheInfo?.()
 
         return {
           rawData,
           executionTime,
+          cacheInfo,
         }
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error))
@@ -340,6 +342,7 @@ export function useFunnelQuery(
     // Expose the server query for debug panel display
     // This is the actual { funnel: {...} } query sent to the server
     serverQuery,
+    cacheInfo: queryResult.data?.cacheInfo ?? null,
   }
 }
 

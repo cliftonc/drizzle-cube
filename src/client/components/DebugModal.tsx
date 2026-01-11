@@ -155,7 +155,9 @@ export default function DebugModal({
           <div className="lg:col-span-2">
             <h3 className="text-sm font-medium text-dc-text-secondary mb-2">Data Sample (first 3 rows)</h3>
             <pre className="text-dc-text-secondary overflow-x-auto font-mono p-2 rounded-sm border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <code className="language-json">{JSON.stringify(data?.slice(0, 3) || [], null, 2)}</code>
+              <code className="language-json">
+                {JSON.stringify(Array.isArray(data) ? data.slice(0, 3) : data, null, 2)}
+              </code>
             </pre>
           </div>
 

@@ -24,6 +24,9 @@ import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'
 import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'
 
+// SQLite doesn't support flow queries (no lateral joins or required window functions)
+const isSQLite = getTestDatabaseType() === 'sqlite'
+
 describe('Server-Side Flow Queries', () => {
   let executor: QueryExecutor
   let close: () => void
@@ -168,7 +171,7 @@ describe('Server-Side Flow Queries', () => {
       })).toBe(true)
     })
 
-    it('should validate flow configuration', async () => {
+    it.skipIf(isSQLite)('should validate flow configuration', async () => {
       const dbType = getTestDatabaseType()
       const adapter = dbType === 'mysql'
         ? new MySQLAdapter()
@@ -265,7 +268,7 @@ describe('Server-Side Flow Queries', () => {
         bindingKey: 'Events.userId',
         timeDimension: 'Events.timestamp',
         eventDimension: 'Events.eventType',
-        stepsBefore: 0, // Must be 1-5
+        stepsBefore: -1, // Must be 0-5
         stepsAfter: 2,
         startingStep: {
           name: 'Test',
@@ -274,7 +277,7 @@ describe('Server-Side Flow Queries', () => {
       }
       const badStepsBeforeResult = builder.validateConfig(badStepsBefore, cubes)
       expect(badStepsBeforeResult.isValid).toBe(false)
-      expect(badStepsBeforeResult.errors.some(e => e.includes('stepsBefore must be between 1 and 5'))).toBe(true)
+      expect(badStepsBeforeResult.errors.some(e => e.includes('stepsBefore must be between 0 and 5'))).toBe(true)
 
       // Invalid: stepsAfter out of range
       const badStepsAfter: FlowQueryConfig = {
@@ -282,7 +285,7 @@ describe('Server-Side Flow Queries', () => {
         timeDimension: 'Events.timestamp',
         eventDimension: 'Events.eventType',
         stepsBefore: 2,
-        stepsAfter: 6, // Must be 1-5
+        stepsAfter: 6, // Must be 0-5
         startingStep: {
           name: 'Test',
           filter: { member: 'Events.eventType', operator: 'equals', values: ['high'] }
@@ -290,7 +293,7 @@ describe('Server-Side Flow Queries', () => {
       }
       const badStepsAfterResult = builder.validateConfig(badStepsAfter, cubes)
       expect(badStepsAfterResult.isValid).toBe(false)
-      expect(badStepsAfterResult.errors.some(e => e.includes('stepsAfter must be between 1 and 5'))).toBe(true)
+      expect(badStepsAfterResult.errors.some(e => e.includes('stepsAfter must be between 0 and 5'))).toBe(true)
 
       // Warning: high depth
       const highDepth: FlowQueryConfig = {
@@ -369,7 +372,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Flow Query Execution', () => {
+  describe.skipIf(isSQLite)('Flow Query Execution', () => {
     it('should execute a simple flow query with before and after steps', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -501,7 +504,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Output Modes', () => {
+  describe.skipIf(isSQLite)('Output Modes', () => {
     it('should execute flow query in sankey mode (default)', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -559,7 +562,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Security Context', () => {
+  describe.skipIf(isSQLite)('Security Context', () => {
     it('should isolate flow results by organisation', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -595,7 +598,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Annotation Metadata', () => {
+  describe.skipIf(isSQLite)('Annotation Metadata', () => {
     it('should include flow metadata in annotation', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -634,7 +637,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Date Range Filters in Flow', () => {
+  describe.skipIf(isSQLite)('Date Range Filters in Flow', () => {
     it('should apply inDateRange filter with explicit date values', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -705,7 +708,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Error Handling', () => {
+  describe.skipIf(isSQLite)('Error Handling', () => {
     it('should reject flow with invalid binding key', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -810,7 +813,7 @@ describe('Server-Side Flow Queries', () => {
     })
   })
 
-  describe('Edge Cases', () => {
+  describe.skipIf(isSQLite)('Edge Cases', () => {
     it('should handle maximum depth (5 steps)', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)

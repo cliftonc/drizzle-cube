@@ -343,7 +343,20 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         queryObject: serverFunnelQuery as unknown as Record<string, unknown>,
         data: multiQueryData,
         chartType,
-        cacheInfo: undefined
+        cacheInfo: funnelQueryResult.cacheInfo ?? undefined
+      })
+      return
+    }
+
+    // Handle flow mode
+    if (isFlowMode && serverFlowQuery && flowChartData) {
+      onDebugDataReadyRef.current({
+        chartConfig: chartConfig || {},
+        displayConfig: displayConfig || {},
+        queryObject: serverFlowQuery as unknown as Record<string, unknown>,
+        data: flowChartData,
+        chartType,
+        cacheInfo: flowQueryResult.cacheInfo,
       })
       return
     }
@@ -372,7 +385,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         })
       }
     }
-  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, multiQueryData, serverFunnelQuery]) // Use ref for callback to prevent infinite loops
+  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, isFlowMode, multiQueryData, serverFunnelQuery, serverFlowQuery, flowChartData, flowQueryResult.cacheInfo]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided when required (not required for skipQuery charts)
   // Check if any dropZones are mandatory for this chart type

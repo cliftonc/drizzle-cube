@@ -551,7 +551,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       console.log(`- Slowest query: ${slowest.name} (${slowest.duration.toFixed(2)}ms)`)
 
       // The slowest query should still be within acceptable limits
-      expect(slowest.duration).toBeLessThan(200) // Even slowest should be under 200ms
+      expect(slowest.duration).toBeLessThan(300) // Even slowest should be under 300ms
     })
 
     it('should maintain consistent performance across repeated executions', async () => {

@@ -43,6 +43,8 @@ export interface UseFlowQueryResult {
   data: FlowChartData | null
   /** Raw data from server */
   rawData: unknown[] | null
+  /** Cache metadata when served from cache */
+  cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   /** Is initial load in progress */
   isLoading: boolean
   /** Is refetch in progress */
@@ -188,14 +190,16 @@ export function useFlowQuery(
         const resultSet = await cubeApi.load(
           debouncedQuery as unknown as CubeQuery
         )
-        const rawData = resultSet.rawData()
-        const executionTime = performance.now() - startTime
+      const rawData = resultSet.rawData()
+      const executionTime = performance.now() - startTime
+      const cacheInfo = resultSet.cacheInfo?.()
 
-        return {
-          rawData,
-          executionTime,
-          // Include query key in result so we can detect stale data
-          // (data from a different query key, e.g., sankey vs sunburst mode)
+      return {
+        rawData,
+        executionTime,
+        cacheInfo,
+        // Include query key in result so we can detect stale data
+        // (data from a different query key, e.g., sankey vs sunburst mode)
           // We store the RAW query key so we can compare against the current raw query
           queryKeyString: rawQueryKeyString,
         }
@@ -255,6 +259,7 @@ export function useFlowQuery(
   return {
     data: chartData,
     rawData: isDataStale ? null : (queryResult.data?.rawData ?? null),
+    cacheInfo: queryResult.data?.cacheInfo ?? null,
     isLoading: queryResult.isLoading || isDataStale,
     isFetching: queryResult.isFetching,
     isDebouncing,
