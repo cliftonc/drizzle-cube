@@ -1,11 +1,13 @@
 /**
- * SQLite database executor  
+ * SQLite database executor
  * Works with better-sqlite3 driver
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { DrizzleDatabase } from '../types'
+import { sql } from 'drizzle-orm'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
+import { parseSQLiteExplain } from '../explain/sqlite-parser'
 
 export class SQLiteExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -89,6 +91,118 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
 
   getEngineType(): 'sqlite' {
     return 'sqlite'
+  }
+
+  /**
+   * Execute EXPLAIN QUERY PLAN on a SQL query to get the execution plan
+   * Note: SQLite doesn't support EXPLAIN ANALYZE
+   */
+  async explainQuery(
+    sqlString: string,
+    params: unknown[],
+    _options?: ExplainOptions
+  ): Promise<ExplainResult> {
+    // SQLite uses ? placeholders, replace with values
+    let queryWithValues = sqlString
+    let paramIndex = 0
+    queryWithValues = queryWithValues.replace(/\?/g, () => {
+      const value = params[paramIndex++]
+      if (value === null) return 'NULL'
+      if (typeof value === 'number') return String(value)
+      if (typeof value === 'boolean') return value ? '1' : '0'
+      if (value instanceof Date) return `'${value.toISOString()}'`
+      // String: escape single quotes
+      return `'${String(value).replace(/'/g, "''")}'`
+    })
+
+    // SQLite uses EXPLAIN QUERY PLAN (not EXPLAIN ANALYZE)
+    const explainSql = `EXPLAIN QUERY PLAN ${queryWithValues}`
+
+    // Execute through the database
+    let result: any[] = []
+    if (this.db.all) {
+      result = this.db.all(sql.raw(explainSql))
+    } else {
+      throw new Error('SQLite database instance must have an all() method for EXPLAIN')
+    }
+
+    // SQLite EXPLAIN QUERY PLAN returns rows with: id, parent, notused, detail
+    const rows: any[] = []
+    if (Array.isArray(result)) {
+      for (const row of result) {
+        if (row && typeof row === 'object') {
+          rows.push({
+            id: Number((row as Record<string, unknown>).id) || 0,
+            parent: Number((row as Record<string, unknown>).parent) || 0,
+            notused: Number((row as Record<string, unknown>).notused) || 0,
+            detail: String((row as Record<string, unknown>).detail || ''),
+          })
+        }
+      }
+    }
+
+    // Parse the output using the SQLite parser
+    return parseSQLiteExplain(rows, { sql: sqlString, params })
+  }
+
+  /**
+   * Get existing indexes for the specified tables
+   */
+  async getTableIndexes(tableNames: string[]): Promise<IndexInfo[]> {
+    if (!tableNames || tableNames.length === 0) {
+      return []
+    }
+
+    if (!this.db.all) {
+      throw new Error('SQLite database instance must have an all() method')
+    }
+
+    try {
+      const indexes: IndexInfo[] = []
+
+      for (const tableName of tableNames) {
+        // Get indexes for this table using pragma_index_list
+        const indexList = this.db.all(
+          sql.raw(`SELECT name, "unique", origin FROM pragma_index_list('${tableName.toLowerCase()}')`)
+        )
+
+        if (!Array.isArray(indexList)) continue
+
+        for (const idx of indexList) {
+          const indexName = (idx as Record<string, unknown>).name as string
+          const isUnique = Boolean((idx as Record<string, unknown>).unique)
+          const origin = (idx as Record<string, unknown>).origin as string
+
+          // Get columns for this index using pragma_index_info
+          const columnList = this.db.all(
+            sql.raw(`SELECT name FROM pragma_index_info('${indexName}') ORDER BY seqno`)
+          )
+
+          const columns: string[] = []
+          if (Array.isArray(columnList)) {
+            for (const col of columnList) {
+              const colName = (col as Record<string, unknown>).name
+              if (typeof colName === 'string') {
+                columns.push(colName)
+              }
+            }
+          }
+
+          indexes.push({
+            table_name: tableName.toLowerCase(),
+            index_name: indexName,
+            columns,
+            is_unique: isUnique,
+            is_primary: origin === 'pk'
+          })
+        }
+      }
+
+      return indexes
+    } catch (err) {
+      console.warn('Failed to get table indexes:', err)
+      return []
+    }
   }
 }
 

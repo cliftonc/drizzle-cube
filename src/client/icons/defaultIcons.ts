@@ -67,7 +67,8 @@ import chartBubble from '@iconify-icons/tabler/chart-bubble'
 import chartRadar from '@iconify-icons/tabler/chart-radar'
 import radar2 from '@iconify-icons/tabler/radar-2'
 import chartTreemap from '@iconify-icons/tabler/chart-treemap'
-import chartSankey from '@iconify-icons/tabler/chart-sankey'
+// Custom icons - better represents flow/funnel visualizations
+import { flowIcon, funnelIcon } from './customIcons'
 import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
 import table from '@iconify-icons/tabler/table'
 import calendarStats from '@iconify-icons/tabler/calendar-stats'
@@ -137,8 +138,8 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartKpiDelta: { icon: trendingUp, category: 'chart' },
   chartKpiText: { icon: typography, category: 'chart' },
   chartMarkdown: { icon: fileText, category: 'chart' },
-  chartFunnel: { icon: funnel, category: 'chart' },
-  chartSankey: { icon: chartSankey, category: 'chart' },
+  chartFunnel: { icon: funnelIcon, category: 'chart' },
+  chartSankey: { icon: flowIcon, category: 'chart' },
   chartSunburst: { icon: chartDonut4, category: 'chart' },
 
   // Measure type icons (solid)

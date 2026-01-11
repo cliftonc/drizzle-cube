@@ -536,3 +536,143 @@ export type {
 } from './types/flow'
 
 export { isServerFlowQuery, isSankeyData } from './types/flow'
+
+// ============================================================================
+// EXPLAIN PLAN TYPES
+// These types mirror the server-side types in src/server/types/executor.ts
+// ============================================================================
+
+/**
+ * Options for EXPLAIN query execution
+ */
+export interface ExplainOptions {
+  /** Use EXPLAIN ANALYZE to actually execute the query and get real timing (PostgreSQL, MySQL 8.0.18+) */
+  analyze?: boolean
+}
+
+/**
+ * A single operation/node in the query execution plan
+ * Normalized structure across all databases
+ */
+export interface ExplainOperation {
+  /** Operation type (e.g., 'Seq Scan', 'Index Scan', 'Hash Join', 'Sort') */
+  type: string
+  /** Table name if applicable */
+  table?: string
+  /** Index name if used */
+  index?: string
+  /** Estimated row count from planner */
+  estimatedRows?: number
+  /** Actual row count (if ANALYZE was used) */
+  actualRows?: number
+  /** Estimated cost (database-specific units) */
+  estimatedCost?: number
+  /** Filter condition if any */
+  filter?: string
+  /** Additional details specific to this operation */
+  details?: string
+  /** Nested/child operations */
+  children?: ExplainOperation[]
+}
+
+/**
+ * Summary statistics from the execution plan
+ */
+export interface ExplainSummary {
+  /** Database engine type */
+  database: 'postgres' | 'mysql' | 'sqlite'
+  /** Planning time in milliseconds (if available) */
+  planningTime?: number
+  /** Execution time in milliseconds (if ANALYZE was used) */
+  executionTime?: number
+  /** Total estimated cost */
+  totalCost?: number
+  /** Quick flag: true if any sequential scans detected */
+  hasSequentialScans: boolean
+  /** List of indexes used in the plan */
+  usedIndexes: string[]
+}
+
+/**
+ * Result of an EXPLAIN query
+ * Provides both normalized structure and raw output
+ */
+export interface ExplainResult {
+  /** Normalized hierarchical plan as operations */
+  operations: ExplainOperation[]
+  /** Summary statistics */
+  summary: ExplainSummary
+  /** Raw EXPLAIN output as text (for display) */
+  raw: string
+  /** Original SQL query */
+  sql: {
+    sql: string
+    params?: unknown[]
+  }
+}
+
+// ============================================================================
+// AI EXPLAIN ANALYSIS TYPES
+// These types mirror the server-side types in src/server/types/executor.ts
+// ============================================================================
+
+/**
+ * A recommendation from AI analysis of an execution plan
+ */
+export interface ExplainRecommendation {
+  /** Type of recommendation */
+  type: 'index' | 'table' | 'cube' | 'general'
+  /** Severity/priority of the recommendation */
+  severity: 'critical' | 'warning' | 'suggestion'
+  /** Short actionable title */
+  title: string
+  /** Detailed explanation of why this helps */
+  description: string
+  /** Actionable SQL statement (e.g., CREATE INDEX) - for index/table recommendations */
+  sql?: string
+  /** TypeScript code snippet to add to cube definition - for cube recommendations */
+  cubeCode?: string
+  /** Which cube to modify - for cube recommendations */
+  cubeName?: string
+  /** Affected database table */
+  table?: string
+  /** Affected columns */
+  columns?: string[]
+  /** Expected performance improvement */
+  estimatedImpact?: string
+}
+
+/**
+ * Issue identified in the execution plan
+ */
+export interface ExplainIssue {
+  /** Type of issue */
+  type: 'sequential_scan' | 'missing_index' | 'high_cost' | 'sort_operation' | string
+  /** Description of the issue */
+  description: string
+  /** Severity level */
+  severity: 'high' | 'medium' | 'low'
+}
+
+/**
+ * AI-generated analysis of an execution plan
+ */
+export interface AIExplainAnalysis {
+  /** One-sentence description of what the query does */
+  summary: string
+  /** Overall performance assessment */
+  assessment: 'good' | 'warning' | 'critical'
+  /** Reason for the assessment */
+  assessmentReason: string
+  /** Detailed explanation of the query's purpose and structure */
+  queryUnderstanding: string
+  /** Issues identified in the execution plan */
+  issues: ExplainIssue[]
+  /** Actionable recommendations for improvement */
+  recommendations: ExplainRecommendation[]
+  /** Metadata from the AI analysis */
+  _meta?: {
+    model: string
+    usingUserKey: boolean
+  }
+}

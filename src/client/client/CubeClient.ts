@@ -3,7 +3,7 @@
  * Replaces @cubejs-client/core with lighter implementation
  */
 
-import type { CubeQuery, CubeApiOptions, CubeResultSet } from '../types'
+import type { CubeQuery, CubeApiOptions, CubeResultSet, ExplainResult, ExplainOptions } from '../types'
 
 export class CubeClient {
   private apiUrl: string
@@ -117,6 +117,44 @@ export class CubeClient {
 
     if (!response.ok) {
       let errorMessage = `Dry run failed: ${response.status}`
+      try {
+        const errorText = await response.text()
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          } else {
+            errorMessage += ` ${errorText}`
+          }
+        } catch {
+          errorMessage += ` ${errorText}`
+        }
+      } catch {
+        // If we can't read the response, just use the status
+      }
+      throw new Error(errorMessage)
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Execute EXPLAIN on a query to get the execution plan
+   * Returns normalized plan across PostgreSQL, MySQL, and SQLite
+   * Accepts standard queries, funnel queries ({ funnel: {...} }), or flow queries ({ flow: {...} })
+   */
+  async explain(query: CubeQuery | unknown, options?: ExplainOptions): Promise<ExplainResult> {
+    const url = `${this.apiUrl}/explain`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: this.headers,
+      credentials: this.credentials,
+      body: JSON.stringify({ query, options })
+    })
+
+    if (!response.ok) {
+      let errorMessage = `Explain failed: ${response.status}`
       try {
         const errorText = await response.text()
         try {

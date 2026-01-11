@@ -11,7 +11,8 @@ import type {
   DatabaseExecutor,
   DrizzleDatabase,
   Cube,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -406,21 +407,57 @@ export function createCubeRoutes(
       }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      
+
       // Extract security context
       const securityContext = await extractSecurityContext(c)
-      
+
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
-      
+
       return c.json(result)
-      
+
     } catch (error) {
       console.error('Dry-run error:', error)
       return c.json({
         error: error instanceof Error ? error.message : 'Dry-run validation failed',
         valid: false
       }, 400)
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/explain - Get execution plan for a query
+   * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
+   */
+  app.post(`${basePath}/explain`, async (c) => {
+    try {
+      const requestBody = await c.req.json()
+
+      // Handle both direct query and nested query formats
+      const query: SemanticQuery = requestBody.query || requestBody
+      const options: ExplainOptions = requestBody.options || {}
+
+      // Extract security context
+      const securityContext = await extractSecurityContext(c)
+
+      // Validate query structure
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
+        return c.json({
+          error: `Query validation failed: ${validation.errors.join(', ')}`
+        }, 400)
+      }
+
+      // Execute EXPLAIN using the semantic layer
+      const explainResult = await semanticLayer.explainQuery(query, securityContext, options)
+
+      return c.json(explainResult)
+
+    } catch (error) {
+      console.error('Explain error:', error)
+      return c.json({
+        error: error instanceof Error ? error.message : 'Explain query failed'
+      }, 500)
     }
   })
 

@@ -66,3 +66,18 @@ export {
   type UseFlowQueryOptions,
   type UseFlowQueryResult,
 } from './useFlowQuery'
+
+// Explain query (execution plan)
+export {
+  useExplainQuery,
+  createExplainQueryKey,
+  type UseExplainQueryOptions,
+  type UseExplainQueryResult,
+} from './useExplainQuery'
+
+// Explain AI analysis (recommendations)
+export {
+  useExplainAI,
+  type UseExplainAIOptions,
+  type UseExplainAIResult,
+} from './useExplainAI'

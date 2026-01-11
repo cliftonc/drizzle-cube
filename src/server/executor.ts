@@ -25,7 +25,9 @@ import type {
   QueryContext,
   QueryPlan,
   JoinKeyInfo,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions,
+  ExplainResult
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
@@ -1273,6 +1275,36 @@ export class QueryExecutor {
       sql: sqlObj.sql,
       params: sqlObj.params
     }
+  }
+
+  /**
+   * Execute EXPLAIN on a query to get the execution plan
+   * Generates the SQL using the same secure path as execute/generateSQL,
+   * then runs EXPLAIN on the database.
+   */
+  async explainQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    options?: ExplainOptions
+  ): Promise<ExplainResult> {
+    // Generate the SQL using the appropriate method
+    let sqlResult: { sql: string; params?: any[] }
+
+    if (this.funnelQueryBuilder.hasFunnel(query)) {
+      sqlResult = await this.dryRunFunnel(cubes, query, securityContext)
+    } else if (this.flowQueryBuilder.hasFlow(query)) {
+      sqlResult = await this.dryRunFlow(cubes, query, securityContext)
+    } else {
+      sqlResult = await this.generateUnifiedSQL(cubes, query, securityContext)
+    }
+
+    // Execute EXPLAIN using the database executor
+    return this.dbExecutor.explainQuery(
+      sqlResult.sql,
+      sqlResult.params || [],
+      options
+    )
   }
 
   /**

@@ -4,8 +4,10 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { DrizzleDatabase } from '../types'
+import { sql } from 'drizzle-orm'
+import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
+import { parsePostgresExplain } from '../explain/postgres-parser'
 
 export class PostgresExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -110,6 +112,111 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
 
   getEngineType(): 'postgres' {
     return 'postgres'
+  }
+
+  /**
+   * Execute EXPLAIN on a SQL query to get the execution plan
+   */
+  async explainQuery(
+    sqlString: string,
+    params: unknown[],
+    options?: ExplainOptions
+  ): Promise<ExplainResult> {
+    // Build EXPLAIN command
+    const explainPrefix = options?.analyze ? 'EXPLAIN ANALYZE' : 'EXPLAIN'
+
+    // Execute EXPLAIN with parameters
+    if (!this.db.execute) {
+      throw new Error('PostgreSQL database instance must have an execute method')
+    }
+
+    // For postgres.js, we need to pass parameters separately
+    // The sql string already has $1, $2 placeholders from Drizzle
+    const result = await this.db.execute(
+      sql`${sql.raw(explainPrefix)} ${sql.raw(sqlString.replace(/\$(\d+)/g, (_, n) => {
+        const paramIndex = parseInt(n, 10) - 1
+        const value = params[paramIndex]
+        // Escape and quote the value appropriately
+        if (value === null) return 'NULL'
+        if (typeof value === 'number') return String(value)
+        if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
+        if (value instanceof Date) return `'${value.toISOString()}'`
+        // String: escape single quotes
+        return `'${String(value).replace(/'/g, "''")}'`
+      }))}`
+    )
+
+    // PostgreSQL returns EXPLAIN output as rows with 'QUERY PLAN' column
+    const rawLines: string[] = []
+    if (Array.isArray(result)) {
+      for (const row of result) {
+        if (row && typeof row === 'object') {
+          // Handle different column name cases
+          const planLine =
+            (row as Record<string, unknown>)['QUERY PLAN'] ||
+            (row as Record<string, unknown>)['query plan'] ||
+            (row as Record<string, unknown>)['queryplan']
+          if (typeof planLine === 'string') {
+            rawLines.push(planLine)
+          }
+        }
+      }
+    }
+
+    // Parse the output using the PostgreSQL parser
+    return parsePostgresExplain(rawLines, { sql: sqlString, params })
+  }
+
+  /**
+   * Get existing indexes for the specified tables
+   */
+  async getTableIndexes(tableNames: string[]): Promise<IndexInfo[]> {
+    if (!tableNames || tableNames.length === 0) {
+      return []
+    }
+
+    if (!this.db.execute) {
+      throw new Error('PostgreSQL database instance must have an execute method')
+    }
+
+    try {
+      // Build table list for SQL IN clause
+      const tableList = tableNames.map(t => `'${t.toLowerCase()}'`).join(',')
+
+      const result = await this.db.execute(sql`
+        SELECT
+          t.relname as table_name,
+          i.relname as index_name,
+          array_to_string(array_agg(a.attname ORDER BY k.n), ',') as columns,
+          ix.indisunique as is_unique,
+          ix.indisprimary as is_primary
+        FROM pg_index ix
+        JOIN pg_class t ON t.oid = ix.indrelid
+        JOIN pg_class i ON i.oid = ix.indexrelid
+        JOIN pg_namespace n ON n.oid = t.relnamespace
+        JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, n) ON true
+        JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+        WHERE n.nspname = 'public'
+          AND t.relname IN (${sql.raw(tableList)})
+        GROUP BY t.relname, i.relname, ix.indisunique, ix.indisprimary
+        ORDER BY t.relname, i.relname
+      `)
+
+      if (!Array.isArray(result)) {
+        return []
+      }
+
+      return result.map((row: any) => ({
+        table_name: row.table_name,
+        index_name: row.index_name,
+        columns: row.columns.split(','),
+        is_unique: row.is_unique,
+        is_primary: row.is_primary
+      }))
+    } catch (err) {
+      console.warn('Failed to get table indexes:', err)
+      return []
+    }
   }
 }
 

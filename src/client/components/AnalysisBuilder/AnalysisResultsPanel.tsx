@@ -12,6 +12,10 @@ import { getIcon } from '../../icons'
 import { QueryAnalysisPanel, CodeBlock } from '../../shared'
 import ConfirmModal from '../ConfirmModal'
 import ColorPaletteSelector from '../ColorPaletteSelector'
+import { useExplainQuery } from '../../hooks/queries/useExplainQuery'
+import { useExplainAI } from '../../hooks/queries/useExplainAI'
+import type { CubeQuery } from '../../types'
+import { ExecutionPlanPanel } from './ExecutionPlanPanel'
 
 /**
  * AnalysisResultsPanel displays query results with chart/table toggle.
@@ -111,6 +115,68 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Determine if we're showing funnel executed queries (for visual indicator)
   const isShowingFunnelQuery = Boolean(funnelExecutedQueries?.length && funnelExecutedQueries[activeDebugIndex])
+
+  // EXPLAIN PLAN hook - for standard query mode
+  // Uses the current active debug query
+  const {
+    explainResult,
+    isLoading: explainLoading,
+    hasRun: explainHasRun,
+    error: explainError,
+    runExplain,
+    clearExplain,
+  } = useExplainQuery(debugQuery as CubeQuery | null, {
+    skip: isFunnelMode || isFlowMode || !debugQuery,
+  })
+
+  // EXPLAIN PLAN hook - for funnel mode
+  const {
+    explainResult: funnelExplainResult,
+    isLoading: funnelExplainLoading,
+    hasRun: funnelExplainHasRun,
+    error: funnelExplainError,
+    runExplain: runFunnelExplain,
+    clearExplain: clearFunnelExplain,
+  } = useExplainQuery(funnelServerQuery, {
+    skip: !isFunnelMode || !funnelServerQuery,
+  })
+
+  // EXPLAIN PLAN hook - for flow mode
+  const {
+    explainResult: flowExplainResult,
+    isLoading: flowExplainLoading,
+    hasRun: flowExplainHasRun,
+    error: flowExplainError,
+    runExplain: runFlowExplain,
+    clearExplain: clearFlowExplain,
+  } = useExplainQuery(flowServerQuery, {
+    skip: !isFlowMode || !flowServerQuery,
+  })
+
+  // AI Analysis hook for EXPLAIN plans
+  const {
+    analysis: aiAnalysis,
+    isAnalyzing: aiAnalysisLoading,
+    error: aiAnalysisError,
+    analyze: runAIAnalysis,
+    clearAnalysis: clearAIAnalysis,
+  } = useExplainAI()
+
+  // Clear explain results when the active debug query changes
+  useEffect(() => {
+    clearExplain()
+  }, [activeDebugIndex, clearExplain])
+
+  // Clear funnel explain results when funnel query changes
+  useEffect(() => {
+    clearFunnelExplain()
+  }, [funnelServerQuery, clearFunnelExplain])
+
+  // Clear flow explain results when flow query changes
+  useEffect(() => {
+    clearFlowExplain()
+  }, [flowServerQuery, clearFlowExplain])
+
   // Track if this effect has run once - skip forcing table view on the first run
   // to allow share URLs and portlet configs to restore their saved view
   const isFirstRunRef = useRef(true)
@@ -369,65 +435,46 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           </div>
         )}
 
-        {/* Funnel Server Query and Generated SQL in 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Server Query (the actual { funnel: {...} } sent to server) */}
-          <div>
-            {funnelServerQuery ? (
-              <CodeBlock
-                code={JSON.stringify(funnelServerQuery, null, 2)}
-                language="json"
-                title="Funnel Server Query"
-                height="20rem"
-              />
-            ) : (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Server Query</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
-                  No funnel query configured
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Generated SQL (the unified CTE-based funnel SQL) */}
-          <div>
-            {funnelLoading ? (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto animate-pulse">
-                  Loading funnel SQL...
-                </div>
-              </>
-            ) : funnelError ? (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-80 overflow-auto">
-                  {funnelError.message}
-                </div>
-              </>
-            ) : funnelSql ? (
-              <CodeBlock
-                code={
-                  funnelSql.sql +
-                  (funnelSql.params && funnelSql.params.length > 0
-                    ? '\n\n-- Parameters:\n' + JSON.stringify(funnelSql.params, null, 2)
-                    : '')
-                }
-                language="sql"
-                title="Generated SQL (CTE-based)"
-                height="20rem"
-              />
-            ) : (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
-                  Configure funnel binding key to generate SQL
-                </div>
-              </>
-            )}
-          </div>
+        {/* Funnel Server Query - full width */}
+        <div>
+          {funnelServerQuery ? (
+            <CodeBlock
+              code={JSON.stringify(funnelServerQuery, null, 2)}
+              language="json"
+              title="Funnel Server Query"
+              height="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Server Query</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+                No funnel query configured
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
+        <ExecutionPlanPanel
+          sql={funnelSql}
+          sqlLoading={funnelLoading}
+          sqlError={funnelError}
+          sqlPlaceholder="Configure funnel binding key to generate SQL"
+          explainResult={funnelExplainResult}
+          explainLoading={funnelExplainLoading}
+          explainHasRun={funnelExplainHasRun}
+          explainError={funnelExplainError}
+          runExplain={runFunnelExplain}
+          aiAnalysis={aiAnalysis}
+          aiAnalysisLoading={aiAnalysisLoading}
+          aiAnalysisError={aiAnalysisError}
+          runAIAnalysis={runAIAnalysis}
+          clearAIAnalysis={clearAIAnalysis}
+          enableAI={enableAI}
+          query={funnelServerQuery}
+          title="Generated SQL"
+          height="16rem"
+        />
 
         {/* Funnel Metadata (step info) */}
         {funnelMeta && (
@@ -532,65 +579,46 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           </div>
         )}
 
-        {/* Flow Server Query and Generated SQL in 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Server Query (the actual { flow: {...} } sent to server) */}
-          <div>
-            {flowServerQuery ? (
-              <CodeBlock
-                code={JSON.stringify(flowServerQuery, null, 2)}
-                language="json"
-                title="Flow Server Query"
-                height="20rem"
-              />
-            ) : (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Server Query</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
-                  No flow query configured
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Generated SQL (the unified CTE-based flow SQL) */}
-          <div>
-            {flowLoading ? (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto animate-pulse">
-                  Loading flow SQL...
-                </div>
-              </>
-            ) : flowError ? (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-80 overflow-auto">
-                  {flowError.message}
-                </div>
-              </>
-            ) : flowSql ? (
-              <CodeBlock
-                code={
-                  flowSql.sql +
-                  (flowSql.params && flowSql.params.length > 0
-                    ? '\n\n-- Parameters:\n' + JSON.stringify(flowSql.params, null, 2)
-                    : '')
-                }
-                language="sql"
-                title="Generated SQL (CTE-based)"
-                height="20rem"
-              />
-            ) : (
-              <>
-                <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-                <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-80 overflow-auto">
-                  Configure flow to generate SQL
-                </div>
-              </>
-            )}
-          </div>
+        {/* Flow Server Query - full width */}
+        <div>
+          {flowServerQuery ? (
+            <CodeBlock
+              code={JSON.stringify(flowServerQuery, null, 2)}
+              language="json"
+              title="Flow Server Query"
+              height="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Server Query</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+                No flow query configured
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
+        <ExecutionPlanPanel
+          sql={flowSql}
+          sqlLoading={flowLoading}
+          sqlError={flowError}
+          sqlPlaceholder="Configure flow to generate SQL"
+          explainResult={flowExplainResult}
+          explainLoading={flowExplainLoading}
+          explainHasRun={flowExplainHasRun}
+          explainError={flowExplainError}
+          runExplain={runFlowExplain}
+          aiAnalysis={aiAnalysis}
+          aiAnalysisLoading={aiAnalysisLoading}
+          aiAnalysisError={aiAnalysisError}
+          runAIAnalysis={runAIAnalysis}
+          clearAIAnalysis={clearAIAnalysis}
+          enableAI={enableAI}
+          query={flowServerQuery}
+          title="Generated SQL"
+          height="16rem"
+        />
 
         {/* Flow Metadata */}
         {flowMeta && (
@@ -720,72 +748,53 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         )}
       </div>
 
-      {/* Cube Query and SQL Query in 2 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Cube Query */}
-        <div>
-          {debugQuery ? (
-            <>
-              <CodeBlock
-                code={JSON.stringify(debugQuery, null, 2)}
-                language="json"
-                title={isShowingFunnelQuery ? "Executed Query (with funnel filters)" : "Cube Query"}
-                height="16rem"
-              />
-              {isShowingFunnelQuery && activeDebugIndex > 0 && (
-                <div className="mt-1 text-xs text-dc-text-muted">
-                  <span className="text-dc-accent">ℹ</span> This query includes an IN filter with binding key values from the previous step
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Cube Query</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
-                No query
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Generated SQL */}
-        <div>
-          {debugLoading ? (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
-                Loading...
-              </div>
-            </>
-          ) : debugError ? (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="text-dc-error text-sm bg-dc-danger-bg dark:bg-dc-danger-bg p-3 rounded border border-dc-error dark:border-dc-error h-64 overflow-auto">
-                {debugError.message}
-              </div>
-            </>
-          ) : debugSql ? (
+      {/* Cube Query - full width */}
+      <div>
+        {debugQuery ? (
+          <>
             <CodeBlock
-              code={
-                debugSql.sql +
-                (debugSql.params && debugSql.params.length > 0
-                  ? '\n\n-- Parameters:\n' + JSON.stringify(debugSql.params, null, 2)
-                  : '')
-              }
-              language="sql"
-              title="Generated SQL"
+              code={JSON.stringify(debugQuery, null, 2)}
+              language="json"
+              title={isShowingFunnelQuery ? "Executed Query (with funnel filters)" : "Cube Query"}
               height="16rem"
             />
-          ) : (
-            <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Generated SQL</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
-                Add metrics to generate SQL
+            {isShowingFunnelQuery && activeDebugIndex > 0 && (
+              <div className="mt-1 text-xs text-dc-text-muted">
+                <span className="text-dc-accent">ℹ</span> This query includes an IN filter with binding key values from the previous step
               </div>
-            </>
-          )}
-        </div>
+            )}
+          </>
+        ) : (
+          <>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Cube Query</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+              No query
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Generated SQL with Explain Plan and AI Analysis - full width */}
+      <ExecutionPlanPanel
+        sql={debugSql}
+        sqlLoading={debugLoading}
+        sqlError={debugError}
+        sqlPlaceholder="Add metrics to generate SQL"
+        explainResult={explainResult}
+        explainLoading={explainLoading}
+        explainHasRun={explainHasRun}
+        explainError={explainError}
+        runExplain={runExplain}
+        aiAnalysis={aiAnalysis}
+        aiAnalysisLoading={aiAnalysisLoading}
+        aiAnalysisError={aiAnalysisError}
+        runAIAnalysis={runAIAnalysis}
+        clearAIAnalysis={clearAIAnalysis}
+        enableAI={enableAI}
+        query={debugQuery}
+        title="Generated SQL"
+        height="16rem"
+      />
 
       {/* Chart Config & Display Config in 2 columns */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -7,14 +7,18 @@
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import type { DrizzleDatabase } from '../../src/server/index.js'
-import { SemanticLayerCompiler } from '../../src/server/index.js'
+import { SemanticLayerCompiler, createDatabaseExecutor } from '../../src/server/index.js'
 import {
   buildStep0Prompt,
   buildSystemPrompt,
   buildStep1Prompt,
-  buildStep2Prompt
+  buildStep2Prompt,
+  buildExplainAnalysisPrompt,
+  formatCubeSchemaForExplain,
+  formatExistingIndexes
 } from '../../src/server/prompts/index.js'
 import type { Step0Result, Step1Result } from '../../src/server/prompts/index.js'
+import type { ExplainResult, AIExplainAnalysis } from '../../src/server/types/executor.js'
 import { settings, schema } from './schema.js'
 import { allCubes } from './cubes.js'
 
@@ -290,6 +294,17 @@ async function getDistinctValues(
     console.warn(`Failed to get distinct values for ${fieldName}:`, err)
     return []
   }
+}
+
+// Helper to extract table names from a SQL query
+function extractTableNames(sqlQuery: string): string[] {
+  const tablePattern = /(?:FROM|JOIN)\s+["']?(\w+)["']?/gi
+  const tables = new Set<string>()
+  let match
+  while ((match = tablePattern.exec(sqlQuery)) !== null) {
+    tables.add(match[1].toLowerCase())
+  }
+  return Array.from(tables)
 }
 
 // Helper to call Gemini API
@@ -597,6 +612,154 @@ aiApp.post('/generate', async (c) => {
   }
 })
 
+// Analyze EXPLAIN plan with AI recommendations
+aiApp.post('/explain/analyze', async (c) => {
+  const db = c.get('db')
+  const userApiKey = c.req.header('X-API-Key') || c.req.header('x-api-key')
+  const serverApiKey = getEnvVar(c, 'GEMINI_API_KEY')
+  const MAX_GEMINI_CALLS = parseInt(getEnvVar(c, 'MAX_GEMINI_CALLS', '100'))
+
+  // Determine which API key to use
+  const usingUserKey = !!userApiKey
+  const apiKey = userApiKey || serverApiKey
+
+  if (!apiKey) {
+    return c.json({
+      error: 'No API key available. Either provide X-API-Key header or ensure server has GEMINI_API_KEY configured.',
+      suggestion: 'Add your own Gemini API key to use AI analysis.'
+    }, 400)
+  }
+
+  try {
+    // If using server API key, check rate limits
+    if (!usingUserKey && db) {
+      try {
+        const currentUsage = await db
+          .select()
+          .from(settings)
+          .where(eq(settings.key, GEMINI_CALLS_KEY))
+          .limit(1)
+
+        const currentCount = currentUsage.length > 0 ? parseInt(currentUsage[0].value) : 0
+
+        if (currentCount >= MAX_GEMINI_CALLS) {
+          return c.json({
+            error: 'Daily quota exceeded',
+            message: `You've used all ${MAX_GEMINI_CALLS} free AI requests for today.`,
+            suggestion: 'Get your free Gemini API key at https://makersuite.google.com/app/apikey'
+          }, 429)
+        }
+
+        // Increment the counter
+        if (currentUsage.length > 0) {
+          await db
+            .update(settings)
+            .set({
+              value: (currentCount + 1).toString(),
+              updatedAt: new Date()
+            })
+            .where(eq(settings.key, GEMINI_CALLS_KEY))
+        } else {
+          await db
+            .insert(settings)
+            .values({
+              key: GEMINI_CALLS_KEY,
+              value: '1',
+              organisationId: 1,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            })
+        }
+      } catch (dbError) {
+        console.error('Rate limiting check failed, continuing without limit:', dbError)
+      }
+    }
+
+    const requestBody = await c.req.json()
+    const { explainResult, query } = requestBody as {
+      explainResult: ExplainResult
+      query: any
+    }
+
+    if (!explainResult || !query) {
+      return c.json({
+        error: 'Invalid request body. Please provide "explainResult" and "query" fields.'
+      }, 400)
+    }
+
+    // Get cube metadata for context
+    const semanticLayer = new SemanticLayerCompiler({
+      drizzle: db,
+      schema,
+      engineType: 'postgres'
+    })
+
+    allCubes.forEach(cube => {
+      semanticLayer.registerCube(cube)
+    })
+
+    const metadata = semanticLayer.getMetadata()
+    const cubeSchema = formatCubeSchemaForExplain(metadata)
+
+    // Get existing indexes for tables in the query
+    const executor = createDatabaseExecutor(db, schema, 'postgres')
+    const tableNames = extractTableNames(explainResult.sql.sql)
+    const existingIndexes = await executor.getTableIndexes(tableNames)
+    const formattedIndexes = formatExistingIndexes(existingIndexes)
+
+    console.log('[AI] Found existing indexes:', { tables: tableNames, indexCount: existingIndexes.length })
+
+    // Build the analysis prompt
+    const modelConfig = parseModelConfig(getEnvVar(c, 'GEMINI_MODEL'))
+    const analysisModel = modelConfig.step2 // Use the capable model for analysis
+
+    console.log('[AI] Analyzing EXPLAIN plan...', { model: analysisModel })
+
+    const prompt = buildExplainAnalysisPrompt(
+      explainResult.summary.database,
+      cubeSchema,
+      JSON.stringify(query, null, 2),
+      explainResult.sql.sql,
+      JSON.stringify(explainResult.operations, null, 2),
+      explainResult.raw,
+      formattedIndexes
+    )
+
+    const response = await callGemini(prompt, apiKey, analysisModel)
+
+    let analysis: AIExplainAnalysis
+    try {
+      analysis = parseAIResponse(response)
+    } catch (err) {
+      console.error('[AI] Failed to parse EXPLAIN analysis response:', response)
+      return c.json({
+        error: 'Failed to parse AI response',
+        rawResponse: response.substring(0, 500)
+      }, 500)
+    }
+
+    console.log('[AI] EXPLAIN analysis completed:', {
+      assessment: analysis.assessment,
+      issueCount: analysis.issues?.length || 0,
+      recommendationCount: analysis.recommendations?.length || 0
+    })
+
+    return c.json({
+      ...analysis,
+      _meta: {
+        model: analysisModel,
+        usingUserKey
+      }
+    })
+  } catch (error) {
+    console.error('[AI] EXPLAIN analysis error:', error)
+    return c.json({
+      error: 'Failed to analyze EXPLAIN plan',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500)
+  }
+})
+
 // Health check for AI routes
 aiApp.get('/health', (c) => {
   const hasServerApiKey = !!getEnvVar(c, 'GEMINI_API_KEY')
@@ -614,7 +777,8 @@ aiApp.get('/health', (c) => {
     modelConfig: 'Set GEMINI_MODEL as comma-delimited "step0,step1,step2" or single model for all',
     server_key_configured: hasServerApiKey,
     endpoints: {
-      'POST /api/ai/generate': 'Generate content with Gemini (rate limited without user key)',
+      'POST /api/ai/generate': 'Generate semantic query from natural language (rate limited without user key)',
+      'POST /api/ai/explain/analyze': 'Analyze EXPLAIN plan and provide performance recommendations',
       'GET /api/ai/health': 'This endpoint'
     },
     pipeline: [

@@ -1,0 +1,2 @@
+CREATE INDEX "idx_pr_events_org_event" ON "pr_events" USING btree ("organisation_id","event_type");--> statement-breakpoint
+CREATE INDEX "idx_pr_events_pr_ts_org" ON "pr_events" USING btree ("organisation_id","pr_number","timestamp");

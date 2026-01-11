@@ -14,7 +14,9 @@ import type {
   CubeRelationshipMetadata,
   Cube,
   QueryAnalysis,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions,
+  ExplainResult
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
@@ -448,6 +450,24 @@ export class SemanticLayerCompiler {
       sql: formatSqlString(result.sql, engineType),
       params: result.params
     }
+  }
+
+  /**
+   * Execute EXPLAIN on a query to get the execution plan
+   * Uses the same secure path as execute/dryRun to generate SQL,
+   * then runs database EXPLAIN on it.
+   */
+  async explainQuery(
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    options?: ExplainOptions
+  ): Promise<ExplainResult> {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const executor = new QueryExecutor(this.dbExecutor)
+    return executor.explainQuery(this.cubes, query, securityContext, options)
   }
 
   /**

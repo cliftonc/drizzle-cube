@@ -3,7 +3,7 @@
  * Based on drizzle-cube-try-site example schema
  */
 
-import { pgTable, integer, text, real, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, integer, text, real, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // Employee table
@@ -51,7 +51,10 @@ export const prEvents = pgTable('pr_events', {
   organisationId: integer('organisation_id').notNull(),
   timestamp: timestamp('timestamp').notNull(),
   createdAt: timestamp('created_at').defaultNow()
-})
+}, (table) => [
+  index('idx_pr_events_org_event').on(table.organisationId, table.eventType),
+  index('idx_pr_events_pr_ts_org').on(table.organisationId, table.prNumber, table.timestamp)
+])
 
 // Analytics Pages table - for storing dashboard configurations
 export const analyticsPages = pgTable('analytics_pages', {

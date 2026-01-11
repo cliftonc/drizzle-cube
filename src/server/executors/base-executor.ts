@@ -4,7 +4,7 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { DrizzleDatabase, DatabaseExecutor } from '../types'
+import type { DrizzleDatabase, DatabaseExecutor, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import { createDatabaseAdapter } from '../database-utils'
 
@@ -26,4 +26,6 @@ export abstract class BaseDatabaseExecutor implements DatabaseExecutor {
 
   abstract execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+  abstract explainQuery(sqlString: string, params: unknown[], options?: ExplainOptions): Promise<ExplainResult>
+  abstract getTableIndexes(tableNames: string[]): Promise<IndexInfo[]>
 }

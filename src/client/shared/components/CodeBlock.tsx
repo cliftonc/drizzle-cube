@@ -21,6 +21,8 @@ interface CodeBlockProps {
   maxHeight?: string
   height?: string
   className?: string
+  /** Additional content to render on the right side of the header (before Copy button) */
+  headerRight?: React.ReactNode
 }
 
 export const CodeBlock: React.FC<CodeBlockProps> = ({
@@ -29,7 +31,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   title,
   maxHeight = '16rem',
   height,
-  className = ''
+  className = '',
+  headerRight
 }) => {
   const [copied, setCopied] = useState(false)
   const codeRef = useRef<HTMLElement>(null)
@@ -65,28 +68,31 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Header with title and copy button */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Header with title, optional extra controls, and copy button */}
+      <div className="flex items-center justify-between mb-2 gap-2">
         {title && (
           <h4 className="text-sm font-semibold text-dc-text">{title}</h4>
         )}
-        <button
-          onClick={handleCopy}
-          className="ml-auto px-2 py-1 text-xs rounded hover:bg-dc-surface-secondary border border-dc-border transition-colors flex items-center gap-1.5"
-          title={copied ? 'Copied!' : 'Copy to clipboard'}
-        >
-          {copied ? (
-            <>
-              <CheckIcon className="w-3.5 h-3.5 text-dc-success" />
-              <span className="text-dc-success">Copied</span>
-            </>
-          ) : (
-            <>
-              <CopyIcon className="w-3.5 h-3.5 text-dc-text-secondary" />
-              <span className="text-dc-text-secondary">Copy</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          {headerRight}
+          <button
+            onClick={handleCopy}
+            className="px-2 py-1 text-xs rounded hover:bg-dc-surface-secondary border border-dc-border transition-colors flex items-center gap-1.5"
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+          >
+            {copied ? (
+              <>
+                <CheckIcon className="w-3.5 h-3.5 text-dc-success" />
+                <span className="text-dc-success">Copied</span>
+              </>
+            ) : (
+              <>
+                <CopyIcon className="w-3.5 h-3.5 text-dc-text-secondary" />
+                <span className="text-dc-text-secondary">Copy</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Code block with syntax highlighting */}

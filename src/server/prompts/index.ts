@@ -32,3 +32,6 @@ export { SYSTEM_PROMPT_TEMPLATE, buildSystemPrompt } from './single-step-prompt.
 // Multi-stage generation
 export { STEP1_SYSTEM_PROMPT, buildStep1Prompt } from './step1-shape-prompt.js'
 export { STEP2_SYSTEM_PROMPT, buildStep2Prompt } from './step2-complete-prompt.js'
+
+// EXPLAIN plan analysis
+export { EXPLAIN_ANALYSIS_PROMPT, buildExplainAnalysisPrompt, formatCubeSchemaForExplain, formatExistingIndexes } from './explain-analysis-prompt.js'
