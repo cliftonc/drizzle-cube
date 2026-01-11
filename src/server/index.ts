@@ -54,7 +54,12 @@ export {
   buildStep0Prompt,
   buildSystemPrompt,
   buildStep1Prompt,
-  buildStep2Prompt
+  buildStep2Prompt,
+  // Explain analysis prompts
+  EXPLAIN_ANALYSIS_PROMPT,
+  buildExplainAnalysisPrompt,
+  formatCubeSchemaForExplain,
+  formatExistingIndexes
 } from './prompts'
 export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts'
 
