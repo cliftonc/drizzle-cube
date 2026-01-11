@@ -82,8 +82,8 @@ function isValidFlowQuery(query: ServerFlowQuery | null): boolean {
   if (!flow.startingStep?.filter) return false
 
   // Must have valid depth
-  if (flow.stepsBefore < 1 || flow.stepsBefore > 5) return false
-  if (flow.stepsAfter < 1 || flow.stepsAfter > 5) return false
+  if (flow.stepsBefore < 0 || flow.stepsBefore > 5) return false
+  if (flow.stepsAfter < 0 || flow.stepsAfter > 5) return false
 
   return true
 }

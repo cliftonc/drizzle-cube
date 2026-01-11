@@ -632,6 +632,7 @@ function optionsToAnalysisConfig(options: CreateStoreOptions): AnalysisConfig | 
       stepsBefore: options.initialFlowState.stepsBefore ?? 3,
       stepsAfter: options.initialFlowState.stepsAfter ?? 3,
       eventDimension: options.initialFlowState.eventDimension ?? null,
+      joinStrategy: options.initialFlowState.joinStrategy ?? 'auto',
     }
 
     return flowModeAdapter.save(

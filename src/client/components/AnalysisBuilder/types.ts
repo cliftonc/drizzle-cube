@@ -356,6 +356,8 @@ export interface AnalysisQueryPanelProps {
   stepsBefore?: number
   /** Number of steps to explore after starting step */
   stepsAfter?: number
+  /** Join strategy for flow execution */
+  flowJoinStrategy?: 'auto' | 'lateral' | 'window'
   /** Callback when flow cube changes */
   onFlowCubeChange?: (cube: string | null) => void
   /** Callback when flow binding key changes */
@@ -370,6 +372,8 @@ export interface AnalysisQueryPanelProps {
   onStepsBeforeChange?: (count: number) => void
   /** Callback when steps after changes */
   onStepsAfterChange?: (count: number) => void
+  /** Callback when join strategy changes */
+  onFlowJoinStrategyChange?: (strategy: 'auto' | 'lateral' | 'window') => void
   /** Flow display config (for Display tab in flow mode) */
   flowDisplayConfig?: ChartDisplayConfig
   /** Callback when flow display config changes */
@@ -667,6 +671,7 @@ export interface AnalysisBuilderInitialFlowState {
   stepsBefore?: number
   stepsAfter?: number
   eventDimension?: string | null
+  joinStrategy?: 'auto' | 'lateral' | 'window'
   flowChartType?: ChartType
   flowChartConfig?: ChartAxisConfig
   flowDisplayConfig?: ChartDisplayConfig

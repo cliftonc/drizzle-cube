@@ -125,6 +125,8 @@ export interface UseAnalysisBuilderResult {
   stepsBefore: number
   /** Number of steps to explore after starting step */
   stepsAfter: number
+  /** Join strategy for flow execution */
+  joinStrategy: 'auto' | 'lateral' | 'window'
   /** Display config for flow mode */
   flowDisplayConfig: ChartDisplayConfig
 
@@ -342,6 +344,7 @@ export function useAnalysisBuilder(
   const startingStep = useAnalysisBuilderStore((s) => s.startingStep)
   const stepsBefore = useAnalysisBuilderStore((s) => s.stepsBefore)
   const stepsAfter = useAnalysisBuilderStore((s) => s.stepsAfter)
+  const joinStrategy = useAnalysisBuilderStore((s) => s.joinStrategy)
   // Flow display config from charts map - use stable selector to avoid infinite loop
   const flowDisplayConfigFromStore = useAnalysisBuilderStore((state) => state.charts.flow?.displayConfig)
   const flowDisplayConfig = useMemo(
@@ -368,7 +371,7 @@ export function useAnalysisBuilder(
     if (analysisType !== 'flow') return null
     return buildFlowQuery()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- flow config values trigger rebuild when they change in store
-  }, [analysisType, buildFlowQuery, flowCube, flowBindingKey, flowTimeDimension, eventDimension, startingStep, stepsBefore, stepsAfter, flowChartType])
+  }, [analysisType, buildFlowQuery, flowCube, flowBindingKey, flowTimeDimension, eventDimension, startingStep, stepsBefore, stepsAfter, flowChartType, joinStrategy])
 
   // Compute effective isValidQuery that considers funnel and flow modes
   // In funnel mode, the query is valid when serverFunnelQuery is not null
@@ -488,6 +491,7 @@ export function useAnalysisBuilder(
   const setStartingStepFilters = useAnalysisBuilderStore((state) => state.setStartingStepFilters)
   const setStepsBefore = useAnalysisBuilderStore((state) => state.setStepsBefore)
   const setStepsAfter = useAnalysisBuilderStore((state) => state.setStepsAfter)
+  const setJoinStrategy = useAnalysisBuilderStore((state) => state.setJoinStrategy)
   // Flow display config action - creates setFlowDisplayConfig wrapper using charts map pattern
   const setFlowDisplayConfig = useCallback(
     (config: ChartDisplayConfig) => {
@@ -549,6 +553,7 @@ export function useAnalysisBuilder(
       startingStep,
       stepsBefore,
       stepsAfter,
+      joinStrategy,
     ]
   )
 
@@ -708,6 +713,7 @@ export function useAnalysisBuilder(
     startingStep,
     stepsBefore,
     stepsAfter,
+    joinStrategy,
     flowDisplayConfig,
 
     // Data fetching (from queryExecution)
@@ -818,6 +824,7 @@ export function useAnalysisBuilder(
       setStartingStepFilters,
       setStepsBefore,
       setStepsAfter,
+      setJoinStrategy,
       setFlowDisplayConfig,
 
       // Chart (from chartDefaults)

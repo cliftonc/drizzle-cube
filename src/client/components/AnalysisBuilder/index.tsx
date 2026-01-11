@@ -401,6 +401,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             startingStep={analysis.startingStep}
             stepsBefore={analysis.stepsBefore}
             stepsAfter={analysis.stepsAfter}
+            flowJoinStrategy={analysis.joinStrategy}
             onFlowCubeChange={analysis.actions.setFlowCube}
             onFlowBindingKeyChange={analysis.actions.setFlowBindingKey}
             onFlowTimeDimensionChange={analysis.actions.setFlowTimeDimension}
@@ -408,6 +409,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             onStartingStepFiltersChange={analysis.actions.setStartingStepFilters}
             onStepsBeforeChange={analysis.actions.setStepsBefore}
             onStepsAfterChange={analysis.actions.setStepsAfter}
+            onFlowJoinStrategyChange={analysis.actions.setJoinStrategy}
             flowDisplayConfig={analysis.flowDisplayConfig}
             onFlowDisplayConfigChange={analysis.actions.setFlowDisplayConfig}
           />

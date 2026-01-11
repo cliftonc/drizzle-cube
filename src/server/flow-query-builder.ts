@@ -54,8 +54,10 @@ interface ResolvedFlowConfig {
 export class FlowQueryBuilder {
   private filterBuilder: FilterBuilder
   private dateTimeBuilder: DateTimeBuilder
+  private databaseAdapter: DatabaseAdapter
 
   constructor(databaseAdapter: DatabaseAdapter) {
+    this.databaseAdapter = databaseAdapter
     this.dateTimeBuilder = new DateTimeBuilder(databaseAdapter)
     this.filterBuilder = new FilterBuilder(databaseAdapter, this.dateTimeBuilder)
   }
@@ -80,6 +82,15 @@ export class FlowQueryBuilder {
   ): FlowValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
+    const engine = this.databaseAdapter.getEngineType()
+    const supportsLateral = this.databaseAdapter.supportsLateralJoins()
+
+    if (engine === 'sqlite') {
+      errors.push(
+        'Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.'
+      )
+      return { isValid: false, errors, warnings }
+    }
 
     // Validate binding key
     if (typeof config.bindingKey === 'string') {
@@ -165,11 +176,11 @@ export class FlowQueryBuilder {
     }
 
     // Validate depth bounds
-    if (config.stepsBefore < 1 || config.stepsBefore > 5) {
-      errors.push(`stepsBefore must be between 1 and 5, got: ${config.stepsBefore}`)
+    if (config.stepsBefore < 0 || config.stepsBefore > 5) {
+      errors.push(`stepsBefore must be between 0 and 5, got: ${config.stepsBefore}`)
     }
-    if (config.stepsAfter < 1 || config.stepsAfter > 5) {
-      errors.push(`stepsAfter must be between 1 and 5, got: ${config.stepsAfter}`)
+    if (config.stepsAfter < 0 || config.stepsAfter > 5) {
+      errors.push(`stepsAfter must be between 0 and 5, got: ${config.stepsAfter}`)
     }
 
     // Performance warnings for high depth
@@ -177,6 +188,16 @@ export class FlowQueryBuilder {
       warnings.push(
         'High step depth (4-5) may impact query performance on large datasets'
       )
+    }
+
+    // Validate join strategy
+    if (
+      config.joinStrategy &&
+      !['auto', 'lateral', 'window'].includes(config.joinStrategy)
+    ) {
+      errors.push(`Invalid joinStrategy: ${config.joinStrategy}`)
+    } else if (config.joinStrategy === 'lateral' && !supportsLateral) {
+      errors.push('Lateral joins are not supported on this database')
     }
 
     return {
@@ -200,30 +221,55 @@ export class FlowQueryBuilder {
     cubes: Map<string, Cube>,
     context: QueryContext
   ): ReturnType<typeof context.db.select> {
+    const engine = this.databaseAdapter.getEngineType()
+    if (engine === 'sqlite') {
+      throw new Error(
+        'Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.'
+      )
+    }
+    const supportsLateral = this.databaseAdapter.supportsLateralJoins()
+    const joinStrategy = config.joinStrategy ?? 'auto'
+    const useLateral =
+      joinStrategy === 'lateral' || (joinStrategy === 'auto' && supportsLateral)
+
+    if (joinStrategy === 'lateral' && !supportsLateral) {
+      throw new Error('Lateral joins are not supported on this database')
+    }
+
+    // Normalize config for execution
+    const effectiveConfig: FlowQueryConfig = {
+      ...config,
+      stepsBefore: config.outputMode === 'sunburst' ? 0 : config.stepsBefore,
+    }
+
     // Resolve all expressions once
-    const resolved = this.resolveFlowConfig(config, cubes, context)
+    const resolved = this.resolveFlowConfig(effectiveConfig, cubes, context)
 
     // Build all CTEs
     const ctes: WithSubquery[] = []
 
     // 1. Starting entities CTE - finds entities matching the starting step
-    const startingEntitiesCTE = this.buildStartingEntitiesCTE(config, resolved, context)
+    const startingEntitiesCTE = this.buildStartingEntitiesCTE(effectiveConfig, resolved, context)
     ctes.push(startingEntitiesCTE)
 
     // 2. Before step CTEs - walk backwards from starting step
-    const beforeCTEs = this.buildBeforeCTEs(config, resolved, context)
+    const beforeCTEs = useLateral
+      ? this.buildBeforeCTEsLateral(effectiveConfig, resolved, context)
+      : this.buildBeforeCTEsWindow(effectiveConfig, resolved, context)
     ctes.push(...beforeCTEs)
 
     // 3. After step CTEs - walk forwards from starting step
-    const afterCTEs = this.buildAfterCTEs(config, resolved, context)
+    const afterCTEs = useLateral
+      ? this.buildAfterCTEsLateral(effectiveConfig, resolved, context)
+      : this.buildAfterCTEsWindow(effectiveConfig, resolved, context)
     ctes.push(...afterCTEs)
 
     // 4. Nodes aggregation CTE - count entities per (layer, event_type)
-    const nodesAggCTE = this.buildNodesAggregationCTE(config, context)
+    const nodesAggCTE = this.buildNodesAggregationCTE(effectiveConfig, context)
     ctes.push(nodesAggCTE)
 
     // 5. Links aggregation CTE - count transitions between layers
-    const linksAggCTE = this.buildLinksAggregationCTE(config, context)
+    const linksAggCTE = this.buildLinksAggregationCTE(effectiveConfig, context)
     ctes.push(linksAggCTE)
 
     // 6. Final result CTE - combine nodes and links
@@ -546,13 +592,143 @@ export class FlowQueryBuilder {
   }
 
   /**
+   * Build CTEs for steps BEFORE the starting point using LATERAL joins
+   * Uses ORDER BY ... DESC LIMIT 1 to fetch immediate predecessor via index
+   */
+  private buildBeforeCTEsLateral(
+    config: FlowQueryConfig,
+    resolved: ResolvedFlowConfig,
+    context: QueryContext
+  ): WithSubquery[] {
+    const { cubeBase, bindingKeyExpr, timeExpr, eventExpr } = resolved
+    const ctes: WithSubquery[] = []
+    const isSunburst = config.outputMode === 'sunburst'
+
+    for (let depth = 1; depth <= config.stepsBefore; depth++) {
+      const prevAlias = depth === 1 ? 'starting_entities' : `before_step_${depth - 1}`
+      const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
+      const alias = `before_step_${depth}`
+
+      const whereConditions: SQL[] = []
+      if (cubeBase.where) {
+        whereConditions.push(cubeBase.where)
+      }
+      whereConditions.push(
+        sql`${bindingKeyExpr} = ${sql.identifier(prevAlias)}.binding_key`,
+        sql`${timeExpr} < ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
+      )
+      const combinedWhere =
+        whereConditions.length === 1
+          ? whereConditions[0]
+          : (and(...whereConditions) as SQL)
+
+      const eventPathExpr = isSunburst
+        ? sql`${eventExpr} || ${'→'} || ${sql.identifier(prevAlias)}.event_path`
+        : sql`${eventExpr}`
+
+      const lateralSubquery = context.db
+        .select({
+          binding_key: sql`${bindingKeyExpr}`.as('binding_key'),
+          step_time: sql`${timeExpr}`.as('step_time'),
+          event_type: sql`${eventExpr}`.as('event_type'),
+          event_path: eventPathExpr.as('event_path'),
+        })
+        .from(cubeBase.from)
+        .where(combinedWhere)
+        .orderBy(sql`${timeExpr} DESC`)
+        .limit(1)
+
+      const cte = context.db.$with(alias).as(
+        context.db
+          .select({
+            binding_key: sql`e.binding_key`.as('binding_key'),
+            step_time: sql`e.step_time`.as('step_time'),
+            event_type: sql`e.event_type`.as('event_type'),
+            event_path: sql`e.event_path`.as('event_path'),
+          })
+          .from(sql`${sql.identifier(prevAlias)}`)
+          .crossJoinLateral(lateralSubquery.as('e'))
+      )
+
+      ctes.push(cte)
+    }
+
+    return ctes
+  }
+
+  /**
+   * Build CTEs for steps AFTER the starting point using LATERAL joins
+   * Uses ORDER BY ... ASC LIMIT 1 to fetch immediate successor via index
+   */
+  private buildAfterCTEsLateral(
+    config: FlowQueryConfig,
+    resolved: ResolvedFlowConfig,
+    context: QueryContext
+  ): WithSubquery[] {
+    const { cubeBase, bindingKeyExpr, timeExpr, eventExpr } = resolved
+    const ctes: WithSubquery[] = []
+    const isSunburst = config.outputMode === 'sunburst'
+
+    for (let depth = 1; depth <= config.stepsAfter; depth++) {
+      const prevAlias = depth === 1 ? 'starting_entities' : `after_step_${depth - 1}`
+      const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
+      const alias = `after_step_${depth}`
+
+      const whereConditions: SQL[] = []
+      if (cubeBase.where) {
+        whereConditions.push(cubeBase.where)
+      }
+      whereConditions.push(
+        sql`${bindingKeyExpr} = ${sql.identifier(prevAlias)}.binding_key`,
+        sql`${timeExpr} > ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
+      )
+      const combinedWhere =
+        whereConditions.length === 1
+          ? whereConditions[0]
+          : (and(...whereConditions) as SQL)
+
+      const eventPathExpr = isSunburst
+        ? sql`${sql.identifier(prevAlias)}.event_path || ${'→'} || ${eventExpr}`
+        : sql`${eventExpr}`
+
+      const lateralSubquery = context.db
+        .select({
+          binding_key: sql`${bindingKeyExpr}`.as('binding_key'),
+          step_time: sql`${timeExpr}`.as('step_time'),
+          event_type: sql`${eventExpr}`.as('event_type'),
+          event_path: eventPathExpr.as('event_path'),
+        })
+        .from(cubeBase.from)
+        .where(combinedWhere)
+        .orderBy(sql`${timeExpr} ASC`)
+        .limit(1)
+
+      const cte = context.db.$with(alias).as(
+        context.db
+          .select({
+            binding_key: sql`e.binding_key`.as('binding_key'),
+            step_time: sql`e.step_time`.as('step_time'),
+            event_type: sql`e.event_type`.as('event_type'),
+            event_path: sql`e.event_path`.as('event_path'),
+          })
+          .from(sql`${sql.identifier(prevAlias)}`)
+          .crossJoinLateral(lateralSubquery.as('e'))
+      )
+
+      ctes.push(cte)
+    }
+
+    return ctes
+  }
+
+  /**
    * Build CTEs for steps BEFORE the starting point
    * Each CTE finds the immediate predecessor event for entities from the previous CTE
    *
    * Uses ROW_NUMBER() window function to get exactly the Nth previous event
    * For sunburst mode, accumulates event_path by prepending to previous path
    */
-  private buildBeforeCTEs(
+  private buildBeforeCTEsWindow(
     config: FlowQueryConfig,
     resolved: ResolvedFlowConfig,
     context: QueryContext
@@ -629,7 +805,7 @@ export class FlowQueryBuilder {
    * Uses ROW_NUMBER() window function to get exactly the Nth following event
    * For sunburst mode, accumulates event_path by concatenating with previous path
    */
-  private buildAfterCTEs(
+  private buildAfterCTEsWindow(
     config: FlowQueryConfig,
     resolved: ResolvedFlowConfig,
     context: QueryContext

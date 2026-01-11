@@ -141,7 +141,9 @@ function normalizeFlowConfig(flow: NonNullable<SemanticQuery['flow']>): NonNulla
     // Include optional entity limit if present
     entityLimit: flow.entityLimit,
     // CRITICAL: Include outputMode - affects aggregation strategy (sankey vs sunburst)
-    outputMode: flow.outputMode
+    outputMode: flow.outputMode,
+    // Include join strategy to keep cache keys aligned with join selection
+    joinStrategy: flow.joinStrategy
   }
 }
 

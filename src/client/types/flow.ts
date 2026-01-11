@@ -66,10 +66,10 @@ export interface FlowQueryConfig {
     filter?: Filter | Filter[]
   }
 
-  /** Number of steps to explore BEFORE the starting step (1-5) */
+  /** Number of steps to explore BEFORE the starting step (0-5) */
   stepsBefore: number
 
-  /** Number of steps to explore AFTER the starting step (1-5) */
+  /** Number of steps to explore AFTER the starting step (0-5) */
   stepsAfter: number
 
   /**
@@ -91,6 +91,14 @@ export interface FlowQueryConfig {
    * @default 'sankey'
    */
   outputMode?: 'sankey' | 'sunburst'
+
+  /**
+   * Join strategy for fetching steps
+   * - 'auto' (default): use lateral when supported, otherwise window
+   * - 'lateral': force lateral joins
+   * - 'window': force window function strategy
+   */
+  joinStrategy: 'auto' | 'lateral' | 'window'
 }
 
 // ============================================================================
@@ -177,14 +185,17 @@ export interface FlowSliceState {
   /** Starting step configuration */
   startingStep: FlowStartingStep
 
-  /** Number of steps to explore before starting step (1-5, default 3) */
+  /** Number of steps to explore before starting step (0-5, default 3) */
   stepsBefore: number
 
-  /** Number of steps to explore after starting step (1-5, default 3) */
+  /** Number of steps to explore after starting step (0-5, default 3) */
   stepsAfter: number
 
   /** Event dimension that categorizes events */
   eventDimension: string | null
+
+  /** Join strategy for flow execution */
+  joinStrategy?: 'auto' | 'lateral' | 'window'
 }
 
 /**
@@ -202,6 +213,7 @@ export interface FlowSliceActions {
   updateStartingStepFilter: (index: number, filter: Filter) => void
   setStepsBefore: (count: number) => void
   setStepsAfter: (count: number) => void
+  setJoinStrategy: (strategy: 'auto' | 'lateral' | 'window') => void
   isFlowMode: () => boolean
   isFlowModeEnabled: () => boolean
   buildFlowQuery: () => ServerFlowQuery | null
@@ -263,5 +275,5 @@ export const defaultFlowSliceState: FlowSliceState = {
 /**
  * Minimum and maximum values for step depth
  */
-export const FLOW_MIN_DEPTH = 1
+export const FLOW_MIN_DEPTH = 0
 export const FLOW_MAX_DEPTH = 5

@@ -109,6 +109,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   startingStep,
   stepsBefore = 3,
   stepsAfter = 3,
+  flowJoinStrategy = 'auto',
   onFlowCubeChange,
   onFlowBindingKeyChange,
   onFlowTimeDimensionChange,
@@ -116,6 +117,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   onStartingStepFiltersChange,
   onStepsBeforeChange,
   onStepsAfterChange,
+  onFlowJoinStrategyChange,
   flowDisplayConfig,
   onFlowDisplayConfigChange,
 }: AnalysisQueryPanelProps) {
@@ -221,6 +223,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           startingStep={startingStep}
           stepsBefore={stepsBefore}
           stepsAfter={stepsAfter}
+          joinStrategy={flowJoinStrategy}
           schema={schema as CubeMeta | null}
           onCubeChange={onFlowCubeChange}
           onBindingKeyChange={onFlowBindingKeyChange}
@@ -229,6 +232,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           onStartingStepFiltersChange={onStartingStepFiltersChange}
           onStepsBeforeChange={onStepsBeforeChange}
           onStepsAfterChange={onStepsAfterChange}
+          onJoinStrategyChange={onFlowJoinStrategyChange}
           // Chart type (now core - affects query aggregation)
           chartType={chartType}
           onChartTypeChange={onChartTypeChange}

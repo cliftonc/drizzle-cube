@@ -64,6 +64,7 @@ function stateToServerQuery(state: FlowSliceState): ServerFlowQuery {
       stepsBefore: state.stepsBefore,
       stepsAfter: state.stepsAfter,
       eventDimension: state.eventDimension || '',
+      joinStrategy: state.joinStrategy,
     },
   }
 }
@@ -131,6 +132,7 @@ function serverQueryToState(query: ServerFlowQuery): FlowSliceState {
     stepsBefore: flow.stepsBefore || 3,
     stepsAfter: flow.stepsAfter || 3,
     eventDimension: flow.eventDimension || null,
+    joinStrategy: flow.joinStrategy || 'auto',
   }
 }
 
@@ -171,6 +173,7 @@ export const flowModeAdapter: ModeAdapter<FlowSliceState> = {
       stepsBefore: 3,
       stepsAfter: 3,
       eventDimension: null,
+      joinStrategy: 'auto',
     }
   },
 
@@ -183,6 +186,7 @@ export const flowModeAdapter: ModeAdapter<FlowSliceState> = {
       stepsBefore: storeState.stepsBefore as number,
       stepsAfter: storeState.stepsAfter as number,
       eventDimension: storeState.eventDimension as string | null,
+      joinStrategy: (storeState.joinStrategy as 'auto' | 'lateral' | 'window') || 'auto',
     }
   },
 
@@ -248,11 +252,18 @@ export const flowModeAdapter: ModeAdapter<FlowSliceState> = {
     }
 
     // Validate depth bounds
-    if (state.stepsBefore < 1 || state.stepsBefore > 5) {
-      errors.push(`Steps before must be between 1 and 5`)
+    if (state.stepsBefore < 0 || state.stepsBefore > 5) {
+      errors.push(`Steps before must be between 0 and 5`)
     }
-    if (state.stepsAfter < 1 || state.stepsAfter > 5) {
-      errors.push(`Steps after must be between 1 and 5`)
+    if (state.stepsAfter < 0 || state.stepsAfter > 5) {
+      errors.push(`Steps after must be between 0 and 5`)
+    }
+
+    if (
+      state.joinStrategy &&
+      !['auto', 'lateral', 'window'].includes(state.joinStrategy)
+    ) {
+      errors.push('Join strategy must be auto, lateral, or window')
     }
 
     // Warnings

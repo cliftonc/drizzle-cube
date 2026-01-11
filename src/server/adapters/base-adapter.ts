@@ -22,6 +22,8 @@ export interface DatabaseCapabilities {
   supportsWindowFunctions: boolean
   /** Whether the database supports frame clauses (ROWS BETWEEN, RANGE BETWEEN) */
   supportsFrameClause: boolean
+  /** Whether the database supports LATERAL joins (PostgreSQL 9.3+, MySQL 8.0.14+) */
+  supportsLateralJoins: boolean
 }
 
 /**
@@ -62,6 +64,13 @@ export interface DatabaseAdapter {
    * Get the database engine type this adapter supports
    */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+
+  /**
+   * Check if the database supports LATERAL joins
+   * Required for optimized flow queries with index-backed seeks
+   * @returns true for PostgreSQL 9.3+, MySQL 8.0.14+, SingleStore; false for SQLite
+   */
+  supportsLateralJoins(): boolean
 
   // ============================================
   // Funnel Analysis Methods
@@ -248,6 +257,7 @@ export interface DatabaseAdapter {
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+  abstract supportsLateralJoins(): boolean
 
   // Funnel analysis methods
   abstract buildIntervalFromISO(duration: string): SQL

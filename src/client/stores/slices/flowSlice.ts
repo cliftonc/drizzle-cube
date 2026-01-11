@@ -32,12 +32,14 @@ export interface FlowSliceState {
   flowTimeDimension: string | null
   /** Starting step configuration (anchor point for exploration) */
   startingStep: FlowStartingStep
-  /** Number of steps to explore before starting step (1-5) */
+  /** Number of steps to explore before starting step (0-5) */
   stepsBefore: number
-  /** Number of steps to explore after starting step (1-5) */
+  /** Number of steps to explore after starting step (0-5) */
   stepsAfter: number
   /** Event dimension that categorizes events (node labels) */
   eventDimension: string | null
+  /** Join strategy for flow execution */
+  joinStrategy: 'auto' | 'lateral' | 'window'
 }
 
 /**
@@ -66,6 +68,8 @@ export interface FlowSliceActions {
   setStepsBefore: (count: number) => void
   /** Set the number of steps to explore after starting step */
   setStepsAfter: (count: number) => void
+  /** Set the join strategy */
+  setJoinStrategy: (strategy: 'auto' | 'lateral' | 'window') => void
   /** Check if in flow mode (analysisType === 'flow') */
   isFlowMode: () => boolean
   /** Check if flow mode is properly configured and ready for execution */
@@ -91,6 +95,7 @@ export const createInitialFlowState = (): FlowSliceState => ({
   stepsBefore: 3,
   stepsAfter: 3,
   eventDimension: null,
+  joinStrategy: 'auto',
 })
 
 // ============================================================================
@@ -185,6 +190,11 @@ export const createFlowSlice: StateCreator<
       stepsAfter: Math.max(FLOW_MIN_DEPTH, Math.min(FLOW_MAX_DEPTH, count)),
     }),
 
+  setJoinStrategy: (strategy) =>
+    set(() => ({
+      joinStrategy: strategy,
+    })),
+
   isFlowMode: () => get().analysisType === 'flow',
 
   isFlowModeEnabled: () => {
@@ -234,6 +244,7 @@ export const createFlowSlice: StateCreator<
     const flowChartType = state.charts?.flow?.chartType
     const outputMode: 'sankey' | 'sunburst' =
       flowChartType === 'sunburst' ? 'sunburst' : 'sankey'
+    const effectiveStepsBefore = outputMode === 'sunburst' ? 0 : state.stepsBefore
 
     return {
       flow: {
@@ -243,10 +254,11 @@ export const createFlowSlice: StateCreator<
           name: state.startingStep.name || 'Starting Step',
           filter: startingStepFilter,
         },
-        stepsBefore: state.stepsBefore,
+        stepsBefore: effectiveStepsBefore,
         stepsAfter: state.stepsAfter,
         eventDimension: state.eventDimension,
         outputMode,
+        joinStrategy: state.joinStrategy,
       },
     }
   },

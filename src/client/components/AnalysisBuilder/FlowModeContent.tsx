@@ -32,6 +32,8 @@ export interface FlowModeContentProps {
   stepsBefore: number
   /** Number of steps to explore after starting step */
   stepsAfter: number
+  /** Join strategy for server execution */
+  joinStrategy: 'auto' | 'lateral' | 'window'
   /** Cube metadata for field selection */
   schema: CubeMeta | null
 
@@ -50,6 +52,8 @@ export interface FlowModeContentProps {
   onStepsBeforeChange: (count: number) => void
   /** Callback when steps after changes */
   onStepsAfterChange: (count: number) => void
+  /** Callback when join strategy changes */
+  onJoinStrategyChange: (strategy: 'auto' | 'lateral' | 'window') => void
 
   // Chart type (core - affects query behavior)
   /** Chart type for flow display */
@@ -80,6 +84,7 @@ const FlowModeContent = memo(function FlowModeContent({
   startingStep,
   stepsBefore,
   stepsAfter,
+  joinStrategy = 'auto',
   schema,
   onCubeChange,
   onBindingKeyChange,
@@ -88,6 +93,7 @@ const FlowModeContent = memo(function FlowModeContent({
   onStartingStepFiltersChange,
   onStepsBeforeChange,
   onStepsAfterChange,
+  onJoinStrategyChange,
   // Chart type (affects query!)
   chartType = 'sankey',
   onChartTypeChange,
@@ -110,7 +116,7 @@ const FlowModeContent = memo(function FlowModeContent({
   )
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Tab Bar */}
       <div className="flex border-b border-dc-border flex-shrink-0">
         <button
@@ -282,6 +288,26 @@ const FlowModeContent = memo(function FlowModeContent({
                   High step depth (4-5) may impact query performance on large datasets.
                 </div>
               )}
+
+            </div>
+
+            {/* Join strategy selection */}
+            <div>
+              <SectionHeading>Join Strategy</SectionHeading>
+              <p className="text-xs text-dc-text-muted mb-3">
+                Control how before/after steps are fetched. Switch to window if lateral is slower on your DB.
+              </p>
+              <select
+                className="w-full border border-dc-border rounded px-2 py-2 text-sm bg-dc-surface text-dc-text"
+                value={joinStrategy}
+                onChange={(e) =>
+                  onJoinStrategyChange(e.target.value as 'auto' | 'lateral' | 'window')
+                }
+              >
+                <option value="auto">Auto (prefer lateral if available)</option>
+                <option value="lateral">Lateral (index seeks)</option>
+                <option value="window">Window (ROW_NUMBER)</option>
+              </select>
             </div>
           </div>
         </div>

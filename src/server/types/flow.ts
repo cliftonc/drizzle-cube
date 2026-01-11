@@ -39,10 +39,10 @@ export interface FlowQueryConfig {
     filter?: Filter | Filter[]
   }
 
-  /** Number of steps to explore BEFORE the starting step (1-5) */
+  /** Number of steps to explore BEFORE the starting step (0-5) */
   stepsBefore: number
 
-  /** Number of steps to explore AFTER the starting step (1-5) */
+  /** Number of steps to explore AFTER the starting step (0-5) */
   stepsAfter: number
 
   /**
@@ -64,6 +64,14 @@ export interface FlowQueryConfig {
    * @default 'sankey'
    */
   outputMode?: 'sankey' | 'sunburst'
+
+  /**
+   * Join strategy for fetching before/after steps
+   * - 'auto' (default): Use lateral when supported, otherwise window
+   * - 'lateral': Force lateral joins (error if not supported)
+   * - 'window': Force window-function strategy
+   */
+  joinStrategy?: 'auto' | 'lateral' | 'window'
 }
 
 // ============================================================================
@@ -175,7 +183,7 @@ export interface FlowValidationResult {
 // ============================================================================
 
 /** Minimum number of steps before/after */
-export const FLOW_MIN_DEPTH = 1
+export const FLOW_MIN_DEPTH = 0
 
 /** Maximum number of steps before/after */
 export const FLOW_MAX_DEPTH = 5
