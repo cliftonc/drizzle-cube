@@ -177,6 +177,8 @@ export interface AnalysisBuilderStoreState {
   stepsAfter: number
   /** Event dimension that categorizes events (node labels) */
   eventDimension: string | null
+  /** Join strategy for flow execution */
+  joinStrategy: 'auto' | 'lateral' | 'window'
 }
 
 /**
@@ -367,6 +369,8 @@ export interface AnalysisBuilderStoreActions {
   setStepsBefore: (count: number) => void
   /** Set the number of steps to explore after starting step */
   setStepsAfter: (count: number) => void
+  /** Set the join strategy for flow execution */
+  setJoinStrategy: (strategy: 'auto' | 'lateral' | 'window') => void
   /** Check if in flow mode (analysisType === 'flow') */
   isFlowMode: () => boolean
   /** Check if flow mode is properly configured and ready for execution */
@@ -460,6 +464,7 @@ export interface InitialFlowState {
   stepsBefore?: number
   stepsAfter?: number
   eventDimension?: string | null
+  joinStrategy?: 'auto' | 'lateral' | 'window'
 }
 
 /**

@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo } from 'react'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { PortletConfig } from '../types'
+import type { FlowChartData } from '../types/flow'
 import { ensureAnalysisConfig } from '../utils/configMigration'
 
 interface PortletContainerProps {
@@ -39,9 +40,9 @@ export default function PortletContainer({
     chartConfig: any
     displayConfig: any
     queryObject: any
-    data: any[]
+    data: any[] | FlowChartData
     chartType: string
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   } | null>(null)
 
   // Memoize debug data callback to prevent AnalyticsPortlet re-renders
@@ -49,9 +50,9 @@ export default function PortletContainer({
     chartConfig: any
     displayConfig: any
     queryObject: any
-    data: any[]
+    data: any[] | FlowChartData
     chartType: string
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   }) => {
     setDebugData(data)
   }, [])

@@ -195,7 +195,7 @@ export interface FlowSliceState {
   eventDimension: string | null
 
   /** Join strategy for flow execution */
-  joinStrategy?: 'auto' | 'lateral' | 'window'
+  joinStrategy: 'auto' | 'lateral' | 'window'
 }
 
 /**
@@ -270,6 +270,7 @@ export const defaultFlowSliceState: FlowSliceState = {
   stepsBefore: 3,
   stepsAfter: 3,
   eventDimension: null,
+  joinStrategy: 'auto',
 }
 
 /**

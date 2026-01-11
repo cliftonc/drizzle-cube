@@ -28,6 +28,7 @@ import type {
   ChartDisplayConfig,
   CubeQuery,
 } from '../types'
+import type { FlowChartData } from '../types/flow'
 
 // ============================================================================
 // Types
@@ -40,14 +41,14 @@ export interface PortletDebugDataEntry {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
   queryObject: CubeQuery | null
-  data: unknown[]
+  data: unknown[] | FlowChartData
   chartType: ChartType
   cacheInfo?: {
     hit: boolean
     cachedAt: string
     ttlMs: number
     ttlRemainingMs: number
-  }
+  } | null
 }
 
 /**

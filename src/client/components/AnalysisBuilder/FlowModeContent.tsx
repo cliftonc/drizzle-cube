@@ -53,7 +53,7 @@ export interface FlowModeContentProps {
   /** Callback when steps after changes */
   onStepsAfterChange: (count: number) => void
   /** Callback when join strategy changes */
-  onJoinStrategyChange: (strategy: 'auto' | 'lateral' | 'window') => void
+  onJoinStrategyChange?: (strategy: 'auto' | 'lateral' | 'window') => void
 
   // Chart type (core - affects query behavior)
   /** Chart type for flow display */
@@ -301,7 +301,7 @@ const FlowModeContent = memo(function FlowModeContent({
                 className="w-full border border-dc-border rounded px-2 py-2 text-sm bg-dc-surface text-dc-text"
                 value={joinStrategy}
                 onChange={(e) =>
-                  onJoinStrategyChange(e.target.value as 'auto' | 'lateral' | 'window')
+                  onJoinStrategyChange?.(e.target.value as 'auto' | 'lateral' | 'window')
                 }
               >
                 <option value="auto">Auto (prefer lateral if available)</option>

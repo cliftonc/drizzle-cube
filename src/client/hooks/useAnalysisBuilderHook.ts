@@ -241,6 +241,7 @@ export interface UseAnalysisBuilderResult {
     setStartingStepFilters: (filters: Filter[]) => void
     setStepsBefore: (count: number) => void
     setStepsAfter: (count: number) => void
+    setJoinStrategy: (strategy: 'auto' | 'lateral' | 'window') => void
     setFlowDisplayConfig: (config: ChartDisplayConfig) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void

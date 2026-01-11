@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react'
 import type { ColorPalette } from './utils/colorPalettes'
 import type { FunnelBindingKey } from './types/funnel'
+import type { FlowChartData } from './types/flow'
 
 // Cube metadata types
 export interface CubeMetaField {
@@ -439,9 +440,9 @@ export interface AnalyticsPortletProps {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
     queryObject: any
-    data: any[]
+    data: any[] | FlowChartData
     chartType: ChartType
-    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number }
+    cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   }) => void
 }
 

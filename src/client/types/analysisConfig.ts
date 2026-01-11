@@ -275,6 +275,7 @@ export const createDefaultFlowConfig = (): FlowAnalysisConfig => ({
       },
       stepsBefore: 3,
       stepsAfter: 3,
+      joinStrategy: 'auto',
     },
   },
 })
