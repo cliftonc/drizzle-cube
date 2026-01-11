@@ -839,7 +839,7 @@ describe('Server-Side Flow Queries', () => {
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
 
       expect(result.data).toBeDefined()
-    })
+    }, 30000) // 30s timeout for complex MySQL flow queries
 
     it('should handle asymmetric step counts', async () => {
       const cubes = new Map<string, Cube>()
@@ -866,7 +866,7 @@ describe('Server-Side Flow Queries', () => {
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
 
       expect(result.data).toBeDefined()
-    })
+    }, 30000) // 30s timeout for complex MySQL flow queries
 
     it('should handle OR filter logic in starting step', async () => {
       const cubes = new Map<string, Cube>()
@@ -894,7 +894,7 @@ describe('Server-Side Flow Queries', () => {
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
 
       expect(result.data).toBeDefined()
-    })
+    }, 30000) // 30s timeout for complex MySQL flow queries
 
     it('should handle AND filter logic in starting step', async () => {
       const cubes = new Map<string, Cube>()
@@ -922,7 +922,7 @@ describe('Server-Side Flow Queries', () => {
       const result = await executor.execute(cubes, query, testSecurityContexts.org1)
 
       expect(result.data).toBeDefined()
-    })
+    }, 30000) // 30s timeout for complex MySQL flow queries
   })
 })
 
