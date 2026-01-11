@@ -11,7 +11,8 @@ import type {
   DatabaseExecutor,
   DrizzleDatabase,
   Cube,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -478,20 +479,63 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const { query: queryParam } = request.query as { query: string }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      
+
       // Extract security context
       const securityContext = await extractSecurityContext(request)
-      
+
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
-      
+
       return result
-      
+
     } catch (error) {
       request.log.error(error, 'Dry-run error')
       return reply.status(400).send({
         error: error instanceof Error ? error.message : 'Dry-run validation failed',
         valid: false
+      })
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/explain - Get execution plan for a query
+   * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
+   */
+  fastify.post(`${basePath}/explain`, {
+    bodyLimit,
+    schema: {
+      body: {
+        type: 'object',
+        additionalProperties: true
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // Handle both direct query and nested query formats
+      const body = request.body as any
+      const query: SemanticQuery = body.query || body
+      const options: ExplainOptions = body.options || {}
+
+      // Extract security context using user-provided function
+      const securityContext = await extractSecurityContext(request)
+
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
+        return reply.status(400).send({
+          error: `Query validation failed: ${validation.errors.join(', ')}`
+        })
+      }
+
+      // Execute EXPLAIN using the semantic layer
+      const explainResult = await semanticLayer.explainQuery(query, securityContext, options)
+
+      return explainResult
+
+    } catch (error) {
+      request.log.error(error, 'Explain error')
+      return reply.status(500).send({
+        error: error instanceof Error ? error.message : 'Explain query failed'
       })
     }
   })

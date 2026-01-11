@@ -12,7 +12,8 @@ import type {
   DatabaseExecutor,
   DrizzleDatabase,
   Cube,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -427,20 +428,54 @@ export function createCubeRouter(
       }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      
+
       // Extract security context
       const securityContext = await extractSecurityContext(req, res)
-      
+
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
-      
+
       res.json(result)
-      
+
     } catch (error) {
       console.error('Dry-run error:', error)
       res.status(400).json({
         error: error instanceof Error ? error.message : 'Dry-run validation failed',
         valid: false
+      })
+    }
+  })
+
+  /**
+   * POST /cubejs-api/v1/explain - Get execution plan for a query
+   * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
+   */
+  router.post(`${basePath}/explain`, async (req: Request, res: Response) => {
+    try {
+      // Handle both direct query and nested query formats
+      const query: SemanticQuery = req.body.query || req.body
+      const options: ExplainOptions = req.body.options || {}
+
+      // Extract security context using user-provided function
+      const securityContext = await extractSecurityContext(req, res)
+
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
+        return res.status(400).json({
+          error: `Query validation failed: ${validation.errors.join(', ')}`
+        })
+      }
+
+      // Execute EXPLAIN using the semantic layer
+      const explainResult = await semanticLayer.explainQuery(query, securityContext, options)
+
+      res.json(explainResult)
+
+    } catch (error) {
+      console.error('Explain error:', error)
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Explain query failed'
       })
     }
   })

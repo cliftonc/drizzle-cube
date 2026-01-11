@@ -10,7 +10,8 @@ import type {
   DatabaseExecutor,
   DrizzleDatabase,
   Cube,
-  CacheConfig
+  CacheConfig,
+  ExplainOptions
 } from '../../server'
 import { SemanticLayerCompiler } from '../../server'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -130,6 +131,7 @@ export interface CubeHandlers {
   sql: RouteHandler
   dryRun: RouteHandler
   batch: RouteHandler
+  explain: RouteHandler
 }
 
 /**
@@ -542,6 +544,66 @@ export function createBatchHandler(
 }
 
 /**
+ * Create explain handler - Get execution plan for a query
+ * Returns normalized EXPLAIN output across PostgreSQL, MySQL, and SQLite
+ */
+export function createExplainHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { extractSecurityContext, cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function explainHandler(request: NextRequest, context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          { error: 'Method not allowed' },
+          { status: 405 }
+        )
+      }
+
+      const body = await request.json()
+      const query: SemanticQuery = (body as any).query || body
+      const explainOptions: ExplainOptions = (body as any).options || {}
+
+      // Extract security context using user-provided function
+      const securityContext = await extractSecurityContext(request, context)
+
+      // Validate query structure and field existence
+      const validation = semanticLayer.validateQuery(query)
+      if (!validation.isValid) {
+        return NextResponse.json(
+          { error: `Query validation failed: ${validation.errors.join(', ')}` },
+          { status: 400 }
+        )
+      }
+
+      // Execute EXPLAIN using the semantic layer
+      const explainResult = await semanticLayer.explainQuery(
+        query,
+        securityContext,
+        explainOptions
+      )
+
+      return NextResponse.json(explainResult, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js explain handler error:', error)
+      }
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Explain query failed' },
+        { status: 500 }
+      )
+    }
+  }
+}
+
+/**
  * Convenience function to create all route handlers
  *
  * @example
@@ -568,7 +630,8 @@ export function createCubeHandlers(
     meta: createMetaHandler(options),
     sql: createSqlHandler(options),
     dryRun: createDryRunHandler(options),
-    batch: createBatchHandler(options)
+    batch: createBatchHandler(options),
+    explain: createExplainHandler(options)
   }
 }
 
