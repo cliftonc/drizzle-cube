@@ -2,11 +2,7 @@
   "mcpServers": {
     "drizzle-cube": {
       "command": "node",
-      "args": ["./mcp-server/dist/index.js"],
-      "env": {
-        "DRIZZLE_CUBE_API_URL": "${DRIZZLE_CUBE_API_URL:-http://localhost:3001/cubejs-api/v1}",
-        "DRIZZLE_CUBE_API_TOKEN": "${DRIZZLE_CUBE_API_TOKEN:-}"
-      }
+      "args": ["./mcp-server/dist/index.js"]
     }
   }
 }
