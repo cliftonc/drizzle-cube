@@ -1,8 +1,6 @@
 {
-  "mcpServers": {
-    "drizzle-cube": {
-      "command": "node",
-      "args": ["./mcp-server/dist/index.js"]
-    }
+  "drizzle-cube": {
+    "command": "node",
+    "args": ["./mcp-server/dist/index.js"]
   }
 }
