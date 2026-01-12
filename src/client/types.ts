@@ -71,6 +71,7 @@ export type ChartType =
   | 'funnel'
   | 'sankey'
   | 'sunburst'
+  | 'heatmap'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
