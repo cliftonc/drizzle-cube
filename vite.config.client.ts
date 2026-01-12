@@ -52,7 +52,8 @@ export default defineConfig({
         'react/jsx-runtime',
         'react-grid-layout',
         'react-resizable',
-        'recharts'
+        'recharts',
+        '@nivo/heatmap'
       ],
       output: {
         entryFileNames: '[name].js',
