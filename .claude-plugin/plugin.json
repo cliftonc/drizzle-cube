@@ -1,0 +1,22 @@
+{
+  "name": "drizzle-cube",
+  "version": "1.0.0",
+  "description": "Claude Code plugin for Drizzle Cube - type-safe analytics and dashboards with Drizzle ORM",
+  "author": {
+    "name": "Clifton Cunningham",
+    "url": "https://github.com/cliftonc"
+  },
+  "repository": "https://github.com/cliftonc/drizzle-cube",
+  "homepage": "https://try.drizzle-cube.dev",
+  "license": "MIT",
+  "keywords": [
+    "drizzle-cube",
+    "analytics",
+    "dashboard",
+    "semantic-layer",
+    "cube",
+    "drizzle-orm",
+    "react",
+    "typescript"
+  ]
+}
