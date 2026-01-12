@@ -1,6 +1,7 @@
 node_modules/
 .env
 dist/
+!mcp-server/dist/
 coverage/
 .DS_Store
 *.log
