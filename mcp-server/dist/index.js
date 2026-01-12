@@ -55,7 +55,7 @@ function loadConfig() {
         apiUrl: projectConfig?.apiUrl ||
             globalConfig?.apiUrl ||
             envConfig.apiUrl ||
-            'http://localhost:4000/cubejs-api/v1',
+            'http://localhost:3001/cubejs-api/v1',
         apiToken: projectConfig?.apiToken ||
             globalConfig?.apiToken ||
             envConfig.apiToken ||
