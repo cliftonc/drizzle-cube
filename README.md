@@ -215,6 +215,22 @@ setTheme('ocean')  // It just works! ✨
 
 **[Complete Theming Guide →](./docs/THEMING.md)**
 
+## Claude Code Plugin
+
+Use natural language to query your semantic layer directly from [Claude Code](https://claude.ai/code):
+
+```bash
+# Install the plugin
+claude /install-plugin github:cliftonc/drizzle-cube-plugin
+```
+
+The plugin provides MCP tools for querying, debugging, and building dashboards. Just ask Claude things like:
+- "Show me average happiness by department for the last 3 months"
+- "Debug this query and show me the SQL"
+- "Create a sales dashboard with revenue KPIs"
+
+**[Learn more →](https://www.drizzle-cube.dev/ai/claude-code-plugin/)**
+
 ## Documentation
 
  - 📚 **[Full Documentation](https://www.drizzle-cube.dev/)** - Complete guides and API reference
