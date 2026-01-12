@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "drizzle-cube",
-      "source": ".",
+      "source": "./plugins/drizzle-cube",
       "description": "Claude Code plugin for Drizzle Cube - type-safe analytics and dashboards with Drizzle ORM",
       "version": "1.0.0",
       "author": {
