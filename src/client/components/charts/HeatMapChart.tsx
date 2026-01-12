@@ -104,10 +104,16 @@ const HeatMapChart = React.memo(function HeatMapChart({
   const cellShape = (displayConfigAny?.cellShape as 'rect' | 'circle') ?? 'rect'
   const showLegend = (displayConfigAny?.showLegend as boolean) ?? true
 
-  // Extract field names from chartConfig
-  const xAxisField = chartConfig?.xAxis?.[0]
-  const yAxisField = chartConfig?.yAxis?.[0]
-  const valueField = chartConfig?.valueField?.[0] || chartConfig?.yAxis?.[1]
+  // Extract field names from chartConfig (handle both array and string formats)
+  const xAxisField = chartConfig?.xAxis
+    ? (Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis)
+    : undefined
+  const yAxisField = chartConfig?.yAxis
+    ? (Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis)
+    : undefined
+  const valueField = chartConfig?.valueField
+    ? (Array.isArray(chartConfig.valueField) ? chartConfig.valueField[0] : chartConfig.valueField)
+    : undefined
 
   // Transform data to nivo format
   const heatmapData = useMemo(() => {
