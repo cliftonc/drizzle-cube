@@ -22,6 +22,7 @@ const chartTypeLabels: Record<ChartType, string> = {
   bar: 'Bar Chart',
   bubble: 'Bubble Chart',
   funnel: 'Funnel Chart',
+  heatmap: 'Heatmap',
   kpiDelta: 'KPI Delta',
   kpiNumber: 'KPI Number',
   kpiText: 'KPI Text',

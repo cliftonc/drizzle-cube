@@ -16,6 +16,7 @@ import { markdownConfig } from '../components/charts/MarkdownChart.config'
 import { funnelChartConfig } from '../components/charts/FunnelChart.config'
 import { sankeyChartConfig } from '../components/charts/SankeyChart.config'
 import { sunburstChartConfig } from '../components/charts/SunburstChart.config'
+import { heatmapChartConfig } from '../components/charts/HeatMapChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -40,4 +41,5 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   funnel: funnelChartConfig,
   sankey: sankeyChartConfig,
   sunburst: sunburstChartConfig,
+  heatmap: heatmapChartConfig,
 }

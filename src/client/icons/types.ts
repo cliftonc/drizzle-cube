@@ -98,6 +98,7 @@ export interface IconRegistry {
   chartFunnel: IconDefinition
   chartSankey: IconDefinition
   chartSunburst: IconDefinition
+  chartHeatmap: IconDefinition
 
   // Measure type icons
   measureCount: IconDefinition

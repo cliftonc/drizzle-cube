@@ -34,6 +34,7 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   funnel: () => import('../components/charts/FunnelChart'),
   sankey: () => import('../components/charts/SankeyChart'),
   sunburst: () => import('../components/charts/SunburstChart'),
+  heatmap: () => import('../components/charts/HeatMapChart'),
 }
 
 /**

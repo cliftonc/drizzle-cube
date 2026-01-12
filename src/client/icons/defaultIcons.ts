@@ -78,6 +78,7 @@ import typography from '@iconify-icons/tabler/typography'
 import fileText from '@iconify-icons/tabler/file-text'
 import infoCircle from '@iconify-icons/tabler/info-circle'
 import selector from '@iconify-icons/tabler/selector'
+import chartGridDots from '@iconify-icons/tabler/chart-grid-dots'
 
 import type { IconRegistry } from './types'
 
@@ -141,6 +142,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartFunnel: { icon: funnelIcon, category: 'chart' },
   chartSankey: { icon: flowIcon, category: 'chart' },
   chartSunburst: { icon: chartDonut4, category: 'chart' },
+  chartHeatmap: { icon: chartGridDots, category: 'chart' },
 
   // Measure type icons (solid)
   measureCount: { icon: bars3BottomLeftSolid, category: 'measure' },

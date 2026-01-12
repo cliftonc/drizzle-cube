@@ -30,6 +30,7 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   funnel: () => import('../components/charts/FunnelChart.config'),
   sankey: () => import('../components/charts/SankeyChart.config'),
   sunburst: () => import('../components/charts/SunburstChart.config'),
+  heatmap: () => import('../components/charts/HeatMapChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -52,6 +53,7 @@ const configExportNames: Record<ChartType, string> = {
   funnel: 'funnelChartConfig',
   sankey: 'sankeyChartConfig',
   sunburst: 'sunburstChartConfig',
+  heatmap: 'heatmapChartConfig',
 }
 
 // Cache for loaded configs
