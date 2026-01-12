@@ -157,7 +157,8 @@
     "react-dom": "^18.0.0",
     "react-grid-layout": "^2.1.1",
     "react-is": "^19.2.3",
-    "recharts": "^3.5.1"
+    "recharts": "^3.5.1",
+    "@nivo/heatmap": "^0.99.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -192,6 +193,9 @@
     },
     "next": {
       "optional": true
+    },
+    "@nivo/heatmap": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -204,6 +208,7 @@
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
     "@neondatabase/serverless": "^1.0.1",
+    "@nivo/heatmap": "^0.99.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@tanstack/react-query-devtools": "^5.91.2",
     "@testing-library/jest-dom": "^6.8.0",
