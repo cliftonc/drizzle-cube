@@ -278,6 +278,15 @@ export interface CubeJoin {
   sqlJoinType?: 'inner' | 'left' | 'right' | 'full'
 
   /**
+   * Preferred path targets - marks this join as the canonical route to reach specific cubes.
+   * When multiple paths exist to a target cube, paths using preferred joins are prioritized.
+   *
+   * Example: EmployeeTeams join with `preferredFor: ['Teams']` ensures employee-team
+   * queries use the junction table path rather than going through Departments.
+   */
+  preferredFor?: string[]
+
+  /**
    * Many-to-many relationship configuration through a junction table
    * Only used when relationship is 'belongsToMany'
    */
@@ -362,12 +371,19 @@ export interface PreAggregationCTEInfo {
   alias: string
   /** CTE alias (WITH clause name) */
   cteAlias: string
-  /** Join keys to connect CTE back to main query */
+  /** Join keys to connect CTE back to main query (e.g., employee_id for Employees → EmployeeTeams) */
   joinKeys: JoinKeyInfo[]
   /** List of measure names included in this CTE (aggregate measures + window base measures) */
   measures: string[]
   /** Propagating filters from related cubes (for cross-cube filter propagation) */
   propagatingFilters?: PropagatingFilter[]
+  /**
+   * Downstream join keys for cubes that need to be joined through this CTE.
+   * When a query has dimensions from a cube (e.g., Teams) that should be joined
+   * through this CTE cube (e.g., EmployeeTeams), we include those join keys here
+   * so the CTE includes them in SELECT and GROUP BY, allowing downstream joins.
+   */
+  downstreamJoinKeys?: DownstreamJoinKeyInfo[]
   /**
    * Type of CTE:
    * - 'aggregate': Standard CTE with GROUP BY for count/sum/avg measures
@@ -377,6 +393,17 @@ export interface PreAggregationCTEInfo {
    * applied in the outer query SELECT clause, not in separate CTEs.
    */
   cteType?: 'aggregate'
+}
+
+/**
+ * Information about downstream join keys for CTE building.
+ * Used when a cube (e.g., Teams) needs to be joined through a CTE cube (e.g., EmployeeTeams)
+ */
+export interface DownstreamJoinKeyInfo {
+  /** The downstream cube name (e.g., 'Teams') */
+  targetCubeName: string
+  /** Join keys from CTE cube to downstream cube */
+  joinKeys: JoinKeyInfo[]
 }
 
 /**

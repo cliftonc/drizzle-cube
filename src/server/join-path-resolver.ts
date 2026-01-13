@@ -120,6 +120,146 @@ export class JoinPathResolver {
   }
 
   /**
+   * Find path that prefers going through specified cubes when possible
+   * Used when certain cubes have measures in the query - ensures joins go through
+   * the semantically correct path (e.g., through junction tables when their measures are used)
+   *
+   * IMPORTANT: This method allows paths to go THROUGH already-processed cubes (as intermediate
+   * steps) but won't return them as new cubes to add. This is crucial for preferring paths
+   * through cubes that have measures (like junction tables).
+   *
+   * Path scoring priority (highest to lowest):
+   * 1. Paths using joins with `preferredFor` that includes the target cube (score +10)
+   * 2. Paths going through cubes with measures in the query (score +1 per cube)
+   * 3. Paths reusing already-processed cubes
+   * 4. Shorter paths
+   *
+   * @param fromCube Source cube name
+   * @param toCube Target cube name
+   * @param preferredCubes Set of cube names to prefer in the path (usually cubes with measures)
+   * @param alreadyProcessed Set of cubes already in the join plan (can be used as intermediates)
+   * @returns Array of join steps or null if no path exists
+   */
+  findPathPreferring(
+    fromCube: string,
+    toCube: string,
+    preferredCubes: Set<string>,
+    alreadyProcessed: Set<string> = new Set()
+  ): InternalJoinPathStep[] | null {
+    // Find ALL paths WITHOUT excluding already-processed cubes from intermediate steps
+    // This allows us to find paths through cubes that are already in the join plan
+    // (e.g., going through EmployeeTeams to reach Teams)
+    const allPaths = this.findAllPaths(fromCube, toCube, new Set()) // Note: empty exclusion set
+    if (allPaths.length === 0) {
+      // Fall back to standard path finding with exclusions
+      return this.findPath(fromCube, toCube, alreadyProcessed)
+    }
+
+    // Score paths with multiple criteria
+    const scored = allPaths.map(path => {
+      let score = 0
+
+      // +10 for paths using joins with preferredFor that includes the target cube
+      // This is the highest priority - explicit preference wins over everything
+      const usesPreferredJoin = path.some(step =>
+        step.joinDef.preferredFor?.includes(toCube)
+      )
+      if (usesPreferredJoin) {
+        score += 10
+      }
+
+      // +1 for each preferred cube (cubes with measures) in the path
+      score += path.filter(step => preferredCubes.has(step.toCube)).length
+
+      return {
+        path,
+        score,
+        usesProcessed: path.some(step => alreadyProcessed.has(step.toCube))
+      }
+    })
+
+    // Sort: prefer higher score, then prefer paths using already-processed cubes, then shorter
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      if (a.usesProcessed !== b.usesProcessed) return a.usesProcessed ? -1 : 1
+      return a.path.length - b.path.length
+    })
+
+    return scored[0].path
+  }
+
+  /**
+   * Find all possible paths between two cubes (up to maxDepth)
+   * Used by findPathPreferring to evaluate multiple paths
+   *
+   * @param fromCube Source cube name
+   * @param toCube Target cube name
+   * @param alreadyProcessed Set of cubes to exclude from path finding
+   * @param maxDepth Maximum path length to search (default 4 to avoid explosion)
+   * @returns Array of all valid paths
+   */
+  private findAllPaths(
+    fromCube: string,
+    toCube: string,
+    alreadyProcessed: Set<string>,
+    maxDepth: number = 4
+  ): InternalJoinPathStep[][] {
+    if (fromCube === toCube) {
+      return [[]]
+    }
+
+    const allPaths: InternalJoinPathStep[][] = []
+    const queue: Array<{ cube: string; path: InternalJoinPathStep[]; visited: Set<string> }> = [
+      { cube: fromCube, path: [], visited: new Set([fromCube, ...alreadyProcessed]) }
+    ]
+
+    while (queue.length > 0) {
+      const { cube: currentCube, path, visited } = queue.shift()!
+
+      // Stop if path is too long
+      if (path.length >= maxDepth) {
+        continue
+      }
+
+      const cubeDefinition = this.cubes.get(currentCube)
+      if (!cubeDefinition?.joins) {
+        continue
+      }
+
+      // Check all joins from current cube
+      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+        const actualTargetName = resolvedTargetCube.name
+
+        if (visited.has(actualTargetName)) {
+          continue
+        }
+
+        const newPath: InternalJoinPathStep[] = [
+          ...path,
+          {
+            fromCube: currentCube,
+            toCube: actualTargetName,
+            joinDef
+          }
+        ]
+
+        if (actualTargetName === toCube) {
+          // Found a path - add to results but don't stop (collect all paths)
+          allPaths.push(newPath)
+        } else {
+          // Continue searching - create new visited set for this branch
+          const newVisited = new Set(visited)
+          newVisited.add(actualTargetName)
+          queue.push({ cube: actualTargetName, path: newPath, visited: newVisited })
+        }
+      }
+    }
+
+    return allPaths
+  }
+
+  /**
    * Check if a cube can reach all other cubes in the list via joins
    *
    * @param fromCube Starting cube name

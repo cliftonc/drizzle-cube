@@ -601,4 +601,155 @@ describe('QueryPlanner - New Join System', () => {
       })
     })
   })
+
+  describe('findPathPreferring() - Query-Aware Path Selection', () => {
+    it('should fall back to findPath when no preferred cubes', () => {
+      const path = joinResolver.findPathPreferring(
+        'Employees',
+        'Productivity',
+        new Set(), // Empty preferred set
+        new Set()
+      )
+
+      expect(path).toBeDefined()
+      expect(path!.length).toBeGreaterThan(0)
+      expect(path![0].toCube).toBe('Productivity')
+    })
+
+    it('should fall back to findPath when target is in preferred cubes', () => {
+      const path = joinResolver.findPathPreferring(
+        'Employees',
+        'Productivity',
+        new Set(['Productivity']), // Target is preferred
+        new Set()
+      )
+
+      expect(path).toBeDefined()
+      expect(path!.length).toBeGreaterThan(0)
+    })
+
+    it('should prefer path through cube with measures when multiple paths exist', () => {
+      // Create cubes that have multiple paths between them
+      // CubeA -> CubeB -> CubeD
+      // CubeA -> CubeC -> CubeD
+      // If CubeB has measures, prefer path through CubeB
+      const cubeA = {
+        name: 'CubeA',
+        sql: () => eq(schema.employees.organisationId, 1),
+        measures: { count: { type: 'count' as const, sql: () => schema.employees.id } },
+        dimensions: {},
+        joins: {
+          CubeB: {
+            targetCube: () => cubeB,
+            relationship: 'hasMany' as const,
+            on: [{ source: schema.employees.id, target: schema.productivity.employeeId }]
+          },
+          CubeC: {
+            targetCube: () => cubeC,
+            relationship: 'belongsTo' as const,
+            on: [{ source: schema.employees.departmentId, target: schema.departments.id }]
+          }
+        }
+      }
+
+      const cubeB = {
+        name: 'CubeB',
+        sql: () => eq(schema.productivity.organisationId, 1),
+        measures: { total: { type: 'sum' as const, sql: () => schema.productivity.linesOfCode } },
+        dimensions: {},
+        joins: {
+          CubeD: {
+            targetCube: () => cubeD,
+            relationship: 'belongsTo' as const,
+            on: [{ source: schema.productivity.employeeId, target: schema.employees.id }]
+          }
+        }
+      }
+
+      const cubeC = {
+        name: 'CubeC',
+        sql: () => eq(schema.departments.organisationId, 1),
+        measures: {},
+        dimensions: {},
+        joins: {
+          CubeD: {
+            targetCube: () => cubeD,
+            relationship: 'hasMany' as const,
+            on: [{ source: schema.departments.id, target: schema.employees.departmentId }]
+          }
+        }
+      }
+
+      const cubeD = {
+        name: 'CubeD',
+        sql: () => eq(schema.employees.organisationId, 1),
+        measures: {},
+        dimensions: { name: { type: 'string' as const, sql: () => schema.employees.name } },
+        joins: {}
+      }
+
+      const testCubesMap = new Map<string, Cube>()
+      testCubesMap.set('CubeA', cubeA as Cube)
+      testCubesMap.set('CubeB', cubeB as Cube)
+      testCubesMap.set('CubeC', cubeC as Cube)
+      testCubesMap.set('CubeD', cubeD as Cube)
+
+      const testResolver = new JoinPathResolver(testCubesMap)
+
+      // Without preference, could return either path
+      const pathNoPreference = testResolver.findPath('CubeA', 'CubeD', new Set())
+      expect(pathNoPreference).toBeDefined()
+
+      // With preference for CubeB (has measures), should route through CubeB
+      const pathWithPreference = testResolver.findPathPreferring(
+        'CubeA',
+        'CubeD',
+        new Set(['CubeB']), // CubeB has measures
+        new Set()
+      )
+
+      expect(pathWithPreference).toBeDefined()
+      expect(pathWithPreference!.some(step => step.toCube === 'CubeB')).toBe(true)
+    })
+
+    it('should return null when no path exists', () => {
+      // Create disconnected cubes
+      const isolatedCube = {
+        name: 'IsolatedCube',
+        sql: () => eq(schema.employees.organisationId, 1),
+        measures: {},
+        dimensions: {},
+        joins: {} // No joins
+      }
+
+      const testCubesMap = new Map<string, Cube>()
+      testCubesMap.set('Employees', testCubes.testEmployeesCube)
+      testCubesMap.set('IsolatedCube', isolatedCube as Cube)
+
+      const testResolver = new JoinPathResolver(testCubesMap)
+
+      const path = testResolver.findPathPreferring(
+        'Employees',
+        'IsolatedCube',
+        new Set(['SomeOtherCube']),
+        new Set()
+      )
+
+      expect(path).toBeNull()
+    })
+
+    it('should respect maxDepth limit to avoid infinite loops', () => {
+      // Test that deeply nested paths are handled correctly
+      const path = joinResolver.findPathPreferring(
+        'Employees',
+        'Productivity',
+        new Set(['NonExistentCube']), // Preferred cube doesn't exist in path
+        new Set()
+      )
+
+      // Should still find the direct path even if preferred cube isn't reachable
+      expect(path).toBeDefined()
+      expect(path!.length).toBeLessThanOrEqual(4) // maxDepth default
+    })
+  })
 })

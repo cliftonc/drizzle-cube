@@ -75,6 +75,21 @@ export class CTEBuilder {
       }
     }
 
+    // Add downstream join keys for cubes that need to be joined through this CTE
+    // Example: If Teams.name is a dimension and EmployeeTeams has a join to Teams,
+    // we need to include team_id in the CTE so Teams can be joined through it
+    if (cteInfo.downstreamJoinKeys) {
+      for (const downstream of cteInfo.downstreamJoinKeys) {
+        for (const joinKey of downstream.joinKeys) {
+          // Add the source column (from CTE cube table) to SELECT
+          // This is the FK column in the CTE cube that points to the downstream cube
+          if (joinKey.sourceColumnObj) {
+            cteSelections[joinKey.sourceColumn] = joinKey.sourceColumnObj
+          }
+        }
+      }
+    }
+
     // Add measures with aggregation using the centralized helper
     const cubeName = cube.name
     const cubeMap = new Map([[cubeName, cube]])
@@ -224,6 +239,18 @@ export class CTEBuilder {
     for (const joinKey of cteInfo.joinKeys) {
       if (joinKey.targetColumnObj) {
         groupByFields.push(joinKey.targetColumnObj)
+      }
+    }
+
+    // Add downstream join keys to GROUP BY
+    // These are needed so downstream cubes can be joined through this CTE
+    if (cteInfo.downstreamJoinKeys) {
+      for (const downstream of cteInfo.downstreamJoinKeys) {
+        for (const joinKey of downstream.joinKeys) {
+          if (joinKey.sourceColumnObj) {
+            groupByFields.push(joinKey.sourceColumnObj)
+          }
+        }
       }
     }
 

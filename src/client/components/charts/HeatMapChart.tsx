@@ -12,7 +12,73 @@
 
 import React, { useMemo } from 'react'
 import { ResponsiveHeatMap } from '@nivo/heatmap'
+import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
+import type { AxisFormatConfig } from '../../types'
 import type { ChartProps } from '../../types'
+
+/**
+ * Parse color string (hex or rgb) to RGB values
+ */
+function parseColor(color: string): { r: number; g: number; b: number } | null {
+  // Handle hex colors
+  if (color.startsWith('#')) {
+    const hex = color.slice(1)
+    return {
+      r: parseInt(hex.substring(0, 2), 16),
+      g: parseInt(hex.substring(2, 4), 16),
+      b: parseInt(hex.substring(4, 6), 16),
+    }
+  }
+
+  // Handle rgb/rgba colors
+  const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbMatch) {
+    return {
+      r: parseInt(rgbMatch[1], 10),
+      g: parseInt(rgbMatch[2], 10),
+      b: parseInt(rgbMatch[3], 10),
+    }
+  }
+
+  return null
+}
+
+/**
+ * Calculate relative luminance of a color
+ * Returns value between 0 (black) and 1 (white)
+ */
+function getLuminance(color: string): number {
+  const rgb = parseColor(color)
+  if (!rgb) return 0.5 // Default to mid-gray if parsing fails
+
+  const r = rgb.r / 255
+  const g = rgb.g / 255
+  const b = rgb.b / 255
+
+  // Apply gamma correction
+  const rLinear = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4)
+  const gLinear = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4)
+  const bLinear = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4)
+
+  // Calculate luminance using WCAG formula
+  return 0.2126 * rLinear + 0.7152 * gLinear + 0.0722 * bLinear
+}
+
+/**
+ * Get contrasting text color (white or dark) based on background color
+ */
+function getContrastingTextColor(bgColor: string): string {
+  const luminance = getLuminance(bgColor)
+  // Use white text on dark backgrounds, dark text on light backgrounds
+  return luminance < 0.4 ? '#ffffff' : '#1f2937'
+}
+
+/**
+ * Maximum dimensions for heatmap to prevent browser lockup
+ * 50x50 = 2500 cells max
+ */
+const MAX_HEATMAP_ROWS = 50
+const MAX_HEATMAP_COLS = 50
 
 /**
  * Nivo heatmap data format
@@ -28,6 +94,16 @@ interface HeatMapSerie {
 }
 
 /**
+ * Result of heatmap transformation including truncation info
+ */
+interface HeatMapTransformResult {
+  data: HeatMapSerie[]
+  truncated: boolean
+  originalRows: number
+  originalCols: number
+}
+
+/**
  * Transform drizzle-cube flat query results to nivo heatmap format
  *
  * Input (drizzle-cube):
@@ -40,27 +116,41 @@ interface HeatMapSerie {
  * [
  *   { id: "East", data: [{ x: "Electronics", y: 1500 }, { x: "Clothing", y: 800 }] }
  * ]
+ *
+ * Data is truncated to MAX_HEATMAP_ROWS x MAX_HEATMAP_COLS to prevent browser lockup
  */
 function transformToHeatMapFormat(
   data: Record<string, unknown>[],
   xAxisField: string | undefined,
   yAxisField: string | undefined,
-  valueField: string | undefined
-): HeatMapSerie[] {
+  valueField: string | undefined,
+  xGranularity?: string,
+  yGranularity?: string
+): HeatMapTransformResult {
   if (!xAxisField || !yAxisField || !valueField) {
-    return []
+    return { data: [], truncated: false, originalRows: 0, originalCols: 0 }
   }
 
   // Group data by Y-axis dimension
   const groupedByY = new Map<string, Map<string, number>>()
   const allXValues = new Set<string>()
+  // Keep original values for sorting timestamps correctly
+  const xValueOriginals = new Map<string, unknown>()
 
   for (const row of data) {
-    const yValue = String(row[yAxisField] ?? '(empty)')
-    const xValue = String(row[xAxisField] ?? '(empty)')
+    const rawYValue = row[yAxisField]
+    const rawXValue = row[xAxisField]
+
+    // Format time values based on granularity
+    const yValue = formatTimeValue(rawYValue, yGranularity) || String(rawYValue ?? '(empty)')
+    const xValue = formatTimeValue(rawXValue, xGranularity) || String(rawXValue ?? '(empty)')
     const value = Number(row[valueField]) || 0
 
     allXValues.add(xValue)
+    // Store original for sorting
+    if (!xValueOriginals.has(xValue)) {
+      xValueOriginals.set(xValue, rawXValue)
+    }
 
     if (!groupedByY.has(yValue)) {
       groupedByY.set(yValue, new Map())
@@ -68,21 +158,43 @@ function transformToHeatMapFormat(
     groupedByY.get(yValue)!.set(xValue, value)
   }
 
-  // Convert to nivo format with all X values for each Y (handle sparse matrices)
-  const xValueArray = Array.from(allXValues).sort()
+  // Sort X values - try to sort by original timestamp if available
+  const xValueArray = Array.from(allXValues).sort((a, b) => {
+    const origA = xValueOriginals.get(a)
+    const origB = xValueOriginals.get(b)
+    // If both are date strings, sort chronologically
+    if (typeof origA === 'string' && typeof origB === 'string' &&
+        origA.match(/^\d{4}-\d{2}-\d{2}/) && origB.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return origA.localeCompare(origB)
+    }
+    // Otherwise sort alphabetically by formatted value
+    return a.localeCompare(b)
+  })
 
+  // Track original dimensions for truncation warning
+  const originalRows = groupedByY.size
+  const originalCols = xValueArray.length
+  const truncated = originalRows > MAX_HEATMAP_ROWS || originalCols > MAX_HEATMAP_COLS
+
+  // Truncate X values if needed
+  const limitedXValues = xValueArray.slice(0, MAX_HEATMAP_COLS)
+
+  // Build result with truncation
   const result: HeatMapSerie[] = []
+  let rowCount = 0
   for (const [yValue, xMap] of groupedByY) {
+    if (rowCount >= MAX_HEATMAP_ROWS) break
     result.push({
       id: yValue,
-      data: xValueArray.map((x) => ({
+      data: limitedXValues.map((x) => ({
         x,
         y: xMap.get(x) ?? null,
       })),
     })
+    rowCount++
   }
 
-  return result
+  return { data: result, truncated, originalRows, originalCols }
 }
 
 /**
@@ -97,12 +209,16 @@ const HeatMapChart = React.memo(function HeatMapChart({
   chartConfig,
   colorPalette,
   displayConfig,
+  queryObject,
 }: ChartProps) {
   // Get display config options
   const displayConfigAny = displayConfig as Record<string, unknown> | undefined
   const showLabels = (displayConfigAny?.showLabels as boolean) ?? false
   const cellShape = (displayConfigAny?.cellShape as 'rect' | 'circle') ?? 'rect'
   const showLegend = (displayConfigAny?.showLegend as boolean) ?? true
+  const xAxisFormat = displayConfigAny?.xAxisFormat as AxisFormatConfig | undefined
+  const yAxisFormat = displayConfigAny?.yAxisFormat as AxisFormatConfig | undefined
+  const valueFormat = displayConfigAny?.valueFormat as AxisFormatConfig | undefined
 
   // Extract field names from chartConfig (handle both array and string formats)
   const xAxisField = chartConfig?.xAxis
@@ -115,16 +231,24 @@ const HeatMapChart = React.memo(function HeatMapChart({
     ? (Array.isArray(chartConfig.valueField) ? chartConfig.valueField[0] : chartConfig.valueField)
     : undefined
 
+  // Get granularity for time dimensions (only if field is defined)
+  const xGranularity = xAxisField ? getFieldGranularity(queryObject, xAxisField) : undefined
+  const yGranularity = yAxisField ? getFieldGranularity(queryObject, yAxisField) : undefined
+
   // Transform data to nivo format
-  const heatmapData = useMemo(() => {
-    if (!data || data.length === 0) return []
+  const { data: heatmapData, truncated, originalRows, originalCols } = useMemo(() => {
+    if (!data || data.length === 0) {
+      return { data: [], truncated: false, originalRows: 0, originalCols: 0 }
+    }
     return transformToHeatMapFormat(
       data as Record<string, unknown>[],
       xAxisField,
       yAxisField,
-      valueField
+      valueField,
+      xGranularity,
+      yGranularity
     )
-  }, [data, xAxisField, yAxisField, valueField])
+  }, [data, xAxisField, yAxisField, valueField, xGranularity, yGranularity])
 
   // Handle no data or missing config
   if (!data || data.length === 0) {
@@ -177,69 +301,74 @@ const HeatMapChart = React.memo(function HeatMapChart({
     )
   }
 
-  // Use gradient colors from palette, or default gradient
-  const colors = colorPalette?.gradient || colorPalette?.colors || [
-    '#e8f5e9',
-    '#c8e6c9',
-    '#a5d6a7',
-    '#81c784',
-    '#66bb6a',
-    '#4caf50',
-    '#43a047',
-    '#388e3c',
-    '#2e7d32',
-    '#1b5e20',
+  // Use gradient colors from palette, or default sequential blue gradient
+  // Sequential single-hue gradients are ideal for heatmaps showing magnitude/intensity
+  const colors = colorPalette?.gradient || [
+    '#eff3ff', // lightest blue
+    '#c6dbef',
+    '#9ecae1',
+    '#6baed6',
+    '#3182bd',
+    '#08519c', // darkest blue
   ]
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
+      {truncated && (
+        <div className="absolute top-0 left-0 right-0 z-10 px-3 py-1.5 text-xs bg-dc-warning-bg text-dc-warning border-b border-dc-border">
+          Data truncated to {MAX_HEATMAP_ROWS}x{MAX_HEATMAP_COLS} cells (original: {originalRows}x{originalCols}). Add filters to reduce dimensions.
+        </div>
+      )}
       <ResponsiveHeatMap
         data={heatmapData}
-        margin={{ top: 60, right: showLegend ? 90 : 20, bottom: 60, left: 90 }}
-        valueFormat=">-.2s"
-        axisTop={{
-          tickSize: 5,
-          tickPadding: 5,
-          tickRotation: -45,
-          legend: '',
-          legendOffset: 46,
-        }}
+        margin={{ top: truncated ? 40 : 20, right: 20, bottom: 120, left: 120 }}
+        valueFormat={valueFormat ? (v) => formatAxisValue(v, valueFormat) : '>-.2s'}
+        axisTop={null}
         axisRight={null}
         axisBottom={{
           tickSize: 5,
           tickPadding: 5,
           tickRotation: -45,
-          legend: xAxisField?.split('.').pop() || 'X Axis',
+          legend: xAxisFormat?.label || xAxisField?.split('.').pop() || 'X Axis',
           legendPosition: 'middle',
-          legendOffset: 46,
+          legendOffset: 70,
+          format: xAxisFormat
+            ? (v) => {
+                const num = parseFloat(String(v))
+                return isNaN(num) ? String(v) : formatAxisValue(num, xAxisFormat)
+              }
+            : undefined,
         }}
         axisLeft={{
           tickSize: 5,
           tickPadding: 5,
           tickRotation: 0,
-          legend: yAxisField?.split('.').pop() || 'Y Axis',
+          legend: yAxisFormat?.label || yAxisField?.split('.').pop() || 'Y Axis',
           legendPosition: 'middle',
-          legendOffset: -72,
+          legendOffset: -80,
+          format: yAxisFormat
+            ? (v) => {
+                const num = parseFloat(String(v))
+                return isNaN(num) ? String(v) : formatAxisValue(num, yAxisFormat)
+              }
+            : undefined,
         }}
         colors={{
           type: 'sequential',
           scheme: 'greens',
           ...(colors.length > 0 && { colors }),
         }}
-        emptyColor="#555555"
+        emptyColor="var(--dc-surface-tertiary)"
         cellComponent={cellShape === 'circle' ? 'circle' : 'rect'}
         enableLabels={showLabels}
-        labelTextColor={{
-          from: 'color',
-          modifiers: [['darker', 2]],
-        }}
+        labelTextColor={({ color }) => getContrastingTextColor(color)}
         legends={
           showLegend
             ? [
                 {
                   anchor: 'bottom',
                   translateX: 0,
-                  translateY: 30,
+                  translateY: 95,
                   length: 400,
                   thickness: 8,
                   direction: 'row',

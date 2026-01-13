@@ -147,6 +147,7 @@
   },
   "peerDependencies": {
     "@neondatabase/serverless": "^1.0.1",
+    "@nivo/heatmap": "^0.99.0",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
     "drizzle-orm": "^0.45.0",
@@ -157,8 +158,7 @@
     "react-dom": "^18.0.0",
     "react-grid-layout": "^2.1.1",
     "react-is": "^19.2.3",
-    "recharts": "^3.5.1",
-    "@nivo/heatmap": "^0.99.0"
+    "recharts": "^3.5.1"
   },
   "peerDependenciesMeta": {
     "react": {

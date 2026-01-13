@@ -59,6 +59,24 @@ export const heatmapChartConfig: ChartTypeConfig = {
         { value: 'circle', label: 'Circle' },
       ],
     },
+    {
+      key: 'xAxisFormat',
+      label: 'X-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for X-axis labels',
+    },
+    {
+      key: 'yAxisFormat',
+      label: 'Y-Axis Format',
+      type: 'axisFormat',
+      description: 'Number formatting for Y-axis labels',
+    },
+    {
+      key: 'valueFormat',
+      label: 'Value Format',
+      type: 'axisFormat',
+      description: 'Number formatting for cell values and legend',
+    },
   ],
   validate: (config) => {
     if (!config.xAxis?.length) return { isValid: false, message: 'X-axis dimension required' }

@@ -348,7 +348,7 @@ export default function AnalysisChartConfigPanel({
           selectedType={chartType}
           onTypeChange={onChartTypeChange}
           availability={chartAvailability}
-          excludeTypes={['funnel']}
+          excludeTypes={['funnel', 'sankey', 'sunburst']}
           compact
         />
       </div>

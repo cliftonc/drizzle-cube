@@ -6,6 +6,7 @@
 
 import {
   and,
+  eq,
   sql,
   SQL,
   sum,
@@ -746,6 +747,8 @@ export class QueryExecutor {
     // Build pre-aggregation CTEs if needed
     const ctes: any[] = []
     const cteAliasMap = new Map<string, string>()
+    // Map downstream cubes to their CTE info (for cubes that join THROUGH a CTE)
+    const downstreamCubeMap = new Map<string, { cteAlias: string; joinKeys: Array<{ sourceColumn: string; targetColumn: string; sourceColumnObj?: any; targetColumnObj?: any }> }>()
 
     if (queryPlan.preAggregationCTEs && queryPlan.preAggregationCTEs.length > 0) {
       for (const cteInfo of queryPlan.preAggregationCTEs) {
@@ -753,6 +756,16 @@ export class QueryExecutor {
         if (cte) {
           ctes.push(cte)
           cteAliasMap.set(cteInfo.cube.name, cteInfo.cteAlias)
+
+          // Build downstream cube map for cubes that should join through this CTE
+          if (cteInfo.downstreamJoinKeys) {
+            for (const downstream of cteInfo.downstreamJoinKeys) {
+              downstreamCubeMap.set(downstream.targetCubeName, {
+                cteAlias: cteInfo.cteAlias,
+                joinKeys: downstream.joinKeys
+              })
+            }
+          }
         } else {
           // Failed to build CTE
         }
@@ -1035,10 +1048,30 @@ export class QueryExecutor {
           // Build CTE join condition using the CTE alias
           joinCondition = this.cteBuilder.buildCTEJoinCondition(joinCube, cteAlias, queryPlan)
         } else {
+          // Check if this cube should join through a CTE (downstream cube)
+          // Example: Teams joins through EmployeeTeams CTE when EmployeeTeams has measures
+          const downstreamInfo = downstreamCubeMap.get(joinCube.cube.name)
+
           // Regular join to base table
           const joinCubeBase = joinCube.cube.sql(context)
           joinTarget = joinCubeBase.from
-          joinCondition = joinCube.joinCondition
+
+          if (downstreamInfo) {
+            // This cube joins THROUGH a CTE - build join condition referencing CTE alias
+            // e.g., Teams.id = employeeteams_agg.team_id
+            const conditions: SQL[] = []
+            for (const joinKey of downstreamInfo.joinKeys) {
+              // Source column is in the CTE (e.g., team_id in employeeteams_agg)
+              const cteCol = sql`${sql.identifier(downstreamInfo.cteAlias)}.${sql.identifier(joinKey.sourceColumn)}`
+              // Target column is in the downstream cube's table (e.g., id in teams)
+              const targetCol = joinKey.targetColumnObj || sql.identifier(joinKey.targetColumn)
+              conditions.push(eq(cteCol as any, targetCol as any))
+            }
+            joinCondition = conditions.length === 1 ? conditions[0] : and(...conditions)
+          } else {
+            // Standard join using original join condition
+            joinCondition = joinCube.joinCondition
+          }
         }
 
         try {

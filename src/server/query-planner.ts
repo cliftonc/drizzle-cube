@@ -204,7 +204,7 @@ export class QueryPlanner {
     }
     
     // For multi-cube queries, build join plan
-    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx)
+    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
     
     // Detect hasMany relationships and plan pre-aggregation CTEs
     const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query)
@@ -245,16 +245,31 @@ export class QueryPlanner {
   /**
    * Build join plan for multi-cube query
    * Supports both direct joins and transitive joins through intermediate cubes
+   *
+   * Uses query-aware path selection to prefer joining through cubes that have
+   * measures in the query (e.g., joining Teams through EmployeeTeams when
+   * EmployeeTeams.count is a measure)
    */
   private buildJoinPlan(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     cubeNames: string[],
-    ctx: QueryContext
+    ctx: QueryContext,
+    query: SemanticQuery
   ): QueryPlan['joinCubes'] {
     const resolver = this.getResolver(cubes)
     const joinCubes: QueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
+
+    // Identify cubes that have measures in the query - these should be preferred
+    // in join path selection to ensure semantically correct joins
+    const cubesWithMeasures = new Set<string>()
+    if (query.measures) {
+      for (const measure of query.measures) {
+        const [cubeName] = measure.split('.')
+        cubesWithMeasures.add(cubeName)
+      }
+    }
 
     // Find cubes to join (all except primary)
     const cubesToJoin = cubeNames.filter(name => name !== primaryCube.name)
@@ -264,7 +279,13 @@ export class QueryPlanner {
         continue // Already processed
       }
 
-      const joinPath = resolver.findPath(primaryCube.name, cubeName, processedCubes)
+      // Use preferring method to route through cubes with measures when possible
+      const joinPath = resolver.findPathPreferring(
+        primaryCube.name,
+        cubeName,
+        cubesWithMeasures,
+        processedCubes
+      )
       if (!joinPath || joinPath.length === 0) {
         throw new Error(`No join path found from '${primaryCube.name}' to '${cubeName}'`)
       }
@@ -404,6 +425,15 @@ export class QueryPlanner {
           allAggregateMeasures
         )
 
+        // Detect downstream cubes that need join keys in the CTE
+        // Example: If query has Teams.name dimension and EmployeeTeams.count measure,
+        // the EmployeeTeams CTE needs to include team_id so Teams can be joined through it
+        const downstreamJoinKeys = this.findDownstreamJoinKeys(
+          joinCube.cube,
+          query,
+          _cubes
+        )
+
         preAggCTEs!.push({
           cube: joinCube.cube,
           alias: joinCube.alias,
@@ -411,6 +441,7 @@ export class QueryPlanner {
           joinKeys,
           measures: expandedAggregateMeasures,
           propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined,
+          downstreamJoinKeys: downstreamJoinKeys.length > 0 ? downstreamJoinKeys : undefined,
           cteType: 'aggregate'
         })
       }
@@ -423,6 +454,73 @@ export class QueryPlanner {
     }
 
     return preAggCTEs
+  }
+
+  /**
+   * Find downstream cubes that need join keys included in the CTE.
+   *
+   * When a query has dimensions from a cube (e.g., Teams.name) and measures from
+   * a junction cube (e.g., EmployeeTeams.count), the junction CTE needs to include
+   * the join key to the dimension cube (team_id) so the dimension cube can be
+   * joined through the CTE instead of via an alternative path.
+   *
+   * @param cteCube The cube being converted to a CTE (e.g., EmployeeTeams)
+   * @param query The semantic query with dimensions and measures
+   * @param allCubes Map of all registered cubes
+   * @returns Array of downstream join key info for cubes needing join through this CTE
+   */
+  private findDownstreamJoinKeys(
+    cteCube: Cube,
+    query: SemanticQuery,
+    _allCubes: Map<string, Cube>
+  ): Array<{ targetCubeName: string; joinKeys: Array<{ sourceColumn: string; targetColumn: string; sourceColumnObj?: any; targetColumnObj?: any }> }> {
+    const downstreamJoinKeys: Array<{ targetCubeName: string; joinKeys: Array<{ sourceColumn: string; targetColumn: string; sourceColumnObj?: any; targetColumnObj?: any }> }> = []
+
+    // Get cubes that have dimensions in the query (excluding the CTE cube itself)
+    const dimensionCubeNames = new Set<string>()
+    if (query.dimensions) {
+      for (const dim of query.dimensions) {
+        const [cubeName] = dim.split('.')
+        if (cubeName !== cteCube.name) {
+          dimensionCubeNames.add(cubeName)
+        }
+      }
+    }
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        const [cubeName] = timeDim.dimension.split('.')
+        if (cubeName !== cteCube.name) {
+          dimensionCubeNames.add(cubeName)
+        }
+      }
+    }
+
+    // For each dimension cube, check if it's directly joinable from the CTE cube
+    if (cteCube.joins) {
+      for (const [, joinDef] of Object.entries(cteCube.joins)) {
+        const targetCube = resolveCubeReference(joinDef.targetCube)
+        const targetCubeName = targetCube.name
+
+        // Check if this target cube has dimensions in the query
+        if (dimensionCubeNames.has(targetCubeName)) {
+          // This cube's dimensions are in the query and it's joinable from the CTE cube
+          // Include the join keys so the dimension cube can be joined through the CTE
+          const joinKeys = joinDef.on.map(joinOn => ({
+            sourceColumn: joinOn.source.name,
+            targetColumn: joinOn.target.name,
+            sourceColumnObj: joinOn.source,
+            targetColumnObj: joinOn.target
+          }))
+
+          downstreamJoinKeys.push({
+            targetCubeName,
+            joinKeys
+          })
+        }
+      }
+    }
+
+    return downstreamJoinKeys
   }
 
   /**

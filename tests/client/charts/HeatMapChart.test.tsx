@@ -143,7 +143,7 @@ describe('HeatMapChart', () => {
       expect(screen.getByTestId('nivo-heatmap')).toBeInTheDocument()
     })
 
-    it('should handle null dimension values by showing (empty)', () => {
+    it('should handle null dimension values by showing Unknown', () => {
       const nullData = [
         { 'Region.name': null, 'Product.category': 'Electronics', 'Sales.total': 1500 },
         { 'Region.name': 'East', 'Product.category': 'Electronics', 'Sales.total': 800 },
@@ -154,8 +154,8 @@ describe('HeatMapChart', () => {
           chartConfig={sampleChartConfig}
         />
       )
-      // Should have (empty) row for null values
-      expect(screen.getByTestId('heatmap-row-(empty)')).toBeInTheDocument()
+      // Should have Unknown row for null values (formatTimeValue returns 'Unknown' for null)
+      expect(screen.getByTestId('heatmap-row-Unknown')).toBeInTheDocument()
       expect(screen.getByTestId('heatmap-row-East')).toBeInTheDocument()
     })
   })
@@ -182,6 +182,90 @@ describe('HeatMapChart', () => {
       )
       const chartContainer = container.firstChild
       expect(chartContainer).toHaveStyle({ height: '100%' })
+    })
+  })
+
+  describe('data truncation', () => {
+    it('should truncate data and show warning when too many rows', () => {
+      // Generate data with 60 unique Y values (exceeds 50 limit)
+      const largeData = []
+      for (let i = 0; i < 60; i++) {
+        largeData.push({
+          'Region.name': `Region${i}`,
+          'Product.category': 'Electronics',
+          'Sales.total': 1000 + i,
+        })
+      }
+
+      render(
+        <HeatMapChart
+          data={largeData}
+          chartConfig={sampleChartConfig}
+        />
+      )
+
+      // Should show truncation warning
+      expect(screen.getByText(/Data truncated to 50x50 cells/)).toBeInTheDocument()
+      expect(screen.getByText(/original: 60x1/)).toBeInTheDocument()
+    })
+
+    it('should truncate data and show warning when too many columns', () => {
+      // Generate data with 60 unique X values (exceeds 50 limit)
+      const largeData = []
+      for (let i = 0; i < 60; i++) {
+        largeData.push({
+          'Region.name': 'East',
+          'Product.category': `Category${i}`,
+          'Sales.total': 1000 + i,
+        })
+      }
+
+      render(
+        <HeatMapChart
+          data={largeData}
+          chartConfig={sampleChartConfig}
+        />
+      )
+
+      // Should show truncation warning
+      expect(screen.getByText(/Data truncated to 50x50 cells/)).toBeInTheDocument()
+      expect(screen.getByText(/original: 1x60/)).toBeInTheDocument()
+    })
+
+    it('should not show warning when data is within limits', () => {
+      render(
+        <HeatMapChart
+          data={sampleData}
+          chartConfig={sampleChartConfig}
+        />
+      )
+
+      // Should NOT show truncation warning
+      expect(screen.queryByText(/Data truncated/)).not.toBeInTheDocument()
+    })
+
+    it('should limit rows to 50 when exceeding limit', () => {
+      // Generate data with 60 unique Y values
+      const largeData = []
+      for (let i = 0; i < 60; i++) {
+        largeData.push({
+          'Region.name': `Region${i}`,
+          'Product.category': 'Electronics',
+          'Sales.total': 1000 + i,
+        })
+      }
+
+      render(
+        <HeatMapChart
+          data={largeData}
+          chartConfig={sampleChartConfig}
+        />
+      )
+
+      // Should only have 50 rows rendered
+      const heatmap = screen.getByTestId('nivo-heatmap')
+      const rows = heatmap.querySelectorAll('[data-testid^="heatmap-row-"]')
+      expect(rows.length).toBe(50)
     })
   })
 })

@@ -6,7 +6,7 @@
 import { eq, sql } from 'drizzle-orm'
 import { defineCube } from '../../src/server/index.js'
 import type { QueryContext, BaseQueryDefinition, Cube } from '../../src/server/index.js'
-import { employees, departments, productivity, prEvents } from './schema.js'
+import { employees, departments, productivity, prEvents, teams, employeeTeams } from './schema.js'
 import type { Schema } from './schema.js'
 
 // Forward declarations for circular dependency resolution
@@ -14,6 +14,8 @@ let employeesCube: Cube<Schema>
 let departmentsCube: Cube<Schema>
 let productivityCube: Cube<Schema>
 let prEventsCube: Cube<Schema>
+let teamsCube: Cube<Schema>
+let employeeTeamsCube: Cube<Schema>
 
 /**
  * Employees cube - employee analytics (single table)
@@ -48,6 +50,15 @@ employeesCube = defineCube('Employees', {
       relationship: 'hasMany',
       on: [
         { source: employees.id, target: prEvents.employeeId }
+      ]
+    },
+    EmployeeTeams: {
+      targetCube: () => employeeTeamsCube,
+      relationship: 'hasMany',
+      // Prefer this path when reaching Teams - uses junction table instead of Departments
+      preferredFor: ['Teams'],
+      on: [
+        { source: employees.id, target: employeeTeams.employeeId }
       ]
     }
   },
@@ -89,9 +100,40 @@ employeesCube = defineCube('Employees', {
       title: 'Hire Date',
       type: 'time',
       sql: employees.createdAt
+    },
+    // Location dimensions
+    city: {
+      name: 'city',
+      title: 'City',
+      type: 'string',
+      sql: employees.city
+    },
+    region: {
+      name: 'region',
+      title: 'State/Region',
+      type: 'string',
+      sql: employees.region
+    },
+    country: {
+      name: 'country',
+      title: 'Country',
+      type: 'string',
+      sql: employees.country
+    },
+    latitude: {
+      name: 'latitude',
+      title: 'Latitude',
+      type: 'number',
+      sql: employees.latitude
+    },
+    longitude: {
+      name: 'longitude',
+      title: 'Longitude',
+      type: 'number',
+      sql: employees.longitude
     }
   },
-  
+
   measures: {
     count: {
       name: 'count',
@@ -192,9 +234,16 @@ departmentsCube = defineCube('Departments', {
       on: [
         { source: departments.id, target: productivity.departmentId }
       ]
+    },
+    Teams: {
+      targetCube: () => teamsCube,
+      relationship: 'hasMany',
+      on: [
+        { source: departments.id, target: teams.departmentId }
+      ]
     }
   },
-  
+
   dimensions: {
     id: {
       name: 'id',
@@ -205,7 +254,7 @@ departmentsCube = defineCube('Departments', {
     },
     name: {
       name: 'name',
-      title: 'Department Name', 
+      title: 'Department Name',
       type: 'string',
       sql: departments.name
     }
@@ -713,9 +762,176 @@ prEventsCube = defineCube('PREvents', {
 }) as Cube<Schema>
 
 /**
+ * Teams cube - team analytics
+ */
+teamsCube = defineCube('Teams', {
+  title: 'Team Analytics',
+  description: 'Team structure and membership analysis',
+
+  sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
+    from: teams,
+    where: eq(teams.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    Departments: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: teams.departmentId, target: departments.id }
+      ]
+    },
+    EmployeeTeams: {
+      targetCube: () => employeeTeamsCube,
+      relationship: 'hasMany',
+      on: [
+        { source: teams.id, target: employeeTeams.teamId }
+      ]
+    }
+  },
+
+  dimensions: {
+    id: {
+      name: 'id',
+      title: 'Team ID',
+      type: 'number',
+      sql: teams.id,
+      primaryKey: true
+    },
+    name: {
+      name: 'name',
+      title: 'Team Name',
+      type: 'string',
+      sql: teams.name
+    },
+    description: {
+      name: 'description',
+      title: 'Description',
+      type: 'string',
+      sql: teams.description
+    },
+    departmentId: {
+      name: 'departmentId',
+      title: 'Department ID',
+      type: 'number',
+      sql: teams.departmentId
+    },
+    createdAt: {
+      name: 'createdAt',
+      title: 'Created At',
+      type: 'time',
+      sql: teams.createdAt
+    }
+  },
+
+  measures: {
+    count: {
+      name: 'count',
+      title: 'Total Teams',
+      type: 'count',
+      sql: teams.id
+    }
+  }
+}) as Cube<Schema>
+
+/**
+ * EmployeeTeams cube - junction table for many-to-many analysis
+ */
+employeeTeamsCube = defineCube('EmployeeTeams', {
+  title: 'Employee Team Membership',
+  description: 'Employee team assignments and roles',
+
+  sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
+    from: employeeTeams,
+    where: eq(employeeTeams.organisationId, ctx.securityContext.organisationId)
+  }),
+
+  joins: {
+    Employees: {
+      targetCube: () => employeesCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: employeeTeams.employeeId, target: employees.id }
+      ]
+    },
+    Teams: {
+      targetCube: () => teamsCube,
+      relationship: 'belongsTo',
+      on: [
+        { source: employeeTeams.teamId, target: teams.id }
+      ]
+    }
+  },
+
+  dimensions: {
+    id: {
+      name: 'id',
+      title: 'Membership ID',
+      type: 'number',
+      sql: employeeTeams.id,
+      primaryKey: true
+    },
+    employeeId: {
+      name: 'employeeId',
+      title: 'Employee ID',
+      type: 'number',
+      sql: employeeTeams.employeeId
+    },
+    teamId: {
+      name: 'teamId',
+      title: 'Team ID',
+      type: 'number',
+      sql: employeeTeams.teamId
+    },
+    role: {
+      name: 'role',
+      title: 'Team Role',
+      type: 'string',
+      sql: employeeTeams.role
+    },
+    joinedAt: {
+      name: 'joinedAt',
+      title: 'Joined Team',
+      type: 'time',
+      sql: employeeTeams.joinedAt
+    }
+  },
+
+  measures: {
+    count: {
+      name: 'count',
+      title: 'Total Memberships',
+      type: 'count',
+      sql: employeeTeams.id
+    },
+    uniqueEmployees: {
+      name: 'uniqueEmployees',
+      title: 'Unique Employees',
+      type: 'countDistinct',
+      sql: employeeTeams.employeeId
+    },
+    uniqueTeams: {
+      name: 'uniqueTeams',
+      title: 'Unique Teams',
+      type: 'countDistinct',
+      sql: employeeTeams.teamId
+    },
+    leadCount: {
+      name: 'leadCount',
+      title: 'Team Leads',
+      type: 'count',
+      sql: employeeTeams.id,
+      filters: [
+        () => eq(employeeTeams.role, 'lead')
+      ]
+    }
+  }
+}) as Cube<Schema>
+
+/**
  * Export cubes for use in other modules
  */
-export { employeesCube, departmentsCube, productivityCube, prEventsCube }
+export { employeesCube, departmentsCube, productivityCube, prEventsCube, teamsCube, employeeTeamsCube }
 
 /**
  * All cubes for registration
@@ -724,5 +940,7 @@ export const allCubes = [
   employeesCube,
   departmentsCube,
   productivityCube,
-  prEventsCube
+  prEventsCube,
+  teamsCube,
+  employeeTeamsCube
 ]
