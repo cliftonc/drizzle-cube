@@ -160,16 +160,31 @@ export class JoinPathResolver {
       let score = 0
 
       // +10 for paths using joins with preferredFor that includes the target cube
-      // This is the highest priority - explicit preference wins over everything
-      const usesPreferredJoin = path.some(step =>
-        step.joinDef.preferredFor?.includes(toCube)
+      // ONLY apply this bonus when the preferredFor is on the FIRST hop from the starting cube.
+      // This ensures preferredFor only matters when we're actually routing FROM the cube
+      // that defines the preference, not when we're just passing through it.
+      // Example: Employees.joins.EmployeeTeams has preferredFor: ['Teams']
+      // - When routing FROM Employees TO Teams: preferredFor applies (first hop)
+      // - When routing FROM Departments TO Teams: preferredFor should NOT apply
+      //   even if the path goes through Employees
+      const usesPreferredJoin = path.some((step, index) =>
+        step.joinDef.preferredFor?.includes(toCube) && index === 0
       )
+
       if (usesPreferredJoin) {
         score += 10
       }
 
       // +1 for each preferred cube (cubes with measures) in the path
-      score += path.filter(step => preferredCubes.has(step.toCube)).length
+      // BUT penalize longer paths to prevent unnecessarily routing through preferred cubes
+      // when a shorter direct path exists
+      const preferredCubesInPath = path.filter(step => preferredCubes.has(step.toCube)).length
+      score += preferredCubesInPath
+
+      // Penalize path length: subtract (length - 1) to favor shorter paths
+      // This ensures a direct path (length 1, penalty 0) beats a path through
+      // preferred cubes (e.g., length 4, +1 for preferred, -3 for length = -2)
+      score -= (path.length - 1)
 
       return {
         path,

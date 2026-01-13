@@ -751,5 +751,166 @@ describe('QueryPlanner - New Join System', () => {
       expect(path).toBeDefined()
       expect(path!.length).toBeLessThanOrEqual(4) // maxDepth default
     })
+
+    it('should NOT apply preferredFor bonus when the intermediate cube is not in the query', () => {
+      /**
+       * Bug fix test: preferredFor should only boost paths when the cube defining it
+       * is actually relevant to the query (either first hop or has measures/dimensions).
+       *
+       * Scenario:
+       * - Primary: PrimaryCube (has dimensions)
+       * - Target: TargetCube (has dimensions)
+       * - Intermediate: IntermediateCube (NOT in query, but has preferredFor: ['TargetCube'])
+       *
+       * Direct path: PrimaryCube → TargetCube (length 1)
+       * Indirect path: PrimaryCube → IntermediateCube → TargetCube (length 2, has preferredFor)
+       *
+       * The direct path should win because IntermediateCube is not in the query.
+       */
+      const primaryCube = {
+        name: 'PrimaryCube',
+        sql: () => eq(schema.departments.organisationId, 1),
+        measures: {},
+        dimensions: { name: { type: 'string' as const, sql: () => schema.departments.name } },
+        joins: {
+          IntermediateCube: {
+            targetCube: () => intermediateCube,
+            relationship: 'hasMany' as const,
+            on: [{ source: schema.departments.id, target: schema.employees.departmentId }]
+          },
+          TargetCube: {
+            targetCube: () => targetCube,
+            relationship: 'hasMany' as const,
+            on: [{ source: schema.departments.id, target: schema.productivity.departmentId }]
+          }
+        }
+      }
+
+      const intermediateCube = {
+        name: 'IntermediateCube',
+        sql: () => eq(schema.employees.organisationId, 1),
+        measures: {},
+        dimensions: {},
+        joins: {
+          TargetCube: {
+            targetCube: () => targetCube,
+            relationship: 'hasMany' as const,
+            // This preferredFor should NOT cause this path to be preferred
+            // because IntermediateCube is not in the query
+            preferredFor: ['TargetCube'],
+            on: [{ source: schema.employees.id, target: schema.productivity.employeeId }]
+          }
+        }
+      }
+
+      const targetCube = {
+        name: 'TargetCube',
+        sql: () => eq(schema.productivity.organisationId, 1),
+        measures: { count: { type: 'count' as const, sql: () => schema.productivity.id } },
+        dimensions: { date: { type: 'time' as const, sql: () => schema.productivity.date } },
+        joins: {}
+      }
+
+      const testCubesMap = new Map<string, Cube>()
+      testCubesMap.set('PrimaryCube', primaryCube as Cube)
+      testCubesMap.set('IntermediateCube', intermediateCube as Cube)
+      testCubesMap.set('TargetCube', targetCube as Cube)
+
+      const testResolver = new JoinPathResolver(testCubesMap)
+
+      // preferredCubes contains TargetCube (has measures) but NOT IntermediateCube
+      // The direct path PrimaryCube → TargetCube should win over the indirect path
+      // that goes through IntermediateCube (which has preferredFor but isn't in the query)
+      const path = testResolver.findPathPreferring(
+        'PrimaryCube',
+        'TargetCube',
+        new Set(['TargetCube']), // Only TargetCube has measures in query
+        new Set() // No cubes processed yet
+      )
+
+      expect(path).toBeDefined()
+      // Direct path should be selected (length 1)
+      expect(path!.length).toBe(1)
+      expect(path![0].fromCube).toBe('PrimaryCube')
+      expect(path![0].toCube).toBe('TargetCube')
+      // Should NOT go through IntermediateCube
+      expect(path!.some(step => step.toCube === 'IntermediateCube')).toBe(false)
+    })
+
+    it('should apply preferredFor bonus when the cube is the first hop (index 0)', () => {
+      /**
+       * preferredFor SHOULD work when it's on the first hop from the primary cube.
+       *
+       * Scenario:
+       * - Primary: PrimaryCube (has measures)
+       * - PrimaryCube has two paths to TargetCube:
+       *   - Direct: PrimaryCube → TargetCube (length 1)
+       *   - Via junction: PrimaryCube → JunctionCube → TargetCube (length 2, preferredFor)
+       *
+       * Since preferredFor is on the first hop from PrimaryCube, it should be honored.
+       */
+      const primaryCube = {
+        name: 'PrimaryCube',
+        sql: () => eq(schema.employees.organisationId, 1),
+        measures: { count: { type: 'count' as const, sql: () => schema.employees.id } },
+        dimensions: {},
+        joins: {
+          JunctionCube: {
+            targetCube: () => junctionCube,
+            relationship: 'hasMany' as const,
+            preferredFor: ['TargetCube'], // First hop - should be honored
+            on: [{ source: schema.employees.id, target: schema.employeeTeams.employeeId }]
+          },
+          TargetCube: {
+            targetCube: () => targetCube,
+            relationship: 'belongsTo' as const,
+            on: [{ source: schema.employees.departmentId, target: schema.departments.id }]
+          }
+        }
+      }
+
+      const junctionCube = {
+        name: 'JunctionCube',
+        sql: () => eq(schema.employeeTeams.organisationId, 1),
+        measures: {},
+        dimensions: {},
+        joins: {
+          TargetCube: {
+            targetCube: () => targetCube,
+            relationship: 'belongsTo' as const,
+            on: [{ source: schema.employeeTeams.teamId, target: schema.teams.id }]
+          }
+        }
+      }
+
+      const targetCube = {
+        name: 'TargetCube',
+        sql: () => eq(schema.teams.organisationId, 1),
+        measures: {},
+        dimensions: { name: { type: 'string' as const, sql: () => schema.teams.name } },
+        joins: {}
+      }
+
+      const testCubesMap = new Map<string, Cube>()
+      testCubesMap.set('PrimaryCube', primaryCube as Cube)
+      testCubesMap.set('JunctionCube', junctionCube as Cube)
+      testCubesMap.set('TargetCube', targetCube as Cube)
+
+      const testResolver = new JoinPathResolver(testCubesMap)
+
+      // preferredCubes contains PrimaryCube (has measures)
+      // The preferredFor is on the first hop, so it should be honored
+      const path = testResolver.findPathPreferring(
+        'PrimaryCube',
+        'TargetCube',
+        new Set(['PrimaryCube']), // PrimaryCube has measures in query
+        new Set() // No cubes processed yet
+      )
+
+      expect(path).toBeDefined()
+      // The path through JunctionCube should be preferred due to preferredFor on first hop
+      expect(path!.length).toBe(2)
+      expect(path!.some(step => step.toCube === 'JunctionCube')).toBe(true)
+    })
   })
 })

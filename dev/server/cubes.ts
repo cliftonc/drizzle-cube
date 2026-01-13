@@ -138,13 +138,13 @@ employeesCube = defineCube('Employees', {
     count: {
       name: 'count',
       title: 'Total Employees',
-      type: 'count',
+      type: 'countDistinct',
       sql: employees.id
     },
     activeCount: {
       name: 'activeCount',
       title: 'Active Employees',
-      type: 'count',
+      type: 'countDistinct',
       sql: employees.id,
       filters: [
         () => eq(employees.active, true)
@@ -264,7 +264,7 @@ departmentsCube = defineCube('Departments', {
     count: {
       name: 'count',
       title: 'Department Count',
-      type: 'count',
+      type: 'countDistinct',
       sql: departments.id
     },
     totalBudget: {
@@ -828,7 +828,7 @@ teamsCube = defineCube('Teams', {
     count: {
       name: 'count',
       title: 'Total Teams',
-      type: 'count',
+      type: 'countDistinct',
       sql: teams.id
     }
   }

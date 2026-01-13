@@ -353,11 +353,13 @@ const HeatMapChart = React.memo(function HeatMapChart({
               }
             : undefined,
         }}
-        colors={{
-          type: 'sequential',
-          scheme: 'greens',
-          ...(colors.length > 0 && { colors }),
-        }}
+        colors={
+          colors.length >= 2
+            // Sequential scale needs [minColor, maxColor] tuple
+            // Use first color for low values, last color for high values
+            ? { type: 'sequential', colors: [colors[0], colors[colors.length - 1]] as [string, string] }
+            : { type: 'sequential', scheme: 'greens' }  // Fallback to built-in scheme
+        }
         emptyColor="var(--dc-surface-tertiary)"
         cellComponent={cellShape === 'circle' ? 'circle' : 'rect'}
         enableLabels={showLabels}

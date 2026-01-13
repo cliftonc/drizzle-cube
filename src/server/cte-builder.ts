@@ -234,11 +234,24 @@ export class CTEBuilder {
     // Post-aggregation window functions are applied in the outer query, not in CTEs
     // Group by join keys (essential for pre-aggregation) and requested dimensions
     const groupByFields: any[] = []
+    const addedColumnNames = new Set<string>() // Track added columns to avoid duplicates
+
+    // Helper to add column if not already present
+    const addGroupByField = (col: any) => {
+      const colName = col?.name || (typeof col === 'string' ? col : null)
+      if (colName && !addedColumnNames.has(colName)) {
+        addedColumnNames.add(colName)
+        groupByFields.push(col)
+      } else if (!colName) {
+        // For expressions without a name, add directly
+        groupByFields.push(col)
+      }
+    }
 
     // Add join key columns to GROUP BY
     for (const joinKey of cteInfo.joinKeys) {
       if (joinKey.targetColumnObj) {
-        groupByFields.push(joinKey.targetColumnObj)
+        addGroupByField(joinKey.targetColumnObj)
       }
     }
 
@@ -248,7 +261,7 @@ export class CTEBuilder {
       for (const downstream of cteInfo.downstreamJoinKeys) {
         for (const joinKey of downstream.joinKeys) {
           if (joinKey.sourceColumnObj) {
-            groupByFields.push(joinKey.sourceColumnObj)
+            addGroupByField(joinKey.sourceColumnObj)
           }
         }
       }

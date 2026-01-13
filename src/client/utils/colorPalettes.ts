@@ -26,12 +26,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#84cc16', // lime
     ],
     gradient: [
-      '#440154', // dark purple
-      '#414487', // purple-blue
-      '#2a788e', // teal
-      '#22a884', // green-teal  
+      '#fde725', // yellow (light - for low values)
       '#7ad151', // green
-      '#fde725', // yellow
+      '#22a884', // green-teal
+      '#2a788e', // teal
+      '#414487', // purple-blue
+      '#440154', // dark purple (dark - for high values)
     ]
   },
   {
@@ -48,12 +48,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#0f766e', // dark teal
     ],
     gradient: [
-      '#0c4a6e', // very dark blue
-      '#075985', // dark blue
-      '#0369a1', // medium blue
-      '#0284c7', // bright blue
+      '#38bdf8', // cyan blue (light - for low values)
       '#0ea5e9', // light blue
-      '#38bdf8', // cyan blue
+      '#0284c7', // bright blue
+      '#0369a1', // medium blue
+      '#075985', // dark blue
+      '#0c4a6e', // very dark blue (dark - for high values)
     ]
   },
   {
@@ -70,12 +70,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#7c2d12', // dark brown
     ],
     gradient: [
-      '#7c2d12', // dark brown
-      '#92400e', // brown
-      '#b45309', // dark amber
-      '#d97706', // amber
+      '#fbbf24', // light orange (light - for low values)
       '#f59e0b', // orange
-      '#fbbf24', // light orange
+      '#d97706', // amber
+      '#b45309', // dark amber
+      '#92400e', // brown
+      '#7c2d12', // dark brown (dark - for high values)
     ]
   },
   {
@@ -92,12 +92,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#a3e635', // light lime
     ],
     gradient: [
-      '#14532d', // very dark green
-      '#166534', // dark green
-      '#15803d', // green
-      '#16a34a', // bright green
+      '#4ade80', // lighter green (light - for low values)
       '#22c55e', // light green
-      '#4ade80', // lighter green
+      '#16a34a', // bright green
+      '#15803d', // green
+      '#166534', // dark green
+      '#14532d', // very dark green (dark - for high values)
     ]
   },
   {
@@ -114,12 +114,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#fbbf24', // accent yellow
     ],
     gradient: [
-      '#4c1d95', // very dark purple
-      '#581c87', // dark purple
-      '#6d28d9', // medium purple
-      '#7c3aed', // purple
+      '#a855f7', // light purple (light - for low values)
       '#8b5cf6', // bright purple
-      '#a855f7', // light purple
+      '#7c3aed', // purple
+      '#6d28d9', // medium purple
+      '#581c87', // dark purple
+      '#4c1d95', // very dark purple (dark - for high values)
     ]
   },
   {
@@ -136,12 +136,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#f3f4f6', // almost white
     ],
     gradient: [
-      '#111827', // black
-      '#1f2937', // very dark gray
-      '#374151', // dark gray
-      '#4b5563', // medium gray
+      '#9ca3af', // light gray (light - for low values)
       '#6b7280', // gray
-      '#9ca3af', // light gray
+      '#4b5563', // medium gray
+      '#374151', // dark gray
+      '#1f2937', // very dark gray
+      '#111827', // black (dark - for high values)
     ]
   },
   {
@@ -158,12 +158,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#bef264', // light lime
     ],
     gradient: [
-      '#bfdbfe', // very light blue
-      '#a7f3d0', // very light green
-      '#fef08a', // very light yellow
-      '#fecaca', // very light red
+      '#fed7aa', // very light orange (light - for low values)
       '#ddd6fe', // very light purple
-      '#fed7aa', // very light orange
+      '#fecaca', // very light red
+      '#fef08a', // very light yellow
+      '#a7f3d0', // very light green
+      '#bfdbfe', // very light blue (darker - for high values)
     ]
   },
   {
@@ -180,12 +180,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#8000ff', // pure violet
     ],
     gradient: [
-      '#4000ff', // blue-violet
-      '#0080ff', // blue
-      '#00ffff', // cyan
-      '#00ff80', // green
+      '#ffff00', // yellow (light - for low values)
       '#80ff00', // lime
-      '#ffff00', // yellow
+      '#00ff80', // green
+      '#00ffff', // cyan
+      '#0080ff', // blue
+      '#4000ff', // blue-violet (dark - for high values)
     ]
   },
   {
@@ -204,12 +204,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#17becf', // cyan
     ],
     gradient: [
-      '#1f77b4', // blue
-      '#2ca02c', // green
-      '#bcbd22', // olive
-      '#ff7f0e', // orange
+      '#9467bd', // purple (light - for low values)
       '#d62728', // red
-      '#9467bd', // purple
+      '#ff7f0e', // orange
+      '#bcbd22', // olive
+      '#2ca02c', // green
+      '#1f77b4', // blue (dark - for high values)
     ]
   },
   {
@@ -228,12 +228,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#bab0ab', // gray
     ],
     gradient: [
-      '#4e79a7', // blue
-      '#76b7b2', // teal
-      '#59a14f', // green
-      '#edc949', // yellow
+      '#e15759', // red (light - for low values)
       '#f28e2c', // orange
-      '#e15759', // red
+      '#edc949', // yellow
+      '#59a14f', // green
+      '#76b7b2', // teal
+      '#4e79a7', // blue (dark - for high values)
     ]
   },
   {
@@ -251,12 +251,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#999999', // gray
     ],
     gradient: [
-      '#377eb8', // blue
-      '#4daf4a', // green
-      '#ffff33', // yellow
-      '#ff7f00', // orange
+      '#984ea3', // purple (light - for low values)
       '#e41a1c', // red
-      '#984ea3', // purple
+      '#ff7f00', // orange
+      '#ffff33', // yellow
+      '#4daf4a', // green
+      '#377eb8', // blue (dark - for high values)
     ]
   },
   {
@@ -273,12 +273,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#b3b3b3', // gray
     ],
     gradient: [
-      '#8da0cb', // blue
-      '#66c2a5', // teal
-      '#a6d854', // lime
-      '#ffd92f', // yellow
+      '#e78ac3', // pink (light - for low values)
       '#fc8d62', // orange
-      '#e78ac3', // pink
+      '#ffd92f', // yellow
+      '#a6d854', // lime
+      '#66c2a5', // teal
+      '#8da0cb', // blue (dark - for high values)
     ]
   },
   {
@@ -295,12 +295,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#666666', // dark gray
     ],
     gradient: [
-      '#7570b3', // dark blue
-      '#1b9e77', // dark teal
-      '#66a61e', // dark green
-      '#e6ab02', // dark yellow
+      '#e7298a', // dark pink (light - for low values)
       '#d95f02', // dark orange
-      '#e7298a', // dark pink
+      '#e6ab02', // dark yellow
+      '#66a61e', // dark green
+      '#1b9e77', // dark teal
+      '#7570b3', // dark blue (dark - for high values)
     ]
   },
   {
@@ -321,12 +321,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#b15928', // brown
     ],
     gradient: [
-      '#1f78b4', // blue
-      '#33a02c', // green
-      '#ffff99', // light yellow
-      '#ff7f00', // orange
+      '#6a3d9a', // purple (light - for low values)
       '#e31a1c', // red
-      '#6a3d9a', // purple
+      '#ff7f00', // orange
+      '#ffff99', // light yellow
+      '#33a02c', // green
+      '#1f78b4', // blue (dark - for high values)
     ]
   },
   {
@@ -343,14 +343,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#b6de2b', // yellow-green
     ],
     gradient: [
-      '#440154', // dark purple
-      '#482677', // purple
-      '#3f4a8a', // blue-purple
-      '#31678e', // blue
-      '#26838f', // teal
-      '#1f9d8a', // green-teal
+      '#b6de2b', // yellow-green (light - for low values)
       '#6cce5a', // green
-      '#b6de2b', // yellow-green
+      '#1f9d8a', // green-teal
+      '#26838f', // teal
+      '#31678e', // blue
+      '#3f4a8a', // blue-purple
+      '#482677', // purple
+      '#440154', // dark purple (dark - for high values)
     ]
   },
   {
@@ -367,14 +367,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#f0f921', // bright yellow
     ],
     gradient: [
-      '#0c0786', // dark blue
-      '#5c01a6', // purple
-      '#900da4', // magenta
-      '#bf3984', // pink
-      '#e16462', // coral
-      '#f99b45', // orange
+      '#f0f921', // bright yellow (light - for low values)
       '#fcce25', // yellow
-      '#f0f921', // bright yellow
+      '#f99b45', // orange
+      '#e16462', // coral
+      '#bf3984', // pink
+      '#900da4', // magenta
+      '#5c01a6', // purple
+      '#0c0786', // dark blue (dark - for high values)
     ]
   },
   {
@@ -391,14 +391,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#fec228', // yellow
     ],
     gradient: [
-      '#000003', // black
-      '#1f0c47', // dark blue
-      '#550f6d', // purple
-      '#88226a', // magenta
-      '#a83655', // red
-      '#cc4f39', // orange-red
+      '#fec228', // yellow (light - for low values)
       '#e6862a', // orange
-      '#fec228', // yellow
+      '#cc4f39', // orange-red
+      '#a83655', // red
+      '#88226a', // magenta
+      '#550f6d', // purple
+      '#1f0c47', // dark blue
+      '#000003', // black (dark - for high values)
     ]
   },
   {
@@ -415,14 +415,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#fd9f6c', // orange
     ],
     gradient: [
-      '#000003', // black
-      '#140b34', // dark purple
-      '#3b0f6f', // purple
-      '#641a80', // magenta
-      '#8b2981', // pink
-      '#b63679', // coral
+      '#fd9f6c', // orange (light - for low values)
       '#de4968', // red
-      '#fd9f6c', // orange
+      '#b63679', // coral
+      '#8b2981', // pink
+      '#641a80', // magenta
+      '#3b0f6f', // purple
+      '#140b34', // dark purple
+      '#000003', // black (dark - for high values)
     ]
   },
   {
@@ -439,14 +439,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#ffb570', // yellow
     ],
     gradient: [
-      '#00204c', // dark blue
-      '#003f5c', // blue
-      '#2c4b7a', // blue
-      '#51576f', // blue-gray
-      '#7f6874', // gray
-      '#a8786e', // brown
+      '#ffb570', // yellow (light - for low values)
       '#d2906d', // orange
-      '#ffb570', // yellow
+      '#a8786e', // brown
+      '#7f6874', // gray
+      '#51576f', // blue-gray
+      '#2c4b7a', // blue
+      '#003f5c', // blue
+      '#00204c', // dark blue (dark - for high values)
     ]
   },
   {
@@ -463,14 +463,14 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#c42e02', // red
     ],
     gradient: [
-      '#30123b', // purple
-      '#4454c4', // blue
-      '#1dd3c0', // cyan
-      '#42f465', // green
-      '#b2df22', // lime
-      '#faba39', // yellow
+      '#c42e02', // red (light - for low values)
       '#f66c19', // orange
-      '#c42e02', // red
+      '#faba39', // yellow
+      '#b2df22', // lime
+      '#42f465', // green
+      '#1dd3c0', // cyan
+      '#4454c4', // blue
+      '#30123b', // purple (dark - for high values)
     ]
   },
   {
@@ -487,12 +487,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#ffff00', // yellow
     ],
     gradient: [
-      '#8b0000', // dark red
-      '#b22222', // red
-      '#ff6347', // tomato
-      '#ff8c00', // dark orange
+      '#ffd700', // gold (light - for low values)
       '#ffa500', // orange
-      '#ffd700', // gold
+      '#ff8c00', // dark orange
+      '#ff6347', // tomato
+      '#b22222', // red
+      '#8b0000', // dark red (dark - for high values)
     ]
   },
   {
@@ -509,12 +509,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#008b8b', // dark cyan
     ],
     gradient: [
-      '#000080', // navy
-      '#0000ff', // blue
-      '#4169e1', // royal blue
-      '#00bfff', // deep sky blue
+      '#40e0d0', // turquoise (light - for low values)
       '#00ffff', // cyan
-      '#40e0d0', // turquoise
+      '#00bfff', // deep sky blue
+      '#4169e1', // royal blue
+      '#0000ff', // blue
+      '#000080', // navy (dark - for high values)
     ]
   },
   {
@@ -531,12 +531,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#deb887', // burlywood
     ],
     gradient: [
-      '#8b4513', // saddle brown
-      '#a0522d', // sienna
-      '#cd853f', // peru
-      '#daa520', // goldenrod
+      '#f4a460', // sandy brown (light - for low values)
       '#d2691e', // chocolate
-      '#f4a460', // sandy brown
+      '#daa520', // goldenrod
+      '#cd853f', // peru
+      '#a0522d', // sienna
+      '#8b4513', // saddle brown (dark - for high values)
     ]
   },
   {
@@ -553,12 +553,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#b22222', // fire brick
     ],
     gradient: [
-      '#8b0000', // dark red
-      '#a0522d', // sienna
-      '#cd853f', // peru
-      '#daa520', // goldenrod
+      '#ff4500', // orange red (light - for low values)
       '#ff8c00', // dark orange
-      '#ff4500', // orange red
+      '#daa520', // goldenrod
+      '#cd853f', // peru
+      '#a0522d', // sienna
+      '#8b0000', // dark red (dark - for high values)
     ]
   },
   {
@@ -575,12 +575,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#e0ffff', // light cyan
     ],
     gradient: [
-      '#32cd32', // lime green
-      '#98fb98', // pale green
-      '#ffffe0', // light yellow
-      '#ffb6c1', // light pink
+      '#e0ffff', // light cyan (light - for low values)
       '#ffc0cb', // pink
-      '#e0ffff', // light cyan
+      '#ffb6c1', // light pink
+      '#ffffe0', // light yellow
+      '#98fb98', // pale green
+      '#32cd32', // lime green (dark - for high values)
     ]
   },
   {
@@ -597,12 +597,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#708090', // slate gray
     ],
     gradient: [
-      '#191970', // midnight blue
-      '#4682b4', // steel blue
-      '#87ceeb', // sky blue
-      '#b0e0e6', // powder blue
+      '#f0f8ff', // alice blue (light - for low values)
       '#e0ffff', // light cyan
-      '#f0f8ff', // alice blue
+      '#b0e0e6', // powder blue
+      '#87ceeb', // sky blue
+      '#4682b4', // steel blue
+      '#191970', // midnight blue (dark - for high values)
     ]
   },
   {
@@ -619,12 +619,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#40ff00', // bright green
     ],
     gradient: [
-      '#8000ff', // neon purple
-      '#0080ff', // neon blue
-      '#00ff80', // neon green
-      '#80ff00', // neon lime
+      '#ff0080', // neon pink (light - for low values)
       '#ff8000', // neon orange
-      '#ff0080', // neon pink
+      '#80ff00', // neon lime
+      '#00ff80', // neon green
+      '#0080ff', // neon blue
+      '#8000ff', // neon purple (dark - for high values)
     ]
   },
   {
@@ -641,12 +641,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#20b2aa', // light sea green
     ],
     gradient: [
-      '#9370db', // medium purple
-      '#ff69b4', // hot pink
-      '#ff6347', // tomato
-      '#ffd700', // gold
+      '#00ced1', // dark turquoise (light - for low values)
       '#32cd32', // lime green
-      '#00ced1', // dark turquoise
+      '#ffd700', // gold
+      '#ff6347', // tomato
+      '#ff69b4', // hot pink
+      '#9370db', // medium purple (dark - for high values)
     ]
   },
   {
@@ -663,12 +663,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#cccccc', // very light gray
     ],
     gradient: [
-      '#003366', // dark blue
-      '#0066cc', // blue
-      '#336699', // steel blue
-      '#6699cc', // light blue
+      '#b3b3b3', // light gray (light - for low values)
       '#808080', // gray
-      '#b3b3b3', // light gray
+      '#6699cc', // light blue
+      '#336699', // steel blue
+      '#0066cc', // blue
+      '#003366', // dark blue (dark - for high values)
     ]
   },
   {
@@ -685,12 +685,12 @@ export const COLOR_PALETTES: ColorPalette[] = [
       '#00bcd4', // cyan
     ],
     gradient: [
-      '#673ab7', // deep purple
-      '#3f51b5', // indigo
-      '#2196f3', // blue
-      '#00bcd4', // cyan
+      '#e91e63', // pink (light - for low values)
       '#03a9f4', // light blue
-      '#e91e63', // pink
+      '#00bcd4', // cyan
+      '#2196f3', // blue
+      '#3f51b5', // indigo
+      '#673ab7', // deep purple (dark - for high values)
     ]
   }
 ]
