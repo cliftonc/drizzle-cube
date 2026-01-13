@@ -31,7 +31,9 @@ export {
   preloadChart,
   preloadCharts,
   isValidChartType,
-  getAvailableChartTypes
+  getAvailableChartTypes,
+  isChartTypeAvailable,
+  getUnavailableChartTypes
 } from './charts/ChartLoader'
 export type { LazyChartProps } from './charts/ChartLoader'
 
