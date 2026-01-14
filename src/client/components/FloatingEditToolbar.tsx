@@ -204,15 +204,11 @@ function ToolbarButton({ icon: Icon, tooltip, isActive, disabled, onClick }: Too
       title={tooltip}
       className={`p-2 rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-dc-accent
         ${disabled
-          ? 'opacity-50 cursor-not-allowed bg-dc-surface-secondary'
+          ? 'opacity-50 cursor-not-allowed bg-dc-surface-secondary text-dc-text-muted'
           : isActive
-            ? 'bg-dc-surface-secondary'
-            : 'bg-dc-surface hover:bg-dc-surface-hover'
+            ? 'bg-dc-accent-bg text-dc-accent'
+            : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
         }`}
-      style={{
-        color: disabled ? 'var(--dc-text-muted)' : isActive ? 'var(--dc-primary)' : 'var(--dc-text-secondary)',
-        borderColor: isActive ? 'var(--dc-primary)' : 'transparent'
-      }}
     >
       <Icon className="w-5 h-5" />
     </button>

@@ -20,6 +20,7 @@ import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from
 import { getIcon } from '../icons'
 import { useScrollDetection } from '../hooks/useScrollDetection'
 import { useElementVisibility } from '../hooks/useElementVisibility'
+import { useDragAutoScroll } from '../hooks/useDragAutoScroll'
 import DashboardPortletCard from './DashboardPortletCard'
 import RowManagedLayout from './RowManagedLayout'
 import FloatingEditToolbar from './FloatingEditToolbar'
@@ -340,6 +341,14 @@ export default function DashboardGrid({
     debounceMs: 100,
     containerRef: scrollContainerRef,
     container: scrollContainer  // State dependency to trigger re-init when container found
+  })
+
+  // Auto-scroll when dragging portlets near edges in row mode
+  // Grid mode (react-grid-layout) has built-in auto-scroll, row mode needs this
+  useDragAutoScroll(scrollContainerRef, {
+    enabled: layoutMode === 'rows' && isDraggingPortlet,
+    edgeThreshold: 80,
+    maxScrollSpeed: 15
   })
 
   // Set up initialization tracking
@@ -1061,10 +1070,10 @@ export default function DashboardGrid({
                 <button
                   onClick={() => actions.handleLayoutModeChange('grid')}
                   disabled={!canChangeLayoutMode}
-                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors border-b-2 ${
                     layoutMode === 'grid'
-                      ? 'bg-dc-surface-secondary text-dc-text shadow-inner'
-                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
+                      ? 'bg-dc-accent-bg text-dc-accent border-b-dc-accent'
+                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover border-b-transparent'
                   } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
                 >
                   <GridIcon className="w-4 h-4 shrink-0" />
@@ -1073,10 +1082,10 @@ export default function DashboardGrid({
                 <button
                   onClick={() => actions.handleLayoutModeChange('rows')}
                   disabled={!canChangeLayoutMode}
-                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors border-b-2 ${
                     layoutMode === 'rows'
-                      ? 'bg-dc-surface-secondary text-dc-text shadow-inner'
-                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
+                      ? 'bg-dc-accent-bg text-dc-accent border-b-dc-accent'
+                      : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover border-b-transparent'
                   } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
                 >
                   <RowsIcon className="w-4 h-4 shrink-0" />
