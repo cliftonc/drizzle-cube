@@ -1,10 +1,13 @@
-import React, { useCallback, useMemo, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
+import React, { useCallback, useMemo, useState, useEffect, useRef, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
 import type { DashboardFilter, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore'
 import { ensureAnalysisConfig } from '../utils/configMigration'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider'
+import { getIcon } from '../icons/registry'
+import { isPortletCopyAvailable, copyPortletToClipboard } from '../utils/thumbnail'
 
 // Constant style object to prevent re-renders from inline object recreation
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
@@ -140,6 +143,39 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   // Get setDebugData action from store
   const setDebugData = useDashboardStore(state => state.setDebugData)
+
+  // Get features for copy-to-clipboard functionality
+  const { features } = useCubeFeatures()
+
+  // Icons for copy-to-clipboard button
+  const CameraIcon = getIcon('camera')
+  const CheckIcon = getIcon('check')
+
+  // State and ref for copy-to-clipboard functionality
+  const [copySuccess, setCopySuccess] = useState(false)
+  const [copyAvailable, setCopyAvailable] = useState(false)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+
+  // Check if copy-to-clipboard capability is available on mount
+  useEffect(() => {
+    if (features.thumbnail?.enabled) {
+      isPortletCopyAvailable().then(setCopyAvailable)
+    } else {
+      setCopyAvailable(false)
+    }
+  }, [features.thumbnail?.enabled])
+
+  // Handler for copy-to-clipboard
+  const handleCopyToClipboard = useCallback(async (event: React.MouseEvent | React.TouchEvent) => {
+    event.stopPropagation()
+    if (!chartContainerRef.current) return
+
+    const success = await copyPortletToClipboard(chartContainerRef.current)
+    if (success) {
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    }
+  }, [])
 
   const hasSelectedFilter = selectedFilterId
     ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
@@ -296,6 +332,25 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
               <icons.RefreshIcon style={ICON_STYLE} />
             </button>
 
+            {/* Copy to clipboard button - visible when thumbnail feature is enabled and capability is available */}
+            {copyAvailable && !isInSelectionMode && (
+              <button
+                onClick={handleCopyToClipboard}
+                onTouchEnd={(event) => {
+                  event.preventDefault()
+                  handleCopyToClipboard(event)
+                }}
+                className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                title={copySuccess ? 'Copied!' : 'Copy chart to clipboard'}
+              >
+                {copySuccess ? (
+                  <CheckIcon style={ICON_STYLE} />
+                ) : (
+                  <CameraIcon style={ICON_STYLE} />
+                )}
+              </button>
+            )}
+
             {editable && isEditMode && !isInSelectionMode && (
               <>
                 <button
@@ -370,7 +425,10 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         </div>
       )}
 
-      <div className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col">
+      <div
+        ref={chartContainerRef}
+        className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col"
+      >
         <AnalyticsPortlet
           ref={el => setPortletComponentRef(portlet.id, el)}
           query={renderQuery}

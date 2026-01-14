@@ -72,6 +72,7 @@ export interface IconRegistry {
   bookOpen: IconDefinition
   codeBracket: IconDefinition
   swatch: IconDefinition
+  camera: IconDefinition
 
   // Field type icons
   measure: IconDefinition

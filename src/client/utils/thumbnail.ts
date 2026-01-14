@@ -181,3 +181,101 @@ export async function isThumbnailCaptureAvailable(
   const screenshot = await getScreenshotModule()
   return screenshot !== null
 }
+
+/**
+ * Check if portlet screenshot-to-clipboard is available.
+ * Requires both modern-screenshot AND Clipboard API with image support.
+ */
+export async function isPortletCopyAvailable(): Promise<boolean> {
+  // Check if we're in browser environment
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  // Check modern-screenshot is installed
+  const screenshot = await getScreenshotModule()
+  if (!screenshot) {
+    return false
+  }
+
+  // Check Clipboard API supports writing images (ClipboardItem with image/png blob)
+  return (
+    typeof ClipboardItem !== 'undefined' &&
+    typeof navigator?.clipboard?.write === 'function'
+  )
+}
+
+/**
+ * Check if a background color is transparent or effectively invisible
+ */
+function isTransparentBackground(color: string): boolean {
+  if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+    return true
+  }
+  // Check for rgba with 0 alpha
+  const rgbaMatch = color.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/)
+  if (rgbaMatch && parseFloat(rgbaMatch[1]) === 0) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Find the effective background color by walking up the DOM tree
+ */
+function getEffectiveBackgroundColor(element: HTMLElement): string {
+  let current: HTMLElement | null = element
+
+  while (current) {
+    const bg = getComputedStyle(current).backgroundColor
+    if (!isTransparentBackground(bg)) {
+      return bg
+    }
+    current = current.parentElement
+  }
+
+  // Fallback to theme variable or white
+  const themeColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--dc-surface')
+    .trim()
+
+  return themeColor || '#ffffff'
+}
+
+/**
+ * Capture a portlet element and copy to clipboard as PNG.
+ * Returns true on success, false on failure.
+ *
+ * @param element - The HTML element to capture
+ * @returns Promise<boolean> - true if successfully copied to clipboard
+ */
+export async function copyPortletToClipboard(element: HTMLElement): Promise<boolean> {
+  try {
+    const screenshot = await getScreenshotModule()
+    if (!screenshot) {
+      console.warn('[drizzle-cube] Cannot copy portlet: modern-screenshot not available')
+      return false
+    }
+
+    // Get theme-aware background color by walking up the DOM tree
+    const backgroundColor = getEffectiveBackgroundColor(element)
+
+    // Capture as PNG data URL at 2x scale for retina quality
+    const dataUrl = await screenshot.domToPng(element, {
+      scale: 2,
+      backgroundColor,
+    })
+
+    // Convert data URL to blob
+    const response = await fetch(dataUrl)
+    const blob = await response.blob()
+
+    // Write to clipboard
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+
+    return true
+  } catch (error) {
+    console.warn('[drizzle-cube] Failed to copy portlet to clipboard:', error)
+    return false
+  }
+}
