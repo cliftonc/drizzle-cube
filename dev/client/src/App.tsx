@@ -20,11 +20,10 @@ const features = {
   useAnalysisBuilder: true,
   editToolbar: 'both' as const,  // 'floating' | 'top' | 'both'
   floatingToolbarPosition: 'right' as const,
-  // Dashboard thumbnail capture on save (requires html2canvas)
+  // Dashboard thumbnail capture on save (requires modern-screenshot)
   thumbnail: {
     enabled: true,
-    width: 400,
-    height: 300,
+    // Using defaults (1600x1200) for crisp thumbnails
     format: 'png' as const
   }
 }

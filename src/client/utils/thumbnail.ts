@@ -24,13 +24,16 @@ let screenshotModule: ModernScreenshotModule | null = null
 let moduleChecked = false
 
 /**
- * Crop an image to the specified dimensions (from top-left corner)
- * Uses Canvas API to extract just the top portion of the image
+ * Resize an image to the specified dimensions while maintaining quality.
+ * This takes a high-resolution source and scales it down to target dimensions,
+ * which produces better results than capturing at low resolution directly.
+ *
+ * Uses Canvas imageSmoothingQuality for best downscaling results.
  */
-function cropImage(
+function resizeImage(
   dataUri: string,
-  width: number,
-  height: number,
+  targetWidth: number,
+  targetHeight: number,
   format: 'png' | 'jpeg',
   quality: number
 ): Promise<string> {
@@ -38,8 +41,8 @@ function cropImage(
     const img = new Image()
     img.onload = () => {
       const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
+      canvas.width = targetWidth
+      canvas.height = targetHeight
 
       const ctx = canvas.getContext('2d')
       if (!ctx) {
@@ -47,17 +50,42 @@ function cropImage(
         return
       }
 
-      // Draw only the top portion of the source image
+      // Enable high-quality image smoothing for downscaling
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+
+      // Calculate aspect-ratio-preserving dimensions
+      const sourceAspect = img.width / img.height
+      const targetAspect = targetWidth / targetHeight
+
+      let sourceX = 0
+      let sourceY = 0
+      let sourceWidth = img.width
+      let sourceHeight = img.height
+
+      // Crop source to match target aspect ratio (center crop)
+      if (sourceAspect > targetAspect) {
+        // Source is wider - crop horizontally
+        sourceWidth = img.height * targetAspect
+        sourceX = (img.width - sourceWidth) / 2
+      } else if (sourceAspect < targetAspect) {
+        // Source is taller - crop vertically (take from top)
+        sourceHeight = img.width / targetAspect
+        // Don't center - take from top for dashboard previews
+        sourceY = 0
+      }
+
+      // Draw the scaled and cropped image
       ctx.drawImage(
         img,
-        0, 0, width, height,  // Source: top-left crop at target size
-        0, 0, width, height   // Destination: full canvas
+        sourceX, sourceY, sourceWidth, sourceHeight,  // Source region
+        0, 0, targetWidth, targetHeight               // Destination (full canvas)
       )
 
       const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png'
       resolve(canvas.toDataURL(mimeType, quality))
     }
-    img.onerror = () => reject(new Error('Failed to load image for cropping'))
+    img.onerror = () => reject(new Error('Failed to load image for resizing'))
     img.src = dataUri
   })
 }
@@ -139,25 +167,38 @@ export async function captureThumbnail(
   }
 
   try {
-    const targetWidth = config.width ?? 800   // Default 800px wide
-    const targetHeight = config.height ?? 600 // Default 600px tall (4:3 aspect)
+    // Higher default dimensions for crisp thumbnails on retina displays
+    // 1600x1200 provides good quality while keeping file size reasonable
+    const targetWidth = config.width ?? 1600
+    const targetHeight = config.height ?? 1200
     const format = config.format ?? 'png'
-    const quality = config.quality ?? 0.9
+    const quality = config.quality ?? 0.95    // Higher default quality
 
     const element = elementRef.current
-    const elementRect = element.getBoundingClientRect()
-    const elementWidth = elementRect.width
 
-    // Calculate scale factor to get target width
-    const scale = targetWidth / elementWidth
+    // Always capture at 2x scale for high quality (like copy-to-clipboard)
+    // This produces a sharp image that we then resize down
+    const captureScale = 2
 
-    // Capture full element at scaled width
-    const fullDataUri = await screenshot.domToPng(element, { scale, quality })
+    // Get theme-aware background color (walks DOM tree to find effective bg)
+    const backgroundColor = getEffectiveBackgroundColor(element)
 
-    // Crop to target dimensions (takes top portion only)
-    const croppedDataUri = await cropImage(fullDataUri, targetWidth, targetHeight, format, quality)
+    // Capture at high resolution with proper background
+    const fullDataUri = await screenshot.domToPng(element, {
+      scale: captureScale,
+      backgroundColor,
+    })
 
-    return croppedDataUri
+    // Resize to target dimensions (high-quality downscaling)
+    const resizedDataUri = await resizeImage(
+      fullDataUri,
+      targetWidth,
+      targetHeight,
+      format,
+      quality
+    )
+
+    return resizedDataUri
   } catch (error) {
     console.error('[drizzle-cube] Failed to capture thumbnail:', error)
     return null

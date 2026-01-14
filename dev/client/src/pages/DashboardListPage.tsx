@@ -168,12 +168,12 @@ export default function DashboardListPage() {
               {/* Uses thumbnailUrl (CDN) if available, falls back to thumbnailData (base64) for dev, or placeholder */}
               {thumbnailEnabled && (
                 <Link to={`/dashboards/${page.id}`} className="block">
-                  <div className="relative aspect-video bg-dc-bg-secondary">
+                  <div className="relative aspect-video bg-dc-bg-secondary p-2 rounded-t-lg">
                     {page.config.thumbnailUrl || page.config.thumbnailData ? (
                       <img
                         src={page.config.thumbnailUrl || page.config.thumbnailData}
                         alt={`${page.name} preview`}
-                        className="w-full h-full object-cover object-top"
+                        className="w-full h-full object-cover object-top rounded-md"
                       />
                     ) : (
                       <DashboardThumbnailPlaceholder className="w-full h-full" />

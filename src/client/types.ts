@@ -473,10 +473,10 @@ export interface ChartProps {
 // Thumbnail feature configuration
 export interface ThumbnailFeatureConfig {
   enabled: boolean
-  width?: number   // default: 400
-  height?: number  // default: 300
+  width?: number   // default: 1600 (higher resolution for crisp thumbnails)
+  height?: number  // default: 1200 (4:3 aspect ratio)
   format?: 'png' | 'jpeg'  // default: 'png'
-  quality?: number // 0-1, for jpeg only
+  quality?: number // 0-1, mainly for jpeg (PNG ignores this)
 }
 
 // Features configuration
