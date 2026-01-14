@@ -20,6 +20,16 @@ vi.mock('../../src/client/providers/CubeProvider', () => ({
   }))
 }))
 
+// Mock CubeFeaturesProvider - DashboardPortletCard uses useCubeFeatures directly
+vi.mock('../../src/client/providers/CubeFeaturesProvider', () => ({
+  useCubeFeatures: vi.fn(() => ({
+    features: {},
+    dashboardModes: ['grid', 'mobile'],
+    updateFeatures: vi.fn()
+  })),
+  CubeFeaturesProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
 // Mock CubeApiProvider - needed when portlet modal opens AnalysisBuilder
 vi.mock('../../src/client/providers/CubeApiProvider', () => ({
   useCubeApi: vi.fn(() => ({
