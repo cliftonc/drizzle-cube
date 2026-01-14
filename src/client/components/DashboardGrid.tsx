@@ -102,6 +102,8 @@ interface DashboardGridProps {
   onConfigChange?: (config: DashboardConfig) => void
   onPortletRefresh?: (portletId: string) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
+  /** Callback to save thumbnail separately - called on edit mode exit when thumbnail feature is enabled */
+  onSaveThumbnail?: (thumbnailData: string) => Promise<string | void>
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
   schema?: CubeMeta | null  // Cube metadata for filter panel
   onDashboardFiltersChange?: (filters: DashboardFilter[]) => void  // Handler for filter changes
@@ -205,6 +207,7 @@ export default function DashboardGrid({
   onConfigChange,
   onPortletRefresh,
   onSave,
+  onSaveThumbnail,
   colorPalette,
   schema,
   onDashboardFiltersChange,
@@ -236,6 +239,8 @@ export default function DashboardGrid({
   const containerElementRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   const editBarRef = useRef<HTMLDivElement | null>(null)
+  // Separate ref for grid content area (used for thumbnail capture - excludes toolbar/filters)
+  const gridContentRef = useRef<HTMLDivElement | null>(null)
 
   // Combined ref for container
   const combinedContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -272,9 +277,11 @@ export default function DashboardGrid({
     isResponsiveEditable,
     onConfigChange,
     onSave,
+    onSaveThumbnail,
     gridWidth,
     portletComponentRefs,
     onPortletRefresh,
+    dashboardRef: gridContentRef, // For thumbnail capture on exit edit mode (grid content only, excludes toolbar/filters)
   })
 
   // Destructure for easier access (maintains existing variable names)
@@ -1200,20 +1207,23 @@ export default function DashboardGrid({
       )}
       
       {/* Render layout based on display mode */}
-      {displayMode === 'mobile' ? (
-        <MobileStackedLayout
-          config={config}
-          colorPalette={colorPalette}
-          dashboardFilters={dashboardFilters}
-          onPortletRefresh={handlePortletRefresh}
-        />
-      ) : displayMode === 'scaled' ? (
-        <ScaledGridWrapper scaleFactor={scaleFactor} designWidth={designWidth}>
-          {renderActiveLayout}
-        </ScaledGridWrapper>
-      ) : (
-        renderActiveLayout
-      )}
+      {/* Grid content ref wrapper for thumbnail capture (excludes toolbar/filters) */}
+      <div ref={gridContentRef}>
+        {displayMode === 'mobile' ? (
+          <MobileStackedLayout
+            config={config}
+            colorPalette={colorPalette}
+            dashboardFilters={dashboardFilters}
+            onPortletRefresh={handlePortletRefresh}
+          />
+        ) : displayMode === 'scaled' ? (
+          <ScaledGridWrapper scaleFactor={scaleFactor} designWidth={designWidth}>
+            {renderActiveLayout}
+          </ScaledGridWrapper>
+        ) : (
+          renderActiveLayout
+        )}
+      </div>
       
       {/* Portlet Modal */}
       <PortletAnalysisModal

@@ -277,6 +277,9 @@ export interface DashboardConfig {
   colorPalette?: string // Name of the color palette to use (defaults to 'default')
   filters?: DashboardFilter[] // Dashboard-level filters that can be applied to portlets
   eagerLoad?: boolean // Force immediate loading for all portlets (default: false, lazy load enabled)
+  // Thumbnail fields for dashboard preview/sharing
+  thumbnailData?: string  // Transient: base64 data URI for upload (cleared by server after processing)
+  thumbnailUrl?: string   // Permanent: CDN URL after server-side processing
 }
 
 // Analysis type for explicit mode selection in AnalysisBuilder
@@ -454,6 +457,7 @@ export interface AnalyticsDashboardProps {
   loadingComponent?: ReactNode // Custom loading indicator for all portlets (defaults to LoadingIndicator)
   onConfigChange?: (config: DashboardConfig) => void
   onSave?: (config: DashboardConfig) => Promise<void> | void
+  onSaveThumbnail?: (thumbnailData: string) => Promise<string | void> // Callback to save thumbnail separately (called on edit mode exit)
   onDirtyStateChange?: (isDirty: boolean) => void
 }
 
@@ -466,6 +470,15 @@ export interface ChartProps {
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
 }
 
+// Thumbnail feature configuration
+export interface ThumbnailFeatureConfig {
+  enabled: boolean
+  width?: number   // default: 400
+  height?: number  // default: 300
+  format?: 'png' | 'jpeg'  // default: 'png'
+  quality?: number // 0-1, for jpeg only
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -474,6 +487,7 @@ export interface FeaturesConfig {
   useAnalysisBuilder?: boolean // Deprecated - AnalysisBuilder modal is now always used (PortletEditModal was removed)
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
   floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')
+  thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
 }
 
 // Grid layout types (simplified)

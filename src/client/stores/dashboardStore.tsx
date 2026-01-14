@@ -110,6 +110,12 @@ export interface DashboardStoreState {
   // =========================================================================
   /** Debug data keyed by portlet ID (for chart inspector) */
   debugData: Record<string, DebugDataEntry>
+
+  // =========================================================================
+  // Thumbnail State
+  // =========================================================================
+  /** Whether the dashboard has been modified and needs a new thumbnail */
+  thumbnailDirty: boolean
 }
 
 /**
@@ -169,6 +175,12 @@ export interface DashboardStoreActions {
   clearDebugData: (portletId?: string) => void
 
   // =========================================================================
+  // Thumbnail Actions
+  // =========================================================================
+  /** Set thumbnail dirty state (needs new capture) */
+  setThumbnailDirty: (dirty: boolean) => void
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Reset store to initial state */
@@ -213,6 +225,9 @@ const createDefaultState = (): DashboardStoreState => ({
 
   // Debug data
   debugData: {},
+
+  // Thumbnail state
+  thumbnailDirty: false,
 })
 
 /**
@@ -340,6 +355,12 @@ function createStoreActions(
         }
         return { debugData: {} }
       }),
+
+    // =================================================================
+    // Thumbnail Actions
+    // =================================================================
+
+    setThumbnailDirty: (dirty) => set({ thumbnailDirty: dirty }),
 
     // =================================================================
     // Utility Actions
@@ -545,6 +566,11 @@ export const selectDebugDataActions = (state: DashboardStore) => ({
 })
 
 /**
+ * Select thumbnail dirty state
+ */
+export const selectThumbnailDirty = (state: DashboardStore) => state.thumbnailDirty
+
+/**
  * Select all actions
  */
 export const selectAllActions = (state: DashboardStore) => ({
@@ -570,6 +596,8 @@ export const selectAllActions = (state: DashboardStore) => ({
   // Debug data
   setDebugData: state.setDebugData,
   clearDebugData: state.clearDebugData,
+  // Thumbnail
+  setThumbnailDirty: state.setThumbnailDirty,
   // Utility
   reset: state.reset,
 })

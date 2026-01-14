@@ -39,6 +39,8 @@ import {
   type DashboardStore,
   type PortletDebugDataEntry,
 } from '../stores/dashboardStore'
+import { useCubeFeatures } from '../providers/CubeProvider'
+import { captureThumbnail } from '../utils/thumbnail'
 import type { LayoutItem } from 'react-grid-layout'
 import type {
   DashboardConfig,
@@ -71,12 +73,16 @@ export interface UseDashboardOptions {
   onConfigChange?: (config: DashboardConfig) => void
   /** Save handler */
   onSave?: (config: DashboardConfig) => Promise<void> | void
+  /** Callback to save thumbnail separately - called on edit mode exit when thumbnail feature is enabled */
+  onSaveThumbnail?: (thumbnailData: string) => Promise<string | void>
   /** Grid width for row calculations */
   gridWidth?: number
   /** Portlet component refs for refresh functionality */
   portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: () => void } | null>>
   /** Portlet refresh handler (external) */
   onPortletRefresh?: (portletId: string) => void
+  /** Ref to the dashboard container element for thumbnail capture */
+  dashboardRef?: React.RefObject<HTMLElement | null>
 }
 
 export interface UseDashboardResult {
@@ -357,6 +363,7 @@ const selectStoreState = (state: DashboardStore) => ({
   lastKnownLayout: state.lastKnownLayout,
   isInitialized: state.isInitialized,
   debugData: state.debugData,
+  thumbnailDirty: state.thumbnailDirty,
 })
 
 const selectStoreActions = (state: DashboardStore) => ({
@@ -378,6 +385,7 @@ const selectStoreActions = (state: DashboardStore) => ({
   clearDragState: state.clearDragState,
   setDebugData: state.setDebugData,
   clearDebugData: state.clearDebugData,
+  setThumbnailDirty: state.setThumbnailDirty,
 })
 
 // ============================================================================
@@ -394,8 +402,10 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     isResponsiveEditable = true,
     onConfigChange,
     onSave,
+    onSaveThumbnail,
     portletComponentRefs,
     onPortletRefresh,
+    dashboardRef,
   } = options
 
   // =========================================================================
@@ -404,6 +414,10 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
   const storeState = useDashboardStore(useShallow(selectStoreState))
   const storeActions = useDashboardStore(useShallow(selectStoreActions))
+
+  // Get thumbnail feature config from context
+  const { features } = useCubeFeatures()
+  const thumbnailConfig = features.thumbnail
 
   // Keep refs for draft rows (needed for mouse event handlers)
   const draftRowsRef = useRef<RowLayout[] | null>(null)
@@ -477,13 +491,38 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
   const exitEditMode = useCallback(() => {
     storeActions.setEditMode(false)
-  }, [storeActions])
+
+    // Capture thumbnail in background after UI has fully re-rendered
+    // Use longer delay to ensure edit mode UI elements are removed and charts settle
+    if (storeState.thumbnailDirty && thumbnailConfig?.enabled && dashboardRef) {
+      setTimeout(async () => {
+        const thumbnailData = await captureThumbnail(dashboardRef, thumbnailConfig)
+        if (thumbnailData && onSaveThumbnail) {
+          try {
+            const thumbnailUrl = await onSaveThumbnail(thumbnailData)
+            // Optionally update config with URL
+            if (thumbnailUrl && onConfigChange) {
+              onConfigChange({ ...config, thumbnailUrl, thumbnailData: undefined })
+            }
+          } catch (error) {
+            console.error('Failed to save thumbnail:', error)
+          }
+        }
+        storeActions.setThumbnailDirty(false)
+      }, 500) // 500ms delay for re-render (edit mode UI removal + chart settling)
+    }
+  }, [storeActions, storeState.thumbnailDirty, thumbnailConfig, dashboardRef, onSaveThumbnail, config, onConfigChange])
 
   const toggleEditMode = useCallback(() => {
     if (isResponsiveEditable) {
-      storeActions.toggleEditMode()
+      if (storeState.isEditMode) {
+        // Use exitEditMode to handle thumbnail capture
+        exitEditMode()
+      } else {
+        storeActions.setEditMode(true)
+      }
     }
-  }, [isResponsiveEditable, storeActions])
+  }, [isResponsiveEditable, storeActions, storeState.isEditMode, exitEditMode])
 
   const selectFilter = useCallback(
     (filterId: string | null) => {
@@ -564,6 +603,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (save && onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed after row layout change:', error)
         }
@@ -606,6 +646,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed after layout mode switch:', error)
         }
@@ -703,6 +744,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         if (onSave) {
           try {
             await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
@@ -759,13 +801,14 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         if (onSave) {
           try {
             await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
         }
       }
     },
-    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout]
+    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, storeActions, updateRowLayout]
   )
 
   // Public delete action - opens confirmation modal
@@ -835,6 +878,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         if (onSave) {
           try {
             await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
@@ -843,7 +887,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       return duplicatedPortlet.id
     },
-    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, updateRowLayout]
+    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, storeActions, updateRowLayout]
   )
 
   const refreshPortlet = useCallback(
@@ -887,12 +931,13 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave]
+    [config, onConfigChange, onSave, storeActions]
   )
 
   const selectAllForFilter = useCallback(
@@ -920,12 +965,13 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave]
+    [config, onConfigChange, onSave, storeActions]
   )
 
   const saveFilterConfig = useCallback(
@@ -952,12 +998,13 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave, storeState.filterConfigPortlet]
+    [config, onConfigChange, onSave, storeActions, storeState.filterConfigPortlet]
   )
 
   // Config operations
@@ -975,12 +1022,13 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       if (onSave) {
         try {
           await onSave(updatedConfig)
+          storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave]
+    [config, onConfigChange, onSave, storeActions]
   )
 
   // =========================================================================

@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import { DashboardEditModal } from '@drizzle-cube/client'
-import { 
-  useAnalyticsPages, 
-  useCreateExamplePage, 
+import { DashboardEditModal, useCubeFeatures, DashboardThumbnailPlaceholder } from '@drizzle-cube/client'
+import {
+  useAnalyticsPages,
+  useCreateExamplePage,
   useDeleteAnalyticsPage,
   useCreateAnalyticsPage
 } from '../hooks/useAnalyticsPages'
@@ -14,6 +14,8 @@ export default function DashboardListPage() {
   const deletePage = useDeleteAnalyticsPage()
   const createPage = useCreateAnalyticsPage()
   const [isNewModalOpen, setIsNewModalOpen] = useState(false)
+  const { features } = useCubeFeatures()
+  const thumbnailEnabled = features.thumbnail?.enabled ?? false
 
   const handleCreateExample = async () => {
     if (pages.length >= 10) {
@@ -160,8 +162,25 @@ export default function DashboardListPage() {
           {pages.map((page) => (
             <div
               key={page.id}
-              className="relative group bg-dc-card-bg rounded-lg shadow-2xs hover:shadow-md transition-shadow touch-manipulation border border-dc-card-border"
+              className="relative group bg-dc-card-bg rounded-lg shadow-2xs hover:shadow-md transition-shadow touch-manipulation border border-dc-card-border overflow-hidden"
             >
+              {/* Thumbnail preview (if enabled) */}
+              {/* Uses thumbnailUrl (CDN) if available, falls back to thumbnailData (base64) for dev, or placeholder */}
+              {thumbnailEnabled && (
+                <Link to={`/dashboards/${page.id}`} className="block">
+                  <div className="relative aspect-video bg-dc-bg-secondary">
+                    {page.config.thumbnailUrl || page.config.thumbnailData ? (
+                      <img
+                        src={page.config.thumbnailUrl || page.config.thumbnailData}
+                        alt={`${page.name} preview`}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    ) : (
+                      <DashboardThumbnailPlaceholder className="w-full h-full" />
+                    )}
+                  </div>
+                </Link>
+              )}
               <div className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-base sm:text-lg font-medium text-dc-text pr-2 leading-tight">

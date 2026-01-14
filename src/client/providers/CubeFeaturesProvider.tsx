@@ -6,8 +6,9 @@
  * if they don't use features.
  */
 
-import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import type { FeaturesConfig, DashboardLayoutMode } from '../types'
+import { warnIfScreenshotLibMissing } from '../utils/thumbnail'
 
 interface CubeFeaturesContextValue {
   features: FeaturesConfig
@@ -42,6 +43,11 @@ export function CubeFeaturesProvider({
     ...DEFAULT_FEATURES,
     ...initialFeatures
   }))
+
+  // Warn in development if thumbnail feature is enabled but modern-screenshot is not installed
+  useEffect(() => {
+    warnIfScreenshotLibMissing(features.thumbnail)
+  }, [features.thumbnail])
 
   const updateFeatures = useCallback((newFeatures: Partial<FeaturesConfig>) => {
     setFeatures(prev => ({ ...prev, ...newFeatures }))

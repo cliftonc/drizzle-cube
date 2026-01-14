@@ -19,7 +19,14 @@ const features = {
   aiEndpoint: '/api/ai/generate',
   useAnalysisBuilder: true,
   editToolbar: 'both' as const,  // 'floating' | 'top' | 'both'
-  floatingToolbarPosition: 'right' as const
+  floatingToolbarPosition: 'right' as const,
+  // Dashboard thumbnail capture on save (requires html2canvas)
+  thumbnail: {
+    enabled: true,
+    width: 400,
+    height: 300,
+    format: 'png' as const
+  }
 }
 
 function App() {

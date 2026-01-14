@@ -287,6 +287,74 @@ analyticsApp.post('/:id/reset', async (c) => {
   }
 })
 
+// Save thumbnail for analytics page (dev server - stores in config directly)
+analyticsApp.post('/:id/thumbnail', async (c) => {
+  const db = c.get('db')
+  const organisationId = c.get('organisationId')
+  const id = parseInt(c.req.param('id'))
+
+  if (isNaN(id)) {
+    return c.json({ error: 'Invalid page ID' }, 400)
+  }
+
+  try {
+    const body = await c.req.json()
+    const { thumbnailData } = body
+
+    if (!thumbnailData || typeof thumbnailData !== 'string') {
+      return c.json({ error: 'thumbnailData (base64 string) is required' }, 400)
+    }
+
+    // Get current page to merge with existing config
+    const existingPage = await db
+      .select()
+      .from(analyticsPages)
+      .where(
+        and(
+          eq(analyticsPages.id, id),
+          eq(analyticsPages.organisationId, organisationId),
+          eq(analyticsPages.isActive, true)
+        )
+      )
+      .limit(1)
+
+    if (existingPage.length === 0) {
+      return c.json({ error: 'Analytics page not found' }, 404)
+    }
+
+    // For dev server: store thumbnailData directly in config
+    // In production, you would upload to R2/S3 and store thumbnailUrl instead
+    const updatedConfig = {
+      ...existingPage[0].config,
+      thumbnailData,  // Store base64 directly for dev simplicity
+      thumbnailUrl: undefined  // Clear any existing URL
+    }
+
+    await db
+      .update(analyticsPages)
+      .set({
+        config: updatedConfig,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(analyticsPages.id, id),
+          eq(analyticsPages.organisationId, organisationId)
+        )
+      )
+
+    // Return the thumbnailData as the "URL" for dev purposes
+    // Client will use this to update config.thumbnailUrl (or thumbnailData)
+    return c.json({
+      thumbnailUrl: thumbnailData,
+      message: 'Thumbnail saved (dev mode - stored as base64)'
+    })
+  } catch (error) {
+    console.error('Error saving thumbnail:', error)
+    return c.json({ error: 'Failed to save thumbnail' }, 500)
+  }
+})
+
 // Delete (soft delete) analytics page
 analyticsApp.delete('/:id', async (c) => {
   const db = c.get('db')
@@ -300,7 +368,7 @@ analyticsApp.delete('/:id', async (c) => {
   try {
     const deletedPage = await db
       .update(analyticsPages)
-      .set({ 
+      .set({
         isActive: false,
         updatedAt: new Date()
       })

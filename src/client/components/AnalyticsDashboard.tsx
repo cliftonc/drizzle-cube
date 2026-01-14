@@ -19,6 +19,7 @@ export default function AnalyticsDashboard({
   loadingComponent,
   onConfigChange,
   onSave,
+  onSaveThumbnail,
   onDirtyStateChange
 }: AnalyticsDashboardProps) {
   // Get cube metadata for filter building
@@ -107,6 +108,7 @@ export default function AnalyticsDashboard({
           loadingComponent={loadingComponent}
           onConfigChange={handleConfigChangeWithDirtyTracking}
           onSave={handleSaveWithDirtyTracking}
+          onSaveThumbnail={onSaveThumbnail}
           colorPalette={colorPalette}
           schema={meta}
           dashboardModes={dashboardModes}

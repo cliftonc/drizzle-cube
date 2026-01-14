@@ -13,6 +13,9 @@ export * from './pivotUtils'
 export * from './syntaxHighlighting'
 export * from './comparisonUtils'
 
+// Thumbnail utilities (requires html2canvas peer dependency)
+export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail'
+
 /**
  * Create a dashboard layout from portlet configurations
  */

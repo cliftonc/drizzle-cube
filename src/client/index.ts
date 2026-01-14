@@ -40,6 +40,8 @@ export type { LazyChartProps } from './charts/ChartLoader'
 // Layout components
 export { default as DashboardGrid } from './components/DashboardGrid'
 export { default as PortletContainer } from './components/PortletContainer'
+export { DashboardThumbnailPlaceholder } from './components/DashboardThumbnailPlaceholder'
+export type { DashboardThumbnailPlaceholderProps } from './components/DashboardThumbnailPlaceholder'
 
 // Modals and configuration
 export { default as PortletAnalysisModal } from './components/PortletAnalysisModal'
@@ -145,6 +147,7 @@ export {
   selectModalActions,
   selectLayoutActions,
   selectDebugDataActions,
+  selectThumbnailDirty,
   selectAllActions,
 } from './stores/dashboardStore'
 export type {
