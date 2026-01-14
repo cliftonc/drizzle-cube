@@ -26,6 +26,10 @@ const chartModuleNames = new Set([
   'TreeMapChart'
 ])
 
+function normalizeId(id: string): string {
+  return id.replace(/\\/g, '/')
+}
+
 const vendorModuleMatchers = [
   /[\\/]node_modules[\\/]@tanstack[\\/]/,
   /[\\/]node_modules[\\/]zustand[\\/]/,
@@ -123,6 +127,58 @@ export default defineConfig({
           return assetInfo.name
         },
         manualChunks(id) {
+          const normalizedId = normalizeId(id)
+
+          if (normalizedId.endsWith('/src/client/charts/ChartLoader.tsx')) {
+            return 'charts-loader'
+          }
+
+          if (normalizedId.endsWith('/src/client/components/charts/MissingDependencyFallback.tsx')) {
+            return 'charts-loader'
+          }
+
+          if (normalizedId.endsWith('/src/client/hooks/useCubeFieldLabel.ts')) {
+            return 'charts-core'
+          }
+
+          if (normalizedId.endsWith('/src/client/components/charts/ChartContainer.tsx')) {
+            return 'charts-core'
+          }
+
+          if (normalizedId.endsWith('/src/client/components/LoadingIndicator.tsx')) {
+            return 'charts-core'
+          }
+
+          if (normalizedId.endsWith('/src/client/types/flow.ts')) {
+            return 'flow-utils'
+          }
+
+          if (normalizedId.endsWith('/src/client/utils/funnelExecution.ts')) {
+            return 'funnel-utils'
+          }
+
+          if (normalizedId.includes('/src/client/providers/')) {
+            return 'providers'
+          }
+
+          if (normalizedId.includes('/src/client/theme/')) {
+            return 'theme'
+          }
+
+          if (normalizedId.includes('/src/client/icons/')) {
+            return 'icons'
+          }
+
+          if (
+            normalizedId.endsWith('/src/client/utils/chartConstants.ts') ||
+            normalizedId.endsWith('/src/client/utils/chartUtils.ts') ||
+            normalizedId.endsWith('/src/client/utils/targetUtils.ts') ||
+            normalizedId.endsWith('/src/client/components/charts/ChartTooltip.tsx') ||
+            normalizedId.endsWith('/src/client/components/charts/AxisFormatControls.tsx')
+          ) {
+            return 'charts-core'
+          }
+
           const configMatch = id.match(/\/components\/charts\/([^/]+)\.config\.tsx?$/)
           if (configMatch) {
             const baseName = configMatch[1]
