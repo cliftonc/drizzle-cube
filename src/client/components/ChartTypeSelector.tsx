@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import { useEffect, useState } from 'react'
 import type { ChartType } from '../types'
 import type { ChartAvailabilityMap } from '../shared/chartDefaults'
+import type { ChartConfigRegistry } from '../charts/chartConfigs'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType
@@ -47,17 +47,38 @@ export default function ChartTypeSelector({
   excludeTypes = []
 }: ChartTypeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [configRegistry, setConfigRegistry] = useState<ChartConfigRegistry | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+
+    import('../charts/chartConfigRegistry')
+      .then((module) => {
+        if (isActive) {
+          setConfigRegistry(module.chartConfigRegistry)
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setConfigRegistry(null)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   // Get chart types, filter excluded ones, and sort alphabetically by label
-  const chartTypes = (Object.entries(chartConfigRegistry) as [ChartType, typeof chartConfigRegistry[keyof typeof chartConfigRegistry]][])
-    .filter(([type]) => !excludeTypes.includes(type))
+  const chartTypes = (Object.keys(chartTypeLabels) as ChartType[])
+    .filter((type) => !excludeTypes.includes(type))
     .sort((a, b) => {
-      const labelA = chartTypeLabels[a[0]] || a[0]
-      const labelB = chartTypeLabels[b[0]] || b[0]
+      const labelA = chartTypeLabels[a] || a
+      const labelB = chartTypeLabels[b] || b
       return labelA.localeCompare(labelB)
     })
 
-  const selectedConfig = chartConfigRegistry[selectedType]
+  const selectedConfig = configRegistry?.[selectedType]
   const SelectedIcon = selectedConfig?.icon
   const selectedLabel = chartTypeLabels[selectedType]
 
@@ -90,12 +111,13 @@ export default function ChartTypeSelector({
         <div className={`absolute z-10 mt-1 w-full bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-auto ${compact ? '' : 'min-w-max'}`}>
           <div className="p-2">
             <div className={`grid gap-1.5 ${compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
-              {chartTypes.map(([type, config]) => {
-                const IconComponent = config.icon
+              {chartTypes.map((type) => {
+                const config = configRegistry?.[type]
+                const IconComponent = config?.icon
                 const label = chartTypeLabels[type]
                 const isSelected = selectedType === type
-                const description = config.description
-                const useCase = config.useCase
+                const description = config?.description
+                const useCase = config?.useCase
 
                 // Check availability if provided
                 const chartAvailability = availability?.[type]

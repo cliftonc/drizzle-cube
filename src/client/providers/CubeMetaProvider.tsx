@@ -8,20 +8,9 @@
  * Uses TanStack Query for metadata fetching with built-in caching.
  */
 
-import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { useCubeMetaQuery } from '../hooks/queries/useCubeMetaQuery'
-import type { CubeMeta, FieldLabelMap } from '../types'
-
-export interface CubeMetaContextValue {
-  meta: CubeMeta | null
-  labelMap: FieldLabelMap
-  metaLoading: boolean
-  metaError: string | null
-  getFieldLabel: (fieldName: string) => string
-  refetchMeta: () => void
-}
-
-export const CubeMetaContext = createContext<CubeMetaContextValue | null>(null)
+import { CubeMetaContext } from './CubeMetaContext'
 
 interface CubeMetaProviderProps {
   children: ReactNode
@@ -66,12 +55,4 @@ export function CubeMetaProvider({ children }: CubeMetaProviderProps) {
       {children}
     </CubeMetaContext.Provider>
   )
-}
-
-export function useCubeMeta() {
-  const context = useContext(CubeMetaContext)
-  if (!context) {
-    throw new Error('useCubeMeta must be used within CubeMetaProvider')
-  }
-  return context
 }

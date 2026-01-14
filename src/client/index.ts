@@ -51,7 +51,7 @@ export { default as ConfirmModal } from './components/ConfirmModal'
 export { default as QueryBuilder } from './components/QueryBuilderShim'
 
 // Analysis Builder (search-based query builder)
-export { default as AnalysisBuilder } from './components/AnalysisBuilder'
+export { default as AnalysisBuilder } from './components/AnalysisBuilderLazy'
 
 // Data provider and hooks
 export {

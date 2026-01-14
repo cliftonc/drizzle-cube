@@ -116,7 +116,10 @@
     "dev:db:down": "cd dev && docker-compose down",
     "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
     "dev:db:seed": "cd dev && tsx scripts/seed.ts",
-    "dev:setup": "npm run dev:db:up && npm run dev:db:migrate && npm run dev:db:seed"
+    "dev:setup": "npm run dev:db:up && npm run dev:db:migrate && npm run dev:db:seed",
+    "preview": "npm run build:client && npm run preview:build && concurrently \"npm run dev:server\" \"npm run preview:serve\"",
+    "preview:build": "cd dev/client && vite build --config vite.config.preview.ts",
+    "preview:serve": "cd dev/client && vite preview --config vite.config.preview.ts"
   },
   "keywords": [
     "drizzle-orm",

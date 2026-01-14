@@ -4,6 +4,47 @@ import { resolve } from 'path'
 import dts from 'vite-plugin-dts'
 import { visualizer } from 'rollup-plugin-visualizer'
 
+const chartModuleNames = new Set([
+  'ActivityGridChart',
+  'AreaChart',
+  'BarChart',
+  'BubbleChart',
+  'DataTable',
+  'FunnelChart',
+  'HeatMapChart',
+  'KpiDelta',
+  'KpiNumber',
+  'KpiText',
+  'LineChart',
+  'MarkdownChart',
+  'PieChart',
+  'RadarChart',
+  'RadialBarChart',
+  'SankeyChart',
+  'ScatterChart',
+  'SunburstChart',
+  'TreeMapChart'
+])
+
+const vendorModuleMatchers = [
+  /[\\/]node_modules[\\/]@tanstack[\\/]/,
+  /[\\/]node_modules[\\/]zustand[\\/]/,
+  /[\\/]node_modules[\\/]react-router-dom[\\/]/,
+  /[\\/]node_modules[\\/]react-intersection-observer[\\/]/,
+  /[\\/]node_modules[\\/]lz-string[\\/]/
+]
+
+function isVendorModule(id: string): boolean {
+  return vendorModuleMatchers.some((matcher) => matcher.test(id))
+}
+
+function toChunkName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase()
+    .replace(/-chart$/, '')
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -53,11 +94,21 @@ export default defineConfig({
         'react-grid-layout',
         'react-resizable',
         'recharts',
-        '@nivo/heatmap'
+        '@nivo/heatmap',
+        'd3'
       ],
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: 'chunks/[name]-[hash].js',
+        chunkFileNames: (chunkInfo) => {
+          const facadeId = chunkInfo.facadeModuleId || ''
+          if (facadeId.endsWith('/components/AnalysisBuilder/index.tsx')) {
+            return 'chunks/analysis-builder-[hash].js'
+          }
+          if (chunkInfo.name === 'funnelValidation') {
+            return 'chunks/analysis-builder-shared-[hash].js'
+          }
+          return 'chunks/[name]-[hash].js'
+        },
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
@@ -72,13 +123,29 @@ export default defineConfig({
           return assetInfo.name
         },
         manualChunks(id) {
-          // Group all chart components and configs together
-          if (id.includes('/components/charts/') && !id.includes('index')) {
-            return 'charts'
+          const configMatch = id.match(/\/components\/charts\/([^/]+)\.config\.tsx?$/)
+          if (configMatch) {
+            const baseName = configMatch[1]
+            if (chartModuleNames.has(baseName)) {
+              return `chart-config-${toChunkName(baseName)}`
+            }
           }
+
+          const chartMatch = id.match(/\/components\/charts\/([^/]+)\.tsx?$/)
+          if (chartMatch) {
+            const baseName = chartMatch[1]
+            if (chartModuleNames.has(baseName)) {
+              return `chart-${toChunkName(baseName)}`
+            }
+          }
+
           // Group icon dependencies
           if (id.includes('@iconify')) {
             return 'icons'
+          }
+
+          if (isVendorModule(id)) {
+            return 'vendor'
           }
         }
       }

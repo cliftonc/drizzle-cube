@@ -98,3 +98,11 @@ export async function highlightCodeBlock(element: HTMLElement): Promise<void> {
 export function isSyntaxHighlightingAvailable(): boolean {
   return highlightJs !== null
 }
+
+/**
+ * Returns the loaded highlight.js instance, if available.
+ * Useful for custom highlighting flows that need direct access.
+ */
+export function getSyntaxHighlighter(): any | null {
+  return highlightJs
+}

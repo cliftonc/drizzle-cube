@@ -11,8 +11,7 @@ import { getIcon, getMeasureTypeIcon } from '../../icons'
 import SectionHeading from './SectionHeading'
 import AnalysisAxisDropZone from './AnalysisAxisDropZone'
 import ChartTypeSelector from '../ChartTypeSelector'
-import { chartConfigRegistry } from '../../charts/chartConfigRegistry'
-import { getChartConfig } from '../../charts/chartConfigs'
+import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
 import type { ChartType, ChartAxisConfig } from '../../types'
 import type { MetricItem, BreakdownItem } from './types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
@@ -63,10 +62,7 @@ export default function AnalysisChartConfigPanel({
   )
 
   // Get configuration for current chart type
-  const chartTypeConfig = useMemo(
-    () => getChartConfig(chartType, chartConfigRegistry),
-    [chartType]
-  )
+  const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
 
   // Check if this chart type skips queries
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
@@ -84,6 +80,7 @@ export default function AnalysisChartConfigPanel({
 
   // Clean up chart config when available fields change
   useEffect(() => {
+    if (!chartConfigLoaded) return
     const allAvailableFields = [
       ...availableFields.dimensions,
       ...availableFields.timeDimensions,
@@ -116,7 +113,7 @@ export default function AnalysisChartConfigPanel({
     if (hasChanges) {
       onChartConfigChange(newConfig)
     }
-  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone])
+  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone, chartConfigLoaded])
 
   // Helper to determine field type and styling
   const getFieldType = (field: string): 'dimension' | 'timeDimension' | 'measure' => {
@@ -313,6 +310,26 @@ export default function AnalysisChartConfigPanel({
     },
     [chartConfig, onChartConfigChange]
   )
+
+  if (!chartConfigLoaded) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <SectionHeading className="mb-2">Chart Type</SectionHeading>
+          <ChartTypeSelector
+            selectedType={chartType}
+            onTypeChange={onChartTypeChange}
+            availability={chartAvailability}
+            excludeTypes={['funnel', 'sankey', 'sunburst']}
+            compact
+          />
+        </div>
+        <div className="text-center text-dc-text-muted text-sm py-4">
+          Loading chart configuration...
+        </div>
+      </div>
+    )
+  }
 
   // Get unassigned fields (fields selected in Query tab but not yet assigned to chart axes)
   const getUnassignedFields = () => {

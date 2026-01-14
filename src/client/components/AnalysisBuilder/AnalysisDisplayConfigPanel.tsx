@@ -5,10 +5,9 @@
  * Extracted from AnalysisChartConfigPanel to be shown in its own tab.
  */
 
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import SectionHeading from './SectionHeading'
-import { chartConfigRegistry } from '../../charts/chartConfigRegistry'
-import { getChartConfig } from '../../charts/chartConfigs'
+import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
 import type { ChartType, ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types'
 import { AxisFormatControls } from '../charts/AxisFormatControls'
 
@@ -79,10 +78,15 @@ export default function AnalysisDisplayConfigPanel({
   onDisplayConfigChange
 }: AnalysisDisplayConfigPanelProps) {
   // Get configuration for current chart type
-  const chartTypeConfig = useMemo(
-    () => getChartConfig(chartType, chartConfigRegistry),
-    [chartType]
-  )
+  const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
+
+  if (!chartConfigLoaded) {
+    return (
+      <div className="text-center text-dc-text-muted text-sm py-4">
+        Loading display options...
+      </div>
+    )
+  }
 
   // Check if we have any display options to show
   const hasDisplayOptions =

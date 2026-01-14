@@ -1,12 +1,11 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { getIcon } from '../icons'
 import AxisDropZone from './AxisDropZone'
+import { useChartConfig } from '../charts/lazyChartConfigRegistry'
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')
 const TimeDimensionIcon = getIcon('timeDimension')
-import { chartConfigRegistry } from '../charts/chartConfigRegistry'
-import { getChartConfig } from '../charts/chartConfigs'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig, ColorPalette } from '../types'
 
 interface ChartConfigPanelProps {
@@ -41,10 +40,7 @@ export default function ChartConfigPanel({
   } | null>(null)
   
   // Get configuration for current chart type
-  const chartTypeConfig = useMemo(() => 
-    getChartConfig(chartType, chartConfigRegistry),
-    [chartType]
-  )
+  const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
   
   // Check if this chart type skips queries
   const shouldSkipQuery = chartTypeConfig.skipQuery === true
@@ -58,7 +54,7 @@ export default function ChartConfigPanel({
 
   // Clean up chart config when available fields change
   useEffect(() => {
-    if (!availableFields) return
+    if (!availableFields || !chartConfigLoaded) return
 
     const allAvailableFields = [
       ...availableFields.dimensions,
@@ -92,7 +88,7 @@ export default function ChartConfigPanel({
     if (hasChanges) {
       onChartConfigChange(newConfig)
     }
-  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone])
+  }, [availableFields, chartConfig, chartTypeConfig.dropZones, onChartConfigChange, getFieldsForDropZone, chartConfigLoaded])
 
   // Helper to determine field type and styling
   const getFieldType = (field: string): 'dimension' | 'timeDimension' | 'measure' => {
@@ -222,6 +218,14 @@ export default function ChartConfigPanel({
       setDraggedItem(null)
       onChartConfigChange(newConfig)
     }
+  }
+
+  if (!chartConfigLoaded) {
+    return (
+      <div className="text-center text-dc-text-muted text-sm py-4">
+        Loading chart configuration...
+      </div>
+    )
   }
 
   // Get unassigned fields

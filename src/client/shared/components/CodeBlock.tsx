@@ -4,15 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import hljs from 'highlight.js/lib/core'
-import json from 'highlight.js/lib/languages/json'
-import sql from 'highlight.js/lib/languages/sql'
 import { getIcon } from '../../icons'
+import { getSyntaxHighlighter, loadSyntaxHighlighter } from '../../utils/syntaxHighlighting'
 import './CodeBlock.css'
-
-// Register languages
-hljs.registerLanguage('json', json)
-hljs.registerLanguage('sql', sql)
 
 interface CodeBlockProps {
   code: string
@@ -41,8 +35,27 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
   // Apply syntax highlighting
   useEffect(() => {
-    if (codeRef.current && code) {
-      codeRef.current.innerHTML = hljs.highlight(code, { language }).value
+    if (!codeRef.current) return
+    const element = codeRef.current
+    let isActive = true
+
+    element.textContent = code
+
+    loadSyntaxHighlighter()
+      .then(() => {
+        if (!isActive) return
+        const hljs = getSyntaxHighlighter()
+        if (!hljs) return
+        element.innerHTML = hljs.highlight(code, { language }).value
+      })
+      .catch(() => {
+        if (isActive) {
+          element.textContent = code
+        }
+      })
+
+    return () => {
+      isActive = false
     }
   }, [code, language])
 

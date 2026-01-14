@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal'
-import AnalysisBuilder from './AnalysisBuilder'
+import AnalysisBuilder from './AnalysisBuilderLazy'
 import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState, AnalysisBuilderInitialFlowState } from './AnalysisBuilder/types'
 import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'

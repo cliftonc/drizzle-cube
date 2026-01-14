@@ -8,7 +8,7 @@
  * AnalysisBuilder component without any code changes.
  */
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import AnalysisBuilder from './AnalysisBuilder'
+import AnalysisBuilder from './AnalysisBuilderLazy'
 import type { AnalysisBuilderRef } from './AnalysisBuilder/types'
 import type { QueryBuilderProps, QueryBuilderRef } from './QueryBuilder/types'
 
