@@ -21,7 +21,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       react-intersection-observer:
-        specifier: ^10.0.2
+        specifier: ^10.0.0
         version: 10.0.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-is:
         specifier: ^19.2.3
@@ -134,7 +134,7 @@ importers:
         version: 0.31.8
       drizzle-orm:
         specifier: ^0.45.0
-        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.0)(postgres@3.4.8)
+        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.1)(postgres@3.4.8)
       eslint:
         specifier: ^9.34.0
         version: 9.39.2(jiti@2.6.1)
@@ -163,8 +163,8 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
       mysql2:
-        specifier: ^3.14.3
-        version: 3.16.0
+        specifier: ^3.16.1
+        version: 3.16.1
       next:
         specifier: ^15.5.9
         version: 15.5.9(@babel/core@7.28.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -3261,8 +3261,8 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  mysql2@3.16.0:
-    resolution: {integrity: sha512-AEGW7QLLSuSnjCS4pk3EIqOmogegmze9h8EyrndavUQnIUcfkVal/sK7QznE+a3bc6rzPbAiui9Jcb+96tPwYA==}
+  mysql2@3.16.1:
+    resolution: {integrity: sha512-b75qsDB3ieYEzMsT1uRGsztM/sy6vWPY40uPZlVVl8eefAotFCoS7jaDB5DxDNtlW5kdVGd9jptSpkvujNxI2A==}
     engines: {node: '>= 8.0'}
 
   named-placeholders@1.1.6:
@@ -6361,13 +6361,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.0)(postgres@3.4.8):
+  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.1)(postgres@3.4.8):
     optionalDependencies:
       '@neondatabase/serverless': 1.0.2
       '@types/better-sqlite3': 7.6.13
       '@types/pg': 8.16.0
       better-sqlite3: 12.6.0
-      mysql2: 3.16.0
+      mysql2: 3.16.1
       postgres: 3.4.8
 
   dunder-proto@1.0.1:
@@ -7181,7 +7181,7 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  mysql2@3.16.0:
+  mysql2@3.16.1:
     dependencies:
       aws-ssl-profiles: 1.1.2
       denque: 2.1.0
