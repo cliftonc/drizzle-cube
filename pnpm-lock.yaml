@@ -118,8 +118,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.17(vitest@4.0.17)
       better-sqlite3:
-        specifier: ^12.0.0
-        version: 12.6.0
+        specifier: ^12.6.2
+        version: 12.6.2
       concurrently:
         specifier: ^9.0.0
         version: 9.2.1
@@ -134,7 +134,7 @@ importers:
         version: 0.31.8
       drizzle-orm:
         specifier: ^0.45.0
-        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.1)(postgres@3.4.8)
+        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8)
       eslint:
         specifier: ^9.34.0
         version: 9.39.2(jiti@2.6.1)
@@ -145,7 +145,7 @@ importers:
         specifier: ^5.1.0
         version: 5.2.1
       fastify:
-        specifier: ^5.7.1
+        specifier: ^5.6.2
         version: 5.7.1
       globals:
         specifier: ^17.0.0
@@ -2039,8 +2039,8 @@ packages:
     resolution: {integrity: sha512-B0xUquLkiGLgHhpPBqvl7GWegWBUNuujQ6kXd/r1U38ElPT6Ok8KZ8e+FpUGEc2ZoRQUzq/aUnaKFc/svWUGSg==}
     hasBin: true
 
-  better-sqlite3@12.6.0:
-    resolution: {integrity: sha512-FXI191x+D6UPWSze5IzZjhz+i9MK9nsuHsmTX9bXVl52k06AfZ2xql0lrgIUuzsMsJ7Vgl5kIptvDgBLIV3ZSQ==}
+  better-sqlite3@12.6.2:
+    resolution: {integrity: sha512-8VYKM3MjCa9WcaSAI3hzwhmyHVlH8tiGFwf0RlTsZPWJ1I5MkzjiudCo4KC4DxOaL/53A5B1sI/IbldNFDbsKA==}
     engines: {node: 20.x || 22.x || 23.x || 24.x || 25.x}
 
   bidi-js@1.0.3:
@@ -3309,8 +3309,8 @@ packages:
       sass:
         optional: true
 
-  node-abi@3.85.0:
-    resolution: {integrity: sha512-zsFhmbkAzwhTft6nd3VxcG0cvJsT70rL+BIGHWVq5fi6MwGrHwzqKaxXE+Hl2GmnGItnDKPPkO5/LQqjVkIdFg==}
+  node-abi@3.86.0:
+    resolution: {integrity: sha512-sn9Et4N3ynsetj3spsZR729DVlGH6iBG4RiDMV7HEp3guyOW6W3S0unGpLDxT50mXortGUMax/ykUNQXdqc/Xg==}
     engines: {node: '>=10'}
 
   node-releases@2.0.27:
@@ -5968,7 +5968,7 @@ snapshots:
 
   baseline-browser-mapping@2.9.14: {}
 
-  better-sqlite3@12.6.0:
+  better-sqlite3@12.6.2:
     dependencies:
       bindings: 1.5.0
       prebuild-install: 7.1.3
@@ -6361,12 +6361,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.0)(mysql2@3.16.1)(postgres@3.4.8):
+  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8):
     optionalDependencies:
       '@neondatabase/serverless': 1.0.2
       '@types/better-sqlite3': 7.6.13
       '@types/pg': 8.16.0
-      better-sqlite3: 12.6.0
+      better-sqlite3: 12.6.2
       mysql2: 3.16.1
       postgres: 3.4.8
 
@@ -7235,7 +7235,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  node-abi@3.85.0:
+  node-abi@3.86.0:
     dependencies:
       semver: 7.7.3
 
@@ -7382,7 +7382,7 @@ snapshots:
       minimist: 1.2.8
       mkdirp-classic: 0.5.3
       napi-build-utils: 2.0.0
-      node-abi: 3.85.0
+      node-abi: 3.86.0
       pump: 3.0.3
       rc: 1.2.8
       simple-get: 4.0.1
