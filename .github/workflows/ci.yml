@@ -9,7 +9,7 @@ on:
 jobs:
   lint-and-typecheck:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Run linting
         run: npm run lint
@@ -31,7 +31,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,7 +43,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Build server
         run: npm run build:server
@@ -62,7 +62,7 @@ jobs:
 
   test-postgres:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:18
@@ -89,7 +89,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Wait for PostgreSQL
         run: timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
@@ -102,7 +102,7 @@ jobs:
 
   test-mysql:
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:9.5
@@ -130,7 +130,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Wait for MySQL
         run: timeout 60 bash -c 'until nc -z localhost 3307; do echo "Waiting for MySQL..."; sleep 1; done'
@@ -155,7 +155,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Run tests (SQLite)
         run: npm test
@@ -175,8 +175,9 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
+      # Use npm install (not ci) to resolve correct platform-specific DuckDB bindings
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run tests (DuckDB)
         run: npm test
@@ -197,7 +198,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --omit=optional
 
       - name: Run client tests
         run: npm run test:client
