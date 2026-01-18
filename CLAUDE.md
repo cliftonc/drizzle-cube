@@ -81,6 +81,7 @@ This project is **Drizzle ORM-first**. The entire architecture revolves around D
 - **PostgreSQL** - Production-ready with full feature support
 - **MySQL** - Full compatibility with MySQL 8.0+
 - **SQLite** - Embedded database support
+- **DuckDB** - Embedded OLAP database (optional peer dependency: @duckdb/node-api, @leonardovida-md/drizzle-neo-duckdb)
 - **Auto-detection** - Automatic database type detection from Drizzle instance
 
 ## Development Workflow

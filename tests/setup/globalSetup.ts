@@ -7,6 +7,7 @@ import { getTestDatabaseType } from '../helpers/test-database'
 import { setupPostgresDatabase } from '../helpers/databases/postgres/setup'
 import { setupMySQLDatabase } from '../helpers/databases/mysql/setup'
 import { setupSQLiteDatabase } from '../helpers/databases/sqlite/setup'
+import { setupDuckDBDatabase } from '../helpers/databases/duckdb/setup'
 
 export default async function globalSetup() {  
   const dbType = getTestDatabaseType()
@@ -30,7 +31,13 @@ export default async function globalSetup() {
       const { close } = await setupSQLiteDatabase()
       cleanupFunctions.push(close)
       console.log('SQLite test database setup complete')
-      
+
+    } else if (dbType === 'duckdb') {
+      console.log('Setting up DuckDB test database...')
+      const { close } = await setupDuckDBDatabase()
+      cleanupFunctions.push(close)
+      console.log('DuckDB test database setup complete')
+
     }
     
   } catch (error) {

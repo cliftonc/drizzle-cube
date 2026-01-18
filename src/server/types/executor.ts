@@ -21,7 +21,7 @@ export interface DatabaseExecutor {
   /** Execute a Drizzle SQL query or query object */
   execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T>
   /** Get the database engine type */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
   /** Execute EXPLAIN on a SQL query to get the execution plan */
   explainQuery(sqlString: string, params: unknown[], options?: ExplainOptions): Promise<ExplainResult>
   /** Get existing indexes for the specified tables */
@@ -84,7 +84,7 @@ export interface ExplainResult {
  */
 export interface ExplainSummary {
   /** Database engine type */
-  database: 'postgres' | 'mysql' | 'sqlite'
+  database: 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
   /** Planning time in milliseconds (if available) */
   planningTime?: number
   /** Execution time in milliseconds (if ANALYZE was used) */

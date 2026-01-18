@@ -24,6 +24,8 @@ export interface DatabaseCapabilities {
   supportsFrameClause: boolean
   /** Whether the database supports LATERAL joins (PostgreSQL 9.3+, MySQL 8.0.14+) */
   supportsLateralJoins: boolean
+  /** Whether percentile functions work in subqueries against CTEs (false for DuckDB) */
+  supportsPercentileSubqueries: boolean
 }
 
 /**
@@ -63,7 +65,7 @@ export interface DatabaseAdapter {
   /**
    * Get the database engine type this adapter supports
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
 
   /**
    * Check if the database supports LATERAL joins
@@ -256,7 +258,7 @@ export interface DatabaseAdapter {
  * Provides common functionality that can be shared across database implementations
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
-  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
   abstract supportsLateralJoins(): boolean
 
   // Funnel analysis methods

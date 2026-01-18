@@ -3,7 +3,7 @@
  * Tests route handler creation and functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 
 // Mock Next.js modules
 vi.mock('next/server', () => ({
@@ -78,20 +78,20 @@ describe('Next.js Adapter', () => {
   let adapterOptions: NextAdapterOptions<any>
   let currentSchema: any
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const testSetup = await createTestSemanticLayer()
     semanticLayer = testSetup.semanticLayer
     drizzleDb = testSetup.db
     closeFn = testSetup.close
-    
+
     // Get the correct schema for the current database type
     const { schema } = await getTestSchema()
     currentSchema = schema
-    
+
     // Register test cubes
     const { testEmployeesCube: dynamicEmployeesCube } = await createTestCubesForCurrentDatabase()
     semanticLayer.registerCube(dynamicEmployeesCube)
-    
+
     adapterOptions = {
       cubes: [dynamicEmployeesCube],
       drizzle: drizzleDb,
@@ -107,7 +107,7 @@ describe('Next.js Adapter', () => {
     }
   })
 
-  afterEach(() => {
+  afterAll(() => {
     if (closeFn) {
       closeFn()
       closeFn = null

@@ -255,7 +255,8 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
       supportsPercentile: false, // MySQL doesn't have PERCENTILE_CONT
       supportsWindowFunctions: true,
       supportsFrameClause: true,
-      supportsLateralJoins: true // MySQL 8.0.14+
+      supportsLateralJoins: true, // MySQL 8.0.14+
+      supportsPercentileSubqueries: false // No percentile support anyway
     }
   }
 

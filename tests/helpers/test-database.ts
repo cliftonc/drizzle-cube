@@ -10,6 +10,7 @@ import type { DatabaseConfig } from './databases/types'
 import { setupPostgresDatabase } from './databases/postgres/setup'
 import { setupMySQLDatabase } from './databases/mysql/setup'
 import { setupSQLiteDatabase } from './databases/sqlite/setup'
+import { setupDuckDBDatabase } from './databases/duckdb/setup'
 
 
 // Remove static schema exports - use dynamic functions instead
@@ -89,6 +90,39 @@ export async function getTestSchema() {
       dbFalse: 0,
       dbDate: (date: Date) => date.getTime() // Convert to milliseconds for SQLite
     }
+  } else if (dbType === 'duckdb') {
+    const {
+      duckdbTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory
+    } = await import('./databases/duckdb/schema')
+
+    return {
+      schema: duckdbTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory,
+      type: 'DuckDBTestSchema' as const,
+      // Database-specific value helpers for DuckDB (similar to PostgreSQL)
+      dbTrue: true,
+      dbFalse: false,
+      dbDate: (date: Date) => date
+    }
   } else {
     const {
       testSchema,
@@ -128,24 +162,33 @@ export async function getTestSchema() {
 /**
  * Database type for testing - can be set via environment variable
  */
-export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'both'
+export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'both'
 
 /**
  * Get the database type to use for testing
  */
 export function getTestDatabaseType(): TestDatabaseType {
   const dbType = process.env.TEST_DB_TYPE?.toLowerCase()
-  
+
   if (dbType === 'mysql') return 'mysql'
   if (dbType === 'sqlite') return 'sqlite'
+  if (dbType === 'duckdb') return 'duckdb'
   if (dbType === 'both') return 'both'
   return 'postgres' // Default to postgres
 }
 
 /**
+ * Helper for skipping tests that don't work with DuckDB
+ * Use with it.skipIf(skipIfDuckDB())
+ */
+export function skipIfDuckDB(): boolean {
+  return getTestDatabaseType() === 'duckdb'
+}
+
+/**
  * Get database setup function for a specific database type
  */
-export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite') {
+export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb') {
   switch (type) {
     case 'postgres':
       return setupPostgresDatabase
@@ -153,6 +196,8 @@ export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite') {
       return setupMySQLDatabase
     case 'sqlite':
       return setupSQLiteDatabase
+    case 'duckdb':
+      return setupDuckDBDatabase
     default:
       throw new Error(`Unsupported database type: ${type}`)
   }
@@ -221,12 +266,29 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
     const connection = createSQLiteConnection()
     db = connection.db
     close = connection.close
-    
+
     const { createSQLiteExecutor } = await import('../../src/server')
     const { sqliteTestSchema } = await import('./databases/sqlite/schema')
     schema = sqliteTestSchema
     executor = createSQLiteExecutor(db, schema)
-    
+
+  } else if (dbType === 'duckdb') {
+    // Create fresh connection for each test
+    // DuckDB uses in-memory databases, so we need to create tables and seed data for each test
+    const { createDuckDBConnection, createDuckDBTables, setupDuckDBTestData } = await import('./databases/duckdb/setup')
+    const connection = await createDuckDBConnection()
+    db = connection.db
+    close = connection.close
+
+    // For in-memory DuckDB, we need to set up schema and data for each test
+    await createDuckDBTables(db)
+    await setupDuckDBTestData(db)
+
+    const { createDuckDBExecutor } = await import('../../src/server')
+    const { duckdbTestSchema } = await import('./databases/duckdb/schema')
+    schema = duckdbTestSchema
+    executor = createDuckDBExecutor(db, schema)
+
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -270,14 +332,23 @@ export async function createTestSemanticLayer(): Promise<{
     db = connection.db
     const { sqliteTestSchema } = await import('./databases/sqlite/schema')
     schema = sqliteTestSchema
+  } else if (dbType === 'duckdb') {
+    // DuckDB uses in-memory databases, so we need to create tables and seed data
+    const { createDuckDBConnection, createDuckDBTables, setupDuckDBTestData } = await import('./databases/duckdb/setup')
+    const connection = await createDuckDBConnection()
+    db = connection.db
+    await createDuckDBTables(db)
+    await setupDuckDBTestData(db)
+    const { duckdbTestSchema } = await import('./databases/duckdb/schema')
+    schema = duckdbTestSchema
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
-  
+
   const semanticLayer = new SemanticLayerCompiler({
     drizzle: db,
     schema,
-    engineType: dbType
+    engineType: dbType as 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
   })
 
   return { semanticLayer, db, close }
@@ -296,7 +367,7 @@ export async function setupTestDatabase(): Promise<void> {
 /**
  * Database configuration helpers
  */
-export const DATABASE_CONFIGS: Record<'postgres' | 'mysql', DatabaseConfig> = {
+export const DATABASE_CONFIGS: Record<'postgres' | 'mysql' | 'duckdb', DatabaseConfig> = {
   postgres: {
     type: 'postgres',
     connectionString: process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:54333/drizzle_cube_test',
@@ -306,5 +377,10 @@ export const DATABASE_CONFIGS: Record<'postgres' | 'mysql', DatabaseConfig> = {
     type: 'mysql',
     connectionString: process.env.MYSQL_TEST_DATABASE_URL || 'mysql://test:test@localhost:33077/drizzle_cube_test',
     migrationPath: './tests/helpers/mysql-migrations'
+  },
+  duckdb: {
+    type: 'duckdb',
+    connectionString: process.env.DUCKDB_TEST_DATABASE_PATH || ':memory:',
+    migrationPath: './tests/helpers/databases/duckdb/migrations'
   }
 }

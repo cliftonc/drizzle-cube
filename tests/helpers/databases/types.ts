@@ -48,14 +48,14 @@ export interface DatabaseTestUtilities {
   /**
    * Get the engine type for this database
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
 }
 
 /**
  * Database configuration for testing
  */
 export interface DatabaseConfig {
-  type: 'postgres' | 'mysql' | 'sqlite'
+  type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
   connectionString: string
   migrationPath: string
 }

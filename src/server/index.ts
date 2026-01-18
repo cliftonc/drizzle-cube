@@ -12,15 +12,17 @@ export { QueryPlanner } from './query-planner'
 export { QueryBuilder } from './query-builder'
 
 // Export database executors
-export { 
+export {
   createDatabaseExecutor,
   createPostgresExecutor,
   createSQLiteExecutor,
   createMySQLExecutor,
+  createDuckDBExecutor,
   BaseDatabaseExecutor,
   PostgresExecutor,
   SQLiteExecutor,
-  MySQLExecutor
+  MySQLExecutor,
+  DuckDBExecutor
 } from './executors'
 
 // Export cube utilities

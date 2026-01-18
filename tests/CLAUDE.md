@@ -4,7 +4,7 @@ This document describes the testing infrastructure for drizzle-cube, focusing on
 
 ## Overview
 
-The testing system supports running tests against PostgreSQL, MySQL, and SQLite databases to ensure feature compatibility and security isolation across all supported database engines. Tests are designed to validate both functionality and security patterns.
+The testing system supports running tests against PostgreSQL, MySQL, SQLite, and DuckDB databases to ensure feature compatibility and security isolation across all supported database engines. Tests are designed to validate both functionality and security patterns.
 
 ## Multi-Database Testing Strategy
 
@@ -12,18 +12,21 @@ The testing system supports running tests against PostgreSQL, MySQL, and SQLite 
 Tests can run against different databases using environment variables:
 
 ```bash
-npm test                    # PostgreSQL (default)
-npm run test:mysql         # MySQL only
-npm run test:sqlite        # SQLite only  
-npm run test:all           # All databases sequentially
-TEST_DB_TYPE=mysql npm test # Explicit selection
+npm test                     # PostgreSQL (default)
+npm run test:mysql          # MySQL only
+npm run test:sqlite         # SQLite only
+npm run test:duckdb         # DuckDB only
+npm run test:all            # All databases sequentially
+TEST_DB_TYPE=mysql npm test  # Explicit selection
+TEST_DB_TYPE=duckdb npm test # DuckDB selection
 ```
 
 ### Environment Configuration
-- `TEST_DB_TYPE` - Controls database selection (`postgres` | `mysql` | `sqlite`)
+- `TEST_DB_TYPE` - Controls database selection (`postgres` | `mysql` | `sqlite` | `duckdb`)
 - `TEST_DATABASE_URL` - PostgreSQL connection (default: `postgres://test:test@localhost:5433/test`)
 - `MYSQL_TEST_DATABASE_URL` - MySQL connection (default: `mysql://test:test@localhost:3307/test`)
 - SQLite uses in-memory databases for isolation
+- DuckDB uses in-memory databases for isolation (no Docker required)
 
 ### Safety Mechanisms
 - All test database URLs **must contain \"test\" substring** for safety
@@ -46,10 +49,13 @@ helpers/databases/
 │   ├── schema.ts          # MySQL-specific schema
 │   ├── setup.ts           # Connection and migration setup
 │   └── migrations/        # MySQL migrations
-└── sqlite/
-    ├── schema.ts          # SQLite-specific schema  
-    ├── setup.ts           # Connection and migration setup
-    └── migrations/        # SQLite migrations
+├── sqlite/
+│   ├── schema.ts          # SQLite-specific schema
+│   ├── setup.ts           # Connection and migration setup
+│   └── migrations/        # SQLite migrations
+└── duckdb/
+    ├── schema.ts          # DuckDB-specific schema (PostgreSQL-compatible)
+    └── setup.ts           # Connection and table setup (uses sequences)
 ```
 
 ### Schema Consistency
@@ -428,8 +434,43 @@ Tests run automatically against all three databases in CI to ensure compatibilit
 ## Guard Rails
 
 1. **Security context is mandatory** - All test cubes must implement security filtering
-2. **Multi-database compatibility** - New tests must pass on PostgreSQL, MySQL, and SQLite
+2. **Multi-database compatibility** - New tests must pass on PostgreSQL, MySQL, SQLite, and DuckDB
 3. **Data isolation** - Use fresh database connections and data seeding per test
 4. **Performance validation** - Include performance assertions for complex queries
 5. **Safety checks** - Test database URLs must contain \"test\" substring
 6. **Comprehensive coverage** - Test both success and error scenarios
+
+## DuckDB-Specific Limitations
+
+When running tests with DuckDB (`TEST_DB_TYPE=duckdb`), some features have limitations:
+
+### Funnel Time Metrics
+- **Supported**: avg, min, max time-to-convert metrics
+- **Not supported**: median/p90 metrics (QUANTILE_CONT doesn't work in scalar subqueries against CTEs)
+- The `supportsPercentileSubqueries` capability is `false` for DuckDB
+
+### Large LIMIT/OFFSET Values
+- Using `Number.MAX_SAFE_INTEGER` for LIMIT or OFFSET causes integer overflow
+- Tests using extreme values are skipped with `it.skipIf(skipIfDuckDB())`
+
+### Concurrency Limitations
+- In-memory DuckDB databases have limited support for parallel prepared statements
+- Concurrent query tests may fail with "Failed to execute prepared statement"
+- Use `skipIfDuckDB()` for tests that run parallel queries
+
+### Row Ordering
+- Without explicit `ORDER BY`, row ordering is non-deterministic
+- Tests that compare result arrays without ordering should use `skipIfDuckDB()` or add explicit ordering
+
+### Using skipIfDuckDB()
+
+Import and use the helper for DuckDB-incompatible tests:
+
+```typescript
+import { skipIfDuckDB } from './helpers/test-database'
+
+// Skip test for DuckDB
+it.skipIf(skipIfDuckDB())('test that fails on DuckDB', async () => {
+  // Test implementation
+})
+```

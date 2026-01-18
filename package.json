@@ -105,7 +105,8 @@
     "test:postgres": "vitest run",
     "test:mysql": "TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts",
     "test:sqlite": "TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
-    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
+    "test:duckdb": "TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",
+    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts && TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",
     "test:setup": "docker-compose up -d",
     "test:teardown": "docker-compose down",
     "typecheck": "tsc --noEmit",
@@ -203,9 +204,16 @@
     },
     "modern-screenshot": {
       "optional": true
+    },
+    "@duckdb/node-api": {
+      "optional": true
+    },
+    "@leonardovida-md/drizzle-neo-duckdb": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "@duckdb/node-api": "^1.4.3-r.3",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.34.0",
     "@fastify/cors": "^11.1.0",
@@ -214,10 +222,12 @@
     "@iconify-icons/heroicons-solid": "^1.2.6",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
+    "@leonardovida-md/drizzle-neo-duckdb": "^1.2.2",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@tanstack/react-query-devtools": "^5.91.2",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",

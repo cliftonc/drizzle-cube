@@ -35,7 +35,7 @@ export class SemanticLayerCompiler {
     drizzle?: DatabaseExecutor['db']
     schema?: any
     databaseExecutor?: DatabaseExecutor
-    engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'
+    engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
     /** Cache configuration for query result caching */
     cache?: CacheConfig
   }) {
@@ -62,14 +62,14 @@ export class SemanticLayerCompiler {
   /**
    * Get the database engine type for SQL formatting
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | undefined {
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | undefined {
     return this.dbExecutor?.getEngineType()
   }
 
   /**
    * Set Drizzle instance and schema directly
    */
-  setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'): void {
+  setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'): void {
     this.dbExecutor = createDatabaseExecutor(db, schema, engineType)
   }
 

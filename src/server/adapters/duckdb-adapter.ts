@@ -1,20 +1,20 @@
 /**
- * PostgreSQL Database Adapter
- * Implements PostgreSQL-specific SQL generation for time dimensions, string matching, and type casting
- * Extracted from hardcoded logic in executor.ts and multi-cube-builder.ts
+ * DuckDB Database Adapter
+ * Implements DuckDB-specific SQL generation for time dimensions, string matching, and type casting
+ * DuckDB is largely PostgreSQL-compatible but has some differences in funnel functions and advanced features
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
 import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
 
-export class PostgresAdapter extends BaseDatabaseAdapter {
-  getEngineType(): 'postgres' {
-    return 'postgres'
+export class DuckDBAdapter extends BaseDatabaseAdapter {
+  getEngineType(): 'duckdb' {
+    return 'duckdb'
   }
 
   /**
-   * PostgreSQL supports LATERAL joins since version 9.3
+   * DuckDB supports LATERAL joins
    */
   supportsLateralJoins(): boolean {
     return true
@@ -25,8 +25,8 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * Build PostgreSQL INTERVAL from ISO 8601 duration
-   * PostgreSQL supports INTERVAL literal syntax: INTERVAL '7 days'
+   * Build DuckDB INTERVAL from ISO 8601 duration
+   * DuckDB supports PostgreSQL-style INTERVAL literal syntax: INTERVAL '7 days'
    */
   buildIntervalFromISO(duration: string): SQL {
     const parsed = this.parseISODuration(duration)
@@ -44,15 +44,16 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL time difference in seconds using EXTRACT(EPOCH FROM ...)
+   * Build DuckDB time difference in seconds using EPOCH() function
+   * DuckDB uses EPOCH(timestamp) instead of EXTRACT(EPOCH FROM timestamp)
    * Returns (end - start) as seconds
    */
   buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
-    return sql`EXTRACT(EPOCH FROM (${end} - ${start}))`
+    return sql`(EPOCH(${end}) - EPOCH(${start}))`
   }
 
   /**
-   * Build PostgreSQL timestamp + interval expression
+   * Build DuckDB timestamp + interval expression
    */
   buildDateAddInterval(timestamp: SQL, duration: string): SQL {
     const interval = this.buildIntervalFromISO(duration)
@@ -60,9 +61,9 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL conditional aggregation using FILTER clause
-   * PostgreSQL supports the standard SQL FILTER clause for efficient conditional aggregation
-   * Example: AVG(time_diff) FILTER (WHERE step_1_time IS NOT NULL)
+   * Build DuckDB conditional aggregation using CASE WHEN
+   * DuckDB supports FILTER clause, but CASE WHEN provides broader compatibility
+   * Using FILTER clause as DuckDB does support it
    */
   buildConditionalAggregation(
     aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
@@ -77,11 +78,10 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL time dimension using DATE_TRUNC function
-   * Extracted from executor.ts:649-670 and multi-cube-builder.ts:306-320
+   * Build DuckDB time dimension using DATE_TRUNC function
+   * DuckDB uses DATE_TRUNC like PostgreSQL
    */
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL {
-    // PostgreSQL uses DATE_TRUNC with explicit timestamp casting
     switch (granularity) {
       case 'year':
         return sql`DATE_TRUNC('year', ${fieldExpr}::timestamp)`
@@ -92,7 +92,6 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
       case 'week':
         return sql`DATE_TRUNC('week', ${fieldExpr}::timestamp)`
       case 'day':
-        // Ensure we return the truncated date as a timestamp
         return sql`DATE_TRUNC('day', ${fieldExpr}::timestamp)::timestamp`
       case 'hour':
         return sql`DATE_TRUNC('hour', ${fieldExpr}::timestamp)`
@@ -101,14 +100,13 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
       case 'second':
         return sql`DATE_TRUNC('second', ${fieldExpr}::timestamp)`
       default:
-        // Fallback to the original expression if granularity is not recognized
         return fieldExpr as SQL
     }
   }
 
   /**
-   * Build PostgreSQL string matching conditions using ILIKE (case-insensitive)
-   * Extracted from executor.ts:807-813 and multi-cube-builder.ts:468-474
+   * Build DuckDB string matching conditions using ILIKE (case-insensitive)
+   * DuckDB supports ILIKE like PostgreSQL
    */
   buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
     switch (operator) {
@@ -127,17 +125,17 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
       case 'ilike':
         return sql`${fieldExpr} ILIKE ${value}`
       case 'regex':
-        return sql`${fieldExpr} ~* ${value}`
+        return sql`regexp_matches(${fieldExpr}, ${value})`
       case 'notRegex':
-        return sql`${fieldExpr} !~* ${value}`
+        return sql`NOT regexp_matches(${fieldExpr}, ${value})`
       default:
         throw new Error(`Unsupported string operator: ${operator}`)
     }
   }
 
   /**
-   * Build PostgreSQL type casting using :: syntax
-   * Extracted from various locations where ::timestamp was used
+   * Build DuckDB type casting
+   * DuckDB supports both :: syntax and CAST() function
    */
   castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
     switch (targetType) {
@@ -152,23 +150,19 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
     }
   }
 
-
   /**
-   * Build PostgreSQL AVG aggregation with COALESCE for NULL handling
-   * PostgreSQL AVG returns NULL for empty sets, so we use COALESCE for consistent behavior
-   * Extracted from multi-cube-builder.ts:284
+   * Build DuckDB AVG aggregation with COALESCE for NULL handling
    */
   buildAvg(fieldExpr: AnyColumn | SQL): SQL {
     return sql`COALESCE(AVG(${fieldExpr}), 0)`
   }
 
-
   /**
-   * Build PostgreSQL CASE WHEN conditional expression
+   * Build DuckDB CASE WHEN conditional expression
    */
   buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
     const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
-    
+
     if (elseValue !== undefined) {
       return sql`CASE ${cases} ELSE ${elseValue} END`
     }
@@ -176,39 +170,37 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL boolean literal
-   * PostgreSQL uses TRUE/FALSE keywords
+   * Build DuckDB boolean literal
+   * DuckDB uses TRUE/FALSE keywords
    */
   buildBooleanLiteral(value: boolean): SQL {
     return value ? sql`TRUE` : sql`FALSE`
   }
 
   /**
-   * Convert filter values - PostgreSQL uses native types
-   * No conversion needed for PostgreSQL
+   * Convert filter values - DuckDB uses native types
    */
   convertFilterValue(value: any): any {
     return value
   }
 
   /**
-   * Prepare date value for PostgreSQL
-   * PostgreSQL accepts Date objects directly
+   * Prepare date value for DuckDB
+   * DuckDB accepts Date objects directly
    */
   prepareDateValue(date: Date): any {
     return date
   }
 
   /**
-   * PostgreSQL stores timestamps as native timestamp types
+   * DuckDB stores timestamps as native timestamp types
    */
   isTimestampInteger(): boolean {
     return false
   }
 
   /**
-   * PostgreSQL time dimensions already return proper values
-   * No conversion needed
+   * DuckDB time dimensions already return proper values
    */
   convertTimeDimensionResult(value: any): any {
     return value
@@ -219,7 +211,9 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * PostgreSQL has full support for statistical and window functions
+   * DuckDB has full support for statistical and window functions
+   * Note: supportsPercentileSubqueries is false because DuckDB's QUANTILE_CONT
+   * doesn't work well in scalar subqueries against CTEs in funnel queries
    */
   getCapabilities(): DatabaseCapabilities {
     return {
@@ -229,12 +223,12 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
       supportsWindowFunctions: true,
       supportsFrameClause: true,
       supportsLateralJoins: true,
-      supportsPercentileSubqueries: true
+      supportsPercentileSubqueries: false
     }
   }
 
   /**
-   * Build PostgreSQL STDDEV aggregation
+   * Build DuckDB STDDEV aggregation
    * Uses STDDEV_POP for population, STDDEV_SAMP for sample
    */
   buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
@@ -243,7 +237,7 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL VARIANCE aggregation
+   * Build DuckDB VARIANCE aggregation
    * Uses VAR_POP for population, VAR_SAMP for sample
    */
   buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
@@ -252,17 +246,17 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build PostgreSQL PERCENTILE_CONT aggregation
-   * Uses ordered-set aggregate function
+   * Build DuckDB PERCENTILE aggregation
+   * DuckDB uses QUANTILE_CONT instead of PERCENTILE_CONT
    */
   buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL {
     const pct = percentile / 100
-    return sql`PERCENTILE_CONT(${pct}) WITHIN GROUP (ORDER BY ${fieldExpr})`
+    return sql`QUANTILE_CONT(${fieldExpr}, ${pct})`
   }
 
   /**
-   * Build PostgreSQL window function expression
-   * PostgreSQL has full window function support
+   * Build DuckDB window function expression
+   * DuckDB has full window function support
    */
   buildWindowFunction(
     type: WindowFunctionType,

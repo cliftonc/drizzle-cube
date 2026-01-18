@@ -445,7 +445,6 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
     })
   }
 
-  console.log(`Generated ${productivityData.length} productivity records for comprehensive testing`)
   return productivityData
 }
 
@@ -651,8 +650,7 @@ export function generateComprehensiveTimeEntriesData(
       }
     }
   })
-  
-  console.log(`Generated ${timeEntriesData.length} time entries for comprehensive testing`)
+
   return timeEntriesData
 }
 

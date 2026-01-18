@@ -321,7 +321,8 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       supportsPercentile: false,  // Requires extension
       supportsWindowFunctions: true, // SQLite 3.25+
       supportsFrameClause: true,
-      supportsLateralJoins: false // SQLite does not support LATERAL
+      supportsLateralJoins: false, // SQLite does not support LATERAL
+      supportsPercentileSubqueries: false // No percentile support anyway
     }
   }
 

@@ -257,14 +257,15 @@ export function formatCubeResponse(
 /**
  * Format SQL string using sql-formatter with appropriate dialect
  */
-export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore'): string {
+export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'): string {
   try {
     // Map drizzle-cube engine types to sql-formatter language options
     const dialectMap = {
       postgres: 'postgresql',
       mysql: 'mysql',
       sqlite: 'sqlite',
-      singlestore: 'mysql'  // SingleStore uses MySQL dialect for formatting
+      singlestore: 'mysql',  // SingleStore uses MySQL dialect for formatting
+      duckdb: 'postgresql'   // DuckDB is PostgreSQL-compatible for formatting
     } as const
     
     return format(sqlString, {
