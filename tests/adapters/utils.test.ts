@@ -15,7 +15,8 @@ import {
   handleBatchRequest
 } from '../../src/adapters/utils'
 import {
-  createTestSemanticLayer
+  createTestSemanticLayer,
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -319,7 +320,8 @@ describe('Adapter Utils', () => {
         expect(result.results[1].error).toBeDefined()
       })
 
-      it('should preserve query order in results', async () => {
+      // DuckDB: In-memory databases have limited support for parallel prepared statements
+      it.skipIf(skipIfDuckDB())('should preserve query order in results', async () => {
         const queries = [
           { measures: ['Employees.totalSalary'] },
           { measures: ['Employees.count'] },

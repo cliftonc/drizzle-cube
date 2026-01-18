@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Hono } from 'hono'
 import { createCubeRoutes, mountCubeRoutes, createCubeApp } from '../../src/adapters/hono'
-import { 
+import {
   createTestSemanticLayer,
   getTestSchema,
-  getTestDatabaseType
+  getTestDatabaseType,
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -350,7 +351,8 @@ describe('Hono Adapter', () => {
   })
 
   // Batch endpoint tests
-  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+  // DuckDB: In-memory databases have limited support for parallel prepared statements
+  it.skipIf(skipIfDuckDB())('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
