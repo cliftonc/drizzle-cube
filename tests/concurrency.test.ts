@@ -36,7 +36,8 @@ describe('Concurrency Tests', () => {
   })
 
   describe('Parallel Query Execution', () => {
-    it('should execute multiple identical queries in parallel', async () => {
+    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
+    it.skipIf(skipIfDuckDB())('should execute multiple identical queries in parallel', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .build()
@@ -77,7 +78,8 @@ describe('Concurrency Tests', () => {
       }
     })
 
-    it('should handle high concurrency load', async () => {
+    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
+    it.skipIf(skipIfDuckDB())('should handle high concurrency load', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .dimensions(['Employees.departmentId'])
