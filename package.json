@@ -212,8 +212,11 @@
       "optional": true
     }
   },
-  "devDependencies": {
+  "optionalDependencies": {
     "@duckdb/node-api": "^1.4.3-r.3",
+    "@leonardovida-md/drizzle-neo-duckdb": "^1.2.2"
+  },
+  "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.34.0",
     "@fastify/cors": "^11.1.0",
@@ -222,7 +225,6 @@
     "@iconify-icons/heroicons-solid": "^1.2.6",
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
-    "@leonardovida-md/drizzle-neo-duckdb": "^1.2.2",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
     "@tailwindcss/postcss": "^4.1.12",
