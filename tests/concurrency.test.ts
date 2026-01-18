@@ -18,7 +18,8 @@ import type { Cube } from '../src/server/types'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
-describe('Concurrency Tests', () => {
+// DuckDB: In-memory databases have limited support for parallel prepared statements
+describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube>
   let close: () => void

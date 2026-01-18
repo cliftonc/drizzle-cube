@@ -572,7 +572,8 @@ describe('Filter Edge Cases', () => {
   })
 
   describe('Memory and Resource Usage', () => {
-    it('should handle memory efficiently with large filter combinations', async () => {
+    // DuckDB: In-memory databases have limited support for parallel prepared statements
+    it.skipIf(skipIfDuckDB())('should handle memory efficiently with large filter combinations', async () => {
       const initialMemory = process.memoryUsage().heapUsed
       
       // Create multiple queries with large filter sets
