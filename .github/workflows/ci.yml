@@ -175,9 +175,12 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      # Use npm install (not ci) to resolve correct platform-specific DuckDB bindings
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      # Explicitly install DuckDB packages with correct platform bindings
+      - name: Install DuckDB dependencies
+        run: npm install @duckdb/node-api @leonardovida-md/drizzle-neo-duckdb
 
       - name: Run tests (DuckDB)
         run: npm test
