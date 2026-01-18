@@ -175,14 +175,21 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
-
-      # Force fresh install of DuckDB packages with correct platform bindings
-      - name: Install DuckDB dependencies
+      # The @leonardovida-md/drizzle-neo-duckdb package has a bug - it includes
+      # @duckdb/node-bindings-darwin-arm64 as a hard dependency instead of optional.
+      # We work around this by adding an npm override to replace it with an empty package.
+      # The @duckdb/node-api package correctly brings in Linux bindings via optionalDeps.
+      - name: Patch package.json for Linux DuckDB support
         run: |
-          rm -rf node_modules/@duckdb node_modules/@leonardovida-md
-          npm install @duckdb/node-api @leonardovida-md/drizzle-neo-duckdb --force
+          node -e "
+            const pkg = require('./package.json');
+            pkg.overrides = pkg.overrides || {};
+            pkg.overrides['@duckdb/node-bindings-darwin-arm64'] = 'npm:empty-npm-package@1.0.0';
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Install dependencies
+        run: npm install
 
       - name: Run tests (DuckDB)
         run: npm test
