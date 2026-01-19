@@ -9,6 +9,7 @@ import { enhancedDepartments, enhancedEmployees, enhancedTeams, enhancedEmployee
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import crypto from 'crypto'
 
 // Dynamic imports for DuckDB since it's an optional peer dependency
 let DuckDBInstance: any
@@ -34,20 +35,75 @@ async function loadDuckDBDependencies() {
   }
 }
 
-// Shared database path for all DuckDB tests
-const DUCKDB_TEST_DB_PATH = path.join(os.tmpdir(), 'drizzle-cube-test', 'test.duckdb')
+// Environment variable name for the unique test database path
+const DUCKDB_TEST_PATH_ENV = 'DUCKDB_TEST_DB_PATH'
+
+// Base directory for DuckDB test files
+const DUCKDB_TEST_DIR = path.join(os.tmpdir(), 'drizzle-cube-test')
+
+/**
+ * Generate a unique database filename using timestamp and random hash
+ * Format: test-{timestamp}-{hash}.duckdb
+ */
+function generateUniqueDbPath(): string {
+  const timestamp = Date.now()
+  const hash = crypto.randomBytes(4).toString('hex')
+  return path.join(DUCKDB_TEST_DIR, `test-${timestamp}-${hash}.duckdb`)
+}
+
+/**
+ * Get the current test database path
+ * Returns the path from env var if set (during test run), or generates a new one
+ */
+export function getDuckDBTestPath(): string {
+  return process.env[DUCKDB_TEST_PATH_ENV] || generateUniqueDbPath()
+}
+
+/**
+ * Ensure the directory for the test database exists
+ */
+function ensureTestDirExists() {
+  if (!fs.existsSync(DUCKDB_TEST_DIR)) {
+    fs.mkdirSync(DUCKDB_TEST_DIR, { recursive: true })
+  }
+}
+
+/**
+ * Options for creating a DuckDB connection
+ */
+interface DuckDBConnectionOptions {
+  /** Open the database in read-only mode */
+  readOnly?: boolean
+  /** Use in-memory database instead of file-based */
+  inMemory?: boolean
+}
 
 /**
  * Create DuckDB connection for testing
- * Uses in-memory database for test isolation (each test gets its own DB)
- * Note: DuckDB doesn't support concurrent file access, so in-memory is required for parallel tests
+ * By default creates a file-based database connection for write operations.
+ * Use readOnly: true for concurrent read access in tests.
  */
-export async function createDuckDBConnection() {
+export async function createDuckDBConnection(options?: DuckDBConnectionOptions) {
   await loadDuckDBDependencies()
 
-  // Use in-memory database for test isolation
-  // DuckDB file-based databases have locking issues with concurrent access
-  const instance = await DuckDBInstance.create(':memory:')
+  const { readOnly = false, inMemory = false } = options ?? {}
+
+  let dbPath: string
+  let instanceOptions: Record<string, string> = {}
+
+  if (inMemory) {
+    dbPath = ':memory:'
+  } else {
+    ensureTestDirExists()
+    // Use the path from env var (set during global setup) or generate a new one
+    dbPath = getDuckDBTestPath()
+
+    if (readOnly) {
+      instanceOptions['access_mode'] = 'read_only'
+    }
+  }
+
+  const instance = await DuckDBInstance.create(dbPath, instanceOptions)
   const connection = await instance.connect()
   const db = drizzle(connection, { schema: duckdbTestSchema })
 
@@ -55,51 +111,58 @@ export async function createDuckDBConnection() {
     db,
     instance,
     connection,
-    dbPath: ':memory:',
+    dbPath,
     close: async () => {
       connection.disconnectSync()
       // Instance cleanup is automatic via GC
     }
   }
+}
+
+/**
+ * Create a read-only DuckDB connection for concurrent test access
+ * This uses the shared test database file with READ_ONLY access mode,
+ * allowing multiple tests to read concurrently.
+ */
+export async function createReadOnlyDuckDBConnection() {
+  return createDuckDBConnection({ readOnly: true })
 }
 
 /**
  * Create in-memory DuckDB connection for isolated testing
+ * Useful for tests that need complete isolation and don't need concurrent access
  */
 export async function createInMemoryDuckDBConnection() {
-  await loadDuckDBDependencies()
-
-  const instance = await DuckDBInstance.create(':memory:')
-  const connection = await instance.connect()
-  const db = drizzle(connection, { schema: duckdbTestSchema })
-
-  return {
-    db,
-    instance,
-    connection,
-    close: async () => {
-      connection.disconnectSync()
-      // Instance cleanup is automatic via GC
-    }
-  }
+  return createDuckDBConnection({ inMemory: true })
 }
 
 /**
- * Clean up the shared DuckDB test database
- * Called during global teardown
+ * Clean up a specific DuckDB test database file
+ * @param dbPath - The path to the database file to clean up
  */
-export function cleanupDuckDBTestDatabase() {
+export function cleanupDuckDBFile(dbPath: string) {
   try {
-    if (fs.existsSync(DUCKDB_TEST_DB_PATH)) {
-      fs.unlinkSync(DUCKDB_TEST_DB_PATH)
+    if (fs.existsSync(dbPath)) {
+      fs.unlinkSync(dbPath)
       // Also clean up WAL files if they exist
-      const walPath = DUCKDB_TEST_DB_PATH + '.wal'
+      const walPath = dbPath + '.wal'
       if (fs.existsSync(walPath)) {
         fs.unlinkSync(walPath)
       }
     }
   } catch {
     // Silently ignore cleanup errors
+  }
+}
+
+/**
+ * Clean up the current test's DuckDB database
+ * Called during global teardown - uses the path from env var
+ */
+export function cleanupDuckDBTestDatabase() {
+  const dbPath = process.env[DUCKDB_TEST_PATH_ENV]
+  if (dbPath) {
+    cleanupDuckDBFile(dbPath)
   }
 }
 
@@ -416,22 +479,64 @@ export async function setupDuckDBTestData(db: any) {
 
 /**
  * Full DuckDB setup: create tables + test data
+ *
+ * This creates a file-based database with all test data populated ONCE during global setup.
+ * The write connection is closed after setup, and tests use read-only connections
+ * for concurrent access.
+ *
+ * Flow:
+ * 1. Generate a unique database filename (timestamp + hash)
+ * 2. Set the path in an environment variable for tests to access
+ * 3. Create database with WRITE access
+ * 4. Create tables and populate test data
+ * 5. Call CHECKPOINT to consolidate WAL
+ * 6. Close write connection (critical for read-only access!)
+ * 7. Return cleanup function only (no db reference - tests create their own read-only connections)
  */
 export async function setupDuckDBDatabase() {
-  const { db, close } = await createDuckDBConnection()
+  // Generate a unique path for this test run
+  const uniqueDbPath = generateUniqueDbPath()
+
+  // Set the path in environment variable so tests can find it
+  process.env[DUCKDB_TEST_PATH_ENV] = uniqueDbPath
+
+  // Clean up any existing file at this path (shouldn't exist, but just in case)
+  cleanupDuckDBFile(uniqueDbPath)
+
+  // Ensure the directory exists
+  ensureTestDirExists()
+
+  // Create a write connection to populate the database
+  // Note: createDuckDBConnection will now use getDuckDBTestPath() which reads from env var
+  const { db, close, dbPath } = await createDuckDBConnection({ readOnly: false })
 
   try {
+    // Create tables and populate data
     await createDuckDBTables(db)
     await setupDuckDBTestData(db)
+
+    // CHECKPOINT consolidates WAL and ensures all data is written to the main file
+    // This is critical for read-only connections to access the data
+    await db.execute(sql`CHECKPOINT`)
+
+    // Close the write connection - this is essential!
+    // DuckDB only allows multiple read-only connections when no write connection is open
+    await close()
+
+    // Return only a cleanup function, not the db reference
+    // Tests will create their own read-only connections
     return {
-      db,
-      close: async () => {
-        await close()
-        cleanupDuckDBTestDatabase()
+      db: null, // No db reference returned - tests use createReadOnlyDuckDBConnection()
+      close: () => {
+        cleanupDuckDBFile(dbPath)
+        // Clear the env var
+        delete process.env[DUCKDB_TEST_PATH_ENV]
       }
     }
   } catch (error) {
     await close()
+    cleanupDuckDBFile(dbPath)
+    delete process.env[DUCKDB_TEST_PATH_ENV]
     throw error
   }
 }

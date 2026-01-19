@@ -5,8 +5,7 @@
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import {
-  createTestDatabaseExecutor,
-  skipIfDuckDB
+  createTestDatabaseExecutor
 } from './helpers/test-database'
 import { 
   SemanticLayerCompiler
@@ -312,8 +311,7 @@ describe('Error Handling - Resource Limits', () => {
       console.log(`Memory increase after 50 queries: ${Math.round(memoryIncrease / 1024 / 1024)}MB`)
     }, 30000)
 
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should handle concurrent queries without excessive memory usage', async () => {
+    it('should handle concurrent queries without excessive memory usage', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .dimensions(['Employees.name'])

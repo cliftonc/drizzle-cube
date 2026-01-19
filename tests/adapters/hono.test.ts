@@ -4,8 +4,7 @@ import { createCubeRoutes, mountCubeRoutes, createCubeApp } from '../../src/adap
 import {
   createTestSemanticLayer,
   getTestSchema,
-  getTestDatabaseType,
-  skipIfDuckDB
+  getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -351,8 +350,7 @@ describe('Hono Adapter', () => {
   })
 
   // Batch endpoint tests
-  // DuckDB: In-memory databases have limited support for parallel prepared statements
-  it.skipIf(skipIfDuckDB())('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -375,8 +373,7 @@ describe('Hono Adapter', () => {
     expect(data.results[1].success).toBe(true)
   })
 
-  // DuckDB: In-memory databases have limited support for parallel prepared statements
-  it.skipIf(skipIfDuckDB())('should handle POST /batch with partial failure', async () => {
+  it('should handle POST /batch with partial failure', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

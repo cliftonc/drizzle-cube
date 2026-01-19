@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createTestDatabaseExecutor, skipIfDuckDB } from './helpers/test-database'
+import { createTestDatabaseExecutor } from './helpers/test-database'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../src/server/types'
@@ -137,11 +137,11 @@ describe('Complex Joins Tests', () => {
   })
 
   describe('Join Path Selection', () => {
-    // DuckDB: Without ORDER BY, row ordering is non-deterministic
-    it.skipIf(skipIfDuckDB())('should select consistent join path for same query', async () => {
+    it('should select consistent join path for same query', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Productivity.recordCount'])
         .dimensions(['Departments.name'])
+        .order({ 'Departments.name': 'asc' })
         .build()
 
       // Execute same query multiple times

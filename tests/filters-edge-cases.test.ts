@@ -6,8 +6,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
-  createTestDatabaseExecutor,
-  skipIfDuckDB
+  createTestDatabaseExecutor
 } from './helpers/test-database'
 
 import { testSecurityContexts } from './helpers/enhanced-test-data'
@@ -572,8 +571,7 @@ describe('Filter Edge Cases', () => {
   })
 
   describe('Memory and Resource Usage', () => {
-    // DuckDB: In-memory databases have limited support for parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should handle memory efficiently with large filter combinations', async () => {
+    it('should handle memory efficiently with large filter combinations', async () => {
       const initialMemory = process.memoryUsage().heapUsed
       
       // Create multiple queries with large filter sets
@@ -606,8 +604,7 @@ describe('Filter Edge Cases', () => {
   })
 
   describe('Concurrent Edge Cases', () => {
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should handle concurrent edge case queries without interference', async () => {
+    it('should handle concurrent edge case queries without interference', async () => {
       const edgeCaseQueries = [
         // Empty array
         TestQueryBuilder.create()

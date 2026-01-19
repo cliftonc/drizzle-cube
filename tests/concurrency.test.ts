@@ -11,15 +11,16 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createTestDatabaseExecutor, skipIfDuckDB } from './helpers/test-database'
+import { createTestDatabaseExecutor } from './helpers/test-database'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../src/server/types'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
-// DuckDB: In-memory databases have limited support for parallel prepared statements
-describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
+// DuckDB: Now uses file-based database with threads pool for concurrent read access
+// Some concurrency tests may still fail due to DuckDB's prepared statement limitations
+describe('Concurrency Tests', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube>
   let close: () => void
@@ -37,8 +38,7 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Parallel Query Execution', () => {
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should execute multiple identical queries in parallel', async () => {
+    it('should execute multiple identical queries in parallel', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .build()
@@ -79,8 +79,7 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       }
     })
 
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should handle high concurrency load', async () => {
+    it('should handle high concurrency load', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .dimensions(['Employees.departmentId'])
@@ -197,8 +196,7 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       }
     })
 
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should handle concurrent aggregations correctly', async () => {
+    it('should handle concurrent aggregations correctly', async () => {
       // Different aggregation queries
       const countQuery = TestQueryBuilder.create()
         .measures(['Employees.count'])
@@ -317,8 +315,7 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Performance Under Concurrency', () => {
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should scale with concurrent requests', async () => {
+    it('should scale with concurrent requests', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Productivity.totalLinesOfCode'])
         .dimensions(['Employees.departmentId'])
@@ -360,8 +357,7 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Race Condition Prevention', () => {
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should not mix results between concurrent queries', async () => {
+    it('should not mix results between concurrent queries', async () => {
       // Create queries with distinct expected results
       const query1 = TestQueryBuilder.create()
         .measures(['Employees.count'])
@@ -401,21 +397,23 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       }
     })
 
-    // DuckDB: In-memory databases have concurrency limitations with parallel prepared statements
-    it.skipIf(skipIfDuckDB())('should maintain query isolation with different dimensions', async () => {
+    it('should maintain query isolation with different dimensions', async () => {
       const queries = [
         TestQueryBuilder.create()
           .measures(['Employees.count'])
           .dimensions(['Employees.departmentId'])
+          .order({ 'Employees.departmentId': 'asc' })
           .build(),
         TestQueryBuilder.create()
           .measures(['Employees.count'])
           .dimensions(['Employees.name'])
+          .order({ 'Employees.name': 'asc' })
           .limit(10)
           .build(),
         TestQueryBuilder.create()
           .measures(['Employees.count'])
           .dimensions(['Employees.isActive'])
+          .order({ 'Employees.isActive': 'asc' })
           .build()
       ]
 

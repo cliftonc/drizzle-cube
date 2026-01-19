@@ -273,16 +273,15 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
     executor = createSQLiteExecutor(db, schema)
 
   } else if (dbType === 'duckdb') {
-    // Create fresh connection for each test
-    // DuckDB uses in-memory databases, so we need to create tables and seed data for each test
-    const { createDuckDBConnection, createDuckDBTables, setupDuckDBTestData } = await import('./databases/duckdb/setup')
-    const connection = await createDuckDBConnection()
+    // Use read-only connection to the shared test database file
+    // Data is populated ONCE during global setup, and tests access it concurrently via READ_ONLY mode
+    const { createReadOnlyDuckDBConnection } = await import('./databases/duckdb/setup')
+    const connection = await createReadOnlyDuckDBConnection()
     db = connection.db
     close = connection.close
 
-    // For in-memory DuckDB, we need to set up schema and data for each test
-    await createDuckDBTables(db)
-    await setupDuckDBTestData(db)
+    // No table creation or data seeding needed - handled by global setup
+    // Tests only READ from the pre-populated database
 
     const { createDuckDBExecutor } = await import('../../src/server')
     const { duckdbTestSchema } = await import('./databases/duckdb/schema')
@@ -333,12 +332,12 @@ export async function createTestSemanticLayer(): Promise<{
     const { sqliteTestSchema } = await import('./databases/sqlite/schema')
     schema = sqliteTestSchema
   } else if (dbType === 'duckdb') {
-    // DuckDB uses in-memory databases, so we need to create tables and seed data
-    const { createDuckDBConnection, createDuckDBTables, setupDuckDBTestData } = await import('./databases/duckdb/setup')
-    const connection = await createDuckDBConnection()
+    // Use read-only connection to the shared test database file
+    // Data is populated ONCE during global setup, and tests access it concurrently via READ_ONLY mode
+    const { createReadOnlyDuckDBConnection } = await import('./databases/duckdb/setup')
+    const connection = await createReadOnlyDuckDBConnection()
     db = connection.db
-    await createDuckDBTables(db)
-    await setupDuckDBTestData(db)
+    // No table creation or data seeding needed - handled by global setup
     const { duckdbTestSchema } = await import('./databases/duckdb/schema')
     schema = duckdbTestSchema
   } else {
