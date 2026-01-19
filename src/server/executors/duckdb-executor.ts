@@ -15,11 +15,22 @@ export class DuckDBExecutor extends BaseDatabaseExecutor {
     if (query && typeof query === 'object') {
       // Check for various execution methods that Drizzle queries might have
       if (typeof query.execute === 'function') {
-        const result = await query.execute()
-        if (Array.isArray(result)) {
-          return result.map(row => this.convertNumericFields(row, numericFields)) as T
+        try {
+          const result = await query.execute()
+          if (Array.isArray(result)) {
+            return result.map(row => this.convertNumericFields(row, numericFields)) as T
+          }
+          return result as T
+        } catch (err) {
+          // Extract SQL for better error logging
+          const sqlInfo = this.extractSqlFromQuery(query)
+          console.error('[DuckDB] Query execution failed:', {
+            error: err instanceof Error ? err.message : String(err),
+            sql: sqlInfo.sql,
+            params: sqlInfo.params,
+          })
+          throw err
         }
-        return result as T
       }
     }
 
@@ -27,14 +38,51 @@ export class DuckDBExecutor extends BaseDatabaseExecutor {
     if (!this.db.execute) {
       throw new Error('DuckDB database instance must have an execute method')
     }
-    const result = await this.db.execute(query)
 
-    // Convert numeric strings to numbers for DuckDB results
-    if (Array.isArray(result)) {
-      return result.map(row => this.convertNumericFields(row, numericFields)) as T
+    try {
+      const result = await this.db.execute(query)
+
+      // Convert numeric strings to numbers for DuckDB results
+      if (Array.isArray(result)) {
+        return result.map(row => this.convertNumericFields(row, numericFields)) as T
+      }
+
+      return result as T
+    } catch (err) {
+      // Extract SQL for better error logging
+      const sqlInfo = this.extractSqlFromQuery(query)
+      console.error('[DuckDB] Query execution failed:', {
+        error: err instanceof Error ? err.message : String(err),
+        sql: sqlInfo.sql,
+        params: sqlInfo.params,
+      })
+      throw err
     }
+  }
 
-    return result as T
+  /**
+   * Extract SQL string and params from a query object for error logging
+   */
+  private extractSqlFromQuery(query: any): { sql: string; params: unknown[] } {
+    try {
+      // Drizzle SQL objects have toSQL() method
+      if (query && typeof query.toSQL === 'function') {
+        const { sql: sqlStr, params } = query.toSQL()
+        return { sql: sqlStr, params }
+      }
+      // Try getSQL for older Drizzle versions
+      if (query && typeof query.getSQL === 'function') {
+        const sqlObj = query.getSQL()
+        if (sqlObj && typeof sqlObj.toSQL === 'function') {
+          const { sql: sqlStr, params } = sqlObj.toSQL()
+          return { sql: sqlStr, params }
+        }
+      }
+      // Fallback: stringify the query
+      return { sql: String(query), params: [] }
+    } catch {
+      return { sql: '[unable to extract SQL]', params: [] }
+    }
   }
 
   /**

@@ -20,13 +20,8 @@ export default defineConfig({
           // DuckDB needs threads pool for file-based concurrency
           // Also run single-threaded to avoid DuckDB prepared statement errors
           pool: isDuckDB ? 'threads' : 'forks',
-          ...(isDuckDB ? {
-            poolOptions: {
-              threads: {
-                singleThread: true,
-              }
-            }
-          } : {}),
+          // Vitest 4: singleThread is now a top-level option
+          ...(isDuckDB ? { singleThread: true } : {}),
           env: {
             NODE_ENV: 'test'
           },
