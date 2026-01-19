@@ -715,8 +715,9 @@ export default function DashboardGrid({
   }, [gridSettings, resolvedRows, actions])
 
   // Handle portlet refresh - use action from hook
-  const handlePortletRefresh = useCallback((portletId: string) => {
-    actions.refreshPortlet(portletId)
+  // Pass { bustCache: true } to bypass client and server caches (shift+click)
+  const handlePortletRefresh = useCallback((portletId: string, options?: { bustCache?: boolean }) => {
+    actions.refreshPortlet(portletId, options)
   }, [actions])
 
   // Portlet CRUD operations - now use actions from useDashboard hook

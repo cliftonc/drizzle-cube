@@ -278,8 +278,8 @@ export interface UseFunnelQueryResult {
   /** Error if execution failed */
   error: Error | null
 
-  /** Execute the funnel */
-  execute: () => Promise<FunnelExecutionResult | null>
+  /** Execute the funnel. Pass { bustCache: true } to bypass client and server caches. */
+  execute: (options?: { bustCache?: boolean }) => Promise<FunnelExecutionResult | null>
 
   /** Cancel current execution */
   cancel: () => void

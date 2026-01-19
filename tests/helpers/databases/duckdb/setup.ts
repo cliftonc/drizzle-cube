@@ -26,7 +26,7 @@ async function loadDuckDBDependencies() {
       const duckdbModule = await import('@duckdb/node-api')
       DuckDBInstance = duckdbModule.DuckDBInstance
       DuckDBInstanceCache = duckdbModule.DuckDBInstanceCache
-    } catch (error) {
+    } catch {
       throw new Error('DuckDB dependencies not installed. Install @duckdb/node-api and @leonardovida-md/drizzle-neo-duckdb')
     }
   }
@@ -35,7 +35,7 @@ async function loadDuckDBDependencies() {
       // Try the neo-duckdb drizzle adapter
       const drizzleModule = await import('@leonardovida-md/drizzle-neo-duckdb')
       drizzle = drizzleModule.drizzle
-    } catch (error) {
+    } catch {
       throw new Error('Drizzle DuckDB adapter not installed. Install @leonardovida-md/drizzle-neo-duckdb')
     }
   }

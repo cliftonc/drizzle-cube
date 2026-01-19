@@ -14,10 +14,12 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * DuckDB supports LATERAL joins
+   * DuckDB does not support non-constant LIMIT in correlated subqueries,
+   * which is required for the LATERAL join strategy in flow queries.
+   * Use window function strategy instead.
    */
   supportsLateralJoins(): boolean {
-    return true
+    return false
   }
 
   // ============================================
@@ -214,6 +216,8 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
    * DuckDB has full support for statistical and window functions
    * Note: supportsPercentileSubqueries is false because DuckDB's QUANTILE_CONT
    * doesn't work well in scalar subqueries against CTEs in funnel queries
+   * Note: supportsLateralJoins is false because DuckDB doesn't support non-constant
+   * LIMIT in correlated subqueries, which is required for flow query LATERAL joins
    */
   getCapabilities(): DatabaseCapabilities {
     return {
@@ -222,7 +226,7 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
       supportsPercentile: true,
       supportsWindowFunctions: true,
       supportsFrameClause: true,
-      supportsLateralJoins: true,
+      supportsLateralJoins: false,
       supportsPercentileSubqueries: false
     }
   }

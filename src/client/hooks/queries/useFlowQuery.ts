@@ -55,8 +55,8 @@ export interface UseFlowQueryResult {
   isExecuting: boolean
   /** Error if query failed */
   error: Error | null
-  /** Refetch the query */
-  refetch: () => void
+  /** Refetch the query. Pass { bustCache: true } to bypass client and server caches. */
+  refetch: (options?: { bustCache?: boolean }) => void
   /** Reset the query cache */
   reset: () => void
   /** The server query being executed */
@@ -242,12 +242,33 @@ export function useFlowQuery(
 
   /**
    * Refetch the flow query
+   * Pass { bustCache: true } to bypass both client and server caches
    */
-  const refetch = useCallback(() => {
+  const refetch = useCallback((options?: { bustCache?: boolean }) => {
     if (debouncedQuery && isValid) {
-      queryResult.refetch()
+      if (options?.bustCache) {
+        // Remove from TanStack Query cache first
+        queryClient.removeQueries({ queryKey })
+        // Fetch with cache bust header
+        queryClient.fetchQuery({
+          queryKey,
+          queryFn: async () => {
+            const startTime = performance.now()
+            const resultSet = await cubeApi.load(
+              debouncedQuery as unknown as CubeQuery,
+              { bustCache: true }
+            )
+            const rawData = resultSet.rawData()
+            const executionTime = performance.now() - startTime
+            const cacheInfo = resultSet.cacheInfo?.()
+            return { rawData, executionTime, cacheInfo }
+          },
+        })
+      } else {
+        queryResult.refetch()
+      }
     }
-  }, [debouncedQuery, isValid, queryResult])
+  }, [debouncedQuery, isValid, queryResult, queryClient, queryKey, cubeApi])
 
   /**
    * Reset clears the query cache

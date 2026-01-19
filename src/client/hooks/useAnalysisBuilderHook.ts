@@ -261,7 +261,7 @@ export interface UseAnalysisBuilderResult {
     share: () => Promise<void>
     clearQuery: () => void
     clearCurrentMode: () => void
-    refetch: () => void
+    refetch: (options?: { bustCache?: boolean }) => void
     handleFieldSelected: (
       field: MetaField,
       fieldType: 'measure' | 'dimension' | 'timeDimension',

@@ -73,8 +73,15 @@ const FunnelStepCard = memo(function FunnelStepCard({
 }: FunnelStepCardProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [showTimeDropdown, setShowTimeDropdown] = useState(false)
+  // Local state for name editing - only syncs to store on blur/Enter
+  const [localName, setLocalName] = useState(step.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const timeDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Sync localName when step.name changes externally (e.g., undo/redo, load from URL)
+  useEffect(() => {
+    setLocalName(step.name)
+  }, [step.name])
 
   // Focus name input when editing starts
   useEffect(() => {
@@ -97,28 +104,38 @@ const FunnelStepCard = memo(function FunnelStepCard({
     }
   }, [showTimeDropdown])
 
-  // Handle name change
+  // Handle name change - local state only, no store update
   const handleNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      onUpdate({ name: e.target.value })
-    },
-    [onUpdate]
-  )
-
-  const handleNameKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        setIsEditingName(false)
-      } else if (e.key === 'Escape') {
-        setIsEditingName(false)
-      }
+      setLocalName(e.target.value)
     },
     []
   )
 
+  // Handle name key events - blur on Enter (triggers save), revert on Escape
+  const handleNameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        // Blur triggers handleNameBlur which saves the name
+        e.currentTarget.blur()
+      } else if (e.key === 'Escape') {
+        // Revert to original name and exit editing
+        setLocalName(step.name)
+        setIsEditingName(false)
+      }
+    },
+    [step.name]
+  )
+
+  // Handle name blur - save to store only if changed
   const handleNameBlur = useCallback(() => {
+    const trimmedName = localName.trim()
+    if (trimmedName !== step.name) {
+      // Use trimmed name or default to "Step N" if empty
+      onUpdate({ name: trimmedName || `Step ${stepIndex + 1}` })
+    }
     setIsEditingName(false)
-  }, [])
+  }, [localName, step.name, onUpdate, stepIndex])
 
   // Handle time-to-convert selection
   const handleTimeSelect = useCallback(
@@ -193,7 +210,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
           <input
             ref={nameInputRef}
             type="text"
-            value={step.name}
+            value={localName}
             onChange={handleNameChange}
             onKeyDown={handleNameKeyDown}
             onBlur={handleNameBlur}

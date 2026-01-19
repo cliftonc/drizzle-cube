@@ -315,25 +315,41 @@ export function formatErrorResponse(error: string | Error, status: number = 500)
 }
 
 /**
+ * Options for batch request handling
+ */
+export interface BatchRequestOptions {
+  /**
+   * Whether to bypass server-side cache for all queries in the batch
+   * When true, all queries will be executed fresh without cache
+   */
+  skipCache?: boolean
+}
+
+/**
  * Handle batch query requests - wrapper around existing single query execution
  * Executes multiple queries in parallel and returns partial success results
  *
  * @param queries - Array of semantic queries to execute
  * @param securityContext - Security context (extracted once, shared across all queries)
  * @param semanticLayer - Semantic layer compiler instance
+ * @param options - Optional batch request options (e.g., skipCache)
  * @returns Array of results matching input query order (successful or error results)
  */
 export async function handleBatchRequest(
   queries: SemanticQuery[],
   securityContext: SecurityContext,
-  semanticLayer: SemanticLayerCompiler
+  semanticLayer: SemanticLayerCompiler,
+  options?: BatchRequestOptions
 ) {
   // Execute all queries in parallel using Promise.allSettled for partial success
   // This ensures one failing query doesn't affect others
   const settledResults = await Promise.allSettled(
     queries.map(async (query) => {
       // Use EXISTING single query execution logic - NO CODE DUPLICATION
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
+      // Pass skipCache option to bypass server-side caching when requested
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, {
+        skipCache: options?.skipCache
+      })
 
       // Use EXISTING response formatter - NO CODE DUPLICATION
       return formatCubeResponse(query, result, semanticLayer)

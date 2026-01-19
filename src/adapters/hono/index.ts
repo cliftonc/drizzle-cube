@@ -145,13 +145,13 @@ export function createCubeRoutes(
   app.post(`${basePath}/load`, async (c) => {
     try {
       const requestBody = await c.req.json()
-      
+
       // Handle both direct query and nested query formats
       const query: SemanticQuery = requestBody.query || requestBody
-      
+
       // Extract security context using user-provided function
       const securityContext = await extractSecurityContext(c)
-      
+
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
       if (!validation.isValid) {
@@ -160,12 +160,15 @@ export function createCubeRoutes(
         }, 400)
       }
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = c.req.header('x-cache-control') === 'no-cache'
+
       // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
-      
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
+
       // Return in official Cube.js format
       return c.json(formatCubeResponse(query, result, semanticLayer))
-      
+
     } catch (error) {
       console.error('Query execution error:', error)
       return c.json({
@@ -194,10 +197,10 @@ export function createCubeRoutes(
           error: 'Invalid JSON in query parameter'
         }, 400)
       }
-      
+
       // Extract security context
       const securityContext = await extractSecurityContext(c)
-      
+
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
       if (!validation.isValid) {
@@ -206,12 +209,15 @@ export function createCubeRoutes(
         }, 400)
       }
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = c.req.header('x-cache-control') === 'no-cache'
+
       // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
-      
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
+
       // Return in official Cube.js format
       return c.json(formatCubeResponse(query, result, semanticLayer))
-      
+
     } catch (error) {
       console.error('Query execution error:', error)
       return c.json({
@@ -244,8 +250,11 @@ export function createCubeRoutes(
       // Extract security context ONCE (shared across all queries)
       const securityContext = await extractSecurityContext(c)
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = c.req.header('x-cache-control') === 'no-cache'
+
       // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
 
       return c.json(batchResult)
 

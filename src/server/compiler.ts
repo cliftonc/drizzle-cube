@@ -16,7 +16,8 @@ import type {
   QueryAnalysis,
   CacheConfig,
   ExplainOptions,
-  ExplainResult
+  ExplainResult,
+  ExecutionOptions
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
@@ -190,27 +191,31 @@ export class SemanticLayerCompiler {
 
   /**
    * Unified query execution method that handles both single and multi-cube queries
+   * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
    */
   async execute(
     query: SemanticQuery,
-    securityContext: SecurityContext
+    securityContext: SecurityContext,
+    options?: ExecutionOptions
   ): Promise<QueryResult> {
     if (!this.dbExecutor) {
       throw new Error('Database executor not configured')
     }
 
     const executor = new QueryExecutor(this.dbExecutor, this.cacheConfig)
-    return executor.execute(this.cubes, query, securityContext)
+    return executor.execute(this.cubes, query, securityContext, options)
   }
 
   /**
    * Execute a multi-cube query
+   * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
    */
   async executeMultiCubeQuery(
     query: SemanticQuery,
-    securityContext: SecurityContext
+    securityContext: SecurityContext,
+    options?: ExecutionOptions
   ): Promise<QueryResult> {
-    return this.execute(query, securityContext)
+    return this.execute(query, securityContext, options)
   }
 
   /**

@@ -258,7 +258,7 @@ export function createLoadHandler(
       }
 
       const securityContext = await extractSecurityContext(request, context)
-      
+
       const validation = semanticLayer.validateQuery(query)
       if (!validation.isValid) {
         return NextResponse.json(
@@ -267,9 +267,12 @@ export function createLoadHandler(
         )
       }
 
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = request.headers.get('x-cache-control') === 'no-cache'
+
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
       const response = formatCubeResponse(query, result, semanticLayer)
-      
+
       return NextResponse.json(response, {
         headers: cors ? getCorsHeaders(request, cors) : {}
       })
@@ -521,8 +524,11 @@ export function createBatchHandler(
       // Extract security context ONCE (shared across all queries)
       const securityContext = await extractSecurityContext(request, context)
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = request.headers.get('x-cache-control') === 'no-cache'
+
       // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
 
       return NextResponse.json(batchResult, {
         headers: cors ? getCorsHeaders(request, cors) : {}

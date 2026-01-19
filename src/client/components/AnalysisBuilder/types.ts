@@ -448,9 +448,15 @@ export interface AnalysisResultsPanelProps {
   shareButtonState?: 'idle' | 'copied' | 'copied-no-chart'
 
   // Refresh functionality
-  onRefreshClick?: () => void
+  /** Callback when refresh button is clicked. Receives options.bustCache when Shift+click */
+  onRefreshClick?: (options?: { bustCache?: boolean }) => void
   canRefresh?: boolean
   isRefreshing?: boolean
+  /**
+   * Whether the query configuration has changed but results haven't been refreshed yet.
+   * When true, shows a "Needs refresh" banner (manual refresh mode only).
+   */
+  needsRefresh?: boolean
 
   // Clear functionality
   onClearClick?: () => void

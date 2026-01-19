@@ -13,8 +13,9 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 import type { CubeQuery, CubeResultSet } from '../../types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { stableStringify } from '../../shared/queryKey'
@@ -61,6 +62,12 @@ export interface UseCubeLoadQueryOptions {
   keepPreviousData?: boolean
 }
 
+/** Options for the refetch function */
+export interface RefetchOptions {
+  /** If true, bypasses both client and server caches */
+  bustCache?: boolean
+}
+
 export interface UseCubeLoadQueryResult {
   /** The result set from the query */
   resultSet: CubeResultSet | null
@@ -78,10 +85,20 @@ export interface UseCubeLoadQueryResult {
   debouncedQuery: CubeQuery | null
   /** Whether the current query is valid */
   isValidQuery: boolean
-  /** Manually refetch the data */
-  refetch: () => void
+  /** Manually refetch the data. Pass { bustCache: true } to bypass caches. */
+  refetch: (options?: RefetchOptions) => void
   /** Clear the query cache */
   clearCache: () => void
+  /**
+   * Whether the query needs to be refreshed (manual refresh mode only).
+   * True when the current query config differs from the last executed query.
+   */
+  needsRefresh: boolean
+  /**
+   * Execute the current query (manual refresh mode only).
+   * In auto-refresh mode, this is the same as refetch().
+   */
+  executeQuery: (options?: RefetchOptions) => void
 }
 
 /**
@@ -121,6 +138,14 @@ export function useCubeLoadQuery(
   const { cubeApi, batchCoordinator, enableBatching } = useCubeApi()
   const queryClient = useQueryClient()
 
+  // Get manual refresh mode from features
+  const { features } = useCubeFeatures()
+  const manualRefresh = features.manualRefresh ?? false
+
+  // Track the last executed query (for manual refresh mode)
+  // This is the query that was last sent to the server
+  const [executedQueryKey, setExecutedQueryKey] = useState<string | null>(null)
+
   // Validate query
   const isValidQuery = isValidCubeQuery(query)
 
@@ -140,11 +165,44 @@ export function useCubeLoadQuery(
     return cleanQueryForServer(debouncedQuery)
   }, [debouncedQuery])
 
+  // Calculate if the current query differs from the last executed query
+  const currentQueryKey = serverQuery ? stableStringify(serverQuery) : null
+  const needsRefresh = useMemo(() => {
+    if (!manualRefresh) return false
+    if (!currentQueryKey) return false
+    // If we haven't executed any query yet, we need refresh
+    if (executedQueryKey === null) return true
+    return currentQueryKey !== executedQueryKey
+  }, [manualRefresh, currentQueryKey, executedQueryKey])
+
+  // In manual refresh mode, only execute when explicitly triggered
+  // In auto mode, execute whenever serverQuery is valid and not skipped
+  const shouldExecute = useMemo(() => {
+    if (!serverQuery || skip) return false
+    if (!manualRefresh) return true // Auto mode: always execute
+    // Manual mode: only execute if this query has been explicitly triggered
+    return executedQueryKey === currentQueryKey
+  }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
+
+  // Ref to track when the next fetch should bust the cache
+  // This is used instead of replacing the queryFn to avoid the queryFn getting "stuck" with bustCache=true
+  const bustCacheRef = useRef(false)
+
   // Execute query with TanStack Query
   const queryResult = useQuery({
     queryKey: createQueryKey(serverQuery),
     queryFn: async () => {
       if (!serverQuery) throw new Error('No query provided')
+
+      // Check if this fetch should bust the cache
+      const shouldBustCache = bustCacheRef.current
+      // Reset the flag immediately so subsequent fetches don't bust cache
+      bustCacheRef.current = false
+
+      // When busting cache, bypass batch coordinator and make direct API call
+      if (shouldBustCache) {
+        return cubeApi.load(serverQuery, { bustCache: true })
+      }
 
       // Use batch coordinator if enabled (collects queries for 100ms window)
       if (enableBatching && batchCoordinator) {
@@ -154,10 +212,18 @@ export function useCubeLoadQuery(
       // Fall back to direct load when batching disabled
       return cubeApi.load(serverQuery)
     },
-    enabled: !!serverQuery && !skip,
+    enabled: shouldExecute,
     staleTime,
     placeholderData: keepPreviousData ? (prevData) => prevData : undefined,
   })
+
+  // In auto mode, track executed query for consistency
+  // This ensures needsRefresh stays false when query auto-executes
+  useEffect(() => {
+    if (!manualRefresh && serverQuery && !skip) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, serverQuery, skip, currentQueryKey])
 
   // Extract raw data from result set
   const rawData = useMemo(() => {
@@ -169,12 +235,27 @@ export function useCubeLoadQuery(
     }
   }, [queryResult.data])
 
-  // Refetch function - forces immediate refetch
-  const refetch = () => {
-    if (serverQuery) {
-      queryClient.refetchQueries({ queryKey: createQueryKey(serverQuery) })
+  // Execute query function - for manual refresh mode, triggers execution
+  // Also serves as refetch in auto mode
+  const executeQuery = useCallback((options?: RefetchOptions) => {
+    if (!serverQuery) return
+
+    // Mark this query as executed (for manual refresh mode)
+    setExecutedQueryKey(currentQueryKey)
+
+    if (options?.bustCache) {
+      // Set the ref flag so the queryFn knows to bypass cache
+      // The flag is reset inside queryFn after reading it
+      bustCacheRef.current = true
     }
-  }
+
+    // Invalidate and refetch - invalidateQueries marks as stale AND triggers refetch
+    // when the query is being observed (which it is, via useQuery)
+    queryClient.invalidateQueries({ queryKey: createQueryKey(serverQuery) })
+  }, [serverQuery, currentQueryKey, queryClient])
+
+  // Refetch is an alias for executeQuery for backward compatibility
+  const refetch = executeQuery
 
   // Clear cache function
   const clearCache = () => {
@@ -201,5 +282,7 @@ export function useCubeLoadQuery(
     isValidQuery,
     refetch,
     clearCache,
+    needsRefresh,
+    executeQuery,
   }
 }

@@ -28,7 +28,8 @@ import type {
   JoinKeyInfo,
   CacheConfig,
   ExplainOptions,
-  ExplainResult
+  ExplainResult,
+  ExecutionOptions
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
@@ -72,11 +73,13 @@ export class QueryExecutor {
 
   /**
    * Unified query execution method that handles both single and multi-cube queries
+   * @param options.skipCache - Skip cache lookup (but still cache the fresh result)
    */
   async execute(
     cubes: Map<string, Cube>,
     query: SemanticQuery,
-    securityContext: SecurityContext
+    securityContext: SecurityContext,
+    options?: ExecutionOptions
   ): Promise<QueryResult> {
     try {
       // Check for funnel queries FIRST - funnel queries have different validation
@@ -105,45 +108,57 @@ export class QueryExecutor {
       }
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
+      // Skip cache lookup if options.skipCache is true (but still cache the result later)
       let cacheKey: string | undefined
       if (this.cacheConfig?.enabled !== false && this.cacheConfig?.provider) {
         cacheKey = generateCacheKey(query, securityContext, this.cacheConfig)
-        try {
-          const startTime = Date.now()
-          const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
-          if (cacheResult) {
+
+        // Only do cache lookup if not explicitly bypassing cache
+        if (!options?.skipCache) {
+          try {
+            const startTime = Date.now()
+            const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
+            if (cacheResult) {
+              this.cacheConfig.onCacheEvent?.({
+                type: 'hit',
+                key: cacheKey,
+                durationMs: Date.now() - startTime
+              })
+
+              // Return cached result WITH cache metadata
+              return {
+                ...cacheResult.value,
+                cache: cacheResult.metadata
+                  ? {
+                      hit: true,
+                      cachedAt: new Date(cacheResult.metadata.cachedAt).toISOString(),
+                      ttlMs: cacheResult.metadata.ttlMs,
+                      ttlRemainingMs: cacheResult.metadata.ttlRemainingMs
+                    }
+                  : {
+                      hit: true,
+                      cachedAt: new Date().toISOString(),
+                      ttlMs: 0,
+                      ttlRemainingMs: 0
+                    }
+              }
+            }
             this.cacheConfig.onCacheEvent?.({
-              type: 'hit',
+              type: 'miss',
               key: cacheKey,
               durationMs: Date.now() - startTime
             })
-
-            // Return cached result WITH cache metadata
-            return {
-              ...cacheResult.value,
-              cache: cacheResult.metadata
-                ? {
-                    hit: true,
-                    cachedAt: new Date(cacheResult.metadata.cachedAt).toISOString(),
-                    ttlMs: cacheResult.metadata.ttlMs,
-                    ttlRemainingMs: cacheResult.metadata.ttlRemainingMs
-                  }
-                : {
-                    hit: true,
-                    cachedAt: new Date().toISOString(),
-                    ttlMs: 0,
-                    ttlRemainingMs: 0
-                  }
-            }
+          } catch (error) {
+            this.cacheConfig.onError?.(error as Error, 'get')
+            // Continue without cache - failures are non-fatal
           }
+        } else {
+          // skipCache requested - emit a bypass event if handler exists
           this.cacheConfig.onCacheEvent?.({
             type: 'miss',
             key: cacheKey,
-            durationMs: Date.now() - startTime
+            durationMs: 0
           })
-        } catch (error) {
-          this.cacheConfig.onError?.(error as Error, 'get')
-          // Continue without cache - failures are non-fatal
         }
       }
 

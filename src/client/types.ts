@@ -488,6 +488,7 @@ export interface FeaturesConfig {
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
   floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')
   thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
+  manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
 }
 
 // Grid layout types (simplified)

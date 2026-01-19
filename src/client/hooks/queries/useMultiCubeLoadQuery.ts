@@ -80,8 +80,8 @@ export interface UseMultiCubeLoadQueryResult {
   debouncedConfig: MultiQueryConfig | null
   /** Whether the current config is valid */
   isValidConfig: boolean
-  /** Manually refetch the data */
-  refetch: () => void
+  /** Manually refetch the data. Pass { bustCache: true } to bypass client and server caches. */
+  refetch: (options?: { bustCache?: boolean }) => void
 }
 
 /**
@@ -214,11 +214,52 @@ export function useMultiCubeLoadQuery(
   })
 
   // Refetch function - forces immediate refetch
-  const refetch = () => {
+  // Pass { bustCache: true } to bypass both client and server caches
+  const refetch = (options?: { bustCache?: boolean }) => {
     if (serverConfig) {
-      queryClient.refetchQueries({
-        queryKey: createMultiQueryKey(serverConfig),
-      })
+      if (options?.bustCache) {
+        // Remove from TanStack Query cache first
+        queryClient.removeQueries({
+          queryKey: createMultiQueryKey(serverConfig),
+        })
+        // Fetch with cache bust header
+        queryClient.fetchQuery({
+          queryKey: createMultiQueryKey(serverConfig),
+          queryFn: async () => {
+            // Direct batch call with bustCache
+            const resultSets = await cubeApi.batchLoad(
+              serverConfig.queries,
+              { bustCache: true }
+            )
+            // Track per-query errors
+            const errors: (Error | null)[] = resultSets.map((rs) => {
+              if (rs && 'error' in rs && (rs as { error?: string }).error) {
+                return new Error((rs as { error: string }).error)
+              }
+              return null
+            })
+            // Merge results based on strategy
+            const data = serverConfig.mergeStrategy === 'concat'
+              ? resultSets.flatMap((rs) => rs?.rawData() || [])
+              : resultSets[0]?.rawData() || []
+            // Keep per-query data for table views
+            const perQueryData = serverConfig.mergeStrategy === 'concat'
+              ? resultSets.map((rs) => rs?.rawData() || [])
+              : []
+            return {
+              data,
+              resultSets,
+              perQueryData,
+              errors,
+              firstError: errors.find((e) => e !== null) || null,
+            }
+          },
+        })
+      } else {
+        queryClient.refetchQueries({
+          queryKey: createMultiQueryKey(serverConfig),
+        })
+      }
     }
   }
 

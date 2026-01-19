@@ -78,9 +78,9 @@ export interface UseDashboardOptions {
   /** Grid width for row calculations */
   gridWidth?: number
   /** Portlet component refs for refresh functionality */
-  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: () => void } | null>>
+  portletComponentRefs?: React.MutableRefObject<Record<string, { refresh: (options?: { bustCache?: boolean }) => void } | null>>
   /** Portlet refresh handler (external) */
-  onPortletRefresh?: (portletId: string) => void
+  onPortletRefresh?: (portletId: string, options?: { bustCache?: boolean }) => void
   /** Ref to the dashboard container element for thumbnail capture */
   dashboardRef?: React.RefObject<HTMLElement | null>
 }
@@ -168,7 +168,7 @@ export interface UseDashboardActions {
   savePortlet: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<string | null>
   deletePortlet: (portletId: string) => Promise<void>
   duplicatePortlet: (portletId: string) => Promise<string | undefined>
-  refreshPortlet: (portletId: string) => void
+  refreshPortlet: (portletId: string, options?: { bustCache?: boolean }) => void
 
   // Filter Operations
   toggleFilterForPortlet: (portletId: string, filterId: string) => Promise<void>
@@ -891,12 +891,12 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
   )
 
   const refreshPortlet = useCallback(
-    (portletId: string) => {
+    (portletId: string, options?: { bustCache?: boolean }) => {
       const portletComponent = portletComponentRefs?.current?.[portletId]
       if (portletComponent?.refresh) {
-        portletComponent.refresh()
+        portletComponent.refresh(options)
       }
-      onPortletRefresh?.(portletId)
+      onPortletRefresh?.(portletId, options)
     },
     [portletComponentRefs, onPortletRefresh]
   )

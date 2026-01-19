@@ -28,11 +28,11 @@ interface DashboardPortletCardProps {
   headerProps?: HTMLAttributes<HTMLDivElement>
   // Ref callbacks - must remain as props (parent manages refs)
   setPortletRef: (portletId: string, element: HTMLDivElement | null) => void
-  setPortletComponentRef: (portletId: string, element: { refresh: () => void } | null) => void
+  setPortletComponentRef: (portletId: string, element: { refresh: (options?: { bustCache?: boolean }) => void } | null) => void
   // Action callbacks - provided by parent for flexibility
   callbacks: {
     onToggleFilter: (portletId: string, filterId: string) => void
-    onRefresh: (portletId: string) => void
+    onRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
     onDuplicate: (portletId: string) => void
     onEdit: (portlet: PortletConfig) => void
     onDelete: (portletId: string) => void
@@ -155,6 +155,29 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyAvailable, setCopyAvailable] = useState(false)
   const chartContainerRef = useRef<HTMLDivElement>(null)
+
+  // Track shift key + hover state for cache bust visual feedback on refresh button
+  const [isShiftHeld, setIsShiftHeld] = useState(false)
+  const [isHoveringRefresh, setIsHoveringRefresh] = useState(false)
+
+  // Listen for shift key up/down to show visual feedback on refresh button (only when hovering)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(true)
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Show warning styling only when hovering AND shift is held
+  const showCacheBustIndicator = isShiftHeld && isHoveringRefresh
 
   // Check if copy-to-clipboard capability is available on mount
   useEffect(() => {
@@ -316,18 +339,24 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             <button
               onClick={(event) => {
                 event.stopPropagation()
-                callbacks.onRefresh(portlet.id)
+                callbacks.onRefresh(portlet.id, { bustCache: event.shiftKey })
               }}
               onTouchEnd={(event) => {
                 event.stopPropagation()
                 event.preventDefault()
                 callbacks.onRefresh(portlet.id)
               }}
+              onMouseEnter={() => setIsHoveringRefresh(true)}
+              onMouseLeave={() => setIsHoveringRefresh(false)}
               disabled={isInSelectionMode}
-              className={`p-1 bg-transparent border-none rounded-sm text-dc-text-secondary transition-colors ${
-                isInSelectionMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-dc-surface-hover'
+              className={`p-1 bg-transparent border-none rounded-sm transition-colors ${
+                isInSelectionMode
+                  ? 'cursor-not-allowed opacity-50 text-dc-text-secondary'
+                  : showCacheBustIndicator
+                    ? 'cursor-pointer text-dc-warning bg-dc-warning-bg'
+                    : 'cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
               }`}
-              title="Refresh portlet data"
+              title={showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh portlet data (Shift+click to bypass cache)'}
             >
               <icons.RefreshIcon style={ICON_STYLE} />
             </button>

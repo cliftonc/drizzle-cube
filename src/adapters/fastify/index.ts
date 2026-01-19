@@ -164,10 +164,10 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       // Handle both direct query and nested query formats
       const body = request.body as any
       const query: SemanticQuery = body.query || body
-      
+
       // Extract security context using user-provided function
       const securityContext = await extractSecurityContext(request)
-      
+
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
       if (!validation.isValid) {
@@ -177,12 +177,15 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         ))
       }
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = request.headers['x-cache-control'] === 'no-cache'
+
       // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
-      
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
+
       // Return in official Cube.js format
       return formatCubeResponse(query, result, semanticLayer)
-      
+
     } catch (error) {
       request.log.error(error, 'Query execution error')
       return reply.status(500).send(formatErrorResponse(
@@ -218,10 +221,10 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
           400
         ))
       }
-      
+
       // Extract security context
       const securityContext = await extractSecurityContext(request)
-      
+
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
       if (!validation.isValid) {
@@ -231,12 +234,15 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         ))
       }
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = request.headers['x-cache-control'] === 'no-cache'
+
       // Execute multi-cube query (handles both single and multi-cube automatically)
-      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
-      
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, { skipCache })
+
       // Return in official Cube.js format
       return formatCubeResponse(query, result, semanticLayer)
-      
+
     } catch (error) {
       request.log.error(error, 'Query execution error')
       return reply.status(500).send(formatErrorResponse(
@@ -285,8 +291,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       // Extract security context ONCE (shared across all queries)
       const securityContext = await extractSecurityContext(request)
 
+      // Check for cache bypass header (X-Cache-Control: no-cache)
+      const skipCache = request.headers['x-cache-control'] === 'no-cache'
+
       // Use shared batch handler (wraps existing single query logic)
-      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer)
+      const batchResult = await handleBatchRequest(queries, securityContext, semanticLayer, { skipCache })
 
       return batchResult
 

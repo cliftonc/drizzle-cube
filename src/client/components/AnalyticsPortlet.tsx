@@ -20,8 +20,12 @@ import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUn
 import { cleanQueryForServer } from '../shared/utils'
 
 
+interface RefreshOptions {
+  bustCache?: boolean
+}
+
 interface AnalyticsPortletRef {
-  refresh: () => void
+  refresh: (options?: RefreshOptions) => void
 }
 
 // Memoize component to prevent re-renders when props haven't changed
@@ -288,19 +292,32 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
   // Expose refresh function through ref
   // Invalidates cache and forces a fresh fetch from the server
+  // Pass bustCache: true to bypass both client and server caches
   useImperativeHandle(ref, () => ({
-    refresh: () => {
+    refresh: (options?: RefreshOptions) => {
+      const bustCache = options?.bustCache ?? false
+
       if (isFlowMode && serverFlowQuery) {
         // For flow mode, invalidate cache first then re-execute
         // Flow query key format: ['cube', 'flow', JSON.stringify(serverQuery)]
         const queryKey = ['cube', 'flow', JSON.stringify(serverFlowQuery)] as const
-        queryClient.invalidateQueries({ queryKey })
+        if (bustCache) {
+          queryClient.removeQueries({ queryKey })
+        } else {
+          queryClient.invalidateQueries({ queryKey })
+        }
+        flowQueryResult.refetch({ bustCache })
       } else if (isFunnelMode && serverFunnelQuery) {
         // For funnel mode, invalidate cache first then re-execute
         // Funnel query key format: ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)]
         const stepCount = serverFunnelQuery.funnel?.steps?.length || 0
         const queryKey = ['cube', 'funnel', stepCount, JSON.stringify(serverFunnelQuery)] as const
-        queryClient.invalidateQueries({ queryKey })
+        if (bustCache) {
+          queryClient.removeQueries({ queryKey })
+        } else {
+          queryClient.invalidateQueries({ queryKey })
+        }
+        funnelQueryResult.execute({ bustCache })
       } else if (isMultiQuery && multiQueryConfig) {
         // Invalidate cache for this specific multi-query, then refetch
         // Clean each query to match the cache key format used by useMultiCubeLoadQuery
@@ -308,15 +325,25 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           ...multiQueryConfig,
           queries: multiQueryConfig.queries.map((q: CubeQuery) => cleanQueryForServer(q))
         }
-        queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
+        if (bustCache) {
+          queryClient.removeQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
+        } else {
+          queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
+        }
+        multiQueryResult.refetch({ bustCache })
       } else if (queryObject) {
         // Clean the query to match the cache key format used by useCubeLoadQuery
         // This is important because the cache uses cleanQueryForServer(query) which removes empty arrays
         const cleanedQuery = cleanQueryForServer(queryObject)
-        queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
+        if (bustCache) {
+          queryClient.removeQueries({ queryKey: createQueryKey(cleanedQuery) })
+        } else {
+          queryClient.invalidateQueries({ queryKey: createQueryKey(cleanedQuery) })
+        }
+        singleQueryResult.refetch({ bustCache })
       }
     }
-  }), [isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFlowQuery, serverFunnelQuery])
+  }), [isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFlowQuery, serverFunnelQuery, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   const handleRetry = useCallback(() => {
     if (isFlowMode) {

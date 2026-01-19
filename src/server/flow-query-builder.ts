@@ -889,6 +889,8 @@ export class FlowQueryBuilder {
     const isSunburst = config.outputMode === 'sunburst'
 
     // Before steps (negative layers, furthest first)
+    // Note: Using sql.raw() for prefix strings to avoid multi-digit parameter issues in DuckDB
+    // These are hardcoded constants (not user input), so sql.raw() is safe here
     for (let depth = config.stepsBefore; depth >= 1; depth--) {
       const layer = -depth
       const alias = `before_step_${depth}`
@@ -896,7 +898,7 @@ export class FlowQueryBuilder {
         // Sunburst: Group by event_path for unique branches
         unionParts.push(sql`
           SELECT
-            ${'before_' + depth + '_'} || event_path AS node_id,
+            ${sql.raw(`'before_${depth}_'`)} || event_path AS node_id,
             event_type AS name,
             ${sql.raw(String(layer))} AS layer,
             COUNT(*) AS value
@@ -907,7 +909,7 @@ export class FlowQueryBuilder {
         // Sankey: Group by event_type (paths can converge)
         unionParts.push(sql`
           SELECT
-            ${'before_' + depth + '_'} || event_type AS node_id,
+            ${sql.raw(`'before_${depth}_'`)} || event_type AS node_id,
             event_type AS name,
             ${sql.raw(String(layer))} AS layer,
             COUNT(*) AS value
@@ -920,7 +922,7 @@ export class FlowQueryBuilder {
     // Starting step (layer 0) - same for both modes since it's the root
     unionParts.push(sql`
       SELECT
-        ${'start_'} || event_type AS node_id,
+        ${sql.raw("'start_'")} || event_type AS node_id,
         event_type AS name,
         0 AS layer,
         COUNT(*) AS value
@@ -936,7 +938,7 @@ export class FlowQueryBuilder {
         // Sunburst: Group by event_path for unique branches
         unionParts.push(sql`
           SELECT
-            ${'after_' + depth + '_'} || event_path AS node_id,
+            ${sql.raw(`'after_${depth}_'`)} || event_path AS node_id,
             event_type AS name,
             ${sql.raw(String(layer))} AS layer,
             COUNT(*) AS value
@@ -947,7 +949,7 @@ export class FlowQueryBuilder {
         // Sankey: Group by event_type (paths can converge)
         unionParts.push(sql`
           SELECT
-            ${'after_' + depth + '_'} || event_type AS node_id,
+            ${sql.raw(`'after_${depth}_'`)} || event_type AS node_id,
             event_type AS name,
             ${sql.raw(String(layer))} AS layer,
             COUNT(*) AS value
@@ -984,6 +986,8 @@ export class FlowQueryBuilder {
     const isSunburst = config.outputMode === 'sunburst'
 
     // Links between before steps (towards start)
+    // Note: Using sql.raw() for prefix strings to avoid multi-digit parameter issues in DuckDB
+    // These are hardcoded constants (not user input), so sql.raw() is safe here
     for (let depth = config.stepsBefore; depth >= 2; depth--) {
       const fromAlias = `before_step_${depth}`
       const toAlias = `before_step_${depth - 1}`
@@ -992,8 +996,8 @@ export class FlowQueryBuilder {
         // Sunburst: Use event_path for unique branches
         linkParts.push(sql`
           SELECT
-            ${'before_' + depth + '_'} || f.event_path AS source_id,
-            ${'before_' + (depth - 1) + '_'} || t.event_path AS target_id,
+            ${sql.raw(`'before_${depth}_'`)} || f.event_path AS source_id,
+            ${sql.raw(`'before_${depth - 1}_'`)} || t.event_path AS target_id,
             COUNT(*) AS value
           FROM ${sql.identifier(fromAlias)} f
           INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
@@ -1003,8 +1007,8 @@ export class FlowQueryBuilder {
         // Sankey: Use event_type (paths can converge)
         linkParts.push(sql`
           SELECT
-            ${'before_' + depth + '_'} || f.event_type AS source_id,
-            ${'before_' + (depth - 1) + '_'} || t.event_type AS target_id,
+            ${sql.raw(`'before_${depth}_'`)} || f.event_type AS source_id,
+            ${sql.raw(`'before_${depth - 1}_'`)} || t.event_type AS target_id,
             COUNT(*) AS value
           FROM ${sql.identifier(fromAlias)} f
           INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
@@ -1018,8 +1022,8 @@ export class FlowQueryBuilder {
       if (isSunburst) {
         linkParts.push(sql`
           SELECT
-            ${'before_1_'} || b.event_path AS source_id,
-            ${'start_'} || s.event_type AS target_id,
+            ${sql.raw("'before_1_'")} || b.event_path AS source_id,
+            ${sql.raw("'start_'")} || s.event_type AS target_id,
             COUNT(*) AS value
           FROM before_step_1 b
           INNER JOIN starting_entities s ON b.binding_key = s.binding_key
@@ -1028,8 +1032,8 @@ export class FlowQueryBuilder {
       } else {
         linkParts.push(sql`
           SELECT
-            ${'before_1_'} || b.event_type AS source_id,
-            ${'start_'} || s.event_type AS target_id,
+            ${sql.raw("'before_1_'")} || b.event_type AS source_id,
+            ${sql.raw("'start_'")} || s.event_type AS target_id,
             COUNT(*) AS value
           FROM before_step_1 b
           INNER JOIN starting_entities s ON b.binding_key = s.binding_key
@@ -1044,8 +1048,8 @@ export class FlowQueryBuilder {
         // For sunburst, link from start to path-qualified after_step_1
         linkParts.push(sql`
           SELECT
-            ${'start_'} || s.event_type AS source_id,
-            ${'after_1_'} || a.event_path AS target_id,
+            ${sql.raw("'start_'")} || s.event_type AS source_id,
+            ${sql.raw("'after_1_'")} || a.event_path AS target_id,
             COUNT(*) AS value
           FROM starting_entities s
           INNER JOIN after_step_1 a ON s.binding_key = a.binding_key
@@ -1054,8 +1058,8 @@ export class FlowQueryBuilder {
       } else {
         linkParts.push(sql`
           SELECT
-            ${'start_'} || s.event_type AS source_id,
-            ${'after_1_'} || a.event_type AS target_id,
+            ${sql.raw("'start_'")} || s.event_type AS source_id,
+            ${sql.raw("'after_1_'")} || a.event_type AS target_id,
             COUNT(*) AS value
           FROM starting_entities s
           INNER JOIN after_step_1 a ON s.binding_key = a.binding_key
@@ -1073,8 +1077,8 @@ export class FlowQueryBuilder {
         // Sunburst: Use event_path for unique branches
         linkParts.push(sql`
           SELECT
-            ${'after_' + depth + '_'} || f.event_path AS source_id,
-            ${'after_' + (depth + 1) + '_'} || t.event_path AS target_id,
+            ${sql.raw(`'after_${depth}_'`)} || f.event_path AS source_id,
+            ${sql.raw(`'after_${depth + 1}_'`)} || t.event_path AS target_id,
             COUNT(*) AS value
           FROM ${sql.identifier(fromAlias)} f
           INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key
@@ -1084,8 +1088,8 @@ export class FlowQueryBuilder {
         // Sankey: Use event_type (paths can converge)
         linkParts.push(sql`
           SELECT
-            ${'after_' + depth + '_'} || f.event_type AS source_id,
-            ${'after_' + (depth + 1) + '_'} || t.event_type AS target_id,
+            ${sql.raw(`'after_${depth}_'`)} || f.event_type AS source_id,
+            ${sql.raw(`'after_${depth + 1}_'`)} || t.event_type AS target_id,
             COUNT(*) AS value
           FROM ${sql.identifier(fromAlias)} f
           INNER JOIN ${sql.identifier(toAlias)} t ON f.binding_key = t.binding_key

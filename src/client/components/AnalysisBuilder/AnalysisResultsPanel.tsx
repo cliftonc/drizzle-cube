@@ -56,6 +56,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   onRefreshClick,
   canRefresh = false,
   isRefreshing = false,
+  needsRefresh = false,
   // Clear functionality
   onClearClick,
   canClear = false,
@@ -88,6 +89,28 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Active debug query tab (independent of main query tabs)
   const [activeDebugIndex, setActiveDebugIndex] = useState(0)
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false)
+  // Track shift key + hover state for cache bust visual feedback
+  const [isShiftHeld, setIsShiftHeld] = useState(false)
+  const [isHoveringRefresh, setIsHoveringRefresh] = useState(false)
+
+  // Listen for shift key up/down to show visual feedback on refresh button (only when hovering)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(true)
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftHeld(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Show warning styling only when hovering AND shift is held
+  const showCacheBustIndicator = isShiftHeld && isHoveringRefresh
 
   // Clamp activeDebugIndex when queries are removed
   useEffect(() => {
@@ -1167,17 +1190,21 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               </button>
             )}
 
-            {/* Refresh Button */}
+            {/* Refresh Button - Shift+click bypasses cache */}
             {onRefreshClick && canRefresh && (
               <button
-                onClick={onRefreshClick}
+                onClick={(e) => onRefreshClick({ bustCache: e.shiftKey })}
+                onMouseEnter={() => setIsHoveringRefresh(true)}
+                onMouseLeave={() => setIsHoveringRefresh(false)}
                 disabled={isRefreshing}
                 className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
                   isRefreshing
                     ? 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-wait'
-                    : 'text-dc-accent bg-dc-accent-bg border border-dc-accent hover:bg-dc-accent-bg'
+                    : showCacheBustIndicator
+                      ? 'text-dc-warning bg-dc-warning-bg border border-dc-warning font-semibold'
+                      : 'text-dc-accent bg-dc-accent-bg border border-dc-accent hover:bg-dc-accent-bg'
                 }`}
-                title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
+                title={isRefreshing ? 'Refreshing...' : showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh data (Shift+click to bypass cache)'}
               >
                 <RefreshIcon className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
@@ -1229,6 +1256,28 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     )
   }
 
+  // "Needs refresh" banner for manual refresh mode
+  const renderNeedsRefreshBanner = () => {
+    if (!needsRefresh || !onRefreshClick) return null
+
+    return (
+      <div className="px-4 py-2 bg-dc-warning-bg border-b border-dc-warning flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 text-dc-warning">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-sm font-medium">Query configuration changed. Results may be outdated.</span>
+        </div>
+        <button
+          onClick={() => onRefreshClick()}
+          className="px-3 py-1 text-xs font-medium bg-dc-warning text-white rounded hover:bg-dc-warning/90 transition-colors"
+        >
+          Refresh Now
+        </button>
+      </div>
+    )
+  }
+
   // Success state with data
   const renderSuccess = () => {
     const hasResults = executionResults && executionResults.length > 0
@@ -1237,6 +1286,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       return (
         <div className="h-full flex flex-col">
           {renderHeader()}
+          {renderNeedsRefreshBanner()}
           <div className="flex-1 min-h-0 relative overflow-auto">
             {showDebug ? renderDebug() : renderNoData()}
           </div>
@@ -1247,6 +1297,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     return (
       <div className="h-full flex flex-col">
         {renderHeader()}
+        {renderNeedsRefreshBanner()}
 
         {/* Results Content */}
         <div className="flex-1 min-h-0 relative overflow-auto">

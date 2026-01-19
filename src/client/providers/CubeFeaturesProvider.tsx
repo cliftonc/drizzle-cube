@@ -66,10 +66,21 @@ export function CubeFeaturesProvider({
   )
 }
 
+// Default context value when used outside provider (safe fallback for hooks)
+const DEFAULT_CONTEXT: CubeFeaturesContextValue = {
+  features: DEFAULT_FEATURES,
+  dashboardModes: ['rows', 'grid'],
+  updateFeatures: () => {
+    // No-op when used outside provider
+  }
+}
+
+/**
+ * Hook to access cube features context.
+ * Returns default values if used outside CubeFeaturesProvider (graceful fallback).
+ */
 export function useCubeFeatures() {
   const context = useContext(CubeFeaturesContext)
-  if (!context) {
-    throw new Error('useCubeFeatures must be used within CubeFeaturesProvider')
-  }
-  return context
+  // Return default context if not within provider (allows hooks like useCubeLoadQuery to work in isolation)
+  return context ?? DEFAULT_CONTEXT
 }

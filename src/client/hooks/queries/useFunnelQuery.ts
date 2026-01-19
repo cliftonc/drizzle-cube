@@ -297,18 +297,39 @@ export function useFunnelQuery(
 
   /**
    * Manually execute/refetch the funnel query
+   * Pass { bustCache: true } to bypass both client and server caches
    */
-  const execute = useCallback(async (): Promise<FunnelExecutionResult | null> => {
+  const execute = useCallback(async (options?: { bustCache?: boolean }): Promise<FunnelExecutionResult | null> => {
     // Allow execution if we have a serverQuery (either from prebuiltServerQuery or built from config)
     if (!serverQuery) return null
 
     try {
-      await queryResult.refetch()
+      if (options?.bustCache) {
+        // Remove from TanStack Query cache first
+        queryClient.removeQueries({ queryKey })
+        // Fetch with cache bust header
+        await queryClient.fetchQuery({
+          queryKey,
+          queryFn: async () => {
+            const startTime = performance.now()
+            const resultSet = await cubeApi.load(
+              serverQuery as unknown as CubeQuery,
+              { bustCache: true }
+            )
+            const rawData = resultSet.rawData()
+            const executionTime = performance.now() - startTime
+            const cacheInfo = resultSet.cacheInfo?.()
+            return { rawData, executionTime, cacheInfo }
+          },
+        })
+      } else {
+        await queryResult.refetch()
+      }
       return result
     } catch {
       return result
     }
-  }, [serverQuery, queryResult, result])
+  }, [serverQuery, queryResult, result, queryClient, queryKey, cubeApi])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)

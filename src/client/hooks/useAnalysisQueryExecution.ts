@@ -81,8 +81,8 @@ export interface UseAnalysisQueryExecutionResult {
   debugDataPerQuery: DebugDataEntry[]
   /** Whether query has been debounced (for smart defaults trigger) */
   hasDebounced: boolean
-  /** Refetch function */
-  refetch: () => void
+  /** Refetch function. Pass { bustCache: true } to bypass client and server caches. */
+  refetch: (options?: { bustCache?: boolean }) => void
   /**
    * In funnel mode, these are the actually executed queries with:
    * - Binding key dimension auto-added
@@ -239,15 +239,16 @@ export function useAnalysisQueryExecution(
   )
 
   // Unified refetch function
-  const refetch = useCallback(() => {
+  // Pass options (including bustCache) through to underlying hooks
+  const refetch = useCallback((options?: { bustCache?: boolean }) => {
     if (isFlowMode) {
-      flowQueryResult.refetch()
+      flowQueryResult.refetch(options)
     } else if (isFunnelMode) {
-      funnelQueryResult.execute()
+      funnelQueryResult.execute(options)
     } else if (isMultiMode) {
-      multiQueryResult.refetch()
+      multiQueryResult.refetch(options)
     } else {
-      singleQueryResult.refetch()
+      singleQueryResult.refetch(options)
     }
   }, [isFlowMode, isFunnelMode, isMultiMode, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 

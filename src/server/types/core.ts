@@ -66,6 +66,14 @@ export interface SqlResult {
 }
 
 /**
+ * Options for query execution
+ */
+export interface ExecutionOptions {
+  /** Skip the cache lookup (but still cache the result for future requests) */
+  skipCache?: boolean
+}
+
+/**
  * Core database interface that supports all Drizzle instances
  * Uses flexible typing for maximum compatibility across different database drivers
  */
