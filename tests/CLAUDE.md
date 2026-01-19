@@ -456,11 +456,11 @@ When running tests with DuckDB (`TEST_DB_TYPE=duckdb`), some features have limit
 ### Concurrency Limitations
 DuckDB is designed for **single-user OLAP workloads**, not concurrent multi-user access.
 
-- **7 of 13 `concurrency.test.ts` tests now run for DuckDB** thanks to `singleThread: true` in vitest config
-- Tests with **identical parallel queries** on a single connection work correctly
+- **5 of 13 `concurrency.test.ts` tests now run for DuckDB** thanks to `singleThread: true` in vitest config
+- Tests with **small numbers of parallel queries** (5 or fewer) on a single connection work correctly
 - Tests that are skipped for DuckDB include:
   - Tests creating **multiple database connections** (multi-org security isolation)
-  - Tests with **high-volume parallel queries** (40+ concurrent)
+  - Tests with **10+ parallel queries** (causes prepared statement errors)
   - Tests with **different query structures in parallel** (different cubes/dimensions)
 - **For production concurrent multi-tenant workloads, use PostgreSQL or MySQL**
 
