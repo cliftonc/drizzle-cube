@@ -96,7 +96,7 @@ export interface NextAdapterOptions {
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
-  engineType?: 'postgres' | 'mysql' | 'sqlite'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
   
   /**
    * CORS configuration (optional)
