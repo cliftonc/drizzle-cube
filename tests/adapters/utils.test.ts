@@ -291,7 +291,8 @@ describe('Adapter Utils', () => {
     })
 
     describe('handleBatchRequest', () => {
-      it('should execute multiple successful queries', async () => {
+      // DuckDB: In-memory databases have limited support for parallel prepared statements
+      it.skipIf(skipIfDuckDB())('should execute multiple successful queries', async () => {
         const queries = [
           { measures: ['Employees.count'] },
           { measures: ['Employees.totalSalary'] }
@@ -305,7 +306,8 @@ describe('Adapter Utils', () => {
         expect(result.results[1].success).toBe(true)
       })
 
-      it('should handle partial failure', async () => {
+      // DuckDB: In-memory databases have limited support for parallel prepared statements
+      it.skipIf(skipIfDuckDB())('should handle partial failure', async () => {
         const queries = [
           { measures: ['Employees.count'] },
           { measures: ['NonExistent.count'] }

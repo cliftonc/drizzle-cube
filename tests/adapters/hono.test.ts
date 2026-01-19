@@ -375,7 +375,8 @@ describe('Hono Adapter', () => {
     expect(data.results[1].success).toBe(true)
   })
 
-  it('should handle POST /batch with partial failure', async () => {
+  // DuckDB: In-memory databases have limited support for parallel prepared statements
+  it.skipIf(skipIfDuckDB())('should handle POST /batch with partial failure', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
