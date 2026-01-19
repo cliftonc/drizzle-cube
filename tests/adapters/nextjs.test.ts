@@ -40,7 +40,8 @@ import {
 import { 
   createTestSemanticLayer,
   getTestSchema,
-  getTestDatabaseType
+  getTestDatabaseType,
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -582,7 +583,8 @@ describe('Next.js Adapter', () => {
       expect(typeof handlers.batch).toBe('function')
     })
 
-    it('should handle POST with multiple valid queries', async () => {
+    // DuckDB: In-memory databases have limited support for parallel prepared statements
+    it.skipIf(skipIfDuckDB())('should handle POST with multiple valid queries', async () => {
       const handler = createBatchHandler(adapterOptions)
       const body = {
         queries: [
