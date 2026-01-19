@@ -453,10 +453,19 @@ When running tests with DuckDB (`TEST_DB_TYPE=duckdb`), some features have limit
 - Using `Number.MAX_SAFE_INTEGER` for LIMIT or OFFSET causes integer overflow
 - Tests using extreme values are skipped with `it.skipIf(skipIfDuckDB())`
 
-### Concurrency Limitations
-- In-memory DuckDB databases have limited support for parallel prepared statements
-- Concurrent query tests may fail with "Failed to execute prepared statement"
-- Use `skipIfDuckDB()` for tests that run parallel queries
+### Concurrency Limitations (IMPORTANT)
+DuckDB is designed for **single-user OLAP workloads**, not concurrent multi-user access.
+
+- **The entire `concurrency.test.ts` suite is skipped for DuckDB**
+- The `@duckdb/node-api` has threading limitations that cause memory corruption when parallel queries run in vitest's worker threads
+- Symptoms include "Failed to execute prepared statement" errors and `malloc_consolidate(): unaligned fastbin chunk detected` crashes
+- **For concurrent workloads, use PostgreSQL or MySQL instead**
+
+DuckDB is suitable for:
+- Single-user analytics dashboards
+- Batch processing jobs
+- Local development and testing
+- Embedded analytics in single-user apps
 
 ### Row Ordering
 - Without explicit `ORDER BY`, row ordering is non-deterministic
