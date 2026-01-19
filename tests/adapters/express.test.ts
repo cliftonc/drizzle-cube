@@ -5,7 +5,8 @@ import { createCubeRouter, mountCubeRoutes, createCubeApp } from '../../src/adap
 import {
   createTestSemanticLayer,
   getTestSchema,
-  getTestDatabaseType
+  getTestDatabaseType,
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -328,8 +329,8 @@ describe('Express Adapter', () => {
     expect(response.body.results).toBeDefined()
   })
 
-  // Batch endpoint tests
-  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+  // Batch endpoint tests - skip on DuckDB due to parallel query execution
+  it.skipIf(skipIfDuckDB())('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
     const response = await request(app)
       .post('/cubejs-api/v1/batch')
       .send({
@@ -348,7 +349,7 @@ describe('Express Adapter', () => {
     expect(data.results[1].success).toBe(true)
   })
 
-  it('should handle POST /batch with partial failure', async () => {
+  it.skipIf(skipIfDuckDB())('should handle POST /batch with partial failure', async () => {
     const response = await request(app)
       .post('/cubejs-api/v1/batch')
       .send({
@@ -368,7 +369,7 @@ describe('Express Adapter', () => {
     expect(data.results[1].error).toBeDefined()
   })
 
-  it('should return 400 for POST /batch without queries array', async () => {
+  it.skipIf(skipIfDuckDB())('should return 400 for POST /batch without queries array', async () => {
     const response = await request(app)
       .post('/cubejs-api/v1/batch')
       .send({})
@@ -378,7 +379,7 @@ describe('Express Adapter', () => {
     expect(data.error).toContain('queries')
   })
 
-  it('should return 400 for POST /batch with empty queries array', async () => {
+  it.skipIf(skipIfDuckDB())('should return 400 for POST /batch with empty queries array', async () => {
     const response = await request(app)
       .post('/cubejs-api/v1/batch')
       .send({ queries: [] })

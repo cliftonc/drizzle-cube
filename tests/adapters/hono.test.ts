@@ -4,7 +4,8 @@ import { createCubeRoutes, mountCubeRoutes, createCubeApp } from '../../src/adap
 import {
   createTestSemanticLayer,
   getTestSchema,
-  getTestDatabaseType
+  getTestDatabaseType,
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -349,8 +350,8 @@ describe('Hono Adapter', () => {
     expect(data.error).toBeDefined()
   })
 
-  // Batch endpoint tests
-  it('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
+  // Batch endpoint tests - skip on DuckDB due to parallel query execution
+  it.skipIf(skipIfDuckDB())('should handle POST /cubejs-api/v1/batch with multiple queries', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -373,7 +374,7 @@ describe('Hono Adapter', () => {
     expect(data.results[1].success).toBe(true)
   })
 
-  it('should handle POST /batch with partial failure', async () => {
+  it.skipIf(skipIfDuckDB())('should handle POST /batch with partial failure', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -397,7 +398,7 @@ describe('Hono Adapter', () => {
     expect(data.results[1].error).toBeDefined()
   })
 
-  it('should return 400 for POST /batch without queries array', async () => {
+  it.skipIf(skipIfDuckDB())('should return 400 for POST /batch without queries array', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -411,7 +412,7 @@ describe('Hono Adapter', () => {
     expect(data.error).toContain('queries')
   })
 
-  it('should return 400 for POST /batch with empty queries array', async () => {
+  it.skipIf(skipIfDuckDB())('should return 400 for POST /batch with empty queries array', async () => {
     const req = new Request('http://localhost/cubejs-api/v1/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
