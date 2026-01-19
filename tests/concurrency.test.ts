@@ -18,12 +18,11 @@ import type { Cube } from '../src/server/types'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 
-// DuckDB: Skip entire concurrency test suite
-// DuckDB is designed for single-user OLAP workloads, not concurrent access.
-// The @duckdb/node-api has threading limitations that cause memory corruption
-// when multiple parallel queries run in vitest's worker threads.
-// For concurrent workloads, use PostgreSQL or MySQL.
-describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
+// DuckDB: With single-threaded test execution (vitest singleThread: true),
+// most concurrency tests should work since they use a single connection.
+// Only skip tests that explicitly create multiple database connections,
+// as DuckDB's Node.js API has limitations with concurrent connections.
+describe('Concurrency Tests', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube>
   let close: () => void
@@ -61,7 +60,8 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       }
     })
 
-    it('should execute different queries in parallel', async () => {
+    // Skip for DuckDB: Different cube queries in parallel cause prepared statement errors
+    it.skipIf(skipIfDuckDB())('should execute different queries in parallel', async () => {
       const queries = [
         TestQueryBuilder.create().measures(['Employees.count']).build(),
         TestQueryBuilder.create().measures(['Departments.count']).build(),
@@ -109,7 +109,9 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Concurrent Security Contexts', () => {
-    it('should isolate queries by security context', async () => {
+    // Skip for DuckDB: This test creates multiple database connections,
+    // which causes issues with DuckDB's single-user architecture
+    it.skipIf(skipIfDuckDB())('should isolate queries by security context', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .build()
@@ -137,7 +139,9 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       expect(org2Result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
 
-    it('should handle interleaved queries from multiple orgs', async () => {
+    // Skip for DuckDB: This test creates multiple database connections,
+    // which causes issues with DuckDB's single-user architecture
+    it.skipIf(skipIfDuckDB())('should handle interleaved queries from multiple orgs', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Productivity.recordCount'])
         .build()
@@ -318,7 +322,8 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Performance Under Concurrency', () => {
-    it('should scale with concurrent requests', async () => {
+    // Skip for DuckDB: Multi-cube parallel queries cause prepared statement errors
+    it.skipIf(skipIfDuckDB())('should scale with concurrent requests', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Productivity.totalLinesOfCode'])
         .dimensions(['Employees.departmentId'])
@@ -360,7 +365,8 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
   })
 
   describe('Race Condition Prevention', () => {
-    it('should not mix results between concurrent queries', async () => {
+    // Skip for DuckDB: High-volume parallel queries (40 concurrent) cause prepared statement errors
+    it.skipIf(skipIfDuckDB())('should not mix results between concurrent queries', async () => {
       // Create queries with distinct expected results
       const query1 = TestQueryBuilder.create()
         .measures(['Employees.count'])
@@ -400,7 +406,8 @@ describe.skipIf(skipIfDuckDB())('Concurrency Tests', () => {
       }
     })
 
-    it('should maintain query isolation with different dimensions', async () => {
+    // Skip for DuckDB: Parallel queries with different structures cause prepared statement errors
+    it.skipIf(skipIfDuckDB())('should maintain query isolation with different dimensions', async () => {
       const queries = [
         TestQueryBuilder.create()
           .measures(['Employees.count'])
