@@ -682,15 +682,18 @@ export class QueryExecutor {
       checkedCubes.add(cube.name)
 
       try {
+        // Skip warning for cubes explicitly marked as public
+        if (cube.public) continue
+
         const securityResult = cube.sql(context)
 
         // A properly secured cube should have a 'where' clause that filters by security context
         // If no 'where' clause is present, the cube might be returning all data
         if (!securityResult.where) {
           console.warn(
-            `[drizzle-cube] WARNING: Cube '${cube.name}' may not have proper security filtering. ` +
-            `The sql() function returned no 'where' clause. ` +
-            `Ensure it returns a filter like: { from: table, where: eq(table.organisationId, ctx.securityContext.organisationId) }`
+            `[drizzle-cube] WARNING: Cube '${cube.name}' has no security filtering. ` +
+            `If this cube contains public data, add 'public: true' to suppress this warning. ` +
+            `Otherwise, ensure sql() returns: { from: table, where: eq(table.orgId, ctx.securityContext.orgId) }`
           )
         }
       } catch {
