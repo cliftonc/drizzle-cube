@@ -170,8 +170,9 @@ export function useCubeLoadQuery(
   const needsRefresh = useMemo(() => {
     if (!manualRefresh) return false
     if (!currentQueryKey) return false
-    // If we haven't executed any query yet, we need refresh
-    if (executedQueryKey === null) return true
+    // On first load (executedQueryKey is null), don't show "needs refresh" - we'll auto-execute
+    if (executedQueryKey === null) return false
+    // After initial execution, show "needs refresh" when query has changed
     return currentQueryKey !== executedQueryKey
   }, [manualRefresh, currentQueryKey, executedQueryKey])
 
@@ -180,7 +181,9 @@ export function useCubeLoadQuery(
   const shouldExecute = useMemo(() => {
     if (!serverQuery || skip) return false
     if (!manualRefresh) return true // Auto mode: always execute
-    // Manual mode: only execute if this query has been explicitly triggered
+    // Manual mode: auto-execute on first load (executedQueryKey is null),
+    // then require explicit trigger for subsequent changes
+    if (executedQueryKey === null) return true // First load: auto-execute
     return executedQueryKey === currentQueryKey
   }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
 
@@ -224,6 +227,20 @@ export function useCubeLoadQuery(
       setExecutedQueryKey(currentQueryKey)
     }
   }, [manualRefresh, serverQuery, skip, currentQueryKey])
+
+  // Track when query successfully executes in manual refresh mode
+  // This ensures executedQueryKey is set after the first auto-execution,
+  // preventing subsequent auto-executions until user clicks refresh
+  useEffect(() => {
+    // Only relevant in manual refresh mode
+    if (!manualRefresh) return
+
+    // When query successfully completes (and we were executing)
+    // update the executed query key
+    if (shouldExecute && queryResult.isSuccess && !queryResult.isFetching && serverQuery) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, shouldExecute, queryResult.isSuccess, queryResult.isFetching, serverQuery, currentQueryKey])
 
   // Extract raw data from result set
   const rawData = useMemo(() => {

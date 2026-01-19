@@ -7,10 +7,12 @@
  * The server returns { nodes: [], links: [] } structure ready for Sankey visualization.
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCubeApi } from '../../providers/CubeApiProvider'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 import { useDebounceQuery } from '../useDebounceQuery'
+import { stableStringify } from '../../shared/queryKey'
 import type { CubeQuery } from '../../types'
 import type {
   ServerFlowQuery,
@@ -61,6 +63,11 @@ export interface UseFlowQueryResult {
   reset: () => void
   /** The server query being executed */
   serverQuery: ServerFlowQuery | null
+  /**
+   * Whether the query needs to be refreshed (manual refresh mode only).
+   * True when the current flow config differs from the last executed query.
+   */
+  needsRefresh: boolean
 }
 
 /**
@@ -143,6 +150,13 @@ export function useFlowQuery(
   const { cubeApi } = useCubeApi()
   const queryClient = useQueryClient()
 
+  // Get manual refresh mode from features
+  const { features } = useCubeFeatures()
+  const manualRefresh = features.manualRefresh ?? false
+
+  // Track the last executed query (for manual refresh mode)
+  const [executedQueryKey, setExecutedQueryKey] = useState<string | null>(null)
+
   // Validate query
   const isValid = isValidFlowQuery(query)
 
@@ -174,6 +188,38 @@ export function useFlowQuery(
     if (!debouncedQuery) return ['cube', 'flow', null] as const
     return ['cube', 'flow', queryKeyString] as const
   }, [debouncedQuery, queryKeyString])
+
+  // Calculate current query key for manual refresh tracking (uses raw input query)
+  const currentQueryKey = query ? stableStringify(query) : null
+
+  // Calculate if the current query differs from the last executed query
+  const needsRefresh = useMemo(() => {
+    if (!manualRefresh) return false
+    if (!currentQueryKey) return false
+    // On first load (executedQueryKey is null), don't show "needs refresh" - we'll auto-execute
+    if (executedQueryKey === null) return false
+    // After initial execution, show "needs refresh" when query has changed
+    return currentQueryKey !== executedQueryKey
+  }, [manualRefresh, currentQueryKey, executedQueryKey])
+
+  // In manual refresh mode, only execute when explicitly triggered
+  // In auto mode, execute whenever query is valid and not skipped
+  const shouldExecute = useMemo(() => {
+    if (!isValid || !debouncedQuery || skip) return false
+    if (!manualRefresh) return true // Auto mode: always execute
+    // Manual mode: auto-execute on first load (executedQueryKey is null),
+    // then require explicit trigger for subsequent changes
+    if (executedQueryKey === null) return true // First load: auto-execute
+    return executedQueryKey === currentQueryKey
+  }, [isValid, debouncedQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
+
+  // In auto mode, track executed query for consistency
+  // This ensures needsRefresh stays false when query auto-executes
+  useEffect(() => {
+    if (!manualRefresh && query && !skip && isValid) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, query, skip, isValid, currentQueryKey])
 
   // Execute flow query via TanStack Query
   const queryResult = useQuery({
@@ -209,10 +255,25 @@ export function useFlowQuery(
         throw err
       }
     },
-    enabled: !skip && isValid && !!debouncedQuery,
+    // In manual refresh mode, only execute when explicitly triggered
+    enabled: shouldExecute,
     staleTime: 60000, // 1 minute cache
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
+
+  // Track when query successfully executes in manual refresh mode
+  // This ensures executedQueryKey is set after the first auto-execution,
+  // preventing subsequent auto-executions until user clicks refresh
+  useEffect(() => {
+    // Only relevant in manual refresh mode
+    if (!manualRefresh) return
+
+    // When query successfully completes (and we were executing)
+    // update the executed query key
+    if (shouldExecute && queryResult.isSuccess && !queryResult.isFetching && debouncedQuery) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, shouldExecute, queryResult.isSuccess, queryResult.isFetching, debouncedQuery, currentQueryKey])
 
   // Check if data is stale (from a different query key)
   // This happens when switching between sankey/sunburst modes
@@ -246,6 +307,9 @@ export function useFlowQuery(
    */
   const refetch = useCallback((options?: { bustCache?: boolean }) => {
     if (debouncedQuery && isValid) {
+      // Mark this query as executed (for manual refresh mode)
+      setExecutedQueryKey(currentQueryKey)
+
       if (options?.bustCache) {
         // Remove from TanStack Query cache first
         queryClient.removeQueries({ queryKey })
@@ -268,7 +332,7 @@ export function useFlowQuery(
         queryResult.refetch()
       }
     }
-  }, [debouncedQuery, isValid, queryResult, queryClient, queryKey, cubeApi])
+  }, [debouncedQuery, isValid, queryResult, queryClient, queryKey, cubeApi, currentQueryKey])
 
   /**
    * Reset clears the query cache
@@ -289,6 +353,8 @@ export function useFlowQuery(
     refetch,
     reset,
     serverQuery: debouncedQuery,
+    // Manual refresh mode support
+    needsRefresh,
   }
 }
 

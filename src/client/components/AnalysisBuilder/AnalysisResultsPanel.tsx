@@ -323,6 +323,34 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     </div>
   )
 
+  // Manual refresh mode - query ready but needs user to click refresh
+  const renderNeedsRefreshEmpty = () => (
+    <div className="h-full flex items-center justify-center">
+      <div className="text-center">
+        <svg className="w-12 h-12 mx-auto text-dc-warning mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+          Ready to Execute
+        </div>
+        <div className="text-xs text-dc-text-muted mb-4">
+          Click refresh to run your query
+        </div>
+        {onRefreshClick && (
+          <button
+            onClick={() => onRefreshClick()}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:opacity-90 rounded-lg transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Run Query
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   // Empty state - no query built yet
   const renderEmpty = () => (
     <div className="h-full flex items-center justify-center pt-6">
@@ -1286,7 +1314,6 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       return (
         <div className="h-full flex flex-col">
           {renderHeader()}
-          {renderNeedsRefreshBanner()}
           <div className="flex-1 min-h-0 relative overflow-auto">
             {showDebug ? renderDebug() : renderNoData()}
           </div>
@@ -1396,10 +1423,40 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   }
 
   // Determine what to render based on execution status
-  const hasResults = executionResults !== null
+  // Check for meaningful results - handles different data structures per mode
+  const hasResults = useMemo(() => {
+    if (executionResults === null) return false
+    if (!Array.isArray(executionResults)) return true
+    if (executionResults.length === 0) return false
+
+    // For flow mode, check if we have actual nodes/links data
+    // Flow wraps results as [{ nodes: [...], links: [...] }] - need to check inner content
+    if (isFlowMode && executionResults.length === 1) {
+      const flowData = executionResults[0] as { nodes?: unknown[]; links?: unknown[] } | undefined
+      if (flowData && typeof flowData === 'object' && 'nodes' in flowData && 'links' in flowData) {
+        const hasNodes = Array.isArray(flowData.nodes) && flowData.nodes.length > 0
+        const hasLinks = Array.isArray(flowData.links) && flowData.links.length > 0
+        return hasNodes || hasLinks
+      }
+    }
+
+    // For funnel mode, results are chart data items - check length
+    // For query mode, results are data rows - check length
+    return executionResults.length > 0
+  }, [executionResults, isFlowMode])
 
   // Don't show results if we're in idle state with no query content (cleared state)
   const shouldShowResults = hasResults && (executionStatus !== 'idle' || hasQueryContent)
+
+  // Priority 1: Manual refresh mode with no results - show centered refresh prompt
+  // This takes precedence over all other states for consistent UX across all modes
+  if (needsRefresh && !hasResults) {
+    return (
+      <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
+        {renderNeedsRefreshEmpty()}
+      </div>
+    )
+  }
 
   return (
     <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">

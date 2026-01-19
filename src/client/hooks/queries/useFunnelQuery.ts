@@ -12,10 +12,12 @@
  * approach is strictly better and the data shapes are compatible.
  */
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCubeApi } from '../../providers/CubeApiProvider'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 import { useDebounceQuery } from '../useDebounceQuery'
+import { stableStringify } from '../../shared/queryKey'
 import type { CubeQuery } from '../../types'
 import type {
   FunnelConfig,
@@ -94,6 +96,13 @@ export function useFunnelQuery(
   const { cubeApi } = useCubeApi()
   const queryClient = useQueryClient()
 
+  // Get manual refresh mode from features
+  const { features } = useCubeFeatures()
+  const manualRefresh = features.manualRefresh ?? false
+
+  // Track the last executed query (for manual refresh mode)
+  const [executedQueryKey, setExecutedQueryKey] = useState<string | null>(null)
+
   // Validate config
   const isValidConfig = isValidFunnelConfig(config)
 
@@ -139,6 +148,38 @@ export function useFunnelQuery(
     return ['cube', 'funnel', stepCount, JSON.stringify(serverQuery)] as const
   }, [serverQuery])
 
+  // Calculate current query key for manual refresh tracking
+  const currentQueryKey = serverQuery ? stableStringify(serverQuery) : null
+
+  // Calculate if the current query differs from the last executed query
+  const needsRefresh = useMemo(() => {
+    if (!manualRefresh) return false
+    if (!currentQueryKey) return false
+    // On first load (executedQueryKey is null), don't show "needs refresh" - we'll auto-execute
+    if (executedQueryKey === null) return false
+    // After initial execution, show "needs refresh" when query has changed
+    return currentQueryKey !== executedQueryKey
+  }, [manualRefresh, currentQueryKey, executedQueryKey])
+
+  // In manual refresh mode, only execute when explicitly triggered
+  // In auto mode, execute whenever serverQuery is valid and not skipped
+  const shouldExecute = useMemo(() => {
+    if (!serverQuery || skip) return false
+    if (!manualRefresh) return true // Auto mode: always execute
+    // Manual mode: auto-execute on first load (executedQueryKey is null),
+    // then require explicit trigger for subsequent changes
+    if (executedQueryKey === null) return true // First load: auto-execute
+    return executedQueryKey === currentQueryKey
+  }, [serverQuery, skip, manualRefresh, executedQueryKey, currentQueryKey])
+
+  // In auto mode, track executed query for consistency
+  // This ensures needsRefresh stays false when query auto-executes
+  useEffect(() => {
+    if (!manualRefresh && serverQuery && !skip) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, serverQuery, skip, currentQueryKey])
+
   // Execute funnel query via TanStack Query
   const queryResult = useQuery({
     queryKey,
@@ -168,10 +209,25 @@ export function useFunnelQuery(
       }
     },
     // Enable when we have a server query (either prebuilt or built from config)
-    enabled: !skip && !!serverQuery,
+    // In manual refresh mode, only execute when explicitly triggered
+    enabled: shouldExecute,
     staleTime: 60000, // 1 minute cache
     gcTime: 5 * 60 * 1000, // 5 minute garbage collection
   })
+
+  // Track when query successfully executes in manual refresh mode
+  // This ensures executedQueryKey is set after the first auto-execution,
+  // preventing subsequent auto-executions until user clicks refresh
+  useEffect(() => {
+    // Only relevant in manual refresh mode
+    if (!manualRefresh) return
+
+    // When query successfully completes (and we were executing)
+    // update the executed query key
+    if (shouldExecute && queryResult.isSuccess && !queryResult.isFetching && serverQuery) {
+      setExecutedQueryKey(currentQueryKey)
+    }
+  }, [manualRefresh, shouldExecute, queryResult.isSuccess, queryResult.isFetching, serverQuery, currentQueryKey])
 
   // Get step names from either config or prebuilt server query
   const stepNames = useMemo(() => {
@@ -303,6 +359,9 @@ export function useFunnelQuery(
     // Allow execution if we have a serverQuery (either from prebuiltServerQuery or built from config)
     if (!serverQuery) return null
 
+    // Mark this query as executed (for manual refresh mode)
+    setExecutedQueryKey(currentQueryKey)
+
     try {
       if (options?.bustCache) {
         // Remove from TanStack Query cache first
@@ -329,7 +388,7 @@ export function useFunnelQuery(
     } catch {
       return result
     }
-  }, [serverQuery, queryResult, result, queryClient, queryKey, cubeApi])
+  }, [serverQuery, queryResult, result, queryClient, queryKey, cubeApi, currentQueryKey])
 
   /**
    * Cancel is a no-op for TanStack Query (handled automatically)
@@ -364,6 +423,8 @@ export function useFunnelQuery(
     // This is the actual { funnel: {...} } query sent to the server
     serverQuery,
     cacheInfo: queryResult.data?.cacheInfo ?? null,
+    // Manual refresh mode support
+    needsRefresh,
   }
 }
 

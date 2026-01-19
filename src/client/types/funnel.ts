@@ -303,6 +303,12 @@ export interface UseFunnelQueryResult {
    * Use this for debug panel display to show what's actually executed.
    */
   serverQuery: ServerFunnelQuery | null
+
+  /**
+   * Whether the query needs to be refreshed (manual refresh mode only).
+   * True when the current funnel config differs from the last executed query.
+   */
+  needsRefresh: boolean
 }
 
 /**
