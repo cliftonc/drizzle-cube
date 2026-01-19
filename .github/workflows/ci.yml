@@ -95,7 +95,7 @@ jobs:
         run: timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
 
       - name: Run tests (PostgreSQL)
-        run: npm test
+        run: npm run test:server
         env:
           TEST_DB_TYPE: postgres
           TEST_DATABASE_URL: postgres://test:test@localhost:5433/drizzle_cube_test
@@ -136,7 +136,7 @@ jobs:
         run: timeout 60 bash -c 'until nc -z localhost 3307; do echo "Waiting for MySQL..."; sleep 1; done'
 
       - name: Run tests (MySQL)
-        run: npm test
+        run: npm run test:server
         env:
           TEST_DB_TYPE: mysql
           MYSQL_TEST_DATABASE_URL: mysql://test:test@localhost:3307/drizzle_cube_test
@@ -158,7 +158,7 @@ jobs:
         run: npm ci
 
       - name: Run tests (SQLite)
-        run: npm test
+        run: npm run test:server
         env:
           TEST_DB_TYPE: sqlite
 
@@ -192,7 +192,7 @@ jobs:
         run: npm install
 
       - name: Run tests (DuckDB)
-        run: npm test
+        run: npm run test:server
         env:
           TEST_DB_TYPE: duckdb
 
