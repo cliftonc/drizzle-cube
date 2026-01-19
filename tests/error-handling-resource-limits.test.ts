@@ -5,7 +5,8 @@
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import {
-  createTestDatabaseExecutor
+  createTestDatabaseExecutor,
+  skipIfDuckDB
 } from './helpers/test-database'
 import { 
   SemanticLayerCompiler
@@ -311,14 +312,15 @@ describe('Error Handling - Resource Limits', () => {
       console.log(`Memory increase after 50 queries: ${Math.round(memoryIncrease / 1024 / 1024)}MB`)
     }, 30000)
 
-    it('should handle concurrent queries without excessive memory usage', async () => {
+    // Skip on DuckDB: concurrent queries exceed DuckDB's prepared statement limits
+    it.skipIf(skipIfDuckDB())('should handle concurrent queries without excessive memory usage', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .dimensions(['Employees.name'])
         .build()
 
       // Create multiple concurrent queries
-      const concurrentQueries = Array(10).fill(null).map((_, i) => 
+      const concurrentQueries = Array(10).fill(null).map((_, i) =>
         testExecutor.executeQuery({
           ...query,
           filters: [{
@@ -330,7 +332,7 @@ describe('Error Handling - Resource Limits', () => {
       )
 
       const startTime = performance.now()
-      
+
       try {
         const results = await Promise.all(concurrentQueries)
         const endTime = performance.now()
@@ -338,13 +340,13 @@ describe('Error Handling - Resource Limits', () => {
 
         // All queries should complete within reasonable time
         expect(executionTime).toBeLessThan(20000) // 20 seconds for all concurrent queries
-        
+
         // All queries should complete successfully
         results.forEach((result) => {
           expect(result.data).toBeDefined()
           expect(Array.isArray(result.data)).toBe(true)
         })
-        
+
       } catch (error: any) {
         // Should fail gracefully if resource limits exceeded
         expect(error.message).toMatch(/memory|resource|connection|timeout/i)

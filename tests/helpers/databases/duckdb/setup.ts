@@ -13,13 +13,19 @@ import crypto from 'crypto'
 
 // Dynamic imports for DuckDB since it's an optional peer dependency
 let DuckDBInstance: any
+let DuckDBInstanceCache: any
 let drizzle: any
+
+// Module-level instance cache to prevent multiple instances accessing the same file
+// This prevents "Failed to execute prepared statement" errors on Linux
+let sharedInstanceCache: any = null
 
 async function loadDuckDBDependencies() {
   if (!DuckDBInstance) {
     try {
       const duckdbModule = await import('@duckdb/node-api')
       DuckDBInstance = duckdbModule.DuckDBInstance
+      DuckDBInstanceCache = duckdbModule.DuckDBInstanceCache
     } catch (error) {
       throw new Error('DuckDB dependencies not installed. Install @duckdb/node-api and @leonardovida-md/drizzle-neo-duckdb')
     }
@@ -33,6 +39,27 @@ async function loadDuckDBDependencies() {
       throw new Error('Drizzle DuckDB adapter not installed. Install @leonardovida-md/drizzle-neo-duckdb')
     }
   }
+}
+
+/**
+ * Get or create the shared instance cache
+ * Using a cache ensures only one DuckDBInstance exists per database file,
+ * which prevents file locking issues and prepared statement corruption
+ * when multiple tests run concurrently.
+ */
+function getSharedInstanceCache() {
+  if (!sharedInstanceCache && DuckDBInstanceCache) {
+    sharedInstanceCache = new DuckDBInstanceCache()
+  }
+  return sharedInstanceCache
+}
+
+/**
+ * Clear the shared instance cache
+ * Called during cleanup to release all file handles
+ */
+export function clearInstanceCache() {
+  sharedInstanceCache = null
 }
 
 // Environment variable name for the unique test database path
@@ -82,6 +109,10 @@ interface DuckDBConnectionOptions {
  * Create DuckDB connection for testing
  * By default creates a file-based database connection for write operations.
  * Use readOnly: true for concurrent read access in tests.
+ *
+ * For file-based databases, uses DuckDBInstanceCache to ensure only one instance
+ * exists per database file. This prevents "Failed to execute prepared statement"
+ * errors that occur when multiple instances try to access the same file (especially on Linux).
  */
 export async function createDuckDBConnection(options?: DuckDBConnectionOptions) {
   await loadDuckDBDependencies()
@@ -89,10 +120,13 @@ export async function createDuckDBConnection(options?: DuckDBConnectionOptions) 
   const { readOnly = false, inMemory = false } = options ?? {}
 
   let dbPath: string
+  let instance: any
   let instanceOptions: Record<string, string> = {}
 
   if (inMemory) {
     dbPath = ':memory:'
+    // In-memory DBs don't need caching (no file contention)
+    instance = await DuckDBInstance.create(dbPath)
   } else {
     ensureTestDirExists()
     // Use the path from env var (set during global setup) or generate a new one
@@ -101,9 +135,20 @@ export async function createDuckDBConnection(options?: DuckDBConnectionOptions) 
     if (readOnly) {
       instanceOptions['access_mode'] = 'read_only'
     }
+
+    // Use instance cache for file-based databases to prevent multiple instances
+    // accessing the same file (which causes "Failed to execute prepared statement" on Linux)
+    const cache = getSharedInstanceCache()
+    if (cache) {
+      // The cache ensures only one instance exists per database path
+      // Multiple connections from the same instance are thread-safe
+      instance = await cache.getOrCreateInstance(dbPath, instanceOptions)
+    } else {
+      // Fallback if cache not available (shouldn't happen, but safety first)
+      instance = await DuckDBInstance.create(dbPath, instanceOptions)
+    }
   }
 
-  const instance = await DuckDBInstance.create(dbPath, instanceOptions)
   const connection = await instance.connect()
   const db = drizzle(connection, { schema: duckdbTestSchema })
 
@@ -114,7 +159,8 @@ export async function createDuckDBConnection(options?: DuckDBConnectionOptions) 
     dbPath,
     close: async () => {
       connection.disconnectSync()
-      // Instance cleanup is automatic via GC
+      // Don't close the instance - it's managed by the cache
+      // Instance cleanup happens when cache is cleared or process exits
     }
   }
 }
@@ -160,6 +206,11 @@ export function cleanupDuckDBFile(dbPath: string) {
  * Called during global teardown - uses the path from env var
  */
 export function cleanupDuckDBTestDatabase() {
+  // Clear the instance cache first to release all file handles
+  // This is critical for cleanup to succeed, especially on Linux where
+  // file locking is stricter
+  clearInstanceCache()
+
   const dbPath = process.env[DUCKDB_TEST_PATH_ENV]
   if (dbPath) {
     cleanupDuckDBFile(dbPath)
