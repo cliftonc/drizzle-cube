@@ -144,16 +144,14 @@ describe('Complex Joins Tests', () => {
         .order({ 'Departments.name': 'asc' })
         .build()
 
-      // Execute same query multiple times
-      const results = await Promise.all([
-        testExecutor.executeQuery(query),
-        testExecutor.executeQuery(query),
-        testExecutor.executeQuery(query)
-      ])
+      // Execute same query multiple times sequentially to verify determinism
+      const result1 = await testExecutor.executeQuery(query)
+      const result2 = await testExecutor.executeQuery(query)
+      const result3 = await testExecutor.executeQuery(query)
 
       // All results should be identical (deterministic)
-      expect(results[0].data).toEqual(results[1].data)
-      expect(results[1].data).toEqual(results[2].data)
+      expect(result1.data).toEqual(result2.data)
+      expect(result2.data).toEqual(result3.data)
     })
 
     it('should handle query with filters across joined cubes', async () => {
