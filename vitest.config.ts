@@ -18,7 +18,15 @@ export default defineConfig({
           testTimeout: 30000,
           hookTimeout: 30000,
           // DuckDB needs threads pool for file-based concurrency
+          // Also run single-threaded to avoid DuckDB prepared statement errors
           pool: isDuckDB ? 'threads' : 'forks',
+          ...(isDuckDB ? {
+            poolOptions: {
+              threads: {
+                singleThread: true,
+              }
+            }
+          } : {}),
           env: {
             NODE_ENV: 'test'
           },
