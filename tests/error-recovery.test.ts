@@ -423,7 +423,8 @@ describe('Error Recovery Tests', () => {
     })
   })
 
-  describe('Concurrent Error Handling', () => {
+  // Skip on DuckDB: concurrent queries cause memory corruption
+  describe.skipIf(skipIfDuckDB())('Concurrent Error Handling', () => {
     it('should handle multiple concurrent invalid queries', async () => {
       const invalidQueries: SemanticQuery[] = [
         { measures: ['NonExistent1.count'] },
