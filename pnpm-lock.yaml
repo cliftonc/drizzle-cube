@@ -199,7 +199,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.5(rollup@4.55.1)
       sql-formatter:
-        specifier: ^15.6.6
+        specifier: ^15.7.0
         version: 15.7.0
       supertest:
         specifier: ^7.0.0
