@@ -284,7 +284,9 @@
   },
   "overrides": {
     "esbuild": ">=0.25.0",
-    "ajv": "^8.17.1"
+    "ajv-draft-04": {
+      "ajv": "^8.17.1"
+    }
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.12",
