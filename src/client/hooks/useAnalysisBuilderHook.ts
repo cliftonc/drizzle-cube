@@ -139,6 +139,11 @@ export interface UseAnalysisBuilderResult {
   error: Error | null
   isValidQuery: boolean
   debugDataPerQuery: DebugDataEntry[]
+  /**
+   * Whether the current query config differs from the last executed query.
+   * Used for manual refresh mode to show "needs refresh" indicator.
+   */
+  needsRefresh: boolean
   /** In funnel mode, the actually executed queries with binding key dimension and IN filters */
   funnelExecutedQueries: CubeQuery[] | null
   /** In funnel mode, the actual server query { funnel: {...} } sent to the API */
@@ -726,6 +731,7 @@ export function useAnalysisBuilder(
     error: queryExecution.error,
     isValidQuery: effectiveIsValidQuery,
     debugDataPerQuery: queryExecution.debugDataPerQuery,
+    needsRefresh: queryExecution.needsRefresh,
     funnelExecutedQueries: queryExecution.funnelExecutedQueries,
     funnelServerQuery: queryExecution.funnelServerQuery,
     funnelDebugData: queryExecution.funnelDebugData,

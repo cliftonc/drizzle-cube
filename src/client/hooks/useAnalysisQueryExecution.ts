@@ -114,6 +114,11 @@ export interface UseAnalysisQueryExecutionResult {
    * Contains the flow SQL and flow-specific metadata
    */
   flowDebugData: FlowDebugDataEntry | null
+  /**
+   * Whether the current query config differs from the last executed query.
+   * Used for manual refresh mode to show "needs refresh" indicator.
+   */
+  needsRefresh: boolean
 }
 
 export function useAnalysisQueryExecution(
@@ -321,6 +326,16 @@ export function useAnalysisQueryExecution(
   // Flow debug data (unified SQL for flow mode)
   const flowDebugData = isFlowMode ? flowDryRunResult.debugData : null
 
+  // Aggregate needsRefresh from the appropriate mode hook
+  // This determines if the "needs refresh" banner should be shown
+  // Note: Multi-query mode doesn't have needsRefresh yet (falls back to false)
+  const needsRefresh = useMemo(() => {
+    if (isFlowMode) return flowQueryResult.needsRefresh
+    if (isFunnelMode) return funnelQueryResult.needsRefresh
+    if (isMultiMode) return false // Multi-query mode doesn't support manual refresh yet
+    return singleQueryResult.needsRefresh
+  }, [isFlowMode, isFunnelMode, isMultiMode, flowQueryResult.needsRefresh, funnelQueryResult.needsRefresh, singleQueryResult.needsRefresh])
+
   return {
     executionStatus,
     executionResults,
@@ -337,5 +352,6 @@ export function useAnalysisQueryExecution(
     flowServerQuery,
     flowChartData,
     flowDebugData,
+    needsRefresh,
   }
 }

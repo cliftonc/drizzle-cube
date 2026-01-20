@@ -298,6 +298,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               onRefreshClick={analysis.actions.refetch}
               canRefresh={analysis.isValidQuery}
               isRefreshing={analysis.isFetching}
+              needsRefresh={analysis.needsRefresh}
               // Clear props - use clearCurrentMode to handle both query and funnel modes
               onClearClick={analysis.actions.clearCurrentMode}
               canClear={canClear}
