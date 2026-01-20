@@ -18,6 +18,8 @@ export default defineConfig({
     // DuckDB needs threads pool for file-based concurrency
     // Other databases can use the default forks pool
     pool: isDuckDB ? 'threads' : 'forks',
+    // Retry failed tests for DuckDB only (handles intermittent prepared statement errors)
+    retry: isDuckDB ? 2 : 0,
     env: {
       NODE_ENV: 'test'
     },
