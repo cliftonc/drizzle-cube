@@ -24,7 +24,6 @@ export default defineConfig({
       NODE_ENV: 'test'
     },
     globalSetup: './tests/setup/globalSetup.ts',
-    globalTeardown: './tests/setup/globalTeardown.ts',
     include: ['tests/**/*.{test,spec}.ts'],
     exclude: [
       '**/node_modules/**',
