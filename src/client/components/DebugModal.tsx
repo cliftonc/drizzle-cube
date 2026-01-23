@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { highlightCodeBlocks } from '../utils/syntaxHighlighting'
 import type { FlowChartData } from '../types/flow'
+import type { RetentionChartData } from '../types/retention'
 
 interface DebugModalProps {
   chartConfig: any
   displayConfig: any
   queryObject: any
-  data: any[] | FlowChartData
+  data: any[] | FlowChartData | RetentionChartData
   chartType: string
   cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
 }

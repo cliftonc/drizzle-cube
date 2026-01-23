@@ -79,7 +79,9 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     // Include funnel config in cache key for proper cache invalidation
     funnel: query.funnel ? normalizeFunnelConfig(query.funnel) : undefined,
     // Include flow config in cache key for proper cache invalidation
-    flow: query.flow ? normalizeFlowConfig(query.flow) : undefined
+    flow: query.flow ? normalizeFlowConfig(query.flow) : undefined,
+    // Include retention config in cache key for proper cache invalidation
+    retention: query.retention ? normalizeRetentionConfig(query.retention) : undefined
   }
 }
 
@@ -144,6 +146,37 @@ function normalizeFlowConfig(flow: NonNullable<SemanticQuery['flow']>): NonNulla
     outputMode: flow.outputMode,
     // Include join strategy to keep cache keys aligned with join selection
     joinStrategy: flow.joinStrategy
+  }
+}
+
+/**
+ * Normalize retention config for consistent hashing
+ * Ensures all retention parameters are included in cache key
+ *
+ * @param retention - The retention config to normalize
+ * @returns Normalized retention config
+ */
+function normalizeRetentionConfig(retention: NonNullable<SemanticQuery['retention']>): NonNullable<SemanticQuery['retention']> {
+  return {
+    timeDimension: retention.timeDimension,
+    bindingKey: retention.bindingKey,
+    dateRange: retention.dateRange,
+    granularity: retention.granularity,
+    periods: retention.periods,
+    retentionType: retention.retentionType,
+    // Normalize filters for consistent hashing
+    cohortFilters: retention.cohortFilters
+      ? (Array.isArray(retention.cohortFilters)
+          ? sortFilters(retention.cohortFilters)
+          : sortFilters([retention.cohortFilters])[0])
+      : undefined,
+    activityFilters: retention.activityFilters
+      ? (Array.isArray(retention.activityFilters)
+          ? sortFilters(retention.activityFilters)
+          : sortFilters([retention.activityFilters])[0])
+      : undefined,
+    // Include breakdown dimensions for cache key
+    breakdownDimensions: retention.breakdownDimensions
   }
 }
 

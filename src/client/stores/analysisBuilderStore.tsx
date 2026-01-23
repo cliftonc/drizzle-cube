@@ -36,6 +36,14 @@ import type {
 import type { ServerFunnelQuery } from '../types/funnel'
 import type { ServerFlowQuery, FlowStartingStep } from '../types/flow'
 import type {
+  ServerRetentionQuery,
+  RetentionGranularity,
+  RetentionType,
+  DateRange,
+  RetentionBreakdownItem,
+} from '../types/retention'
+import { getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention'
+import type {
   AnalysisBuilderState,
   QueryPanelTab,
   AIState,
@@ -50,6 +58,7 @@ import { adapterRegistry } from '../adapters/adapterRegistry'
 import { queryModeAdapter } from '../adapters/queryModeAdapter'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
+import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
 import type { AnalysisConfig, ChartConfig, AnalysisWorkspace } from '../types/analysisConfig'
 import { isValidAnalysisConfig, isValidAnalysisWorkspace } from '../types/analysisConfig'
 import {
@@ -57,11 +66,13 @@ import {
   createQuerySlice,
   createFunnelSlice,
   createFlowSlice,
+  createRetentionSlice,
   createUISlice,
   createInitialCoreState,
   createInitialQueryState,
   createInitialFunnelState,
   createInitialFlowState,
+  createInitialRetentionState,
 } from './slices'
 
 // Note: Adapters are registered in coreSlice.ts (single registration point)
@@ -179,6 +190,31 @@ export interface AnalysisBuilderStoreState {
   eventDimension: string | null
   /** Join strategy for flow execution */
   joinStrategy: 'auto' | 'lateral' | 'window'
+
+  // =========================================================================
+  // Retention State (when analysisType === 'retention')
+  // Simplified Mixpanel-style with single global configuration
+  // =========================================================================
+  /** Single cube for retention analysis */
+  retentionCube: string | null
+  /** Binding key that identifies entities */
+  retentionBindingKey: FunnelBindingKey | null
+  /** Single timestamp dimension for cohort entry and activity */
+  retentionTimeDimension: string | null
+  /** Date range for cohort analysis (REQUIRED) */
+  retentionDateRange: DateRange
+  /** Filters that define who enters the cohort */
+  retentionCohortFilters: Filter[]
+  /** Filters that define what counts as a return */
+  retentionActivityFilters: Filter[]
+  /** Optional breakdown dimensions for segmenting the cohort */
+  retentionBreakdowns: RetentionBreakdownItem[]
+  /** Granularity for viewing retention periods (day/week/month) */
+  retentionViewGranularity: RetentionGranularity
+  /** Number of periods to analyze (1-52) */
+  retentionPeriods: number
+  /** Type of retention calculation */
+  retentionType: RetentionType
 }
 
 /**
@@ -379,6 +415,55 @@ export interface AnalysisBuilderStoreActions {
   buildFlowQuery: () => ServerFlowQuery | null
 
   // =========================================================================
+  // Retention Actions (when analysisType === 'retention')
+  // Simplified Mixpanel-style with single global configuration
+  // =========================================================================
+  /** Set the single cube for retention analysis (clears related fields) */
+  setRetentionCube: (cube: string | null) => void
+  /** Set the retention binding key */
+  setRetentionBindingKey: (key: FunnelBindingKey | null) => void
+  /** Set the single timestamp dimension */
+  setRetentionTimeDimension: (dim: string | null) => void
+  /** Set the date range (REQUIRED) */
+  setRetentionDateRange: (range: DateRange) => void
+  /** Set all cohort filters at once */
+  setRetentionCohortFilters: (filters: Filter[]) => void
+  /** Add a cohort filter */
+  addRetentionCohortFilter: (filter: Filter) => void
+  /** Remove a cohort filter by index */
+  removeRetentionCohortFilter: (index: number) => void
+  /** Update a cohort filter by index */
+  updateRetentionCohortFilter: (index: number, filter: Filter) => void
+  /** Set all activity filters at once */
+  setRetentionActivityFilters: (filters: Filter[]) => void
+  /** Add an activity filter */
+  addRetentionActivityFilter: (filter: Filter) => void
+  /** Remove an activity filter by index */
+  removeRetentionActivityFilter: (index: number) => void
+  /** Update an activity filter by index */
+  updateRetentionActivityFilter: (index: number, filter: Filter) => void
+  /** Set all breakdown dimensions */
+  setRetentionBreakdowns: (breakdowns: RetentionBreakdownItem[]) => void
+  /** Add a breakdown dimension */
+  addRetentionBreakdown: (breakdown: RetentionBreakdownItem) => void
+  /** Remove a breakdown dimension by field */
+  removeRetentionBreakdown: (field: string) => void
+  /** Set the view granularity */
+  setRetentionViewGranularity: (granularity: RetentionGranularity) => void
+  /** Set the number of periods */
+  setRetentionPeriods: (periods: number) => void
+  /** Set the retention type */
+  setRetentionType: (type: RetentionType) => void
+  /** Check if in retention mode (analysisType === 'retention') */
+  isRetentionMode: () => boolean
+  /** Check if retention mode is properly configured and ready for execution */
+  isRetentionModeEnabled: () => boolean
+  /** Build ServerRetentionQuery from retention state */
+  buildRetentionQuery: () => ServerRetentionQuery | null
+  /** Get validation errors explaining why retention query cannot be built */
+  getRetentionValidation: () => { isValid: boolean; errors: string[]; warnings: string[] }
+
+  // =========================================================================
   // Utility Actions
   // =========================================================================
   /** Clear only the current mode's state (preserves other modes) */
@@ -467,6 +552,19 @@ export interface InitialFlowState {
   joinStrategy?: 'auto' | 'lateral' | 'window'
 }
 
+export interface InitialRetentionState {
+  retentionCube?: string | null
+  retentionBindingKey?: FunnelBindingKey | null
+  retentionTimeDimension?: string | null
+  retentionDateRange?: DateRange
+  retentionCohortFilters?: Filter[]
+  retentionActivityFilters?: Filter[]
+  retentionBreakdowns?: RetentionBreakdownItem[]
+  retentionViewGranularity?: RetentionGranularity
+  retentionPeriods?: number
+  retentionType?: RetentionType
+}
+
 /**
  * Options for creating a store instance
  */
@@ -487,6 +585,8 @@ export interface CreateStoreOptions {
   initialFunnelState?: InitialFunnelState
   /** Initial flow state (when analysisType === 'flow') */
   initialFlowState?: InitialFlowState
+  /** Initial retention state (when analysisType === 'retention') */
+  initialRetentionState?: InitialRetentionState
   /** Initial active view (table or chart) - used to prevent flash when loading from share */
   initialActiveView?: 'table' | 'chart'
 }
@@ -647,6 +747,39 @@ function optionsToAnalysisConfig(options: CreateStoreOptions): AnalysisConfig | 
     )
   }
 
+  // Handle retention mode with retention state
+  if (options.initialAnalysisType === 'retention' && options.initialRetentionState) {
+    const defaultRetentionChart = retentionModeAdapter.getDefaultChartConfig()
+    // Use initialChartConfig for chart settings
+    const retentionChartConfig: ChartConfig = {
+      chartType: options.initialChartConfig?.chartType || defaultRetentionChart.chartType,
+      chartConfig: options.initialChartConfig?.chartConfig || defaultRetentionChart.chartConfig,
+      displayConfig: options.initialChartConfig?.displayConfig || defaultRetentionChart.displayConfig,
+    }
+
+    // Build retention state - use default date range for fallback
+    const defaultDateRange = getDateRangeFromPreset(DEFAULT_DATE_RANGE_PRESET)
+
+    const retentionState = {
+      retentionCube: options.initialRetentionState.retentionCube ?? null,
+      retentionBindingKey: options.initialRetentionState.retentionBindingKey ?? null,
+      retentionTimeDimension: options.initialRetentionState.retentionTimeDimension ?? null,
+      retentionDateRange: options.initialRetentionState.retentionDateRange ?? defaultDateRange,
+      retentionCohortFilters: options.initialRetentionState.retentionCohortFilters || [],
+      retentionActivityFilters: options.initialRetentionState.retentionActivityFilters || [],
+      retentionBreakdowns: options.initialRetentionState.retentionBreakdowns || [],
+      retentionViewGranularity: options.initialRetentionState.retentionViewGranularity ?? 'week',
+      retentionPeriods: options.initialRetentionState.retentionPeriods ?? 12,
+      retentionType: options.initialRetentionState.retentionType ?? 'classic',
+    }
+
+    return retentionModeAdapter.save(
+      retentionState,
+      { retention: retentionChartConfig },
+      options.initialActiveView || 'chart'
+    )
+  }
+
   // Handle query mode with initial query
   if (options.initialQuery) {
     const query = options.initialQuery
@@ -747,16 +880,19 @@ function createCrossSliceActions(
         ...createInitialQueryState(),
         ...createInitialFunnelState(),
         ...createInitialFlowState(),
+        ...createInitialRetentionState(),
         // Apply adapter defaults for charts (may differ from slice defaults)
         charts: {
           query: queryModeAdapter.getDefaultChartConfig(),
           funnel: funnelModeAdapter.getDefaultChartConfig(),
           flow: flowModeAdapter.getDefaultChartConfig(),
+          retention: retentionModeAdapter.getDefaultChartConfig(),
         },
         activeViews: {
           query: 'chart',
           funnel: 'chart',
           flow: 'chart',
+          retention: 'chart',
         },
       } as Partial<AnalysisBuilderStore>)
     },
@@ -780,6 +916,15 @@ function createCrossSliceActions(
               charts: {
                 ...state.charts,
                 flow: flowModeAdapter.getDefaultChartConfig(),
+              },
+            }
+          case 'retention':
+            // Use slice initializer for retention state
+            return {
+              ...createInitialRetentionState(),
+              charts: {
+                ...state.charts,
+                retention: retentionModeAdapter.getDefaultChartConfig(),
               },
             }
           case 'query':
@@ -849,6 +994,7 @@ export function createAnalysisBuilderStore(options: CreateStoreOptions = {}) {
     ...createQuerySlice(set, get, store),
     ...createFunnelSlice(set, get, store),
     ...createFlowSlice(set, get, store),
+    ...createRetentionSlice(set, get, store),
     ...createUISlice(set, get, store),
 
     // Cross-slice actions
@@ -966,6 +1112,8 @@ export interface AnalysisBuilderStoreProviderProps {
   initialFunnelState?: InitialFunnelState
   /** Initial flow state (when analysisType === 'flow') */
   initialFlowState?: InitialFlowState
+  /** Initial retention state (when analysisType === 'retention') */
+  initialRetentionState?: InitialRetentionState
   /** Initial active view (table or chart) - used to prevent flash when loading from share */
   initialActiveView?: 'table' | 'chart'
 }
@@ -981,6 +1129,7 @@ export function AnalysisBuilderStoreProvider({
   initialAnalysisType,
   initialFunnelState,
   initialFlowState,
+  initialRetentionState,
   initialActiveView,
 }: AnalysisBuilderStoreProviderProps) {
   // Create store instance once per provider mount
@@ -994,6 +1143,7 @@ export function AnalysisBuilderStoreProvider({
       initialAnalysisType,
       initialFunnelState,
       initialFlowState,
+      initialRetentionState,
       initialActiveView,
     })
   }

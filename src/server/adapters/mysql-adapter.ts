@@ -96,6 +96,16 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build MySQL date difference in periods using TIMESTAMPDIFF
+   * For retention analysis period calculations
+   */
+  buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
+    // MySQL TIMESTAMPDIFF returns the number of intervals between two dates
+    const mysqlUnit = unit.toUpperCase()
+    return sql`TIMESTAMPDIFF(${sql.raw(mysqlUnit)}, ${startDate}, ${endDate})`
+  }
+
+  /**
    * Build MySQL time dimension using DATE_FORMAT function
    * MySQL equivalent to PostgreSQL's DATE_TRUNC
    */

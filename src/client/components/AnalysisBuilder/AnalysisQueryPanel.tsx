@@ -20,6 +20,7 @@ import FunnelBindingKeySelector from './FunnelBindingKeySelector'
 import AnalysisTypeSelector from './AnalysisTypeSelector'
 import FunnelModeContent from './FunnelModeContent'
 import FlowModeContent from './FlowModeContent'
+import RetentionModeContent from './RetentionModeContent'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -120,6 +121,31 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   onFlowJoinStrategyChange,
   flowDisplayConfig,
   onFlowDisplayConfigChange,
+  // Retention Mode props (simplified Mixpanel-style)
+  retentionCube,
+  retentionBindingKey,
+  retentionTimeDimension,
+  retentionDateRange,
+  retentionCohortFilters = [],
+  retentionActivityFilters = [],
+  retentionBreakdowns = [],
+  retentionViewGranularity = 'week',
+  retentionPeriods = 12,
+  retentionType = 'classic',
+  onRetentionCubeChange,
+  onRetentionBindingKeyChange,
+  onRetentionTimeDimensionChange,
+  onRetentionDateRangeChange,
+  onRetentionCohortFiltersChange,
+  onRetentionActivityFiltersChange,
+  onRetentionBreakdownsChange,
+  onAddRetentionBreakdown,
+  onRemoveRetentionBreakdown,
+  onRetentionViewGranularityChange,
+  onRetentionPeriodsChange,
+  onRetentionTypeChange,
+  retentionDisplayConfig,
+  onRetentionDisplayConfigChange,
 }: AnalysisQueryPanelProps) {
   // Mark unused props
   void _validationStatus
@@ -131,6 +157,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   const isFunnelMode = analysisType === 'funnel'
   // Flow mode is determined by analysisType === 'flow'
   const isFlowMode = analysisType === 'flow'
+  // Retention mode is determined by analysisType === 'retention'
+  const isRetentionMode = analysisType === 'retention'
 
   // Alias for clarity - same as isFunnelMode now
   const isNewFunnelMode = analysisType === 'funnel'
@@ -187,6 +215,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <AnalysisTypeSelector
           value={analysisType}
           onChange={onAnalysisTypeChange}
+          schema={schema as CubeMeta | null}
         />
       )}
 
@@ -240,6 +269,39 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           displayConfig={flowDisplayConfig}
           colorPalette={colorPalette}
           onDisplayConfigChange={onFlowDisplayConfigChange}
+        />
+      ) : isRetentionMode ? (
+        /* Retention Mode - dedicated UI when analysisType === 'retention' (simplified Mixpanel-style) */
+        <RetentionModeContent
+          retentionCube={retentionCube ?? null}
+          retentionBindingKey={retentionBindingKey ?? null}
+          retentionTimeDimension={retentionTimeDimension ?? null}
+          retentionDateRange={retentionDateRange ?? { start: '', end: '' }}
+          retentionCohortFilters={retentionCohortFilters}
+          retentionActivityFilters={retentionActivityFilters}
+          retentionBreakdowns={retentionBreakdowns}
+          retentionViewGranularity={retentionViewGranularity}
+          retentionPeriods={retentionPeriods}
+          retentionType={retentionType}
+          schema={schema as CubeMeta | null}
+          onCubeChange={onRetentionCubeChange ?? (() => {})}
+          onBindingKeyChange={onRetentionBindingKeyChange ?? (() => {})}
+          onTimeDimensionChange={onRetentionTimeDimensionChange ?? (() => {})}
+          onDateRangeChange={onRetentionDateRangeChange ?? (() => {})}
+          onCohortFiltersChange={onRetentionCohortFiltersChange ?? (() => {})}
+          onActivityFiltersChange={onRetentionActivityFiltersChange ?? (() => {})}
+          onBreakdownsChange={onRetentionBreakdownsChange ?? (() => {})}
+          onAddBreakdown={onAddRetentionBreakdown ?? (() => {})}
+          onRemoveBreakdown={onRemoveRetentionBreakdown ?? (() => {})}
+          onGranularityChange={onRetentionViewGranularityChange ?? (() => {})}
+          onPeriodsChange={onRetentionPeriodsChange ?? (() => {})}
+          onRetentionTypeChange={onRetentionTypeChange ?? (() => {})}
+          onOpenFieldModal={onAddBreakdown}
+          // Display tab props
+          chartType={chartType}
+          displayConfig={retentionDisplayConfig}
+          colorPalette={colorPalette}
+          onDisplayConfigChange={onRetentionDisplayConfigChange}
         />
       ) : (
         <>

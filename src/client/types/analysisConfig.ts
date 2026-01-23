@@ -21,6 +21,7 @@ import type {
 } from '../types'
 import type { ServerFunnelQuery } from './funnel'
 import type { ServerFlowQuery } from './flow'
+import type { ServerRetentionQuery } from './retention'
 
 // ============================================================================
 // Chart Configuration
@@ -41,9 +42,9 @@ export interface ChartConfig {
 
 /**
  * Analysis type discriminator
- * Future modes: 'retention', 'cohort'
+ * Future modes: 'cohort'
  */
-export type AnalysisType = 'query' | 'funnel' | 'flow'
+export type AnalysisType = 'query' | 'funnel' | 'flow' | 'retention'
 
 // ============================================================================
 // Base Configuration
@@ -135,13 +136,34 @@ export interface FlowAnalysisConfig extends AnalysisConfigBase {
 }
 
 // ============================================================================
+// Retention Mode Configuration
+// ============================================================================
+
+/**
+ * Retention mode config - for cohort-based retention analysis
+ *
+ * The `query` field is the ServerRetentionQuery which can be sent
+ * directly to the server for execution.
+ */
+export interface RetentionAnalysisConfig extends AnalysisConfigBase {
+  analysisType: 'retention'
+
+  /**
+   * Server retention query - executable as-is.
+   * Contains cohortTimeDimension, activityTimeDimension, bindingKey,
+   * granularity settings, and period configuration.
+   */
+  query: ServerRetentionQuery
+}
+
+// ============================================================================
 // Union Type
 // ============================================================================
 
 /**
  * AnalysisConfig - union of all analysis mode configurations
  */
-export type AnalysisConfig = QueryAnalysisConfig | FunnelAnalysisConfig | FlowAnalysisConfig
+export type AnalysisConfig = QueryAnalysisConfig | FunnelAnalysisConfig | FlowAnalysisConfig | RetentionAnalysisConfig
 
 // ============================================================================
 // Type Guards
@@ -164,6 +186,12 @@ export const isFunnelConfig = (c: AnalysisConfig): c is FunnelAnalysisConfig =>
  */
 export const isFlowConfig = (c: AnalysisConfig): c is FlowAnalysisConfig =>
   c.analysisType === 'flow'
+
+/**
+ * Check if config is for retention mode
+ */
+export const isRetentionConfig = (c: AnalysisConfig): c is RetentionAnalysisConfig =>
+  c.analysisType === 'retention'
 
 /**
  * Check if a query config contains multiple queries
@@ -192,7 +220,7 @@ export const isValidAnalysisConfig = (
   if (c.version !== 1) return false
 
   // Check analysisType
-  if (c.analysisType !== 'query' && c.analysisType !== 'funnel' && c.analysisType !== 'flow') return false
+  if (c.analysisType !== 'query' && c.analysisType !== 'funnel' && c.analysisType !== 'flow' && c.analysisType !== 'retention') return false
 
   // Check query exists
   if (!c.query || typeof c.query !== 'object') return false
@@ -281,6 +309,32 @@ export const createDefaultFlowConfig = (): FlowAnalysisConfig => ({
 })
 
 /**
+ * Create a default empty retention analysis config
+ */
+export const createDefaultRetentionConfig = (): RetentionAnalysisConfig => ({
+  version: 1,
+  analysisType: 'retention',
+  activeView: 'chart',
+  charts: {
+    retention: {
+      chartType: 'heatmap',
+      chartConfig: {},
+      displayConfig: {},
+    },
+  },
+  query: {
+    retention: {
+      timeDimension: '',
+      bindingKey: '',
+      dateRange: { start: '', end: '' },
+      granularity: 'week',
+      periods: 12,
+      retentionType: 'classic',
+    },
+  },
+})
+
+/**
  * Create a default config for the given analysis type
  */
 export const createDefaultConfig = (
@@ -291,6 +345,8 @@ export const createDefaultConfig = (
       return createDefaultFunnelConfig()
     case 'flow':
       return createDefaultFlowConfig()
+    case 'retention':
+      return createDefaultRetentionConfig()
     case 'query':
     default:
       return createDefaultQueryConfig()
@@ -306,7 +362,7 @@ export const createDefaultConfig = (
  *
  * Unlike AnalysisConfig (which represents a single analysis mode),
  * AnalysisWorkspace preserves state for ALL modes. This prevents state
- * loss when switching between query, funnel, and flow modes.
+ * loss when switching between query, funnel, flow, and retention modes.
  *
  * Usage:
  * - localStorage persistence → AnalysisWorkspace (preserves all modes)
@@ -329,6 +385,7 @@ export interface AnalysisWorkspace {
     query?: QueryAnalysisConfig
     funnel?: FunnelAnalysisConfig
     flow?: FlowAnalysisConfig
+    retention?: RetentionAnalysisConfig
   }
 }
 
@@ -346,7 +403,7 @@ export const isValidAnalysisWorkspace = (
   if (w.version !== 1) return false
 
   // Check activeType
-  if (w.activeType !== 'query' && w.activeType !== 'funnel' && w.activeType !== 'flow') return false
+  if (w.activeType !== 'query' && w.activeType !== 'funnel' && w.activeType !== 'flow' && w.activeType !== 'retention') return false
 
   // Check modes exists and is an object
   if (!w.modes || typeof w.modes !== 'object') return false
@@ -364,5 +421,6 @@ export const createDefaultWorkspace = (): AnalysisWorkspace => ({
     query: createDefaultQueryConfig(),
     funnel: createDefaultFunnelConfig(),
     flow: createDefaultFlowConfig(),
+    retention: createDefaultRetentionConfig(),
   },
 })

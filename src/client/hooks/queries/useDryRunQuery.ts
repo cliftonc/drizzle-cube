@@ -351,3 +351,64 @@ export function useFlowDryRunQuery(
     refetch: () => queryResult.refetch(),
   }
 }
+
+/**
+ * Debug data entry for retention queries
+ */
+export interface RetentionDebugDataEntry extends DebugDataEntry {
+  /** Retention-specific metadata from server */
+  retentionMetadata?: {
+    totalCohorts: number
+    totalUsers: number
+    periods: number
+    cohortGranularity: string
+    periodGranularity: string
+    retentionType: string
+  }
+}
+
+/**
+ * TanStack Query hook for retention query dry-run (debug) data
+ *
+ * Usage:
+ * ```tsx
+ * const { debugData } = useRetentionDryRunQuery(serverQuery, { skip: !isRetentionMode })
+ * ```
+ */
+export function useRetentionDryRunQuery(
+  serverQuery: unknown | null,
+  options: UseDryRunQueryOptions = {}
+): { debugData: RetentionDebugDataEntry; refetch: () => void } {
+  const { skip = false, staleTime = 5 * 60 * 1000 } = options
+  const { cubeApi } = useCubeApi()
+
+  const queryResult = useQuery({
+    queryKey: ['cube', 'dryRun', 'retention', serverQuery ? stableStringify(serverQuery) : null] as const,
+    queryFn: async () => {
+      if (!serverQuery) throw new Error('No retention query provided')
+      // Send the retention query to dry-run endpoint
+      // The server will detect it's a retention query and use dryRunRetention
+      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
+      return {
+        sql: result.sql,
+        analysis: result.analysis,
+        retentionMetadata: (result as unknown as { retention?: unknown }).retention,
+      }
+    },
+    enabled: !!serverQuery && !skip,
+    staleTime,
+  })
+
+  const debugData: RetentionDebugDataEntry = {
+    sql: queryResult.data?.sql ?? null,
+    analysis: queryResult.data?.analysis ?? null,
+    loading: queryResult.isLoading,
+    error: queryResult.error ?? null,
+    retentionMetadata: queryResult.data?.retentionMetadata as RetentionDebugDataEntry['retentionMetadata'],
+  }
+
+  return {
+    debugData,
+    refetch: () => queryResult.refetch(),
+  }
+}

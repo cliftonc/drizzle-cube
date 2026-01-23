@@ -130,6 +130,30 @@ export interface UseAnalysisBuilderResult {
   /** Display config for flow mode */
   flowDisplayConfig: ChartDisplayConfig
 
+  // Retention State (simplified Mixpanel-style)
+  /** Single cube for retention analysis */
+  retentionCube: string | null
+  /** Binding key for retention mode */
+  retentionBindingKey: import('../types/funnel').FunnelBindingKey | null
+  /** Single timestamp dimension for retention mode */
+  retentionTimeDimension: string | null
+  /** Date range for cohort analysis (REQUIRED) */
+  retentionDateRange: import('../types/retention').DateRange
+  /** Cohort filters for retention mode */
+  retentionCohortFilters: import('../types').Filter[]
+  /** Activity filters for retention mode */
+  retentionActivityFilters: import('../types').Filter[]
+  /** Optional breakdown dimensions for segmenting the cohort */
+  retentionBreakdowns: import('../types/retention').RetentionBreakdownItem[]
+  /** Granularity for viewing retention periods (day/week/month) */
+  retentionViewGranularity: import('../types/retention').RetentionGranularity
+  /** Number of periods for retention mode */
+  retentionPeriods: number
+  /** Retention calculation type */
+  retentionType: import('../types/retention').RetentionType
+  /** Display config for retention mode */
+  retentionDisplayConfig: ChartDisplayConfig | undefined
+
   // Data Fetching
   executionStatus: ExecutionStatus
   executionResults: unknown[] | null
@@ -166,6 +190,20 @@ export interface UseAnalysisBuilderResult {
     error: Error | null
     flowMetadata?: unknown
   } | null
+  /** In retention mode, the actual server query { retention: {...} } sent to the API */
+  retentionServerQuery: unknown | null
+  /** In retention mode, unified debug data (SQL, analysis, retention metadata) */
+  retentionDebugData: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown | null
+    loading: boolean
+    error: Error | null
+    retentionMetadata?: unknown
+  } | null
+  /** In retention mode, the chart data (cohort × period matrix) */
+  retentionChartData: import('../types/retention').RetentionChartData | null
+  /** In retention mode, validation result (errors explaining why query cannot be built) */
+  retentionValidation: { isValid: boolean; errors: string[]; warnings: string[] } | null
 
   // Chart Configuration
   chartType: ChartType
@@ -248,6 +286,20 @@ export interface UseAnalysisBuilderResult {
     setStepsAfter: (count: number) => void
     setJoinStrategy: (strategy: 'auto' | 'lateral' | 'window') => void
     setFlowDisplayConfig: (config: ChartDisplayConfig) => void
+    // Retention Mode actions (simplified Mixpanel-style)
+    setRetentionCube: (cube: string | null) => void
+    setRetentionBindingKey: (key: import('../types/funnel').FunnelBindingKey | null) => void
+    setRetentionTimeDimension: (dim: string | null) => void
+    setRetentionDateRange: (range: import('../types/retention').DateRange) => void
+    setRetentionCohortFilters: (filters: import('../types').Filter[]) => void
+    setRetentionActivityFilters: (filters: import('../types').Filter[]) => void
+    setRetentionBreakdowns: (breakdowns: import('../types/retention').RetentionBreakdownItem[]) => void
+    addRetentionBreakdown: (breakdown: import('../types/retention').RetentionBreakdownItem) => void
+    removeRetentionBreakdown: (field: string) => void
+    setRetentionViewGranularity: (granularity: import('../types/retention').RetentionGranularity) => void
+    setRetentionPeriods: (periods: number) => void
+    setRetentionType: (type: import('../types/retention').RetentionType) => void
+    setRetentionDisplayConfig: (config: ChartDisplayConfig) => void
     setChartType: (type: ChartType) => void
     setChartConfig: (config: ChartAxisConfig) => void
     setDisplayConfig: (config: ChartDisplayConfig) => void
@@ -379,10 +431,80 @@ export function useAnalysisBuilder(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- flow config values trigger rebuild when they change in store
   }, [analysisType, buildFlowQuery, flowCube, flowBindingKey, flowTimeDimension, eventDimension, startingStep, stepsBefore, stepsAfter, flowChartType, joinStrategy])
 
-  // Compute effective isValidQuery that considers funnel and flow modes
+  // Get retention state from store (simplified Mixpanel-style)
+  const retentionCube = useAnalysisBuilderStore((s) => s.retentionCube)
+  const retentionBindingKey = useAnalysisBuilderStore((s) => s.retentionBindingKey)
+  const retentionTimeDimension = useAnalysisBuilderStore((s) => s.retentionTimeDimension)
+  const retentionDateRange = useAnalysisBuilderStore((s) => s.retentionDateRange)
+  const retentionCohortFilters = useAnalysisBuilderStore((s) => s.retentionCohortFilters)
+  const retentionActivityFilters = useAnalysisBuilderStore((s) => s.retentionActivityFilters)
+  const retentionBreakdowns = useAnalysisBuilderStore((s) => s.retentionBreakdowns)
+  const retentionViewGranularity = useAnalysisBuilderStore((s) => s.retentionViewGranularity)
+  const retentionPeriods = useAnalysisBuilderStore((s) => s.retentionPeriods)
+  const retentionType = useAnalysisBuilderStore((s) => s.retentionType)
+  const buildRetentionQuery = useAnalysisBuilderStore((s) => s.buildRetentionQuery)
+  const getRetentionValidation = useAnalysisBuilderStore((s) => s.getRetentionValidation)
+
+  // Retention display config from charts map
+  const retentionDisplayConfig = useAnalysisBuilderStore((s) => s.charts.retention?.displayConfig)
+
+  // Retention actions (simplified Mixpanel-style)
+  const setRetentionCube = useAnalysisBuilderStore((s) => s.setRetentionCube)
+  const setRetentionBindingKey = useAnalysisBuilderStore((s) => s.setRetentionBindingKey)
+  const setRetentionTimeDimension = useAnalysisBuilderStore((s) => s.setRetentionTimeDimension)
+  const setRetentionDateRange = useAnalysisBuilderStore((s) => s.setRetentionDateRange)
+  const setRetentionCohortFilters = useAnalysisBuilderStore((s) => s.setRetentionCohortFilters)
+  const setRetentionActivityFilters = useAnalysisBuilderStore((s) => s.setRetentionActivityFilters)
+  const setRetentionBreakdowns = useAnalysisBuilderStore((s) => s.setRetentionBreakdowns)
+  const addRetentionBreakdown = useAnalysisBuilderStore((s) => s.addRetentionBreakdown)
+  const removeRetentionBreakdown = useAnalysisBuilderStore((s) => s.removeRetentionBreakdown)
+  const setRetentionViewGranularity = useAnalysisBuilderStore((s) => s.setRetentionViewGranularity)
+  const setRetentionPeriods = useAnalysisBuilderStore((s) => s.setRetentionPeriods)
+  const setRetentionType = useAnalysisBuilderStore((s) => s.setRetentionType)
+
+  // Build server retention query (when analysisType === 'retention')
+  const serverRetentionQuery = useMemo(() => {
+    if (analysisType !== 'retention') return null
+    return buildRetentionQuery()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- retention config values trigger rebuild when they change in store
+  }, [
+    analysisType,
+    buildRetentionQuery,
+    retentionCube,
+    retentionBindingKey,
+    retentionTimeDimension,
+    retentionDateRange,
+    retentionBreakdowns,
+    retentionViewGranularity,
+    retentionPeriods,
+    retentionType,
+    retentionCohortFilters,
+    retentionActivityFilters,
+  ])
+
+  // Get retention validation (memoized based on config changes)
+  const retentionValidation = useMemo(() => {
+    if (analysisType !== 'retention') return null
+    return getRetentionValidation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- retention config values trigger rebuild
+  }, [
+    analysisType,
+    getRetentionValidation,
+    retentionCube,
+    retentionBindingKey,
+    retentionTimeDimension,
+    retentionDateRange,
+  ])
+
+  // Compute effective isValidQuery that considers funnel, flow, and retention modes
   // In funnel mode, the query is valid when serverFunnelQuery is not null
   // In flow mode, the query is valid when serverFlowQuery is not null
+  // In retention mode, the query is valid when serverRetentionQuery is not null
   const effectiveIsValidQuery = useMemo(() => {
+    if (analysisType === 'retention') {
+      // Retention mode: valid when we have a buildable retention query
+      return serverRetentionQuery !== null
+    }
     if (analysisType === 'flow') {
       // Flow mode: valid when we have a buildable flow query
       return serverFlowQuery !== null
@@ -393,7 +515,7 @@ export function useAnalysisBuilder(
     }
     // Query/Multi mode: use the standard validation
     return queryBuilder.isValidQuery ?? false
-  }, [analysisType, serverFlowQuery, serverFunnelQuery, queryBuilder.isValidQuery])
+  }, [analysisType, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, queryBuilder.isValidQuery])
 
   // 3. Query Execution (TanStack Query integration)
   const queryExecution = useAnalysisQueryExecution({
@@ -411,6 +533,10 @@ export function useAnalysisBuilder(
     serverFunnelQuery,
     // Flow mode: pass serverFlowQuery
     serverFlowQuery,
+    // Retention mode: pass serverRetentionQuery
+    serverRetentionQuery,
+    // Retention mode: pass validation for debug panel
+    retentionValidation,
   })
 
   // 4. Chart Defaults (chart config, availability, smart defaults)
@@ -514,6 +640,22 @@ export function useAnalysisBuilder(
     [storeApi]
   )
 
+  // Retention display config action - creates setRetentionDisplayConfig wrapper using charts map pattern
+  const setRetentionDisplayConfig = useCallback(
+    (config: ChartDisplayConfig) => {
+      storeApi.setState((state) => ({
+        charts: {
+          ...state.charts,
+          retention: {
+            ...(state.charts.retention || { chartType: 'retentionCombined', chartConfig: {}, displayConfig: {} }),
+            displayConfig: config,
+          },
+        },
+      }))
+    },
+    [storeApi]
+  )
+
   // AI state and actions
   const aiState = useAnalysisBuilderStore((state) => state.aiState)
   const openAI = useAnalysisBuilderStore((state) => state.openAI)
@@ -577,13 +719,18 @@ export function useAnalysisBuilder(
       if (uiState.fieldModalMode === 'metrics' && fieldType === 'measure') {
         toggleMetric(field.name)
       } else if (uiState.fieldModalMode === 'breakdown') {
-        toggleBreakdown(field.name, fieldType === 'timeDimension')
+        // In retention mode, add to retention breakdowns instead of query breakdowns
+        if (analysisType === 'retention' && fieldType === 'dimension') {
+          addRetentionBreakdown({ field: field.name })
+        } else {
+          toggleBreakdown(field.name, fieldType === 'timeDimension')
+        }
       }
       if (!keepOpen) {
         uiState.closeFieldModal()
       }
     },
-    [uiState, toggleMetric, toggleBreakdown]
+    [uiState, toggleMetric, toggleBreakdown, addRetentionBreakdown, analysisType]
   )
 
   const generateAI = useCallback(async () => {
@@ -722,6 +869,19 @@ export function useAnalysisBuilder(
     joinStrategy,
     flowDisplayConfig,
 
+    // Retention state (simplified Mixpanel-style)
+    retentionCube,
+    retentionBindingKey,
+    retentionTimeDimension,
+    retentionDateRange,
+    retentionCohortFilters,
+    retentionActivityFilters,
+    retentionBreakdowns,
+    retentionViewGranularity,
+    retentionPeriods,
+    retentionType,
+    retentionDisplayConfig,
+
     // Data fetching (from queryExecution)
     executionStatus: queryExecution.executionStatus,
     executionResults: queryExecution.executionResults,
@@ -737,6 +897,10 @@ export function useAnalysisBuilder(
     funnelDebugData: queryExecution.funnelDebugData,
     flowServerQuery: queryExecution.flowServerQuery,
     flowDebugData: queryExecution.flowDebugData,
+    retentionServerQuery: queryExecution.retentionServerQuery,
+    retentionDebugData: queryExecution.retentionDebugData,
+    retentionChartData: queryExecution.retentionChartData,
+    retentionValidation: queryExecution.retentionValidation,
 
     // Chart configuration (from chartDefaults)
     // Note: Funnel chart type is determined by analysisType === 'funnel', not mergeStrategy
@@ -833,6 +997,21 @@ export function useAnalysisBuilder(
       setStepsAfter,
       setJoinStrategy,
       setFlowDisplayConfig,
+
+      // Retention Mode actions (simplified Mixpanel-style)
+      setRetentionCube,
+      setRetentionBindingKey,
+      setRetentionTimeDimension,
+      setRetentionDateRange,
+      setRetentionCohortFilters,
+      setRetentionActivityFilters,
+      setRetentionBreakdowns,
+      addRetentionBreakdown,
+      removeRetentionBreakdown,
+      setRetentionViewGranularity,
+      setRetentionPeriods,
+      setRetentionType,
+      setRetentionDisplayConfig,
 
       // Chart (from chartDefaults)
       setChartType: chartDefaults.setChartType,

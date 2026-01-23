@@ -41,6 +41,15 @@ export {
   type FlowSliceActions,
 } from './flowSlice'
 
+// Retention slice - cohort-based retention analysis
+export {
+  createRetentionSlice,
+  createInitialRetentionState,
+  type RetentionSlice,
+  type RetentionSliceActions,
+} from './retentionSlice'
+export type { RetentionSliceState } from '../../types/retention'
+
 // UI slice - tabs, views, modals, AI state
 export {
   createUISlice,

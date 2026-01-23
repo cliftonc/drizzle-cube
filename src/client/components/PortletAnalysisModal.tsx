@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Modal from './Modal'
 import AnalysisBuilder from './AnalysisBuilderLazy'
-import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState, AnalysisBuilderInitialFlowState } from './AnalysisBuilder/types'
+import type { AnalysisBuilderRef, AnalysisBuilderInitialFunnelState, AnalysisBuilderInitialFlowState, AnalysisBuilderInitialRetentionState } from './AnalysisBuilder/types'
 import type { PortletConfig, ColorPalette, CubeQuery, MultiQueryConfig, DashboardFilter, AnalysisType } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
 import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
+import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
 import {
   mergeDashboardAndPortletFilters,
   applyUniversalTimeFilters
@@ -203,6 +204,27 @@ export default function PortletAnalysisModal({
     return undefined
   }, [derivedConfig])
 
+  // Initial retention state from portlet (when analysisType === 'retention')
+  const initialRetentionState: AnalysisBuilderInitialRetentionState | undefined = useMemo(() => {
+    if (derivedConfig?.analysisType !== 'retention') return undefined
+
+    // Parse from analysisConfig.query
+    if (derivedConfig.query && 'retention' in derivedConfig.query) {
+      // Use adapter's conversion logic
+      const retentionState = retentionModeAdapter.load(derivedConfig)
+      const chartConfig = derivedConfig.charts?.retention
+
+      return {
+        ...retentionState,
+        retentionChartType: chartConfig?.chartType,
+        retentionChartConfig: chartConfig?.chartConfig,
+        retentionDisplayConfig: chartConfig?.displayConfig,
+      }
+    }
+
+    return undefined
+  }, [derivedConfig])
+
   // Reset form state when modal opens/closes or portlet changes
   useEffect(() => {
     if (isOpen) {
@@ -238,6 +260,14 @@ export default function PortletAnalysisModal({
         query.flow.eventDimension &&
         query.flow.startingStep?.filter
       )
+    } else if ('retention' in query && query.retention) {
+      // Retention mode: check for required configuration
+      hasContent = !!(
+        query.retention.bindingKey &&
+        query.retention.timeDimension &&
+        query.retention.dateRange?.start &&
+        query.retention.dateRange?.end
+      )
     } else if ('funnel' in query && query.funnel) {
       // Funnel mode: check for steps
       hasContent = !!(query.funnel.steps && query.funnel.steps.length >= 2)
@@ -263,6 +293,8 @@ export default function PortletAnalysisModal({
       let message: string
       if (analysisType === 'flow') {
         message = 'Please configure the flow analysis (binding key, time dimension, event dimension, and starting step filter).'
+      } else if (analysisType === 'retention') {
+        message = 'Please configure the retention analysis (binding key, time dimension, and date range).'
       } else if (analysisType === 'funnel') {
         message = 'Please add at least two funnel steps.'
       } else {
@@ -361,6 +393,7 @@ export default function PortletAnalysisModal({
             initialAnalysisType={initialAnalysisType}
             initialFunnelState={initialFunnelState}
             initialFlowState={initialFlowState}
+            initialRetentionState={initialRetentionState}
             initialData={initialData}
             colorPalette={colorPalette}
             disableLocalStorage={true}

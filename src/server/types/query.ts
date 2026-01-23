@@ -6,6 +6,7 @@
 import type { TimeGranularity } from './core'
 import type { FunnelQueryConfig } from './funnel'
 import type { FlowQueryConfig } from './flow'
+import type { RetentionQueryConfig } from './retention'
 
 /**
  * Semantic query structure (Cube.js compatible)
@@ -72,6 +73,31 @@ export interface SemanticQuery {
    * ```
    */
   flow?: FlowQueryConfig
+
+  /**
+   * Retention analysis configuration for cohort-based retention tracking.
+   * When specified, the query executes as a retention analysis instead of
+   * standard measures/dimensions aggregation.
+   *
+   * Retention analysis tracks what percentage of users from each cohort
+   * return in subsequent time periods.
+   *
+   * @example
+   * ```typescript
+   * {
+   *   retention: {
+   *     timeDimension: 'Events.timestamp',
+   *     bindingKey: 'Events.userId',
+   *     dateRange: { start: '2024-01-01', end: '2024-12-31' },
+   *     granularity: 'week',
+   *     periods: 12,
+   *     retentionType: 'classic',
+   *     breakdownDimensions: ['Events.country', 'Events.plan']
+   *   }
+   * }
+   * ```
+   */
+  retention?: RetentionQueryConfig
 }
 
 /**

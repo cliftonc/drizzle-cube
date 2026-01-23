@@ -43,10 +43,12 @@ export {
   useDryRunQueries,
   useFunnelDryRunQuery,
   useFlowDryRunQuery,
+  useRetentionDryRunQuery,
   createDryRunQueryKey,
   type DebugDataEntry,
   type FunnelDebugDataEntry,
   type FlowDebugDataEntry,
+  type RetentionDebugDataEntry,
   type UseDryRunQueryOptions,
   type UseDryRunQueryResult,
   type UseMultiDryRunQueriesOptions,
@@ -66,6 +68,13 @@ export {
   type UseFlowQueryOptions,
   type UseFlowQueryResult,
 } from './useFlowQuery'
+
+// Retention query data loading (cohort retention)
+export {
+  useRetentionQuery,
+  type UseRetentionQueryOptions,
+  type UseRetentionQueryResult,
+} from './useRetentionQuery'
 
 // Explain query (execution plan)
 export {

@@ -96,6 +96,20 @@ vi.mock('../../src/client/hooks/queries/useFlowQuery', () => ({
   useFlowQuery: vi.fn(() => mockUseFlowQueryResult)
 }))
 
+// Mock useRetentionQuery (used for retention chart portlets)
+let mockUseRetentionQueryResult = {
+  data: null,
+  rawData: null,
+  isLoading: false,
+  isFetching: false,
+  isDebouncing: false,
+  error: null,
+  refetch: vi.fn()
+}
+vi.mock('../../src/client/hooks/queries/useRetentionQuery', () => ({
+  useRetentionQuery: vi.fn(() => mockUseRetentionQueryResult)
+}))
+
 // Mock useScrollContainer
 vi.mock('../../src/client/providers/ScrollContainerContext', () => ({
   useScrollContainer: vi.fn(() => null)

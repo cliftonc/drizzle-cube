@@ -1,285 +1,375 @@
 # Retention Analysis Mode - Design Document
 
+## Implementation Status
+
+### Completed
+- [x] **Phase 1.1**: Server types (`src/server/types/retention.ts`) - Added `RetentionDateRange` and `cohortDateRange` to `RetentionQueryConfig`
+- [x] **Phase 1.2**: Query builder (`src/server/retention-query-builder.ts`) - Date range filtering in `buildCohortBaseCTE()` with WHERE and HAVING clauses
+- [x] **Phase 1.3**: Validation - Added `cohortDateRange` validation (required, valid dates, start ≤ end)
+- [x] **Phase 1.4**: Cache utils - Updated normalization to include `cohortDateRange`
+- [x] **Phase 1 Tests**: Updated all test configs with `cohortDateRange`
+
+### In Progress
+- [ ] **Phase 4**: Testing (add date range specific tests)
+
+### Completed (since last update)
+- [x] **Phase 2**: Frontend Foundation (date range state, adapter updates)
+- [x] **Phase 3**: UI Components (Mixpanel-style V2 panel with RetentionSettingsSection, RetentionEventSection, RetentionConfigPanelV2)
+- [x] **Phase 3.5**: Frontend Wiring (connect V2 panel to store actions via useAnalysisBuilderHook and AnalysisBuilder)
+- [ ] **Phase 5**: Documentation
+
+---
+
 ## Overview
 
 Add retention analysis capability to drizzle-cube, enabling cohort-based retention tracking across single or multiple cubes. This follows the established patterns from funnel and flow analysis modes.
 
-## Scope
+## Key Design Decision: Required Date Range
 
-### Initial Implementation (Phase 1-3)
-- **Retention Types**: Classic (bounded) and Rolling (unbounded)
-- **Database Support**: PostgreSQL and DuckDB (most capable, similar syntax)
-- **Multi-cube Support**: Cohort and activity can come from different cubes
+**Problem**: Without date range bounds, the cohort_base CTE finds MIN(timestamp) for each user's first activity with no bounds on which time period to analyze. If all users first performed an action in a single month, you get only one cohort.
 
-### Future Phases
-- MySQL and SQLite adapter support
-- Range/bracket retention
-- Full/strict retention (streak detection)
-
-## Design Decisions
-
-1. **Multi-cube support**: Cohort definition and activity tracking can use different cubes
-2. **Flat result format**: API returns flat array; client transforms to matrix if needed
-3. **Standard timeDimension filtering**: Uses existing dateRange string patterns
+**Solution**: `cohortDateRange` is a **required** field that bounds which time periods can form cohorts. This:
+1. Gives users predictable results ("show me cohorts from Jan-Dec 2024")
+2. Improves performance by limiting the data scanned
+3. Follows Mixpanel's pattern of always having a date range at the report level
 
 ---
 
-## Phase 1: Backend Foundation
+## Phase 1: Backend Foundation ✅ COMPLETE
 
 ### 1.1 Type Definitions (`src/server/types/retention.ts`)
 
 ```typescript
 /**
- * Binding key mapping for multi-cube retention
+ * Date range for cohort analysis (REQUIRED)
  */
-export interface RetentionBindingKeyMapping {
-  cube: string
-  dimension: string
-}
-
-/**
- * Time dimension mapping for multi-cube retention
- */
-export interface RetentionTimeDimensionMapping {
-  cube: string
-  dimension: string
+export interface RetentionDateRange {
+  /** Start date (inclusive), ISO 8601 format (YYYY-MM-DD) */
+  start: string
+  /** End date (inclusive), ISO 8601 format (YYYY-MM-DD) */
+  end: string
 }
 
 /**
  * Retention query configuration
  */
 export interface RetentionQueryConfig {
-  /**
-   * Cohort definition - which cube/dimension defines when users enter cohorts
-   * String for single-cube (e.g., 'Users.createdAt')
-   */
-  cohortTimeDimension: string | RetentionTimeDimensionMapping
+  // ... existing fields ...
 
   /**
-   * Activity definition - which cube/dimension defines user activity
-   * String for single-cube (e.g., 'Events.timestamp')
+   * Date range for cohort inclusion (REQUIRED).
+   * Only users who first performed the cohort action within this range are included.
+   * This bounds which time periods can form cohorts.
    */
-  activityTimeDimension: string | RetentionTimeDimensionMapping
+  cohortDateRange: RetentionDateRange
 
-  /**
-   * Binding key - dimension that links users across cohort and activity
-   * String for single-cube, array for multi-cube
-   */
-  bindingKey: string | RetentionBindingKeyMapping[]
-
-  /**
-   * Cohort granularity - how to group users into cohorts
-   */
-  cohortGranularity: 'day' | 'week' | 'month'
-
-  /**
-   * Period granularity - how to measure retention periods
-   */
-  periodGranularity: 'day' | 'week' | 'month'
-
-  /**
-   * Number of periods to calculate (e.g., 12 for 12 months)
-   */
-  periods: number
-
-  /**
-   * Retention type
-   * - 'classic': User returned exactly in period N
-   * - 'rolling': User returned in period N or later
-   */
-  retentionType: 'classic' | 'rolling'
-
-  /**
-   * Optional filters on cohort users
-   */
-  cohortFilters?: Filter | Filter[]
-
-  /**
-   * Optional filters on activity events
-   */
-  activityFilters?: Filter | Filter[]
-}
-
-/**
- * Single retention data point in the flat result format
- */
-export interface RetentionResultRow {
-  /** Cohort identifier (truncated date string, e.g., "2024-01-01") */
-  cohortPeriod: string
-
-  /** Period number (0 = cohort entry, 1 = first retention period, etc.) */
-  period: number
-
-  /** Number of users in this cohort */
-  cohortSize: number
-
-  /** Number of users retained in this period */
-  retainedUsers: number
-
-  /** Retention rate as decimal (0-1) */
-  retentionRate: number
-}
-
-/**
- * Retention capabilities per database engine
- */
-export interface RetentionCapabilities {
-  supportsDateTrunc: boolean
-  supportsDateDiff: boolean
-  supportsGenerateSeries: boolean
+  // ... rest of config ...
 }
 ```
 
-### 1.2 Query Builder (`src/server/retention-query-builder.ts`)
+### 1.2 Query Builder Updates
 
-**Class Structure:**
+The `buildCohortBaseCTE()` method now:
+1. Adds date range filter to WHERE clause (filters raw events)
+2. Adds HAVING clause (filters aggregated cohort_period values)
+
 ```typescript
-export class RetentionQueryBuilder {
-  constructor(
-    private filterBuilder: FilterBuilder,
-    private dateTimeBuilder: DateTimeBuilder
-  ) {}
+// WHERE clause addition
+if (config.cohortDateRange) {
+  whereConditions.push(
+    sql`${cohortConfig.timeExpr} >= ${config.cohortDateRange.start}::date
+        AND ${cohortConfig.timeExpr} < (${config.cohortDateRange.end}::date + interval '1 day')`
+  )
+}
 
-  hasRetention(query: SemanticQuery): boolean
-  validateConfig(config: RetentionQueryConfig, cubes: Map<string, Cube>): ValidationResult
-  buildRetentionQuery(config: RetentionQueryConfig, cubes: Map<string, Cube>, context: QueryContext): DrizzleQueryBuilder
-  transformResult(rawResult: unknown[], config: RetentionQueryConfig): RetentionResultRow[]
+// HAVING clause addition
+if (config.cohortDateRange) {
+  finalQuery = finalQuery.having(
+    sql`MIN(${truncatedCohortDate}) >= ${config.cohortDateRange.start}::date
+        AND MIN(${truncatedCohortDate}) < (${config.cohortDateRange.end}::date + interval '1 day')`
+  )
 }
 ```
 
-**CTE Structure (Classic Retention):**
+### 1.3 Validation Updates
 
-```sql
-WITH
--- 1. Define cohort users with their cohort period
-cohort_base AS (
-  SELECT
-    binding_key,
-    DATE_TRUNC('month', MIN(cohort_time)) AS cohort_period
-  FROM cohort_table
-  WHERE organisation_id = $1  -- Security context
-    AND cohort_filters...
-  GROUP BY binding_key
-),
-
--- 2. Get all activity with period number relative to cohort
-activity_periods AS (
-  SELECT DISTINCT
-    c.binding_key,
-    c.cohort_period,
-    DATE_DIFF('month', c.cohort_period, DATE_TRUNC('month', a.activity_time)) AS period_number
-  FROM cohort_base c
-  INNER JOIN activity_table a ON c.binding_key = a.binding_key
-  WHERE a.organisation_id = $1  -- Security context on activity table
-    AND a.activity_time >= c.cohort_period
-    AND activity_filters...
-),
-
--- 3. Calculate cohort sizes
-cohort_sizes AS (
-  SELECT cohort_period, COUNT(*) AS cohort_size
-  FROM cohort_base
-  GROUP BY cohort_period
-),
-
--- 4. Calculate retention counts per cohort/period
-retention_counts AS (
-  SELECT
-    cohort_period,
-    period_number,
-    COUNT(DISTINCT binding_key) AS retained_users
-  FROM activity_periods
-  WHERE period_number BETWEEN 0 AND $periods
-  GROUP BY cohort_period, period_number
-)
-
--- 5. Final join with retention rate calculation
-SELECT
-  rc.cohort_period,
-  rc.period_number AS period,
-  cs.cohort_size,
-  rc.retained_users,
-  (rc.retained_users::NUMERIC / cs.cohort_size) AS retention_rate
-FROM retention_counts rc
-JOIN cohort_sizes cs ON rc.cohort_period = cs.cohort_period
-ORDER BY rc.cohort_period, rc.period_number
+```typescript
+// In validateConfig()
+if (!config.cohortDateRange) {
+  errors.push('Cohort date range is required')
+} else {
+  // Validate start and end dates exist and are valid
+  // Validate start ≤ end
+}
 ```
-
-### 1.3 Executor Integration (`src/server/executor.ts`)
-
-**Changes:**
-1. Add `retentionQueryBuilder` field and initialize in constructor
-2. Add routing in `execute()` method for retention queries
-3. Add `executeRetentionQueryWithCache()` method
-4. Add `executeRetentionQuery()` method
-5. Add `dryRunRetention()` method
-
-### 1.4 Compiler Integration (`src/server/compiler.ts`)
-
-**Changes:**
-1. Add `dryRunRetention()` public method
-2. Update `validateQueryAgainstCubes()` for retention validation
-
-### 1.5 Cache Utils (`src/server/cache-utils.ts`)
-
-**Changes:**
-1. Add `normalizeRetentionConfig()` function
-2. Update `normalizeQuery()` to include retention
-
-### 1.6 Query Types (`src/server/types/query.ts`)
-
-**Changes:**
-1. Add `retention?: RetentionQueryConfig` to `SemanticQuery` interface
 
 ---
 
 ## Phase 2: Frontend Foundation
 
-### Files to Create/Modify
-- `src/client/types/retention.ts` - Frontend types
-- `src/client/types/analysisConfig.ts` - Add 'retention' to AnalysisType
-- `src/client/adapters/retentionModeAdapter.ts` - Mode adapter
-- `src/client/stores/slices/retentionSlice.ts` - Store slice
-- `src/client/hooks/queries/useRetentionQuery.ts` - Data fetching hook
+### 2.1 Client Types (`src/client/types/retention.ts`)
+
+Add date range to slice state and server query:
+
+```typescript
+/** Date range for cohort analysis */
+export interface DateRange {
+  start: string  // ISO date string (YYYY-MM-DD)
+  end: string    // ISO date string (YYYY-MM-DD)
+}
+
+/** Preset date range options */
+export const RETENTION_DATE_RANGE_PRESETS = [
+  { value: 'last_30_days', label: 'Last 30 days' },
+  { value: 'last_3_months', label: 'Last 3 months' },  // Default
+  { value: 'last_6_months', label: 'Last 6 months' },
+  { value: 'last_12_months', label: 'Last 12 months' },
+  { value: 'this_year', label: 'This year' },
+  { value: 'last_year', label: 'Last year' },
+  { value: 'custom', label: 'Custom range' },
+] as const
+
+/** Calculate date range from preset */
+export function getDateRangeFromPreset(preset: string): DateRange {
+  const now = new Date()
+  switch (preset) {
+    case 'last_3_months':
+      return {
+        start: new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0],
+        end: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
+      }
+    // ... other presets
+  }
+}
+
+export interface RetentionSliceState {
+  // ... existing fields ...
+
+  /** Date range for cohort analysis (REQUIRED) */
+  retentionCohortDateRange: DateRange
+}
+```
+
+### 2.2 Retention Slice (`src/client/stores/slices/retentionSlice.ts`)
+
+Add state and action:
+
+```typescript
+// Initial state - default to last 3 months
+retentionCohortDateRange: getDateRangeFromPreset('last_3_months')
+
+// Action
+setRetentionCohortDateRange: (range: DateRange) => void
+
+// Include in buildRetentionQuery()
+cohortDateRange: state.retentionCohortDateRange
+```
+
+### 2.3 Retention Mode Adapter (`src/client/adapters/retentionModeAdapter.ts`)
+
+Update validation to require date range:
+
+```typescript
+validate(state: RetentionSliceState): ValidationResult {
+  const errors: string[] = []
+
+  // Date range is required
+  if (!state.retentionCohortDateRange?.start || !state.retentionCohortDateRange?.end) {
+    errors.push('Date range is required for retention analysis')
+  }
+
+  // ... other validation ...
+}
+```
+
+Update serialization:
+
+```typescript
+// In extractState()
+retentionCohortDateRange: storeState.retentionCohortDateRange as DateRange
+
+// In stateToServerQuery()
+cohortDateRange: state.retentionCohortDateRange
+```
 
 ---
 
-## Phase 3: UI Components
+## Phase 3: Simplified UI (Mixpanel-style)
 
-### Files to Create/Modify
-- `src/client/components/AnalysisBuilder/RetentionModeContent.tsx`
-- `src/client/components/AnalysisBuilder/RetentionConfigPanel.tsx`
-- `src/client/components/AnalysisBuilder/AnalysisTypeSelector.tsx` - Add option
-- `src/client/components/AnalysisBuilder/AnalysisQueryPanel.tsx` - Conditional render
-- `src/client/icons/customIcons.ts` - Add retention icon
+### Design Goals
+
+1. **Simpler Mental Model**: "Cohort Event" → "Return Event" with inline filters
+2. **Always-Visible Date Range**: Prominent date range picker (required field)
+3. **Unified Granularity**: Single granularity setting (applies to both cohort and periods)
+4. **Collapsible Advanced Options**: Binding key and time dimensions are secondary
+
+### New UI Layout
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  COHORT EVENT                                               │
+│  ┌──────────────┐  ┌──────────────────────────────────────┐ │
+│  │ PREvents ▼   │  │ Event Type equals "created"    [+]  │ │
+│  └──────────────┘  └──────────────────────────────────────┘ │
+│                                                             │
+│  tracked by [employeeId ▼] starting [timestamp ▼]           │
+├─────────────────────────────────────────────────────────────┤
+│  RETURN EVENT                                               │
+│  ┌──────────────┐  ┌──────────────────────────────────────┐ │
+│  │ PREvents ▼   │  │ Event Type equals "created"    [+]  │ │
+│  └──────────────┘  └──────────────────────────────────────┘ │
+│                                                             │
+│  measured at [timestamp ▼]                                  │
+├─────────────────────────────────────────────────────────────┤
+│  RETENTION SETTINGS                                         │
+│  Date Range: [Last 3 months ▼]  Granularity: [month ▼]     │
+│  Periods: [12]  Type: [Classic ▼]                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.1 Create `RetentionSettingsSection.tsx`
+
+Always-visible settings with date range prominent:
+
+```typescript
+interface RetentionSettingsSectionProps {
+  dateRange: DateRange
+  granularity: RetentionGranularity  // Unified: applies to cohort grouping AND periods
+  periods: number
+  retentionType: RetentionType
+  onDateRangeChange: (range: DateRange) => void
+  onGranularityChange: (granularity: RetentionGranularity) => void
+  onPeriodsChange: (periods: number) => void
+  onRetentionTypeChange: (type: RetentionType) => void
+}
+```
+
+### 3.2 Create `RetentionEventSection.tsx`
+
+Combines cube selector + inline filter:
+
+```typescript
+interface RetentionEventSectionProps {
+  title: string  // "Cohort Event" or "Return Event"
+  description: string
+  cube: string | null
+  filters: Filter[]
+  bindingKey?: FunnelBindingKey | null  // Only for cohort section
+  timeDimension: string | null
+  schema: CubeMeta | null
+  showAdvanced: boolean
+  onCubeChange: (cube: string | null) => void
+  onFiltersChange: (filters: Filter[]) => void
+  onBindingKeyChange?: (key: FunnelBindingKey | null) => void
+  onTimeDimensionChange: (dim: string | null) => void
+}
+```
+
+### 3.3 Create `RetentionConfigPanelV2.tsx`
+
+Simplified Mixpanel-style layout with three sections:
+
+1. **Cohort Event Section** - Cube + filter + binding key + time dimension
+2. **Return Event Section** - Cube + filter + time dimension (defaults to cohort cube)
+3. **Retention Settings** - Date range (prominent), granularity, periods, type
+
+### 3.4 Update `RetentionModeContent.tsx`
+
+Use V2 panel instead of V1:
+
+```typescript
+// Replace RetentionConfigPanel with RetentionConfigPanelV2
+import RetentionConfigPanelV2 from './RetentionConfigPanelV2'
+```
+
+---
+
+## Phase 3.5: Frontend Wiring
+
+(Unchanged from original design - connects UI to data fetching)
 
 ---
 
 ## Phase 4: Testing
 
-### Test Files
-- `tests/retention-query.test.ts` - Backend tests
-- `tests/client/adapters/retentionModeAdapter.test.ts` - Adapter tests
+### Additional Tests for Date Range
+
+```typescript
+describe('Retention with date range', () => {
+  it('filters cohorts to specified date range', async () => {
+    const config = {
+      cohortDateRange: { start: '2023-01-01', end: '2023-06-30' },
+      // ... other config
+    }
+    const result = await executeRetention(config)
+
+    // Should only include cohorts from Jan-Jun 2023
+    const cohortPeriods = result.map(r => r.cohortPeriod)
+    expect(cohortPeriods.every(p => p >= '2023-01-01' && p <= '2023-06-30')).toBe(true)
+  })
+
+  it('rejects query without date range', async () => {
+    const config = { /* no cohortDateRange */ }
+    const validation = builder.validateConfig(config, cubes)
+    expect(validation.isValid).toBe(false)
+    expect(validation.errors).toContain('Cohort date range is required')
+  })
+})
+```
 
 ---
 
-## Phase 5: Documentation
+## Files Summary
 
-### Documentation Files
-- `~/work/drizzle-cube-help/src/content/docs/client/retention-analysis.md`
-- Update `analysis-config.md` and `analysis-builder.md`
+### Backend (Phase 1) ✅ COMPLETE
+
+| File | Status | Changes |
+|------|--------|---------|
+| `src/server/types/retention.ts` | ✅ | Added `RetentionDateRange`, `cohortDateRange` to config |
+| `src/server/retention-query-builder.ts` | ✅ | Date range filtering in `buildCohortBaseCTE()`, validation |
+| `src/server/cache-utils.ts` | ✅ | Added `cohortDateRange` to normalization |
+| `tests/retention-query.test.ts` | ✅ | Added `defaultDateRange` to all test configs |
+
+### Frontend (Phase 2) ✅ COMPLETE
+
+| File | Status | Changes |
+|------|--------|---------|
+| `src/client/types/retention.ts` | ✅ | Added `DateRange`, `DateRangePreset`, presets, helpers, updated `RetentionSliceState` |
+| `src/client/stores/slices/retentionSlice.ts` | ✅ | Added `retentionCohortDateRange` state, `setRetentionCohortDateRange` action, validation |
+| `src/client/adapters/retentionModeAdapter.ts` | ✅ | Added date range to `extractState()`, `stateToServerQuery()`, `serverQueryToState()`, `validate()` |
+| `src/client/stores/analysisBuilderStore.tsx` | ✅ | Added `retentionCohortDateRange` and `setRetentionCohortDateRange` to store types |
+| `src/client/types/analysisConfig.ts` | ✅ | Updated default retention config with `cohortDateRange` |
+| `tests/client/adapters/retentionModeAdapter.test.ts` | ✅ | Updated all test fixtures with `retentionCohortDateRange` |
+
+### UI Components (Phase 3) ✅ COMPLETE
+
+| File | Status | Changes |
+|------|--------|---------|
+| `src/client/components/AnalysisBuilder/RetentionSettingsSection.tsx` | ✅ | **NEW**: Date range picker with presets + granularity + periods + type settings |
+| `src/client/components/AnalysisBuilder/RetentionEventSection.tsx` | ✅ | **NEW**: Reusable cube + inline filter + time dimension section |
+| `src/client/components/AnalysisBuilder/RetentionConfigPanelV2.tsx` | ✅ | **NEW**: Simplified Mixpanel-style panel combining event sections + settings |
+| `src/client/components/AnalysisBuilder/RetentionModeContent.tsx` | ✅ | Updated to use V2 panel with unified granularity |
+| `src/client/components/AnalysisBuilder/types.ts` | ✅ | Added `retentionCohortDateRange` and `onRetentionCohortDateRangeChange` props |
+| `src/client/components/AnalysisBuilder/AnalysisQueryPanel.tsx` | ✅ | Added date range props pass-through to RetentionModeContent |
+
+### Frontend Wiring (Phase 3.5) ✅ COMPLETE
+
+| File | Status | Changes |
+|------|--------|---------|
+| `src/client/hooks/useAnalysisBuilderHook.ts` | ✅ | Added `retentionCohortDateRange` state, `setRetentionCohortDateRange` action, and included in serverRetentionQuery deps |
+| `src/client/components/AnalysisBuilder/index.tsx` | ✅ | Added `retentionCohortDateRange` and `onRetentionCohortDateRangeChange` props pass-through |
 
 ---
 
 ## Security Considerations
 
 1. Security context applied to BOTH cohort and activity tables in all CTEs
-2. Multi-tenant isolation maintained through all join paths
-3. Follows existing patterns from funnel/flow modes
+2. Date range parameters are properly parameterized (no SQL injection)
+3. Multi-tenant isolation maintained through all join paths
 
 ## Performance Considerations
 
-1. Single-pass aggregation via CTEs (no N subqueries for N periods)
-2. `DISTINCT` on binding_key prevents double-counting
-3. Cache key normalization for query deduplication
-4. Proper indexes recommended: `(organisation_id, binding_key, timestamp)`
+1. Date range filter reduces data scanned significantly
+2. WHERE filter applied before GROUP BY for early filtering
+3. HAVING filter ensures accurate cohort period bounds
+4. Single-pass aggregation via CTEs (no N subqueries for N periods)

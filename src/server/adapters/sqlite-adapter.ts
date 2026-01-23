@@ -73,6 +73,27 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build SQLite date difference in periods
+   * SQLite uses Julian day calculations for date arithmetic
+   * Note: SQLite timestamps are stored as Unix seconds
+   */
+  buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
+    switch (unit) {
+      case 'day':
+        // Calculate day difference using Julian day
+        return sql`CAST((julianday(datetime(${endDate}, 'unixepoch')) - julianday(datetime(${startDate}, 'unixepoch'))) AS INTEGER)`
+      case 'week':
+        // Calculate week difference
+        return sql`CAST((julianday(datetime(${endDate}, 'unixepoch')) - julianday(datetime(${startDate}, 'unixepoch'))) / 7 AS INTEGER)`
+      case 'month':
+        // Calculate month difference using string manipulation
+        return sql`((CAST(strftime('%Y', datetime(${endDate}, 'unixepoch')) AS INTEGER) - CAST(strftime('%Y', datetime(${startDate}, 'unixepoch')) AS INTEGER)) * 12 + (CAST(strftime('%m', datetime(${endDate}, 'unixepoch')) AS INTEGER) - CAST(strftime('%m', datetime(${startDate}, 'unixepoch')) AS INTEGER)))`
+      default:
+        throw new Error(`Unsupported date diff unit for SQLite: ${unit}`)
+    }
+  }
+
+  /**
    * Build SQLite time dimension using date/datetime functions with modifiers
    * For integer timestamp columns (milliseconds), first convert to datetime
    * SQLite doesn't have DATE_TRUNC like PostgreSQL, so we use strftime and date modifiers

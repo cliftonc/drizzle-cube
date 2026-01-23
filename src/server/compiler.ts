@@ -458,6 +458,29 @@ export class SemanticLayerCompiler {
   }
 
   /**
+   * Generate SQL for a retention query without execution (dry-run)
+   * Returns the CTE-based SQL that would be executed for retention analysis
+   */
+  async dryRunRetention(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+
+    const executor = new QueryExecutor(this.dbExecutor)
+    const result = await executor.dryRunRetention(this.cubes, query, securityContext)
+
+    // Format the SQL using the appropriate dialect
+    const engineType = this.dbExecutor.getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
+  }
+
+  /**
    * Execute EXPLAIN on a query to get the execution plan
    * Uses the same secure path as execute/dryRun to generate SQL,
    * then runs database EXPLAIN on it.
@@ -591,6 +614,45 @@ export function validateQueryAgainstCubes(
         errors.push(`Flow binding key cube not found: ${cubeName}`)
       }
     }
+    return { isValid: errors.length === 0, errors }
+  }
+
+  // Check for retention queries - these have their own validation path
+  // Skip standard validation for retention queries (validated separately in executor)
+  if (query.retention !== undefined &&
+      query.retention.timeDimension != null &&
+      query.retention.bindingKey != null) {
+    // Validate cube from time dimension exists
+    const cubeName = extractCubeFromRetentionTimeDimension(query.retention.timeDimension)
+    if (cubeName && !cubes.has(cubeName)) {
+      errors.push(`Retention cube not found: ${cubeName}`)
+    }
+
+    // Validate binding key cube(s) exist
+    const bindingKey = query.retention.bindingKey
+    if (typeof bindingKey === 'string') {
+      const [bkCubeName] = bindingKey.split('.')
+      if (bkCubeName && !cubes.has(bkCubeName)) {
+        errors.push(`Retention binding key cube not found: ${bkCubeName}`)
+      }
+    } else if (Array.isArray(bindingKey)) {
+      for (const mapping of bindingKey) {
+        if (!cubes.has(mapping.cube)) {
+          errors.push(`Retention binding key cube not found: ${mapping.cube}`)
+        }
+      }
+    }
+
+    // Validate breakdown dimension cubes exist
+    if (query.retention.breakdownDimensions && Array.isArray(query.retention.breakdownDimensions)) {
+      for (const dim of query.retention.breakdownDimensions) {
+        const [bdCubeName] = dim.split('.')
+        if (bdCubeName && !cubes.has(bdCubeName)) {
+          errors.push(`Retention breakdown cube not found: ${bdCubeName}`)
+        }
+      }
+    }
+
     return { isValid: errors.length === 0, errors }
   }
 
@@ -737,5 +799,18 @@ function validateFilter(
   if (!cube.dimensions[fieldName] && !cube.measures[fieldName]) {
     errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)`)
   }
+}
+
+/**
+ * Extract cube name from retention time dimension (string or object format)
+ */
+function extractCubeFromRetentionTimeDimension(
+  timeDim: string | { cube: string; dimension: string }
+): string | null {
+  if (typeof timeDim === 'string') {
+    const [cubeName] = timeDim.split('.')
+    return cubeName || null
+  }
+  return timeDim.cube
 }
 

@@ -24,9 +24,9 @@ import { cleanQueryForServer } from '../../shared/utils'
 import { stableStringify } from '../../shared/queryKey'
 
 /**
- * Query type that can be explained - includes standard queries, funnel queries, and flow queries
+ * Query type that can be explained - includes standard queries, funnel queries, flow queries, and retention queries
  */
-export type ExplainableQuery = CubeQuery | { funnel: unknown } | { flow: unknown } | unknown
+export type ExplainableQuery = CubeQuery | { funnel: unknown } | { flow: unknown } | { retention: unknown } | unknown
 
 /**
  * Create a stable query key for explain
@@ -80,6 +80,13 @@ function isFlowQuery(query: unknown): query is { flow: unknown } {
 }
 
 /**
+ * Check if query is a retention query
+ */
+function isRetentionQuery(query: unknown): query is { retention: unknown } {
+  return typeof query === 'object' && query !== null && 'retention' in query
+}
+
+/**
  * TanStack Query hook for EXPLAIN PLAN execution
  *
  * Unlike useDryRunQuery, this hook is manually triggered via `runExplain()`.
@@ -113,11 +120,11 @@ export function useExplainQuery(
   const [hasTriggered, setHasTriggered] = useState(false)
 
   // Transform query for server
-  // For funnel/flow queries, pass them directly without cleaning
+  // For funnel/flow/retention queries, pass them directly without cleaning
   const serverQuery = useMemo(() => {
     if (!query) return null
-    // Funnel and flow queries have their own format, don't clean them
-    if (isFunnelQuery(query) || isFlowQuery(query)) {
+    // Funnel, flow, and retention queries have their own format, don't clean them
+    if (isFunnelQuery(query) || isFlowQuery(query) || isRetentionQuery(query)) {
       return query
     }
     // Standard queries get cleaned

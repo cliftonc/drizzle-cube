@@ -321,6 +321,11 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               // Flow debug props
               flowServerQuery={analysis.flowServerQuery}
               flowDebugData={analysis.flowDebugData}
+              // Retention debug props
+              retentionServerQuery={analysis.retentionServerQuery}
+              retentionDebugData={analysis.retentionDebugData}
+              retentionChartData={analysis.retentionChartData}
+              retentionValidation={analysis.retentionValidation}
             />
           </div>
         </div>
@@ -413,6 +418,31 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             onFlowJoinStrategyChange={analysis.actions.setJoinStrategy}
             flowDisplayConfig={analysis.flowDisplayConfig}
             onFlowDisplayConfigChange={analysis.actions.setFlowDisplayConfig}
+            // Retention Mode props (simplified Mixpanel-style)
+            retentionCube={analysis.retentionCube}
+            retentionBindingKey={analysis.retentionBindingKey}
+            retentionTimeDimension={analysis.retentionTimeDimension}
+            retentionDateRange={analysis.retentionDateRange}
+            retentionCohortFilters={analysis.retentionCohortFilters}
+            retentionActivityFilters={analysis.retentionActivityFilters}
+            retentionBreakdowns={analysis.retentionBreakdowns}
+            retentionViewGranularity={analysis.retentionViewGranularity}
+            retentionPeriods={analysis.retentionPeriods}
+            retentionType={analysis.retentionType}
+            onRetentionCubeChange={analysis.actions.setRetentionCube}
+            onRetentionBindingKeyChange={analysis.actions.setRetentionBindingKey}
+            onRetentionTimeDimensionChange={analysis.actions.setRetentionTimeDimension}
+            onRetentionDateRangeChange={analysis.actions.setRetentionDateRange}
+            onRetentionCohortFiltersChange={analysis.actions.setRetentionCohortFilters}
+            onRetentionActivityFiltersChange={analysis.actions.setRetentionActivityFilters}
+            onRetentionBreakdownsChange={analysis.actions.setRetentionBreakdowns}
+            onAddRetentionBreakdown={analysis.actions.addRetentionBreakdown}
+            onRemoveRetentionBreakdown={analysis.actions.removeRetentionBreakdown}
+            onRetentionViewGranularityChange={analysis.actions.setRetentionViewGranularity}
+            onRetentionPeriodsChange={analysis.actions.setRetentionPeriods}
+            onRetentionTypeChange={analysis.actions.setRetentionType}
+            retentionDisplayConfig={analysis.retentionDisplayConfig}
+            onRetentionDisplayConfigChange={analysis.actions.setRetentionDisplayConfig}
           />
           </AnalysisModeErrorBoundary>
         </div>
@@ -423,10 +453,20 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
           onClose={analysis.actions.closeFieldModal}
           onSelect={analysis.actions.handleFieldSelected}
           mode={analysis.fieldModalMode}
-          schema={meta as MetaResponse | null}
+          schema={
+            // In retention mode, filter schema to only show the selected cube's fields
+            analysis.analysisType === 'retention' && analysis.retentionCube && meta
+              ? {
+                  ...meta,
+                  cubes: meta.cubes?.filter((c) => c.name === analysis.retentionCube) || [],
+                } as MetaResponse
+              : meta as MetaResponse | null
+          }
           selectedFields={[
             ...analysis.queryState.metrics.map((m) => m.field),
-            ...analysis.effectiveBreakdowns.map((b) => b.field)
+            ...analysis.effectiveBreakdowns.map((b) => b.field),
+            // Include retention breakdowns in selected fields to show checkmarks
+            ...(analysis.analysisType === 'retention' ? analysis.retentionBreakdowns.map((b) => b.field) : [])
           ]}
         />
       </div>
@@ -450,6 +490,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       initialAnalysisType,
       initialFunnelState,
       initialFlowState,
+      initialRetentionState,
       disableLocalStorage = false,
       ...innerProps
     } = props
@@ -521,8 +562,50 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       }
     })()
 
+    // Extract retention state from AnalysisConfig format (for share URLs)
+    const initialRetentionStateFromShare = (() => {
+      if (!sharedState || sharedState.analysisType !== 'retention') return undefined
+      const retentionQuery = 'retention' in sharedState.query ? sharedState.query.retention : null
+      if (!retentionQuery) return undefined
+
+      const retentionChartConfig = sharedState.charts?.retention
+
+      return {
+        retentionCube: null, // Not stored directly - derived from timeDimension
+        retentionBindingKey: retentionQuery.bindingKey
+          ? (typeof retentionQuery.bindingKey === 'string'
+              ? { dimension: retentionQuery.bindingKey }
+              : { dimension: retentionQuery.bindingKey })
+          : null,
+        retentionTimeDimension: typeof retentionQuery.timeDimension === 'string'
+          ? retentionQuery.timeDimension
+          : null,
+        retentionDateRange: retentionQuery.dateRange,
+        retentionCohortFilters: Array.isArray(retentionQuery.cohortFilters)
+          ? retentionQuery.cohortFilters
+          : retentionQuery.cohortFilters
+            ? [retentionQuery.cohortFilters]
+            : [],
+        retentionActivityFilters: Array.isArray(retentionQuery.activityFilters)
+          ? retentionQuery.activityFilters
+          : retentionQuery.activityFilters
+            ? [retentionQuery.activityFilters]
+            : [],
+        retentionBreakdowns: retentionQuery.breakdownDimensions?.map((field: string) => ({
+          field,
+          label: field.split('.').pop() || field,
+        })) || [],
+        retentionViewGranularity: retentionQuery.granularity || 'week',
+        retentionPeriods: retentionQuery.periods || 12,
+        retentionType: retentionQuery.retentionType || 'classic',
+        retentionChartType: retentionChartConfig?.chartType || 'retentionCombined',
+        retentionChartConfig: retentionChartConfig?.chartConfig || {},
+        retentionDisplayConfig: retentionChartConfig?.displayConfig || {},
+      }
+    })()
+
     // Hide share button when using initialQuery (e.g., viewing a shared analysis)
-    const hideShare = !!initialQuery || !!initialFunnelState || !!initialFlowState
+    const hideShare = !!initialQuery || !!initialFunnelState || !!initialFlowState || !!initialRetentionState
 
     return (
       <AnalysisBuilderStoreProvider
@@ -531,8 +614,9 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         initialAnalysisType={initialAnalysisType || initialAnalysisTypeFromShare}
         initialFunnelState={initialFunnelState || initialFunnelStateFromShare}
         initialFlowState={initialFlowState || initialFlowStateFromShare}
+        initialRetentionState={initialRetentionState || initialRetentionStateFromShare}
         initialActiveView={initialActiveViewFromShare}
-        disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!initialFlowState || !!shareHash}
+        disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!initialFlowState || !!initialRetentionState || !!shareHash}
       >
         <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>

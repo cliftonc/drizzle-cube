@@ -18,6 +18,7 @@ import {
   queryModeAdapter,
   funnelModeAdapter,
   flowModeAdapter,
+  retentionModeAdapter,
 } from '../../adapters'
 import type {
   AnalysisConfig,
@@ -27,6 +28,7 @@ import type {
   QueryAnalysisConfig,
   FunnelAnalysisConfig,
   FlowAnalysisConfig,
+  RetentionAnalysisConfig,
 } from '../../types/analysisConfig'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../types'
 
@@ -149,6 +151,7 @@ export const createInitialCoreState = (): CoreSliceState => ({
     query: queryModeAdapter.getDefaultChartConfig(),
     funnel: funnelModeAdapter.getDefaultChartConfig(),
     flow: flowModeAdapter.getDefaultChartConfig(),
+    retention: retentionModeAdapter.getDefaultChartConfig(),
   },
 
   // Per-mode active view preference
@@ -156,6 +159,7 @@ export const createInitialCoreState = (): CoreSliceState => ({
     query: 'chart',
     funnel: 'chart',
     flow: 'chart',
+    retention: 'chart',
   },
 
   userManuallySelectedChart: false,
@@ -436,6 +440,16 @@ export const createCoreSlice: StateCreator<
       flowActiveView
     ) as FlowAnalysisConfig
 
+    // Save retention mode state using adapter's extractState
+    const retentionAdapter = adapterRegistry.get('retention')
+    const retentionModeState = retentionAdapter.extractState(stateAsRecord)
+    const retentionActiveView = state.activeViews.retention ?? state.activeView ?? 'chart'
+    const retentionConfig = retentionAdapter.save(
+      retentionModeState,
+      state.charts,
+      retentionActiveView
+    ) as RetentionAnalysisConfig
+
     return {
       version: 1,
       activeType: state.analysisType,
@@ -443,6 +457,7 @@ export const createCoreSlice: StateCreator<
         query: queryConfig,
         funnel: funnelConfig,
         flow: flowConfig,
+        retention: retentionConfig,
       },
     }
   },
@@ -451,10 +466,12 @@ export const createCoreSlice: StateCreator<
     const queryAdapter = adapterRegistry.get('query')
     const funnelAdapter = adapterRegistry.get('funnel')
     const flowAdapter = adapterRegistry.get('flow')
+    const retentionAdapter = adapterRegistry.get('retention')
 
     let queryModeState: Record<string, unknown> = {}
     let funnelModeState: Record<string, unknown> = {}
     let flowModeState: Record<string, unknown> = {}
+    let retentionModeState: Record<string, unknown> = {}
     let mergedCharts = { ...get().charts }
     let mergedActiveViews = { ...get().activeViews }
 
@@ -479,6 +496,13 @@ export const createCoreSlice: StateCreator<
       mergedActiveViews.flow = workspace.modes.flow.activeView ?? 'chart'
     }
 
+    // Load retention mode if present
+    if (workspace.modes.retention && retentionAdapter.canLoad(workspace.modes.retention)) {
+      retentionModeState = retentionAdapter.load(workspace.modes.retention) as Record<string, unknown>
+      mergedCharts = { ...mergedCharts, ...workspace.modes.retention.charts }
+      mergedActiveViews.retention = workspace.modes.retention.activeView ?? 'chart'
+    }
+
     // Determine activeView from the active mode's config
     const activeConfig = workspace.modes[workspace.activeType]
     const activeView = activeConfig?.activeView ?? 'chart'
@@ -491,6 +515,7 @@ export const createCoreSlice: StateCreator<
       ...queryModeState,
       ...funnelModeState,
       ...flowModeState,
+      ...retentionModeState,
     })
   },
 })

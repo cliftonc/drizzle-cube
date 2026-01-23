@@ -7,13 +7,14 @@
  * - Funnel: Funnel analysis with sequential steps
  */
 
-import React, { memo } from 'react'
-import type { AnalysisType } from '../../types'
+import React, { memo, useMemo } from 'react'
+import type { AnalysisType, CubeMeta } from '../../types'
 import { getIcon } from '../../icons'
 
 const ChartBarIcon = getIcon('chartBar')
 const ChartFunnelIcon = getIcon('chartFunnel')
 const ChartSankeyIcon = getIcon('chartSankey')
+const ChartRetentionIcon = getIcon('chartRetention')
 
 interface AnalysisTypeSelectorProps {
   /** Currently selected analysis type */
@@ -22,6 +23,8 @@ interface AnalysisTypeSelectorProps {
   onChange: (type: AnalysisType) => void
   /** Disable the selector */
   disabled?: boolean
+  /** Cube metadata for eventStream detection */
+  schema?: CubeMeta | null
 }
 
 interface TypeOption {
@@ -50,6 +53,12 @@ const typeOptions: TypeOption[] = [
     description: 'Bidirectional path analysis with Sankey visualization',
     icon: ChartSankeyIcon,
   },
+  {
+    type: 'retention',
+    label: 'Retention',
+    description: 'Cohort-based retention analysis over time periods',
+    icon: ChartRetentionIcon,
+  },
 ]
 
 /**
@@ -59,10 +68,26 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
   value,
   onChange,
   disabled = false,
+  schema,
 }: AnalysisTypeSelectorProps) {
+  // Check if any cubes have eventStream metadata
+  const hasEventStreamCubes = useMemo(() => {
+    return schema?.cubes?.some((cube) => cube.meta?.eventStream) ?? false
+  }, [schema])
+
+  // Filter type options - event-based modes require eventStream cubes
+  const availableOptions = useMemo(() => {
+    return typeOptions.filter((option) => {
+      // Query mode is always available
+      if (option.type === 'query') return true
+      // Event-based modes (funnel, flow, retention) require eventStream cubes
+      return hasEventStreamCubes
+    })
+  }, [hasEventStreamCubes])
+
   return (
-    <div className="flex items-center gap-1 p-2 border-b border-dc-border bg-dc-surface">
-      {typeOptions.map((option) => {
+    <div className="flex items-center gap-0.5 p-1.5 border-b border-dc-border bg-dc-surface">
+      {availableOptions.map((option) => {
         const isSelected = value === option.type
         const Icon = option.icon
 
@@ -73,7 +98,7 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
             disabled={disabled}
             title={option.description}
             className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium
+              flex items-center gap-1 px-2 py-1.5 rounded-md text-sm font-medium
               transition-colors duration-150
               ${
                 isSelected
@@ -83,8 +108,8 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
-            <Icon className="h-4 w-4" />
-            <span>{option.label}</span>
+            <Icon className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{option.label}</span>
           </button>
         )
       })}

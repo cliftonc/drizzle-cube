@@ -6,7 +6,7 @@
 import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, useFlowQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
+import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, useFlowQuery, useRetentionQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
@@ -16,6 +16,8 @@ import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQu
 import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
 import type { ServerFlowQuery } from '../types/flow'
 import { isServerFlowQuery } from '../types/flow'
+import type { ServerRetentionQuery } from '../types/retention'
+import { isServerRetentionQuery } from '../types/retention'
 import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
 import { cleanQueryForServer } from '../shared/utils'
 
@@ -76,11 +78,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }, [dashboardFilters])
 
   // Parse query from JSON string, merge dashboard filters, and detect query type
-  // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, and ServerFlowQuery formats
-  const { queryObject, multiQueryConfig, serverFunnelQuery, serverFlowQuery } = useMemo(() => {
+  // Supports: CubeQuery, MultiQueryConfig, ServerFunnelQuery, ServerFlowQuery, and ServerRetentionQuery formats
+  const { queryObject, multiQueryConfig, serverFunnelQuery, serverFlowQuery, serverRetentionQuery } = useMemo(() => {
     // Skip query parsing for charts that don't need queries
     if (shouldSkipQuery) {
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
     }
 
     try {
@@ -88,6 +90,19 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
       // Get applicable dashboard filters (excluding universal time filters - they apply to timeDimensions)
       const applicableFilters = getApplicableDashboardFilters(regularFilters, dashboardFilterMapping)
+
+      // Check if this is a ServerRetentionQuery format { retention: {...} }
+      if (isServerRetentionQuery(parsed)) {
+        const retentionQuery = parsed as ServerRetentionQuery
+        // Retention queries don't have dashboard filter merging yet (could be added later)
+        return {
+          queryObject: null,
+          multiQueryConfig: null,
+          serverFunnelQuery: null,
+          serverFlowQuery: null,
+          serverRetentionQuery: retentionQuery
+        }
+      }
 
       // Check if this is a ServerFlowQuery format { flow: {...} }
       if (isServerFlowQuery(parsed)) {
@@ -97,7 +112,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           queryObject: null,
           multiQueryConfig: null,
           serverFunnelQuery: null,
-          serverFlowQuery: flowQuery
+          serverFlowQuery: flowQuery,
+          serverRetentionQuery: null
         }
       }
 
@@ -169,7 +185,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           }
         }
 
-        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel, serverFlowQuery: null }
+        return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: modifiedFunnel, serverFlowQuery: null, serverRetentionQuery: null }
       }
 
       // Check if this is a multi-query configuration
@@ -183,7 +199,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             timeDimensions: applyUniversalTimeFilters(dashboardFilters, dashboardFilterMapping, q.timeDimensions)
           }))
         }
-        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null, serverFlowQuery: null }
+        return { queryObject: null, multiQueryConfig: multiConfig, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
       }
 
       // Single query: existing behavior
@@ -202,11 +218,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         },
         multiQueryConfig: null,
         serverFunnelQuery: null,
-        serverFlowQuery: null
+        serverFlowQuery: null,
+        serverRetentionQuery: null
       }
     } catch (e) {
       console.error('AnalyticsPortlet: Invalid query JSON:', e)
-      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null }
+      return { queryObject: null, multiQueryConfig: null, serverFunnelQuery: null, serverFlowQuery: null, serverRetentionQuery: null }
     }
   }, [query, shouldSkipQuery, regularFilters, dashboardFilters, dashboardFilterMapping])
 
@@ -217,10 +234,13 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   const isFunnelMode = serverFunnelQuery !== null
   // Flow mode: ServerFlowQuery format (dedicated flow mode for Sankey charts)
   const isFlowMode = serverFlowQuery !== null
-  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode
-  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode || isFlowMode
+  // Retention mode: ServerRetentionQuery format (cohort retention analysis)
+  const isRetentionMode = serverRetentionQuery !== null
+  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
+  const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode || isFlowMode || isRetentionMode
   const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
   const shouldSkipFlow = !isFlowMode || shouldSkipQuery || (!eagerLoad && !isVisible)
+  const shouldSkipRetention = !isRetentionMode || shouldSkipQuery || (!eagerLoad && !isVisible)
 
   // Query client for cache invalidation
   const queryClient = useQueryClient()
@@ -257,38 +277,54 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     debounceMs: 100,
   })
 
+  // Use retention query hook for cohort retention data
+  const retentionQueryResult = useRetentionQuery(serverRetentionQuery, {
+    skip: shouldSkipRetention,
+    debounceMs: 100,
+  })
+
   // Combine results from all hooks
   const resultSet = isMultiQuery ? null : singleQueryResult.resultSet
-  const isLoading = isFlowMode
-    ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
-    : isFunnelMode
-      ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
-      : isMultiQuery
-        ? multiQueryResult.isLoading
-        : singleQueryResult.isLoading
-  const isFetching = isFlowMode
-    ? flowQueryResult.isFetching
-    : isFunnelMode
-      ? funnelQueryResult.isExecuting
-      : isMultiQuery
-        ? multiQueryResult.isFetching
-        : singleQueryResult.isFetching
-  const error = isFlowMode
-    ? flowQueryResult.error
-    : isFunnelMode
-      ? funnelQueryResult.error
-      : isMultiQuery
-        ? multiQueryResult.error
-        : singleQueryResult.error
-  const multiQueryData = isFlowMode
-    ? null  // Flow returns data in flowQueryResult.data (nodes/links structure)
-    : isFunnelMode
-      ? (funnelQueryResult.chartData as unknown[] | null)
-      : isMultiQuery
-        ? multiQueryResult.data
-        : null
+  const isLoading = isRetentionMode
+    ? retentionQueryResult.isLoading || retentionQueryResult.isDebouncing
+    : isFlowMode
+      ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
+      : isFunnelMode
+        ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
+        : isMultiQuery
+          ? multiQueryResult.isLoading
+          : singleQueryResult.isLoading
+  const isFetching = isRetentionMode
+    ? retentionQueryResult.isFetching
+    : isFlowMode
+      ? flowQueryResult.isFetching
+      : isFunnelMode
+        ? funnelQueryResult.isExecuting
+        : isMultiQuery
+          ? multiQueryResult.isFetching
+          : singleQueryResult.isFetching
+  const error = isRetentionMode
+    ? retentionQueryResult.error
+    : isFlowMode
+      ? flowQueryResult.error
+      : isFunnelMode
+        ? funnelQueryResult.error
+        : isMultiQuery
+          ? multiQueryResult.error
+          : singleQueryResult.error
+  const multiQueryData = isRetentionMode
+    ? null  // Retention returns data in retentionQueryResult.chartData (RetentionChartData structure)
+    : isFlowMode
+      ? null  // Flow returns data in flowQueryResult.data (nodes/links structure)
+      : isFunnelMode
+        ? (funnelQueryResult.chartData as unknown[] | null)
+        : isMultiQuery
+          ? multiQueryResult.data
+          : null
   // Flow data is separate since it has a different structure (nodes/links vs array)
   const flowChartData = isFlowMode ? flowQueryResult.data : null
+  // Retention data is separate since it has a different structure (rows/periods vs array)
+  const retentionChartData = isRetentionMode ? retentionQueryResult.chartData : null
 
   // Expose refresh function through ref
   // Invalidates cache and forces a fresh fetch from the server
@@ -297,7 +333,17 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     refresh: (options?: RefreshOptions) => {
       const bustCache = options?.bustCache ?? false
 
-      if (isFlowMode && serverFlowQuery) {
+      if (isRetentionMode && serverRetentionQuery) {
+        // For retention mode, invalidate cache first then re-execute
+        // Retention query key format: ['cube', 'retention', JSON.stringify(serverQuery)]
+        const queryKey = ['cube', 'retention', JSON.stringify(serverRetentionQuery)] as const
+        if (bustCache) {
+          queryClient.removeQueries({ queryKey })
+        } else {
+          queryClient.invalidateQueries({ queryKey })
+        }
+        retentionQueryResult.refetch()
+      } else if (isFlowMode && serverFlowQuery) {
         // For flow mode, invalidate cache first then re-execute
         // Flow query key format: ['cube', 'flow', JSON.stringify(serverQuery)]
         const queryKey = ['cube', 'flow', JSON.stringify(serverFlowQuery)] as const
@@ -343,10 +389,12 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         singleQueryResult.refetch({ bustCache })
       }
     }
-  }), [isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverFlowQuery, serverFunnelQuery, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }), [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   const handleRetry = useCallback(() => {
-    if (isFlowMode) {
+    if (isRetentionMode) {
+      retentionQueryResult.refetch()
+    } else if (isFlowMode) {
       flowQueryResult.refetch()
     } else if (isFunnelMode) {
       funnelQueryResult.execute()
@@ -355,7 +403,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     } else {
       singleQueryResult.refetch()
     }
-  }, [isFlowMode, isFunnelMode, isMultiQuery, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
 
   // Send debug data to parent when ready (must be before any returns)
@@ -388,6 +436,19 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       return
     }
 
+    // Handle retention mode
+    if (isRetentionMode && serverRetentionQuery && retentionChartData) {
+      onDebugDataReadyRef.current({
+        chartConfig: chartConfig || {},
+        displayConfig: displayConfig || {},
+        queryObject: serverRetentionQuery as unknown as Record<string, unknown>,
+        data: retentionChartData,
+        chartType,
+        cacheInfo: retentionQueryResult.cacheInfo ?? undefined,
+      })
+      return
+    }
+
     // Handle single query mode
     if (chartConfig && queryObject && resultSet) {
       const getData = () => {
@@ -412,7 +473,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         })
       }
     }
-  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, isFlowMode, multiQueryData, serverFunnelQuery, serverFlowQuery, flowChartData, flowQueryResult.cacheInfo, funnelQueryResult.cacheInfo]) // Use ref for callback to prevent infinite loops
+  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowQueryResult.cacheInfo, funnelQueryResult.cacheInfo, retentionQueryResult.cacheInfo]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided when required (not required for skipQuery charts)
   // Check if any dropZones are mandatory for this chart type
@@ -495,17 +556,20 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     }
 
     // Check for valid data based on query type
+    // Retention mode uses retentionChartData from retentionQueryResult.chartData
     // Flow mode uses flowChartData from flowQueryResult.data
     // Funnel mode uses multiQueryData from funnelQueryResult.chartData
     // Multi-query mode uses multiQueryData from multiQueryResult.data
     // Single query mode uses resultSet from singleQueryResult
-    const hasValidData = isFlowMode
-      ? (flowChartData !== null && serverFlowQuery !== null)
-      : isFunnelMode
-        ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
-        : isMultiQuery
-          ? (multiQueryData !== null && multiQueryConfig !== null)
-          : (resultSet !== null && queryObject !== null)
+    const hasValidData = isRetentionMode
+      ? (retentionChartData !== null && serverRetentionQuery !== null)
+      : isFlowMode
+        ? (flowChartData !== null && serverFlowQuery !== null)
+        : isFunnelMode
+          ? (multiQueryData !== null && (funnelConfig !== null || serverFunnelQuery !== null))
+          : isMultiQuery
+            ? (multiQueryData !== null && multiQueryConfig !== null)
+            : (resultSet !== null && queryObject !== null)
 
     if (!hasValidData) {
       return (
@@ -520,12 +584,18 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }
 
   // Get data based on chart type needs
-  // Returns array data for most charts, or FlowChartData for Sankey
-  // Note: FlowChartData is cast to any[] for ChartProps compatibility - Sankey chart handles internally
+  // Returns array data for most charts, FlowChartData for Sankey, or RetentionChartData for retention charts
+  // Note: FlowChartData and RetentionChartData are cast to any[] for ChartProps compatibility - specific charts handle internally
   const getData = (): unknown => {
     // Return empty array for charts that don't use query data
     if (shouldSkipQuery) {
       return []
+    }
+
+    // Retention mode: return retentionChartData (rows/periods structure) from retentionQueryResult
+    // Retention charts expect { rows: [], periods: [] } structure
+    if (isRetentionMode) {
+      return retentionChartData || { rows: [], periods: [] }
     }
 
     // Flow mode: return flowChartData (nodes/links structure) from flowQueryResult

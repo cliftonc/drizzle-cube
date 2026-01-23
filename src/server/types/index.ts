@@ -10,6 +10,9 @@ export * from './query'
 // Funnel analysis types
 export * from './funnel'
 
+// Retention analysis types
+export * from './retention'
+
 // Cube definitions
 export * from './cube'
 

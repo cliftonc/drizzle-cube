@@ -100,6 +100,7 @@ export interface IconRegistry {
   chartSankey: IconDefinition
   chartSunburst: IconDefinition
   chartHeatmap: IconDefinition
+  chartRetention: IconDefinition
 
   // Measure type icons
   measureCount: IconDefinition

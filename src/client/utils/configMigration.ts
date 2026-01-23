@@ -10,6 +10,7 @@ import type {
   QueryAnalysisConfig,
   FunnelAnalysisConfig,
   FlowAnalysisConfig,
+  RetentionAnalysisConfig,
   ChartConfig,
 } from '../types/analysisConfig'
 import { createDefaultQueryConfig, isValidAnalysisConfig } from '../types/analysisConfig'
@@ -25,6 +26,7 @@ import type {
 } from '../types'
 import type { ServerFunnelQuery, ServerFunnelStep } from '../types/funnel'
 import type { ServerFlowQuery } from '../types/flow'
+import { isServerRetentionQuery } from '../types/retention'
 
 // ============================================================================
 // Legacy Portlet Format
@@ -126,7 +128,7 @@ function isServerFlowQuery(query: unknown): query is ServerFlowQuery {
  */
 function extractChartConfig(
   portlet: LegacyPortlet,
-  analysisType: 'query' | 'funnel' | 'flow'
+  analysisType: 'query' | 'funnel' | 'flow' | 'retention'
 ): ChartConfig {
   if (analysisType === 'funnel') {
     return {
@@ -140,6 +142,15 @@ function extractChartConfig(
     // Flow uses sankey chart by default
     return {
       chartType: portlet.chartType || 'sankey',
+      chartConfig: portlet.chartConfig || {},
+      displayConfig: portlet.displayConfig || {},
+    }
+  }
+
+  if (analysisType === 'retention') {
+    // Retention uses retentionCombined chart by default
+    return {
+      chartType: portlet.chartType || 'retentionCombined',
       chartConfig: portlet.chartConfig || {},
       displayConfig: portlet.displayConfig || {},
     }
@@ -168,6 +179,20 @@ function extractChartConfig(
 export function migrateLegacyPortlet(portlet: LegacyPortlet): AnalysisConfig {
   try {
     const query = JSON.parse(portlet.query)
+
+    // Check if it's a ServerRetentionQuery
+    if (isServerRetentionQuery(query)) {
+      const chartConfig = extractChartConfig(portlet, 'retention')
+      return {
+        version: 1,
+        analysisType: 'retention',
+        activeView: 'chart',
+        charts: {
+          retention: chartConfig,
+        },
+        query,
+      } as RetentionAnalysisConfig
+    }
 
     // Check if it's a ServerFlowQuery
     if (isServerFlowQuery(query)) {
@@ -432,8 +457,8 @@ export function ensureAnalysisConfig(
   }
 
   // Migrate from legacy fields
-  // Note: 'flow' type doesn't have legacy format - filter to only query/funnel
-  const legacyAnalysisType = portlet.analysisType === 'flow' ? undefined : portlet.analysisType
+  // Note: 'flow' and 'retention' types don't have legacy format - filter to only query/funnel
+  const legacyAnalysisType = portlet.analysisType === 'flow' || portlet.analysisType === 'retention' ? undefined : portlet.analysisType
   const analysisConfig = migrateLegacyPortlet({
     query: portlet.query ?? '{}',
     chartType: portlet.chartType,

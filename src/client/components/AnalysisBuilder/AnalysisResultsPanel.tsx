@@ -78,12 +78,19 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   funnelDebugData,
   // Flow-specific debug props
   flowServerQuery,
-  flowDebugData
+  flowDebugData,
+  // Retention-specific props
+  retentionServerQuery,
+  retentionDebugData,
+  retentionChartData,
+  retentionValidation
 }: AnalysisResultsPanelProps) {
   // Determine funnel mode from analysisType (preferred) or legacy prop
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
   // Determine flow mode from analysisType
   const isFlowMode = analysisType === 'flow'
+  // Determine retention mode from analysisType
+  const isRetentionMode = analysisType === 'retention'
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
   // Active debug query tab (independent of main query tabs)
@@ -149,7 +156,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     runExplain,
     clearExplain,
   } = useExplainQuery(debugQuery as CubeQuery | null, {
-    skip: isFunnelMode || isFlowMode || !debugQuery,
+    skip: isFunnelMode || isFlowMode || isRetentionMode || !debugQuery,
   })
 
   // EXPLAIN PLAN hook - for funnel mode
@@ -174,6 +181,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     clearExplain: clearFlowExplain,
   } = useExplainQuery(flowServerQuery, {
     skip: !isFlowMode || !flowServerQuery,
+  })
+
+  // EXPLAIN PLAN hook - for retention mode
+  const {
+    explainResult: retentionExplainResult,
+    isLoading: retentionExplainLoading,
+    hasRun: retentionExplainHasRun,
+    error: retentionExplainError,
+    runExplain: runRetentionExplain,
+    // clearExplain: clearRetentionExplain, - unused for now
+  } = useExplainQuery(retentionServerQuery, {
+    skip: !isRetentionMode || !retentionServerQuery,
   })
 
   // AI Analysis hook for EXPLAIN plans
@@ -214,9 +233,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       return
     }
 
-    // Don't force table view in funnel or flow mode - they work differently
+    // Don't force table view in funnel, flow, or retention mode - they work differently
     // Check both analysisType directly AND computed isFunnelMode to avoid stale closure issues
-    if (analysisType === 'funnel' || analysisType === 'flow' || isFunnelMode) return
+    if (analysisType === 'funnel' || analysisType === 'flow' || analysisType === 'retention' || isFunnelMode) return
 
     if (!hasMetrics && activeView === 'chart') {
       onActiveViewChange('table')
@@ -305,6 +324,25 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     (q?.timeDimensions && q.timeDimensions.length > 0)
   ))
 
+  // Determine if current mode has valid pending content (mode-specific)
+  // This is used to decide whether to show "Preparing Query..." or "No Results Yet"
+  const hasModeSpecificContent = useMemo(() => {
+    if (isRetentionMode) {
+      // Retention mode: need valid server query (cube + binding key + time dimension configured)
+      return retentionServerQuery !== null
+    }
+    if (isFunnelMode) {
+      // Funnel mode: need valid server query
+      return funnelServerQuery !== null
+    }
+    if (isFlowMode) {
+      // Flow mode: need valid server query
+      return flowServerQuery !== null
+    }
+    // Query mode: standard check for measures/dimensions/timeDimensions
+    return hasQueryContent
+  }, [isRetentionMode, isFunnelMode, isFlowMode, retentionServerQuery, funnelServerQuery, flowServerQuery, hasQueryContent])
+
   // Waiting state - query built but not yet executed (debounce period)
   const renderWaiting = () => (
     <div className="h-full flex items-center justify-center">
@@ -352,29 +390,42 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   )
 
   // Empty state - no query built yet
-  const renderEmpty = () => (
-    <div className="h-full flex items-center justify-center pt-6">
-      <div className="text-center mb-16">
-        <ChartIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
-        <div className="text-sm font-semibold text-dc-text-secondary mb-1">
-          No Results Yet
+  // Shows mode-specific guidance based on analysis type
+  const renderEmpty = () => {
+    // Mode-specific empty message
+    let emptyMessage = 'Add metrics or breakdowns from the panel on the right to see results'
+    if (isRetentionMode) {
+      emptyMessage = 'Select a cube and configure retention settings to see results'
+    } else if (isFunnelMode) {
+      emptyMessage = 'Add funnel steps to see conversion analysis'
+    } else if (isFlowMode) {
+      emptyMessage = 'Configure flow analysis to see user journey paths'
+    }
+
+    return (
+      <div className="h-full flex items-center justify-center pt-6">
+        <div className="text-center mb-16">
+          <ChartIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
+          <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+            No Results Yet
+          </div>
+          <div className="text-xs text-dc-text-muted mb-4">
+            {emptyMessage}
+          </div>
+          {/* Prominent AI button when enabled (only for query mode) */}
+          {enableAI && onAIToggle && !isRetentionMode && !isFunnelMode && !isFlowMode && (
+            <button
+              onClick={onAIToggle}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:bg-dc-accent rounded-lg transition-colors shadow-sm"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Analyse with AI
+            </button>
+          )}
         </div>
-        <div className="text-xs text-dc-text-muted mb-4">
-          Add metrics or breakdowns from the panel on the right to see results
-        </div>
-        {/* Prominent AI button when enabled */}
-        {enableAI && onAIToggle && (
-          <button
-            onClick={onAIToggle}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:bg-dc-accent rounded-lg transition-colors shadow-sm"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Analyse with AI
-          </button>
-        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   // No data returned state
   const renderNoData = () => (
@@ -423,10 +474,17 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       )
     }
 
+    // For retention mode, use retentionChartData which is already transformed
+    // into the cohort × period matrix format expected by RetentionHeatmap
+    // Cast to any[] since LazyChart expects array type but RetentionHeatmap handles the object format
+    const chartData = isRetentionMode && retentionChartData
+      ? (retentionChartData as unknown as any[])
+      : executionResults
+
     return (
       <LazyChart
         chartType={effectiveChartType}
-        data={executionResults}
+        data={chartData}
         chartConfig={chartConfig}
         displayConfig={displayConfig}
         colorPalette={colorPalette}
@@ -740,6 +798,199 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     )
   }
 
+  // Render debug view for retention mode (cohort retention analysis)
+  const renderRetentionDebug = () => {
+    const retentionSql = retentionDebugData?.sql
+    const retentionLoading = retentionDebugData?.loading || false
+    const retentionError = retentionDebugData?.error
+    const retentionMeta = retentionDebugData?.retentionMetadata as {
+      totalUsers?: number
+      segmentCount?: number
+      periods?: number
+      granularity?: string
+      retentionType?: string
+    } | undefined
+
+    return (
+      <div className="p-4 space-y-4 overflow-auto h-full">
+        {/* Retention Mode Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Retention Query</span>
+          {retentionMeta && (
+            <span className="text-xs text-dc-text-muted">
+              {retentionMeta.segmentCount || 1} segment(s), {retentionMeta.totalUsers} users
+            </span>
+          )}
+          {retentionLoading && (
+            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+          )}
+        </div>
+
+        {/* Execution Error Banner (if any) */}
+        {executionError && (
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
+            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+              Execution Error
+            </h4>
+            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+          </div>
+        )}
+
+        {/* Retention Server Query - full width */}
+        <div>
+          {retentionServerQuery ? (
+            <CodeBlock
+              code={JSON.stringify(retentionServerQuery, null, 2)}
+              language="json"
+              title="Retention Server Query"
+              height="16rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Server Query</h4>
+              <div className="bg-dc-warning-bg border border-dc-warning rounded p-3 text-sm h-64 overflow-auto">
+                <div className="text-dc-warning font-medium mb-2">Configuration Incomplete</div>
+                {retentionValidation && retentionValidation.errors.length > 0 ? (
+                  <ul className="list-disc list-inside text-dc-text-secondary space-y-1">
+                    {retentionValidation.errors.map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-dc-text-muted">Configure the retention analysis settings to generate a query.</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
+        <ExecutionPlanPanel
+          sql={retentionSql}
+          sqlLoading={retentionLoading}
+          sqlError={retentionError}
+          sqlPlaceholder="Configure retention to generate SQL"
+          explainResult={retentionExplainResult}
+          explainLoading={retentionExplainLoading}
+          explainHasRun={retentionExplainHasRun}
+          explainError={retentionExplainError}
+          runExplain={runRetentionExplain}
+          aiAnalysis={aiAnalysis}
+          aiAnalysisLoading={aiAnalysisLoading}
+          aiAnalysisError={aiAnalysisError}
+          runAIAnalysis={runAIAnalysis}
+          clearAIAnalysis={clearAIAnalysis}
+          enableAI={enableAI}
+          query={retentionServerQuery}
+          title="Generated SQL"
+          height="16rem"
+        />
+
+        {/* Retention Metadata */}
+        {retentionMeta && (
+          <div>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Configuration</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-dc-text-muted">Retention Type:</span>{' '}
+                  <span className="text-dc-text">{retentionMeta.retentionType || 'Classic'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Periods:</span>{' '}
+                  <span className="text-dc-text">{retentionMeta.periods ?? 'Not set'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Granularity:</span>{' '}
+                  <span className="text-dc-text">{retentionMeta.granularity || 'Week'}</span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Segments:</span>{' '}
+                  <span className="text-dc-text">{retentionMeta.segmentCount || 1}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summary Statistics */}
+        {retentionChartData?.summary && (
+          <div>
+            <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Summary</h4>
+            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-dc-text-muted">Avg Period 1:</span>{' '}
+                  <span className="text-dc-text font-medium">
+                    {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Max Period 1:</span>{' '}
+                  <span className="text-dc-text font-medium">
+                    {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-dc-text-muted">Min Period 1:</span>{' '}
+                  <span className="text-dc-text font-medium">
+                    {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chart Config & Display Config in 2 columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <CodeBlock
+              code={JSON.stringify(chartConfig, null, 2)}
+              language="json"
+              title="Chart Config"
+              height="16rem"
+            />
+          </div>
+          <div>
+            <CodeBlock
+              code={JSON.stringify(displayConfig, null, 2)}
+              language="json"
+              title="Display Config"
+              height="16rem"
+            />
+          </div>
+        </div>
+
+        {/* Server Response - full width */}
+        <div>
+          {retentionChartData ? (
+            <CodeBlock
+              code={JSON.stringify(retentionChartData, null, 2)}
+              language="json"
+              title={`Server Response (${retentionChartData.rows.length} rows, ${retentionChartData.periods.length} periods)`}
+              maxHeight="24rem"
+            />
+          ) : executionResults ? (
+            <CodeBlock
+              code={JSON.stringify(executionResults, null, 2)}
+              language="json"
+              title={`Server Response (${executionResults.length} rows)`}
+              maxHeight="24rem"
+            />
+          ) : (
+            <>
+              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+                No results yet
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // Render debug view (multi-query or single query)
   const renderStandardDebug = () => (
     <div className="p-4 space-y-4 overflow-auto h-full">
@@ -893,6 +1144,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Route to appropriate debug view based on mode
   const renderDebug = () => {
+    if (isRetentionMode) {
+      return renderRetentionDebug()
+    }
     if (isFlowMode) {
       return renderFlowDebug()
     }
@@ -1345,18 +1599,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {!showDebug && (
           <div className="px-4 py-3 border-t border-dc-border bg-dc-surface flex justify-center flex-shrink-0">
             <div className="flex items-center bg-dc-surface-secondary border border-dc-border rounded-md overflow-hidden">
-              {/* Chart button - always enabled for flow/funnel modes which don't need traditional metrics */}
+              {/* Chart button - always enabled for flow/funnel/retention modes which don't need traditional metrics */}
               <button
-                onClick={() => (hasMetrics || isFlowMode || isFunnelMode) && onActiveViewChange('chart')}
-                disabled={!hasMetrics && !isFlowMode && !isFunnelMode}
+                onClick={() => (hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) && onActiveViewChange('chart')}
+                disabled={!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode}
                 className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeView === 'chart'
                     ? 'bg-dc-primary text-white'
-                    : (!hasMetrics && !isFlowMode && !isFunnelMode)
+                    : (!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode)
                       ? 'text-dc-text-disabled bg-dc-surface-tertiary cursor-not-allowed'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                 }`}
-                title={(hasMetrics || isFlowMode || isFunnelMode) ? 'Chart view' : 'Add metrics to enable chart view'}
+                title={(hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) ? 'Chart view' : 'Add metrics to enable chart view'}
               >
                 <ChartIcon className="w-4 h-4" />
                 Chart
@@ -1440,13 +1694,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       }
     }
 
+    // For retention mode, check if we have chart data with rows
+    if (isRetentionMode && retentionChartData) {
+      return retentionChartData.rows.length > 0
+    }
+
     // For funnel mode, results are chart data items - check length
     // For query mode, results are data rows - check length
     return executionResults.length > 0
-  }, [executionResults, isFlowMode])
+  }, [executionResults, isFlowMode, isRetentionMode, retentionChartData])
 
   // Don't show results if we're in idle state with no query content (cleared state)
-  const shouldShowResults = hasResults && (executionStatus !== 'idle' || hasQueryContent)
+  const shouldShowResults = hasResults && (executionStatus !== 'idle' || hasModeSpecificContent)
 
   // Priority 1: Manual refresh mode with no results - show centered refresh prompt
   // This takes precedence over all other states for consistent UX across all modes
@@ -1461,8 +1720,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   return (
     <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
       {/* Main content */}
-      {executionStatus === 'idle' && !hasQueryContent && renderEmpty()}
-      {executionStatus === 'idle' && hasQueryContent && !hasResults && renderWaiting()}
+      {executionStatus === 'idle' && !hasModeSpecificContent && renderEmpty()}
+      {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && renderWaiting()}
       {executionStatus === 'loading' && !hasResults && renderLoading()}
       {executionStatus === 'error' && !hasResults && renderError()}
       {(executionStatus === 'success' || shouldShowResults) && renderSuccess()}

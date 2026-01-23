@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import type { ColorPalette } from './utils/colorPalettes'
 import type { FunnelBindingKey } from './types/funnel'
 import type { FlowChartData } from './types/flow'
+import type { RetentionChartData } from './types/retention'
 
 // Cube metadata types
 export interface CubeMetaField {
@@ -72,6 +73,8 @@ export type ChartType =
   | 'sankey'
   | 'sunburst'
   | 'heatmap'
+  | 'retentionHeatmap'
+  | 'retentionCombined'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
@@ -195,6 +198,10 @@ export interface ChartDisplayConfig {
   showFunnelMedianTime?: boolean
   /** Show P90 time-to-convert metric in funnel charts */
   showFunnelP90Time?: boolean
+
+  // Retention chart specific display options
+  /** Retention display mode: line chart, heatmap table, or combined view */
+  retentionDisplayMode?: 'line' | 'heatmap' | 'combined'
 }
 
 // Portlet configuration
@@ -286,7 +293,8 @@ export interface DashboardConfig {
 // 'query' supports both single and multi-query (add more queries via + button)
 // 'funnel' for funnel analysis with sequential steps
 // 'flow' for bidirectional flow analysis with Sankey visualization
-export type AnalysisType = 'query' | 'funnel' | 'flow'
+// 'retention' for cohort-based retention analysis
+export type AnalysisType = 'query' | 'funnel' | 'flow' | 'retention'
 
 /**
  * State for a single funnel step (dedicated for Funnel mode)
@@ -444,7 +452,7 @@ export interface AnalyticsPortletProps {
     chartConfig: ChartAxisConfig
     displayConfig: ChartDisplayConfig
     queryObject: any
-    data: any[] | FlowChartData
+    data: any[] | FlowChartData | RetentionChartData
     chartType: ChartType
     cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   }) => void

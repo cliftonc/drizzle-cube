@@ -40,3 +40,26 @@ export const funnelIcon: IconifyIcon = {
   width: 24,
   height: 24,
 }
+
+/**
+ * Custom Retention icon
+ * Grid/heatmap pattern representing cohort retention matrix
+ * Shows users tracked across time periods with varying intensity cells
+ * 24x24 viewBox, stroke-width 1.5 for clean appearance
+ */
+export const retentionIcon: IconifyIcon = {
+  body: `<g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Grid cells representing retention matrix -->
+    <rect x="3" y="3" width="4" height="4" rx="0.5"/>
+    <rect x="10" y="3" width="4" height="4" rx="0.5"/>
+    <rect x="17" y="3" width="4" height="4" rx="0.5"/>
+    <rect x="3" y="10" width="4" height="4" rx="0.5"/>
+    <rect x="10" y="10" width="4" height="4" rx="0.5"/>
+    <rect x="17" y="10" width="4" height="4" rx="0.5"/>
+    <rect x="3" y="17" width="4" height="4" rx="0.5"/>
+    <rect x="10" y="17" width="4" height="4" rx="0.5"/>
+    <rect x="17" y="17" width="4" height="4" rx="0.5"/>
+  </g>`,
+  width: 24,
+  height: 24,
+}

@@ -124,6 +124,12 @@ export async function handleDryRun(
     return handleFlowDryRun(query, securityContext, semanticLayer)
   }
 
+  // Check for retention queries - they have their own dry-run path
+  // Retention queries send { retention: { ... } } and need special SQL generation
+  if (query.retention && query.retention.bindingKey && query.retention.timeDimension) {
+    return handleRetentionDryRun(query, securityContext, semanticLayer)
+  }
+
   // Validate query structure and field existence
   const validation = semanticLayer.validateQuery(query)
   if (!validation.isValid) {
@@ -531,6 +537,85 @@ async function handleFlowDryRun(
         timeDimension: flow.timeDimension,
         eventDimension: flow.eventDimension,
         startingStep: flow.startingStep
+      }
+    },
+    sql: {
+      sql: sqlResult.sql,
+      params: sqlResult.params || []
+    }
+  }
+}
+
+/**
+ * Handle dry-run for retention queries
+ */
+async function handleRetentionDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  // Validate retention query
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`Retention query validation failed: ${validation.errors.join(', ')}`)
+  }
+
+  // Get the retention SQL using the dedicated dry-run method
+  const sqlResult = await semanticLayer.dryRunRetention(query, securityContext)
+
+  // Extract cube names from the retention configuration
+  const referencedCubes = new Set<string>()
+  const retention = query.retention!
+
+  // Extract from time dimension (single dimension for both cohort and activity)
+  if (typeof retention.timeDimension === 'string') {
+    const [cubeName] = retention.timeDimension.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  } else if (retention.timeDimension && typeof retention.timeDimension === 'object') {
+    referencedCubes.add(retention.timeDimension.cube)
+  }
+
+  // Extract from binding key
+  if (typeof retention.bindingKey === 'string') {
+    const [cubeName] = retention.bindingKey.split('.')
+    if (cubeName) referencedCubes.add(cubeName)
+  } else if (Array.isArray(retention.bindingKey)) {
+    for (const mapping of retention.bindingKey) {
+      referencedCubes.add(mapping.cube)
+    }
+  }
+
+  // Extract from breakdown dimensions
+  if (retention.breakdownDimensions && Array.isArray(retention.breakdownDimensions)) {
+    for (const dim of retention.breakdownDimensions) {
+      const [cubeName] = dim.split('.')
+      if (cubeName) referencedCubes.add(cubeName)
+    }
+  }
+
+  // Build response structure
+  return {
+    queryType: 'retentionQuery',
+    normalizedQueries: [], // Retention is a single unified query
+    queryOrder: Array.from(referencedCubes),
+    transformedQueries: [],
+    pivotQuery: {
+      measures: [],
+      dimensions: [],
+      timeDimensions: [],
+      order: {},
+      filters: [],
+      queryType: 'retentionQuery',
+      joinType: 'retention_cte',
+      query,
+      // Retention-specific metadata
+      retention: {
+        timeDimension: retention.timeDimension,
+        bindingKey: retention.bindingKey,
+        granularity: retention.granularity,
+        periods: retention.periods,
+        retentionType: retention.retentionType,
+        breakdownDimensions: retention.breakdownDimensions,
       }
     },
     sql: {

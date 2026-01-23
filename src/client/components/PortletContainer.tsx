@@ -8,6 +8,7 @@ import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { PortletConfig } from '../types'
 import type { FlowChartData } from '../types/flow'
+import type { RetentionChartData } from '../types/retention'
 import { ensureAnalysisConfig } from '../utils/configMigration'
 
 interface PortletContainerProps {
@@ -40,7 +41,7 @@ export default function PortletContainer({
     chartConfig: any
     displayConfig: any
     queryObject: any
-    data: any[] | FlowChartData
+    data: any[] | FlowChartData | RetentionChartData
     chartType: string
     cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   } | null>(null)
@@ -50,7 +51,7 @@ export default function PortletContainer({
     chartConfig: any
     displayConfig: any
     queryObject: any
-    data: any[] | FlowChartData
+    data: any[] | FlowChartData | RetentionChartData
     chartType: string
     cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
   }) => {

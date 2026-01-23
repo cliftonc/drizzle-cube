@@ -77,6 +77,26 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build PostgreSQL date difference in periods using AGE and EXTRACT
+   * For retention analysis period calculations
+   */
+  buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
+    switch (unit) {
+      case 'day':
+        // Use date subtraction for days
+        return sql`(${endDate}::date - ${startDate}::date)`
+      case 'week':
+        // Calculate week difference
+        return sql`FLOOR((${endDate}::date - ${startDate}::date) / 7)`
+      case 'month':
+        // Use AGE function for accurate month difference
+        return sql`(EXTRACT(YEAR FROM AGE(${endDate}::timestamp, ${startDate}::timestamp)) * 12 + EXTRACT(MONTH FROM AGE(${endDate}::timestamp, ${startDate}::timestamp)))::integer`
+      default:
+        throw new Error(`Unsupported date diff unit: ${unit}`)
+    }
+  }
+
+  /**
    * Build PostgreSQL time dimension using DATE_TRUNC function
    * Extracted from executor.ts:649-670 and multi-cube-builder.ts:306-320
    */

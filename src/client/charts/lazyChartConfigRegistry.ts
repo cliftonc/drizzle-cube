@@ -31,6 +31,8 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   sankey: () => import('../components/charts/SankeyChart.config'),
   sunburst: () => import('../components/charts/SunburstChart.config'),
   heatmap: () => import('../components/charts/HeatMapChart.config'),
+  retentionHeatmap: () => import('../components/charts/RetentionHeatmap.config'),
+  retentionCombined: () => import('../components/charts/RetentionCombinedChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -54,6 +56,8 @@ const configExportNames: Record<ChartType, string> = {
   sankey: 'sankeyChartConfig',
   sunburst: 'sunburstChartConfig',
   heatmap: 'heatmapChartConfig',
+  retentionHeatmap: 'retentionHeatmapConfig',
+  retentionCombined: 'retentionCombinedConfig',
 }
 
 // Cache for loaded configs

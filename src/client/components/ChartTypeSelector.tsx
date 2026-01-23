@@ -31,6 +31,8 @@ const chartTypeLabels: Record<ChartType, string> = {
   pie: 'Pie Chart',
   radar: 'Radar Chart',
   radialBar: 'Radial Bar Chart',
+  retentionCombined: 'Retention Chart',
+  retentionHeatmap: 'Retention Matrix',
   sankey: 'Sankey Chart',
   scatter: 'Scatter Plot',
   sunburst: 'Sunburst Chart',

@@ -45,6 +45,7 @@ import type { DatabaseAdapter } from './adapters/base-adapter'
 import { ComparisonQueryBuilder } from './comparison-query-builder'
 import { FunnelQueryBuilder } from './funnel-query-builder'
 import { FlowQueryBuilder } from './flow-query-builder'
+import { RetentionQueryBuilder } from './retention-query-builder'
 
 export class QueryExecutor {
   private queryBuilder: QueryBuilder
@@ -54,6 +55,7 @@ export class QueryExecutor {
   private comparisonQueryBuilder: ComparisonQueryBuilder
   private funnelQueryBuilder: FunnelQueryBuilder
   private flowQueryBuilder: FlowQueryBuilder
+  private retentionQueryBuilder: RetentionQueryBuilder
   private cacheConfig?: CacheConfig
 
   constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
@@ -68,6 +70,7 @@ export class QueryExecutor {
     this.comparisonQueryBuilder = new ComparisonQueryBuilder(this.databaseAdapter)
     this.funnelQueryBuilder = new FunnelQueryBuilder(this.databaseAdapter)
     this.flowQueryBuilder = new FlowQueryBuilder(this.databaseAdapter)
+    this.retentionQueryBuilder = new RetentionQueryBuilder(this.databaseAdapter)
     this.cacheConfig = cacheConfig
   }
 
@@ -98,6 +101,14 @@ export class QueryExecutor {
           throw new Error(`Flow validation failed: ${flowValidation.errors.join(', ')}`)
         }
         // Skip standard validation for flow queries and go directly to execution
+        // (after cache check below)
+      } else if (this.retentionQueryBuilder.hasRetention(query)) {
+        // Validate retention configuration separately
+        const retentionValidation = this.retentionQueryBuilder.validateConfig(query.retention!, cubes)
+        if (!retentionValidation.isValid) {
+          throw new Error(`Retention validation failed: ${retentionValidation.errors.join(', ')}`)
+        }
+        // Skip standard validation for retention queries and go directly to execution
         // (after cache check below)
       } else {
         // Standard validation for non-funnel/non-flow queries
@@ -175,6 +186,11 @@ export class QueryExecutor {
       // Check for flow queries and route to flow execution
       if (this.flowQueryBuilder.hasFlow(query)) {
         return this.executeFlowQueryWithCache(cubes, query, securityContext, cacheKey)
+      }
+
+      // Check for retention queries and route to retention execution
+      if (this.retentionQueryBuilder.hasRetention(query)) {
+        return this.executeRetentionQueryWithCache(cubes, query, securityContext, cacheKey)
       }
 
       // Create filter cache for parameter deduplication across CTEs
@@ -585,6 +601,101 @@ export class QueryExecutor {
 
     return {
       data: [flowData] as unknown as Record<string, unknown>[],
+      annotation
+    }
+  }
+
+  /**
+   * Execute a retention query with caching support
+   */
+  private async executeRetentionQueryWithCache(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    cacheKey: string | undefined
+  ): Promise<QueryResult> {
+    const result = await this.executeRetentionQuery(cubes, query, securityContext)
+
+    // Cache result before returning
+    if (cacheKey && this.cacheConfig?.provider) {
+      try {
+        const startTime = Date.now()
+        await this.cacheConfig.provider.set(
+          cacheKey,
+          result,
+          this.cacheConfig.defaultTtlMs ?? 300000
+        )
+        this.cacheConfig.onCacheEvent?.({
+          type: 'set',
+          key: cacheKey,
+          durationMs: Date.now() - startTime
+        })
+      } catch (error) {
+        this.cacheConfig.onError?.(error as Error, 'set')
+      }
+    }
+
+    // Return result with cache metadata (miss - freshly computed)
+    return {
+      ...result,
+      cache: {
+        hit: false
+      }
+    }
+  }
+
+  /**
+   * Execute a retention analysis query
+   * Calculates cohort-based retention rates
+   */
+  private async executeRetentionQuery(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<QueryResult> {
+    const config = query.retention!
+
+    // Validate retention configuration
+    const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Retention validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build retention query using Drizzle query builder
+    const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
+
+    // Execute the query
+    const rawResult = await retentionQuery as unknown as Record<string, unknown>[]
+
+    // Transform to RetentionResultRow
+    const retentionRows = this.retentionQueryBuilder.transformResult(rawResult, config)
+
+    // Build annotation with retention metadata
+    const annotation: QueryResult['annotation'] & { retention?: unknown } = {
+      measures: {} as Record<string, MeasureAnnotation>,
+      dimensions: {} as Record<string, DimensionAnnotation>,
+      segments: {},
+      timeDimensions: {} as Record<string, TimeDimensionAnnotation>
+    }
+
+    // Add retention metadata to annotation
+    ;(annotation as any).retention = {
+      config,
+      granularity: config.granularity,
+      periods: config.periods,
+      retentionType: config.retentionType,
+      breakdownDimensions: config.breakdownDimensions
+    }
+
+    return {
+      data: retentionRows as unknown as Record<string, unknown>[],
       annotation
     }
   }
@@ -1329,6 +1440,47 @@ export class QueryExecutor {
   }
 
   /**
+   * Generate SQL for a retention query without execution (dry-run)
+   * Returns the actual CTE-based SQL that would be executed
+   */
+  async dryRunRetention(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    // Validate retention query
+    if (!this.retentionQueryBuilder.hasRetention(query)) {
+      throw new Error('Query does not contain a valid retention configuration')
+    }
+
+    const config = query.retention!
+
+    // Validate retention configuration
+    const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
+    if (!validation.isValid) {
+      throw new Error(`Retention validation failed: ${validation.errors.join(', ')}`)
+    }
+
+    // Create query context
+    const context: QueryContext = {
+      db: this.dbExecutor.db,
+      schema: this.dbExecutor.schema,
+      securityContext
+    }
+
+    // Build retention query using Drizzle query builder
+    const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
+
+    // Use .toSQL() to get the SQL string and parameters
+    const sqlObj = retentionQuery.toSQL()
+
+    return {
+      sql: sqlObj.sql,
+      params: sqlObj.params
+    }
+  }
+
+  /**
    * Execute EXPLAIN on a query to get the execution plan
    * Generates the SQL using the same secure path as execute/generateSQL,
    * then runs EXPLAIN on the database.
@@ -1346,6 +1498,8 @@ export class QueryExecutor {
       sqlResult = await this.dryRunFunnel(cubes, query, securityContext)
     } else if (this.flowQueryBuilder.hasFlow(query)) {
       sqlResult = await this.dryRunFlow(cubes, query, securityContext)
+    } else if (this.retentionQueryBuilder.hasRetention(query)) {
+      sqlResult = await this.dryRunRetention(cubes, query, securityContext)
     } else {
       sqlResult = await this.generateUnifiedSQL(cubes, query, securityContext)
     }

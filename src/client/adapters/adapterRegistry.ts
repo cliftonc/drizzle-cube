@@ -23,6 +23,7 @@ import type { AnalysisType } from '../types/analysisConfig'
 import { queryModeAdapter } from './queryModeAdapter'
 import { funnelModeAdapter } from './funnelModeAdapter'
 import { flowModeAdapter } from './flowModeAdapter'
+import { retentionModeAdapter } from './retentionModeAdapter'
 
 // Internal storage for registered adapters
 const adapters = new Map<AnalysisType, ModeAdapter<unknown>>()
@@ -46,6 +47,9 @@ function ensureBuiltInAdaptersInitialized(): void {
   }
   if (!adapters.has('flow')) {
     adapters.set('flow', flowModeAdapter as ModeAdapter<unknown>)
+  }
+  if (!adapters.has('retention')) {
+    adapters.set('retention', retentionModeAdapter as ModeAdapter<unknown>)
   }
 
   builtInAdaptersInitialized = true

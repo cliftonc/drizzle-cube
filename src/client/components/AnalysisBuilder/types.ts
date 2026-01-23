@@ -378,6 +378,56 @@ export interface AnalysisQueryPanelProps {
   flowDisplayConfig?: ChartDisplayConfig
   /** Callback when flow display config changes */
   onFlowDisplayConfigChange?: (config: ChartDisplayConfig) => void
+
+  // Retention Mode props (when analysisType === 'retention' - simplified Mixpanel-style)
+  /** Single cube for retention analysis */
+  retentionCube?: string | null
+  /** Binding key for retention analysis */
+  retentionBindingKey?: import('../../types').FunnelBindingKey | null
+  /** Single timestamp dimension for retention */
+  retentionTimeDimension?: string | null
+  /** Date range for cohort analysis (REQUIRED) */
+  retentionDateRange?: import('../../types/retention').DateRange
+  /** Cohort filters - define who enters the cohort */
+  retentionCohortFilters?: Filter[]
+  /** Activity filters - define what counts as a return */
+  retentionActivityFilters?: Filter[]
+  /** Breakdown dimensions for segmentation */
+  retentionBreakdowns?: import('../../types/retention').RetentionBreakdownItem[]
+  /** Granularity for viewing retention periods */
+  retentionViewGranularity?: import('../../types/retention').RetentionGranularity
+  /** Number of periods */
+  retentionPeriods?: number
+  /** Retention type */
+  retentionType?: import('../../types/retention').RetentionType
+  /** Retention display config */
+  retentionDisplayConfig?: ChartDisplayConfig
+  /** Callback when cube changes */
+  onRetentionCubeChange?: (cube: string | null) => void
+  /** Callback when retention binding key changes */
+  onRetentionBindingKeyChange?: (key: import('../../types').FunnelBindingKey | null) => void
+  /** Callback when time dimension changes */
+  onRetentionTimeDimensionChange?: (dim: string | null) => void
+  /** Callback when date range changes */
+  onRetentionDateRangeChange?: (range: import('../../types/retention').DateRange) => void
+  /** Callback when cohort filters change */
+  onRetentionCohortFiltersChange?: (filters: Filter[]) => void
+  /** Callback when activity filters change */
+  onRetentionActivityFiltersChange?: (filters: Filter[]) => void
+  /** Callback when breakdowns change (set all) */
+  onRetentionBreakdownsChange?: (breakdowns: import('../../types/retention').RetentionBreakdownItem[]) => void
+  /** Callback to add a breakdown */
+  onAddRetentionBreakdown?: (breakdown: import('../../types/retention').RetentionBreakdownItem) => void
+  /** Callback to remove a breakdown */
+  onRemoveRetentionBreakdown?: (field: string) => void
+  /** Callback when granularity changes */
+  onRetentionViewGranularityChange?: (granularity: import('../../types/retention').RetentionGranularity) => void
+  /** Callback when periods changes */
+  onRetentionPeriodsChange?: (periods: number) => void
+  /** Callback when retention type changes */
+  onRetentionTypeChange?: (type: import('../../types/retention').RetentionType) => void
+  /** Callback when retention display config changes */
+  onRetentionDisplayConfigChange?: (config: ChartDisplayConfig) => void
 }
 
 /**
@@ -517,6 +567,30 @@ export interface AnalysisResultsPanelProps {
     error: Error | null
     flowMetadata?: unknown
   } | null
+  /**
+   * In retention mode, the actual server query { retention: {...} } sent to the API.
+   * Use this for debug display.
+   */
+  retentionServerQuery?: unknown
+  /**
+   * Unified debug data for retention queries (SQL, analysis, loading/error state).
+   * Contains the CTE-based SQL for the retention analysis.
+   */
+  retentionDebugData?: {
+    sql: { sql: string; params: unknown[] } | null
+    analysis: unknown
+    loading: boolean
+    error: Error | null
+    retentionMetadata?: unknown
+  } | null
+  /**
+   * Retention chart data (cohort × period matrix) for rendering.
+   */
+  retentionChartData?: import('../../types/retention').RetentionChartData | null
+  /**
+   * Retention validation result (errors explaining why query cannot be built).
+   */
+  retentionValidation?: { isValid: boolean; errors: string[]; warnings: string[] } | null
 }
 
 // ============================================================================
@@ -684,6 +758,25 @@ export interface AnalysisBuilderInitialFlowState {
 }
 
 /**
+ * Initial retention state for AnalysisBuilder (matches RetentionSliceState in store)
+ */
+export interface AnalysisBuilderInitialRetentionState {
+  retentionCube?: string | null
+  retentionBindingKey?: FunnelBindingKey | null
+  retentionTimeDimension?: string | null
+  retentionDateRange?: import('../../types/retention').DateRange
+  retentionCohortFilters?: Filter[]
+  retentionActivityFilters?: Filter[]
+  retentionBreakdowns?: import('../../types/retention').RetentionBreakdownItem[]
+  retentionViewGranularity?: import('../../types/retention').RetentionGranularity
+  retentionPeriods?: number
+  retentionType?: import('../../types/retention').RetentionType
+  retentionChartType?: ChartType
+  retentionChartConfig?: ChartAxisConfig
+  retentionDisplayConfig?: ChartDisplayConfig
+}
+
+/**
  * Props for the main AnalysisBuilder component
  */
 export interface AnalysisBuilderProps {
@@ -709,6 +802,8 @@ export interface AnalysisBuilderProps {
   initialFunnelState?: AnalysisBuilderInitialFunnelState
   /** Initial flow state (when initialAnalysisType === 'flow') */
   initialFlowState?: AnalysisBuilderInitialFlowState
+  /** Initial retention state (when initialAnalysisType === 'retention') */
+  initialRetentionState?: AnalysisBuilderInitialRetentionState
   /** Initial data to display (avoids re-fetching when editing existing portlets) */
   initialData?: any[]
   /** Color palette for chart visualization */

@@ -80,6 +80,15 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build DuckDB date difference in periods using DATE_DIFF
+   * DuckDB has native DATE_DIFF function with unit support
+   */
+  buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
+    // DuckDB uses DATE_DIFF(part, start, end)
+    return sql`DATE_DIFF('${sql.raw(unit)}', ${startDate}::timestamp, ${endDate}::timestamp)`
+  }
+
+  /**
    * Build DuckDB time dimension using DATE_TRUNC function
    * DuckDB uses DATE_TRUNC like PostgreSQL
    */

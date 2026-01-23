@@ -120,6 +120,16 @@ export interface DatabaseAdapter {
   ): SQL
 
   /**
+   * Build date difference expression in specified periods
+   * Used for retention analysis to calculate period numbers
+   * @param startDate - Start date expression
+   * @param endDate - End date expression
+   * @param unit - Unit for difference ('day' | 'week' | 'month')
+   * @returns SQL expression for date difference in periods
+   */
+  buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL
+
+  /**
    * Build time dimension expression with granularity truncation
    * @param granularity - Time granularity (day, month, year, etc.)
    * @param fieldExpr - The date/timestamp field expression
@@ -266,6 +276,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL
   abstract buildDateAddInterval(timestamp: SQL, duration: string): SQL
   abstract buildConditionalAggregation(aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum', expr: SQL | null, condition: SQL): SQL
+  abstract buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL
 
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL

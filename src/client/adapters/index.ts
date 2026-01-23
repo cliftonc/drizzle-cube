@@ -20,6 +20,9 @@ export type { FunnelSliceState } from './funnelModeAdapter'
 
 export { flowModeAdapter } from './flowModeAdapter'
 
+export { retentionModeAdapter } from './retentionModeAdapter'
+export type { RetentionSliceState } from '../types/retention'
+
 // ============================================================================
 // Adapter Registration (Optional - Built-in adapters auto-initialize on access)
 // ============================================================================
@@ -28,6 +31,7 @@ import { adapterRegistry } from './adapterRegistry'
 import { queryModeAdapter } from './queryModeAdapter'
 import { funnelModeAdapter } from './funnelModeAdapter'
 import { flowModeAdapter } from './flowModeAdapter'
+import { retentionModeAdapter } from './retentionModeAdapter'
 
 /**
  * Manually initialize and register all adapters.
@@ -48,6 +52,7 @@ export function initializeAdapters(): void {
   adapterRegistry.register(queryModeAdapter)
   adapterRegistry.register(funnelModeAdapter)
   adapterRegistry.register(flowModeAdapter)
+  adapterRegistry.register(retentionModeAdapter)
 }
 
 // Note: Auto-registration removed to avoid tree-shaking issues.
