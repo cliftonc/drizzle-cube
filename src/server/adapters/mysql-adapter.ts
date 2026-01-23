@@ -106,6 +106,21 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build MySQL period series using recursive CTE
+   * MySQL 8.0+ supports recursive CTEs for generating sequences
+   */
+  buildPeriodSeriesSubquery(maxPeriod: number): SQL {
+    return sql`(
+      WITH RECURSIVE periods(period_number) AS (
+        SELECT 0
+        UNION ALL
+        SELECT period_number + 1 FROM periods WHERE period_number < ${maxPeriod}
+      )
+      SELECT period_number FROM periods
+    ) p`
+  }
+
+  /**
    * Build MySQL time dimension using DATE_FORMAT function
    * MySQL equivalent to PostgreSQL's DATE_TRUNC
    */

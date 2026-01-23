@@ -97,6 +97,14 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build PostgreSQL period series using generate_series
+   * PostgreSQL's generate_series returns a set directly usable as a table
+   */
+  buildPeriodSeriesSubquery(maxPeriod: number): SQL {
+    return sql`(SELECT generate_series(0, ${maxPeriod}) as period_number) p`
+  }
+
+  /**
    * Build PostgreSQL time dimension using DATE_TRUNC function
    * Extracted from executor.ts:649-670 and multi-cube-builder.ts:306-320
    */

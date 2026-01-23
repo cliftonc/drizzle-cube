@@ -130,6 +130,14 @@ export interface DatabaseAdapter {
   buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL
 
   /**
+   * Build a subquery that generates a series of period numbers (0 to maxPeriod)
+   * Used for retention analysis to cross-join with user data
+   * @param maxPeriod - Maximum period number to generate
+   * @returns SQL expression for period series subquery with alias 'p' containing 'period_number' column
+   */
+  buildPeriodSeriesSubquery(maxPeriod: number): SQL
+
+  /**
    * Build time dimension expression with granularity truncation
    * @param granularity - Time granularity (day, month, year, etc.)
    * @param fieldExpr - The date/timestamp field expression
@@ -277,6 +285,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract buildDateAddInterval(timestamp: SQL, duration: string): SQL
   abstract buildConditionalAggregation(aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum', expr: SQL | null, condition: SQL): SQL
   abstract buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL
+  abstract buildPeriodSeriesSubquery(maxPeriod: number): SQL
 
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
   abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL

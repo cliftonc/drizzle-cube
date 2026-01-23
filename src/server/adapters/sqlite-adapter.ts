@@ -94,6 +94,21 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build SQLite period series using recursive CTE
+   * SQLite 3.8.3+ supports recursive CTEs for generating sequences
+   */
+  buildPeriodSeriesSubquery(maxPeriod: number): SQL {
+    return sql`(
+      WITH RECURSIVE periods(period_number) AS (
+        SELECT 0
+        UNION ALL
+        SELECT period_number + 1 FROM periods WHERE period_number < ${maxPeriod}
+      )
+      SELECT period_number FROM periods
+    ) p`
+  }
+
+  /**
    * Build SQLite time dimension using date/datetime functions with modifiers
    * For integer timestamp columns (milliseconds), first convert to datetime
    * SQLite doesn't have DATE_TRUNC like PostgreSQL, so we use strftime and date modifiers

@@ -753,9 +753,8 @@ export class RetentionQueryBuilder {
       GROUP BY binding_key${sql.raw(breakdownGroupBy)}
     )`
 
-    // Generate period numbers (0 to config.periods)
-    // For PostgreSQL/DuckDB, use generate_series
-    const periodSeries = sql`generate_series(0, ${config.periods}) as period_number`
+    // Generate period numbers (0 to config.periods) using database-specific method
+    const periodSeriesSubquery = this.databaseAdapter.buildPeriodSeriesSubquery(config.periods)
 
     // Build SELECT fields
     const selectFields: Record<string, any> = {
@@ -773,7 +772,7 @@ export class RetentionQueryBuilder {
     return context.db
       .select(selectFields)
       .from(sql`${userMaxPeriods} ump`)
-      .crossJoin(sql`(SELECT ${periodSeries}) p`)
+      .crossJoin(periodSeriesSubquery)
       .groupBy(...groupByFields)
   }
 

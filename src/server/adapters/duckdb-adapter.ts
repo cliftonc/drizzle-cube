@@ -89,6 +89,14 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
+   * Build DuckDB period series using UNNEST(generate_series(...))
+   * DuckDB's generate_series returns an array, so we need to UNNEST it to get a table
+   */
+  buildPeriodSeriesSubquery(maxPeriod: number): SQL {
+    return sql`(SELECT UNNEST(generate_series(0, ${maxPeriod})) as period_number) p`
+  }
+
+  /**
    * Build DuckDB time dimension using DATE_TRUNC function
    * DuckDB uses DATE_TRUNC like PostgreSQL
    */
