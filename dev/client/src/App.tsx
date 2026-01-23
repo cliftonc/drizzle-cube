@@ -21,7 +21,8 @@ const features = {
   editToolbar: 'both' as const,  // 'floating' | 'top' | 'both'
   floatingToolbarPosition: 'right' as const,
   // Manual refresh mode - shows "needs refresh" banner when query config changes
-  manualRefresh: true,
+  // Disabled for dev site to allow auto-refresh on filter changes
+  manualRefresh: false,
   // Dashboard thumbnail capture on save (requires modern-screenshot)
   thumbnail: {
     enabled: true,
