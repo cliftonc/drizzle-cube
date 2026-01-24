@@ -255,7 +255,8 @@ export async function dispatchMcpMethod(
         sessionId: primeEventId(),
         serverInfo: {
           name: 'drizzle-cube',
-          version: process.env.npm_package_version || 'dev'
+          // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
+          version: typeof process !== 'undefined' ? process.env?.npm_package_version || 'dev' : 'worker'
         }
       }
     }
