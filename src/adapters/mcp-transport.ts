@@ -2,12 +2,10 @@ import type { SemanticLayerCompiler, SecurityContext } from '../server'
 import { getDefaultMCPPrompts, type MCPPrompt } from '../server/ai/mcp-prompts'
 import {
   handleDiscover,
-  handleSuggest,
   handleValidate,
   handleLoad,
   generateRequestId,
   type DiscoverRequest,
-  type SuggestRequest,
   type ValidateRequest,
   type LoadRequest
 } from './utils'
@@ -318,13 +316,6 @@ export async function dispatchMcpMethod(
 
     case 'discover':
       return handleDiscover(semanticLayer, (params || {}) as DiscoverRequest)
-    case 'suggest': {
-      const p = (params || {}) as SuggestRequest
-      if (!p.naturalLanguage) {
-        throw jsonRpcError(-32602, 'naturalLanguage is required')
-      }
-      return handleSuggest(semanticLayer, p)
-    }
     case 'validate': {
       const p = (params || {}) as ValidateRequest
       if (!p.query) {
@@ -377,11 +368,14 @@ function buildToolList() {
       description: `Find relevant cubes based on topic or intent. Call this FIRST to understand available data.
 
 Returns cubes with:
-- Relevance scores and suggested measures/dimensions
-- Relationship information (joins) for cross-cube queries
+- All measures and dimensions with their types
+- Relationship information (joins) showing how cubes connect
 - Metadata hints (eventStream for funnels, etc.)
 
-Use the 'joins' in results to understand how cubes relate for cross-cube queries.`,
+IMPORTANT: The 'joins' property shows relationships between cubes. You can include dimensions from ANY related cube in your query - the system auto-joins them.
+
+Example: If Productivity has a join to Employees, you can query:
+{ "measures": ["Productivity.totalPullRequests"], "dimensions": ["Employees.name"] }`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -393,27 +387,13 @@ Use the 'joins' in results to understand how cubes relate for cross-cube queries
       }
     },
     {
-      name: 'suggest',
-      description: `Generate a semantic query from natural language description.
-
-Returns a draft CubeQuery object. Always validate the result before executing.`,
-      inputSchema: {
-        type: 'object',
-        required: ['naturalLanguage'],
-        properties: {
-          naturalLanguage: { type: 'string', description: 'Plain English query (e.g., "top 5 employees by pull requests last 3 months")' },
-          cube: { type: 'string', description: 'Optional: constrain to specific cube' }
-        }
-      }
-    },
-    {
       name: 'validate',
       description: `Validate a query and get auto-corrections for issues.
 
 Checks:
 - Field existence (measures, dimensions exist in schema)
 - Filter syntax and operators
-- Time dimension configuration
+- Cross-cube join validity
 
 Returns corrected query if issues found.`,
       inputSchema: {
@@ -431,11 +411,19 @@ Returns corrected query if issues found.`,
       name: 'load',
       description: `Execute a semantic query and return aggregated results.
 
-CRITICAL QUERY CONSTRUCTION RULES:
+QUERY CONSTRUCTION RULES:
 
-1. DATE FILTERING vs TIME GROUPING (most common mistake!)
+1. CROSS-CUBE JOINS (use dimensions from related cubes!)
+   Check 'joins' in discover results. Include dimensions from ANY related cube.
+   Example - get employee names with their productivity:
+   {
+     "measures": ["Productivity.totalPullRequests"],
+     "dimensions": ["Employees.name"],
+     "filters": [{ "member": "Productivity.date", "operator": "inDateRange", "values": ["last 3 months"] }]
+   }
 
-   For AGGREGATED TOTALS over a date range, use 'filters' with 'inDateRange':
+2. DATE FILTERING vs TIME GROUPING
+   For AGGREGATED TOTALS: use 'filters' with 'inDateRange' (NOT timeDimensions)
    {
      "measures": ["Productivity.totalPullRequests"],
      "dimensions": ["Employees.name"],
@@ -444,22 +432,15 @@ CRITICAL QUERY CONSTRUCTION RULES:
      "limit": 5
    }
 
-   For TIME SERIES grouped by period, use 'timeDimensions' WITH granularity:
+   For TIME SERIES: use 'timeDimensions' WITH 'granularity'
    {
      "measures": ["Productivity.totalPullRequests"],
      "timeDimensions": [{ "dimension": "Productivity.date", "dateRange": "last 3 months", "granularity": "month" }]
    }
 
-   WARNING: Using timeDimensions WITHOUT granularity still groups by day, returning many rows instead of aggregates!
+   WARNING: timeDimensions WITHOUT granularity groups by day, returning many rows!
 
-2. CROSS-CUBE JOINS
-   Include dimensions from RELATED cubes (check 'joins' in discover results).
-   Example: measures from Productivity + dimensions from Employees:
-   { "measures": ["Productivity.totalPullRequests"], "dimensions": ["Employees.name"] }
-
-3. TOP N PATTERN
-   Use filters (not timeDimensions) + order + limit:
-   { "filters": [{ "member": "X.date", "operator": "inDateRange", "values": ["last 3 months"] }], "order": { "X.total": "desc" }, "limit": 5 }`,
+3. TOP N PATTERN: filters + order + limit`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -467,10 +448,10 @@ CRITICAL QUERY CONSTRUCTION RULES:
           query: {
             type: 'object',
             description: `CubeQuery object with:
-- measures: string[] - Aggregations to calculate
-- dimensions: string[] - Grouping fields (can include related cubes)
+- measures: string[] - Aggregations (from any cube)
+- dimensions: string[] - Grouping fields (can be from RELATED cubes via joins)
 - filters: [{ member, operator, values }] - Use 'inDateRange' for date filtering
-- timeDimensions: [{ dimension, granularity, dateRange }] - ONLY for time series with grouping
+- timeDimensions: [{ dimension, granularity, dateRange }] - ONLY for time series
 - order: { "Cube.field": "asc"|"desc" }
 - limit: number`
           }
@@ -490,11 +471,6 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
   switch (p.name) {
     case 'discover':
       return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
-    case 'suggest': {
-      const body = (args || {}) as SuggestRequest
-      if (!body.naturalLanguage) throw jsonRpcError(-32602, 'naturalLanguage is required')
-      return wrapContent(await handleSuggest(semanticLayer, body))
-    }
     case 'validate': {
       const body = (args || {}) as ValidateRequest
       if (!body.query) throw jsonRpcError(-32602, 'query is required')
