@@ -77,8 +77,15 @@ export interface Cube {
   name: string
   title?: string
   description?: string
-  
-  /** 
+
+  /**
+   * Example questions that can be answered using this cube
+   * Used by AI agents to understand cube capabilities
+   * @example ['What was total revenue last month?', 'Show me sales by category']
+   */
+  exampleQuestions?: string[]
+
+  /**
    * Base query setup - returns the foundation that can be extended
    * Should return FROM/JOIN/WHERE setup, NOT a complete SELECT
    */
@@ -113,8 +120,16 @@ export interface Dimension {
   name: string
   title?: string
   description?: string
+
+  /**
+   * Alternative names for this dimension
+   * Used by AI agents for natural language matching
+   * @example ['date', 'day', 'timestamp'] for a createdAt dimension
+   */
+  synonyms?: string[]
+
   type: DimensionType
-  
+
   /** Direct column reference or SQL expression */
   sql: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL)
   
@@ -138,6 +153,14 @@ export interface Measure {
   name: string
   title?: string
   description?: string
+
+  /**
+   * Alternative names for this measure
+   * Used by AI agents for natural language matching
+   * @example ['revenue', 'sales', 'income'] for a totalRevenue measure
+   */
+  synonyms?: string[]
+
   type: MeasureType
 
   /**

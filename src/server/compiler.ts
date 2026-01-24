@@ -307,11 +307,12 @@ export class SemanticLayerCompiler {
         shortTitle: measure.title || key,
         type: measure.type,
         format: undefined, // Measure doesn't have format field
-        description: measure.description
+        description: measure.description,
+        synonyms: measure.synonyms
       }
     }
 
-    // Process dimensions efficiently  
+    // Process dimensions efficiently
     for (let i = 0; i < dimensionKeys.length; i++) {
       const key = dimensionKeys[i]
       const dimension = cube.dimensions[key]
@@ -321,7 +322,8 @@ export class SemanticLayerCompiler {
         shortTitle: dimension.title || key,
         type: dimension.type,
         format: undefined, // Dimension doesn't have format field
-        description: dimension.description
+        description: dimension.description,
+        synonyms: dimension.synonyms
       }
     }
 
@@ -346,6 +348,7 @@ export class SemanticLayerCompiler {
       name: cube.name,
       title: cube.title || cube.name,
       description: cube.description,
+      exampleQuestions: cube.exampleQuestions,
       measures,
       dimensions,
       segments: [], // Add segments support later if needed

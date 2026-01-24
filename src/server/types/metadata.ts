@@ -24,6 +24,11 @@ export interface CubeMetadata {
   name: string
   title: string
   description?: string
+  /**
+   * Example questions that can be answered using this cube
+   * Used by AI agents to understand cube capabilities
+   */
+  exampleQuestions?: string[]
   measures: MeasureMetadata[]
   dimensions: DimensionMetadata[]
   segments: any[]
@@ -42,6 +47,11 @@ export interface MeasureMetadata {
   type: MeasureType
   format?: MeasureFormat
   description?: string
+  /**
+   * Alternative names for this measure
+   * Used by AI agents for natural language matching
+   */
+  synonyms?: string[]
 }
 
 /**
@@ -54,6 +64,11 @@ export interface DimensionMetadata {
   type: string
   format?: DimensionFormat
   description?: string
+  /**
+   * Alternative names for this dimension
+   * Used by AI agents for natural language matching
+   */
+  synonyms?: string[]
 }
 
 /**

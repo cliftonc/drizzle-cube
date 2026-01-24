@@ -23,7 +23,16 @@ import {
   formatSqlResponse,
   formatMetaResponse,
   formatErrorResponse,
-  handleBatchRequest
+  handleBatchRequest,
+  handleDiscover,
+  handleSuggest,
+  handleValidate,
+  handleLoad,
+  type MCPOptions,
+  type DiscoverRequest,
+  type SuggestRequest,
+  type ValidateRequest,
+  type LoadRequest
 } from '../utils'
 
 export interface NextCorsOptions {
@@ -114,6 +123,13 @@ export interface NextAdapterOptions {
    * When provided, query results will be cached using the specified provider
    */
   cache?: CacheConfig
+
+  /**
+   * MCP (AI-Ready) endpoint configuration
+   * Enables AI agents to discover and query your data
+   * @default { enabled: true }
+   */
+  mcp?: MCPOptions
 }
 
 export interface RouteContext {
@@ -132,6 +148,11 @@ export interface CubeHandlers {
   dryRun: RouteHandler
   batch: RouteHandler
   explain: RouteHandler
+  // MCP (AI-Ready) handlers
+  discover?: RouteHandler
+  suggest?: RouteHandler
+  validate?: RouteHandler
+  mcpLoad?: RouteHandler
 }
 
 /**
@@ -609,6 +630,201 @@ export function createExplainHandler(
   }
 }
 
+// ============================================
+// MCP (AI-Ready) Handlers
+// ============================================
+
+/**
+ * Create discover handler - Find relevant cubes based on topic/intent
+ */
+export function createDiscoverHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function discoverHandler(request: NextRequest, _context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          formatErrorResponse('Method not allowed - use POST', 405),
+          { status: 405 }
+        )
+      }
+
+      const body: DiscoverRequest = await request.json()
+      const result = await handleDiscover(semanticLayer, body)
+
+      return NextResponse.json(result, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js discover handler error:', error)
+      }
+      return NextResponse.json(
+        formatErrorResponse(
+          error instanceof Error ? error.message : 'Discovery failed',
+          500
+        ),
+        { status: 500 }
+      )
+    }
+  }
+}
+
+/**
+ * Create suggest handler - Generate query from natural language
+ */
+export function createSuggestHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function suggestHandler(request: NextRequest, _context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          formatErrorResponse('Method not allowed - use POST', 405),
+          { status: 405 }
+        )
+      }
+
+      const body: SuggestRequest = await request.json()
+      if (!body.naturalLanguage) {
+        return NextResponse.json(
+          formatErrorResponse('naturalLanguage field is required', 400),
+          { status: 400 }
+        )
+      }
+
+      const result = await handleSuggest(semanticLayer, body)
+
+      return NextResponse.json(result, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js suggest handler error:', error)
+      }
+      return NextResponse.json(
+        formatErrorResponse(
+          error instanceof Error ? error.message : 'Query suggestion failed',
+          500
+        ),
+        { status: 500 }
+      )
+    }
+  }
+}
+
+/**
+ * Create validate handler - Validate query with helpful corrections
+ */
+export function createValidateHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function validateHandler(request: NextRequest, _context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          formatErrorResponse('Method not allowed - use POST', 405),
+          { status: 405 }
+        )
+      }
+
+      const body: ValidateRequest = await request.json()
+      if (!body.query) {
+        return NextResponse.json(
+          formatErrorResponse('query field is required', 400),
+          { status: 400 }
+        )
+      }
+
+      const result = await handleValidate(semanticLayer, body)
+
+      return NextResponse.json(result, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js validate handler error:', error)
+      }
+      return NextResponse.json(
+        formatErrorResponse(
+          error instanceof Error ? error.message : 'Query validation failed',
+          500
+        ),
+        { status: 500 }
+      )
+    }
+  }
+}
+
+/**
+ * Create MCP load handler - Execute a query and return results
+ * Completes the AI workflow: discover → suggest → validate → load
+ */
+export function createMcpLoadHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { extractSecurityContext, cors } = options
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function mcpLoadHandler(request: NextRequest, context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          formatErrorResponse('Method not allowed - use POST', 405),
+          { status: 405 }
+        )
+      }
+
+      const body: LoadRequest = await request.json()
+      if (!body.query) {
+        return NextResponse.json(
+          formatErrorResponse('query field is required', 400),
+          { status: 400 }
+        )
+      }
+
+      const securityContext = await extractSecurityContext(request, context)
+      const result = await handleLoad(semanticLayer, securityContext, body)
+
+      return NextResponse.json(result, {
+        headers: cors ? getCorsHeaders(request, cors) : {}
+      })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js MCP load handler error:', error)
+      }
+      return NextResponse.json(
+        formatErrorResponse(
+          error instanceof Error ? error.message : 'Query execution failed',
+          500
+        ),
+        { status: 500 }
+      )
+    }
+  }
+}
+
 /**
  * Convenience function to create all route handlers
  *
@@ -631,7 +847,10 @@ export function createExplainHandler(
 export function createCubeHandlers(
   options: NextAdapterOptions
 ): CubeHandlers {
-  return {
+  const { mcp = { enabled: true } } = options
+  const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
+
+  const handlers: CubeHandlers = {
     load: createLoadHandler(options),
     meta: createMetaHandler(options),
     sql: createSqlHandler(options),
@@ -639,6 +858,24 @@ export function createCubeHandlers(
     batch: createBatchHandler(options),
     explain: createExplainHandler(options)
   }
+
+  // Add MCP handlers if enabled
+  if (mcp.enabled !== false) {
+    if (mcpTools.includes('discover')) {
+      handlers.discover = createDiscoverHandler(options)
+    }
+    if (mcpTools.includes('suggest')) {
+      handlers.suggest = createSuggestHandler(options)
+    }
+    if (mcpTools.includes('validate')) {
+      handlers.validate = createValidateHandler(options)
+    }
+    if (mcpTools.includes('load')) {
+      handlers.mcpLoad = createMcpLoadHandler(options)
+    }
+  }
+
+  return handlers
 }
 
 // Re-export types for convenience

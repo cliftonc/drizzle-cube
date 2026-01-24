@@ -22,8 +22,15 @@ let employeeTeamsCube: Cube<Schema>
  */
 employeesCube = defineCube('Employees', {
   title: 'Employee Analytics',
-  description: 'Employee data and metrics',
-  
+  description: 'Employee data and metrics including headcount, salaries, and location information',
+  exampleQuestions: [
+    'How many employees do we have?',
+    'What is the average salary?',
+    'Show me employee count by department',
+    'Who are the active employees?',
+    'What is the salary distribution?'
+  ],
+
   sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
     from: employees,
     where: eq(employees.organisationId, ctx.securityContext.organisationId)
@@ -139,7 +146,9 @@ employeesCube = defineCube('Employees', {
       name: 'count',
       title: 'Total Employees',
       type: 'countDistinct',
-      sql: employees.id
+      sql: employees.id,
+      description: 'Total number of unique employees',
+      synonyms: ['headcount', 'employee count', 'staff count', 'team size']
     },
     activeCount: {
       name: 'activeCount',
@@ -161,7 +170,9 @@ employeesCube = defineCube('Employees', {
       title: 'Average Salary',
       type: 'avg',
       sql: employees.salary,
-      format: 'currency'
+      format: 'currency',
+      description: 'Average salary across all employees',
+      synonyms: ['mean salary', 'average pay', 'avg compensation']
     },
     // Statistical measures - Salary Distribution
     stddevSalary: {
@@ -212,8 +223,14 @@ employeesCube = defineCube('Employees', {
  */
 departmentsCube = defineCube('Departments', {
   title: 'Department Analytics',
-  description: 'Department-level metrics and budget analysis',
-  
+  description: 'Department-level metrics including budget allocation and team structure',
+  exampleQuestions: [
+    'How many departments are there?',
+    'What is the total budget?',
+    'Show budget by department',
+    'Which department has the highest budget?'
+  ],
+
   sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
     from: departments,
     where: eq(departments.organisationId, ctx.securityContext.organisationId)
@@ -311,8 +328,15 @@ departmentsCube = defineCube('Departments', {
  */
 productivityCube = defineCube('Productivity', {
   title: 'Productivity Analytics',
-  description: 'Daily productivity metrics including code output and deployments',
-  
+  description: 'Daily productivity metrics including lines of code, pull requests, deployments, and happiness scores',
+  exampleQuestions: [
+    'What are the total lines of code this month?',
+    'Show productivity trends over time',
+    'How many pull requests were submitted?',
+    'What is the average happiness index?',
+    'Show deployments by week'
+  ],
+
   sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
     from: productivity,  
     where: eq(productivity.organisationId, ctx.securityContext.organisationId)
@@ -443,13 +467,17 @@ productivityCube = defineCube('Productivity', {
       name: 'totalLinesOfCode',
       title: 'Total Lines of Code',
       type: 'sum',
-      sql: productivity.linesOfCode
+      sql: productivity.linesOfCode,
+      description: 'Sum of all lines of code written',
+      synonyms: ['LOC', 'code output', 'lines written', 'code volume']
     },
     totalPullRequests: {
       name: 'totalPullRequests',
       title: 'Total Pull Requests',
       type: 'sum',
-      sql: productivity.pullRequests
+      sql: productivity.pullRequests,
+      description: 'Total number of pull requests submitted',
+      synonyms: ['PRs', 'merge requests', 'code reviews']
     },
     avgPullRequests: {
       name: 'avgPullRequests',
@@ -674,7 +702,13 @@ productivityCube = defineCube('Productivity', {
  */
 prEventsCube = defineCube('PREvents', {
   title: 'PR Events',
-  description: 'Pull request lifecycle events for funnel analysis',
+  description: 'Pull request lifecycle events including creation, review, approval, and merge for funnel and flow analysis',
+  exampleQuestions: [
+    'How many PR events occurred?',
+    'Show the PR funnel from creation to merge',
+    'What is the PR approval rate?',
+    'How many unique PRs were created?'
+  ],
 
   sql: (ctx: QueryContext<Schema>): BaseQueryDefinition => ({
     from: prEvents,

@@ -140,6 +140,14 @@ app.get('/', (c) => {
       'POST /api/ai/generate': 'Generate query with AI',
       'GET /api/ai/health': 'AI health check'
     },
+    mcp: {
+      description: 'AI-Ready endpoints for semantic data discovery',
+      endpoints: {
+        'POST /mcp/discover': 'Find relevant cubes based on topic/intent',
+        'POST /mcp/suggest': 'Generate query from natural language',
+        'POST /mcp/validate': 'Validate query with helpful corrections'
+      }
+    },
     frontend: {
       'React Dashboard': 'http://localhost:3000'
     },

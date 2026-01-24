@@ -65,6 +65,22 @@ export {
 } from './prompts'
 export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts'
 
+// Export AI-ready data layer utilities
+export {
+  discoverCubes,
+  findBestFieldMatch,
+  suggestQuery,
+  validateQuery as aiValidateQuery
+} from './ai'
+export type {
+  CubeDiscoveryResult,
+  DiscoveryOptions,
+  QuerySuggestion,
+  ValidationResult as AIValidationResult,
+  ValidationError as AIValidationError,
+  ValidationWarning as AIValidationWarning
+} from './ai'
+
 // Import types for use in utility functions
 import type { DrizzleDatabase } from './types'
 import { SemanticLayerCompiler } from './compiler'

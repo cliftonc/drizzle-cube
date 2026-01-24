@@ -25,7 +25,16 @@ import {
   formatSqlResponse,
   formatMetaResponse,
   formatErrorResponse,
-  handleBatchRequest
+  handleBatchRequest,
+  handleDiscover,
+  handleSuggest,
+  handleValidate,
+  handleLoad,
+  type MCPOptions,
+  type DiscoverRequest,
+  type SuggestRequest,
+  type ValidateRequest,
+  type LoadRequest
 } from '../utils'
 
 export interface ExpressAdapterOptions {
@@ -98,6 +107,13 @@ export interface ExpressAdapterOptions {
    * When provided, query results will be cached using the specified provider
    */
   cache?: CacheConfig
+
+  /**
+   * MCP (AI-Ready) endpoint configuration
+   * Enables AI agents to discover and query your data
+   * @default { enabled: true }
+   */
+  mcp?: MCPOptions
 }
 
 /**
@@ -115,7 +131,8 @@ export function createCubeRouter(
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
     jsonLimit = '10mb',
-    cache
+    cache,
+    mcp = { enabled: true }
   } = options
 
   // Validate required options
@@ -488,6 +505,114 @@ export function createCubeRouter(
       })
     }
   })
+
+  // ============================================
+  // MCP (AI-Ready) Endpoints
+  // ============================================
+
+  if (mcp.enabled !== false) {
+    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
+    const mcpBasePath = mcp.basePath ?? '/mcp'
+
+    /**
+     * POST /mcp/discover - Find relevant cubes based on topic/intent
+     * Used by AI agents to understand what data is available
+     */
+    if (mcpTools.includes('discover')) {
+      router.post(`${mcpBasePath}/discover`, async (req: Request, res: Response) => {
+        try {
+          const body: DiscoverRequest = req.body
+          const result = await handleDiscover(semanticLayer, body)
+          res.json(result)
+        } catch (error) {
+          console.error('Discover error:', error)
+          res.status(500).json(formatErrorResponse(
+            error instanceof Error ? error.message : 'Discovery failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/suggest - Generate query from natural language
+     * Used by AI agents to translate user intent into queries
+     */
+    if (mcpTools.includes('suggest')) {
+      router.post(`${mcpBasePath}/suggest`, async (req: Request, res: Response) => {
+        try {
+          const body: SuggestRequest = req.body
+          if (!body.naturalLanguage) {
+            return res.status(400).json(formatErrorResponse(
+              'naturalLanguage field is required',
+              400
+            ))
+          }
+          const result = await handleSuggest(semanticLayer, body)
+          res.json(result)
+        } catch (error) {
+          console.error('Suggest error:', error)
+          res.status(500).json(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query suggestion failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/validate - Validate query with helpful corrections
+     * Used by AI agents to check and fix queries before execution
+     */
+    if (mcpTools.includes('validate')) {
+      router.post(`${mcpBasePath}/validate`, async (req: Request, res: Response) => {
+        try {
+          const body: ValidateRequest = req.body
+          if (!body.query) {
+            return res.status(400).json(formatErrorResponse(
+              'query field is required',
+              400
+            ))
+          }
+          const result = await handleValidate(semanticLayer, body)
+          res.json(result)
+        } catch (error) {
+          console.error('Validate error:', error)
+          res.status(500).json(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query validation failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/load - Execute a query and return results
+     * Completes the AI workflow: discover → suggest → validate → load
+     */
+    if (mcpTools.includes('load')) {
+      router.post(`${mcpBasePath}/load`, async (req: Request, res: Response) => {
+        try {
+          const body: LoadRequest = req.body
+          if (!body.query) {
+            return res.status(400).json(formatErrorResponse(
+              'query field is required',
+              400
+            ))
+          }
+          const securityContext = await extractSecurityContext(req, res)
+          const result = await handleLoad(semanticLayer, securityContext, body)
+          res.json(result)
+        } catch (error) {
+          console.error('Load error:', error)
+          res.status(500).json(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query execution failed',
+            500
+          ))
+        }
+      })
+    }
+  }
 
   // Error handling middleware for the router
   router.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {

@@ -8,7 +8,15 @@ import type {
   SemanticLayerCompiler,
   SemanticQuery,
   SecurityContext,
-  QueryAnalysis
+  QueryAnalysis,
+  CubeDiscoveryResult,
+  QuerySuggestion,
+  AIValidationResult
+} from '../server'
+import {
+  discoverCubes,
+  suggestQuery,
+  aiValidateQuery
 } from '../server'
 
 /**
@@ -622,5 +630,132 @@ async function handleRetentionDryRun(
       sql: sqlResult.sql,
       params: sqlResult.params || []
     }
+  }
+}
+
+// ============================================
+// MCP (AI-Ready) Endpoint Handlers
+// ============================================
+
+/**
+ * MCP Endpoint Options
+ */
+export interface MCPOptions {
+  /** Enable MCP endpoints (default: true) */
+  enabled?: boolean
+  /** Which MCP tools to expose (default: all) */
+  tools?: ('discover' | 'suggest' | 'validate' | 'load')[]
+  /** Base path for MCP endpoints (default: '/mcp') */
+  basePath?: string
+}
+
+/**
+ * Discovery request body
+ */
+export interface DiscoverRequest {
+  /** Topic or keyword to search for */
+  topic?: string
+  /** Natural language intent */
+  intent?: string
+  /** Maximum results to return */
+  limit?: number
+  /** Minimum relevance score (0-1) */
+  minScore?: number
+}
+
+/**
+ * Suggest request body
+ */
+export interface SuggestRequest {
+  /** Natural language query */
+  naturalLanguage: string
+  /** Optional target cube name */
+  cube?: string
+}
+
+/**
+ * Validate request body
+ */
+export interface ValidateRequest {
+  /** Query to validate */
+  query: SemanticQuery
+}
+
+/**
+ * Load request body - execute a query
+ */
+export interface LoadRequest {
+  /** Query to execute */
+  query: SemanticQuery
+}
+
+/**
+ * Handle /discover endpoint - find relevant cubes based on topic/intent
+ */
+export async function handleDiscover(
+  semanticLayer: SemanticLayerCompiler,
+  body: DiscoverRequest
+): Promise<{ cubes: CubeDiscoveryResult[] }> {
+  const metadata = semanticLayer.getMetadata()
+  const results = discoverCubes(metadata, {
+    topic: body.topic,
+    intent: body.intent,
+    limit: body.limit,
+    minScore: body.minScore
+  })
+
+  return { cubes: results }
+}
+
+/**
+ * Handle /suggest endpoint - generate query from natural language
+ */
+export async function handleSuggest(
+  semanticLayer: SemanticLayerCompiler,
+  body: SuggestRequest
+): Promise<QuerySuggestion> {
+  const metadata = semanticLayer.getMetadata()
+  return suggestQuery(metadata, body.naturalLanguage, body.cube)
+}
+
+/**
+ * Handle /validate endpoint - validate query with corrections
+ */
+export async function handleValidate(
+  semanticLayer: SemanticLayerCompiler,
+  body: ValidateRequest
+): Promise<AIValidationResult> {
+  const metadata = semanticLayer.getMetadata()
+  return aiValidateQuery(body.query, metadata)
+}
+
+/**
+ * Handle /load endpoint - execute a query and return results
+ * This completes the AI workflow: discover → suggest → validate → load
+ */
+export async function handleLoad(
+  semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
+  body: LoadRequest
+): Promise<{
+  data: Record<string, unknown>[]
+  annotation: any
+  query: SemanticQuery
+}> {
+  const query = body.query
+
+  // Validate query structure and field existence
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+  }
+
+  // Execute the query
+  const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
+
+  return {
+    data: result.data,
+    annotation: result.annotation,
+    query
   }
 }

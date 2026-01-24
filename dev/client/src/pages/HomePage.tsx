@@ -7,7 +7,6 @@ const MagnifyingGlassIcon = getIcon('search')
 const BookOpenIcon = getIcon('bookOpen')
 const CodeBracketIcon = getIcon('codeBracket')
 const SparklesIcon = getIcon('sparkles')
-const BeakerIcon = getIcon('beaker')
 
 export default function HomePage() {
   // Apply syntax highlighting after component mounts
@@ -29,7 +28,7 @@ export default function HomePage() {
           background: transparent !important;
         }
       `}</style>
-      
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-12 sm:mb-16">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-dc-text mb-4 sm:mb-6">
@@ -100,7 +99,7 @@ export default function HomePage() {
               <p className="text-sm text-dc-text-muted">View source code</p>
             </div>
           </a>
-        </div>        
+        </div>
       </div>
     </>
   )

@@ -24,7 +24,16 @@ import {
   formatSqlResponse,
   formatMetaResponse,
   formatErrorResponse,
-  handleBatchRequest
+  handleBatchRequest,
+  handleDiscover,
+  handleSuggest,
+  handleValidate,
+  handleLoad,
+  type MCPOptions,
+  type DiscoverRequest,
+  type SuggestRequest,
+  type ValidateRequest,
+  type LoadRequest
 } from '../utils'
 
 export interface FastifyAdapterOptions {
@@ -96,6 +105,13 @@ export interface FastifyAdapterOptions {
    * When provided, query results will be cached using the specified provider
    */
   cache?: CacheConfig
+
+  /**
+   * MCP (AI-Ready) endpoint configuration
+   * Enables AI agents to discover and query your data
+   * @default { enabled: true }
+   */
+  mcp?: MCPOptions
 }
 
 /**
@@ -115,7 +131,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
     bodyLimit = 10485760, // 10MB
-    cache
+    cache,
+    mcp = { enabled: true }
   } = options
 
   // Validate required options
@@ -548,6 +565,135 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       })
     }
   })
+
+  // ============================================
+  // MCP (AI-Ready) Endpoints
+  // ============================================
+
+  if (mcp.enabled !== false) {
+    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
+    const mcpBasePath = mcp.basePath ?? '/mcp'
+
+    /**
+     * POST /mcp/discover - Find relevant cubes based on topic/intent
+     */
+    if (mcpTools.includes('discover')) {
+      fastify.post(`${mcpBasePath}/discover`, {
+        bodyLimit,
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: true
+          }
+        }
+      }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const body = request.body as DiscoverRequest
+          const result = await handleDiscover(semanticLayer, body)
+          return result
+        } catch (error) {
+          request.log.error(error, 'Discover error')
+          return reply.status(500).send(formatErrorResponse(
+            error instanceof Error ? error.message : 'Discovery failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/suggest - Generate query from natural language
+     */
+    if (mcpTools.includes('suggest')) {
+      fastify.post(`${mcpBasePath}/suggest`, {
+        bodyLimit,
+        schema: {
+          body: {
+            type: 'object',
+            required: ['naturalLanguage'],
+            properties: {
+              naturalLanguage: { type: 'string' },
+              cube: { type: 'string' }
+            }
+          }
+        }
+      }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const body = request.body as SuggestRequest
+          const result = await handleSuggest(semanticLayer, body)
+          return result
+        } catch (error) {
+          request.log.error(error, 'Suggest error')
+          return reply.status(500).send(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query suggestion failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/validate - Validate query with helpful corrections
+     */
+    if (mcpTools.includes('validate')) {
+      fastify.post(`${mcpBasePath}/validate`, {
+        bodyLimit,
+        schema: {
+          body: {
+            type: 'object',
+            required: ['query'],
+            properties: {
+              query: { type: 'object' }
+            }
+          }
+        }
+      }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const body = request.body as ValidateRequest
+          const result = await handleValidate(semanticLayer, body)
+          return result
+        } catch (error) {
+          request.log.error(error, 'Validate error')
+          return reply.status(500).send(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query validation failed',
+            500
+          ))
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/load - Execute a query and return results
+     * Completes the AI workflow: discover → suggest → validate → load
+     */
+    if (mcpTools.includes('load')) {
+      fastify.post(`${mcpBasePath}/load`, {
+        bodyLimit,
+        schema: {
+          body: {
+            type: 'object',
+            required: ['query'],
+            properties: {
+              query: { type: 'object' }
+            }
+          }
+        }
+      }, async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          const body = request.body as LoadRequest
+          const securityContext = await extractSecurityContext(request)
+          const result = await handleLoad(semanticLayer, securityContext, body)
+          return result
+        } catch (error) {
+          request.log.error(error, 'Load error')
+          return reply.status(500).send(formatErrorResponse(
+            error instanceof Error ? error.message : 'Query execution failed',
+            500
+          ))
+        }
+      })
+    }
+  }
 
   // Global error handler
   fastify.setErrorHandler(async (error, request, reply) => {

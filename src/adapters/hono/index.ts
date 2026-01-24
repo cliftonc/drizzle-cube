@@ -23,7 +23,16 @@ import {
   formatCubeResponse,
   formatSqlResponse,
   formatMetaResponse,
-  handleBatchRequest
+  handleBatchRequest,
+  handleDiscover,
+  handleSuggest,
+  handleValidate,
+  handleLoad,
+  type MCPOptions,
+  type DiscoverRequest,
+  type SuggestRequest,
+  type ValidateRequest,
+  type LoadRequest
 } from '../utils'
 
 export interface HonoAdapterOptions {
@@ -95,6 +104,13 @@ export interface HonoAdapterOptions {
    * When provided, query results will be cached using the specified provider
    */
   cache?: CacheConfig
+
+  /**
+   * MCP (AI-Ready) endpoint configuration
+   * Enables AI agents to discover and query your data
+   * @default { enabled: true }
+   */
+  mcp?: MCPOptions
 }
 
 /**
@@ -111,7 +127,8 @@ export function createCubeRoutes(
     engineType,
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
-    cache
+    cache,
+    mcp = { enabled: true }
   } = options
 
   // Validate required options
@@ -469,6 +486,104 @@ export function createCubeRoutes(
       }, 500)
     }
   })
+
+  // ============================================
+  // MCP (AI-Ready) Endpoints
+  // ============================================
+
+  if (mcp.enabled !== false) {
+    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
+    const mcpBasePath = mcp.basePath ?? '/mcp'
+
+    /**
+     * POST /mcp/discover - Find relevant cubes based on topic/intent
+     */
+    if (mcpTools.includes('discover')) {
+      app.post(`${mcpBasePath}/discover`, async (c) => {
+        try {
+          const body: DiscoverRequest = await c.req.json()
+          const result = await handleDiscover(semanticLayer, body)
+          return c.json(result)
+        } catch (error) {
+          console.error('Discover error:', error)
+          return c.json({
+            error: error instanceof Error ? error.message : 'Discovery failed'
+          }, 500)
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/suggest - Generate query from natural language
+     */
+    if (mcpTools.includes('suggest')) {
+      app.post(`${mcpBasePath}/suggest`, async (c) => {
+        try {
+          const body: SuggestRequest = await c.req.json()
+          if (!body.naturalLanguage) {
+            return c.json({
+              error: 'naturalLanguage field is required'
+            }, 400)
+          }
+          const result = await handleSuggest(semanticLayer, body)
+          return c.json(result)
+        } catch (error) {
+          console.error('Suggest error:', error)
+          return c.json({
+            error: error instanceof Error ? error.message : 'Query suggestion failed'
+          }, 500)
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/validate - Validate query with helpful corrections
+     */
+    if (mcpTools.includes('validate')) {
+      app.post(`${mcpBasePath}/validate`, async (c) => {
+        try {
+          const body: ValidateRequest = await c.req.json()
+          if (!body.query) {
+            return c.json({
+              error: 'query field is required'
+            }, 400)
+          }
+          const result = await handleValidate(semanticLayer, body)
+          return c.json(result)
+        } catch (error) {
+          console.error('Validate error:', error)
+          return c.json({
+            error: error instanceof Error ? error.message : 'Query validation failed'
+          }, 500)
+        }
+      })
+    }
+
+    /**
+     * POST /mcp/load - Execute a query and return results
+     * Completes the AI workflow: discover → suggest → validate → load
+     */
+    if (mcpTools.includes('load')) {
+      app.post(`${mcpBasePath}/load`, async (c) => {
+        try {
+          const body: LoadRequest = await c.req.json()
+          if (!body.query) {
+            return c.json({
+              error: 'query field is required'
+            }, 400)
+          }
+          const securityContext = await extractSecurityContext(c)
+          const result = await handleLoad(semanticLayer, securityContext, body)
+          return c.json(result)
+        } catch (error) {
+          console.error('Load error:', error)
+          return c.json({
+            error: error instanceof Error ? error.message : 'Query execution failed'
+          }, 500)
+        }
+      })
+    }
+  }
 
   return app
 }
