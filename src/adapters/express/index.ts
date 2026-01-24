@@ -26,16 +26,22 @@ import {
   formatMetaResponse,
   formatErrorResponse,
   handleBatchRequest,
-  handleDiscover,
-  handleSuggest,
-  handleValidate,
-  handleLoad,
-  type MCPOptions,
-  type DiscoverRequest,
-  type SuggestRequest,
-  type ValidateRequest,
-  type LoadRequest
+  type MCPOptions
 } from '../utils'
+import {
+  buildJsonRpcError,
+  buildJsonRpcResult,
+  dispatchMcpMethod,
+  isNotification,
+  negotiateProtocol,
+  parseJsonRpc,
+  primeEventId,
+  serializeSseEvent,
+  wantsEventStream,
+  validateAcceptHeader,
+  validateOriginHeader,
+  MCP_SESSION_ID_HEADER
+} from '../mcp-transport'
 
 export interface ExpressAdapterOptions {
   /**
@@ -511,107 +517,143 @@ export function createCubeRouter(
   // ============================================
 
   if (mcp.enabled !== false) {
-    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
     const mcpBasePath = mcp.basePath ?? '/mcp'
-
     /**
-     * POST /mcp/discover - Find relevant cubes based on topic/intent
-     * Used by AI agents to understand what data is available
+     * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
+     * Implements MCP 2025-11-25 spec
+     * POST /mcp      - JSON-RPC request/notification
+     * GET  /mcp      - Optional receive-only SSE channel (heartbeat only for now)
+     * DELETE /mcp    - Session termination
      */
-    if (mcpTools.includes('discover')) {
-      router.post(`${mcpBasePath}/discover`, async (req: Request, res: Response) => {
-        try {
-          const body: DiscoverRequest = req.body
-          const result = await handleDiscover(semanticLayer, body)
-          res.json(result)
-        } catch (error) {
-          console.error('Discover error:', error)
-          res.status(500).json(formatErrorResponse(
-            error instanceof Error ? error.message : 'Discovery failed',
-            500
-          ))
-        }
-      })
-    }
+    router.post(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
+      const originValidation = validateOriginHeader(
+        req.headers.origin as string | undefined,
+        mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
+      )
+      if (!originValidation.valid) {
+        return res.status(403).json(buildJsonRpcError(null, -32600, originValidation.reason))
+      }
 
-    /**
-     * POST /mcp/suggest - Generate query from natural language
-     * Used by AI agents to translate user intent into queries
-     */
-    if (mcpTools.includes('suggest')) {
-      router.post(`${mcpBasePath}/suggest`, async (req: Request, res: Response) => {
-        try {
-          const body: SuggestRequest = req.body
-          if (!body.naturalLanguage) {
-            return res.status(400).json(formatErrorResponse(
-              'naturalLanguage field is required',
-              400
-            ))
+      // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
+      const acceptHeader = req.headers.accept
+      if (!validateAcceptHeader(acceptHeader)) {
+        return res.status(400).json(buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'))
+      }
+
+      const protocol = negotiateProtocol(req.headers as Record<string, string>)
+      if (!protocol.ok) {
+        return res.status(426).json({
+          error: 'Unsupported MCP protocol version',
+          supported: protocol.supported
+        })
+      }
+
+      const rpcRequest = parseJsonRpc(req.body)
+      if (!rpcRequest) {
+        return res.status(400).json(buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'))
+      }
+
+      const wantsStream = wantsEventStream(acceptHeader)
+      const isInitialize = rpcRequest.method === 'initialize'
+
+      try {
+        const result = await dispatchMcpMethod(
+          rpcRequest.method,
+          rpcRequest.params,
+          {
+            semanticLayer,
+            extractSecurityContext,
+            rawRequest: req,
+            rawResponse: res,
+            negotiatedProtocol: protocol.negotiated
           }
-          const result = await handleSuggest(semanticLayer, body)
-          res.json(result)
-        } catch (error) {
-          console.error('Suggest error:', error)
-          res.status(500).json(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query suggestion failed',
-            500
-          ))
+        )
+
+        if (isNotification(rpcRequest)) {
+          return res.status(202).end()
         }
+
+        // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
+        const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
+          ? (result as { sessionId?: string }).sessionId
+          : undefined
+
+        if (sessionId) {
+          res.setHeader(MCP_SESSION_ID_HEADER, sessionId)
+        }
+
+        const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
+        if (wantsStream) {
+          const eventId = primeEventId()
+          res.status(200)
+          res.setHeader('Content-Type', 'text/event-stream')
+          res.setHeader('Cache-Control', 'no-cache')
+          res.setHeader('Connection', 'keep-alive')
+          res.write(`id: ${eventId}\n\n`)
+          res.write(serializeSseEvent(response, eventId))
+          return res.end()
+        }
+
+        return res.json(response)
+      } catch (error) {
+        // Log notification errors before returning 202 (P3 fix)
+        if (isNotification(rpcRequest)) {
+          console.error('MCP notification processing error:', error)
+          return res.status(202).end()
+        }
+
+        console.error('MCP RPC error:', error)
+        const code = (error as any)?.code ?? -32603
+        const data = (error as any)?.data
+        const message = (error as Error).message || 'MCP request failed'
+        const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
+
+        if (wantsStream) {
+          const eventId = primeEventId()
+          res.status(200)
+          res.setHeader('Content-Type', 'text/event-stream')
+          res.setHeader('Cache-Control', 'no-cache')
+          res.setHeader('Connection', 'keep-alive')
+          res.write(`id: ${eventId}\n\n`)
+          res.write(serializeSseEvent(rpcError, eventId))
+          return res.end()
+        }
+
+        return res.status(200).json(rpcError)
+      }
+    })
+
+    router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      const eventId = primeEventId()
+      res.status(200)
+      res.setHeader('Content-Type', 'text/event-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.setHeader('Connection', 'keep-alive')
+      res.write(serializeSseEvent({
+        jsonrpc: '2.0',
+        method: 'mcp/ready',
+        params: { protocol: 'streamable-http' }
+      }, eventId, 15000))
+
+      const keepAlive = setInterval(() => {
+        res.write(': keep-alive\n\n')
+      }, 15000)
+
+      req.on('close', () => {
+        clearInterval(keepAlive)
       })
-    }
+    })
 
     /**
-     * POST /mcp/validate - Validate query with helpful corrections
-     * Used by AI agents to check and fix queries before execution
+     * DELETE handler for session termination (MCP 2025-11-25)
+     * Clients SHOULD send DELETE to terminate sessions
      */
-    if (mcpTools.includes('validate')) {
-      router.post(`${mcpBasePath}/validate`, async (req: Request, res: Response) => {
-        try {
-          const body: ValidateRequest = req.body
-          if (!body.query) {
-            return res.status(400).json(formatErrorResponse(
-              'query field is required',
-              400
-            ))
-          }
-          const result = await handleValidate(semanticLayer, body)
-          res.json(result)
-        } catch (error) {
-          console.error('Validate error:', error)
-          res.status(500).json(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query validation failed',
-            500
-          ))
-        }
-      })
-    }
-
-    /**
-     * POST /mcp/load - Execute a query and return results
-     * Completes the AI workflow: discover → suggest → validate → load
-     */
-    if (mcpTools.includes('load')) {
-      router.post(`${mcpBasePath}/load`, async (req: Request, res: Response) => {
-        try {
-          const body: LoadRequest = req.body
-          if (!body.query) {
-            return res.status(400).json(formatErrorResponse(
-              'query field is required',
-              400
-            ))
-          }
-          const securityContext = await extractSecurityContext(req, res)
-          const result = await handleLoad(semanticLayer, securityContext, body)
-          res.json(result)
-        } catch (error) {
-          console.error('Load error:', error)
-          res.status(500).json(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query execution failed',
-            500
-          ))
-        }
-      })
-    }
+    router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
+      // For now, return 405 Method Not Allowed as we don't track sessions server-side
+      // A full implementation would track sessions and clean up resources here
+      return res.status(405).json({ error: 'Session termination not supported' })
+    })
   }
 
   // Error handling middleware for the router

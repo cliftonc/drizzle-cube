@@ -647,6 +647,13 @@ export interface MCPOptions {
   tools?: ('discover' | 'suggest' | 'validate' | 'load')[]
   /** Base path for MCP endpoints (default: '/mcp') */
   basePath?: string
+  /**
+   * Allowed origins for MCP requests (for Origin header validation per MCP 2025-11-25).
+   * If not provided, all origins are allowed (permissive mode).
+   * Set this to restrict access to specific origins for production security.
+   * Example: ['http://localhost:3000', 'https://myapp.com']
+   */
+  allowedOrigins?: string[]
 }
 
 /**

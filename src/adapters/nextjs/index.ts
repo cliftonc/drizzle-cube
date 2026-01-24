@@ -34,6 +34,20 @@ import {
   type ValidateRequest,
   type LoadRequest
 } from '../utils'
+import {
+  buildJsonRpcError,
+  buildJsonRpcResult,
+  dispatchMcpMethod,
+  isNotification,
+  negotiateProtocol,
+  parseJsonRpc,
+  primeEventId,
+  serializeSseEvent,
+  wantsEventStream,
+  validateAcceptHeader,
+  validateOriginHeader,
+  MCP_SESSION_ID_HEADER
+} from '../mcp-transport'
 
 export interface NextCorsOptions {
   /**
@@ -148,11 +162,7 @@ export interface CubeHandlers {
   dryRun: RouteHandler
   batch: RouteHandler
   explain: RouteHandler
-  // MCP (AI-Ready) handlers
-  discover?: RouteHandler
-  suggest?: RouteHandler
-  validate?: RouteHandler
-  mcpLoad?: RouteHandler
+  mcpRpc?: RouteHandler
 }
 
 /**
@@ -826,6 +836,210 @@ export function createMcpLoadHandler(
 }
 
 /**
+ * Create MCP Streamable HTTP handler (JSON-RPC 2.0 + optional SSE)
+ * Implements MCP 2025-11-25 spec
+ */
+export function createMcpRpcHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { extractSecurityContext, cors, mcp = { enabled: true } } = options
+
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function mcpRpcHandler(request: NextRequest) {
+    // Handle DELETE for session termination (MCP 2025-11-25)
+    if (request.method === 'DELETE') {
+      return NextResponse.json(
+        { error: 'Session termination not supported' },
+        { status: 405 }
+      )
+    }
+
+    if (request.method === 'GET') {
+      const encoder = new TextEncoder()
+      const eventId = primeEventId()
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(serializeSseEvent({
+            jsonrpc: '2.0',
+            method: 'mcp/ready',
+            params: { protocol: 'streamable-http' }
+          }, eventId, 15000)))
+        }
+      })
+
+      const headers = new Headers({
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+      })
+      if (cors) {
+        const corsHeaders = getCorsHeaders(request, cors)
+        Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value))
+      }
+      return new NextResponse(stream, { status: 200, headers })
+    }
+
+    if (request.method !== 'POST') {
+      return NextResponse.json(
+        formatErrorResponse('Method not allowed - use POST', 405),
+        { status: 405 }
+      )
+    }
+
+    // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
+    const originValidation = validateOriginHeader(
+      request.headers.get('origin'),
+      mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
+    )
+    if (!originValidation.valid) {
+      return NextResponse.json(
+        buildJsonRpcError(null, -32600, originValidation.reason),
+        { status: 403 }
+      )
+    }
+
+    // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
+    const acceptHeader = request.headers.get('accept')
+    if (!validateAcceptHeader(acceptHeader)) {
+      return NextResponse.json(
+        buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'),
+        { status: 400 }
+      )
+    }
+
+    const protocol = negotiateProtocol(Object.fromEntries(request.headers.entries()))
+    if (!protocol.ok) {
+      return NextResponse.json({
+        error: 'Unsupported MCP protocol version',
+        supported: protocol.supported
+      }, { status: 426 })
+    }
+
+    let body: unknown = null
+    try {
+      body = await request.json()
+    } catch {
+      body = null
+    }
+
+    const rpcRequest = parseJsonRpc(body)
+    if (!rpcRequest) {
+      return NextResponse.json(
+        buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'),
+        { status: 400 }
+      )
+    }
+
+    const wantsStream = wantsEventStream(acceptHeader)
+    const isInitialize = rpcRequest.method === 'initialize'
+
+    const sendJson = (payload: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
+      NextResponse.json(payload, {
+        status,
+        headers: { ...(cors ? getCorsHeaders(request, cors) : {}), ...extraHeaders }
+      })
+
+    try {
+      const result = await dispatchMcpMethod(
+        rpcRequest.method,
+        rpcRequest.params,
+        {
+          semanticLayer,
+          extractSecurityContext: (req) => extractSecurityContext(req as any),
+          rawRequest: request,
+          rawResponse: null
+        }
+      )
+
+      if (isNotification(rpcRequest)) {
+        return new NextResponse(null, { status: 202 })
+      }
+
+      // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
+      const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
+        ? (result as { sessionId?: string }).sessionId
+        : undefined
+
+      const responseHeaders: Record<string, string> = {}
+      if (sessionId) {
+        responseHeaders[MCP_SESSION_ID_HEADER] = sessionId
+      }
+
+      const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
+      if (wantsStream) {
+        const encoder = new TextEncoder()
+        const eventId = primeEventId()
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
+            controller.enqueue(encoder.encode(serializeSseEvent(response, eventId)))
+            controller.close()
+          }
+        })
+
+        const headers = new Headers({
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+          ...responseHeaders
+        })
+        if (cors) {
+          const corsHeaders = getCorsHeaders(request, cors)
+          Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value))
+        }
+
+        return new NextResponse(stream, { status: 200, headers })
+      }
+
+      return sendJson(response, 200, responseHeaders)
+    } catch (error) {
+      // Log notification errors before returning 202 (P3 fix)
+      if (isNotification(rpcRequest)) {
+        if (process.env.NODE_ENV !== 'test') {
+          console.error('Next.js MCP notification processing error:', error)
+        }
+        return new NextResponse(null, { status: 202 })
+      }
+
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js MCP RPC handler error:', error)
+      }
+      const code = (error as any)?.code ?? -32603
+      const data = (error as any)?.data
+      const message = (error as Error).message || 'MCP request failed'
+      const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
+
+      if (wantsStream) {
+        const encoder = new TextEncoder()
+        const eventId = primeEventId()
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
+            controller.enqueue(encoder.encode(serializeSseEvent(rpcError, eventId)))
+            controller.close()
+          }
+        })
+
+        const headers = new Headers({
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive'
+        })
+        if (cors) {
+          const corsHeaders = getCorsHeaders(request, cors)
+          Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value))
+        }
+
+        return new NextResponse(stream, { status: 200, headers })
+      }
+
+      return sendJson(rpcError, 200)
+    }
+  }
+}
+
+/**
  * Convenience function to create all route handlers
  *
  * @example
@@ -848,7 +1062,6 @@ export function createCubeHandlers(
   options: NextAdapterOptions
 ): CubeHandlers {
   const { mcp = { enabled: true } } = options
-  const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
 
   const handlers: CubeHandlers = {
     load: createLoadHandler(options),
@@ -861,18 +1074,7 @@ export function createCubeHandlers(
 
   // Add MCP handlers if enabled
   if (mcp.enabled !== false) {
-    if (mcpTools.includes('discover')) {
-      handlers.discover = createDiscoverHandler(options)
-    }
-    if (mcpTools.includes('suggest')) {
-      handlers.suggest = createSuggestHandler(options)
-    }
-    if (mcpTools.includes('validate')) {
-      handlers.validate = createValidateHandler(options)
-    }
-    if (mcpTools.includes('load')) {
-      handlers.mcpLoad = createMcpLoadHandler(options)
-    }
+    handlers.mcpRpc = createMcpRpcHandler(options)
   }
 
   return handlers

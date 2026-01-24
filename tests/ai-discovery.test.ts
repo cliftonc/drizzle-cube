@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { discoverCubes, type CubeDiscoveryResult } from '../src/server/ai'
+import { discoverCubes } from '../src/server/ai'
 import type { CubeMetadata } from '../src/server/types/metadata'
 
 // Mock cube metadata for testing

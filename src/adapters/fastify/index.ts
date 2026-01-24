@@ -25,16 +25,22 @@ import {
   formatMetaResponse,
   formatErrorResponse,
   handleBatchRequest,
-  handleDiscover,
-  handleSuggest,
-  handleValidate,
-  handleLoad,
-  type MCPOptions,
-  type DiscoverRequest,
-  type SuggestRequest,
-  type ValidateRequest,
-  type LoadRequest
+  type MCPOptions
 } from '../utils'
+import {
+  buildJsonRpcError,
+  buildJsonRpcResult,
+  dispatchMcpMethod,
+  isNotification,
+  negotiateProtocol,
+  parseJsonRpc,
+  primeEventId,
+  serializeSseEvent,
+  wantsEventStream,
+  validateAcceptHeader,
+  validateOriginHeader,
+  MCP_SESSION_ID_HEADER
+} from '../mcp-transport'
 
 export interface FastifyAdapterOptions {
   /**
@@ -571,128 +577,150 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   // ============================================
 
   if (mcp.enabled !== false) {
-    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
-     * POST /mcp/discover - Find relevant cubes based on topic/intent
+     * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
+     * Implements MCP 2025-11-25 spec
      */
-    if (mcpTools.includes('discover')) {
-      fastify.post(`${mcpBasePath}/discover`, {
-        bodyLimit,
-        schema: {
-          body: {
-            type: 'object',
-            additionalProperties: true
+    fastify.post(`${mcpBasePath}`, {
+      bodyLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: true
+        }
+      }
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
+      const originValidation = validateOriginHeader(
+        request.headers.origin as string | undefined,
+        mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
+      )
+      if (!originValidation.valid) {
+        return reply.status(403).send(buildJsonRpcError(null, -32600, originValidation.reason))
+      }
+
+      // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
+      const acceptHeader = request.headers.accept as string | undefined
+      if (!validateAcceptHeader(acceptHeader)) {
+        return reply.status(400).send(buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'))
+      }
+
+      const protocol = negotiateProtocol(request.headers as Record<string, string>)
+      if (!protocol.ok) {
+        return reply.status(426).send({
+          error: 'Unsupported MCP protocol version',
+          supported: protocol.supported
+        })
+      }
+
+      const rpcRequest = parseJsonRpc(request.body)
+      if (!rpcRequest) {
+        return reply.status(400).send(buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'))
+      }
+
+      const wantsStream = wantsEventStream(acceptHeader)
+      const isInitialize = rpcRequest.method === 'initialize'
+
+      try {
+        const result = await dispatchMcpMethod(
+          rpcRequest.method,
+          rpcRequest.params,
+          {
+            semanticLayer,
+            extractSecurityContext,
+            rawRequest: request,
+            rawResponse: reply,
+            negotiatedProtocol: protocol.negotiated
           }
+        )
+
+        if (isNotification(rpcRequest)) {
+          return reply.status(202).send()
         }
-      }, async (request: FastifyRequest, reply: FastifyReply) => {
-        try {
-          const body = request.body as DiscoverRequest
-          const result = await handleDiscover(semanticLayer, body)
-          return result
-        } catch (error) {
-          request.log.error(error, 'Discover error')
-          return reply.status(500).send(formatErrorResponse(
-            error instanceof Error ? error.message : 'Discovery failed',
-            500
-          ))
+
+        // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
+        const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
+          ? (result as { sessionId?: string }).sessionId
+          : undefined
+
+        if (sessionId) {
+          reply.header(MCP_SESSION_ID_HEADER, sessionId)
         }
+
+        const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
+        if (wantsStream) {
+          const eventId = primeEventId()
+          reply
+            .header('Content-Type', 'text/event-stream')
+            .header('Cache-Control', 'no-cache')
+            .header('Connection', 'keep-alive')
+            .send(`id: ${eventId}\n\n${serializeSseEvent(response, eventId)}`)
+          return
+        }
+
+        return reply.send(response)
+      } catch (error) {
+        // Log notification errors before returning 202 (P3 fix)
+        if (isNotification(rpcRequest)) {
+          request.log.error(error, 'MCP notification processing error')
+          return reply.status(202).send()
+        }
+
+        request.log.error(error, 'MCP RPC error')
+        const code = (error as any)?.code ?? -32603
+        const data = (error as any)?.data
+        const message = (error as Error).message || 'MCP request failed'
+        const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
+
+        if (wantsStream) {
+          const eventId = primeEventId()
+          reply
+            .header('Content-Type', 'text/event-stream')
+            .header('Cache-Control', 'no-cache')
+            .header('Connection', 'keep-alive')
+            .send(`id: ${eventId}\n\n${serializeSseEvent(rpcError, eventId)}`)
+          return
+        }
+
+        return reply.send(rpcError)
+      }
+    })
+
+    fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      const eventId = primeEventId()
+      reply.raw.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
       })
-    }
+
+      reply.raw.write(serializeSseEvent({
+        jsonrpc: '2.0',
+        method: 'mcp/ready',
+        params: { protocol: 'streamable-http' }
+      }, eventId, 15000))
+
+      const keepAlive = setInterval(() => {
+        reply.raw.write(': keep-alive\n\n')
+      }, 15000)
+
+      request.raw.on('close', () => {
+        clearInterval(keepAlive)
+      })
+    })
 
     /**
-     * POST /mcp/suggest - Generate query from natural language
+     * DELETE handler for session termination (MCP 2025-11-25)
+     * Clients SHOULD send DELETE to terminate sessions
      */
-    if (mcpTools.includes('suggest')) {
-      fastify.post(`${mcpBasePath}/suggest`, {
-        bodyLimit,
-        schema: {
-          body: {
-            type: 'object',
-            required: ['naturalLanguage'],
-            properties: {
-              naturalLanguage: { type: 'string' },
-              cube: { type: 'string' }
-            }
-          }
-        }
-      }, async (request: FastifyRequest, reply: FastifyReply) => {
-        try {
-          const body = request.body as SuggestRequest
-          const result = await handleSuggest(semanticLayer, body)
-          return result
-        } catch (error) {
-          request.log.error(error, 'Suggest error')
-          return reply.status(500).send(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query suggestion failed',
-            500
-          ))
-        }
-      })
-    }
+    fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
+      // For now, return 405 Method Not Allowed as we don't track sessions server-side
+      // A full implementation would track sessions and clean up resources here
+      return reply.status(405).send({ error: 'Session termination not supported' })
+    })
 
-    /**
-     * POST /mcp/validate - Validate query with helpful corrections
-     */
-    if (mcpTools.includes('validate')) {
-      fastify.post(`${mcpBasePath}/validate`, {
-        bodyLimit,
-        schema: {
-          body: {
-            type: 'object',
-            required: ['query'],
-            properties: {
-              query: { type: 'object' }
-            }
-          }
-        }
-      }, async (request: FastifyRequest, reply: FastifyReply) => {
-        try {
-          const body = request.body as ValidateRequest
-          const result = await handleValidate(semanticLayer, body)
-          return result
-        } catch (error) {
-          request.log.error(error, 'Validate error')
-          return reply.status(500).send(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query validation failed',
-            500
-          ))
-        }
-      })
-    }
-
-    /**
-     * POST /mcp/load - Execute a query and return results
-     * Completes the AI workflow: discover → suggest → validate → load
-     */
-    if (mcpTools.includes('load')) {
-      fastify.post(`${mcpBasePath}/load`, {
-        bodyLimit,
-        schema: {
-          body: {
-            type: 'object',
-            required: ['query'],
-            properties: {
-              query: { type: 'object' }
-            }
-          }
-        }
-      }, async (request: FastifyRequest, reply: FastifyReply) => {
-        try {
-          const body = request.body as LoadRequest
-          const securityContext = await extractSecurityContext(request)
-          const result = await handleLoad(semanticLayer, securityContext, body)
-          return result
-        } catch (error) {
-          request.log.error(error, 'Load error')
-          return reply.status(500).send(formatErrorResponse(
-            error instanceof Error ? error.message : 'Query execution failed',
-            500
-          ))
-        }
-      })
-    }
   }
 
   // Global error handler

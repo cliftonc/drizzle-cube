@@ -24,16 +24,24 @@ import {
   formatSqlResponse,
   formatMetaResponse,
   handleBatchRequest,
-  handleDiscover,
-  handleSuggest,
-  handleValidate,
-  handleLoad,
-  type MCPOptions,
-  type DiscoverRequest,
-  type SuggestRequest,
-  type ValidateRequest,
-  type LoadRequest
+  type MCPOptions
 } from '../utils'
+import {
+  buildJsonRpcError,
+  buildJsonRpcResult,
+  dispatchMcpMethod,
+  getDefaultPrompts,
+  getDefaultResources,
+  isNotification,
+  negotiateProtocol,
+  parseJsonRpc,
+  primeEventId,
+  serializeSseEvent,
+  wantsEventStream,
+  validateAcceptHeader,
+  validateOriginHeader,
+  MCP_SESSION_ID_HEADER
+} from '../mcp-transport'
 
 export interface HonoAdapterOptions {
   /**
@@ -492,97 +500,187 @@ export function createCubeRoutes(
   // ============================================
 
   if (mcp.enabled !== false) {
-    const mcpTools = mcp.tools || ['discover', 'suggest', 'validate', 'load']
+    // Build dynamic MCP resources/prompts (include schema)
+    const schemaResource = {
+      uri: 'drizzle-cube://schema',
+      name: 'Cube Schema',
+      description: 'Current cube metadata as JSON',
+      mimeType: 'application/json',
+      text: JSON.stringify(semanticLayer.getMetadata(), null, 2)
+    }
+    const mcpResources = [...getDefaultResources(), schemaResource]
+    const mcpPrompts = getDefaultPrompts()
+
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
-     * POST /mcp/discover - Find relevant cubes based on topic/intent
+     * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
+     * Implements MCP 2025-11-25 spec
      */
-    if (mcpTools.includes('discover')) {
-      app.post(`${mcpBasePath}/discover`, async (c) => {
-        try {
-          const body: DiscoverRequest = await c.req.json()
-          const result = await handleDiscover(semanticLayer, body)
-          return c.json(result)
-        } catch (error) {
-          console.error('Discover error:', error)
-          return c.json({
-            error: error instanceof Error ? error.message : 'Discovery failed'
-          }, 500)
+    app.post(`${mcpBasePath}`, async (c) => {
+      // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
+      const originValidation = validateOriginHeader(
+        c.req.header('origin'),
+        mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
+      )
+      if (!originValidation.valid) {
+        return c.json(buildJsonRpcError(null, -32600, originValidation.reason), 403)
+      }
+
+      // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
+      const acceptHeader = c.req.header('accept')
+      if (!validateAcceptHeader(acceptHeader)) {
+        return c.json(buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'), 400)
+      }
+
+      const protocol = negotiateProtocol(c.req.header() as Record<string, string>)
+      if (!protocol.ok) {
+        return c.json({
+          error: 'Unsupported MCP protocol version',
+          supported: protocol.supported
+        }, 426)
+      }
+
+      const body = await c.req.json().catch(() => null)
+      const rpcRequest = parseJsonRpc(body)
+      if (!rpcRequest) {
+        return c.json(buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'), 400)
+      }
+
+      const wantsStream = wantsEventStream(acceptHeader)
+      const isInitialize = rpcRequest.method === 'initialize'
+
+      try {
+        const result = await dispatchMcpMethod(
+          rpcRequest.method,
+          rpcRequest.params,
+          {
+            semanticLayer,
+            extractSecurityContext,
+            rawRequest: c,
+            rawResponse: null,
+            negotiatedProtocol: protocol.negotiated,
+            resources: mcpResources,
+            prompts: mcpPrompts
+          }
+        )
+
+        if (isNotification(rpcRequest)) {
+          return c.body(null, 202)
         }
-      })
-    }
+
+        const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
+
+        // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
+        const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
+          ? (result as { sessionId?: string }).sessionId
+          : undefined
+
+        const responseHeaders: Record<string, string> = {}
+        if (sessionId) {
+          responseHeaders[MCP_SESSION_ID_HEADER] = sessionId
+        }
+
+        if (wantsStream) {
+          const encoder = new TextEncoder()
+          const eventId = primeEventId()
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
+              controller.enqueue(encoder.encode(serializeSseEvent(response, eventId)))
+              controller.close()
+            }
+          })
+          return new Response(stream, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              Connection: 'keep-alive',
+              ...responseHeaders
+            }
+          })
+        }
+
+        return c.json(response, 200, responseHeaders)
+      } catch (error) {
+        // Log notification errors before returning 202 (P3 fix)
+        if (isNotification(rpcRequest)) {
+          console.error('MCP notification processing error:', error)
+          return c.body(null, 202)
+        }
+
+        console.error('MCP RPC error:', error)
+        const code = (error as any)?.code ?? -32603
+        const data = (error as any)?.data
+        const message = (error as Error).message || 'MCP request failed'
+        const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
+
+        if (wantsStream) {
+          const encoder = new TextEncoder()
+          const eventId = primeEventId()
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
+              controller.enqueue(encoder.encode(serializeSseEvent(rpcError, eventId)))
+              controller.close()
+            }
+          })
+          return new Response(stream, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              Connection: 'keep-alive'
+            }
+          })
+        }
+
+        return c.json(rpcError, 200)
+      }
+    })
 
     /**
-     * POST /mcp/suggest - Generate query from natural language
+     * DELETE handler for session termination (MCP 2025-11-25)
+     * Clients SHOULD send DELETE to terminate sessions
      */
-    if (mcpTools.includes('suggest')) {
-      app.post(`${mcpBasePath}/suggest`, async (c) => {
-        try {
-          const body: SuggestRequest = await c.req.json()
-          if (!body.naturalLanguage) {
-            return c.json({
-              error: 'naturalLanguage field is required'
-            }, 400)
-          }
-          const result = await handleSuggest(semanticLayer, body)
-          return c.json(result)
-        } catch (error) {
-          console.error('Suggest error:', error)
-          return c.json({
-            error: error instanceof Error ? error.message : 'Query suggestion failed'
-          }, 500)
-        }
-      })
-    }
+    app.delete(`${mcpBasePath}`, (c) => {
+      // For now, return 405 Method Not Allowed as we don't track sessions server-side
+      // A full implementation would track sessions and clean up resources here
+      return c.json({ error: 'Session termination not supported' }, 405)
+    })
 
-    /**
-     * POST /mcp/validate - Validate query with helpful corrections
-     */
-    if (mcpTools.includes('validate')) {
-      app.post(`${mcpBasePath}/validate`, async (c) => {
-        try {
-          const body: ValidateRequest = await c.req.json()
-          if (!body.query) {
-            return c.json({
-              error: 'query field is required'
-            }, 400)
-          }
-          const result = await handleValidate(semanticLayer, body)
-          return c.json(result)
-        } catch (error) {
-          console.error('Validate error:', error)
-          return c.json({
-            error: error instanceof Error ? error.message : 'Query validation failed'
-          }, 500)
-        }
-      })
-    }
+    app.get(`${mcpBasePath}`, (_c) => {
+      const encoder = new TextEncoder()
+      const eventId = primeEventId()
+      let keepAlive: ReturnType<typeof setInterval>
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(serializeSseEvent({
+            jsonrpc: '2.0',
+            method: 'mcp/ready',
+            params: { protocol: 'streamable-http' }
+          }, eventId, 15000)))
 
-    /**
-     * POST /mcp/load - Execute a query and return results
-     * Completes the AI workflow: discover → suggest → validate → load
-     */
-    if (mcpTools.includes('load')) {
-      app.post(`${mcpBasePath}/load`, async (c) => {
-        try {
-          const body: LoadRequest = await c.req.json()
-          if (!body.query) {
-            return c.json({
-              error: 'query field is required'
-            }, 400)
-          }
-          const securityContext = await extractSecurityContext(c)
-          const result = await handleLoad(semanticLayer, securityContext, body)
-          return c.json(result)
-        } catch (error) {
-          console.error('Load error:', error)
-          return c.json({
-            error: error instanceof Error ? error.message : 'Query execution failed'
-          }, 500)
+          keepAlive = setInterval(() => {
+            controller.enqueue(encoder.encode(': keep-alive\n\n'))
+          }, 15000)
+        },
+        cancel() {
+          clearInterval(keepAlive)
         }
       })
-    }
+
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive'
+        }
+      })
+    })
+
   }
 
   return app
