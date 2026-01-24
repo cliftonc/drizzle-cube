@@ -1,4 +1,5 @@
 import type { SemanticLayerCompiler, SecurityContext } from '../server'
+import { getDefaultMCPPrompts, type MCPPrompt } from '../server/ai/mcp-prompts'
 import {
   handleDiscover,
   handleSuggest,
@@ -10,6 +11,9 @@ import {
   type ValidateRequest,
   type LoadRequest
 } from './utils'
+
+// Re-export MCPPrompt for external consumers
+export { type MCPPrompt }
 
 export type JsonRpcId = string | number | null | undefined
 
@@ -35,18 +39,6 @@ export interface McpDispatchContext {
   negotiatedProtocol?: string | null
   resources?: MCPResource[]
   prompts?: MCPPrompt[]
-}
-
-export interface MCPPrompt {
-  name: string
-  description: string
-  messages: Array<{
-    role: 'user' | 'assistant'
-    content: {
-      type: 'text'
-      text: string
-    }
-  }>
 }
 
 export interface MCPResource {
@@ -382,48 +374,106 @@ function buildToolList() {
   return [
     {
       name: 'discover',
-      description: 'Find relevant cubes based on topic/intent',
+      description: `Find relevant cubes based on topic or intent. Call this FIRST to understand available data.
+
+Returns cubes with:
+- Relevance scores and suggested measures/dimensions
+- Relationship information (joins) for cross-cube queries
+- Metadata hints (eventStream for funnels, etc.)
+
+Use the 'joins' in results to understand how cubes relate for cross-cube queries.`,
       inputSchema: {
         type: 'object',
         properties: {
-          topic: { type: 'string' },
-          intent: { type: 'string' },
-          limit: { type: 'number' },
-          minScore: { type: 'number' }
+          topic: { type: 'string', description: 'Keyword to search (e.g., "sales", "employees")' },
+          intent: { type: 'string', description: 'Natural language goal (e.g., "analyze productivity trends")' },
+          limit: { type: 'number', description: 'Max results (default: 10)' },
+          minScore: { type: 'number', description: 'Min relevance 0-1 (default: 0.1)' }
         }
       }
     },
     {
       name: 'suggest',
-      description: 'Generate a query from natural language',
+      description: `Generate a semantic query from natural language description.
+
+Returns a draft CubeQuery object. Always validate the result before executing.`,
       inputSchema: {
         type: 'object',
         required: ['naturalLanguage'],
         properties: {
-          naturalLanguage: { type: 'string' },
-          cube: { type: 'string' }
+          naturalLanguage: { type: 'string', description: 'Plain English query (e.g., "top 5 employees by pull requests last 3 months")' },
+          cube: { type: 'string', description: 'Optional: constrain to specific cube' }
         }
       }
     },
     {
       name: 'validate',
-      description: 'Validate a query with helpful corrections',
+      description: `Validate a query and get auto-corrections for issues.
+
+Checks:
+- Field existence (measures, dimensions exist in schema)
+- Filter syntax and operators
+- Time dimension configuration
+
+Returns corrected query if issues found.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
         properties: {
-          query: { type: 'object' }
+          query: {
+            type: 'object',
+            description: 'CubeQuery to validate'
+          }
         }
       }
     },
     {
       name: 'load',
-      description: 'Execute a query and return results',
+      description: `Execute a semantic query and return aggregated results.
+
+CRITICAL QUERY CONSTRUCTION RULES:
+
+1. DATE FILTERING vs TIME GROUPING (most common mistake!)
+
+   For AGGREGATED TOTALS over a date range, use 'filters' with 'inDateRange':
+   {
+     "measures": ["Productivity.totalPullRequests"],
+     "dimensions": ["Employees.name"],
+     "filters": [{ "member": "Productivity.date", "operator": "inDateRange", "values": ["last 3 months"] }],
+     "order": { "Productivity.totalPullRequests": "desc" },
+     "limit": 5
+   }
+
+   For TIME SERIES grouped by period, use 'timeDimensions' WITH granularity:
+   {
+     "measures": ["Productivity.totalPullRequests"],
+     "timeDimensions": [{ "dimension": "Productivity.date", "dateRange": "last 3 months", "granularity": "month" }]
+   }
+
+   WARNING: Using timeDimensions WITHOUT granularity still groups by day, returning many rows instead of aggregates!
+
+2. CROSS-CUBE JOINS
+   Include dimensions from RELATED cubes (check 'joins' in discover results).
+   Example: measures from Productivity + dimensions from Employees:
+   { "measures": ["Productivity.totalPullRequests"], "dimensions": ["Employees.name"] }
+
+3. TOP N PATTERN
+   Use filters (not timeDimensions) + order + limit:
+   { "filters": [{ "member": "X.date", "operator": "inDateRange", "values": ["last 3 months"] }], "order": { "X.total": "desc" }, "limit": 5 }`,
       inputSchema: {
         type: 'object',
         required: ['query'],
         properties: {
-          query: { type: 'object' }
+          query: {
+            type: 'object',
+            description: `CubeQuery object with:
+- measures: string[] - Aggregations to calculate
+- dimensions: string[] - Grouping fields (can include related cubes)
+- filters: [{ member, operator, values }] - Use 'inDateRange' for date filtering
+- timeDimensions: [{ dimension, granularity, dateRange }] - ONLY for time series with grouping
+- order: { "Cube.field": "asc"|"desc" }
+- limit: number`
+          }
         }
       }
     }
@@ -475,69 +525,11 @@ function wrapContent(result: unknown) {
 
 // ---------------------------------------------
 // Static prompts and resources for MCP clients
+// Prompts are defined in src/server/ai/mcp-prompts.ts
 // ---------------------------------------------
 
-const PROMPTS = [
-  {
-    name: 'drizzle-cube-mcp-guide',
-    description: 'How to use drizzle-cube MCP tools to generate and run queries',
-    messages: [
-      {
-        role: 'user' as const,
-        content: {
-          type: 'text' as const,
-          text: [
-            'You are an analyst agent using drizzle-cube MCP.',
-            'Workflow:',
-            '1) Call tools/list to confirm tools.',
-            '2) tools/call name=discover {topic|intent} to find cubes.',
-            '3) tools/call name=suggest {naturalLanguage, cube?} to get a draft query.',
-            '4) tools/call name=validate {query} to fix schema issues.',
-            '5) tools/call name=load {query} to execute.',
-            'Include security context headers if required by the host.',
-            'JSON only; do not hallucinate cube/field names—use discover first.',
-            '',
-            'Query shapes:',
-            '- Regular: { measures, dimensions, filters[], timeDimensions[], order, limit, offset }',
-            '- Funnel: { funnel: { bindingKey, timeDimension, steps[], includeTimeMetrics? } }',
-            '- Flow: { flow: { bindingKey, eventDimension, steps?, window? } }',
-            '- Retention: { retention: { bindingKey, timeDimension, periods, granularity, retentionType, breakdownDimensions } }',
-            'Filters must be flat arrays of { member, operator, values }; avoid nested arrays.',
-            'Place time filters on step 0 for funnels; use inDateRange only there.',
-            '',
-            'Time handling:',
-            '- If the user asks for a relative window (e.g., "last 3 months"), add ONLY an inDateRange filter on the time dimension (do NOT add timeDimensions unless they also ask for grouping).',
-            '- If the user asks for grouping (e.g., "by month", "per week"), add a timeDimensions entry with granularity ("month", "week", "day") on the same time dimension.',
-            '- You can use both: one inDateRange filter AND one timeDimensions entry with granularity when both are implied.'
-          ].join('\n')
-        }
-      }
-    ]
-  },
-  {
-    name: 'drizzle-cube-query-rules',
-    description: 'Key generation rules aligned with Gemini single-step prompt',
-    messages: [
-      {
-        role: 'user' as const,
-        content: {
-          type: 'text' as const,
-          text: [
-            'Rules (keep JSON only):',
-            '- Use only measures/dimensions/timeDimensions from schema.',
-            '- timeDimensions: include granularity when grouping; use inDateRange filter for relative windows; combine when both requested.',
-            '- Funnel detection keywords: funnel, conversion, journey, drop off, step by step; use funnel format only if eventStream metadata exists.',
-            '- Funnel rules: bindingKey/timeDimension from cube metadata; include time filter on step 0 (default last 6 months) using inDateRange; steps ordered; flat filters.',
-            '- Chart selection: line/area for time trends; bar for categories; scatter for 2-measure correlations; bubble for 3-measure correlations; funnel for funnels.',
-            '- Correlation keywords (correlation/relationship/vs/compare) -> scatter/bubble, never line.',
-            '- Prefer .name fields over .id; avoid Id dimensions unless requested.',
-            '- Filters: flat array of {member, operator, values}; operators equals, notEquals, contains, notContains, gt, gte, lt, lte, inDateRange, set, notSet.'
-          ].join('\n')
-        }
-      }
-    ]
-  }
-]
+// Use prompts from AI module
+const PROMPTS = getDefaultMCPPrompts()
 
 const RESOURCES = [
   {

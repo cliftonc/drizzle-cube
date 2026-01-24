@@ -310,11 +310,55 @@ export function formatSqlResponse(
 }
 
 /**
- * Format metadata response
+ * Format metadata response with query guidance for AI consumers
  */
 export function formatMetaResponse(metadata: any) {
   return {
-    cubes: metadata
+    cubes: metadata,
+    // Query guidance for AI agents - helps prevent common mistakes
+    queryGuidance: {
+      dateHandling: {
+        critical: 'Date filtering and time grouping are DIFFERENT operations',
+        forAggregatedTotals: {
+          description: 'For totals over a date range (no time breakdown), use filters with inDateRange operator - NOT timeDimensions',
+          example: {
+            filters: [{ member: 'Cube.date', operator: 'inDateRange', values: ['last 3 months'] }]
+          },
+          useCase: 'User asks for "total sales last month", "top 5 last quarter", "sum over past year"'
+        },
+        forTimeSeries: {
+          description: 'For time series grouped by period (trend analysis), use timeDimensions WITH granularity',
+          example: {
+            timeDimensions: [{ dimension: 'Cube.date', granularity: 'month', dateRange: 'last 3 months' }]
+          },
+          useCase: 'User asks for "monthly breakdown", "daily trend", "per week"'
+        },
+        warning: 'Using timeDimensions WITHOUT granularity groups by day, returning many rows instead of aggregates. This is the #1 query mistake.'
+      },
+      crossCubeQueries: {
+        description: 'Include dimensions from related cubes - the system auto-joins based on relationships',
+        example: 'To get employee names with productivity: measures=["Productivity.total"], dimensions=["Employees.name"]',
+        howToFind: 'Check the "joins" property in each cube metadata to see relationships'
+      },
+      topNPattern: {
+        description: 'For "top N" queries, use filters (not timeDimensions) + order + limit',
+        example: {
+          measures: ['Cube.total'],
+          dimensions: ['RelatedCube.name'],
+          filters: [{ member: 'Cube.date', operator: 'inDateRange', values: ['last 3 months'] }],
+          order: { 'Cube.total': 'desc' },
+          limit: 5
+        }
+      },
+      filterSyntax: {
+        description: 'Filters must be flat arrays of { member, operator, values }',
+        operators: ['equals', 'notEquals', 'contains', 'notContains', 'gt', 'gte', 'lt', 'lte', 'inDateRange', 'beforeDate', 'afterDate', 'set', 'notSet'],
+        dateRangeValues: {
+          relative: ['last 7 days', 'last 3 months', 'last year', 'this week', 'this month', 'this quarter'],
+          absolute: ['2024-01-01', '2024-03-31']
+        }
+      }
+    }
   }
 }
 

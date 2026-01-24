@@ -26,3 +26,13 @@ export {
   QUERY_SCHEMAS,
   type QuerySchemas
 } from './schemas'
+
+export {
+  MCP_PROMPTS,
+  MCP_GUIDE_PROMPT,
+  QUERY_RULES_PROMPT,
+  QUERY_BUILDING_PROMPT,
+  DATE_FILTERING_PROMPT,
+  getDefaultMCPPrompts,
+  type MCPPrompt
+} from './mcp-prompts'
