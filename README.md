@@ -126,11 +126,15 @@ const result = await fetch('/cubejs-api/v1/load', {
 
 Drizzle Cube supports multiple analysis modes out of the box:
 
-### Query Builder
-Build ad-hoc queries with measures, dimensions, filters, and time ranges. Drag-and-drop interface with chart visualization.
+### Query Builder (Analysis Builder)
+Build ad-hoc queries with measures, dimensions, filters, and time ranges. Search-first field picker, drag-and-drop chart configuration, and multiple visualization options.
+
+![Analysis Builder](https://try.drizzle-cube.dev/dashboard_light.png)
+
+**[Try the Analysis Builder →](https://try.drizzle-cube.dev/analysis)**
 
 ### Funnel Analysis
-Track conversion through multi-step processes. Define funnel steps, measure drop-off rates, and analyze time-to-convert.
+Track conversion through multi-step processes. Define funnel steps, measure drop-off rates, and analyze time-to-convert metrics (average, median, p90).
 
 ```typescript
 // Funnel query example
@@ -146,8 +150,16 @@ Track conversion through multi-step processes. Define funnel steps, measure drop
 }
 ```
 
+### Flow Analysis
+Visualize user journeys and navigation paths through your application. Understand how users move between states or pages.
+
+### Retention Analysis
+Measure user retention over time with cohort analysis. Track how many users return after their first interaction across days, weeks, or months.
+
 ### Dashboards
-Compose multiple charts into persistent dashboards with grid layouts, filters, and real-time updates.
+Compose multiple charts into persistent dashboards with grid layouts, filters, and real-time updates. Save and share dashboard configurations.
+
+**[Try the Dashboard Builder →](https://try.drizzle-cube.dev/)**
 
 ## AI & MCP Integration
 
