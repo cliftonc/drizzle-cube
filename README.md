@@ -171,7 +171,6 @@ Drizzle Cube includes a built-in **MCP server** that lets AI agents query your s
 
 | Tool | Purpose |
 |------|---------|
-| `drizzle_cube_meta` | Fetch cube metadata |
 | `drizzle_cube_discover` | Find relevant cubes by topic |
 | `drizzle_cube_validate` | Validate queries with auto-corrections |
 | `drizzle_cube_load` | Execute queries |
