@@ -1,28 +1,41 @@
-# 🐲 Drizzle Cube
+# Drizzle Cube
 
-**Drizzle ORM-first semantic layer with Cube.js compatibility**
+**A Drizzle ORM-first semantic layer for type-safe analytics**
 
-<img width="824" height="832" alt="home" src="https://github.com/user-attachments/assets/205f73ff-d2d3-4f9c-9777-f936540d5a2a" />
+![Drizzle Cube Dashboard](https://try.drizzle-cube.dev/dashboard_light.png)
 
-Transform your Drizzle schema into a powerful, type-safe analytics platform with SQL injection protection and full TypeScript support.
+Build a semantic layer on top of your Drizzle schema. Define cubes with measures, dimensions, and joins—then query them from dashboards, AI agents, or your own code. All with full TypeScript inference and SQL injection protection.
 
- - **[Documentation](https://www.drizzle-cube.dev/)** 
- - **[Try the Sandbox](https://try.drizzle-cube.dev/)**
- - **[Contribute to the Roadmap](https://github.com/users/cliftonc/projects/2)**
+- **[Documentation](https://www.drizzle-cube.dev/)**
+- **[Try the Sandbox](https://try.drizzle-cube.dev/)**
+- **[Contribute to the Roadmap](https://github.com/users/cliftonc/projects/2)**
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle%20ORM-0.44.4+-green)](https://orm.drizzle.team/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4+-06B6D4)](https://tailwindcss.com/)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+
+## What is a Semantic Layer?
+
+A semantic layer sits between your database and your applications. It provides:
+
+- **Business-friendly abstractions** - Define "Revenue" once, use it everywhere
+- **Consistent metrics** - Everyone uses the same calculation for "Active Users"
+- **Security isolation** - Multi-tenant filtering built into every query
+- **Self-service analytics** - Users explore data without writing SQL
+- **Decoupling** - Reports and AI agents continue to work when you change your underlying data model
+
+Drizzle Cube brings this to the Drizzle ORM ecosystem with full type safety.
 
 ## Why Drizzle Cube?
 
-🔒 **SQL Injection Proof** - All queries use Drizzle's parameterized SQL  
-🛡️ **Type Safe** - Full TypeScript inference from your database schema  
-⚡ **Performance** - Prepared statements and query optimization  
-🧩 **Cube.js Compatible** - Works with existing Cube.js React components  
-🎯 **Zero Config** - Infer cube definitions from your Drizzle schema  
+| Feature | Drizzle Cube | Raw SQL | Other BI Tools |
+|---------|-------------|---------|----------------|
+| Type Safety | Full TypeScript inference | Manual types | None |
+| SQL Injection | Impossible (parameterized) | Risk | Varies |
+| Multi-tenant | Built-in security context | Manual | Complex |
+| AI Integration | MCP server included | Build yourself | Limited |
+| Setup | Minutes | Hours | Days |
 
 ## Quick Start
 
@@ -32,221 +45,197 @@ Transform your Drizzle schema into a powerful, type-safe analytics platform with
 npm install drizzle-cube drizzle-orm
 ```
 
-### 2. Define Your Schema
+### 2. Define Cubes on Your Schema
 
 ```typescript
-// schema.ts
-import { pgTable, text, integer, boolean } from 'drizzle-orm/pg-core'
-
-export const employees = pgTable('employees', {
-  id: integer('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email'),
-  active: boolean('active').default(true),
-  department: integer('department'),
-  organisation: integer('organisation').notNull()
-})
-
-export const departments = pgTable('departments', {
-  id: integer('id').primaryKey(),
-  name: text('name').notNull(),
-  organisation: integer('organisation').notNull()
-})
-
-export const schema = { employees, departments }
-```
-
-### 3. Create Type-Safe Cubes
-
-```typescript
-// cubes.ts
 import { defineCube } from 'drizzle-cube/server'
 import { eq } from 'drizzle-orm'
-import { schema } from './schema'
+import { employees, departments } from './schema'
 
 export const employeesCube = defineCube('Employees', {
+  // Security: filter by organisation automatically
   sql: (ctx) => ({
-    from: schema.employees,
-    where: eq(schema.employees.organisation, ctx.securityContext.organisationId)
+    from: employees,
+    where: eq(employees.organisationId, ctx.securityContext.organisationId)
   }),
-  
-  dimensions: {
-    name: {
-      name: 'name',
-      title: 'Employee Name',
-      type: 'string',
-      sql: schema.employees.name
-    },
-    email: {
-      name: 'email',
-      title: 'Email',
-      type: 'string',
-      sql: schema.employees.email
+
+  // Define relationships for cross-cube queries
+  joins: {
+    Departments: {
+      targetCube: () => departmentsCube,
+      relationship: 'belongsTo',
+      on: [{ source: employees.departmentId, target: departments.id }]
     }
   },
-  
+
   measures: {
-    count: {
-      name: 'count',
-      title: 'Total Employees',
-      type: 'count',
-      sql: schema.employees.id
-    }
+    count: { type: 'count', sql: employees.id },
+    avgSalary: { type: 'avg', sql: employees.salary },
+    totalSalary: { type: 'sum', sql: employees.salary }
+  },
+
+  dimensions: {
+    name: { type: 'string', sql: employees.name },
+    email: { type: 'string', sql: employees.email },
+    hiredAt: { type: 'time', sql: employees.hiredAt }
   }
 })
 ```
 
-### 4. Setup API Server
+### 3. Create API Server
 
 ```typescript
-// server.ts (Hono example)
 import { Hono } from 'hono'
-import { drizzle } from 'drizzle-orm/postgres-js'
 import { createCubeApp } from 'drizzle-cube/adapters/hono'
-import postgres from 'postgres'
-import { schema } from './schema'
-import { employeesCube } from './cubes'
-
-const db = drizzle(postgres(process.env.DATABASE_URL!), { schema })
+import { employeesCube, departmentsCube } from './cubes'
 
 const app = createCubeApp({
-  cubes: [employeesCube],
+  cubes: [employeesCube, departmentsCube],
   drizzle: db,
   schema,
-  getSecurityContext: async () => ({
-    organisationId: 1 // Your auth logic here
+  getSecurityContext: async (req) => ({
+    organisationId: req.user.orgId  // Multi-tenant isolation
   })
 })
 
 export default app
 ```
 
-### 5. Query from Frontend
+### 4. Query from Anywhere
 
 ```typescript
-// Use built-in React components
-import { QueryBuilder, AnalyticsDashboard } from 'drizzle-cube/client'
+// From React components
+import { AnalysisBuilder, AnalyticsDashboard } from 'drizzle-cube/client'
 
-function App() {
-  return (
-    <div>
-      <QueryBuilder apiUrl="/cubejs-api/v1" />
-      <AnalyticsDashboard 
-        config={dashboardConfig} 
-        baseUrl="/cubejs-api/v1" 
-      />
-    </div>
-  )
-}
-```
+// From AI agents via MCP
+// Connect Claude, ChatGPT, or n8n to /mcp
 
-## Key Features
-
- - **SQL Injection Proof** - All queries use Drizzle's parameterized SQL
- - **Type Safe** - Full TypeScript inference from your database schema
- - **Performance** - Prepared statements and query optimization
- - **Cube.js Compatible** - Works with existing Cube.js React components
- - **Zero Config** - Infer cube definitions from your Drizzle schema
- - **Themeable** - Built-in light/dark themes with CSS variables
-
-
-## Supported Features
-
- - ✅ **Multiple Database Types** - PostgreSQL, MySQL
- - ✅ **Framework Adapters** - Hono, Express, Fastify, Next.js
- - ✅ **Full Type Safety** - Complete TypeScript inference
- - ✅ **All SQL Features** - Joins, CTEs, subqueries, window functions
- - ✅ **Cube.js Compatibility** - Drop-in replacement for existing apps
- - ✅ **Scalable Theming** - Built-in themes (light/dark/neon) with semantic CSS variables
-
-## Theming
-
-Drizzle Cube features a **scalable semantic theming system** with three built-in themes. All components automatically adapt using CSS variables - no component changes needed when adding new themes!
-
-### Built-in Themes
-
- - 🌞 **Light** - Clean white backgrounds with blue accents
- - 🌙 **Dark** - Slate grays with lighter blue highlights
- - ⚡ **Neon** - Bold fluorescent colors with deep purple backgrounds (to show flexibility!)
-
-### Quick Start
-
-```typescript
-import { getTheme, setTheme, watchThemeChanges } from 'drizzle-cube/client'
-
-// Set a theme programmatically
-setTheme('neon')  // 'light' | 'dark' | 'neon'
-
-// Get current theme
-const currentTheme = getTheme()
-
-// Watch for theme changes
-watchThemeChanges((theme) => {
-  console.log('Theme changed:', theme)
+// From your own code
+const result = await fetch('/cubejs-api/v1/load', {
+  method: 'POST',
+  body: JSON.stringify({
+    query: {
+      measures: ['Employees.count', 'Employees.avgSalary'],
+      dimensions: ['Departments.name']
+    }
+  })
 })
 ```
 
-### Adding Custom Themes
+## Analysis Modes
 
-Create your own theme by defining CSS variables - **zero component changes required**:
+Drizzle Cube supports multiple analysis modes out of the box:
 
-```css
-[data-theme="ocean"] {
-  /* Surface colors */
-  --dc-surface: #001f3f;
-  --dc-surface-secondary: #002b5c;
-  --dc-card-bg: #003366;
+### Query Builder
+Build ad-hoc queries with measures, dimensions, filters, and time ranges. Drag-and-drop interface with chart visualization.
 
-  /* Text colors */
-  --dc-text: #e6f7ff;
-  --dc-text-secondary: #b3d9ff;
+### Funnel Analysis
+Track conversion through multi-step processes. Define funnel steps, measure drop-off rates, and analyze time-to-convert.
 
-  /* Primary/accent colors */
-  --dc-primary: #39cccc;
-  --dc-border: #004d66;
-  /* ... other semantic variables */
+```typescript
+// Funnel query example
+{
+  analysisType: 'funnel',
+  steps: [
+    { name: 'Signed Up', filter: { member: 'Users.status', operator: 'equals', values: ['registered'] } },
+    { name: 'Activated', filter: { member: 'Users.activated', operator: 'equals', values: [true] } },
+    { name: 'Subscribed', filter: { member: 'Users.plan', operator: 'notEquals', values: ['free'] } }
+  ],
+  timeDimension: 'Users.createdAt',
+  dateRange: ['2024-01-01', '2024-12-31']
 }
 ```
 
-Then update your theme toggle to include the new theme:
-```typescript
-setTheme('ocean')  // It just works! ✨
+### Dashboards
+Compose multiple charts into persistent dashboards with grid layouts, filters, and real-time updates.
+
+## AI & MCP Integration
+
+Drizzle Cube includes a built-in **MCP server** that lets AI agents query your semantic layer:
+
+![Claude using Drizzle Cube MCP](https://try.drizzle-cube.dev/claude_mcp.png)
+
+### Available MCP Tools
+
+| Tool | Purpose |
+|------|---------|
+| `drizzle_cube_meta` | Fetch cube metadata |
+| `drizzle_cube_discover` | Find relevant cubes by topic |
+| `drizzle_cube_validate` | Validate queries with auto-corrections |
+| `drizzle_cube_load` | Execute queries |
+
+### Connect AI Tools
+
+**Claude Desktop** - Add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "analytics": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-remote", "https://your-app.com/mcp"]
+    }
+  }
+}
 ```
 
-**[Complete Theming Guide →](./docs/THEMING.md)**
+**Claude.ai** - Settings → Connectors → Add your MCP URL
+
+**ChatGPT** - Settings → Connectors → Developer Mode → Add MCP URL
+
+**n8n** - Use the MCP Client node in your workflows
+
+**[Learn more about AI integration →](https://www.drizzle-cube.dev/ai/mcp-endpoints/)**
 
 ## Claude Code Plugin
 
-Use natural language to query your semantic layer directly from [Claude Code](https://claude.ai/code):
+Query your semantic layer with natural language directly from Claude Code:
 
 ```bash
-# Install the plugin
 claude /install-plugin github:cliftonc/drizzle-cube-plugin
 ```
 
-The plugin provides MCP tools for querying, debugging, and building dashboards. Just ask Claude things like:
-- "Show me average happiness by department for the last 3 months"
-- "Debug this query and show me the SQL"
-- "Create a sales dashboard with revenue KPIs"
+Then configure your API endpoint in `.drizzle-cube.json` and ask Claude things like:
+- "Show me revenue by region for the last quarter"
+- "Which departments have the highest average salary?"
+- "Create a dashboard showing key HR metrics"
 
-**[Learn more →](https://www.drizzle-cube.dev/ai/claude-code-plugin/)**
+**[Plugin documentation →](https://www.drizzle-cube.dev/ai/claude-code-plugin/)**
+
+## Features
+
+### Semantic Layer
+- **Cubes** - Define measures, dimensions, and calculated fields
+- **Joins** - belongsTo, hasOne, hasMany, belongsToMany relationships
+- **Security** - Multi-tenant isolation via security context
+- **Cross-cube queries** - Automatic join resolution
+
+### Client Components
+- **AnalysisBuilder** - Interactive query builder with chart visualization
+- **AnalyticsDashboard** - Configurable dashboards with grid layouts
+- **Chart components** - Bar, line, area, pie, funnel, heatmap, and more
+
+### Framework Support
+- Express, Fastify, Hono, Next.js adapters
+- PostgreSQL, MySQL, SQLite, DuckDB databases
+- React components with TanStack Query
+
+### Theming
+Three built-in themes (light, dark, neon) with semantic CSS variables. Add custom themes without changing components.
 
 ## Documentation
 
- - 📚 **[Full Documentation](https://www.drizzle-cube.dev/)** - Complete guides and API reference
- - 🚀 **[Try the Sandbox](https://try.drizzle-cube.dev/)** - Working example version to experiment with
-
-### Local Development
-```bash
-npm run dev
-```
+- **[Getting Started](https://www.drizzle-cube.dev/getting-started/)** - Installation and setup
+- **[Semantic Layer](https://www.drizzle-cube.dev/semantic-layer/)** - Cubes, measures, dimensions, joins
+- **[Client Components](https://www.drizzle-cube.dev/client/)** - React components and hooks
+- **[AI Integration](https://www.drizzle-cube.dev/ai/)** - MCP server and Claude plugin
+- **[API Reference](https://www.drizzle-cube.dev/api-reference/)** - Complete API documentation
 
 ## Examples
 
-- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Full-featured dashboard with Cloudflare Workers support
-- **[Express Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/express)** - Simple Express.js server with React dashboard
-- **[Fastify Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/fastify)** - High-performance Fastify server with React client
-- **[Next.js Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/nextjs)** - Full-stack Next.js app with API routes
+- **[Hono Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/hono)** - Cloudflare Workers compatible
+- **[Express Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/express)** - Traditional Node.js server
+- **[Fastify Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/fastify)** - High-performance server
+- **[Next.js Example](https://github.com/cliftonc/drizzle-cube/tree/main/examples/nextjs)** - Full-stack React
 
 ## Contributing
 
@@ -254,7 +243,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ## Roadmap
 
-To view or contribute to the roadmap please visit the [Github Project](https://github.com/users/cliftonc/projects/2)
+View and contribute to the roadmap on [GitHub Projects](https://github.com/users/cliftonc/projects/2).
 
 ## License
 
