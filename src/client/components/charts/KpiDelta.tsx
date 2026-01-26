@@ -43,10 +43,10 @@ function VarianceHistogram({
   if (range === 0 || variances.length === 0) {
     return (
       <div
-        className="flex items-center justify-center bg-dc-bg-secondary rounded-sm border border-dc-border"
+        className="dc:flex dc:items-center dc:justify-center bg-dc-bg-secondary dc:rounded-sm dc:border border-dc-border"
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        <span className="text-xs text-dc-text-muted">No variance data</span>
+        <span className="dc:text-xs text-dc-text-muted">No variance data</span>
       </div>
     );
   }
@@ -64,10 +64,10 @@ function VarianceHistogram({
     totalRange > 0 ? (maxVariance / totalRange) * 100 : 50;
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="dc:flex dc:items-center dc:space-x-2">
       {/* Histogram bars */}
       <div
-        className="relative"
+        className="dc:relative"
         style={{
           width: `${width}px`,
           height: `${height}px`,
@@ -75,7 +75,7 @@ function VarianceHistogram({
       >
         {/* Zero line (represents current value) */}
         <div
-          className="absolute left-0 right-0"
+          className="dc:absolute dc:left-0 dc:right-0"
           style={{
             height: "1px",
             top: `${zeroLinePercent}%`,
@@ -97,7 +97,7 @@ function VarianceHistogram({
           return (
             <div
               key={index}
-              className="absolute rounded-xs"
+              className="dc:absolute rounded-xs"
               style={{
                 left: `${xPosition}px`,
                 width: `${barWidth}px`,
@@ -118,7 +118,7 @@ function VarianceHistogram({
 
       {/* Variance labels on the right - show actual value difference */}
       <div
-        className="flex flex-col justify-between text-xs text-dc-text-muted"
+        className="dc:flex dc:flex-col dc:justify-between dc:text-xs text-dc-text-muted"
         style={{ height: `${height}px` }}
       >
         <span>+{formatValue(maxVariance)}</span>
@@ -198,15 +198,15 @@ const KpiDelta = React.memo(function KpiDelta({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? "200px" : undefined,
         }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             No data points to display
           </div>
         </div>
@@ -233,7 +233,7 @@ const KpiDelta = React.memo(function KpiDelta({
   if (valueFields.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? "200px" : undefined,
@@ -243,8 +243,8 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">No measure field configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+          <div className="dc:text-xs">No measure field configured</div>
         </div>
       </div>
     );
@@ -293,7 +293,7 @@ const KpiDelta = React.memo(function KpiDelta({
   if (values.length < 2) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? "200px" : undefined,
@@ -303,11 +303,11 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Insufficient Data</div>
-          <div className="text-xs">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Insufficient Data</div>
+          <div className="dc:text-xs">
             Delta calculation requires at least 2 data points
           </div>
-          <div className="text-xs">Current data points: {values.length}</div>
+          <div className="dc:text-xs">Current data points: {values.length}</div>
         </div>
       </div>
     );
@@ -388,7 +388,7 @@ const KpiDelta = React.memo(function KpiDelta({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col items-center justify-center w-full h-full p-4"
+      className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4"
       style={{
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? "200px" : undefined,
@@ -396,7 +396,7 @@ const KpiDelta = React.memo(function KpiDelta({
     >
       {/* Field Label */}
       <div
-        className="text-dc-text-secondary font-bold text-center mb-2 flex items-center justify-center gap-1"
+        className="text-dc-text-secondary dc:font-bold text-center dc:mb-2 dc:flex dc:items-center dc:justify-center dc:gap-1"
         style={{
           fontSize: "14px",
           lineHeight: "1.2",
@@ -415,22 +415,22 @@ const KpiDelta = React.memo(function KpiDelta({
                 ? `Excludes last ${granularity || "period"}`
                 : `Excludes current incomplete ${granularity}`
             }
-            className="cursor-help"
+            className="dc:cursor-help"
           >
             <Icon
               icon={infoCircleIcon}
-              className="w-4 h-4 text-dc-text-muted opacity-70"
+              className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70"
             />
           </span>
         )}
       </div>
 
       {/* Main KPI Value and Delta */}
-      <div className="flex items-center justify-center space-x-4 mb-2">
+      <div className="dc:flex dc:items-center dc:justify-center dc:space-x-4 dc:mb-2">
         {/* Main KPI Value */}
         <div
           ref={valueRef}
-          className="font-bold leading-none"
+          className="dc:font-bold dc:leading-none"
           style={{
             fontSize: `${fontSize}px`,
             color: "var(--dc-text)", // Keep main value neutral
@@ -440,10 +440,10 @@ const KpiDelta = React.memo(function KpiDelta({
         </div>
 
         {/* Delta Information */}
-        <div className="flex items-center space-x-1">
+        <div className="dc:flex dc:items-center dc:space-x-1">
           {/* Arrow */}
           <div
-            className="font-bold"
+            className="dc:font-bold"
             style={{
               color: currentColor,
               fontSize: `${fontSize * 0.35}px`,
@@ -455,7 +455,7 @@ const KpiDelta = React.memo(function KpiDelta({
           {/* Delta Values */}
           <div className="text-left">
             <div
-              className="font-bold leading-tight"
+              className="dc:font-bold dc:leading-tight"
               style={{
                 fontSize: `${fontSize * 0.35}px`,
                 color: currentColor,
@@ -465,7 +465,7 @@ const KpiDelta = React.memo(function KpiDelta({
               {formatNumber(absoluteChange)}
             </div>
             <div
-              className="font-semibold leading-tight"
+              className="dc:font-semibold dc:leading-tight"
               style={{
                 fontSize: `${fontSize * 0.28}px`,
                 color: currentColor,
@@ -482,7 +482,7 @@ const KpiDelta = React.memo(function KpiDelta({
       {/* Unit/Suffix (hidden when formatValue is provided) */}
       {displayConfig.suffix && !displayConfig.formatValue && (
         <div
-          className="text-dc-text-muted text-center mb-3"
+          className="text-dc-text-muted text-center dc:mb-3"
           style={{
             fontSize: "14px",
             lineHeight: "1.2",
@@ -495,7 +495,7 @@ const KpiDelta = React.memo(function KpiDelta({
 
       {/* Variance Histogram */}
       {displayConfig.showHistogram !== false && values.length > 2 && (
-        <div className="mt-2 w-full flex justify-center overflow-hidden">
+        <div className="dc:mt-2 dc:w-full dc:flex dc:justify-center dc:overflow-hidden">
           <VarianceHistogram
             values={values}
             lastValue={lastValue}

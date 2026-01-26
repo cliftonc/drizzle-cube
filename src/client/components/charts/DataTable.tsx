@@ -49,12 +49,12 @@ const DataTable = React.memo(function DataTable({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
         </div>
       </div>
     )
@@ -106,26 +106,26 @@ function PivotedTable({
   if (columns.length === 0 || rows.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full overflow-auto" style={{ height }}>
-      <table className="min-w-full divide-y border-dc-border">
-        <thead className="bg-dc-surface-secondary sticky top-0">
+    <div className="dc:w-full dc:overflow-auto" style={{ height }}>
+      <table className="dc:min-w-full dc:divide-y border-dc-border">
+        <thead className="bg-dc-surface-secondary dc:sticky dc:top-0">
           <tr>
             {columns.map((col: PivotColumn) => (
               <th
                 key={col.key}
-                className={`px-3 py-2 text-xs font-medium text-dc-text-muted uppercase tracking-wider whitespace-nowrap ${
+                className={`dc:px-3 dc:py-2 dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider dc:whitespace-nowrap ${
                   col.isTimeColumn ? 'text-right' : 'text-left'
                 }`}
               >
@@ -134,7 +134,7 @@ function PivotedTable({
             ))}
           </tr>
         </thead>
-        <tbody className="bg-dc-surface divide-y border-dc-border">
+        <tbody className="bg-dc-surface dc:divide-y border-dc-border">
           {rows.map((row: PivotRow) => (
             <PivotedTableRow
               key={row.id}
@@ -184,11 +184,11 @@ function PivotedTableRow({
           return (
             <td
               key={col.key}
-              className="px-3 py-2 whitespace-nowrap text-sm text-dc-text align-top"
+              className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm text-dc-text dc:align-top"
               rowSpan={row.dimensionRowSpan}
             >
-              <div className="flex items-center">
-                <MeasureIcon className="w-3.5 h-3.5 mr-1.5 text-dc-text-muted shrink-0" />
+              <div className="dc:flex dc:items-center">
+                <MeasureIcon className="dc:w-3.5 dc:h-3.5 dc:mr-1.5 text-dc-text-muted dc:shrink-0" />
                 <span>{value}</span>
               </div>
             </td>
@@ -200,7 +200,7 @@ function PivotedTableRow({
           return (
             <td
               key={col.key}
-              className="px-3 py-2 whitespace-nowrap text-sm text-right text-dc-text"
+              className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm text-right text-dc-text"
             >
               {formatPivotCellValue(value, leftYAxisFormat)}
             </td>
@@ -211,7 +211,7 @@ function PivotedTableRow({
         return (
           <td
             key={col.key}
-            className="px-3 py-2 whitespace-nowrap text-sm text-dc-text"
+            className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm text-dc-text"
           >
             {formatPivotCellValue(value)}
           </td>
@@ -292,39 +292,39 @@ function FlatTable({
   if (columns.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No columns available</div>
-          <div className="text-xs text-dc-text-secondary">Data structure is invalid</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No columns available</div>
+          <div className="dc:text-xs text-dc-text-secondary">Data structure is invalid</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full overflow-auto" style={{ height }}>
-      <table className="min-w-full divide-y border-dc-border">
-        <thead className="bg-dc-surface-secondary sticky top-0">
+    <div className="dc:w-full dc:overflow-auto" style={{ height }}>
+      <table className="dc:min-w-full dc:divide-y border-dc-border">
+        <thead className="bg-dc-surface-secondary dc:sticky dc:top-0">
           <tr>
             {columns.map((column) => (
               <th
                 key={column}
-                className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider"
+                className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider"
               >
                 {getFieldLabel(column)}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-dc-surface divide-y border-dc-border">
+        <tbody className="bg-dc-surface dc:divide-y border-dc-border">
           {data.map((row, index) => (
             <tr key={index} className="hover:bg-dc-surface-secondary">
               {columns.map((column) => (
                 <td
                   key={column}
-                  className="px-3 py-2 whitespace-nowrap text-sm text-dc-text"
+                  className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm text-dc-text"
                 >
                   {formatCellValue(row[column], leftYAxisFormat)}
                 </td>

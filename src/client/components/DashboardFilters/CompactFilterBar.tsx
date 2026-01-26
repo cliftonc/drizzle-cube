@@ -183,17 +183,17 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
   return (
     <div
-      className="border rounded-lg"
+      className="dc:border dc:rounded-lg"
       style={{
         borderColor: 'var(--dc-border)',
         backgroundColor: 'var(--dc-surface)'
       }}
     >
       {/* Desktop Layout */}
-      <div className="hidden md:flex items-center gap-2 px-3 py-2">
+      <div className="dc:hidden dc:md:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2">
         {/* Filter Icon */}
         <FilterIcon
-          className="w-4 h-4 shrink-0"
+          className="dc:w-4 dc:h-4 dc:shrink-0"
           style={{ color: 'var(--dc-text-secondary)' }}
         />
 
@@ -204,7 +204,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         />
 
         {/* Custom Date Button */}
-        <div className="relative">
+        <div className="dc:relative">
           <button
             ref={customButtonRef}
             type="button"
@@ -214,8 +214,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             }}
             title={activePresetId === 'custom' && dateRangeTooltip ? dateRangeTooltip : 'Custom date range'}
             className={`
-              flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border
-              transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
+              dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+              dc:transition-colors dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
             `}
             style={{
               backgroundColor: activePresetId === 'custom' ? 'var(--dc-primary)' : 'var(--dc-surface)',
@@ -223,9 +223,9 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
               borderColor: activePresetId === 'custom' ? 'transparent' : 'var(--dc-border)'
             }}
           >
-            <CalendarIcon className="w-3 h-3" />
+            <CalendarIcon className="dc:w-3 dc:h-3" />
             <span>Custom</span>
-            <ChevronDownIcon className="w-3 h-3" />
+            <ChevronDownIcon className="dc:w-3 dc:h-3" />
           </button>
 
           {showCustomDropdown && (
@@ -240,7 +240,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         </div>
 
         {/* XTD Button */}
-        <div className="relative">
+        <div className="dc:relative">
           <button
             ref={xtdButtonRef}
             type="button"
@@ -250,8 +250,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             }}
             title={activeXTDId && dateRangeTooltip ? dateRangeTooltip : 'X to Date options'}
             className={`
-              flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border
-              transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1
+              dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+              dc:transition-colors dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
             `}
             style={{
               backgroundColor: activeXTDId ? 'var(--dc-primary)' : 'var(--dc-surface)',
@@ -260,7 +260,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             }}
           >
             <span>XTD</span>
-            <ChevronDownIcon className="w-3 h-3" />
+            <ChevronDownIcon className="dc:w-3 dc:h-3" />
           </button>
 
           {showXTDDropdown && (
@@ -277,13 +277,13 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         {/* Separator */}
         {nonDateFilters.length > 0 && (
           <div
-            className="h-5 w-px mx-1"
+            className="dc:h-5 dc:w-px dc:mx-1"
             style={{ backgroundColor: 'var(--dc-border)' }}
           />
         )}
 
         {/* Non-date Filter Chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="dc:flex dc:items-center dc:gap-1.5 dc:flex-wrap">
           {nonDateFilters.map(filter => (
             <FilterChip
               key={filter.id}
@@ -302,7 +302,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
           <button
             type="button"
             onClick={onAddFilter}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors"
+            className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border dc:transition-colors"
             style={{
               borderColor: 'var(--dc-border)',
               color: 'var(--dc-text-secondary)',
@@ -315,18 +315,18 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
               e.currentTarget.style.backgroundColor = 'transparent'
             }}
           >
-            <AddIcon className="w-3.5 h-3.5" />
+            <AddIcon className="dc:w-3.5 dc:h-3.5" />
           </button>
         )}
       </div>
 
       {/* Mobile Layout */}
-      <div className="md:hidden">
+      <div className="dc:md:hidden">
         {/* Presets row with horizontal scroll */}
-        <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 scrollbar-thin">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:overflow-x-auto dc:px-3 dc:py-2 scrollbar-thin">
           {/* Filter Icon */}
           <FilterIcon
-            className="w-4 h-4 shrink-0"
+            className="dc:w-4 dc:h-4 dc:shrink-0"
             style={{ color: 'var(--dc-text-secondary)' }}
           />
           <DatePresetChips
@@ -337,12 +337,12 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
         {/* Custom, XTD, and Add buttons */}
         <div
-          className="flex items-center justify-between px-3 py-2 border-t"
+          className="dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-2 dc:border-t"
           style={{ borderColor: 'var(--dc-border)' }}
         >
-          <div className="flex items-center gap-2">
+          <div className="dc:flex dc:items-center dc:gap-2">
             {/* Custom Button */}
-            <div className="relative">
+            <div className="dc:relative">
               <button
                 ref={customButtonRef}
                 type="button"
@@ -351,8 +351,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                   setShowXTDDropdown(false)
                 }}
                 className={`
-                  flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border
-                  transition-colors
+                  dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+                  dc:transition-colors
                 `}
                 style={{
                   backgroundColor: activePresetId === 'custom' ? 'var(--dc-primary)' : 'var(--dc-surface)',
@@ -360,7 +360,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                   borderColor: activePresetId === 'custom' ? 'transparent' : 'var(--dc-border)'
                 }}
               >
-                <CalendarIcon className="w-3 h-3" />
+                <CalendarIcon className="dc:w-3 dc:h-3" />
                 <span>Custom</span>
               </button>
 
@@ -376,7 +376,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             </div>
 
             {/* XTD Button */}
-            <div className="relative">
+            <div className="dc:relative">
               <button
                 ref={xtdButtonRef}
                 type="button"
@@ -385,8 +385,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                   setShowCustomDropdown(false)
                 }}
                 className={`
-                  flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium border
-                  transition-colors
+                  dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
+                  dc:transition-colors
                 `}
                 style={{
                   backgroundColor: activeXTDId ? 'var(--dc-primary)' : 'var(--dc-surface)',
@@ -395,7 +395,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                 }}
               >
                 <span>XTD</span>
-                <ChevronDownIcon className="w-3 h-3" />
+                <ChevronDownIcon className="dc:w-3 dc:h-3" />
               </button>
 
               {showXTDDropdown && (
@@ -415,14 +415,14 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             <button
               type="button"
               onClick={onAddFilter}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors"
+              className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border dc:transition-colors"
               style={{
                 borderColor: 'var(--dc-border)',
                 color: 'var(--dc-text-secondary)',
                 backgroundColor: 'transparent'
               }}
             >
-              <AddIcon className="w-3.5 h-3.5" />
+              <AddIcon className="dc:w-3.5 dc:h-3.5" />
             </button>
           )}
         </div>
@@ -430,10 +430,10 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         {/* Non-date Filter Chips (Mobile) */}
         {nonDateFilters.length > 0 && (
           <div
-            className="px-3 py-2 border-t"
+            className="dc:px-3 dc:py-2 dc:border-t"
             style={{ borderColor: 'var(--dc-border)' }}
           >
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="dc:flex dc:items-center dc:gap-1.5 dc:flex-wrap">
               {nonDateFilters.map(filter => (
                 <FilterChip
                   key={filter.id}

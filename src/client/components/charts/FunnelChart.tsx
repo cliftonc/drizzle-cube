@@ -151,12 +151,12 @@ const FunnelChart = React.memo(function FunnelChart({
   if (!data || data.length === 0 || funnelData.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No funnel data</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No funnel data</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Configure a funnel with at least 2 steps and a binding key
           </div>
         </div>
@@ -174,8 +174,8 @@ const FunnelChart = React.memo(function FunnelChart({
     const rechartsLayout: 'horizontal' | 'vertical' = isVertical ? 'horizontal' : 'vertical'
 
     return (
-      <div className="relative w-full h-full flex flex-col" style={{ height }}>
-        <div className="flex-1">
+      <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
+        <div className="dc:flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <RechartsFunnelChart layout={rechartsLayout}>
               <Tooltip
@@ -214,14 +214,14 @@ const FunnelChart = React.memo(function FunnelChart({
         </div>
         {/* Summary Footer */}
         {!displayConfig?.hideSummaryFooter && (
-          <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
-            <div className="flex items-center justify-between text-sm">
+          <div className="dc:flex-shrink-0 dc:px-4 dc:py-2 dc:border-t border-dc-border bg-dc-surface-secondary">
+            <div className="dc:flex dc:items-center dc:justify-between dc:text-sm">
               <div className="text-dc-text-muted">
-                <span className="font-medium">{funnelData.length}</span> steps
+                <span className="dc:font-medium">{funnelData.length}</span> steps
               </div>
               <div className="text-dc-text">
                 <span className="text-dc-text-muted">Overall:</span>{' '}
-                <span className="font-medium">
+                <span className="dc:font-medium">
                   {firstStepValue > 0
                     ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
                     : '0%'}
@@ -240,9 +240,9 @@ const FunnelChart = React.memo(function FunnelChart({
   // Render vertical orientation (bars grow from bottom to top, steps laid out horizontally)
   if (isVertical) {
     return (
-      <div className="relative w-full h-full flex flex-col" style={{ height }}>
+      <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
         {/* Funnel Steps - Vertical Layout */}
-        <div className="flex-1 flex items-end justify-center gap-4 px-4 py-3 overflow-hidden">
+        <div className="dc:flex-1 dc:flex dc:items-end dc:justify-center dc:gap-4 dc:px-4 dc:py-3 dc:overflow-hidden">
           {funnelData.map((step, index) => {
             const heightPercent = firstStepValue > 0 ? (step.value / firstStepValue) * 100 : 0
             const prevStep = index > 0 ? funnelData[index - 1] : null
@@ -257,15 +257,15 @@ const FunnelChart = React.memo(function FunnelChart({
             const metricsCount = timeMetricsLines.length
 
             return (
-              <div key={step.name} className="flex flex-col items-center gap-2 flex-1 max-w-32 h-full">
+              <div key={step.name} className="dc:flex dc:flex-col dc:items-center dc:gap-2 dc:flex-1 dc:max-w-32 dc:h-full">
                 {/* Conversion Rate from Previous (top) */}
-                <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'min-h-16' : 'min-h-10') : 'h-5'} flex-shrink-0 text-center`}>
+                <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:min-h-16' : 'dc:min-h-10') : 'dc:h-5'} dc:flex-shrink-0 text-center`}>
                   {stepConversionRate !== null ? (
-                    <div className="text-xs text-dc-text-secondary">
+                    <div className="dc:text-xs text-dc-text-secondary">
                       {showConversion && <span>→ {stepConversionRate.toFixed(1)}%</span>}
                       {/* Time metrics (when enabled) */}
                       {metricsCount > 0 && (
-                        <div className="text-dc-text-muted mt-0.5 space-y-0.5">
+                        <div className="text-dc-text-muted dc:mt-0.5 dc:space-y-0.5">
                           {timeMetricsLines.map((line, i) => (
                             <div key={i}>⏱ {line}</div>
                           ))}
@@ -273,18 +273,18 @@ const FunnelChart = React.memo(function FunnelChart({
                       )}
                     </div>
                   ) : (
-                    <div className="text-xs text-dc-text-muted">—</div>
+                    <div className="dc:text-xs text-dc-text-muted">—</div>
                   )}
                 </div>
 
                 {/* Bar Container */}
-                <div className="flex-1 w-full relative min-h-12">
+                <div className="dc:flex-1 dc:w-full dc:relative dc:min-h-12">
                   {/* Background Track */}
-                  <div className="absolute inset-0 bg-dc-surface-secondary rounded-sm" />
+                  <div className="dc:absolute dc:inset-0 bg-dc-surface-secondary dc:rounded-sm" />
 
                   {/* Filled Bar (grows from bottom) */}
                   <div
-                    className="absolute bottom-0 left-0 right-0 rounded-sm transition-all duration-300"
+                    className="dc:absolute dc:bottom-0 dc:left-0 dc:right-0 dc:rounded-sm dc:transition-all dc:duration-300"
                     style={{
                       height: `${Math.max(heightPercent, 5)}%`,
                       backgroundColor: getStepColor(index, paletteColors),
@@ -293,21 +293,21 @@ const FunnelChart = React.memo(function FunnelChart({
 
                   {/* Percentage Label on Bar */}
                   <div
-                    className="absolute bottom-0 left-0 right-0 flex items-end justify-center pb-1 pointer-events-none"
+                    className="dc:absolute dc:bottom-0 dc:left-0 dc:right-0 dc:flex dc:items-end dc:justify-center dc:pb-1 dc:pointer-events-none"
                     style={{ height: `${Math.max(heightPercent, 20)}%` }}
                   >
-                    <span className="text-xs font-medium text-white drop-shadow-sm">
+                    <span className="dc:text-xs dc:font-medium text-white dc:drop-shadow-sm">
                       {step.percentage?.toFixed(1) ?? heightPercent.toFixed(1)}%
                     </span>
                   </div>
                 </div>
 
                 {/* Step Label (bottom) */}
-                <div className="flex-shrink-0 text-center">
-                  <div className="text-sm font-medium text-dc-text truncate" title={displayName}>
+                <div className="dc:flex-shrink-0 text-center">
+                  <div className="dc:text-sm dc:font-medium text-dc-text dc:truncate" title={displayName}>
                     {displayName}
                   </div>
-                  <div className="text-xs text-dc-text-muted">
+                  <div className="dc:text-xs text-dc-text-muted">
                     {step.value.toLocaleString()}
                   </div>
                 </div>
@@ -318,14 +318,14 @@ const FunnelChart = React.memo(function FunnelChart({
 
         {/* Summary Footer */}
         {!displayConfig?.hideSummaryFooter && (
-          <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
-            <div className="flex items-center justify-between text-sm">
+          <div className="dc:flex-shrink-0 dc:px-4 dc:py-2 dc:border-t border-dc-border bg-dc-surface-secondary">
+            <div className="dc:flex dc:items-center dc:justify-between dc:text-sm">
               <div className="text-dc-text-muted">
-                <span className="font-medium">{funnelData.length}</span> steps
+                <span className="dc:font-medium">{funnelData.length}</span> steps
               </div>
               <div className="text-dc-text">
                 <span className="text-dc-text-muted">Overall:</span>{' '}
-                <span className="font-medium">
+                <span className="dc:font-medium">
                   {firstStepValue > 0
                     ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
                     : '0%'}
@@ -343,9 +343,9 @@ const FunnelChart = React.memo(function FunnelChart({
 
   // Render horizontal orientation (default - bars grow left to right, steps stacked vertically)
   return (
-    <div className="relative w-full h-full flex flex-col" style={{ height }}>
+    <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
       {/* Funnel Steps - Horizontal Layout */}
-      <div className="flex-1 flex flex-col justify-center gap-2 px-4 py-3 overflow-hidden">
+      <div className="dc:flex-1 dc:flex dc:flex-col dc:justify-center dc:gap-2 dc:px-4 dc:py-3 dc:overflow-hidden">
         {funnelData.map((step, index) => {
           const widthPercent = firstStepValue > 0 ? (step.value / firstStepValue) * 100 : 0
           const prevStep = index > 0 ? funnelData[index - 1] : null
@@ -359,25 +359,25 @@ const FunnelChart = React.memo(function FunnelChart({
           const metricsCount = timeMetricsLines.length
 
           return (
-            <div key={step.name} className="flex items-center gap-3">
+            <div key={step.name} className="dc:flex dc:items-center dc:gap-3">
               {/* Step Label */}
-              <div className="w-24 flex-shrink-0 text-right">
-                <div className="text-sm font-medium text-dc-text truncate" title={displayName}>
+              <div className="dc:w-24 dc:flex-shrink-0 text-right">
+                <div className="dc:text-sm dc:font-medium text-dc-text dc:truncate" title={displayName}>
                   {displayName}
                 </div>
-                <div className="text-xs text-dc-text-muted">
+                <div className="dc:text-xs text-dc-text-muted">
                   {step.value.toLocaleString()}
                 </div>
               </div>
 
               {/* Bar Container */}
-              <div className="flex-1 relative">
+              <div className="dc:flex-1 dc:relative">
                 {/* Background Track */}
-                <div className="w-full h-8 bg-dc-surface-secondary rounded-sm" />
+                <div className="dc:w-full dc:h-8 bg-dc-surface-secondary dc:rounded-sm" />
 
                 {/* Filled Bar */}
                 <div
-                  className="absolute top-0 left-0 h-8 rounded-sm transition-all duration-300"
+                  className="dc:absolute dc:top-0 dc:left-0 dc:h-8 dc:rounded-sm dc:transition-all dc:duration-300"
                   style={{
                     width: `${Math.max(widthPercent, 2)}%`,
                     backgroundColor: getStepColor(index, paletteColors),
@@ -386,23 +386,23 @@ const FunnelChart = React.memo(function FunnelChart({
 
                 {/* Percentage Label on Bar */}
                 <div
-                  className="absolute top-0 left-0 h-8 flex items-center px-2 pointer-events-none"
+                  className="dc:absolute dc:top-0 dc:left-0 dc:h-8 dc:flex dc:items-center dc:px-2 dc:pointer-events-none"
                   style={{ width: `${Math.max(widthPercent, 20)}%` }}
                 >
-                  <span className="text-xs font-medium text-white drop-shadow-sm">
+                  <span className="dc:text-xs dc:font-medium text-white dc:drop-shadow-sm">
                     {step.percentage?.toFixed(1) ?? widthPercent.toFixed(1)}%
                   </span>
                 </div>
               </div>
 
               {/* Conversion Rate from Previous */}
-              <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'w-36' : 'w-28') : 'w-16'} flex-shrink-0 text-left`}>
+              <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:w-36' : 'dc:w-28') : 'dc:w-16'} dc:flex-shrink-0 text-left`}>
                 {stepConversionRate !== null ? (
-                  <div className="text-xs text-dc-text-secondary">
+                  <div className="dc:text-xs text-dc-text-secondary">
                     {showConversion && <span>↓ {stepConversionRate.toFixed(1)}%</span>}
                     {/* Time metrics (when enabled) */}
                     {metricsCount > 0 && (
-                      <div className="text-dc-text-muted mt-0.5 space-y-0.5">
+                      <div className="text-dc-text-muted dc:mt-0.5 dc:space-y-0.5">
                         {timeMetricsLines.map((line, i) => (
                           <div key={i}>⏱ {line}</div>
                         ))}
@@ -410,7 +410,7 @@ const FunnelChart = React.memo(function FunnelChart({
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-dc-text-muted">—</div>
+                  <div className="dc:text-xs text-dc-text-muted">—</div>
                 )}
               </div>
             </div>
@@ -420,14 +420,14 @@ const FunnelChart = React.memo(function FunnelChart({
 
       {/* Summary Footer */}
       {!displayConfig?.hideSummaryFooter && (
-        <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
-          <div className="flex items-center justify-between text-sm">
+        <div className="dc:flex-shrink-0 dc:px-4 dc:py-2 dc:border-t border-dc-border bg-dc-surface-secondary">
+          <div className="dc:flex dc:items-center dc:justify-between dc:text-sm">
             <div className="text-dc-text-muted">
-              <span className="font-medium">{funnelData.length}</span> steps
+              <span className="dc:font-medium">{funnelData.length}</span> steps
             </div>
             <div className="text-dc-text">
               <span className="text-dc-text-muted">Overall:</span>{' '}
-              <span className="font-medium">
+              <span className="dc:font-medium">
                 {firstStepValue > 0
                   ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
                   : '0%'}

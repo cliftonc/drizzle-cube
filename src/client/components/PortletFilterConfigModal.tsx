@@ -73,26 +73,26 @@ export default function PortletFilterConfigModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={handleCancel}>
+    <div className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center bg-black bg-opacity-50" onClick={handleCancel}>
       <div
-        className="bg-dc-surface border border-dc-border rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col"
+        className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:max-w-2xl dc:w-full dc:mx-4 dc:max-h-[80vh] dc:flex dc:flex-col"
         style={{ boxShadow: 'var(--dc-shadow-lg)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-dc-border bg-dc-surface-secondary rounded-t-lg">
-          <h2 className="text-lg font-semibold text-dc-text">Configure Dashboard Filters</h2>
-          <p className="text-sm text-dc-text-secondary mt-1">
+        <div className="dc:px-6 dc:py-4 dc:border-b border-dc-border bg-dc-surface-secondary dc:rounded-t-lg">
+          <h2 className="dc:text-lg dc:font-semibold text-dc-text">Configure Dashboard Filters</h2>
+          <p className="dc:text-sm text-dc-text-secondary dc:mt-1">
             Choose which dashboard filters apply to "{portletTitle}"
           </p>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="dc:flex-1 dc:overflow-y-auto dc:px-6 dc:py-4">
           {dashboardFilters.length === 0 ? (
-            <div className="text-center py-8 text-dc-text-muted">
+            <div className="text-center dc:py-8 text-dc-text-muted">
               <svg
-                className="mx-auto h-12 w-12 mb-3"
+                className="dc:mx-auto dc:h-12 dc:w-12 dc:mb-3"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -104,14 +104,14 @@ export default function PortletFilterConfigModal({
                   d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                 />
               </svg>
-              <p className="text-sm font-medium">No dashboard filters available</p>
-              <p className="text-xs mt-1">Add filters at the dashboard level first</p>
+              <p className="dc:text-sm dc:font-medium">No dashboard filters available</p>
+              <p className="dc:text-xs dc:mt-1">Add filters at the dashboard level first</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-dc-border">
-                <span className="text-sm font-medium text-dc-text">Available Filters</span>
-                <span className="text-xs text-dc-text-secondary">
+            <div className="dc:space-y-3">
+              <div className="dc:flex dc:items-center dc:justify-between dc:mb-4 dc:pb-2 dc:border-b border-dc-border">
+                <span className="dc:text-sm dc:font-medium text-dc-text">Available Filters</span>
+                <span className="dc:text-xs text-dc-text-secondary">
                   {selectedFilters.length} of {dashboardFilters.length} selected
                 </span>
               </div>
@@ -122,7 +122,7 @@ export default function PortletFilterConfigModal({
                 return (
                   <label
                     key={filter.id}
-                    className={`flex items-start p-3 rounded-md border cursor-pointer transition-colors ${
+                    className={`dc:flex dc:items-start dc:p-3 dc:rounded-md dc:border dc:cursor-pointer dc:transition-colors ${
                       isSelected
                         ? 'border-dc-primary bg-dc-surface-secondary'
                         : 'border-dc-border hover:bg-dc-surface-hover'
@@ -132,19 +132,19 @@ export default function PortletFilterConfigModal({
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleFilter(filter.id)}
-                      className="mt-0.5 mr-3 h-4 w-4 rounded border-dc-border focus:ring-2 focus:ring-dc-primary"
+                      className="dc:mt-0.5 dc:mr-3 dc:h-4 dc:w-4 dc:rounded border-dc-border dc:focus:ring-2 focus:ring-dc-primary"
                       style={{
                         accentColor: 'var(--dc-primary)'
                       }}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-dc-text truncate">
+                    <div className="dc:flex-1 dc:min-w-0">
+                      <div className="dc:flex dc:items-center dc:gap-2">
+                        <span className="dc:font-medium dc:text-sm text-dc-text dc:truncate">
                           {filter.label}
                         </span>
                         {isSelected && (
                           <span
-                            className="px-2 py-0.5 text-xs rounded-full"
+                            className="dc:px-2 dc:py-0.5 dc:text-xs dc:rounded-full"
                             style={{
                               backgroundColor: 'var(--dc-primary)',
                               color: 'white'
@@ -154,7 +154,7 @@ export default function PortletFilterConfigModal({
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 text-xs text-dc-text-secondary break-words">
+                      <div className="dc:mt-1 dc:text-xs text-dc-text-secondary dc:break-words">
                         {formatFilterPreview(filter)}
                       </div>
                     </div>
@@ -166,16 +166,16 @@ export default function PortletFilterConfigModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-dc-border bg-dc-surface-secondary rounded-b-lg flex justify-end gap-3">
+        <div className="dc:px-6 dc:py-4 dc:border-t border-dc-border bg-dc-surface-secondary dc:rounded-b-lg dc:flex dc:justify-end dc:gap-3">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-dc-border bg-dc-surface hover:bg-dc-surface-hover transition-colors text-dc-text"
+            className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-md dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover dc:transition-colors text-dc-text"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium rounded-md text-white transition-colors"
+            className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-md text-white dc:transition-colors"
             style={{
               backgroundColor: 'var(--dc-primary)'
             }}

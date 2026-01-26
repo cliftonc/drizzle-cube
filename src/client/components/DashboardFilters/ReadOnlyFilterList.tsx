@@ -58,13 +58,13 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
       }
 
       return (
-        <div key={id} className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 px-1">
+        <div key={id} className="dc:flex dc:flex-col dc:gap-1.5">
+          <div className="dc:flex dc:items-center dc:gap-1.5 dc:px-1">
             {isUniversalTime && (
-              <ClockIcon className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--dc-primary)' }} />
+              <ClockIcon className="dc:w-3.5 dc:h-3.5 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
             )}
             <label
-              className="text-xs font-semibold uppercase tracking-wide truncate"
+              className="dc:text-xs dc:font-semibold dc:uppercase dc:tracking-wide dc:truncate"
               style={{ color: 'var(--dc-text-secondary)' }}
               title={isUniversalTime ? `${label} (applies to all time dimensions)` : label}
             >
@@ -87,9 +87,9 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
 
     // For regular filters, use FilterItem
     return (
-      <div key={id} className="flex flex-col gap-1.5">
+      <div key={id} className="dc:flex dc:flex-col dc:gap-1.5">
         <label
-          className="text-xs font-semibold uppercase tracking-wide truncate px-1"
+          className="dc:text-xs dc:font-semibold dc:uppercase dc:tracking-wide dc:truncate dc:px-1"
           style={{ color: 'var(--dc-text-secondary)' }}
           title={label}
         >
@@ -120,15 +120,15 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
   }
 
   return (
-    <div className="px-4 py-3">
-      <div className="flex items-center gap-2 mb-3">
-        <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
-        <h3 className="text-sm font-semibold" style={{ color: 'var(--dc-text)' }}>
+    <div className="dc:px-4 dc:py-3">
+      <div className="dc:flex dc:items-center dc:gap-2 dc:mb-3">
+        <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
+        <h3 className="dc:text-sm dc:font-semibold" style={{ color: 'var(--dc-text)' }}>
           Filters
         </h3>
         {dashboardFilters.length > 0 && (
           <span
-            className="px-1.5 py-0.5 rounded-full text-xs font-medium"
+            className="dc:px-1.5 dc:py-0.5 dc:rounded-full dc:text-xs dc:font-medium"
             style={{
               backgroundColor: 'var(--dc-primary)',
               color: 'white'
@@ -138,7 +138,7 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
           </span>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:lg:grid-cols-3 dc:gap-4">
         {dashboardFilters.map(renderReadOnlyFilter)}
       </div>
     </div>

@@ -64,33 +64,33 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
       // Default error display
       return (
-        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center border border-dashed rounded-lg"
+        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 text-center dc:border dc:border-dashed dc:rounded-lg"
           style={{ borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
-          <div className="h-12 w-12 mb-4 text-dc-text-muted">⚠️</div>
-          <h3 className="text-lg font-semibold mb-2 text-dc-text">
+          <div className="dc:h-12 dc:w-12 dc:mb-4 text-dc-text-muted">⚠️</div>
+          <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">
             {this.props.portletTitle ? `Unable to render ${this.props.portletTitle}` : 'Unable to render chart'}
           </h3>
-          <p className="text-sm text-dc-text-secondary mb-4 max-w-md">
+          <p className="dc:text-sm text-dc-text-secondary dc:mb-4 dc:max-w-md">
             There was an error rendering this chart component. The error details are shown below.
           </p>
 
           {/* Error details */}
-          <div className="w-full max-w-2xl mb-4">
-            <div className="bg-dc-surface-secondary rounded-lg p-3 text-left">
-              <div className="text-xs font-mono mb-2 text-dc-text">
+          <div className="dc:w-full dc:max-w-2xl dc:mb-4">
+            <div className="bg-dc-surface-secondary dc:rounded-lg dc:p-3 text-left">
+              <div className="dc:text-xs font-mono dc:mb-2 text-dc-text">
                 <strong>Error:</strong> {this.state.error?.message}
               </div>
               {this.state.error?.name && (
-                <div className="text-xs font-mono text-dc-text-secondary mb-2">
+                <div className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
                   <strong>Type:</strong> {this.state.error.name}
                 </div>
               )}
 
               {/* Portlet Config Debug Info */}
               {this.props.portletConfig && (
-                <details className="text-xs font-mono text-dc-text-secondary mb-2">
-                  <summary className="cursor-pointer">Portlet Configuration</summary>
-                  <pre className="mt-2 whitespace-pre-wrap p-2 rounded-sm overflow-auto max-h-32"
+                <details className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
+                  <summary className="dc:cursor-pointer">Portlet Configuration</summary>
+                  <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                     {JSON.stringify(this.props.portletConfig, null, 2)}
                   </pre>
@@ -99,9 +99,9 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
               {/* Cube Query Debug Info */}
               {this.props.cubeQuery && (
-                <details className="text-xs font-mono text-dc-text-secondary mb-2">
-                  <summary className="cursor-pointer">Cube Query</summary>
-                  <pre className="mt-2 whitespace-pre-wrap p-2 rounded-sm overflow-auto max-h-32"
+                <details className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
+                  <summary className="dc:cursor-pointer">Cube Query</summary>
+                  <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: '#d1fae5' }}>
                     {typeof this.props.cubeQuery === 'string' 
                       ? JSON.stringify(JSON.parse(this.props.cubeQuery), null, 2)
@@ -112,9 +112,9 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               )}
 
               {this.state.errorInfo && (
-                <details className="text-xs font-mono text-dc-text-secondary">
-                  <summary className="cursor-pointer">Component Stack</summary>
-                  <pre className="mt-2 whitespace-pre-wrap">{this.state.errorInfo}</pre>
+                <details className="dc:text-xs font-mono text-dc-text-secondary">
+                  <summary className="dc:cursor-pointer">Component Stack</summary>
+                  <pre className="dc:mt-2 dc:whitespace-pre-wrap">{this.state.errorInfo}</pre>
                 </details>
               )}
             </div>
@@ -123,7 +123,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
           {/* Reset button */}
           <button
             onClick={this.handleReset}
-            className="px-3 py-1 text-white rounded-sm text-sm hover:opacity-90 transition-opacity"
+            className="dc:px-3 dc:py-1 text-white dc:rounded-sm dc:text-sm dc:hover:opacity-90 dc:transition-opacity"
             style={{
               backgroundColor: 'var(--dc-primary)'
             }}

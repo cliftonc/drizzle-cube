@@ -182,7 +182,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (!operatorMeta.requiresValues) {
     // No input needed for set/notSet
     return (
-      <div className="text-sm text-dc-text-muted italic">
+      <div className="dc:text-sm text-dc-text-muted dc:italic">
         No value required
       </div>
     )
@@ -191,19 +191,19 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (operator === 'inDateRange') {
     // Date range picker
     return (
-      <div className="flex items-center space-x-2">
+      <div className="dc:flex dc:items-center dc:space-x-2">
         <input
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+          className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
-        <span className="text-sm text-dc-text-muted">to</span>
+        <span className="dc:text-sm text-dc-text-muted">to</span>
         <input
           type="date"
           value={values[1] || ''}
           onChange={handleDateRangeEndInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+          className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       </div>
     )
@@ -212,21 +212,21 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (operator === 'between' || operator === 'notBetween') {
     // Between range picker (for numbers)
     return (
-      <div className="flex items-center space-x-2">
+      <div className="dc:flex dc:items-center dc:space-x-2">
         <input
           type="number"
           value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
           onChange={handleBetweenStartInput}
           placeholder="Min"
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+          className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
-        <span className="text-sm text-dc-text-muted">to</span>
+        <span className="dc:text-sm text-dc-text-muted">to</span>
         <input
           type="number"
           value={values[1] !== undefined && values[1] !== null ? values[1] : ''}
           onChange={handleBetweenEndInput}
           placeholder="Max"
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+          className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       </div>
     )
@@ -239,7 +239,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         type="date"
         value={values[0] || ''}
         onChange={handleDateInput}
-        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+        className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       />
     )
   }
@@ -252,7 +252,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
         onChange={handleDirectInput}
         placeholder="Enter number"
-        className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+        className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       />
     )
   }
@@ -262,21 +262,21 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
     if (operatorMeta.supportsMultipleValues) {
       // Multi-select date picker (for notEquals that supports multiple values)
       return (
-        <div className="space-y-2 min-w-0 max-w-full">
+        <div className="dc:space-y-2 dc:min-w-0 dc:max-w-full">
           {/* Selected dates display */}
           {values.length > 0 && (
-            <div className="flex flex-wrap gap-1 max-w-full">
+            <div className="dc:flex dc:flex-wrap dc:gap-1 dc:max-w-full">
               {values.map((value, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension"
+                  className="dc:inline-flex dc:items-center bg-dc-time-dimension text-dc-time-dimension dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-time-dimension"
                 >
-                  <span className="mr-1">{String(value)}</span>
+                  <span className="dc:mr-1">{String(value)}</span>
                   <button
                     onClick={() => handleValueRemove(value)}
                     className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
                   >
-                    <CloseIcon className="w-3 h-3" />
+                    <CloseIcon className="dc:w-3 dc:h-3" />
                   </button>
                 </div>
               ))}
@@ -292,7 +292,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 e.target.value = '' // Clear the input
               }
             }}
-            className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+            className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             placeholder="Add date..."
           />
         </div>
@@ -304,7 +304,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           type="date"
           value={values[0] || ''}
           onChange={handleDateInput}
-          className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+          className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
         />
       )
     }
@@ -313,21 +313,21 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   if (shouldShowComboBox) {
     // Combo box with API-fetched values
     return (
-      <div className="relative min-w-0 max-w-full" ref={dropdownRef}>
+      <div className="dc:relative dc:min-w-0 dc:max-w-full" ref={dropdownRef}>
         {/* Selected values display (for multi-select) */}
         {operatorMeta.supportsMultipleValues && values.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2 max-w-full">
+          <div className="dc:flex dc:flex-wrap dc:gap-1 dc:mb-2 dc:max-w-full">
             {values.map((value, index) => (
               <div
                 key={index}
-                className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension"
+                className="dc:inline-flex dc:items-center bg-dc-time-dimension text-dc-time-dimension dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-time-dimension"
               >
-                <span className="mr-1">{String(value)}</span>
+                <span className="dc:mr-1">{String(value)}</span>
                 <button
                   onClick={() => handleValueRemove(value)}
                   className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
                 >
-                  <CloseIcon className="w-3 h-3" />
+                  <CloseIcon className="dc:w-3 dc:h-3" />
                 </button>
               </div>
             ))}
@@ -336,14 +336,14 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         
         {/* Single value display (for single-select) */}
         {!operatorMeta.supportsMultipleValues && values.length > 0 && (
-          <div className="mb-2">
-            <div className="inline-flex items-center bg-dc-time-dimension text-dc-time-dimension text-xs px-2 py-1 rounded-sm border border-dc-time-dimension">
-              <span className="mr-1">{String(values[0])}</span>
+          <div className="dc:mb-2">
+            <div className="dc:inline-flex dc:items-center bg-dc-time-dimension text-dc-time-dimension dc:text-xs dc:px-2 dc:py-1 dc:rounded-sm dc:border border-dc-time-dimension">
+              <span className="dc:mr-1">{String(values[0])}</span>
               <button
                 onClick={() => onValuesChange([])}
                 className="text-dc-accent hover:text-dc-accent focus:outline-hidden"
               >
-                <CloseIcon className="w-3 h-3" />
+                <CloseIcon className="dc:w-3 dc:h-3" />
               </button>
             </div>
           </div>
@@ -352,41 +352,41 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
         {/* Dropdown trigger */}
         <button
           onClick={handleDropdownToggle}
-          className="w-full text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent flex items-center justify-between min-w-0"
+          className="dc:w-full text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:flex dc:items-center dc:justify-between dc:min-w-0"
         >
-          <span className="text-dc-text-muted truncate">
+          <span className="text-dc-text-muted dc:truncate">
             {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
           </span>
-          <ChevronDownIcon className="w-4 h-4 text-dc-text-muted" />
+          <ChevronDownIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
         </button>
 
         {/* Dropdown menu */}
         {isOpen && (
-          <div className="absolute z-30 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="dc:absolute dc:z-30 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-60 dc:overflow-y-auto">
             {/* Search input */}
-            <div className="p-2 border-b border-dc-border">
+            <div className="dc:p-2 dc:border-b border-dc-border">
               <input
                 type="text"
                 value={searchText}
                 onChange={handleSearchChange}
                 placeholder="Search values..."
-                className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 autoFocus
               />
             </div>
 
             {/* Values list */}
-            <div className="max-h-48 overflow-y-auto">
+            <div className="dc:max-h-48 dc:overflow-y-auto">
               {valuesLoading ? (
-                <div className="p-2 text-sm text-dc-text-muted">
+                <div className="dc:p-2 dc:text-sm text-dc-text-muted">
                   {searchText ? 'Searching...' : 'Loading values...'}
                 </div>
               ) : valuesError ? (
-                <div className="p-2 text-sm text-dc-error">
+                <div className="dc:p-2 dc:text-sm text-dc-error">
                   Error loading values: {valuesError}
                 </div>
               ) : distinctValues.length === 0 ? (
-                <div className="p-2 text-sm text-dc-text-muted">
+                <div className="dc:p-2 dc:text-sm text-dc-text-muted">
                   {searchText ? 'No matching values' : 'No values available'}
                 </div>
               ) : (
@@ -397,13 +397,13 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                     <button
                       key={`${value}-${index}`}
                       onClick={() => handleValueSelect(value)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                         isSelected ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
                       {String(value)}
                       {isSelected && (
-                        <span className="float-right text-dc-accent">✓</span>
+                        <span className="dc:float-right text-dc-accent">✓</span>
                       )}
                     </button>
                   )
@@ -423,7 +423,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
       value={values[0] !== undefined && values[0] !== null ? values[0] : ''}
       onChange={handleDirectInput}
       placeholder={`Enter ${operatorMeta.valueType} value`}
-      className="text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+      className="dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
     />
   )
 }

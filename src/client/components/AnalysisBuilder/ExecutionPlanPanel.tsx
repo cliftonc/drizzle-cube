@@ -116,11 +116,11 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
     <button
       onClick={handleAIClick}
       disabled={aiAnalysisLoading}
-      className="px-2 py-1 text-xs font-medium rounded bg-dc-accent text-white hover:bg-dc-accent-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+      className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded bg-dc-accent text-white hover:bg-dc-accent-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:flex dc:items-center dc:gap-1"
     >
       {aiAnalysisLoading ? (
         <>
-          <span className="animate-spin">⟳</span>
+          <span className="dc:animate-spin">⟳</span>
           Analyzing...
         </>
       ) : (
@@ -130,19 +130,19 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
   ) : null
 
   return (
-    <div className="space-y-3">
+    <div className="dc:space-y-3">
       {/* SQL Block */}
       {sqlLoading ? (
         <>
-          <h4 className="text-sm font-semibold text-dc-text mb-2">{title}</h4>
-          <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm animate-pulse" style={{ height }}>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{title}</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse" style={{ height }}>
             Loading SQL...
           </div>
         </>
       ) : sqlError ? (
         <>
-          <h4 className="text-sm font-semibold text-dc-text mb-2">{title}</h4>
-          <div className="text-dc-error text-sm bg-dc-danger-bg p-3 rounded border border-dc-error" style={{ height }}>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{title}</h4>
+          <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error" style={{ height }}>
             {sqlError.message}
           </div>
         </>
@@ -155,12 +155,12 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
           headerRight={
             <>
               {/* Include timing checkbox */}
-              <label className="flex items-center gap-1 text-xs text-dc-text-secondary cursor-pointer">
+              <label className="dc:flex dc:items-center dc:gap-1 dc:text-xs text-dc-text-secondary dc:cursor-pointer">
                 <input
                   type="checkbox"
                   checked={useAnalyze}
                   onChange={(e) => setUseAnalyze(e.target.checked)}
-                  className="w-3 h-3 rounded border-dc-border text-dc-accent focus:ring-dc-accent"
+                  className="dc:w-3 dc:h-3 dc:rounded border-dc-border text-dc-accent focus:ring-dc-accent"
                 />
                 Include timing
               </label>
@@ -169,7 +169,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
               <button
                 onClick={() => runExplain({ analyze: useAnalyze })}
                 disabled={explainLoading}
-                className="px-2 py-1 text-xs font-medium rounded border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               >
                 {explainLoading ? 'Running...' : 'Explain Plan'}
               </button>
@@ -178,8 +178,8 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
         />
       ) : (
         <>
-          <h4 className="text-sm font-semibold text-dc-text mb-2">{title}</h4>
-          <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm" style={{ height }}>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{title}</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm" style={{ height }}>
             {sqlPlaceholder}
           </div>
         </>
@@ -189,42 +189,42 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
       {explainHasRun && (
         <div>
           {explainLoading ? (
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm animate-pulse">
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse">
               Running EXPLAIN{useAnalyze ? ' ANALYZE' : ''}...
             </div>
           ) : explainError ? (
-            <div className="text-dc-error text-sm bg-dc-danger-bg p-3 rounded border border-dc-error">
+            <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
               <strong>Explain Error:</strong> {explainError.message}
             </div>
           ) : explainResult ? (
-            <div className="space-y-3">
+            <div className="dc:space-y-3">
               {/* Summary badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">
+              <div className="dc:flex dc:flex-wrap dc:items-center dc:gap-2">
+                <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">
                   {explainResult.summary.database.toUpperCase()}
                 </span>
                 {explainResult.summary.hasSequentialScans && (
-                  <span className="px-2 py-1 text-xs font-medium bg-dc-warning-bg text-dc-warning border border-dc-warning rounded">
+                  <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning-bg text-dc-warning dc:border border-dc-warning dc:rounded">
                     Sequential Scans Detected
                   </span>
                 )}
                 {explainResult.summary.usedIndexes.length > 0 && (
-                  <span className="px-2 py-1 text-xs font-medium bg-dc-success-bg text-dc-success border border-dc-success rounded">
+                  <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-success-bg text-dc-success dc:border border-dc-success dc:rounded">
                     {explainResult.summary.usedIndexes.length} Index{explainResult.summary.usedIndexes.length !== 1 ? 'es' : ''} Used
                   </span>
                 )}
                 {explainResult.summary.executionTime !== undefined && (
-                  <span className="px-2 py-1 text-xs font-medium bg-dc-surface-secondary text-dc-text-secondary border border-dc-border rounded">
+                  <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
                     Execution: {explainResult.summary.executionTime.toFixed(2)}ms
                   </span>
                 )}
                 {explainResult.summary.planningTime !== undefined && (
-                  <span className="px-2 py-1 text-xs font-medium bg-dc-surface-secondary text-dc-text-secondary border border-dc-border rounded">
+                  <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
                     Planning: {explainResult.summary.planningTime.toFixed(2)}ms
                   </span>
                 )}
                 {explainResult.summary.totalCost !== undefined && (
-                  <span className="px-2 py-1 text-xs font-medium bg-dc-surface-secondary text-dc-text-secondary border border-dc-border rounded">
+                  <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
                     Cost: {explainResult.summary.totalCost.toFixed(2)}
                   </span>
                 )}
@@ -232,7 +232,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
 
               {/* Index usage details */}
               {explainResult.summary.usedIndexes.length > 0 && (
-                <div className="text-xs text-dc-text-muted">
+                <div className="dc:text-xs text-dc-text-muted">
                   <strong>Indexes:</strong> {explainResult.summary.usedIndexes.join(', ')}
                 </div>
               )}
@@ -252,7 +252,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
 
       {/* AI Analysis Error (shown inline) */}
       {aiAnalysisError && (
-        <div className="text-dc-error text-sm bg-dc-danger-bg p-3 rounded border border-dc-error">
+        <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
           <strong>AI Analysis Error:</strong> {aiAnalysisError.message}
         </div>
       )}

@@ -16,9 +16,9 @@ export interface LoadingIndicatorProps {
 }
 
 const sizeClasses = {
-  sm: 'h-6 w-6',
-  md: 'h-8 w-8',
-  lg: 'h-12 w-12'
+  sm: 'dc:h-6 dc:w-6',
+  md: 'dc:h-8 dc:w-8',
+  lg: 'dc:h-12 dc:w-12'
 }
 
 export default function LoadingIndicator({
@@ -27,7 +27,7 @@ export default function LoadingIndicator({
 }: LoadingIndicatorProps) {
   return (
     <div
-      className={`animate-spin rounded-full border-b-2 ${sizeClasses[size]} ${className}`}
+      className={`dc:animate-spin dc:rounded-full dc:border-b-2 ${sizeClasses[size]} ${className}`}
       style={{ borderBottomColor: 'var(--dc-primary)' }}
       role="status"
       aria-label="Loading"

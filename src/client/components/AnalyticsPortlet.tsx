@@ -481,10 +481,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   
   if (!chartConfig && hasMandatoryFields) {
     return (
-      <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+      <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Required</div>
-          <div className="text-xs text-dc-text-secondary">Please configure this chart</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
+          <div className="dc:text-xs text-dc-text-secondary">Please configure this chart</div>
         </div>
       </div>
     )
@@ -493,8 +493,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   // Show placeholder for lazy-loaded portlets that aren't visible yet
   if (!shouldSkipQuery && !eagerLoad && !isVisible) {
     return (
-      <div ref={inViewRef} className="w-full h-full" style={{ height }}>
-        <div className="w-full h-full animate-pulse bg-dc-surface-secondary rounded" style={{ minHeight: '100px' }} />
+      <div ref={inViewRef} className="dc:w-full dc:h-full" style={{ height }}>
+        <div className="dc:w-full dc:h-full dc:animate-pulse bg-dc-surface-secondary dc:rounded" style={{ minHeight: '100px' }} />
       </div>
     )
   }
@@ -504,7 +504,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     // Show loading indicator during initial load OR during refresh (isFetching)
     if (isLoading || isFetching || (queryObject && !resultSet && !error)) {
       return (
-        <div ref={inViewRef} className="flex items-center justify-center w-full" style={{ height }}>
+        <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
           {loadingComponent || <LoadingIndicator size="md" />}
         </div>
       )
@@ -512,13 +512,13 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
     if (error) {
       return (
-        <div ref={inViewRef} className="p-4 border rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
-          <div className="mb-2">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
+        <div ref={inViewRef} className="dc:p-4 dc:border dc:rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
+          <div className="dc:mb-2">
+            <div className="dc:flex dc:items-center dc:justify-between">
+              <span className="dc:font-medium dc:text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
               <button
                 onClick={handleRetry}
-                className="px-2 py-1 text-white rounded-sm text-xs"
+                className="dc:px-2 dc:py-1 text-white dc:rounded-sm dc:text-xs"
                 style={{ backgroundColor: 'var(--dc-primary)' }}
               >
                 Retry
@@ -526,23 +526,23 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             </div>
           </div>
 
-          <div className="mb-3">
-            <div className="text-xs p-2 rounded-sm border" style={{ color: 'var(--dc-text-secondary)', backgroundColor: 'var(--dc-surface)', borderColor: 'var(--dc-border)' }}>
+          <div className="dc:mb-3">
+            <div className="dc:text-xs dc:p-2 dc:rounded-sm dc:border" style={{ color: 'var(--dc-text-secondary)', backgroundColor: 'var(--dc-surface)', borderColor: 'var(--dc-border)' }}>
               {error.message || error.toString()}
             </div>
           </div>
 
-          <div className="space-y-2 text-xs">
+          <div className="dc:space-y-2 dc:text-xs">
             <details>
-              <summary className="cursor-pointer font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Query (with filters applied)</summary>
-              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
+              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Query (with filters applied)</summary>
+              <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                 {queryObject ? JSON.stringify(queryObject, null, 2) : query}
               </pre>
             </details>
 
             <details>
-              <summary className="cursor-pointer font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Chart Config</summary>
-              <pre className="mt-1 p-2 rounded-sm text-xs overflow-auto max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
+              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Chart Config</summary>
+              <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
                 {JSON.stringify({
                   chartType,
                   chartConfig,
@@ -573,10 +573,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
     if (!hasValidData) {
       return (
-        <div ref={inViewRef} className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs">Invalid query or no results</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs">Invalid query or no results</div>
           </div>
         </div>
       )
@@ -646,10 +646,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       // Handle unsupported chart types
       if (!isValidChartType(effectiveChartType)) {
         return (
-          <div className="flex items-center justify-center w-full" style={{ height }}>
+          <div className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
             <div className="text-center text-dc-text-muted">
-              <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
-              <div className="text-xs">{effectiveChartType}</div>
+              <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
+              <div className="dc:text-xs">{effectiveChartType}</div>
             </div>
           </div>
         )
@@ -669,10 +669,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           colorPalette={colorPalette}
           fallback={
             <div
-              className="flex items-center justify-center w-full"
+              className="dc:flex dc:items-center dc:justify-center dc:w-full"
               style={{ height: typeof chartHeight === 'number' ? `${chartHeight}px` : chartHeight }}
             >
-              <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full min-h-[100px]" />
+              <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
             </div>
           }
         />
@@ -680,10 +680,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     } catch (error) {
       console.error('Chart rendering error:', error)
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted p-4" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted dc:p-4" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Unable to render chart</div>
-            <div className="text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render chart</div>
+            <div className="dc:text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
           </div>
         </div>
       )
@@ -691,7 +691,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   }
 
   return (
-    <div ref={inViewRef} className="w-full h-full">
+    <div ref={inViewRef} className="dc:w-full dc:h-full">
       <ChartErrorBoundary
         portletTitle={_title}
         portletConfig={{
@@ -702,7 +702,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         }}
         cubeQuery={query}
       >
-        <div className="w-full h-full flex flex-col flex-1" style={{ minHeight: '200px' }}>
+        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: '200px' }}>
           {renderChart()}
         </div>
       </ChartErrorBoundary>

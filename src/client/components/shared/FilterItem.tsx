@@ -126,7 +126,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Early return AFTER all hooks
   if (!schema) {
     return (
-      <div className="text-sm text-dc-text-muted">
+      <div className="dc:text-sm text-dc-text-muted">
         Schema not loaded
       </div>
     )
@@ -149,24 +149,24 @@ const FilterItem: React.FC<FilterItemProps> = ({
   // Helper function to get field type icon
   const getFieldTypeIcon = (field: MetaField) => {
     if (field.type === 'time') {
-      return <TimeDimensionIcon className="w-3 h-3 text-dc-accent" />
+      return <TimeDimensionIcon className="dc:w-3 dc:h-3 text-dc-accent" />
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'countDistinctApprox', 'runningTotal', 'calculated', 'number'].includes(field.type)) {
       // Use dynamic icon based on measure type, with amber color
       const icon = getMeasureIcon(field.type, 'w-3 h-3 text-dc-warning')
       return icon
     } else {
-      return <DimensionIcon className="w-3 h-3 text-dc-success" />
+      return <DimensionIcon className="dc:w-3 dc:h-3 text-dc-success" />
     }
   }
 
   // Helper function to get field type badge
   const getFieldTypeBadge = (field: MetaField) => {
     if (field.type === 'time') {
-      return <span className="text-xs bg-dc-time-dimension text-dc-time-dimension px-1.5 py-0.5 rounded-sm">T</span>
+      return <span className="dc:text-xs bg-dc-time-dimension text-dc-time-dimension dc:px-1.5 dc:py-0.5 dc:rounded-sm">T</span>
     } else if (['count', 'sum', 'avg', 'min', 'max', 'countDistinct', 'number'].includes(field.type)) {
-      return <span className="text-xs bg-dc-measure text-dc-measure px-1.5 py-0.5 rounded-sm">M</span>
+      return <span className="dc:text-xs bg-dc-measure text-dc-measure dc:px-1.5 dc:py-0.5 dc:rounded-sm">M</span>
     } else {
-      return <span className="text-xs bg-dc-dimension text-dc-dimension px-1.5 py-0.5 rounded-sm">D</span>
+      return <span className="dc:text-xs bg-dc-dimension text-dc-dimension dc:px-1.5 dc:py-0.5 dc:rounded-sm">D</span>
     }
   }
 
@@ -258,74 +258,74 @@ const FilterItem: React.FC<FilterItemProps> = ({
   const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
 
   return (
-    <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
+    <div ref={containerRef} className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 max-w-full">
+      <div className="dc:flex dc:flex-col dc:sm:flex-row dc:sm:items-center dc:gap-3 dc:min-w-0 dc:max-w-full">
         {/* Row 1 on mobile: Filter icon and field selection - conditionally hidden */}
         {!hideFieldSelector && (
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <FilterIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+          <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
+            <FilterIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0" />
 
             {/* Field selection */}
-            <div className="relative flex-1 min-w-0">
+            <div className="dc:relative dc:flex-1 dc:min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent min-w-0"
+              className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
             >
-              <span className="truncate">
+              <span className="dc:truncate">
                 {selectedField ? (
-                  <span className="font-medium">{selectedField.name}</span>
+                  <span className="dc:font-medium">{selectedField.name}</span>
                 ) : (
                   <span className="text-dc-text-muted">Select field...</span>
                 )}
               </span>
-              <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
-                isFieldDropdownOpen ? 'transform rotate-180' : ''
+              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
+                isFieldDropdownOpen ? 'dc:transform dc:rotate-180' : ''
               }`} />
             </button>
 
             {isFieldDropdownOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-hidden">
+              <div className="dc:absolute dc:z-20 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-80 dc:overflow-hidden">
                 {/* Search input */}
-                <div className="p-2 border-b border-dc-border">
-                  <div className="relative">
-                    <SearchIcon className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-dc-text-muted" />
+                <div className="dc:p-2 dc:border-b border-dc-border">
+                  <div className="dc:relative">
+                    <SearchIcon className="dc:w-4 dc:h-4 dc:absolute dc:left-2 dc:top-1/2 dc:transform dc:-translate-y-1/2 text-dc-text-muted" />
                     <input
                       ref={searchInputRef}
                       type="text"
                       placeholder="Search fields..."
                       value={fieldSearchTerm}
                       onChange={(e) => setFieldSearchTerm(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text focus:ring-1 focus:ring-dc-accent focus:border-dc-accent"
+                      className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text dc:focus:ring-1 focus:ring-dc-accent focus:border-dc-accent"
                     />
                   </div>
                 </div>
 
                 {/* Fields list */}
-                <div className="max-h-60 overflow-y-auto">
+                <div className="dc:max-h-60 dc:overflow-y-auto">
                   {/* Query fields section */}
                   {filteredQueryFields.length > 0 && (
                     <div>
-                      <div className="px-3 py-1.5 text-xs font-medium text-dc-text-muted bg-dc-surface-secondary border-b border-dc-border">
+                      <div className="dc:px-3 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-muted bg-dc-surface-secondary dc:border-b border-dc-border">
                         Fields in Query ({filteredQueryFields.length})
                       </div>
                       {filteredQueryFields.map((field) => (
                         <button
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                          className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                             field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="dc:flex dc:items-center dc:gap-2">
                             {getFieldTypeIcon(field)}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium truncate">{field.name}</span>
+                            <div className="dc:flex-1 dc:min-w-0">
+                              <div className="dc:flex dc:items-center dc:gap-2">
+                                <span className="dc:font-medium dc:truncate">{field.name}</span>
                                 {getFieldTypeBadge(field)}
                               </div>
                               {field.title !== field.name && (
-                                <div className="text-xs text-dc-text-muted truncate">{field.title}</div>
+                                <div className="dc:text-xs text-dc-text-muted dc:truncate">{field.title}</div>
                               )}
                             </div>
                           </div>
@@ -337,7 +337,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                   {/* All fields section */}
                   <div>
                     {filteredQueryFields.length > 0 && (
-                      <div className="px-3 py-1.5 text-xs font-medium text-dc-text-muted bg-dc-surface-secondary border-b border-dc-border">
+                      <div className="dc:px-3 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-muted bg-dc-surface-secondary dc:border-b border-dc-border">
                         All Available Fields ({filteredAllFields.length})
                       </div>
                     )}
@@ -345,19 +345,19 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       <button
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                        className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                           field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="dc:flex dc:items-center dc:gap-2">
                           {getFieldTypeIcon(field)}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium truncate">{field.name}</span>
+                          <div className="dc:flex-1 dc:min-w-0">
+                            <div className="dc:flex dc:items-center dc:gap-2">
+                              <span className="dc:font-medium dc:truncate">{field.name}</span>
                               {getFieldTypeBadge(field)}
                             </div>
                             {field.title !== field.name && (
-                              <div className="text-xs text-dc-text-muted truncate">{field.title}</div>
+                              <div className="dc:text-xs text-dc-text-muted dc:truncate">{field.title}</div>
                             )}
                           </div>
                         </div>
@@ -367,7 +367,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
 
                   {/* No results message */}
                   {filteredAllFields.length === 0 && (
-                    <div className="px-3 py-4 text-sm text-dc-text-muted text-center">
+                    <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted text-center">
                       No fields found matching "{fieldSearchTerm}"
                     </div>
                   )}
@@ -380,29 +380,29 @@ const FilterItem: React.FC<FilterItemProps> = ({
 
         {/* Row 2 on mobile: Operator and Value selection */}
         {selectedField && (
-          <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
+          <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:sm:flex-initial dc:min-w-0">
             {/* Operator selection - conditionally hidden */}
             {!hideOperatorSelector && (
-              <div className="relative shrink-0">
+              <div className="dc:relative dc:shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="w-full sm:w-32 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                className="dc:w-full dc:sm:w-32 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
               >
-                <span className="truncate">
+                <span className="dc:truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
                 </span>
-                <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
-                  isOperatorDropdownOpen ? 'transform rotate-180' : ''
+                <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
+                  isOperatorDropdownOpen ? 'dc:transform dc:rotate-180' : ''
                 }`} />
               </button>
 
               {isOperatorDropdownOpen && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="dc:absolute dc:z-20 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-60 dc:overflow-y-auto">
                   {availableOperators.map((operator) => (
                     <button
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                         operator.operator === filter.operator ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
@@ -415,32 +415,32 @@ const FilterItem: React.FC<FilterItemProps> = ({
             )}
 
             {/* Value input or Date Range Selector */}
-            <div className="flex-1 min-w-0">
+            <div className="dc:flex-1 dc:min-w-0">
               {shouldShowDateRangeSelector ? (
                 /* Date Range Selector for time dimensions with inDateRange */
-                <div className="flex items-center gap-2">
+                <div className="dc:flex dc:items-center dc:gap-2">
                   {/* Range type selector */}
-                  <div className="relative shrink-0">
+                  <div className="dc:relative dc:shrink-0">
                     <button
                       onClick={() => {
                         setIsOperatorDropdownOpen(false)
                         setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
                       }}
-                      className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                      className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                     >
-                      <span className="truncate">{selectedRangeLabel}</span>
-                      <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
-                        isDateRangeDropdownOpen ? 'transform rotate-180' : ''
+                      <span className="dc:truncate">{selectedRangeLabel}</span>
+                      <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
+                        isDateRangeDropdownOpen ? 'dc:transform dc:rotate-180' : ''
                       }`} />
                     </button>
 
                     {isDateRangeDropdownOpen && (
-                      <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      <div className="dc:absolute dc:z-20 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-60 dc:overflow-y-auto">
                         {DATE_RANGE_OPTIONS.map((option) => (
                           <button
                             key={option.value}
                             onClick={() => handleRangeTypeChange(option.value)}
-                            className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-none focus:bg-dc-surface-hover ${
+                            className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                               option.value === rangeType ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                             }`}
                           >
@@ -459,14 +459,14 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         value={customDates.startDate}
                         onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
                         placeholder="Start date"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                        className="dc:flex-1 dc:min-w-0 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
                       <input
                         type="date"
                         value={customDates.endDate}
                         onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
                         placeholder="End date"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                        className="dc:flex-1 dc:min-w-0 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
                     </>
                   ) : requiresNumberInput(rangeType) ? (
@@ -478,9 +478,9 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         value={numberValue}
                         onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
                         placeholder="Number"
-                        className="flex-1 min-w-0 text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                        className="dc:flex-1 dc:min-w-0 dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                       />
-                      <div className="shrink-0 text-sm text-dc-text-secondary">
+                      <div className="dc:shrink-0 dc:text-sm text-dc-text-secondary">
                         {rangeType.replace('last_n_', '').replace('_', ' ')}
                       </div>
                     </>
@@ -502,13 +502,13 @@ const FilterItem: React.FC<FilterItemProps> = ({
         
         {/* Row 3 on mobile: Remove button - conditionally hidden */}
         {!hideRemoveButton && (
-          <div className="flex justify-end sm:justify-start">
+          <div className="dc:flex dc:justify-end dc:sm:justify-start">
             <button
               onClick={() => onFilterRemove(index)}
-              className="text-dc-text-muted hover:text-dc-error focus:outline-none shrink-0"
+              className="text-dc-text-muted hover:text-dc-error dc:focus:outline-none dc:shrink-0"
               title="Remove filter"
             >
-              <CloseIcon className="w-4 h-4" />
+              <CloseIcon className="dc:w-4 dc:h-4" />
             </button>
           </div>
         )}

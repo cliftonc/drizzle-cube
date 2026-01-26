@@ -441,8 +441,8 @@ describe('FunnelBindingKeySelector', () => {
       render(<FunnelBindingKeySelector {...defaultProps} disabled />)
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('opacity-50')
-      expect(button).toHaveClass('cursor-not-allowed')
+      expect(button).toHaveClass('dc:opacity-50')
+      expect(button).toHaveClass('dc:cursor-not-allowed')
     })
 
     it('should show focus ring when dropdown is open', async () => {
@@ -453,7 +453,7 @@ describe('FunnelBindingKeySelector', () => {
       const button = screen.getByRole('button')
       await user.click(button)
 
-      expect(button).toHaveClass('ring-1')
+      expect(button).toHaveClass('dc:ring-1')
     })
   })
 })

@@ -71,7 +71,7 @@ export default function RowManagedLayout({
     >
       {canEdit && (
         <div
-          className={`dc-row-boundary-drop dc-row-boundary-drop-top dc-split-handle${activeDropKey === 'row-insert-0' ? ' dc-drop-zone-active' : ''}`}
+          className={`dc-row-boundary-drop dc-row-boundary-drop-top dc-split-handle${activeDropKey === 'dc:row-insert-0' ? ' dc-drop-zone-active' : ''}`}
           onDragOver={(event) => {
             event.preventDefault()
             setDropActive('row-insert-0')
@@ -201,7 +201,7 @@ export default function RowManagedLayout({
       })}
       {canEdit && (
         <div
-          className={`dc-row-boundary-drop dc-row-boundary-drop-bottom dc-split-handle${activeDropKey === 'row-bottom' ? ' dc-drop-zone-active' : ''}`}
+          className={`dc-row-boundary-drop dc-row-boundary-drop-bottom dc-split-handle${activeDropKey === 'dc:row-bottom' ? ' dc-drop-zone-active' : ''}`}
           onDragOver={(event) => {
             event.preventDefault()
             setDropActive('row-bottom')

@@ -185,11 +185,11 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
   }
 
   return (
-    <div className="mb-4">
+    <div className="dc:mb-4">
       {/* Edit Mode - Full filter management with chips and actions */}
       {isEditMode ? (
         <div
-          className="border rounded-lg"
+          className="dc:border dc:rounded-lg"
           style={{
             borderColor: 'var(--dc-border)',
             backgroundColor: 'var(--dc-surface)',

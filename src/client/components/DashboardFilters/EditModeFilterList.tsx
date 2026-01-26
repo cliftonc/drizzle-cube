@@ -47,8 +47,8 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
     return (
       <div
         key={id}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-all ${
-          'cursor-pointer hover:shadow-md'
+        className={`dc:inline-flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1 dc:rounded-md dc:border dc:text-xs dc:transition-all ${
+          'dc:cursor-pointer dc:hover:shadow-md'
         }`}
         style={{
           backgroundColor: isSelected ? 'var(--dc-primary)' : 'var(--dc-surface)',
@@ -64,26 +64,26 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
         }}
       >
         <IconComponent
-          className="w-3.5 h-3.5 shrink-0"
+          className="dc:w-3.5 dc:h-3.5 dc:shrink-0"
           style={{ color: isSelected ? 'white' : 'var(--dc-primary)' }}
         />
-        <span className="font-medium truncate">{label}</span>
+        <span className="dc:font-medium dc:truncate">{label}</span>
 
         {!isSelected && (
-          <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
+          <div className="dc:flex dc:items-center dc:gap-0.5 dc:ml-1" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => onEditFilter(id)}
-              className="p-0.5 hover:bg-dc-hover rounded transition-colors"
+              className="dc:p-0.5 hover:bg-dc-hover dc:rounded dc:transition-colors"
               title="Edit filter"
             >
-              <EditIcon className="w-3 h-3" />
+              <EditIcon className="dc:w-3 dc:h-3" />
             </button>
             <button
               onClick={() => onRemoveFilter(id)}
-              className="p-0.5 hover:bg-dc-danger-bg hover:text-dc-danger rounded transition-colors"
+              className="dc:p-0.5 hover:bg-dc-danger-bg hover:text-dc-danger dc:rounded dc:transition-colors"
               title="Remove filter"
             >
-              <CloseIcon className="w-3 h-3" />
+              <CloseIcon className="dc:w-3 dc:h-3" />
             </button>
           </div>
         )}
@@ -94,20 +94,20 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
   return (
     <>
       {/* Mobile: Header + collapsible content */}
-      <div className="md:hidden">
+      <div className="dc:md:hidden">
         {/* Header - clickable to toggle */}
         <div
-          className="px-4 py-2 flex items-center justify-between cursor-pointer"
+          className="dc:px-4 dc:py-2 dc:flex dc:items-center dc:justify-between dc:cursor-pointer"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          <div className="flex items-center gap-2">
-            <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--dc-text)' }}>
+          <div className="dc:flex dc:items-center dc:gap-2">
+            <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
+            <h3 className="dc:text-sm dc:font-semibold" style={{ color: 'var(--dc-text)' }}>
               Filters
             </h3>
             {dashboardFilters.length > 0 && (
               <span
-                className="px-1.5 py-0.5 rounded-full text-xs font-medium"
+                className="dc:px-1.5 dc:py-0.5 dc:rounded-full dc:text-xs dc:font-medium"
                 style={{
                   backgroundColor: 'var(--dc-primary)',
                   color: 'white'
@@ -117,12 +117,12 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               </span>
             )}
             <ChevronDownIcon
-              className={`w-4 h-4 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+              className={`dc:w-4 dc:h-4 dc:transition-transform ${isCollapsed ? '' : 'dc:rotate-180'}`}
               style={{ color: 'var(--dc-text-secondary)' }}
             />
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="dc:flex dc:items-center dc:gap-1">
             {/* Only show Date Range button if no universal time filter exists */}
             {!dashboardFilters.some(f => f.isUniversalTime) && (
               <button
@@ -130,7 +130,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                   e.stopPropagation()
                   onAddTimeFilter()
                 }}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+                className="dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-md dc:text-xs dc:font-medium dc:transition-colors dc:hover:opacity-80"
                 style={{
                   backgroundColor: 'var(--dc-surface)',
                   color: 'var(--dc-primary)',
@@ -138,8 +138,8 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 }}
                 title="Add date range filter (applies to all time dimensions)"
               >
-                <AddIcon className="w-3.5 h-3.5" />
-                <ClockIcon className="w-3.5 h-3.5" />
+                <AddIcon className="dc:w-3.5 dc:h-3.5" />
+                <ClockIcon className="dc:w-3.5 dc:h-3.5" />
               </button>
             )}
             <button
@@ -147,29 +147,29 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 e.stopPropagation()
                 onAddFilter()
               }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+              className="dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-md dc:text-xs dc:font-medium dc:transition-colors dc:hover:opacity-80"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
               }}
             >
-              <AddIcon className="w-3.5 h-3.5" />
+              <AddIcon className="dc:w-3.5 dc:h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Mobile Filter Chips - Collapsible */}
         {dashboardFilters.length > 0 && !isCollapsed && (
-          <div className="px-4 pb-2 flex flex-col gap-2">
+          <div className="dc:px-4 dc:pb-2 dc:flex dc:flex-col dc:gap-2">
             {dashboardFilters.map(renderFilterChip)}
           </div>
         )}
 
         {/* Mobile Empty State */}
         {dashboardFilters.length === 0 && !isCollapsed && (
-          <div className="px-4 pb-2">
+          <div className="dc:px-4 dc:pb-2">
             <div
-              className="text-xs p-2 rounded-md text-center"
+              className="dc:text-xs dc:p-2 dc:rounded-md text-center"
               style={{
                 backgroundColor: 'var(--dc-surface-secondary)',
                 color: 'var(--dc-text-secondary)'
@@ -182,16 +182,16 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
       </div>
 
       {/* Desktop: Single row layout */}
-      <div className="hidden md:flex md:items-center md:gap-3 px-4 py-2">
+      <div className="dc:hidden dc:md:flex dc:md:items-center dc:md:gap-3 dc:px-4 dc:py-2">
         {/* Header Section */}
-        <div className="flex items-center gap-2 shrink-0">
-          <FilterIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--dc-primary)' }} />
-          <h3 className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--dc-text)' }}>
+        <div className="dc:flex dc:items-center dc:gap-2 dc:shrink-0">
+          <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
+          <h3 className="dc:text-sm dc:font-semibold dc:whitespace-nowrap" style={{ color: 'var(--dc-text)' }}>
             Filters
           </h3>
           {dashboardFilters.length > 0 && (
             <span
-              className="px-1.5 py-0.5 rounded-full text-xs font-medium"
+              className="dc:px-1.5 dc:py-0.5 dc:rounded-full dc:text-xs dc:font-medium"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -204,13 +204,13 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
 
         {/* Filter Chips Section - grows to fill space */}
         {dashboardFilters.length > 0 ? (
-          <div className="flex flex-wrap gap-2 flex-1 min-w-0">
+          <div className="dc:flex dc:flex-wrap dc:gap-2 dc:flex-1 dc:min-w-0">
             {dashboardFilters.map(renderFilterChip)}
           </div>
         ) : (
-          <div className="flex-1 min-w-0">
+          <div className="dc:flex-1 dc:min-w-0">
             <div
-              className="text-xs px-3 py-1 rounded-md inline-block"
+              className="dc:text-xs dc:px-3 dc:py-1 dc:rounded-md dc:inline-block"
               style={{
                 backgroundColor: 'var(--dc-surface-secondary)',
                 color: 'var(--dc-text-secondary)'
@@ -222,12 +222,12 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
         )}
 
         {/* Add Button Section */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="dc:flex dc:items-center dc:gap-1 dc:shrink-0">
           {/* Only show Date Range button if no universal time filter exists */}
           {!dashboardFilters.some(f => f.isUniversalTime) && (
             <button
               onClick={onAddTimeFilter}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+              className="dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-md dc:text-xs dc:font-medium dc:transition-colors dc:hover:opacity-80"
               style={{
                 backgroundColor: 'var(--dc-surface)',
                 color: 'var(--dc-primary)',
@@ -235,19 +235,19 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               }}
               title="Add date range filter (applies to all time dimensions)"
             >
-              <AddIcon className="w-3.5 h-3.5" />
+              <AddIcon className="dc:w-3.5 dc:h-3.5" />
               <span>Date Range</span>
             </button>
           )}
           <button
             onClick={onAddFilter}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors hover:opacity-80"
+            className="dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded-md dc:text-xs dc:font-medium dc:transition-colors dc:hover:opacity-80"
             style={{
               backgroundColor: 'var(--dc-primary)',
               color: 'white'
             }}
           >
-            <AddIcon className="w-3.5 h-3.5" />
+            <AddIcon className="dc:w-3.5 dc:h-3.5" />
             <span>Filter</span>
           </button>
         </div>

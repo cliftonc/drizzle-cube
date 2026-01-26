@@ -10,7 +10,7 @@ const LazyAnalysisBuilder = lazy(() => import('./AnalysisBuilder')) as ForwardRe
 const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>((props, ref) => (
   <Suspense
     fallback={
-      <div className="flex items-center justify-center w-full py-6">
+      <div className="dc:flex dc:items-center dc:justify-center dc:w-full dc:py-6">
         <LoadingIndicator />
       </div>
     }

@@ -146,7 +146,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
   return (
     <div
       ref={dropdownRef}
-      className="absolute top-full left-0 mt-1 z-50 border rounded-lg shadow-lg min-w-[280px]"
+      className="dc:absolute dc:top-full dc:left-0 dc:mt-1 dc:z-50 dc:border dc:rounded-lg dc:shadow-lg dc:min-w-[280px]"
       style={{
         backgroundColor: 'var(--dc-surface)',
         borderColor: 'var(--dc-border)',
@@ -157,7 +157,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
     >
       {/* Tab Headers */}
       <div
-        className="flex border-b"
+        className="dc:flex dc:border-b"
         style={{ borderColor: 'var(--dc-border)' }}
       >
         {(['fixed', 'since', 'last'] as TabType[]).map(tab => (
@@ -165,7 +165,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className="flex-1 px-4 py-2 text-sm font-medium capitalize transition-colors"
+            className="dc:flex-1 dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:capitalize dc:transition-colors"
             style={tabButtonStyle(activeTab === tab)}
           >
             {tab}
@@ -174,13 +174,13 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
       </div>
 
       {/* Tab Content */}
-      <div className="p-4">
+      <div className="dc:p-4">
         {/* Fixed Tab */}
         {activeTab === 'fixed' && (
-          <div className="space-y-3">
+          <div className="dc:space-y-3">
             <div>
               <label
-                className="block text-xs font-medium mb-1"
+                className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
                 Start Date
@@ -189,7 +189,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={fixedStartDate}
                 onChange={(e) => setFixedStartDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -199,7 +199,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
             </div>
             <div>
               <label
-                className="block text-xs font-medium mb-1"
+                className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
                 End Date
@@ -208,7 +208,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={fixedEndDate}
                 onChange={(e) => setFixedEndDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -220,7 +220,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplyFixed}
               disabled={!fixedStartDate}
-              className="w-full py-2 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -233,10 +233,10 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
 
         {/* Since Tab */}
         {activeTab === 'since' && (
-          <div className="space-y-3">
+          <div className="dc:space-y-3">
             <div>
               <label
-                className="block text-xs font-medium mb-1"
+                className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
                 Since Date
@@ -245,7 +245,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 type="date"
                 value={sinceDate}
                 onChange={(e) => setSinceDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2"
+                className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
                 style={{
                   borderColor: 'var(--dc-border)',
                   backgroundColor: 'var(--dc-bg)',
@@ -254,7 +254,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               />
             </div>
             <p
-              className="text-xs"
+              className="dc:text-xs"
               style={{ color: 'var(--dc-text-secondary)' }}
             >
               From selected date to today
@@ -263,7 +263,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplySince}
               disabled={!sinceDate}
-              className="w-full py-2 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -276,11 +276,11 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
 
         {/* Last Tab */}
         {activeTab === 'last' && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="flex-1">
+          <div className="dc:space-y-3">
+            <div className="dc:flex dc:gap-2">
+              <div className="dc:flex-1">
                 <label
-                  className="block text-xs font-medium mb-1"
+                  className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                   style={{ color: 'var(--dc-text-secondary)' }}
                 >
                   Number
@@ -291,7 +291,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                   max="999"
                   value={lastNumber}
                   onChange={(e) => setLastNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2"
+                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
                   style={{
                     borderColor: 'var(--dc-border)',
                     backgroundColor: 'var(--dc-bg)',
@@ -299,9 +299,9 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                   }}
                 />
               </div>
-              <div className="flex-1">
+              <div className="dc:flex-1">
                 <label
-                  className="block text-xs font-medium mb-1"
+                  className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                   style={{ color: 'var(--dc-text-secondary)' }}
                 >
                   Unit
@@ -309,7 +309,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 <select
                   value={lastUnit}
                   onChange={(e) => setLastUnit(e.target.value as LastUnit)}
-                  className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-2"
+                  className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border dc:rounded dc:focus:outline-none dc:focus:ring-2"
                   style={{
                     borderColor: 'var(--dc-border)',
                     backgroundColor: 'var(--dc-bg)',
@@ -325,7 +325,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               </div>
             </div>
             <p
-              className="text-xs"
+              className="dc:text-xs"
               style={{ color: 'var(--dc-text-secondary)' }}
             >
               Last {lastNumber} {lastNumber === 1 ? lastUnit.slice(0, -1) : lastUnit}
@@ -334,7 +334,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               type="button"
               onClick={handleApplyLast}
               disabled={lastNumber < 1}
-              className="w-full py-2 text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--dc-primary)',
                 color: 'white'
@@ -348,12 +348,12 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
 
       {/* Cancel Button */}
       <div
-        className="px-4 pb-4"
+        className="dc:px-4 dc:pb-4"
       >
         <button
           type="button"
           onClick={onClose}
-          className="w-full py-2 text-sm font-medium rounded border transition-colors"
+          className="dc:w-full dc:py-2 dc:text-sm dc:font-medium dc:rounded dc:border dc:transition-colors"
           style={{
             borderColor: 'var(--dc-border)',
             color: 'var(--dc-text-secondary)',

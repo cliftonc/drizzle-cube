@@ -93,7 +93,7 @@ export default function MobileStackedLayout({
 
   return (
     <ScrollContainerProvider value={scrollContainer}>
-      <div ref={setContainerRef} className="mobile-stacked-layout space-y-4 px-2">
+      <div ref={setContainerRef} className="mobile-stacked-layout dc:space-y-4 dc:px-2">
         {sortedPortlets.map(portlet => {
         // Normalize portlet to ensure analysisConfig exists (on-the-fly migration)
         const normalizedPortlet = ensureAnalysisConfig(portlet)
@@ -115,7 +115,7 @@ export default function MobileStackedLayout({
           <div
             key={portlet.id}
             data-portlet-id={portlet.id}
-            className="bg-dc-surface border border-dc-border rounded-lg flex flex-col"
+            className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col"
             style={{
               height: portletHeight,
               boxShadow: 'var(--dc-shadow-sm)'
@@ -123,14 +123,14 @@ export default function MobileStackedLayout({
           >
             {/* Portlet Header - Simplified for mobile (no edit controls) */}
             {!renderDisplayConfig?.hideHeader && (
-              <div className="flex items-center justify-between px-3 py-2 border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg">
-                <h3 className="font-semibold text-sm text-dc-text truncate flex-1">
+              <div className="dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-2 dc:border-b border-dc-border dc:shrink-0 bg-dc-surface-secondary dc:rounded-t-lg">
+                <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate dc:flex-1">
                   {portlet.title}
                 </h3>
-                <div className="flex items-center gap-1 shrink-0 ml-2">
+                <div className="dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-2">
                   <button
                     onClick={() => handlePortletRefresh(portlet.id)}
-                    className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                    className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
                     title="Refresh portlet data"
                   >
                     <RefreshIcon style={{ width: '16px', height: '16px', color: 'currentColor' }} />
@@ -141,7 +141,7 @@ export default function MobileStackedLayout({
 
             {/* Portlet Content - explicit height for charts to render */}
             <div
-              className="px-2 py-3 overflow-visible flex flex-col"
+              className="dc:px-2 dc:py-3 dc:overflow-visible dc:flex dc:flex-col"
               style={{ height: contentHeight }}
             >
               <AnalyticsPortlet

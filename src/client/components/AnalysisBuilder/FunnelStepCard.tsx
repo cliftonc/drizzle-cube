@@ -185,23 +185,23 @@ const FunnelStepCard = memo(function FunnelStepCard({
   return (
     <div
       className={`
-        bg-dc-surface border rounded-lg transition-all cursor-pointer
+        bg-dc-surface dc:border dc:rounded-lg dc:transition-all dc:cursor-pointer
         ${isActive
-          ? 'border-dc-primary ring-1 ring-dc-primary'
+          ? 'border-dc-primary dc:ring-1 ring-dc-primary'
           : 'border-dc-border hover:border-dc-text-muted'
         }
       `}
       onClick={onSelect}
     >
       {/* Header Row */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-dc-border">
+      <div className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2 dc:border-b border-dc-border">
         {/* Drag Handle */}
-        <div className="cursor-grab active:cursor-grabbing text-dc-text-muted hover:text-dc-text">
-          {DragHandleIcon && <DragHandleIcon className="w-4 h-4" />}
+        <div className="dc:cursor-grab dc:active:cursor-grabbing text-dc-text-muted hover:text-dc-text">
+          {DragHandleIcon && <DragHandleIcon className="dc:w-4 dc:h-4" />}
         </div>
 
         {/* Step Number */}
-        <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-dc-primary/10 text-dc-primary text-xs font-medium">
+        <span className="dc:flex-shrink-0 dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded-full bg-dc-primary/10 text-dc-primary dc:text-xs dc:font-medium">
           {stepIndex + 1}
         </span>
 
@@ -215,7 +215,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
             onKeyDown={handleNameKeyDown}
             onBlur={handleNameBlur}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 px-1.5 py-0.5 text-sm font-medium bg-dc-surface border border-dc-primary rounded text-dc-text focus:outline-none"
+            className="dc:flex-1 dc:px-1.5 dc:py-0.5 dc:text-sm dc:font-medium bg-dc-surface dc:border border-dc-primary dc:rounded text-dc-text dc:focus:outline-none"
             placeholder="Step name"
           />
         ) : (
@@ -224,7 +224,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
               e.stopPropagation()
               setIsEditingName(true)
             }}
-            className="flex-1 text-left text-sm font-medium text-dc-text hover:text-dc-primary truncate"
+            className="dc:flex-1 text-left dc:text-sm dc:font-medium text-dc-text hover:text-dc-primary dc:truncate"
             title="Click to edit name"
           >
             {step.name || `Step ${stepIndex + 1}`}
@@ -238,17 +238,17 @@ const FunnelStepCard = memo(function FunnelStepCard({
               e.stopPropagation()
               onRemove()
             }}
-            className="p-1 rounded hover:bg-dc-danger-bg text-dc-text-muted hover:text-dc-error transition-colors"
+            className="dc:p-1 dc:rounded hover:bg-dc-danger-bg text-dc-text-muted hover:text-dc-error dc:transition-colors"
             title="Remove step"
           >
-            {CloseIcon && <CloseIcon className="w-4 h-4" />}
+            {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
           </button>
         )}
       </div>
 
       {/* Body - Only visible when active */}
       {isActive && (
-        <div className="px-3 py-3 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="dc:px-3 dc:py-3 dc:space-y-4" onClick={(e) => e.stopPropagation()}>
           {/* Filters - only dimensions allowed for funnel step filters */}
           <AnalysisFilterSection
             filters={step.filters}
@@ -260,19 +260,19 @@ const FunnelStepCard = memo(function FunnelStepCard({
           {/* Time to Convert (only for steps after the first) */}
           {stepIndex > 0 && (
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-dc-text-muted mb-1">
-                {TimeDimensionIcon && <TimeDimensionIcon className="w-3.5 h-3.5" />}
+              <label className="dc:flex dc:items-center dc:gap-1.5 dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
+                {TimeDimensionIcon && <TimeDimensionIcon className="dc:w-3.5 dc:h-3.5" />}
                 Time Window
               </label>
-              <div ref={timeDropdownRef} className="relative">
+              <div ref={timeDropdownRef} className="dc:relative">
                 <button
                   type="button"
                   onClick={() => setShowTimeDropdown(!showTimeDropdown)}
                   className={`
-                    flex items-center justify-between w-full px-2.5 py-1.5 text-sm
-                    bg-dc-surface border border-dc-border rounded
-                    transition-colors hover:border-dc-primary cursor-pointer
-                    ${showTimeDropdown ? 'border-dc-primary ring-1 ring-dc-primary' : ''}
+                    dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2.5 dc:py-1.5 dc:text-sm
+                    bg-dc-surface dc:border border-dc-border dc:rounded
+                    dc:transition-colors hover:border-dc-primary dc:cursor-pointer
+                    ${showTimeDropdown ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
                   `}
                 >
                   <span className={step.timeToConvert ? 'text-dc-text' : 'text-dc-text-muted'}>
@@ -280,20 +280,20 @@ const FunnelStepCard = memo(function FunnelStepCard({
                   </span>
                   {ChevronDownIcon && (
                     <ChevronDownIcon
-                      className={`w-4 h-4 text-dc-text-muted transition-transform ${showTimeDropdown ? 'rotate-180' : ''}`}
+                      className={`dc:w-4 dc:h-4 text-dc-text-muted dc:transition-transform ${showTimeDropdown ? 'dc:rotate-180' : ''}`}
                     />
                   )}
                 </button>
 
                 {showTimeDropdown && (
-                  <div className="absolute z-50 mt-1 left-0 right-0 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <div className="dc:absolute dc:z-50 dc:mt-1 dc:left-0 dc:right-0 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
                     {TIME_TO_CONVERT_OPTIONS.map((option) => (
                       <button
                         key={option.value || 'none'}
                         onClick={() => handleTimeSelect(option.value)}
                         className={`
-                          flex items-center justify-between w-full px-3 py-1.5 text-sm
-                          transition-colors
+                          dc:flex dc:items-center dc:justify-between dc:w-full dc:px-3 dc:py-1.5 dc:text-sm
+                          dc:transition-colors
                           ${step.timeToConvert === option.value ||
                             (!step.timeToConvert && option.value === null)
                             ? 'bg-dc-primary-bg text-dc-primary'
@@ -304,10 +304,10 @@ const FunnelStepCard = memo(function FunnelStepCard({
                         <span>{option.label}</span>
                         {(step.timeToConvert === option.value ||
                           (!step.timeToConvert && option.value === null)) &&
-                          CheckIcon && <CheckIcon className="w-4 h-4" />}
+                          CheckIcon && <CheckIcon className="dc:w-4 dc:h-4" />}
                       </button>
                     ))}
-                    <div className="px-3 py-2 border-t border-dc-border text-xs text-dc-text-muted">
+                    <div className="dc:px-3 dc:py-2 dc:border-t border-dc-border dc:text-xs text-dc-text-muted">
                       Max time from previous step to qualify
                     </div>
                   </div>
@@ -320,17 +320,17 @@ const FunnelStepCard = memo(function FunnelStepCard({
 
       {/* Collapsed view - show filter count when not active */}
       {!isActive && (
-        <div className="px-3 py-2 text-xs text-dc-text-muted">
+        <div className="dc:px-3 dc:py-2 dc:text-xs text-dc-text-muted">
           {step.filters.length > 0 && (
             <span>{step.filters.length} filter{step.filters.length !== 1 ? 's' : ''}</span>
           )}
           {step.timeToConvert && stepIndex > 0 && (
-            <span className={step.filters.length > 0 ? 'ml-2' : ''}>
+            <span className={step.filters.length > 0 ? 'dc:ml-2' : ''}>
               {step.filters.length > 0 ? '• ' : ''}within {timeToConvertLabel.toLowerCase()}
             </span>
           )}
           {step.filters.length === 0 && !step.timeToConvert && (
-            <span className="italic">No filters configured</span>
+            <span className="dc:italic">No filters configured</span>
           )}
         </div>
       )}

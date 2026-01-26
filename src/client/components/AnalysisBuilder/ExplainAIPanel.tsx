@@ -71,16 +71,16 @@ function AssessmentBadge({ assessment, reason }: { assessment: 'good' | 'warning
   }
 
   return (
-    <div className={`p-4 rounded-lg border ${assessmentColors[assessment]}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="font-semibold uppercase text-base">
+    <div className={`dc:p-4 dc:rounded-lg dc:border ${assessmentColors[assessment]}`}>
+      <div className="dc:flex dc:items-center dc:gap-2 dc:mb-1">
+        <span className="dc:font-semibold dc:uppercase dc:text-base">
           {assessment === 'good' && '✓ '}
           {assessment === 'warning' && '⚠ '}
           {assessment === 'critical' && '✕ '}
           {labels[assessment]}
         </span>
       </div>
-      <p className="text-sm">{safeText(reason)}</p>
+      <p className="dc:text-sm">{safeText(reason)}</p>
     </div>
   )
 }
@@ -90,13 +90,13 @@ function AssessmentBadge({ assessment, reason }: { assessment: 'good' | 'warning
  */
 function IssueItem({ issue }: { issue: ExplainIssue }) {
   return (
-    <div className="flex items-start gap-2 py-2">
-      <span className={`text-sm ${issueSeverityColors[issue.severity]}`}>
+    <div className="dc:flex dc:items-start dc:gap-2 dc:py-2">
+      <span className={`dc:text-sm ${issueSeverityColors[issue.severity]}`}>
         {issue.severity === 'high' && '●'}
         {issue.severity === 'medium' && '○'}
         {issue.severity === 'low' && '○'}
       </span>
-      <span className="text-sm text-dc-text-secondary">{safeText(issue.description)}</span>
+      <span className="dc:text-sm text-dc-text-secondary">{safeText(issue.description)}</span>
     </div>
   )
 }
@@ -120,7 +120,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="px-2 py-1 text-xs rounded bg-dc-surface hover:bg-dc-surface-hover text-dc-text-muted"
+      className="dc:px-2 dc:py-1 dc:text-xs dc:rounded bg-dc-surface hover:bg-dc-surface-hover text-dc-text-muted"
       title="Copy to clipboard"
     >
       {copied ? 'Copied!' : 'Copy'}
@@ -140,23 +140,23 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
   }
 
   return (
-    <div className="p-4 border border-dc-border rounded-lg bg-dc-surface">
+    <div className="dc:p-4 dc:border border-dc-border dc:rounded-lg bg-dc-surface">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2">
         <span
-          className={`px-2 py-0.5 text-xs font-medium rounded ${severityColors[rec.severity]}`}
+          className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded ${severityColors[rec.severity]}`}
         >
           {typeLabels[rec.type]}
         </span>
-        <h5 className="font-medium text-dc-text">{safeText(rec.title)}</h5>
+        <h5 className="dc:font-medium text-dc-text">{safeText(rec.title)}</h5>
       </div>
 
       {/* Description */}
-      <p className="text-sm text-dc-text-secondary mb-3">{safeText(rec.description)}</p>
+      <p className="dc:text-sm text-dc-text-secondary dc:mb-3">{safeText(rec.description)}</p>
 
       {/* SQL code for index/table recommendations */}
       {rec.sql && (
-        <div className="mt-2">
+        <div className="dc:mt-2">
           <CodeBlock
             code={rec.sql}
             language="sql"
@@ -167,17 +167,17 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
 
       {/* TypeScript code for cube recommendations - display as text since CodeBlock doesn't support TS */}
       {rec.cubeCode && (
-        <div className="mt-2">
+        <div className="dc:mt-2">
           {rec.cubeName && (
-            <p className="text-xs text-dc-text-muted mb-1">
-              Add to <code className="bg-dc-surface-secondary px-1 rounded">{rec.cubeName}</code> cube:
+            <p className="dc:text-xs text-dc-text-muted dc:mb-1">
+              Add to <code className="bg-dc-surface-secondary dc:px-1 dc:rounded">{rec.cubeName}</code> cube:
             </p>
           )}
-          <div className="relative">
-            <pre className="p-3 text-xs bg-dc-surface-secondary rounded overflow-x-auto font-mono text-dc-text">
+          <div className="dc:relative">
+            <pre className="dc:p-3 dc:text-xs bg-dc-surface-secondary dc:rounded dc:overflow-x-auto font-mono text-dc-text">
               {rec.cubeCode}
             </pre>
-            <div className="absolute top-1 right-1">
+            <div className="dc:absolute dc:top-1 dc:right-1">
               <CopyButton text={rec.cubeCode} />
             </div>
           </div>
@@ -186,7 +186,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
 
       {/* Expected impact */}
       {rec.estimatedImpact && (
-        <p className="text-xs text-dc-text-muted mt-2">
+        <p className="dc:text-xs text-dc-text-muted dc:mt-2">
           <strong>Expected impact:</strong> {safeText(rec.estimatedImpact)}
         </p>
       )}
@@ -222,35 +222,35 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="dc:fixed dc:inset-0 dc:z-50 dc:flex dc:items-center dc:justify-center dc:p-4 bg-black/50">
       {/* Modal backdrop */}
       <div
-        className="absolute inset-0"
+        className="dc:absolute dc:inset-0"
         onClick={handleClose}
         aria-hidden="true"
       />
 
       {/* Modal content */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-dc-surface rounded-lg shadow-xl flex flex-col">
+      <div className="dc:relative dc:w-full dc:max-w-4xl dc:max-h-[90vh] bg-dc-surface dc:rounded-lg dc:shadow-xl dc:flex dc:flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dc-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-lg">✨</span>
-            <h3 className="text-lg font-semibold text-dc-text">AI Performance Analysis</h3>
+        <div className="dc:flex dc:items-center dc:justify-between dc:px-6 dc:py-4 dc:border-b border-dc-border dc:flex-shrink-0">
+          <div className="dc:flex dc:items-center dc:gap-3">
+            <span className="dc:text-lg">✨</span>
+            <h3 className="dc:text-lg dc:font-semibold text-dc-text">AI Performance Analysis</h3>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text transition-colors"
+            className="dc:p-2 dc:rounded-lg hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors"
             aria-label="Close"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="dc:w-5 dc:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+        <div className="dc:flex-1 dc:overflow-y-auto dc:px-6 dc:py-4 dc:space-y-6">
           {/* Assessment */}
           <AssessmentBadge
             assessment={analysis.assessment}
@@ -259,14 +259,14 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
 
           {/* Summary */}
           <div>
-            <h4 className="text-sm font-semibold text-dc-text-muted uppercase mb-2">Summary</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">Summary</h4>
             <p className="text-dc-text">{safeText(analysis.summary)}</p>
           </div>
 
           {/* Query Understanding */}
           {analysis.queryUnderstanding && (
             <div>
-              <h4 className="text-sm font-semibold text-dc-text-muted uppercase mb-2">Query Analysis</h4>
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">Query Analysis</h4>
               <p className="text-dc-text-secondary">{safeText(analysis.queryUnderstanding)}</p>
             </div>
           )}
@@ -274,10 +274,10 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {/* Issues */}
           {analysis.issues && analysis.issues.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-dc-text-muted uppercase mb-2">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">
                 Issues Found ({analysis.issues.length})
               </h4>
-              <div className="space-y-1 bg-dc-surface-secondary rounded-lg p-3">
+              <div className="dc:space-y-1 bg-dc-surface-secondary dc:rounded-lg dc:p-3">
                 {analysis.issues.map((issue, i) => (
                   <IssueItem key={i} issue={issue} />
                 ))}
@@ -288,10 +288,10 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {/* Recommendations */}
           {analysis.recommendations && analysis.recommendations.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-dc-text-muted uppercase mb-3">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-3">
                 Recommendations ({analysis.recommendations.length})
               </h4>
-              <div className="space-y-4">
+              <div className="dc:space-y-4">
                 {analysis.recommendations.map((rec, i) => (
                   <RecommendationCard key={i} rec={rec} />
                 ))}
@@ -301,24 +301,24 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
 
           {/* No recommendations case */}
           {(!analysis.recommendations || analysis.recommendations.length === 0) && (
-            <div className="text-dc-text-muted italic p-4 bg-dc-surface-secondary rounded-lg">
+            <div className="text-dc-text-muted dc:italic dc:p-4 bg-dc-surface-secondary dc:rounded-lg">
               No specific recommendations. The query appears to be well-optimized.
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-dc-border flex-shrink-0 bg-dc-surface-secondary">
+        <div className="dc:flex dc:items-center dc:justify-between dc:px-6 dc:py-3 dc:border-t border-dc-border dc:flex-shrink-0 bg-dc-surface-secondary">
           {/* Meta info */}
           {analysis._meta && (
-            <div className="text-xs text-dc-text-muted">
+            <div className="dc:text-xs text-dc-text-muted">
               Model: {analysis._meta.model}
               {analysis._meta.usingUserKey && ' (using your API key)'}
             </div>
           )}
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-dc-primary text-white hover:bg-dc-primary-hover transition-colors"
+            className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-lg bg-dc-primary text-white hover:bg-dc-primary-hover dc:transition-colors"
           >
             Close
           </button>

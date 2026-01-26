@@ -169,33 +169,33 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
 
   return (
-    <div ref={containerRef} className="bg-dc-surface border border-dc-border rounded-lg p-3">
+    <div ref={containerRef} className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:p-3">
       {/* Responsive layout - stacks on mobile, single row on desktop */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0">
+      <div className="dc:flex dc:flex-col dc:sm:flex-row dc:sm:items-center dc:gap-3 dc:min-w-0">
         {/* Row 1: Filter icon and time dimension field - conditionally hidden */}
         {!hideFieldSelector && (
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <CalendarIcon className="w-4 h-4 text-dc-text-muted shrink-0" />
+          <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
+            <CalendarIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0" />
 
             {/* Time dimension field selector */}
-            <div className="relative flex-1 min-w-0">
+            <div className="dc:relative dc:flex-1 dc:min-w-0">
               <button
                 onClick={handleTimeDimensionDropdownToggle}
-                className="w-full flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent min-w-0"
+                className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
               >
-                <span className="truncate">{timeDimension}</span>
-                <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 transition-transform ${
-                  isTimeDimensionDropdownOpen ? 'transform rotate-180' : ''
+                <span className="dc:truncate">{timeDimension}</span>
+                <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:transition-transform ${
+                  isTimeDimensionDropdownOpen ? 'dc:transform dc:rotate-180' : ''
                 }`} />
               </button>
 
               {isTimeDimensionDropdownOpen && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="dc:absolute dc:z-20 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-60 dc:overflow-y-auto">
                   {availableTimeDimensions.map((td) => (
                     <button
                       key={td}
                       onClick={() => handleTimeDimensionChange(td)}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                         td === timeDimension ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
@@ -209,26 +209,26 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
         )}
 
         {/* Row 2: Date range selector */}
-        <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:sm:flex-initial dc:min-w-0">
           {/* Range type selector with custom dropdown */}
-          <div className="relative shrink-0">
+          <div className="dc:relative dc:shrink-0">
             <button
               onClick={handleRangeDropdownToggle}
-              className="w-full sm:w-40 flex items-center justify-between text-left text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+              className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             >
-              <span className="truncate">{selectedRangeLabel}</span>
-              <ChevronDownIcon className={`w-4 h-4 text-dc-text-muted shrink-0 ml-1 transition-transform ${
-                isRangeDropdownOpen ? 'transform rotate-180' : ''
+              <span className="dc:truncate">{selectedRangeLabel}</span>
+              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
+                isRangeDropdownOpen ? 'dc:transform dc:rotate-180' : ''
               }`} />
             </button>
 
             {isRangeDropdownOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+              <div className="dc:absolute dc:z-20 dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-60 dc:overflow-y-auto">
                 {DATE_RANGE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => handleRangeTypeChange(option.value)}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                    className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                       option.value === rangeType ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                     }`}
                   >
@@ -241,35 +241,35 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
         </div>
 
         {/* Row 3: Custom date inputs, number input, or remove button */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
           {rangeType === 'custom' ? (
             <>
               {/* Start date */}
-              <div className="flex-1 min-w-0">
+              <div className="dc:flex-1 dc:min-w-0">
                 <input
                   type="date"
                   value={customDates.startDate}
                   onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                  className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
 
               {/* End date (optional) */}
-              <div className="flex-1 min-w-0">
+              <div className="dc:flex-1 dc:min-w-0">
                 <input
                   type="date"
                   value={customDates.endDate}
                   onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
                   placeholder="dd/mm/yyyy"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                  className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
             </>
           ) : requiresNumberInput(rangeType) ? (
             <>
               {/* Number input for flexible ranges */}
-              <div className="flex-1 min-w-0">
+              <div className="dc:flex-1 dc:min-w-0">
                 <input
                   type="number"
                   min="1"
@@ -277,28 +277,28 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   value={numberValue}
                   onChange={(e) => handleNumberChange(Math.max(1, parseInt(e.target.value) || 1))}
                   placeholder="Number"
-                  className="w-full text-sm border border-dc-border rounded-sm px-2 py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                  className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 />
               </div>
 
               {/* Unit display */}
-              <div className="shrink-0 text-sm text-dc-text-secondary">
+              <div className="dc:shrink-0 dc:text-sm text-dc-text-secondary">
                 {rangeType.replace('last_n_', '').replace('_', ' ')}
               </div>
             </>
           ) : (
             // Empty placeholder to maintain layout consistency
-            <div className="flex-1"></div>
+            <div className="dc:flex-1"></div>
           )}
 
           {/* Remove button - conditionally hidden */}
           {!hideRemoveButton && (
             <button
               onClick={() => onRemove(timeDimension)}
-              className="text-dc-text-muted hover:text-dc-error focus:outline-hidden shrink-0 p-1"
+              className="text-dc-text-muted hover:text-dc-error focus:outline-hidden dc:shrink-0 dc:p-1"
               title="Remove date range"
             >
-              <CloseIcon className="w-4 h-4" />
+              <CloseIcon className="dc:w-4 dc:h-4" />
             </button>
           )}
         </div>

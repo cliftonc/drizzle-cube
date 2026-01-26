@@ -294,45 +294,45 @@ export default function AnalysisAxisDropZone({
       // Measures get colored icon box with type-specific icon
       const IconComponent = getMeasureTypeIcon(meta.measureType || 'count') || MeasureIcon
       return (
-        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
-          <IconComponent className="w-4 h-4" />
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
+          <IconComponent className="dc:w-4 dc:h-4" />
         </span>
       )
     } else if (meta.type === 'timeDimension') {
       // Time dimensions get colored background matching field selector
       return (
-        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-time-dimension text-dc-time-dimension-text flex-shrink-0">
-          <TimeDimensionIcon className="w-4 h-4" />
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
+          <TimeDimensionIcon className="dc:w-4 dc:h-4" />
         </span>
       )
     } else {
       // Regular dimensions get colored background matching field selector
       return (
-        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-dimension text-dc-dimension-text flex-shrink-0">
-          <DimensionIcon className="w-4 h-4" />
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
+          <DimensionIcon className="dc:w-4 dc:h-4" />
         </span>
       )
     }
   }
 
   return (
-    <div className="mb-3">
+    <div className="dc:mb-3">
       {/* Header */}
-      <div className="mb-2">
-        <h4 className="text-sm font-medium text-dc-text flex items-center">
+      <div className="dc:mb-2">
+        <h4 className="dc:text-sm dc:font-medium text-dc-text dc:flex dc:items-center">
           {label}
-          {mandatory && <span className="text-dc-error ml-1">*</span>}
+          {mandatory && <span className="text-dc-error dc:ml-1">*</span>}
         </h4>
-        {description && <div className="text-xs text-dc-text-muted mt-0.5">{description}</div>}
+        {description && <div className="dc:text-xs text-dc-text-muted dc:mt-0.5">{description}</div>}
       </div>
 
       {/* Drop Zone Container */}
       <div
         ref={containerRef}
         data-axis-container={key}
-        className={`min-h-[48px] border-2 border-dashed rounded-lg p-2 transition-all duration-200 ${
+        className={`dc:min-h-[48px] dc:border-2 dc:border-dashed dc:rounded-lg dc:p-2 dc:transition-all dc:duration-200 ${
           (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
-            ? 'shadow-sm border-solid'
+            ? 'dc:shadow-sm dc:border-solid'
             : isFull
               ? 'bg-dc-surface-secondary'
               : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'
@@ -403,12 +403,12 @@ export default function AnalysisAxisDropZone({
         }}
       >
         {fields.length === 0 ? (
-          <div className="text-sm text-dc-text-muted text-center py-2">
+          <div className="dc:text-sm text-dc-text-muted text-center dc:py-2">
             {isFull ? 'Maximum items reached' : emptyText || `Drop fields here`}
           </div>
         ) : (
           <div
-            className="space-y-2"
+            className="dc:space-y-2"
             onDragOver={(e) => {
               // Allow dropping for reorder operations
               if (draggedItem && draggedItem.fromAxis === key) {
@@ -432,7 +432,7 @@ export default function AnalysisAxisDropZone({
               return (
                 <div
                   key={`${field}-${index}`}
-                  className="relative"
+                  className="dc:relative"
                   style={{
                     transform,
                     transition: draggedItem && draggedItem.fromAxis === key ? 'transform 0.15s ease-out' : 'none'
@@ -440,8 +440,8 @@ export default function AnalysisAxisDropZone({
                 >
                   {/* Gap indicator line - shows where item will be inserted */}
                   {showGapBefore && (
-                    <div className="absolute -top-5 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
-                      <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+                    <div className="dc:absolute dc:-top-5 dc:left-0 dc:right-0 dc:flex dc:items-center dc:justify-center dc:pointer-events-none dc:z-10">
+                      <div className="dc:h-0.5 dc:w-full bg-dc-primary dc:rounded-full" />
                     </div>
                   )}
 
@@ -454,19 +454,19 @@ export default function AnalysisAxisDropZone({
                     onDragEnd={(e) => handleFieldDragEnd(e, field)}
                     onDragOver={(e) => handleItemDragOver(e, index)}
                     onDrop={handleItemDrop}
-                    className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg group hover:bg-dc-surface-tertiary transition-colors cursor-move ${
-                      isBeingDragged ? 'opacity-30 cursor-grabbing' : ''
+                    className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${
+                      isBeingDragged ? 'dc:opacity-30 dc:cursor-grabbing' : ''
                     }`}
                   >
                     {/* Icon */}
                     {renderFieldIcon(meta)}
 
                     {/* Field Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-dc-text truncate" title={field}>
+                    <div className="dc:flex-1 dc:min-w-0">
+                      <div className="dc:text-sm text-dc-text dc:truncate" title={field}>
                         {meta.shortTitle || meta.title || field.split('.').pop()}
                       </div>
-                      <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:truncate">{meta.cubeName}</div>
                     </div>
 
                     {/* L/R Axis Toggle - only for yAxis with dual axis enabled */}
@@ -478,10 +478,10 @@ export default function AnalysisAxisDropZone({
                           const currentAxis = yAxisAssignment?.[field] || 'left'
                           onYAxisAssignmentChange(field, currentAxis === 'left' ? 'right' : 'left')
                         }}
-                        className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors flex-shrink-0 ${
+                        className={`dc:px-1.5 dc:py-0.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors dc:flex-shrink-0 ${
                           (yAxisAssignment?.[field] || 'left') === 'left'
-                            ? 'bg-dc-info-bg text-dc-info hover:opacity-80'
-                            : 'bg-dc-accent-bg text-dc-accent hover:opacity-80'
+                            ? 'bg-dc-info-bg text-dc-info dc:hover:opacity-80'
+                            : 'bg-dc-accent-bg text-dc-accent dc:hover:opacity-80'
                         }`}
                         title={`Y-Axis: ${(yAxisAssignment?.[field] || 'left') === 'left' ? 'Left' : 'Right'} (click to toggle)`}
                       >
@@ -493,10 +493,10 @@ export default function AnalysisAxisDropZone({
                     <button
                       type="button"
                       onClick={() => onRemove(field, key)}
-                      className="p-1 text-dc-text-muted hover:text-dc-danger opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                      className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-0 dc:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0"
                       title={`Remove from ${label}`}
                     >
-                      <CloseIcon className="w-4 h-4" />
+                      <CloseIcon className="dc:w-4 dc:h-4" />
                     </button>
                   </div>
                 </div>
@@ -504,16 +504,16 @@ export default function AnalysisAxisDropZone({
             })}
             {/* Gap indicator after the last item - shows when dropping at end */}
             {draggedItem && draggedItem.fromAxis === key && dropTargetIndex === fields.length && (
-              <div className="relative h-2">
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
-                  <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+              <div className="dc:relative dc:h-2">
+                <div className="dc:absolute dc:top-0 dc:left-0 dc:right-0 dc:flex dc:items-center dc:justify-center dc:pointer-events-none dc:z-10">
+                  <div className="dc:h-0.5 dc:w-full bg-dc-primary dc:rounded-full" />
                 </div>
               </div>
             )}
             {/* Handle drop at the end of the list for reordering */}
             {draggedItem && draggedItem.fromAxis === key && fields.length > 1 && (
               <div
-                className="h-6"
+                className="dc:h-6"
                 onDragOver={(e) => {
                   if (draggedItem.fromIndex !== undefined) {
                     e.preventDefault()
@@ -533,7 +533,7 @@ export default function AnalysisAxisDropZone({
       </div>
 
       {mandatory && fields.length === 0 && (
-        <div className="text-xs text-dc-error mt-1">This field is required</div>
+        <div className="dc:text-xs text-dc-error dc:mt-1">This field is required</div>
       )}
     </div>
   )

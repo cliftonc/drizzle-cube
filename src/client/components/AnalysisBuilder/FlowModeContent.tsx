@@ -116,14 +116,14 @@ const FlowModeContent = memo(function FlowModeContent({
   )
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+    <div className="dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:overflow-hidden">
       {/* Tab Bar */}
-      <div className="flex border-b border-dc-border flex-shrink-0">
+      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
         <button
           onClick={() => setActiveTab('config')}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'config'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : 'text-dc-text-secondary hover:text-dc-text'
           }`}
         >
@@ -132,11 +132,11 @@ const FlowModeContent = memo(function FlowModeContent({
         <button
           onClick={() => hasDisplayTab && setActiveTab('display')}
           disabled={!hasDisplayTab}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'display'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : !hasDisplayTab
-                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
           title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
@@ -147,7 +147,7 @@ const FlowModeContent = memo(function FlowModeContent({
 
       {/* Tab Content */}
       {activeTab === 'config' ? (
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="dc:flex dc:flex-col dc:flex-1 dc:min-h-0">
           {/* Configuration Panel - Cube + Binding Key + Time Dimension + Event Dimension */}
           <FlowConfigPanel
             selectedCube={flowCube}
@@ -162,27 +162,27 @@ const FlowModeContent = memo(function FlowModeContent({
           />
 
           {/* Flow Configuration - scrollable */}
-          <div className="flex-1 min-h-0 overflow-auto p-4 space-y-6">
+          <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4 dc:space-y-6">
             {/* Visualization Type - now in main config since it affects query */}
             {onChartTypeChange && (
               <div>
                 <SectionHeading>Visualization</SectionHeading>
-                <p className="text-xs text-dc-text-muted mb-3">
+                <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                   Choose how to visualize the flow data. This affects how data is aggregated.
                 </p>
-                <div className="flex gap-2">
+                <div className="dc:flex dc:gap-2">
                   <button
                     type="button"
                     onClick={() => onChartTypeChange('sankey')}
-                    className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                    className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:font-medium dc:transition-colors ${
                       chartType === 'sankey'
                         ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
                         : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
                       <span>Sankey</span>
-                      <span className="text-[10px] font-normal text-dc-text-muted">
+                      <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
                         Paths can converge
                       </span>
                     </div>
@@ -190,15 +190,15 @@ const FlowModeContent = memo(function FlowModeContent({
                   <button
                     type="button"
                     onClick={() => onChartTypeChange('sunburst')}
-                    className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                    className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:font-medium dc:transition-colors ${
                       chartType === 'sunburst'
                         ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
                         : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
                       <span>Sunburst</span>
-                      <span className="text-[10px] font-normal text-dc-text-muted">
+                      <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
                         Unique paths only
                       </span>
                     </div>
@@ -210,13 +210,13 @@ const FlowModeContent = memo(function FlowModeContent({
             {/* Starting Step Section */}
             <div>
               <SectionHeading>Starting Step</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Define the anchor event from which paths will be explored in both directions.
               </p>
 
               {/* Starting Step Filters */}
               <div>
-                <label className="block text-xs font-medium text-dc-text-muted mb-2">
+                <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-2">
                   Filter Conditions
                 </label>
                 <AnalysisFilterSection
@@ -230,22 +230,22 @@ const FlowModeContent = memo(function FlowModeContent({
             {/* Depth Configuration */}
             <div>
               <SectionHeading>Exploration Depth</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 {chartType === 'sunburst'
                   ? 'How many steps to explore after the starting step.'
                   : 'How many steps to explore before and after the starting step.'}
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="dc:grid dc:grid-cols-2 dc:gap-4">
                 {/* Steps Before - disabled for sunburst */}
-                <div className={chartType === 'sunburst' ? 'opacity-50' : ''}>
-                  <label className="block text-xs font-medium text-dc-text-muted mb-1">
+                <div className={chartType === 'sunburst' ? 'dc:opacity-50' : ''}>
+                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                     Steps Before
                     {chartType === 'sunburst' && (
-                      <span className="ml-1 text-dc-text-muted">(N/A)</span>
+                      <span className="dc:ml-1 text-dc-text-muted">(N/A)</span>
                     )}
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="dc:flex dc:items-center dc:gap-2">
                     <input
                       type="range"
                       min={FLOW_MIN_DEPTH}
@@ -253,9 +253,9 @@ const FlowModeContent = memo(function FlowModeContent({
                       value={stepsBefore}
                       onChange={(e) => onStepsBeforeChange(parseInt(e.target.value, 10))}
                       disabled={chartType === 'sunburst'}
-                      className="flex-1 disabled:cursor-not-allowed"
+                      className="dc:flex-1 dc:disabled:cursor-not-allowed"
                     />
-                    <span className="w-6 text-sm font-medium text-dc-text text-center">
+                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text text-center">
                       {chartType === 'sunburst' ? '-' : stepsBefore}
                     </span>
                   </div>
@@ -263,19 +263,19 @@ const FlowModeContent = memo(function FlowModeContent({
 
                 {/* Steps After */}
                 <div>
-                  <label className="block text-xs font-medium text-dc-text-muted mb-1">
+                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                     Steps After
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="dc:flex dc:items-center dc:gap-2">
                     <input
                       type="range"
                       min={FLOW_MIN_DEPTH}
                       max={FLOW_MAX_DEPTH}
                       value={stepsAfter}
                       onChange={(e) => onStepsAfterChange(parseInt(e.target.value, 10))}
-                      className="flex-1"
+                      className="dc:flex-1"
                     />
-                    <span className="w-6 text-sm font-medium text-dc-text text-center">
+                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text text-center">
                       {stepsAfter}
                     </span>
                   </div>
@@ -284,7 +284,7 @@ const FlowModeContent = memo(function FlowModeContent({
 
               {/* Performance warning for high depth */}
               {((chartType !== 'sunburst' && stepsBefore >= 4) || stepsAfter >= 4) && (
-                <div className="mt-3 px-3 py-2 bg-dc-warning-bg rounded border border-dc-warning text-xs text-dc-warning">
+                <div className="dc:mt-3 dc:px-3 dc:py-2 bg-dc-warning-bg dc:rounded dc:border border-dc-warning dc:text-xs text-dc-warning">
                   High step depth (4-5) may impact query performance on large datasets.
                 </div>
               )}
@@ -294,11 +294,11 @@ const FlowModeContent = memo(function FlowModeContent({
             {/* Join strategy selection */}
             <div>
               <SectionHeading>Join Strategy</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Control how before/after steps are fetched. Switch to window if lateral is slower on your DB.
               </p>
               <select
-                className="w-full border border-dc-border rounded px-2 py-2 text-sm bg-dc-surface text-dc-text"
+                className="dc:w-full dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 dc:text-sm bg-dc-surface text-dc-text"
                 value={joinStrategy}
                 onChange={(e) =>
                   onJoinStrategyChange?.(e.target.value as 'auto' | 'lateral' | 'window')
@@ -312,7 +312,7 @@ const FlowModeContent = memo(function FlowModeContent({
           </div>
         </div>
       ) : activeTab === 'display' && displayConfig && onDisplayConfigChange ? (
-        <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4">
           <AnalysisDisplayConfigPanel
             chartType={chartType}
             displayConfig={displayConfig}

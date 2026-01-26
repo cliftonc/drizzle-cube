@@ -336,14 +336,14 @@ export default function PortletAnalysisModal({
       <button
         type="button"
         onClick={handleCancel}
-        className="px-4 py-2 text-sm font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface border border-dc-border rounded-md hover:bg-dc-surface-hover transition-colors"
+        className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface dc:border border-dc-border dc:rounded-md hover:bg-dc-surface-hover dc:transition-colors"
       >
         Cancel
       </button>
       <button
         type="button"
         onClick={handleSave}
-        className="px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:bg-dc-accent-hover rounded-md transition-colors"
+        className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-white bg-dc-accent hover:bg-dc-accent-hover dc:rounded-md dc:transition-colors"
       >
         {submitText}
       </button>
@@ -363,11 +363,11 @@ export default function PortletAnalysisModal({
       footer={footer}
     >
       {/* Custom content with title input */}
-      <div className="flex flex-col h-full">
+      <div className="dc:flex dc:flex-col dc:h-full">
         {/* Title input section */}
-        <div className="shrink-0 px-4 py-3 border-b border-dc-border bg-dc-surface-secondary">
-          <div className="flex items-center gap-3">
-            <label htmlFor="portlet-title" className="text-sm font-medium text-dc-text-secondary shrink-0">
+        <div className="dc:shrink-0 dc:px-4 dc:py-3 dc:border-b border-dc-border bg-dc-surface-secondary">
+          <div className="dc:flex dc:items-center dc:gap-3">
+            <label htmlFor="portlet-title" className="dc:text-sm dc:font-medium text-dc-text-secondary dc:shrink-0">
               Title
             </label>
             <input
@@ -377,14 +377,14 @@ export default function PortletAnalysisModal({
               onChange={(e) => setFormTitle(e.target.value)}
               placeholder="Enter portlet title..."
               autoComplete="off"
-              className="flex-1 px-3 py-1.5 text-sm bg-dc-surface border border-dc-border rounded-md text-dc-text placeholder-dc-text-muted focus:outline-none focus:ring-2 focus:ring-dc-accent focus:border-transparent"
+              className="dc:flex-1 dc:px-3 dc:py-1.5 dc:text-sm bg-dc-surface dc:border border-dc-border dc:rounded-md text-dc-text placeholder-dc-text-muted dc:focus:outline-none dc:focus:ring-2 focus:ring-dc-accent focus:border-transparent"
               autoFocus
             />
           </div>
         </div>
 
         {/* AnalysisBuilder content */}
-        <div className="flex-1 min-h-0">
+        <div className="dc:flex-1 dc:min-h-0">
           <AnalysisBuilder
             ref={builderRef}
             maxHeight="100%"
@@ -397,7 +397,7 @@ export default function PortletAnalysisModal({
             initialData={initialData}
             colorPalette={colorPalette}
             disableLocalStorage={true}
-            className="h-full"
+            className="dc:h-full"
           />
         </div>
       </div>

@@ -33,16 +33,16 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
   // Font size mapping
   const fontSizeClasses = {
-    small: 'text-sm',
-    medium: 'text-lg', 
-    large: 'text-xl'
+    small: 'dc:text-sm',
+    medium: 'dc:text-lg',
+    large: 'dc:text-xl'
   }
 
   // Alignment mapping
   const alignmentClasses = {
-    left: 'text-left',
-    center: 'text-center',
-    right: 'text-right'
+    left: 'dc:text-left',
+    center: 'dc:text-center',
+    right: 'dc:text-right'
   }
 
   // Simple markdown parser
@@ -200,10 +200,10 @@ const MarkdownChart = React.memo(function MarkdownChart({
         return <span key={key} className="text-dc-text">{node.content}</span>
 
       case 'bold':
-        return <strong key={key} className="font-bold text-dc-text">{node.content}</strong>
+        return <strong key={key} className="dc:font-bold text-dc-text">{node.content}</strong>
 
       case 'italic':
-        return <em key={key} className="italic text-dc-text">{node.content}</em>
+        return <em key={key} className="dc:italic text-dc-text">{node.content}</em>
 
       case 'link':
         return (
@@ -212,7 +212,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
             href={node.url}
             target="_blank"
             rel="nofollow noopener noreferrer"
-            className="hover:underline transition-colors"
+            className="dc:hover:underline dc:transition-colors"
             style={{ color: accentColor }}
           >
             {node.content}
@@ -222,20 +222,20 @@ const MarkdownChart = React.memo(function MarkdownChart({
       case 'header': {
         // Header classes that scale with fontSize setting
         const getHeaderClasses = (level: number, fontSize: string) => {
-          const baseClasses = 'font-bold'
+          const baseClasses = 'dc:font-bold'
           const marginClasses = {
-            1: 'mb-4',
-            2: 'mb-3',
-            3: 'mb-2'
+            1: 'dc:mb-4',
+            2: 'dc:mb-3',
+            3: 'dc:mb-2'
           }
 
           let sizeClasses = ''
           if (fontSize === 'small') {
-            sizeClasses = { 1: 'text-lg', 2: 'text-base', 3: 'text-sm' }[level] || 'text-sm'
+            sizeClasses = { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' }[level] || 'dc:text-sm'
           } else if (fontSize === 'large') {
-            sizeClasses = { 1: 'text-5xl', 2: 'text-4xl', 3: 'text-3xl' }[level] || 'text-3xl'
+            sizeClasses = { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }[level] || 'dc:text-3xl'
           } else { // medium (default)
-            sizeClasses = { 1: 'text-3xl', 2: 'text-2xl', 3: 'text-xl' }[level] || 'text-xl'
+            sizeClasses = { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' }[level] || 'dc:text-xl'
           }
 
           return `${baseClasses} ${sizeClasses} ${marginClasses[level as keyof typeof marginClasses]}`
@@ -255,7 +255,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
       case 'paragraph':
         return (
-          <p key={key} className="mb-3 leading-relaxed">
+          <p key={key} className="dc:mb-3 dc:leading-relaxed">
             {node.children?.map((child, i) => renderNode(child, i))}
           </p>
         )
@@ -287,9 +287,9 @@ const MarkdownChart = React.memo(function MarkdownChart({
             
             if (alignment === 'center') {
               return (
-                <li key={key} className="mb-1 flex items-center justify-center">
+                <li key={key} className="dc:mb-1 dc:flex dc:items-center dc:justify-center">
                   <span 
-                    className={`inline-block mr-2 shrink-0 ${numberSizeClass} font-medium`}
+                    className={`dc:inline-block dc:mr-2 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
@@ -301,12 +301,12 @@ const MarkdownChart = React.memo(function MarkdownChart({
               )
             } else if (alignment === 'right') {
               return (
-                <li key={key} className="mb-1 flex items-start justify-end">
+                <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
                   <span className="text-right">
                     {node.children.map((child, i) => renderNode(child, i))}
                   </span>
                   <span 
-                    className={`inline-block ml-2 shrink-0 ${numberSizeClass} font-medium`}
+                    className={`dc:inline-block dc:ml-2 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
@@ -315,14 +315,14 @@ const MarkdownChart = React.memo(function MarkdownChart({
               )
             } else {
               return (
-                <li key={key} className="mb-1 flex items-start">
+                <li key={key} className="dc:mb-1 dc:flex dc:items-start">
                   <span 
-                    className={`inline-block mr-3 shrink-0 ${numberSizeClass} font-medium`}
+                    className={`dc:inline-block dc:mr-3 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
                     style={{ color: accentColor }}
                   >
                     {listNumber}.
                   </span>
-                  <span className="flex-1">
+                  <span className="dc:flex-1">
                     {node.children.map((child, i) => renderNode(child, i))}
                   </span>
                 </li>
@@ -333,9 +333,9 @@ const MarkdownChart = React.memo(function MarkdownChart({
           // For unordered lists, use custom bullets with alignment
           if (alignment === 'center') {
             return (
-              <li key={key} className="mb-1 flex items-center justify-center">
+              <li key={key} className="dc:mb-1 dc:flex dc:items-center dc:justify-center">
                 <span 
-                  className="inline-block w-2 h-2 rounded-full mr-2 shrink-0"
+                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:mr-2 dc:shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
                 <span className="text-center">
@@ -345,24 +345,24 @@ const MarkdownChart = React.memo(function MarkdownChart({
             )
           } else if (alignment === 'right') {
             return (
-              <li key={key} className="mb-1 flex items-start justify-end">
+              <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
                 <span className="text-right">
                   {node.children.map((child, i) => renderNode(child, i))}
                 </span>
                 <span 
-                  className="inline-block w-2 h-2 rounded-full ml-2 mt-2 shrink-0"
+                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:ml-2 dc:mt-2 dc:shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
               </li>
             )
           } else {
             return (
-              <li key={key} className="mb-1 flex items-start">
+              <li key={key} className="dc:mb-1 dc:flex dc:items-start">
                 <span 
-                  className="inline-block w-2 h-2 rounded-full mr-3 mt-2 shrink-0"
+                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:mr-3 dc:mt-2 dc:shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
-                <span className="flex-1">
+                <span className="dc:flex-1">
                   {node.children.map((child, i) => renderNode(child, i))}
                 </span>
               </li>
@@ -382,15 +382,15 @@ const MarkdownChart = React.memo(function MarkdownChart({
   if (!content.trim()) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No content</div>
-          <div className="text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No content</div>
+          <div className="dc:text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
         </div>
       </div>
     )
@@ -400,7 +400,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
   return (
     <div 
-      className={`p-4 w-full h-full overflow-auto ${fontSizeClasses[fontSize as keyof typeof fontSizeClasses]} ${alignmentClasses[alignment as keyof typeof alignmentClasses]}`}
+      className={`dc:p-4 dc:w-full dc:h-full dc:overflow-auto ${fontSizeClasses[fontSize as keyof typeof fontSizeClasses]} ${alignmentClasses[alignment as keyof typeof alignmentClasses]}`}
       style={{ 
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined

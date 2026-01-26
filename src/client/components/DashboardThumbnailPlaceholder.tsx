@@ -20,13 +20,13 @@ export function DashboardThumbnailPlaceholder({
 }: DashboardThumbnailPlaceholderProps) {
   return (
     <div
-      className={`flex items-center justify-center bg-dc-bg-secondary ${className}`}
+      className={`dc:flex dc:items-center dc:justify-center bg-dc-bg-secondary ${className}`}
     >
       <div className="text-center">
         <GridIcon
-          className="w-8 h-8 mx-auto mb-2 text-dc-text-muted opacity-50"
+          className="dc:w-8 dc:h-8 dc:mx-auto dc:mb-2 text-dc-text-muted dc:opacity-50"
         />
-        <span className="text-xs text-dc-text-muted">No preview</span>
+        <span className="dc:text-xs text-dc-text-muted">No preview</span>
       </div>
     </div>
   )

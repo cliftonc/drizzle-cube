@@ -12,8 +12,8 @@ import type { FieldDetailPanelProps } from './types'
 function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   if (!field) {
     return (
-      <div className="p-6 text-center text-dc-text-muted">
-        <p className="text-sm">Hover over a field to see details</p>
+      <div className="dc:p-6 text-center text-dc-text-muted">
+        <p className="dc:text-sm">Hover over a field to see details</p>
       </div>
     )
   }
@@ -22,13 +22,13 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   const getFieldIcon = () => {
     if (field.fieldType === 'measure') {
       const Icon = getMeasureTypeIcon(field.type)
-      return Icon ? <Icon className="w-6 h-6" /> : null
+      return Icon ? <Icon className="dc:w-6 dc:h-6" /> : null
     } else if (field.fieldType === 'timeDimension') {
       const Icon = getFieldTypeIcon('time')
-      return Icon ? <Icon className="w-6 h-6" /> : null
+      return Icon ? <Icon className="dc:w-6 dc:h-6" /> : null
     } else {
       const Icon = getFieldTypeIcon('dimension')
-      return Icon ? <Icon className="w-6 h-6" /> : null
+      return Icon ? <Icon className="dc:w-6 dc:h-6" /> : null
     }
   }
 
@@ -72,19 +72,19 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   }
 
   return (
-    <div className="p-4">
+    <div className="dc:p-4">
       {/* Header with icon and title */}
-      <div className="flex items-start gap-3 mb-4">
+      <div className="dc:flex dc:items-start dc:gap-3 dc:mb-4">
         <span
-          className={`shrink-0 w-12 h-12 flex items-center justify-center rounded-lg ${getIconBgStyle()}`}
+          className={`dc:shrink-0 dc:w-12 dc:h-12 dc:flex dc:items-center dc:justify-center dc:rounded-lg ${getIconBgStyle()}`}
         >
           {getFieldIcon()}
         </span>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-dc-text leading-tight">
+        <div className="dc:flex-1 dc:min-w-0">
+          <h3 className="dc:text-base dc:font-semibold text-dc-text dc:leading-tight">
             {field.title}
           </h3>
-          <p className="text-xs text-dc-text-muted mt-0.5 truncate">
+          <p className="dc:text-xs text-dc-text-muted dc:mt-0.5 dc:truncate">
             {field.name}
           </p>
         </div>
@@ -92,27 +92,27 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
 
       {/* Description */}
       {field.description && (
-        <div className="mb-4">
-          <p className="text-sm text-dc-text-secondary leading-relaxed">
+        <div className="dc:mb-4">
+          <p className="dc:text-sm text-dc-text-secondary dc:leading-relaxed">
             {field.description}
           </p>
         </div>
       )}
 
       {/* Metadata */}
-      <div className="space-y-3 pt-4 border-t border-dc-border">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-dc-text-muted">Type</span>
-          <span className="text-sm text-dc-text font-medium">{getTypeDisplay()}</span>
+      <div className="dc:space-y-3 dc:pt-4 dc:border-t border-dc-border">
+        <div className="dc:flex dc:items-center dc:justify-between">
+          <span className="dc:text-xs text-dc-text-muted">Type</span>
+          <span className="dc:text-sm text-dc-text dc:font-medium">{getTypeDisplay()}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-dc-text-muted">Cube</span>
-          <span className="text-sm text-dc-text font-medium">{field.cubeName}</span>
+        <div className="dc:flex dc:items-center dc:justify-between">
+          <span className="dc:text-xs text-dc-text-muted">Cube</span>
+          <span className="dc:text-sm text-dc-text dc:font-medium">{field.cubeName}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-dc-text-muted">Category</span>
+        <div className="dc:flex dc:items-center dc:justify-between">
+          <span className="dc:text-xs text-dc-text-muted">Category</span>
           <span
-            className={`text-xs px-2 py-0.5 rounded font-medium ${
+            className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded dc:font-medium ${
               field.fieldType === 'measure'
                 ? 'bg-dc-measure text-dc-measure-text'
                 : field.fieldType === 'timeDimension'
@@ -130,9 +130,9 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
       </div>
 
       {/* Usage hint */}
-      <div className="mt-6 p-3 bg-dc-surface rounded-lg">
-        <p className="text-xs text-dc-text-muted">
-          Press <kbd className="px-1 py-0.5 bg-dc-surface-tertiary rounded text-xs">Enter</kbd> or click to add this field to your query.
+      <div className="dc:mt-6 dc:p-3 bg-dc-surface dc:rounded-lg">
+        <p className="dc:text-xs text-dc-text-muted">
+          Press <kbd className="dc:px-1 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">Enter</kbd> or click to add this field to your query.
         </p>
       </div>
     </div>

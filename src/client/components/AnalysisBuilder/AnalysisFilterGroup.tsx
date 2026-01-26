@@ -138,17 +138,17 @@ export default function AnalysisFilterGroup({
   const conditionLabel = conditionCount === 1 ? 'condition' : 'conditions'
 
   return (
-    <div className={`border ${getBorderColor()} rounded-lg bg-dc-surface w-full`}>
+    <div className={`dc:border ${getBorderColor()} dc:rounded-lg bg-dc-surface dc:w-full`}>
       {/* Group Header */}
-      <div className={`flex items-center justify-between px-2 py-1.5 border-b border-dc-border/50 rounded-t-lg ${getGroupBgColor()}`}>
-        <div className="flex items-center gap-2">
+      <div className={`dc:flex dc:items-center dc:justify-between dc:px-2 dc:py-1.5 dc:border-b border-dc-border/50 dc:rounded-t-lg ${getGroupBgColor()}`}>
+        <div className="dc:flex dc:items-center dc:gap-2">
           {/* AND/OR Toggle Button */}
           <button
             onClick={handleToggleType}
-            className={`px-2 py-0.5 text-xs font-semibold rounded transition-colors ${
+            className={`dc:px-2 dc:py-0.5 dc:text-xs dc:font-semibold dc:rounded dc:transition-colors ${
               group.type === 'and'
-                ? 'bg-dc-info-bg text-dc-info hover:opacity-80'
-                : 'bg-dc-warning-bg text-dc-warning hover:opacity-80'
+                ? 'bg-dc-info-bg text-dc-info dc:hover:opacity-80'
+                : 'bg-dc-warning-bg text-dc-warning dc:hover:opacity-80'
             }`}
             title={`Click to switch to ${group.type === 'and' ? 'OR' : 'AND'}`}
           >
@@ -156,39 +156,39 @@ export default function AnalysisFilterGroup({
           </button>
 
           {/* Condition Count */}
-          <span className="text-xs text-dc-text-muted">
+          <span className="dc:text-xs text-dc-text-muted">
             {conditionCount} {conditionLabel}
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="dc:flex dc:items-center dc:gap-1">
           {/* Add Button with Dropdown */}
-          <div className="relative" ref={addMenuRef}>
+          <div className="dc:relative" ref={addMenuRef}>
             <button
               onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-              className="p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-hover rounded transition-colors"
+              className="dc:p-1 text-dc-text-secondary hover:text-dc-primary hover:bg-dc-surface-hover dc:rounded dc:transition-colors"
               title="Add condition"
             >
-              <AddIcon className="w-4 h-4" />
+              <AddIcon className="dc:w-4 dc:h-4" />
             </button>
 
             {isAddMenuOpen && (
-              <div className="absolute right-0 mt-1 z-40 bg-dc-surface border border-dc-border rounded shadow-lg py-1 min-w-[120px]">
+              <div className="dc:absolute dc:right-0 dc:mt-1 dc:z-40 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:py-1 dc:min-w-[120px]">
                 <button
                   onClick={handleAddFilterClick}
-                  className="w-full text-left px-3 py-1.5 text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add Filter
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('and')}
-                  className="w-full text-left px-3 py-1.5 text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add AND Group
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('or')}
-                  className="w-full text-left px-3 py-1.5 text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add OR Group
                 </button>
@@ -200,23 +200,23 @@ export default function AnalysisFilterGroup({
           {!hideRemoveButton && (
             <button
               onClick={onRemove}
-              className="p-1 text-dc-text-muted hover:text-dc-danger transition-colors"
+              className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:transition-colors"
               title="Remove group"
             >
-              <CloseIcon className="w-4 h-4" />
+              <CloseIcon className="dc:w-4 dc:h-4" />
             </button>
           )}
         </div>
       </div>
 
       {/* Group Body - Filter List */}
-      <div className="p-1.5 flex flex-wrap gap-2">
+      <div className="dc:p-1.5 dc:flex dc:flex-wrap dc:gap-2">
         {group.filters.length === 0 ? (
-          <div className="text-center py-3">
-            <p className="text-xs text-dc-text-muted mb-1">No conditions in this group</p>
+          <div className="text-center dc:py-3">
+            <p className="dc:text-xs text-dc-text-muted dc:mb-1">No conditions in this group</p>
             <button
               onClick={() => onAddFilter([])}
-              className="text-xs text-dc-primary hover:underline"
+              className="dc:text-xs text-dc-primary dc:hover:underline"
             >
               Add a filter
             </button>

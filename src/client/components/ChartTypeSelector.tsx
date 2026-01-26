@@ -85,21 +85,21 @@ export default function ChartTypeSelector({
   const selectedLabel = chartTypeLabels[selectedType]
 
   return (
-    <div className={`${className} relative`}>
+    <div className={`${className} dc:relative`}>
       {/* Dropdown Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-dc-border rounded-md bg-dc-surface hover:bg-dc-surface-hover focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+        className="dc:w-full dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-2 dc:border border-dc-border dc:rounded-md bg-dc-surface hover:bg-dc-surface-hover focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
       >
-        <div className="flex items-center space-x-2">
+        <div className="dc:flex dc:items-center dc:space-x-2">
           {SelectedIcon && (
-            <SelectedIcon className="h-5 w-5 text-dc-text-secondary" />
+            <SelectedIcon className="dc:h-5 dc:w-5 text-dc-text-secondary" />
           )}
-          <span className="text-sm font-medium text-dc-text">{selectedLabel}</span>
+          <span className="dc:text-sm dc:font-medium text-dc-text">{selectedLabel}</span>
         </div>
         <svg
-          className={`h-4 w-4 text-dc-text-muted transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`dc:h-4 dc:w-4 text-dc-text-muted dc:transform dc:transition-transform ${isOpen ? 'dc:rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -110,9 +110,9 @@ export default function ChartTypeSelector({
 
       {/* Dropdown Menu - Grid Layout */}
       {isOpen && (
-        <div className={`absolute z-10 mt-1 w-full bg-dc-surface border border-dc-border rounded-md shadow-lg max-h-80 overflow-auto ${compact ? '' : 'min-w-max'}`}>
-          <div className="p-2">
-            <div className={`grid gap-1.5 ${compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
+        <div className={`dc:absolute dc:z-10 dc:mt-1 dc:w-full bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-80 dc:overflow-auto ${compact ? '' : 'dc:min-w-max'}`}>
+          <div className="dc:p-2">
+            <div className={`dc:grid dc:gap-1.5 ${compact ? 'dc:grid-cols-2' : 'dc:grid-cols-2 dc:sm:grid-cols-3 dc:lg:grid-cols-4'}`}>
               {chartTypes.map((type) => {
                 const config = configRegistry?.[type]
                 const IconComponent = config?.icon
@@ -142,10 +142,10 @@ export default function ChartTypeSelector({
                     }}
                     disabled={!isAvailable}
                     className={`
-                      relative p-1.5 rounded border transition-colors duration-150
-                      text-left group min-h-[30px] flex items-center justify-start
+                      dc:relative dc:p-1.5 dc:rounded dc:border dc:transition-colors dc:duration-150
+                      text-left dc:group dc:min-h-[30px] dc:flex dc:items-center dc:justify-start
                       ${!isAvailable
-                        ? 'opacity-50 cursor-not-allowed bg-dc-surface'
+                        ? 'dc:opacity-50 dc:cursor-not-allowed bg-dc-surface'
                         : isSelected
                           ? 'bg-dc-surface-secondary'
                           : 'bg-dc-surface hover:bg-dc-surface-hover'
@@ -156,11 +156,11 @@ export default function ChartTypeSelector({
                     }}
                     title={tooltipText}
                   >
-                    <div className="flex items-center space-x-1.5">
+                    <div className="dc:flex dc:items-center dc:space-x-1.5">
                       {/* Icon */}
                       {IconComponent && (
                         <IconComponent
-                          className={`h-4 w-4 shrink-0 ${
+                          className={`dc:h-4 dc:w-4 dc:shrink-0 ${
                             !isAvailable
                               ? 'text-dc-text-muted'
                               : isSelected
@@ -171,7 +171,7 @@ export default function ChartTypeSelector({
                       )}
 
                       {/* Chart name */}
-                      <span className={`text-xs font-medium leading-tight truncate ${
+                      <span className={`dc:text-xs dc:font-medium dc:leading-tight dc:truncate ${
                         !isAvailable
                           ? 'text-dc-text-muted'
                           : isSelected
@@ -185,8 +185,8 @@ export default function ChartTypeSelector({
 
                     {/* Selected indicator - smaller dot */}
                     {isSelected && isAvailable && (
-                      <div className="absolute top-0.5 right-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--dc-primary)' }}></div>
+                      <div className="dc:absolute dc:top-0.5 dc:right-0.5">
+                        <div className="dc:w-1.5 dc:h-1.5 dc:rounded-full" style={{ backgroundColor: 'var(--dc-primary)' }}></div>
                       </div>
                     )}
                   </button>

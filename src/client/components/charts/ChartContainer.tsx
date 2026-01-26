@@ -64,7 +64,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
       return (
         <div
           ref={containerRef}
-          className="w-full h-full flex-1 flex flex-col relative"
+          className="dc:w-full dc:h-full dc:flex-1 dc:flex dc:flex-col dc:relative"
           style={{ minHeight: '250px', minWidth: '100px', overflow: 'hidden' }}
         >
           {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
@@ -77,7 +77,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
               {children}
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center w-full h-full">
+            <div className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full">
               <LoadingIndicator size="sm" />
             </div>
           )}
@@ -96,7 +96,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     return (
       <div
         ref={containerRef}
-        className="w-full flex flex-col relative"
+        className="dc:w-full dc:flex dc:flex-col dc:relative"
         style={{ ...containerStyle, overflow: 'hidden' }}
       >
         {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
@@ -109,7 +109,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
             {children}
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center w-full h-full">
+          <div className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full">
             <LoadingIndicator size="sm" />
           </div>
         )}
@@ -120,11 +120,11 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
 
     return (
       <div
-        className="flex flex-col items-center justify-center w-full h-full p-4 text-center border border-dashed rounded-lg"
+        className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4 text-center dc:border dc:border-dashed dc:rounded-lg"
         style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}
       >
-        <div className="text-sm font-semibold mb-1 text-dc-text-muted">Unable to display chart</div>
-        <div className="text-xs text-dc-text-secondary">
+        <div className="dc:text-sm dc:font-semibold dc:mb-1 text-dc-text-muted">Unable to display chart</div>
+        <div className="dc:text-xs text-dc-text-secondary">
           {error instanceof Error ? error.message : 'Failed to create responsive container'}
         </div>
       </div>

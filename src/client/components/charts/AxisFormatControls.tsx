@@ -82,32 +82,32 @@ export function AxisFormatControls({
   ]
 
   return (
-    <div className="space-y-3 pb-4">
+    <div className="dc:space-y-3 dc:pb-4">
       {/* Axis Header */}
       <SectionHeading>{axisLabel}</SectionHeading>
 
       {/* Label Input */}
-      <div className="space-y-1">
-        <label className="text-xs text-dc-text-secondary">Label</label>
+      <div className="dc:space-y-1">
+        <label className="dc:text-xs text-dc-text-secondary">Label</label>
         <input
           type="text"
           value={config.label || ''}
           onChange={(e) => handleChange({ label: e.target.value || undefined })}
           placeholder="Auto-generated label"
-          className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+          className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       </div>
 
       {/* Unit Type */}
-      <div className="space-y-1">
-        <label className="text-xs text-dc-text-secondary">Unit</label>
-        <div className="flex border border-dc-border rounded-sm overflow-hidden">
+      <div className="dc:space-y-1">
+        <label className="dc:text-xs text-dc-text-secondary">Unit</label>
+        <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
           {unitButtons.map((btn) => (
             <button
               key={btn.value}
               type="button"
               onClick={() => handleChange({ unit: btn.value })}
-              className={`flex-1 px-2 py-1.5 text-sm font-medium transition-colors ${
+              className={`dc:flex-1 dc:px-2 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                 config.unit === btn.value
                   ? 'bg-dc-primary text-white'
                   : 'bg-dc-surface text-dc-text hover:bg-dc-border'
@@ -121,38 +121,38 @@ export function AxisFormatControls({
 
       {/* Custom Prefix/Suffix (only when Custom is selected) */}
       {config.unit === 'custom' && (
-        <div className="flex gap-2">
-          <div className="flex-1 space-y-1">
-            <label className="text-xs text-dc-text-secondary">Prefix</label>
+        <div className="dc:flex dc:gap-2">
+          <div className="dc:flex-1 dc:space-y-1">
+            <label className="dc:text-xs text-dc-text-secondary">Prefix</label>
             <input
               type="text"
               value={config.customPrefix || ''}
               onChange={(e) => handleChange({ customPrefix: e.target.value || undefined })}
               placeholder="e.g., $"
-              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+              className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
-          <div className="flex-1 space-y-1">
-            <label className="text-xs text-dc-text-secondary">Suffix</label>
+          <div className="dc:flex-1 dc:space-y-1">
+            <label className="dc:text-xs text-dc-text-secondary">Suffix</label>
             <input
               type="text"
               value={config.customSuffix || ''}
               onChange={(e) => handleChange({ customSuffix: e.target.value || undefined })}
               placeholder="e.g., units"
-              className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+              className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
         </div>
       )}
 
       {/* Abbreviation Toggle */}
-      <div className="space-y-1">
-        <label className="text-xs text-dc-text-secondary">Abbreviation</label>
-        <div className="flex border border-dc-border rounded-sm overflow-hidden">
+      <div className="dc:space-y-1">
+        <label className="dc:text-xs text-dc-text-secondary">Abbreviation</label>
+        <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
           <button
             type="button"
             onClick={() => handleChange({ abbreviate: true })}
-            className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`dc:flex-1 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
               config.abbreviate !== false
                 ? 'bg-dc-primary text-white'
                 : 'bg-dc-surface text-dc-text hover:bg-dc-border'
@@ -163,7 +163,7 @@ export function AxisFormatControls({
           <button
             type="button"
             onClick={() => handleChange({ abbreviate: false })}
-            className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`dc:flex-1 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
               config.abbreviate === false
                 ? 'bg-dc-primary text-white'
                 : 'bg-dc-surface text-dc-text hover:bg-dc-border'
@@ -175,9 +175,9 @@ export function AxisFormatControls({
       </div>
 
       {/* Decimals */}
-      <div className="space-y-1">
-        <label className="text-xs text-dc-text-secondary">Decimals</label>
-        <div className="flex gap-2">
+      <div className="dc:space-y-1">
+        <label className="dc:text-xs text-dc-text-secondary">Decimals</label>
+        <div className="dc:flex dc:gap-2">
           <button
             type="button"
             onClick={() => {
@@ -185,7 +185,7 @@ export function AxisFormatControls({
               if (current > 0) handleChange({ decimals: current - 1 })
             }}
             disabled={(config.decimals ?? 2) <= 0}
-            className="flex-1 px-3 py-2 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text hover:bg-dc-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="dc:flex-1 dc:px-3 dc:py-2 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text hover:bg-dc-border dc:disabled:opacity-40 dc:disabled:cursor-not-allowed dc:transition-colors"
           >
             ← .0
           </button>
@@ -196,7 +196,7 @@ export function AxisFormatControls({
               if (current < 4) handleChange({ decimals: current + 1 })
             }}
             disabled={(config.decimals ?? 2) >= 4}
-            className="flex-1 px-3 py-2 text-sm border border-dc-border rounded-sm bg-dc-surface text-dc-text hover:bg-dc-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="dc:flex-1 dc:px-3 dc:py-2 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text hover:bg-dc-border dc:disabled:opacity-40 dc:disabled:cursor-not-allowed dc:transition-colors"
           >
             .00 →
           </button>
@@ -204,9 +204,9 @@ export function AxisFormatControls({
       </div>
 
       {/* Preview */}
-      <div className="space-y-1">
-        <label className="text-xs text-dc-text-secondary">Preview</label>
-        <div className="text-sm font-mono text-dc-text">
+      <div className="dc:space-y-1">
+        <label className="dc:text-xs text-dc-text-secondary">Preview</label>
+        <div className="dc:text-sm font-mono text-dc-text">
           {preview}
         </div>
       </div>
@@ -242,7 +242,7 @@ export function MultiAxisFormatControls({
   showAxes = { leftYAxis: true, rightYAxis: true }
 }: MultiAxisFormatControlsProps) {
   return (
-    <div className="space-y-4">
+    <div className="dc:space-y-4">
       {showAxes.leftYAxis && (
         <AxisFormatControls
           axisLabel="Left Y-Axis"

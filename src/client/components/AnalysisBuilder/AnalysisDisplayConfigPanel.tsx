@@ -54,18 +54,18 @@ function StringArrayInput({
   }, [localText, onChange])
 
   return (
-    <div className="space-y-1">
-      <label className="text-sm text-dc-text-secondary">{label}</label>
+    <div className="dc:space-y-1">
+      <label className="dc:text-sm text-dc-text-secondary">{label}</label>
       <textarea
         value={localText}
         onChange={(e) => setLocalText(e.target.value)}
         onBlur={handleBlur}
         placeholder={placeholder}
         rows={4}
-        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text resize-y"
+        className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text dc:resize-y"
       />
       {description && (
-        <p className="text-xs text-dc-text-muted">{description}</p>
+        <p className="dc:text-xs text-dc-text-muted">{description}</p>
       )}
     </div>
   )
@@ -82,7 +82,7 @@ export default function AnalysisDisplayConfigPanel({
 
   if (!chartConfigLoaded) {
     return (
-      <div className="text-center text-dc-text-muted text-sm py-4">
+      <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
         Loading display options...
       </div>
     )
@@ -95,20 +95,20 @@ export default function AnalysisDisplayConfigPanel({
 
   if (!hasDisplayOptions) {
     return (
-      <div className="text-center text-dc-text-muted text-sm py-4">
+      <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
         <p>No display options available for this chart type.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dc:space-y-6">
       <div>
-        <SectionHeading className="mb-2">Display Options</SectionHeading>
-        <div className="space-y-2">
+        <SectionHeading className="dc:mb-2">Display Options</SectionHeading>
+        <div className="dc:space-y-2">
           {/* Backward compatibility: Simple boolean display options */}
           {chartTypeConfig.displayOptions?.includes('showLegend') && (
-            <label className="flex items-center space-x-2">
+            <label className="dc:flex dc:items-center dc:space-x-2">
               <input
                 type="checkbox"
                 checked={displayConfig.showLegend ?? true}
@@ -118,15 +118,15 @@ export default function AnalysisDisplayConfigPanel({
                     showLegend: e.target.checked
                   })
                 }
-                className="rounded border-dc-border focus:ring-dc-accent"
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="text-sm text-dc-text">Show Legend</span>
+              <span className="dc:text-sm text-dc-text">Show Legend</span>
             </label>
           )}
 
           {chartTypeConfig.displayOptions?.includes('showGrid') && (
-            <label className="flex items-center space-x-2">
+            <label className="dc:flex dc:items-center dc:space-x-2">
               <input
                 type="checkbox"
                 checked={displayConfig.showGrid ?? true}
@@ -136,15 +136,15 @@ export default function AnalysisDisplayConfigPanel({
                     showGrid: e.target.checked
                   })
                 }
-                className="rounded border-dc-border focus:ring-dc-accent"
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="text-sm text-dc-text">Show Grid</span>
+              <span className="dc:text-sm text-dc-text">Show Grid</span>
             </label>
           )}
 
           {chartTypeConfig.displayOptions?.includes('showTooltip') && (
-            <label className="flex items-center space-x-2">
+            <label className="dc:flex dc:items-center dc:space-x-2">
               <input
                 type="checkbox"
                 checked={displayConfig.showTooltip ?? true}
@@ -154,15 +154,15 @@ export default function AnalysisDisplayConfigPanel({
                     showTooltip: e.target.checked
                   })
                 }
-                className="rounded border-dc-border focus:ring-dc-accent"
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="text-sm text-dc-text">Show Tooltip</span>
+              <span className="dc:text-sm text-dc-text">Show Tooltip</span>
             </label>
           )}
 
           {chartTypeConfig.displayOptions?.includes('stacked') && (
-            <label className="flex items-center space-x-2">
+            <label className="dc:flex dc:items-center dc:space-x-2">
               <input
                 type="checkbox"
                 checked={displayConfig.stacked ?? false}
@@ -172,15 +172,15 @@ export default function AnalysisDisplayConfigPanel({
                     stacked: e.target.checked
                   })
                 }
-                className="rounded border-dc-border focus:ring-dc-accent"
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="text-sm text-dc-text">Stacked</span>
+              <span className="dc:text-sm text-dc-text">Stacked</span>
             </label>
           )}
 
           {chartTypeConfig.displayOptions?.includes('hideHeader') && (
-            <label className="flex items-center space-x-2">
+            <label className="dc:flex dc:items-center dc:space-x-2">
               <input
                 type="checkbox"
                 checked={displayConfig.hideHeader ?? false}
@@ -190,18 +190,18 @@ export default function AnalysisDisplayConfigPanel({
                     hideHeader: e.target.checked
                   })
                 }
-                className="rounded border-dc-border focus:ring-dc-accent"
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="text-sm text-dc-text">Hide Header</span>
+              <span className="dc:text-sm text-dc-text">Hide Header</span>
             </label>
           )}
 
           {/* New structured display options */}
           {chartTypeConfig.displayOptionsConfig?.map((option) => (
-            <div key={option.key} className={`space-y-1 ${option.type === 'axisFormat' ? 'mt-6 pt-2' : ''}`}>
+            <div key={option.key} className={`dc:space-y-1 ${option.type === 'axisFormat' ? 'dc:mt-6 dc:pt-2' : ''}`}>
               {option.type === 'boolean' && (
-                <label className="flex items-center space-x-2">
+                <label className="dc:flex dc:items-center dc:space-x-2">
                   <input
                     type="checkbox"
                     checked={
@@ -215,19 +215,19 @@ export default function AnalysisDisplayConfigPanel({
                         [option.key]: e.target.checked
                       })
                     }
-                    className="rounded border-dc-border focus:ring-dc-accent"
+                    className="dc:rounded border-dc-border focus:ring-dc-accent"
                     style={{ color: 'var(--dc-primary)' }}
                   />
-                  <span className="text-sm text-dc-text">{option.label}</span>
+                  <span className="dc:text-sm text-dc-text">{option.label}</span>
                 </label>
               )}
 
               {option.type === 'string' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">
                     {option.label}
                     {option.key === 'content' && (
-                      <span className="text-xs text-dc-text-muted ml-1">
+                      <span className="dc:text-xs text-dc-text-muted dc:ml-1">
                         (only headers, lists and links)
                       </span>
                     )}
@@ -247,7 +247,7 @@ export default function AnalysisDisplayConfigPanel({
                       }
                       placeholder={option.placeholder}
                       rows={8}
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent font-mono resize-y bg-dc-surface text-dc-text"
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent font-mono dc:resize-y bg-dc-surface text-dc-text"
                     />
                   ) : (
                     <input
@@ -264,19 +264,19 @@ export default function AnalysisDisplayConfigPanel({
                         })
                       }
                       placeholder={option.placeholder}
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                     />
                   )}
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'paletteColor' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="dc:flex dc:flex-wrap dc:gap-2">
                     {colorPalette?.colors.map((color, index) => {
                       const isSelected =
                         ((displayConfig[option.key as keyof ChartDisplayConfig] as number) ??
@@ -292,9 +292,9 @@ export default function AnalysisDisplayConfigPanel({
                               [option.key]: index
                             })
                           }
-                          className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:ring-offset-1 ${
+                          className={`dc:w-8 dc:h-8 dc:rounded dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
                             isSelected
-                              ? 'ring-2 ring-offset-1 scale-110'
+                              ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110'
                               : 'hover:border-dc-text-muted'
                           }`}
                           style={{
@@ -315,7 +315,7 @@ export default function AnalysisDisplayConfigPanel({
                             [option.key]: 0
                           })
                         }
-                        className="w-8 h-8 rounded-sm border-2 ring-2 ring-offset-1"
+                        className="dc:w-8 dc:h-8 dc:rounded-sm dc:border-2 dc:ring-2 dc:ring-offset-1"
                         style={{
                           backgroundColor: '#8884d8',
                           borderColor: 'var(--dc-primary)',
@@ -326,14 +326,14 @@ export default function AnalysisDisplayConfigPanel({
                     ]}
                   </div>
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'number' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
                   <input
                     type="number"
                     value={
@@ -351,17 +351,17 @@ export default function AnalysisDisplayConfigPanel({
                     min={option.min}
                     max={option.max}
                     step={option.step}
-                    className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                    className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                   />
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'select' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
                   <select
                     value={
                       (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
@@ -374,7 +374,7 @@ export default function AnalysisDisplayConfigPanel({
                         [option.key]: e.target.value
                       })
                     }
-                    className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                    className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                   >
                     {option.options?.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -383,15 +383,15 @@ export default function AnalysisDisplayConfigPanel({
                     ))}
                   </select>
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'color' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                  <div className="flex items-center space-x-2">
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="dc:flex dc:items-center dc:space-x-2">
                     <input
                       type="color"
                       value={
@@ -405,7 +405,7 @@ export default function AnalysisDisplayConfigPanel({
                           [option.key]: e.target.value
                         })
                       }
-                      className="w-12 h-8 border border-dc-border rounded-sm cursor-pointer"
+                      className="dc:w-12 dc:h-8 dc:border border-dc-border dc:rounded-sm dc:cursor-pointer"
                     />
                     <input
                       type="text"
@@ -421,11 +421,11 @@ export default function AnalysisDisplayConfigPanel({
                         })
                       }
                       placeholder={option.placeholder || '#8884d8'}
-                      className="flex-1 px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                      className="dc:flex-1 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                     />
                   </div>
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}
@@ -459,9 +459,9 @@ export default function AnalysisDisplayConfigPanel({
               )}
 
               {option.type === 'buttonGroup' && (
-                <div className="space-y-1">
-                  <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                  <div className="flex border border-dc-border rounded-sm overflow-hidden">
+                <div className="dc:space-y-1">
+                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
                     {option.options?.map((opt) => {
                       const isSelected = (displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue) === opt.value
                       return (
@@ -474,7 +474,7 @@ export default function AnalysisDisplayConfigPanel({
                               [option.key]: opt.value
                             })
                           }
-                          className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                          className={`dc:flex-1 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                             isSelected
                               ? 'bg-dc-primary text-white'
                               : 'bg-dc-surface text-dc-text hover:bg-dc-border'
@@ -486,7 +486,7 @@ export default function AnalysisDisplayConfigPanel({
                     })}
                   </div>
                   {option.description && (
-                    <p className="text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                   )}
                 </div>
               )}

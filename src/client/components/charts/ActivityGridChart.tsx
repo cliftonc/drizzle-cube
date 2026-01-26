@@ -700,12 +700,12 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display in activity grid</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data points to display in activity grid</div>
         </div>
       </div>
     )
@@ -716,12 +716,12 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   if (!hasValidConfig) {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">Configuration Required</div>
-          <div className="text-xs text-dc-text-secondary">Activity grid requires a time dimension and a measure</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
+          <div className="dc:text-xs text-dc-text-secondary">Activity grid requires a time dimension and a measure</div>
         </div>
       </div>
     )
@@ -736,25 +736,25 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   if (granularityFromQuery?.toLowerCase() === 'year') {
     return (
       <div
-        className="flex items-center justify-center w-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">Granularity Too High</div>
-          <div className="text-xs text-dc-text-secondary">Activity grids work best with hour, day, week, month, or quarter granularity</div>
-          <div className="text-xs text-dc-text-secondary mt-1">Please choose a lower granularity for your time dimension</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Granularity Too High</div>
+          <div className="dc:text-xs text-dc-text-secondary">Activity grids work best with hour, day, week, month, or quarter granularity</div>
+          <div className="dc:text-xs text-dc-text-secondary dc:mt-1">Please choose a lower granularity for your time dimension</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden', width: '100%' }}>
-      <div ref={containerRef} className="w-full h-full relative overflow-x-auto" style={{ width: '100%' }}>
-        <svg ref={svgRef} className="h-full" />
+    <div className="dc:w-full dc:flex dc:flex-col dc:relative" style={{ height, minHeight: '250px', overflow: 'hidden', width: '100%' }}>
+      <div ref={containerRef} className="dc:w-full dc:h-full dc:relative dc:overflow-x-auto" style={{ width: '100%' }}>
+        <svg ref={svgRef} className="dc:h-full" />
         {!dimensionsReady && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-dc-text-muted text-sm">Measuring chart dimensions...</div>
+          <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center">
+            <div className="text-dc-text-muted dc:text-sm">Measuring chart dimensions...</div>
           </div>
         )}
       </div>

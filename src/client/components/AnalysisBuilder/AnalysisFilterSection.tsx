@@ -282,18 +282,18 @@ export default function AnalysisFilterSection({
       {/* Header - entire row is clickable to add filter */}
       <button
         onClick={handleAddFilterClick}
-        className="flex items-center justify-between mb-3 w-full py-1 px-2 -ml-2 rounded-lg hover:bg-dc-primary/10 transition-colors group"
+        className="dc:flex dc:items-center dc:justify-between dc:mb-3 dc:w-full dc:py-1 dc:px-2 dc:-ml-2 dc:rounded-lg hover:bg-dc-primary/10 dc:transition-colors dc:group"
         title="Add filter"
       >
         <SectionHeading>
           Filter
           {totalFilterCount > 0 && (
-            <span className="ml-1.5 text-xs font-normal text-dc-text-muted normal-case tracking-normal">
+            <span className="dc:ml-1.5 dc:text-xs dc:font-normal text-dc-text-muted dc:normal-case dc:tracking-normal">
               ({totalFilterCount})
             </span>
           )}
         </SectionHeading>
-        <div className="flex items-center gap-2">
+        <div className="dc:flex dc:items-center dc:gap-2">
           {totalFilterCount > 0 && (
             <span
               role="button"
@@ -308,12 +308,12 @@ export default function AnalysisFilterSection({
                   handleClearAll()
                 }
               }}
-              className="text-xs text-dc-text-muted hover:text-dc-error underline cursor-pointer"
+              className="dc:text-xs text-dc-text-muted hover:text-dc-error dc:underline dc:cursor-pointer"
             >
               Clear all
             </span>
           )}
-          <AddIcon className="w-5 h-5 text-dc-text-secondary group-hover:text-dc-primary transition-colors" />
+          <AddIcon className="dc:w-5 dc:h-5 text-dc-text-secondary group-hover:text-dc-primary dc:transition-colors" />
         </div>
       </button>
 
@@ -322,7 +322,7 @@ export default function AnalysisFilterSection({
         onDragOver={onFieldDropped ? handleDragOver : undefined}
         onDragLeave={onFieldDropped ? handleDragLeave : undefined}
         onDrop={onFieldDropped ? handleDrop : undefined}
-        className={`p-2 -mx-2 rounded-lg border-2 border-dashed transition-all ${
+        className={`dc:p-2 dc:-mx-2 dc:rounded-lg dc:border-2 dc:border-dashed dc:transition-all ${
           isDragOver
             ? 'border-dc-primary bg-dc-primary/5'
             : 'border-transparent'
@@ -330,11 +330,11 @@ export default function AnalysisFilterSection({
       >
         {/* Filter List - Hierarchical Rendering */}
         {filters.length === 0 ? (
-          <p className={`text-sm ${isDragOver ? 'text-dc-primary font-medium' : 'text-dc-text-muted'}`}>
+          <p className={`dc:text-sm ${isDragOver ? 'text-dc-primary dc:font-medium' : 'text-dc-text-muted'}`}>
             {isDragOver ? 'Drop to add filter' : 'No filters applied'}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="dc:flex dc:flex-wrap dc:gap-2">
             {filters.map((filter, index) => renderFilter(filter, index))}
           </div>
         )}

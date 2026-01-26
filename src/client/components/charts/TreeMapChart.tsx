@@ -29,10 +29,10 @@ const TreeMapChart = React.memo(function TreeMapChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs text-dc-text-secondary">No data points to display in treemap chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in treemap chart</div>
           </div>
         </div>
       )
@@ -133,10 +133,10 @@ const TreeMapChart = React.memo(function TreeMapChart({
 
       if (!sizeField) {
         return (
-          <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+          <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
             <div className="text-center">
-              <div className="text-sm font-semibold mb-1">Configuration Error</div>
-              <div className="text-xs">No numeric field found for treemap chart size</div>
+              <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+              <div className="dc:text-xs">No numeric field found for treemap chart size</div>
             </div>
           </div>
         )
@@ -168,10 +168,10 @@ const TreeMapChart = React.memo(function TreeMapChart({
     
     if (treemapData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs text-dc-text-secondary">No valid data points for treemap chart after transformation</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-xs text-dc-text-secondary">No valid data points for treemap chart after transformation</div>
           </div>
         </div>
       )
@@ -314,7 +314,7 @@ const TreeMapChart = React.memo(function TreeMapChart({
       : height
 
     return (
-      <div className="w-full" style={{ height: adjustedHeight }}>
+      <div className="dc:w-full" style={{ height: adjustedHeight }}>
         <ChartContainer height={hasLegend ? `calc(100% - 50px)` : "100%"}>
           <Treemap
             data={treemapData}
@@ -336,15 +336,15 @@ const TreeMapChart = React.memo(function TreeMapChart({
         
         {/* Custom Legend outside ChartContainer */}
         {hasLegend && (
-          <div className="flex justify-center items-center mt-4 pb-2">
+          <div className="dc:flex dc:justify-center dc:items-center dc:mt-4 dc:pb-2">
             {isNumericSeries ? (
               // Gradient legend for numeric series
-              <div className="flex flex-col items-center">
-                <div className="text-xs font-semibold text-dc-text-primary mb-2">
+              <div className="dc:flex dc:flex-col dc:items-center">
+                <div className="dc:text-xs dc:font-semibold text-dc-text-primary dc:mb-2">
                   {seriesField ? getFieldLabel(seriesField) : ''}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-dc-text-muted">
+                <div className="dc:flex dc:items-center dc:gap-2">
+                  <span className="dc:text-xs text-dc-text-muted">
                     {safeDisplayConfig.leftYAxisFormat
                       ? formatAxisValue(Math.min(...data.map(item => {
                           const value = item[seriesField!]
@@ -357,13 +357,13 @@ const TreeMapChart = React.memo(function TreeMapChart({
                     }
                   </span>
                   <div
-                    className="h-4 rounded-sm"
+                    className="dc:h-4 dc:rounded-sm"
                     style={{
                       width: '200px',
                       background: `linear-gradient(to right, ${CHART_COLORS_GRADIENT.join(', ')})`
                     }}
                   />
-                  <span className="text-xs text-dc-text-muted">
+                  <span className="dc:text-xs text-dc-text-muted">
                     {safeDisplayConfig.leftYAxisFormat
                       ? formatAxisValue(Math.max(...data.map(item => {
                           const value = item[seriesField!]
@@ -379,14 +379,14 @@ const TreeMapChart = React.memo(function TreeMapChart({
               </div>
             ) : (
               // Discrete legend for categorical series
-              <div className="flex flex-wrap justify-center gap-4">
+              <div className="dc:flex dc:flex-wrap dc:justify-center dc:gap-4">
                 {legendPayload.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="dc:flex dc:items-center dc:gap-2">
                     <div
-                      className="w-3 h-3 rounded-xs"
+                      className="dc:w-3 dc:h-3 rounded-xs"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-xs text-dc-text-muted">
+                    <span className="dc:text-xs text-dc-text-muted">
                       {item.value}
                     </span>
                   </div>
@@ -400,11 +400,11 @@ const TreeMapChart = React.memo(function TreeMapChart({
   } catch (error) {
     // 'TreeMapChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">TreeMap Chart Error</div>
-          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">TreeMap Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

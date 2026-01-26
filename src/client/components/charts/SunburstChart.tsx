@@ -226,11 +226,11 @@ function SunburstTooltip({
   const displayName = data.originalName || data.name
 
   return (
-    <div className="bg-dc-surface border border-dc-border rounded-md px-3 py-2 shadow-lg text-sm">
-      <div className="font-medium text-dc-text">{displayName}</div>
+    <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+      <div className="dc:font-medium text-dc-text">{displayName}</div>
       {data.value !== undefined && (
-        <div className="text-dc-text-secondary mt-1">
-          <span className="font-medium">{data.value.toLocaleString()}</span> entities
+        <div className="text-dc-text-secondary dc:mt-1">
+          <span className="dc:font-medium">{data.value.toLocaleString()}</span> entities
         </div>
       )}
     </div>
@@ -316,12 +316,12 @@ const SunburstChart = React.memo(function SunburstChart({
   if (!data || data.length === 0 || !sunburstData) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No flow data</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Configure a flow analysis with a starting step and event dimension
           </div>
         </div>
@@ -338,9 +338,9 @@ const SunburstChart = React.memo(function SunburstChart({
   const rootValue = sunburstData.value
 
   return (
-    <div className="relative w-full h-full flex flex-col" style={{ height }}>
+    <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
       {/* Sunburst Diagram */}
-      <div ref={chartAreaRef} className="flex-1 min-h-0 relative">
+      <div ref={chartAreaRef} className="dc:flex-1 dc:min-h-0 dc:relative">
         <ResponsiveContainer width="100%" height="100%">
           <RechartsSunburst
             data={sunburstData}
@@ -356,13 +356,13 @@ const SunburstChart = React.memo(function SunburstChart({
         {/* Center label showing the root node (starting event) */}
         {innerRadius > 0 && (
           <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center dc:pointer-events-none"
             style={{ zIndex: 10 }}
           >
             <div className="text-center">
-              <div className="text-sm font-semibold text-dc-text">{rootName}</div>
+              <div className="dc:text-sm dc:font-semibold text-dc-text">{rootName}</div>
               {rootValue !== undefined && (
-                <div className="text-xs text-dc-text-secondary">
+                <div className="dc:text-xs text-dc-text-secondary">
                   {rootValue.toLocaleString()}
                 </div>
               )}
@@ -373,17 +373,17 @@ const SunburstChart = React.memo(function SunburstChart({
 
       {/* Summary Footer */}
       {!displayConfigAny?.hideSummaryFooter && summaryStats && (
-        <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
-          <div className="flex items-center justify-between text-sm">
+        <div className="dc:flex-shrink-0 dc:px-4 dc:py-2 dc:border-t border-dc-border bg-dc-surface-secondary">
+          <div className="dc:flex dc:items-center dc:justify-between dc:text-sm">
             <div className="text-dc-text-muted">
-              <span className="font-medium">{summaryStats.nodeCount}</span> events (after)
+              <span className="dc:font-medium">{summaryStats.nodeCount}</span> events (after)
             </div>
             <div className="text-dc-text">
               <span className="text-dc-text-muted">Paths:</span>{' '}
-              <span className="font-medium">{summaryStats.linkCount}</span>
+              <span className="dc:font-medium">{summaryStats.linkCount}</span>
             </div>
             <div className="text-dc-text-muted">
-              <span className="font-medium">{summaryStats.totalEntities.toLocaleString()}</span>{' '}
+              <span className="dc:font-medium">{summaryStats.totalEntities.toLocaleString()}</span>{' '}
               starting entities
             </div>
           </div>

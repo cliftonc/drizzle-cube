@@ -9,9 +9,20 @@
  * - These variables are automatically available to all drizzle-cube components
  * - Override in your app's CSS to customize the theme
  * - Use [data-theme] attributes or CSS classes to switch themes
+ *
+ * CSS Isolation:
+ * - All Tailwind utilities are prefixed with `dc:` (e.g., dc:flex, dc:p-4)
+ * - Theme classes use `dc-` prefix (e.g., bg-dc-surface, text-dc-text)
+ * - This prevents CSS conflicts when embedding in applications with their own Tailwind
+ * - Preflight (base resets) is skipped to avoid overriding host app styles
  */
 
-@import "tailwindcss";
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(dc);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(dc);
+
+/* Tell Tailwind which source files to scan for dc: prefixed classes */
+@source "../**/*.{ts,tsx}";
 
 /* ============================================================================
    Light Theme (Default)

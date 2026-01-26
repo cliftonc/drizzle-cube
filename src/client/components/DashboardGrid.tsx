@@ -916,15 +916,15 @@ export default function DashboardGrid({
   if (!config.portlets || config.portlets.length === 0) {
     return (
       <>
-        <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="dc:flex dc:justify-center dc:items-center dc:min-h-[50vh]">
           <div className="text-center">
             <ChartBarIcon style={{ width: '64px', height: '64px', color: 'var(--dc-text-muted)', margin: '0 auto 16px auto' }} />
-            <h3 className="text-lg font-semibold mb-2 text-dc-text">No Portlets</h3>
-            <p className="text-sm text-dc-text-secondary mb-4">Add your first portlet to start visualizing your data</p>
+            <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">No Portlets</h3>
+            <p className="dc:text-sm text-dc-text-secondary dc:mb-4">Add your first portlet to start visualizing your data</p>
             {editable && (
               <button
                 onClick={handleAddPortlet}
-                className="inline-flex items-center px-4 py-2 border border-dc-border bg-dc-surface rounded-md focus:outline-hidden focus:ring-2"
+                className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:border border-dc-border bg-dc-surface dc:rounded-md focus:outline-hidden dc:focus:ring-2"
                 style={{
                   color: 'var(--dc-primary)',
                   borderColor: 'var(--dc-primary)'
@@ -932,7 +932,7 @@ export default function DashboardGrid({
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
               >
-                <AddIcon className="w-5 h-5 mr-2" />
+                <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
                 Add Portlet
               </button>
             )}
@@ -1036,72 +1036,72 @@ export default function DashboardGrid({
 
   return (
     <ScrollContainerProvider value={scrollContainer}>
-      <div ref={combinedContainerRef} className="dashboard-grid-container w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+      <div ref={combinedContainerRef} className="dashboard-grid-container dc:w-full" style={{ maxWidth: '100%', overflow: 'hidden' }}>
         {editable && features.editToolbar !== 'floating' && (
         <div
           ref={editBarRef}
-          className={`mb-4 flex justify-between items-center sticky top-0 z-10 px-4 py-4 bg-dc-surface-tertiary border border-dc-border rounded-lg transition-all duration-200 ${
-            isScrolled ? 'border-b' : ''
+          className={`dc:mb-4 dc:flex dc:justify-between dc:items-center dc:sticky dc:top-0 dc:z-10 dc:px-4 dc:py-4 bg-dc-surface-tertiary dc:border border-dc-border dc:rounded-lg dc:transition-all dc:duration-200 ${
+            isScrolled ? 'dc:border-b' : ''
           }`}
           style={{
             boxShadow: isScrolled ? 'var(--dc-shadow-md)' : 'var(--dc-shadow-sm)'
           }}
         >
-          <div className="flex items-center gap-4">
+          <div className="dc:flex dc:items-center dc:gap-4">
             <button
               onClick={() => isResponsiveEditable && actions.toggleEditMode()}
               disabled={!isResponsiveEditable}
-              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 ${
+              className={`dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-md dc:transition-colors focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 ${
                 !isResponsiveEditable
-                  ? 'opacity-50 cursor-not-allowed bg-dc-surface-secondary border border-dc-border'
+                  ? 'dc:opacity-50 dc:cursor-not-allowed bg-dc-surface-secondary dc:border border-dc-border'
                   : isEditMode
-                    ? 'bg-dc-surface-secondary border border-dc-border hover:bg-dc-surface-hover'
-                    : 'bg-dc-surface border border-dc-border hover:bg-dc-surface-hover'
+                    ? 'bg-dc-surface-secondary dc:border border-dc-border hover:bg-dc-surface-hover'
+                    : 'bg-dc-surface dc:border border-dc-border hover:bg-dc-surface-hover'
               }`}
               style={{
                 color: !isResponsiveEditable ? 'var(--dc-text-muted)' : 'var(--dc-primary)',
                 borderColor: !isResponsiveEditable ? 'var(--dc-border)' : isEditMode ? 'var(--dc-border)' : 'var(--dc-primary)'
               }}
             >
-              {isEditMode ? <CheckIcon className="w-4 h-4 mr-1.5" /> : <EditIcon className="w-4 h-4 mr-1.5" />}
+              {isEditMode ? <CheckIcon className="dc:w-4 dc:h-4 dc:mr-1.5" /> : <EditIcon className="dc:w-4 dc:h-4 dc:mr-1.5" />}
               {isEditMode ? 'Finish Editing' : 'Edit'}
             </button>
             {isEditMode && allowedModes.length > 1 && (
-              <div className="inline-flex rounded-md border border-dc-border overflow-hidden whitespace-nowrap">
+              <div className="dc:inline-flex dc:rounded-md dc:border border-dc-border dc:overflow-hidden dc:whitespace-nowrap">
                 <button
                   onClick={() => actions.handleLayoutModeChange('grid')}
                   disabled={!canChangeLayoutMode}
-                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors border-b-2 ${
+                  className={`dc:inline-flex dc:items-center dc:gap-2 dc:whitespace-nowrap dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors dc:border-b-2 ${
                     layoutMode === 'grid'
                       ? 'bg-dc-accent-bg text-dc-accent border-b-dc-accent'
                       : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover border-b-transparent'
-                  } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                  } ${!canChangeLayoutMode ? 'dc:cursor-not-allowed dc:opacity-50' : ''}`}
                 >
-                  <GridIcon className="w-4 h-4 shrink-0" />
+                  <GridIcon className="dc:w-4 dc:h-4 dc:shrink-0" />
                   Grid
                 </button>
                 <button
                   onClick={() => actions.handleLayoutModeChange('rows')}
                   disabled={!canChangeLayoutMode}
-                  className={`inline-flex items-center gap-2 whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-colors border-b-2 ${
+                  className={`dc:inline-flex dc:items-center dc:gap-2 dc:whitespace-nowrap dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors dc:border-b-2 ${
                     layoutMode === 'rows'
                       ? 'bg-dc-accent-bg text-dc-accent border-b-dc-accent'
                       : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover border-b-transparent'
-                  } ${!canChangeLayoutMode ? 'cursor-not-allowed opacity-50' : ''}`}
+                  } ${!canChangeLayoutMode ? 'dc:cursor-not-allowed dc:opacity-50' : ''}`}
                 >
-                  <RowsIcon className="w-4 h-4 shrink-0" />
+                  <RowsIcon className="dc:w-4 dc:h-4 dc:shrink-0" />
                   Rows
                 </button>
               </div>
             )}
             {!isResponsiveEditable && (
-              <div className="flex items-center gap-2 text-sm text-dc-text-secondary">
-                <DesktopIcon className="w-4 h-4" />
+              <div className="dc:flex dc:items-center dc:gap-2 dc:text-sm text-dc-text-secondary">
+                <DesktopIcon className="dc:w-4 dc:h-4" />
                 <span>Desktop view required for editing</span>
               </div>
             )}
             {isEditMode && isResponsiveEditable && (
-              <p className="hidden md:block text-sm text-dc-text-secondary">
+              <p className="dc:hidden dc:md:block dc:text-sm text-dc-text-secondary">
                 {editModeHint}
               </p>
             )}
@@ -1109,22 +1109,22 @@ export default function DashboardGrid({
 
           {/* Color Palette Selector and Add Portlet - Only show in edit mode */}
           {isEditMode && (
-            <div className="flex items-center gap-3">
+            <div className="dc:flex dc:items-center dc:gap-3">
               <ColorPaletteSelector
                 currentPalette={config.colorPalette}
                 onPaletteChange={handlePaletteChange}
-                className="shrink-0"
+                className="dc:shrink-0"
               />
 
               <button
                 onClick={handleAddPortlet}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium border rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover"
+                className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:border dc:rounded-md focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover"
                 style={{
                   color: 'var(--dc-primary)',
                   borderColor: 'var(--dc-primary)'
                 }}
               >
-                <AddIcon className="w-5 h-5 mr-2" />
+                <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
                 Add Portlet
               </button>
             </div>
@@ -1171,25 +1171,25 @@ export default function DashboardGrid({
       {/* Filter Selection Mode Banner */}
       {selectedFilterId && selectedFilter && (
         <div
-          className="mb-4 px-4 py-3 rounded-md border-2 transition-all"
+          className="dc:mb-4 dc:px-4 dc:py-3 dc:rounded-md dc:border-2 dc:transition-all"
           style={{
             backgroundColor: 'var(--dc-primary)',
             borderColor: 'var(--dc-primary)',
             color: 'white'
           }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <FilterIcon className="w-5 h-5 shrink-0" />
-              <span className="font-medium">
+          <div className="dc:flex dc:items-center dc:justify-between dc:flex-wrap dc:gap-2">
+            <div className="dc:flex dc:items-center dc:gap-2 dc:flex-wrap">
+              <FilterIcon className="dc:w-5 dc:h-5 dc:shrink-0" />
+              <span className="dc:font-medium">
                 Filter Selection Mode - Click portlets to toggle '{selectedFilter.label}'
               </span>
-              <span className="text-sm opacity-90 hidden sm:inline">• Press ESC to exit</span>
+              <span className="dc:text-sm dc:opacity-90 dc:hidden dc:sm:inline">• Press ESC to exit</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="dc:flex dc:items-center dc:gap-2">
               <button
                 onClick={() => handleSelectAllForFilter(selectedFilterId)}
-                className="px-3 py-1 rounded-md transition-colors text-sm font-medium"
+                className="dc:px-3 dc:py-1 dc:rounded-md dc:transition-colors dc:text-sm dc:font-medium"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
                   color: 'white'
@@ -1201,7 +1201,7 @@ export default function DashboardGrid({
               </button>
               <button
                 onClick={() => actions.exitFilterSelectionMode()}
-                className="px-3 py-1 rounded-md transition-colors text-sm font-medium"
+                className="dc:px-3 dc:py-1 dc:rounded-md dc:transition-colors dc:text-sm dc:font-medium"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.2)',
                   color: 'white'

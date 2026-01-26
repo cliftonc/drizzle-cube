@@ -240,11 +240,11 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
     // ========================================================================
     return (
       <div
-        className={`flex flex-col lg:flex-row bg-dc-surface border-x border-b border-dc-border ${maxHeight ? 'lg:h-[var(--dc-max-h)] lg:max-h-[var(--dc-max-h)] lg:overflow-hidden' : 'lg:h-full'} ${className}`}
+        className={`dc:flex dc:flex-col dc:lg:flex-row bg-dc-surface dc:border-x dc:border-b border-dc-border ${maxHeight ? 'dc:lg:h-[var(--dc-max-h)] dc:lg:max-h-[var(--dc-max-h)] dc:lg:overflow-hidden' : 'dc:lg:h-full'} ${className}`}
         style={maxHeight ? { ['--dc-max-h' as string]: maxHeight } : undefined}
       >
         {/* Top/Left Panel - Results */}
-        <div className="h-[60vh] lg:h-auto lg:flex-1 min-w-0 border-b lg:border-b-0 lg:border-r border-dc-border overflow-auto flex flex-col">
+        <div className="dc:h-[60vh] dc:lg:h-auto dc:lg:flex-1 dc:min-w-0 dc:border-b dc:lg:border-b-0 dc:lg:border-r border-dc-border dc:overflow-auto dc:flex dc:flex-col">
           {/* AI Panel - expands above results when open */}
           {aiState.isOpen && (
             <AnalysisAIPanel
@@ -260,7 +260,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
           )}
 
           {/* Results Panel */}
-          <div className="flex-1 overflow-auto">
+          <div className="dc:flex-1 dc:overflow-auto">
             <AnalysisResultsPanel
               executionStatus={analysis.executionStatus}
               executionResults={analysis.executionResults}
@@ -331,7 +331,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
         </div>
 
         {/* Bottom/Right Panel - Query Builder */}
-        <div className="w-full lg:w-96 flex-shrink-0 lg:h-full overflow-auto lg:overflow-hidden">
+        <div className="dc:w-full dc:lg:w-96 dc:flex-shrink-0 dc:lg:h-full dc:overflow-auto dc:lg:overflow-hidden">
           <AnalysisModeErrorBoundary
             analysisType={analysis.analysisType}
             onSwitchToSafeMode={() => analysis.actions.setAnalysisType('query')}

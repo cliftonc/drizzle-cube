@@ -49,22 +49,22 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   }
 
   return (
-    <div className="space-y-4 bg-dc-surface-secondary rounded-lg p-4">
+    <div className="dc:space-y-4 bg-dc-surface-secondary dc:rounded-lg dc:p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <CalendarIcon className="w-4 h-4 text-dc-text-muted mr-2" />
-          <h4 className="text-sm font-semibold text-dc-text-secondary">
+      <div className="dc:flex dc:items-center dc:justify-between">
+        <div className="dc:flex dc:items-center">
+          <CalendarIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:mr-2" />
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text-secondary">
             Date Ranges ({dateRangeCount})
           </h4>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="dc:flex dc:items-center dc:space-x-2">
           {/* Clear all button */}
           {dateRangeCount > 0 && (
             <button
               onClick={handleClearAllDateRanges}
-              className="text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden underline"
+              className="dc:text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden dc:underline"
             >
               Clear all
             </button>
@@ -74,14 +74,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           <button
             onClick={handleAddDateRange}
             disabled={availableTimeDimensions.length === 0}
-            className={`flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded focus:outline-hidden focus:ring-2 ${
+            className={`dc:flex dc:items-center dc:space-x-1 dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded focus:outline-hidden dc:focus:ring-2 ${
               availableTimeDimensions.length > 0
-                ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
-                : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+                ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
+                : 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-not-allowed'
             }`}
             title={availableTimeDimensions.length === 0 ? 'All time dimensions already have date ranges' : 'Add date range'}
           >
-            <AddIcon className="w-3 h-3" />
+            <AddIcon className="dc:w-3 dc:h-3" />
             <span>Add Date Range</span>
           </button>
         </div>
@@ -89,7 +89,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       
       {/* Date Range List */}
       {dateRangeCount > 0 && (
-        <div className="space-y-3">
+        <div className="dc:space-y-3">
           {timeDimensions.map(td => {
             if (!td.dateRange) return null
             

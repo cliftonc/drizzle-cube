@@ -142,20 +142,20 @@ export default function AxisDropZone({
   }
   
   return (
-    <div className="mb-2">
-      <div className="flex items-center gap-2 mb-1">
-        <h4 className="text-xs font-semibold text-dc-text-secondary flex items-center">
-          {IconComponent && <IconComponent className="w-3 h-3 mr-1 text-dc-text-muted" />}
+    <div className="dc:mb-2">
+      <div className="dc:flex dc:items-center dc:gap-2 dc:mb-1">
+        <h4 className="dc:text-xs dc:font-semibold text-dc-text-secondary dc:flex dc:items-center">
+          {IconComponent && <IconComponent className="dc:w-3 dc:h-3 dc:mr-1 text-dc-text-muted" />}
           {label}
-          {mandatory && <span className="text-dc-error ml-1">*</span>}
+          {mandatory && <span className="text-dc-error dc:ml-1">*</span>}
           {maxItems && (
-            <span className="text-dc-text-muted ml-1 font-normal">
+            <span className="text-dc-text-muted dc:ml-1 dc:font-normal">
               ({fields.length}/{maxItems})
             </span>
           )}
         </h4>
         {description && (
-          <span className="text-xs text-dc-text-muted">
+          <span className="dc:text-xs text-dc-text-muted">
             {description}
           </span>
         )}
@@ -163,9 +163,9 @@ export default function AxisDropZone({
       
       <div
         data-axis-container={key}
-        className={`min-h-[40px] sm:min-h-[32px] border-2 border-dashed rounded-lg p-3 sm:p-1.5 transition-all duration-300 flex items-center ${
+        className={`dc:min-h-[40px] dc:sm:min-h-[32px] dc:border-2 dc:border-dashed dc:rounded-lg dc:p-3 dc:sm:p-1.5 dc:transition-all dc:duration-300 dc:flex dc:items-center ${
           (isDraggedOver && (canAcceptMore || maxItems === 1)) || isReorderDraggedOver
-            ? 'shadow-lg scale-110 border-solid animate-pulse'
+            ? 'dc:shadow-lg dc:scale-110 dc:border-solid dc:animate-pulse'
             : isFull
               ? 'bg-dc-surface-secondary'
               : 'bg-dc-surface-secondary hover:bg-dc-surface-hover'
@@ -235,11 +235,11 @@ export default function AxisDropZone({
         }}
       >
         {fields.length === 0 ? (
-          <div className="text-xs text-dc-text-muted text-center w-full">
+          <div className="dc:text-xs text-dc-text-muted text-center dc:w-full">
             {isFull ? 'Maximum items reached' : (emptyText || `Drop fields here`)}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-1">
+          <div className="dc:flex dc:flex-wrap dc:gap-1">
             {fields.map((field, index) => {
               const { IconComponent: FieldIcon, baseClasses, hoverClasses } = getFieldStyling(field)
               const isDragOver = dragOverIndex === index
@@ -248,11 +248,11 @@ export default function AxisDropZone({
               return (
                 <div
                   key={`${field}-${index}`}
-                  className={`relative ${isDragOver ? 'transform scale-105' : ''}`}
+                  className={`dc:relative ${isDragOver ? 'dc:transform dc:scale-105' : ''}`}
                 >
                   {/* Drop indicator line for reordering */}
                   {isDragOver && (
-                    <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-full z-10" style={{ backgroundColor: 'var(--dc-primary)' }} />
+                    <div className="dc:absolute dc:-left-1 dc:top-0 dc:bottom-0 dc:w-1 dc:rounded-full dc:z-10" style={{ backgroundColor: 'var(--dc-primary)' }} />
                   )}
                   
                   <div
@@ -265,19 +265,19 @@ export default function AxisDropZone({
                     onDragOver={(e) => handleReorderDragOver(e, index)}
                     onDragLeave={handleReorderDragLeave}
                     onDrop={(e) => handleReorderDrop(e, index)}
-                    className={`rounded text-xs cursor-move px-3 py-0.5 sm:px-2 sm:py-1 flex items-center transition-transform h-[28px] sm:h-auto ${baseClasses} ${hoverClasses} ${
+                    className={`dc:rounded dc:text-xs dc:cursor-move dc:px-3 dc:py-0.5 dc:sm:px-2 dc:sm:py-1 dc:flex dc:items-center dc:transition-transform dc:h-[28px] dc:sm:h-auto ${baseClasses} ${hoverClasses} ${
                       isDragOver ? 'bg-opacity-75' : ''
-                    } ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                    } ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                   >
-                    <FieldIcon className="w-3 h-3 mr-1 shrink-0" />
-                    <span className="leading-none">{field}</span>
+                    <FieldIcon className="dc:w-3 dc:h-3 dc:mr-1 dc:shrink-0" />
+                    <span className="dc:leading-none">{field}</span>
                     <button
                       type="button"
                       onClick={() => onRemove(field, key)}
-                      className="text-dc-text-secondary hover:text-dc-danger ml-1.5 leading-none"
+                      className="text-dc-text-secondary hover:text-dc-danger dc:ml-1.5 dc:leading-none"
                       title={`Remove from ${label}`}
                     >
-                      <CloseIcon className="w-3 h-3" />
+                      <CloseIcon className="dc:w-3 dc:h-3" />
                     </button>
                   </div>
                 </div>
@@ -288,7 +288,7 @@ export default function AxisDropZone({
       </div>
       
       {mandatory && fields.length === 0 && (
-        <div className="text-xs text-dc-error mt-0.5">
+        <div className="dc:text-xs text-dc-error dc:mt-0.5">
           This field is required
         </div>
       )}

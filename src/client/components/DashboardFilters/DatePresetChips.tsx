@@ -32,7 +32,7 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
   }, [])
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="dc:flex dc:items-center dc:gap-1">
       {DATE_PRESETS.map(preset => {
         const isActive = activePreset === preset.id
         const tooltip = presetTooltips[preset.id]
@@ -45,10 +45,10 @@ const DatePresetChips: React.FC<DatePresetChipsProps> = ({
             disabled={disabled}
             title={tooltip}
             className={`
-              px-2.5 py-1 rounded text-xs font-medium transition-colors
-              focus:outline-none focus:ring-2 focus:ring-offset-1
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isActive ? 'shadow-sm' : 'border'}
+              dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:transition-colors
+              dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
+              dc:disabled:opacity-50 dc:disabled:cursor-not-allowed
+              ${isActive ? 'dc:shadow-sm' : 'dc:border'}
             `}
             style={{
               backgroundColor: isActive ? 'var(--dc-primary)' : 'var(--dc-surface)',

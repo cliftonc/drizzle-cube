@@ -80,27 +80,27 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`dc:relative ${className}`}>
       {/* Header with title, optional extra controls, and copy button */}
-      <div className="flex items-center justify-between mb-2 gap-2">
+      <div className="dc:flex dc:items-center dc:justify-between dc:mb-2 dc:gap-2">
         {title && (
-          <h4 className="text-sm font-semibold text-dc-text">{title}</h4>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text">{title}</h4>
         )}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:ml-auto">
           {headerRight}
           <button
             onClick={handleCopy}
-            className="px-2 py-1 text-xs rounded hover:bg-dc-surface-secondary border border-dc-border transition-colors flex items-center gap-1.5"
+            className="dc:px-2 dc:py-1 dc:text-xs dc:rounded hover:bg-dc-surface-secondary dc:border border-dc-border dc:transition-colors dc:flex dc:items-center dc:gap-1.5"
             title={copied ? 'Copied!' : 'Copy to clipboard'}
           >
             {copied ? (
               <>
-                <CheckIcon className="w-3.5 h-3.5 text-dc-success" />
+                <CheckIcon className="dc:w-3.5 dc:h-3.5 text-dc-success" />
                 <span className="text-dc-success">Copied</span>
               </>
             ) : (
               <>
-                <CopyIcon className="w-3.5 h-3.5 text-dc-text-secondary" />
+                <CopyIcon className="dc:w-3.5 dc:h-3.5 text-dc-text-secondary" />
                 <span className="text-dc-text-secondary">Copy</span>
               </>
             )}
@@ -110,10 +110,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
       {/* Code block with syntax highlighting */}
       <div
-        className="bg-dc-surface-secondary border border-dc-border rounded overflow-auto"
+        className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:overflow-auto"
         style={height ? { height, minHeight: height, maxHeight: height } : { maxHeight }}
       >
-        <pre className="p-3 text-xs m-0">
+        <pre className="dc:p-3 dc:text-xs dc:m-0">
           <code
             ref={codeRef}
             className={`hljs language-${language}`}

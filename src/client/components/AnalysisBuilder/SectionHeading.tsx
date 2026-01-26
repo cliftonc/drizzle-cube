@@ -19,7 +19,7 @@ interface SectionHeadingProps {
  */
 export default function SectionHeading({ children, className = '' }: SectionHeadingProps) {
   return (
-    <h3 className={`text-sm font-semibold text-dc-primary uppercase tracking-wide ${className}`}>
+    <h3 className={`dc:text-sm dc:font-semibold text-dc-primary dc:uppercase dc:tracking-wide ${className}`}>
       {children}
     </h3>
   )

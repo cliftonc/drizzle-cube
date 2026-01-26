@@ -222,7 +222,7 @@ export default function ChartConfigPanel({
 
   if (!chartConfigLoaded) {
     return (
-      <div className="text-center text-dc-text-muted text-sm py-4">
+      <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
         Loading chart configuration...
       </div>
     )
@@ -257,20 +257,20 @@ export default function ChartConfigPanel({
     <div>
       {/* Available Fields - Hidden for skipQuery charts */}
       {!shouldSkipQuery && availableFields && (
-        <div className="mb-4">
-          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">Available Fields</h4>
-          <div className="border border-dc-border rounded-lg p-2 bg-dc-surface-secondary">
+        <div className="dc:mb-4">
+          <h4 className="dc:text-xs dc:font-semibold text-dc-text-secondary dc:mb-2">Available Fields</h4>
+          <div className="dc:border border-dc-border dc:rounded-lg dc:p-2 bg-dc-surface-secondary">
             {(unassignedFields.dimensions.length > 0 ||
               unassignedFields.timeDimensions.length > 0 ||
               unassignedFields.measures.length > 0) ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2 gap-y-4 sm:gap-y-2">
+              <div className="dc:grid dc:grid-cols-1 dc:sm:grid-cols-3 dc:gap-2 dc:sm:gap-2 dc:gap-y-4 dc:sm:gap-y-2">
                 {/* Dimensions Column */}
-                <div className="pb-2 sm:pb-0">
-                  <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <DimensionIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                <div className="dc:pb-2 dc:sm:pb-0">
+                  <div className="dc:text-xs text-dc-text-secondary dc:mb-2 dc:sm:mb-1 dc:flex dc:items-center">
+                    <DimensionIcon className="dc:w-3 dc:h-3 dc:mr-1 text-dc-text-muted" />
                     Dimensions
                   </div>
-                  <div className="space-y-1">
+                  <div className="dc:space-y-1">
                     {unassignedFields.dimensions.map(dim => {
                       const isBeingDragged = draggedItem && draggedItem.field === dim && draggedItem.fromAxis === 'available'
                       return (
@@ -279,7 +279,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-dc-dimension text-dc-dimension border border-dc-dimension hover:opacity-80 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-dc-dimension text-dc-dimension dc:border border-dc-dimension dc:hover:opacity-80 dc:rounded-sm dc:text-xs dc:cursor-move dc:px-3 dc:py-2 dc:sm:px-2 dc:sm:py-1 dc:truncate ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                           title={dim}
                         >
                           {dim}
@@ -287,18 +287,18 @@ export default function ChartConfigPanel({
                       )
                     })}
                     {unassignedFields.dimensions.length === 0 && (
-                      <div className="text-xs text-dc-text-muted italic">None</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:italic">None</div>
                     )}
                   </div>
                 </div>
                 
                 {/* Time Dimensions Column */}
-                <div className="pb-2 sm:pb-0">
-                  <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <TimeDimensionIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                <div className="dc:pb-2 dc:sm:pb-0">
+                  <div className="dc:text-xs text-dc-text-secondary dc:mb-2 dc:sm:mb-1 dc:flex dc:items-center">
+                    <TimeDimensionIcon className="dc:w-3 dc:h-3 dc:mr-1 text-dc-text-muted" />
                     Time Dimensions
                   </div>
-                  <div className="space-y-1">
+                  <div className="dc:space-y-1">
                     {unassignedFields.timeDimensions.map(dim => {
                       const isBeingDragged = draggedItem && draggedItem.field === dim && draggedItem.fromAxis === 'available'
                       return (
@@ -307,7 +307,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, dim, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-dc-time-dimension text-dc-time-dimension border border-dc-time-dimension hover:opacity-80 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-dc-time-dimension text-dc-time-dimension dc:border border-dc-time-dimension dc:hover:opacity-80 dc:rounded-sm dc:text-xs dc:cursor-move dc:px-3 dc:py-2 dc:sm:px-2 dc:sm:py-1 dc:truncate ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                           title={dim}
                         >
                           {dim}
@@ -315,18 +315,18 @@ export default function ChartConfigPanel({
                       )
                     })}
                     {unassignedFields.timeDimensions.length === 0 && (
-                      <div className="text-xs text-dc-text-muted italic">None</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:italic">None</div>
                     )}
                   </div>
                 </div>
                 
                 {/* Measures Column */}
-                <div className="pb-2 sm:pb-0">
-                  <div className="text-xs text-dc-text-secondary mb-2 sm:mb-1 flex items-center">
-                    <MeasureIcon className="w-3 h-3 mr-1 text-dc-text-muted" />
+                <div className="dc:pb-2 dc:sm:pb-0">
+                  <div className="dc:text-xs text-dc-text-secondary dc:mb-2 dc:sm:mb-1 dc:flex dc:items-center">
+                    <MeasureIcon className="dc:w-3 dc:h-3 dc:mr-1 text-dc-text-muted" />
                     Measures
                   </div>
-                  <div className="space-y-1">
+                  <div className="dc:space-y-1">
                     {unassignedFields.measures.map(measure => {
                       const isBeingDragged = draggedItem && draggedItem.field === measure && draggedItem.fromAxis === 'available'
                       return (
@@ -335,7 +335,7 @@ export default function ChartConfigPanel({
                           draggable
                           onDragStart={(e) => handleDragStart(e, measure, 'available')}
                           onDragEnd={handleDragEnd}
-                          className={`bg-dc-measure text-dc-measure border border-dc-measure hover:opacity-80 rounded-sm text-xs cursor-move px-3 py-2 sm:px-2 sm:py-1 truncate ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                          className={`bg-dc-measure text-dc-measure dc:border border-dc-measure dc:hover:opacity-80 dc:rounded-sm dc:text-xs dc:cursor-move dc:px-3 dc:py-2 dc:sm:px-2 dc:sm:py-1 dc:truncate ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                           title={measure}
                         >
                           {measure}
@@ -343,13 +343,13 @@ export default function ChartConfigPanel({
                       )
                     })}
                     {unassignedFields.measures.length === 0 && (
-                      <div className="text-xs text-dc-text-muted italic">None</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:italic">None</div>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-dc-text-muted text-center py-2">
+              <div className="dc:text-xs text-dc-text-muted text-center dc:py-2">
                 All fields have been assigned
               </div>
             )}
@@ -359,9 +359,9 @@ export default function ChartConfigPanel({
 
       {/* Chart Axis Configuration - Dynamic Drop Zones, Hidden for skipQuery charts */}
       {!shouldSkipQuery && (
-        <div className="mb-4">
-        <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">Chart Configuration</h4>
-        <div className="space-y-1">
+        <div className="dc:mb-4">
+        <h4 className="dc:text-xs dc:font-semibold text-dc-text-secondary dc:mb-2">Chart Configuration</h4>
+        <div className="dc:space-y-1">
           {chartTypeConfig.dropZones.map(dropZone => (
             <AxisDropZone
               key={dropZone.key}
@@ -384,12 +384,12 @@ export default function ChartConfigPanel({
       {/* Display Options */}
       {((chartTypeConfig.displayOptions && chartTypeConfig.displayOptions.length > 0) ||
         (chartTypeConfig.displayOptionsConfig && chartTypeConfig.displayOptionsConfig.length > 0)) && (
-        <div className="mb-4">
-          <h4 className="text-xs font-semibold text-dc-text-secondary mb-2">Display Options</h4>
-          <div className="space-y-2">
+        <div className="dc:mb-4">
+          <h4 className="dc:text-xs dc:font-semibold text-dc-text-secondary dc:mb-2">Display Options</h4>
+          <div className="dc:space-y-2">
             {/* Backward compatibility: Simple boolean display options */}
             {chartTypeConfig.displayOptions?.includes('showLegend') && (
-              <label className="flex items-center space-x-2">
+              <label className="dc:flex dc:items-center dc:space-x-2">
                 <input
                   type="checkbox"
                   checked={displayConfig.showLegend ?? true}
@@ -397,15 +397,15 @@ export default function ChartConfigPanel({
                     ...displayConfig,
                     showLegend: e.target.checked
                   })}
-                  className="rounded border-dc-border focus:ring-dc-accent"
+                  className="dc:rounded border-dc-border focus:ring-dc-accent"
                   style={{ color: 'var(--dc-primary)' }}
                 />
-                <span className="text-sm text-dc-text">Show Legend</span>
+                <span className="dc:text-sm text-dc-text">Show Legend</span>
               </label>
             )}
 
             {chartTypeConfig.displayOptions?.includes('showGrid') && (
-              <label className="flex items-center space-x-2">
+              <label className="dc:flex dc:items-center dc:space-x-2">
                 <input
                   type="checkbox"
                   checked={displayConfig.showGrid ?? true}
@@ -413,15 +413,15 @@ export default function ChartConfigPanel({
                     ...displayConfig,
                     showGrid: e.target.checked
                   })}
-                  className="rounded border-dc-border focus:ring-dc-accent"
+                  className="dc:rounded border-dc-border focus:ring-dc-accent"
                   style={{ color: 'var(--dc-primary)' }}
                 />
-                <span className="text-sm text-dc-text">Show Grid</span>
+                <span className="dc:text-sm text-dc-text">Show Grid</span>
               </label>
             )}
 
             {chartTypeConfig.displayOptions?.includes('showTooltip') && (
-              <label className="flex items-center space-x-2">
+              <label className="dc:flex dc:items-center dc:space-x-2">
                 <input
                   type="checkbox"
                   checked={displayConfig.showTooltip ?? true}
@@ -429,15 +429,15 @@ export default function ChartConfigPanel({
                     ...displayConfig,
                     showTooltip: e.target.checked
                   })}
-                  className="rounded border-dc-border focus:ring-dc-accent"
+                  className="dc:rounded border-dc-border focus:ring-dc-accent"
                   style={{ color: 'var(--dc-primary)' }}
                 />
-                <span className="text-sm text-dc-text">Show Tooltip</span>
+                <span className="dc:text-sm text-dc-text">Show Tooltip</span>
               </label>
             )}
 
             {chartTypeConfig.displayOptions?.includes('stacked') && (
-              <label className="flex items-center space-x-2">
+              <label className="dc:flex dc:items-center dc:space-x-2">
                 <input
                   type="checkbox"
                   checked={displayConfig.stacked ?? false}
@@ -445,15 +445,15 @@ export default function ChartConfigPanel({
                     ...displayConfig,
                     stacked: e.target.checked
                   })}
-                  className="rounded border-dc-border focus:ring-dc-accent"
+                  className="dc:rounded border-dc-border focus:ring-dc-accent"
                   style={{ color: 'var(--dc-primary)' }}
                 />
-                <span className="text-sm text-dc-text">Stacked</span>
+                <span className="dc:text-sm text-dc-text">Stacked</span>
               </label>
             )}
 
             {chartTypeConfig.displayOptions?.includes('hideHeader') && (
-              <label className="flex items-center space-x-2">
+              <label className="dc:flex dc:items-center dc:space-x-2">
                 <input
                   type="checkbox"
                   checked={displayConfig.hideHeader ?? false}
@@ -461,18 +461,18 @@ export default function ChartConfigPanel({
                     ...displayConfig,
                     hideHeader: e.target.checked
                   })}
-                  className="rounded border-dc-border focus:ring-dc-accent"
+                  className="dc:rounded border-dc-border focus:ring-dc-accent"
                   style={{ color: 'var(--dc-primary)' }}
                 />
-                <span className="text-sm text-dc-text">Hide Header</span>
+                <span className="dc:text-sm text-dc-text">Hide Header</span>
               </label>
             )}
 
             {/* New structured display options */}
             {chartTypeConfig.displayOptionsConfig?.map((option) => (
-              <div key={option.key} className="space-y-1">
+              <div key={option.key} className="dc:space-y-1">
                 {option.type === 'boolean' && (
-                  <label className="flex items-center space-x-2">
+                  <label className="dc:flex dc:items-center dc:space-x-2">
                     <input
                       type="checkbox"
                       checked={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? false}
@@ -480,19 +480,19 @@ export default function ChartConfigPanel({
                         ...displayConfig,
                         [option.key]: e.target.checked
                       })}
-                      className="rounded border-dc-border focus:ring-dc-accent"
+                      className="dc:rounded border-dc-border focus:ring-dc-accent"
                       style={{ color: 'var(--dc-primary)' }}
                     />
-                    <span className="text-sm text-dc-text">{option.label}</span>
+                    <span className="dc:text-sm text-dc-text">{option.label}</span>
                   </label>
                 )}
 
                 {option.type === 'string' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">
                       {option.label}
                       {option.key === 'content' && (
-                        <span className="text-xs text-dc-text-muted ml-1">(only headers, lists and links)</span>
+                        <span className="dc:text-xs text-dc-text-muted dc:ml-1">(only headers, lists and links)</span>
                       )}
                     </label>
                     {option.key === 'content' ? (
@@ -504,7 +504,7 @@ export default function ChartConfigPanel({
                         })}
                         placeholder={option.placeholder}
                         rows={8}
-                        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent font-mono resize-y bg-dc-surface text-dc-text"
+                        className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent font-mono dc:resize-y bg-dc-surface text-dc-text"
                       />
                     ) : (
                       <input
@@ -515,19 +515,19 @@ export default function ChartConfigPanel({
                           [option.key]: e.target.value
                         })}
                         placeholder={option.placeholder}
-                        className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                        className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                       />
                     )}
                     {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
+                      <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                     )}
                   </div>
                 )}
 
                 {option.type === 'paletteColor' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                    <div className="dc:flex dc:flex-wrap dc:gap-2">
                       {colorPalette?.colors.map((color, index) => {
                         const isSelected = (displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? 0) === index
                         return (
@@ -538,9 +538,9 @@ export default function ChartConfigPanel({
                               ...displayConfig,
                               [option.key]: index
                             })}
-                            className={`w-8 h-8 rounded border-2 transition-all duration-200 hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-dc-accent focus:ring-offset-1 ${
+                            className={`dc:w-8 dc:h-8 dc:rounded dc:border-2 dc:transition-all dc:duration-200 dc:hover:scale-110 focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent dc:focus:ring-offset-1 ${
                               isSelected
-                                ? 'ring-2 ring-offset-1 scale-110'
+                                ? 'dc:ring-2 dc:ring-offset-1 dc:scale-110'
                                 : 'hover:border-dc-text-muted'
                             }`}
                             style={{
@@ -559,7 +559,7 @@ export default function ChartConfigPanel({
                             ...displayConfig,
                             [option.key]: 0
                           })}
-                          className="w-8 h-8 rounded-sm border-2 ring-2 ring-offset-1"
+                          className="dc:w-8 dc:h-8 dc:rounded-sm dc:border-2 dc:ring-2 dc:ring-offset-1"
                           style={{
                             backgroundColor: '#8884d8',
                             borderColor: 'var(--dc-primary)',
@@ -570,14 +570,14 @@ export default function ChartConfigPanel({
                       ]}
                     </div>
                     {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
+                      <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                     )}
                   </div>
                 )}
 
                 {option.type === 'number' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
                     <input
                       type="number"
                       value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? 0}
@@ -589,24 +589,24 @@ export default function ChartConfigPanel({
                       min={option.min}
                       max={option.max}
                       step={option.step}
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                     />
                     {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
+                      <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                     )}
                   </div>
                 )}
 
                 {option.type === 'select' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
                     <select
                       value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? ''}
                       onChange={(e) => onDisplayConfigChange({
                         ...displayConfig,
                         [option.key]: e.target.value
                       })}
-                      className="w-full px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                     >
                       {option.options?.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -615,15 +615,15 @@ export default function ChartConfigPanel({
                       ))}
                     </select>
                     {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
+                      <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                     )}
                   </div>
                 )}
 
                 {option.type === 'color' && (
-                  <div className="space-y-1">
-                    <label className="text-sm text-dc-text-secondary">{option.label}</label>
-                    <div className="flex items-center space-x-2">
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                    <div className="dc:flex dc:items-center dc:space-x-2">
                       <input
                         type="color"
                         value={displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue ?? '#8884d8'}
@@ -631,7 +631,7 @@ export default function ChartConfigPanel({
                           ...displayConfig,
                           [option.key]: e.target.value
                         })}
-                        className="w-12 h-8 border border-dc-border rounded-sm cursor-pointer"
+                        className="dc:w-12 dc:h-8 dc:border border-dc-border dc:rounded-sm dc:cursor-pointer"
                       />
                       <input
                         type="text"
@@ -641,11 +641,11 @@ export default function ChartConfigPanel({
                           [option.key]: e.target.value
                         })}
                         placeholder={option.placeholder || '#8884d8'}
-                        className="flex-1 px-2 py-1 text-sm border border-dc-border rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
+                        className="dc:flex-1 dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                       />
                     </div>
                     {option.description && (
-                      <p className="text-xs text-dc-text-muted">{option.description}</p>
+                      <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
                     )}
                   </div>
                 )}

@@ -159,12 +159,12 @@ function SankeyNode({
           y={y + height / 2}
           textAnchor={textAnchor}
           dominantBaseline="middle"
-          className="text-xs fill-dc-text"
+          className="dc:text-xs dc:fill-dc-text"
           style={{ fontSize: 11 }}
         >
           {payload.name}
           {payload.value !== undefined && (
-            <tspan className="fill-dc-text-secondary" dx={4}>
+            <tspan className="dc:fill-dc-text-secondary" dx={4}>
               ({payload.value.toLocaleString()})
             </tspan>
           )}
@@ -188,23 +188,23 @@ function SankeyTooltip({ active, payload }: {
   // Check if this is a link (has source/target) or a node
   if (data.source && data.target) {
     return (
-      <div className="bg-dc-surface border border-dc-border rounded-md px-3 py-2 shadow-lg text-sm">
-        <div className="font-medium text-dc-text">
+      <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+        <div className="dc:font-medium text-dc-text">
           {data.source.name} → {data.target.name}
         </div>
-        <div className="text-dc-text-secondary mt-1">
-          <span className="font-medium">{data.value.toLocaleString()}</span> entities
+        <div className="text-dc-text-secondary dc:mt-1">
+          <span className="dc:font-medium">{data.value.toLocaleString()}</span> entities
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-dc-surface border border-dc-border rounded-md px-3 py-2 shadow-lg text-sm">
-      <div className="font-medium text-dc-text">{data.name}</div>
+    <div className="bg-dc-surface dc:border border-dc-border dc:rounded-md dc:px-3 dc:py-2 dc:shadow-lg dc:text-sm">
+      <div className="dc:font-medium text-dc-text">{data.name}</div>
       {data.value !== undefined && (
-        <div className="text-dc-text-secondary mt-1">
-          <span className="font-medium">{data.value.toLocaleString()}</span> entities
+        <div className="text-dc-text-secondary dc:mt-1">
+          <span className="dc:font-medium">{data.value.toLocaleString()}</span> entities
         </div>
       )}
     </div>
@@ -277,12 +277,12 @@ const SankeyChart = React.memo(function SankeyChart({
   if (!data || data.length === 0 || !flowData || flowData.nodes.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No flow data</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Configure a flow analysis with a starting step and event dimension
           </div>
         </div>
@@ -291,9 +291,9 @@ const SankeyChart = React.memo(function SankeyChart({
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-full flex flex-col" style={{ height }}>
+    <div ref={containerRef} className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
       {/* Sankey Diagram */}
-      <div className="flex-1 min-h-0">
+      <div className="dc:flex-1 dc:min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <Sankey
             data={flowData}
@@ -315,17 +315,17 @@ const SankeyChart = React.memo(function SankeyChart({
 
       {/* Summary Footer */}
       {!(displayConfigAny?.hideSummaryFooter) && summaryStats && (
-        <div className="flex-shrink-0 px-4 py-2 border-t border-dc-border bg-dc-surface-secondary">
-          <div className="flex items-center justify-between text-sm">
+        <div className="dc:flex-shrink-0 dc:px-4 dc:py-2 dc:border-t border-dc-border bg-dc-surface-secondary">
+          <div className="dc:flex dc:items-center dc:justify-between dc:text-sm">
             <div className="text-dc-text-muted">
-              <span className="font-medium">{summaryStats.nodeCount}</span> events
+              <span className="dc:font-medium">{summaryStats.nodeCount}</span> events
             </div>
             <div className="text-dc-text">
               <span className="text-dc-text-muted">Paths:</span>{' '}
-              <span className="font-medium">{summaryStats.linkCount}</span>
+              <span className="dc:font-medium">{summaryStats.linkCount}</span>
             </div>
             <div className="text-dc-text-muted">
-              <span className="font-medium">{summaryStats.totalEntities.toLocaleString()}</span> starting entities
+              <span className="dc:font-medium">{summaryStats.totalEntities.toLocaleString()}</span> starting entities
             </div>
           </div>
         </div>

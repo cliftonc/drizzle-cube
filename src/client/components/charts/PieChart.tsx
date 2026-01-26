@@ -28,10 +28,10 @@ const PieChart = React.memo(function PieChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs text-dc-text-secondary">No data points to display in pie chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in pie chart</div>
           </div>
         </div>
       )
@@ -55,10 +55,10 @@ const PieChart = React.memo(function PieChart({
       yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
     } else {
       return (
-        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart</div>
           </div>
         </div>
       )
@@ -66,10 +66,10 @@ const PieChart = React.memo(function PieChart({
 
     if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">Missing required X-axis or Y-axis fields</div>
           </div>
         </div>
       )
@@ -130,10 +130,10 @@ const PieChart = React.memo(function PieChart({
     
     if (pieData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs text-dc-text-secondary">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-xs text-dc-text-secondary">
               {originalLength > 0
                 ? `Filtered out ${originalLength} data points (zero or invalid values)`
                 : 'No data points to display in pie chart'
@@ -191,11 +191,11 @@ const PieChart = React.memo(function PieChart({
   } catch (error) {
     // 'PieChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Pie Chart Error</div>
-          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Pie Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

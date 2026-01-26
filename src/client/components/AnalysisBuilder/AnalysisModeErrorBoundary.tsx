@@ -79,40 +79,40 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center bg-dc-surface">
-          <div className="h-10 w-10 mb-3 text-dc-warning">
-            {WarningIcon && <WarningIcon className="w-10 h-10" />}
+        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 text-center bg-dc-surface">
+          <div className="dc:h-10 dc:w-10 dc:mb-3 text-dc-warning">
+            {WarningIcon && <WarningIcon className="dc:w-10 dc:h-10" />}
           </div>
-          <h3 className="text-base font-semibold mb-2 text-dc-text">
+          <h3 className="dc:text-base dc:font-semibold dc:mb-2 text-dc-text">
             Mode Error
           </h3>
-          <p className="text-sm text-dc-text-secondary mb-3 max-w-sm">
+          <p className="dc:text-sm text-dc-text-secondary dc:mb-3 dc:max-w-sm">
             There was a problem with the <strong>{this.props.analysisType}</strong> mode.
             This might be due to invalid configuration data.
           </p>
 
           {/* Error details (collapsible) */}
-          <details className="w-full max-w-md mb-4 text-left">
-            <summary className="cursor-pointer text-xs text-dc-text-muted hover:text-dc-text">
+          <details className="dc:w-full dc:max-w-md dc:mb-4 text-left">
+            <summary className="dc:cursor-pointer dc:text-xs text-dc-text-muted hover:text-dc-text">
               Show error details
             </summary>
-            <div className="mt-2 p-2 bg-dc-surface-secondary rounded text-xs font-mono text-dc-text-secondary overflow-auto max-h-32">
+            <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded dc:text-xs font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
               {this.state.error?.message || 'Unknown error'}
             </div>
           </details>
 
-          <div className="flex gap-2">
+          <div className="dc:flex dc:gap-2">
             <button
               onClick={this.handleReset}
-              className="px-3 py-1.5 border border-dc-border rounded text-sm text-dc-text hover:bg-dc-surface-hover transition-colors flex items-center gap-1"
+              className="dc:px-3 dc:py-1.5 dc:border border-dc-border dc:rounded dc:text-sm text-dc-text hover:bg-dc-surface-hover dc:transition-colors dc:flex dc:items-center dc:gap-1"
             >
-              {RefreshIcon && <RefreshIcon className="w-4 h-4" />}
+              {RefreshIcon && <RefreshIcon className="dc:w-4 dc:h-4" />}
               Try Again
             </button>
             {this.props.onSwitchToSafeMode && (
               <button
                 onClick={this.handleSwitchToSafeMode}
-                className="px-3 py-1.5 bg-dc-primary text-white rounded text-sm hover:opacity-90 transition-opacity"
+                className="dc:px-3 dc:py-1.5 bg-dc-primary text-white dc:rounded dc:text-sm dc:hover:opacity-90 dc:transition-opacity"
               >
                 Switch to Query Mode
               </button>

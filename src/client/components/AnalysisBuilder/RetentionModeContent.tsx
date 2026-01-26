@@ -194,14 +194,14 @@ const RetentionModeContent = memo(function RetentionModeContent({
   }, [])
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden">
+    <div className="dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:overflow-hidden">
       {/* Tab Bar */}
-      <div className="flex border-b border-dc-border flex-shrink-0">
+      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
         <button
           onClick={() => setActiveTab('config')}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'config'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : 'text-dc-text-secondary hover:text-dc-text'
           }`}
         >
@@ -210,11 +210,11 @@ const RetentionModeContent = memo(function RetentionModeContent({
         <button
           onClick={() => hasDisplayTab && setActiveTab('display')}
           disabled={!hasDisplayTab}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'display'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : !hasDisplayTab
-                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
           title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
@@ -225,7 +225,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
       {/* Tab Content */}
       {activeTab === 'config' ? (
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="dc:flex dc:flex-col dc:flex-1 dc:min-h-0">
           {/* Configuration Panel - Cube + Binding Key + Time Dimension */}
           <RetentionConfigPanel
             selectedCube={retentionCube}
@@ -239,11 +239,11 @@ const RetentionModeContent = memo(function RetentionModeContent({
           />
 
           {/* Retention Configuration - scrollable */}
-          <div className="flex-1 min-h-0 overflow-auto p-4 space-y-6">
+          <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4 dc:space-y-6">
             {/* Date Range Selector - at top for visibility */}
             <div>
               <SectionHeading>Date Range</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Select the date range for cohort entry. Users who first appear within this range will be analyzed.
               </p>
               <DateRangeSelector
@@ -255,7 +255,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
             {/* Cohort Filter Section */}
             <div>
               <SectionHeading>Cohort Filter</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Define who enters the cohort. Users whose first event matches these filters within the date range are included.
               </p>
               <AnalysisFilterSection
@@ -269,7 +269,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
             {/* Return Filter Section */}
             <div>
               <SectionHeading>Return Filter</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Define what counts as a return. Events matching these filters in subsequent periods count as retention.
               </p>
               <AnalysisFilterSection
@@ -283,7 +283,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
             {/* Breakdown Section */}
             <div>
               <SectionHeading>Breakdown</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Optionally segment retention by dimensions (e.g., country, plan type).
               </p>
               <BreakdownSection
@@ -298,23 +298,23 @@ const RetentionModeContent = memo(function RetentionModeContent({
             {/* Settings Section */}
             <div>
               <SectionHeading>Settings</SectionHeading>
-              <p className="text-xs text-dc-text-muted mb-3">
+              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 Configure how retention is calculated and displayed.
               </p>
 
-              <div className="space-y-4">
+              <div className="dc:space-y-4">
                 {/* Granularity */}
                 <div>
-                  <label className="block text-xs font-medium text-dc-text-muted mb-1">
+                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                     Period Granularity
                   </label>
-                  <div className="flex gap-2">
+                  <div className="dc:flex dc:gap-2">
                     {RETENTION_GRANULARITY_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => onGranularityChange(option.value)}
-                        className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+                        className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:font-medium dc:transition-colors ${
                           retentionViewGranularity === option.value
                             ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
                             : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
@@ -328,24 +328,24 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
                 {/* Number of Periods */}
                 <div>
-                  <label className="block text-xs font-medium text-dc-text-muted mb-1">
+                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                     Number of Periods ({RETENTION_MIN_PERIODS}-{RETENTION_MAX_PERIODS})
                   </label>
-                  <div className="flex items-center gap-4">
+                  <div className="dc:flex dc:items-center dc:gap-4">
                     <input
                       type="range"
                       min={RETENTION_MIN_PERIODS}
                       max={RETENTION_MAX_PERIODS}
                       value={retentionPeriods}
                       onChange={(e) => onPeriodsChange(parseInt(e.target.value, 10))}
-                      className="flex-1"
+                      className="dc:flex-1"
                     />
-                    <span className="w-8 text-sm font-medium text-dc-text text-center">
+                    <span className="dc:w-8 dc:text-sm dc:font-medium text-dc-text text-center">
                       {retentionPeriods}
                     </span>
                   </div>
                   {retentionPeriods > 26 && (
-                    <p className="mt-1 text-xs text-dc-warning">
+                    <p className="dc:mt-1 dc:text-xs text-dc-warning">
                       High period count may impact query performance.
                     </p>
                   )}
@@ -353,24 +353,24 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
                 {/* Retention Type */}
                 <div>
-                  <label className="block text-xs font-medium text-dc-text-muted mb-1">
+                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                     Retention Type
                   </label>
-                  <div className="flex gap-2">
+                  <div className="dc:flex dc:gap-2">
                     {RETENTION_TYPE_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => onRetentionTypeChange(option.value)}
-                        className={`flex-1 px-3 py-2 rounded-md border text-sm transition-colors ${
+                        className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:transition-colors ${
                           retentionType === option.value
                             ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
                             : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
                         }`}
                       >
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="font-medium">{option.label}</span>
-                          <span className="text-[10px] font-normal text-dc-text-muted">
+                        <div className="dc:flex dc:flex-col dc:items-center dc:gap-0.5">
+                          <span className="dc:font-medium">{option.label}</span>
+                          <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
                             {option.description}
                           </span>
                         </div>
@@ -383,7 +383,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
           </div>
         </div>
       ) : activeTab === 'display' && displayConfig && onDisplayConfigChange ? (
-        <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4">
           <AnalysisDisplayConfigPanel
             chartType={chartType}
             displayConfig={displayConfig}

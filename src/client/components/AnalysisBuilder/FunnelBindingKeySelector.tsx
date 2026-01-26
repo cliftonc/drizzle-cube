@@ -142,31 +142,31 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
 
   return (
     <div className={className}>
-      <div ref={dropdownRef} className="relative">
+      <div ref={dropdownRef} className="dc:relative">
         {/* Trigger Button - compact to match select dropdown */}
         <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
-          flex items-center justify-between w-full px-2 py-1 text-xs
-          bg-dc-surface border border-dc-border rounded
-          transition-colors
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-dc-primary cursor-pointer'}
-          ${isOpen ? 'border-dc-primary ring-1 ring-dc-primary' : ''}
+          dc:flex dc:items-center dc:justify-between dc:w-full dc:px-2 dc:py-1 dc:text-xs
+          bg-dc-surface dc:border border-dc-border dc:rounded
+          dc:transition-colors
+          ${disabled ? 'dc:opacity-50 dc:cursor-not-allowed' : 'hover:border-dc-primary dc:cursor-pointer'}
+          ${isOpen ? 'border-dc-primary dc:ring-1 ring-dc-primary' : ''}
         `}
       >
-        <span className={`truncate ${hasSelection ? 'text-dc-text' : 'text-dc-text-muted'}`}>
+        <span className={`dc:truncate ${hasSelection ? 'text-dc-text' : 'text-dc-text-muted'}`}>
           {label}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="dc:flex dc:items-center dc:gap-1">
           {hasSelection && (
             <span
               role="button"
               tabIndex={0}
               onClick={handleClear}
               onKeyDown={(e) => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
-              className="p-0.5 rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
+              className="dc:p-0.5 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
               title="Clear binding key"
             >
               ×
@@ -174,7 +174,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
           )}
           {ChevronDownIcon && (
             <ChevronDownIcon
-              className={`w-4 h-4 text-dc-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              className={`dc:w-4 dc:h-4 text-dc-text-muted dc:transition-transform ${isOpen ? 'dc:rotate-180' : ''}`}
             />
           )}
         </span>
@@ -182,12 +182,12 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 right-0 w-[280px] bg-dc-surface border border-dc-border rounded-md shadow-lg">
+        <div className="dc:absolute dc:z-50 dc:mt-1 dc:right-0 dc:w-[280px] bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg">
           {/* Search Input */}
-          <div className="p-2 border-b border-dc-border">
-            <div className="relative">
+          <div className="dc:p-2 dc:border-b border-dc-border">
+            <div className="dc:relative">
               {SearchIcon && (
-                <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-dc-text-muted" />
+                <SearchIcon className="dc:absolute dc:left-2 dc:top-1/2 dc:-translate-y-1/2 dc:w-4 dc:h-4 text-dc-text-muted" />
               )}
               <input
                 ref={searchInputRef}
@@ -195,22 +195,22 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search dimensions..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-dc-surface-secondary border border-dc-border rounded text-dc-text placeholder:text-dc-text-muted focus:outline-none focus:ring-1 focus:ring-dc-primary"
+                className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
               />
             </div>
           </div>
 
           {/* Dimension List */}
-          <div className="max-h-64 overflow-y-auto p-1">
+          <div className="dc:max-h-64 dc:overflow-y-auto dc:p-1">
             {Object.entries(filteredGroups).length === 0 ? (
-              <div className="px-3 py-4 text-sm text-dc-text-muted text-center">
+              <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted text-center">
                 No matching dimensions found
               </div>
             ) : (
               Object.entries(filteredGroups).map(([cubeName, dims]) => (
-                <div key={cubeName} className="mb-2 last:mb-0">
+                <div key={cubeName} className="dc:mb-2 dc:last:mb-0">
                   {/* Cube Header */}
-                  <div className="px-2 py-1 text-xs font-medium text-dc-text-muted uppercase tracking-wide">
+                  <div className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wide">
                     {cubeName}
                   </div>
                   {/* Dimensions */}
@@ -219,8 +219,8 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                       key={dim.dimension}
                       onClick={() => handleSelect(dim.dimension)}
                       className={`
-                        flex items-center justify-between w-full px-3 py-1.5 text-sm
-                        rounded transition-colors
+                        dc:flex dc:items-center dc:justify-between dc:w-full dc:px-3 dc:py-1.5 dc:text-sm
+                        dc:rounded dc:transition-colors
                         ${isSelected(dim.dimension)
                           ? 'bg-dc-primary-bg text-dc-primary'
                           : 'text-dc-text hover:bg-dc-surface-hover'
@@ -229,7 +229,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                     >
                       <span>{dim.label}</span>
                       {isSelected(dim.dimension) && CheckIcon && (
-                        <CheckIcon className="w-4 h-4" />
+                        <CheckIcon className="dc:w-4 dc:h-4" />
                       )}
                     </button>
                   ))}
@@ -239,7 +239,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
           </div>
 
           {/* Help Text */}
-          <div className="px-3 py-2 border-t border-dc-border text-xs text-dc-text-muted">
+          <div className="dc:px-3 dc:py-2 dc:border-t border-dc-border dc:text-xs text-dc-text-muted">
             Select a dimension that identifies entities across funnel steps (e.g., user ID, order ID)
           </div>
         </div>

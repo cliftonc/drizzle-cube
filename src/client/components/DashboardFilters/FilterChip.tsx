@@ -70,12 +70,12 @@ const FilterChip: React.FC<FilterChipProps> = ({
   }
 
   return (
-    <div ref={chipRef} className="relative inline-flex">
+    <div ref={chipRef} className="dc:relative dc:inline-flex">
       <div
         className={`
-          inline-flex items-center gap-1 px-2 py-1 rounded text-xs
-          border transition-colors cursor-pointer
-          ${isEditMode ? 'pr-1' : ''}
+          dc:inline-flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs
+          dc:border dc:transition-colors dc:cursor-pointer
+          ${isEditMode ? 'dc:pr-1' : ''}
         `}
         style={{
           backgroundColor: 'var(--dc-surface)',
@@ -91,7 +91,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
         }}
         title={`${label} ${valueDisplay}`}
       >
-        <span className="font-medium truncate max-w-[100px]">{label}</span>
+        <span className="dc:font-medium dc:truncate dc:max-w-[100px]">{label}</span>
         {valueDisplay && (
           <>
             <span style={{ color: 'var(--dc-text-secondary)' }}>{valueDisplay}</span>
@@ -107,7 +107,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.stopPropagation()
                 onEdit?.()
               }}
-              className="p-0.5 rounded transition-colors"
+              className="dc:p-0.5 dc:rounded dc:transition-colors"
               style={{ color: 'var(--dc-text-secondary)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--dc-text)'
@@ -116,7 +116,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.currentTarget.style.color = 'var(--dc-text-secondary)'
               }}
             >
-              <EditIcon className="w-3 h-3" />
+              <EditIcon className="dc:w-3 dc:h-3" />
             </button>
             <button
               type="button"
@@ -124,7 +124,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.stopPropagation()
                 onRemove?.()
               }}
-              className="p-0.5 rounded transition-colors"
+              className="dc:p-0.5 dc:rounded dc:transition-colors"
               style={{ color: 'var(--dc-text-secondary)' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--dc-error)'
@@ -133,7 +133,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                 e.currentTarget.style.color = 'var(--dc-text-secondary)'
               }}
             >
-              <CloseIcon className="w-3 h-3" />
+              <CloseIcon className="dc:w-3 dc:h-3" />
             </button>
           </>
         )}

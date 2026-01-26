@@ -28,6 +28,59 @@ App → CubeProvider → Dashboard/Analysis → Components → Charts
 - **Type-Safe** - Full TypeScript coverage throughout
 - **Modular** - Component-based architecture with clear separation of concerns
 - **Server State in TanStack Query** - Never store API response data in Zustand
+- **CSS Isolation** - All Tailwind utilities prefixed with `dc:` to prevent conflicts
+
+---
+
+## CSS Isolation Architecture
+
+All Tailwind CSS utilities are prefixed with `dc:` to prevent CSS conflicts when embedding drizzle-cube in applications with their own Tailwind setup.
+
+### Class Naming Convention
+
+| Type | Pattern | Example | Customizable |
+|------|---------|---------|--------------|
+| Layout utilities | `dc:*` | `dc:flex`, `dc:p-4` | No |
+| Theme utilities | `*-dc-*` | `bg-dc-surface`, `text-dc-text` | Yes |
+
+### Writing Component Classes
+
+```tsx
+// Layout utilities use dc: prefix
+<div className="dc:flex dc:items-center dc:gap-2 dc:p-4">
+  // Theme classes use dc- prefix (customizable via CSS variables)
+  <span className="bg-dc-surface text-dc-text border-dc-border">
+```
+
+### Variants with dc: Prefix (Tailwind v4)
+
+In Tailwind v4, the `dc:` prefix comes FIRST, then the variant:
+
+```tsx
+// ✅ CORRECT (Tailwind v4) - prefix first, then variant
+<button className="dc:p-2 dc:hover:opacity-80 dc:focus:ring-2 focus:ring-dc-accent">
+
+// ❌ WRONG (Tailwind v3 style) - variant first, then prefix
+<button className="dc:p-2 hover:dc:opacity-80 focus:dc:ring-2 focus:ring-dc-accent">
+```
+
+**Note:** Theme classes (like `focus:ring-dc-accent`) don't need the `dc:` prefix for variants because
+they use CSS custom properties, not Tailwind utilities.
+
+### Configuration
+
+CSS isolation is configured in `src/client/theme/variables.css`:
+
+```css
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme) prefix(dc);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(dc);
+```
+
+Key features:
+- **Preflight skipped** - Base resets not applied to avoid affecting host app
+- **CSS layers** - Proper cascade ordering
+- **Theme customization** - Consumers override via CSS variables (`--dc-*`)
 
 ---
 

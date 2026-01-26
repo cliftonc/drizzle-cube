@@ -104,7 +104,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
   return (
     <div
       ref={popoverRef}
-      className="absolute top-full left-0 mt-1 z-50 border rounded-lg shadow-lg p-3 min-w-[220px]"
+      className="dc:absolute dc:top-full dc:left-0 dc:mt-1 dc:z-50 dc:border dc:rounded-lg dc:shadow-lg dc:p-3 dc:min-w-[220px]"
       style={{
         backgroundColor: 'var(--dc-surface)',
         borderColor: 'var(--dc-border)',
@@ -113,14 +113,14 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
     >
       {/* Filter label */}
       <div
-        className="text-xs font-medium mb-2"
+        className="dc:text-xs dc:font-medium dc:mb-2"
         style={{ color: 'var(--dc-text-secondary)' }}
       >
         Edit value
       </div>
 
       {/* Value selector */}
-      <div className="min-w-[180px]">
+      <div className="dc:min-w-[180px]">
         <FilterValueSelector
           fieldName={filter.member}
           operator={filter.operator}
@@ -131,11 +131,11 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
       </div>
 
       {/* Action buttons */}
-      <div className="flex justify-end gap-2 mt-3 pt-2 border-t" style={{ borderColor: 'var(--dc-border)' }}>
+      <div className="dc:flex dc:justify-end dc:gap-2 dc:mt-3 dc:pt-2 dc:border-t" style={{ borderColor: 'var(--dc-border)' }}>
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1 text-xs font-medium rounded border transition-colors"
+          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border dc:transition-colors"
           style={{
             borderColor: 'var(--dc-border)',
             color: 'var(--dc-text-secondary)',

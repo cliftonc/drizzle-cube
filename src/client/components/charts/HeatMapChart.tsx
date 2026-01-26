@@ -254,12 +254,12 @@ const HeatMapChart = React.memo(function HeatMapChart({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Run a query to see heatmap visualization
           </div>
         </div>
@@ -270,12 +270,12 @@ const HeatMapChart = React.memo(function HeatMapChart({
   if (!xAxisField || !yAxisField || !valueField) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration required</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration required</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             {!xAxisField && 'X-axis dimension required. '}
             {!yAxisField && 'Y-axis dimension required. '}
             {!valueField && 'Value measure required.'}
@@ -288,12 +288,12 @@ const HeatMapChart = React.memo(function HeatMapChart({
   if (heatmapData.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data to display</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             The query returned no results for the heatmap
           </div>
         </div>
@@ -313,9 +313,9 @@ const HeatMapChart = React.memo(function HeatMapChart({
   ]
 
   return (
-    <div className="relative w-full h-full" style={{ height }}>
+    <div className="dc:relative dc:w-full dc:h-full" style={{ height }}>
       {truncated && (
-        <div className="absolute top-0 left-0 right-0 z-10 px-3 py-1.5 text-xs bg-dc-warning-bg text-dc-warning border-b border-dc-border">
+        <div className="dc:absolute dc:top-0 dc:left-0 dc:right-0 dc:z-10 dc:px-3 dc:py-1.5 dc:text-xs bg-dc-warning-bg text-dc-warning dc:border-b border-dc-border">
           Data truncated to {MAX_HEATMAP_ROWS}x{MAX_HEATMAP_COLS} cells (original: {originalRows}x{originalCols}). Add filters to reduce dimensions.
         </div>
       )}

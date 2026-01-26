@@ -63,23 +63,23 @@ export default function AnalysisFilterItem({
   return (
     <>
       <div
-        className="flex items-start gap-2 px-2 py-1.5 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150 w-full"
+        className="dc:flex dc:items-start dc:gap-2 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150 dc:w-full"
       >
         {/* Field type icon with appropriate background color */}
-        <span className={`w-6 h-6 flex items-center justify-center rounded ${iconBgClass} ${iconTextClass} flex-shrink-0 mt-0.5`}>
-          {FieldIcon && <FieldIcon className="w-4 h-4" />}
+        <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass} dc:flex-shrink-0 dc:mt-0.5`}>
+          {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
         </span>
 
         {/* Filter description - clickable to edit */}
         <button
           ref={buttonRef}
           onClick={() => setIsModalOpen(true)}
-          className="flex-1 min-w-0 text-left"
+          className="dc:flex-1 dc:min-w-0 text-left"
           title={`${fieldTitle} ${operatorLabel} ${valueDisplay}`}
         >
-          <div className="text-sm text-dc-text break-words">
-            <span className="font-medium">{fieldTitle}</span>
-            <span className="text-dc-text-muted mx-1">{operatorLabel}</span>
+          <div className="dc:text-sm text-dc-text dc:break-words">
+            <span className="dc:font-medium">{fieldTitle}</span>
+            <span className="text-dc-text-muted dc:mx-1">{operatorLabel}</span>
             <span className="text-dc-primary">{valueDisplay}</span>
           </div>
         </button>
@@ -87,10 +87,10 @@ export default function AnalysisFilterItem({
         {/* Remove button */}
         <button
           onClick={onRemove}
-          className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+          className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0 dc:mt-0.5"
           title="Remove filter"
         >
-          {CloseIcon && <CloseIcon className="w-4 h-4" />}
+          {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
         </button>
       </div>
 

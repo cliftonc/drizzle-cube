@@ -23,7 +23,7 @@ export function getAllMeasureIcons(): Record<string, React.ReactElement> {
 
   for (const type of types) {
     const IconComponent = getMeasureTypeIcon(type)
-    icons[type] = <IconComponent className="w-4 h-4" />
+    icons[type] = <IconComponent className="dc:w-4 dc:h-4" />
   }
 
   return icons

@@ -143,7 +143,7 @@ describe('FunnelChart', () => {
 
       // In horizontal mode, bars are displayed with width percentages
       // Check that flex-col class is used for vertical stacking of steps
-      expect(container.querySelector('.flex-col')).toBeInTheDocument()
+      expect(container.querySelector('.dc\\:flex-col')).toBeInTheDocument()
     })
 
     it('should render vertical orientation when specified', () => {

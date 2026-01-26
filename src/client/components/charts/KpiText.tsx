@@ -67,15 +67,15 @@ const KpiText = React.memo(function KpiText({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
         </div>
       </div>
     )
@@ -96,7 +96,7 @@ const KpiText = React.memo(function KpiText({
   if (valueFields.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined,
@@ -106,8 +106,8 @@ const KpiText = React.memo(function KpiText({
         }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">No measure fields configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+          <div className="dc:text-xs">No measure fields configured</div>
         </div>
       </div>
     )
@@ -140,7 +140,7 @@ const KpiText = React.memo(function KpiText({
   if (values.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined,
@@ -150,8 +150,8 @@ const KpiText = React.memo(function KpiText({
         }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No valid data</div>
-          <div className="text-xs">All values are null or invalid</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+          <div className="dc:text-xs">All values are null or invalid</div>
         </div>
       </div>
     )
@@ -256,7 +256,7 @@ const KpiText = React.memo(function KpiText({
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col items-center justify-center w-full h-full p-4"
+      className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4"
       style={{ 
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined
@@ -265,7 +265,7 @@ const KpiText = React.memo(function KpiText({
         {/* Main KPI Text */}
         <div 
           ref={textRef}
-          className="font-bold leading-tight text-center"
+          className="dc:font-bold dc:leading-tight text-center"
           style={{ 
             fontSize: `${fontSize}px`,
             color: valueColor 
@@ -276,7 +276,7 @@ const KpiText = React.memo(function KpiText({
 
         {/* Data Histogram for multiple values */}
         {showStats && min !== null && max !== null && (
-          <div className="mt-4">
+          <div className="dc:mt-4">
             <DataHistogram
               values={values}
               min={min}

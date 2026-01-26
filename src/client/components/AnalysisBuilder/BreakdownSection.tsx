@@ -251,16 +251,16 @@ const BreakdownSection = memo(function BreakdownSection({
       {/* Section Header - entire row is clickable */}
       <button
         onClick={onAdd}
-        className="flex items-center justify-between mb-3 w-full py-1 px-2 -ml-2 rounded-lg hover:bg-dc-primary/10 transition-colors group"
+        className="dc:flex dc:items-center dc:justify-between dc:mb-3 dc:w-full dc:py-1 dc:px-2 dc:-ml-2 dc:rounded-lg hover:bg-dc-primary/10 dc:transition-colors dc:group"
         title="Add breakdown"
       >
         <SectionHeading>Breakdown</SectionHeading>
-        <AddIcon className="w-5 h-5 text-dc-text-secondary group-hover:text-dc-primary transition-colors" />
+        <AddIcon className="dc:w-5 dc:h-5 text-dc-text-secondary group-hover:text-dc-primary dc:transition-colors" />
       </button>
 
       {/* Breakdowns List */}
       <div
-        className="space-y-2"
+        className="dc:space-y-2"
         onDragLeave={onReorder ? handleSectionDragLeave : undefined}
         onDragOver={onReorder ? (e) => e.preventDefault() : undefined}
         onDrop={onReorder ? handleItemDrop : undefined}
@@ -272,7 +272,7 @@ const BreakdownSection = memo(function BreakdownSection({
           return (
             <div
               key={breakdown.id}
-              className="relative"
+              className="dc:relative"
               style={{
                 transform,
                 transition: draggedIndex !== null ? 'transform 0.15s ease-out' : 'none'
@@ -282,8 +282,8 @@ const BreakdownSection = memo(function BreakdownSection({
             >
               {/* Gap indicator line - shows where item will be inserted */}
               {showGapBefore && (
-                <div className="absolute -top-5 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
-                  <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+                <div className="dc:absolute dc:-top-5 dc:left-0 dc:right-0 dc:flex dc:items-center dc:justify-center dc:pointer-events-none dc:z-10">
+                  <div className="dc:h-0.5 dc:w-full bg-dc-primary dc:rounded-full" />
                 </div>
               )}
               <BreakdownItemCard
@@ -317,16 +317,16 @@ const BreakdownSection = memo(function BreakdownSection({
         })}
         {/* Gap indicator after the last item - shows when dropping at end */}
         {onReorder && draggedIndex !== null && dropTargetIndex === breakdowns.length && (
-          <div className="relative h-2">
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-center pointer-events-none z-10">
-              <div className="h-0.5 w-full bg-dc-primary rounded-full" />
+          <div className="dc:relative dc:h-2">
+            <div className="dc:absolute dc:top-0 dc:left-0 dc:right-0 dc:flex dc:items-center dc:justify-center dc:pointer-events-none dc:z-10">
+              <div className="dc:h-0.5 dc:w-full bg-dc-primary dc:rounded-full" />
             </div>
           </div>
         )}
         {/* Handle drop at the end of the list */}
         {onReorder && breakdowns.length > 0 && draggedIndex !== null && (
           <div
-            className="h-8"
+            className="dc:h-8"
             onDragOver={(e) => {
               e.preventDefault()
               // Set drop target to end of list

@@ -631,10 +631,10 @@ const BubbleChart = React.memo(function BubbleChart({
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display in bubble chart</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data points to display in bubble chart</div>
         </div>
       </div>
     )
@@ -644,23 +644,23 @@ const BubbleChart = React.memo(function BubbleChart({
   const hasValidConfig = chartConfig?.xAxis && chartConfig?.yAxis && chartConfig?.series
   if (!hasValidConfig) {
     return (
-      <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Required</div>
-          <div className="text-xs">Bubble chart requires xAxis, yAxis, series, and sizeField dimensions</div>
-          <div className="text-xs mt-1">Optional: colorField for bubble coloring</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
+          <div className="dc:text-xs">Bubble chart requires xAxis, yAxis, series, and sizeField dimensions</div>
+          <div className="dc:text-xs dc:mt-1">Optional: colorField for bubble coloring</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full flex-1 flex flex-col relative" style={{ height, minHeight: '250px', overflow: 'hidden' }}>
-      <div ref={containerRef} className="w-full h-full relative">
-        <svg ref={svgRef} className="w-full h-full" />
+    <div className="dc:w-full dc:flex-1 dc:flex dc:flex-col dc:relative" style={{ height, minHeight: '250px', overflow: 'hidden' }}>
+      <div ref={containerRef} className="dc:w-full dc:h-full dc:relative">
+        <svg ref={svgRef} className="dc:w-full dc:h-full" />
         {!dimensionsReady && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-dc-text-muted text-sm">Measuring chart dimensions...</div>
+          <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center">
+            <div className="text-dc-text-muted dc:text-sm">Measuring chart dimensions...</div>
           </div>
         )}
       </div>

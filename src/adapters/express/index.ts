@@ -15,7 +15,7 @@ import type {
   CacheConfig,
   ExplainOptions
 } from '../../server'
-import { SemanticLayerCompiler } from '../../server'
+import { SemanticLayerCompiler } from '../../server/compiler'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'

@@ -70,10 +70,10 @@ export default function DataHistogram({
     : null
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="dc:flex dc:flex-col dc:items-center">
       {/* Horizontal bars representing actual data distribution */}
       <div 
-        className="relative flex items-end justify-center space-x-0.5" 
+        className="dc:relative dc:flex dc:items-end dc:justify-center dc:space-x-0.5" 
         style={{ 
           height: `${height}px`,
           width: width ? `${width}px` : '200px',
@@ -89,7 +89,7 @@ export default function DataHistogram({
           return (
             <div
               key={i}
-              className="flex-1 rounded-t-sm transition-all duration-300 ease-out"
+              className="dc:flex-1 dc:rounded-t-sm dc:transition-all dc:duration-300 dc:ease-out"
               style={{
                 height: `${displayHeight * height}px`,
                 backgroundColor: color,
@@ -103,7 +103,7 @@ export default function DataHistogram({
         {/* Average indicator line */}
         {showAverageIndicator && (
           <div
-            className="absolute top-0 bottom-0 pointer-events-none"
+            className="dc:absolute dc:top-0 dc:bottom-0 dc:pointer-events-none"
             style={{
               left: `${averagePosition}%`,
               transform: 'translateX(-50%)',
@@ -116,7 +116,7 @@ export default function DataHistogram({
           >
             {/* Small triangle at top to indicate average */}
             <div
-              className="absolute -top-1"
+              className="dc:absolute dc:-top-1"
               style={{
                 left: '50%',
                 transform: 'translateX(-50%)',
@@ -133,7 +133,7 @@ export default function DataHistogram({
         {/* Target indicator line */}
         {targetPosition !== null && targetValue !== undefined && (
           <div
-            className="absolute top-0 bottom-0 pointer-events-none"
+            className="dc:absolute dc:top-0 dc:bottom-0 dc:pointer-events-none"
             style={{
               left: `${Math.max(0, Math.min(100, targetPosition))}%`,
               transform: 'translateX(-50%)',
@@ -146,7 +146,7 @@ export default function DataHistogram({
           >
             {/* Small triangle at top to indicate target */}
             <div
-              className="absolute -top-1"
+              className="dc:absolute dc:-top-1"
               style={{
                 left: '50%',
                 transform: 'translateX(-50%)',
@@ -163,7 +163,7 @@ export default function DataHistogram({
       
       {/* Min/Max values aligned with histogram width */}
       <div
-        className="flex justify-between mt-2 text-xs text-dc-text-muted"
+        className="dc:flex dc:justify-between dc:mt-2 dc:text-xs text-dc-text-muted"
         style={{
           width: width ? `${width}px` : '200px',
           minWidth: '200px'
@@ -174,7 +174,7 @@ export default function DataHistogram({
       </div>
 
       {/* Average indicator */}
-      <div className="text-center mt-1 text-xs text-dc-text-muted">
+      <div className="text-center dc:mt-1 dc:text-xs text-dc-text-muted">
         Average of {values.length} values
       </div>
     </div>

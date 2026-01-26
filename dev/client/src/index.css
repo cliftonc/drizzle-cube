@@ -1,3 +1,4 @@
+/* Dev app's own Tailwind - unprefixed for app-specific styles */
 @import 'tailwindcss';
 
 @config "../tailwind.config.js";

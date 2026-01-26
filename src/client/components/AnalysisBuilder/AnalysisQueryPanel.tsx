@@ -209,7 +209,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   }
 
   return (
-    <div className="h-full flex flex-col bg-dc-surface">
+    <div className="dc:h-full dc:flex dc:flex-col bg-dc-surface">
       {/* Analysis Type Selector - always visible */}
       {onAnalysisTypeChange && (
         <AnalysisTypeSelector
@@ -306,19 +306,19 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
       ) : (
         <>
       {/* Tab Bar - only shown when not in new funnel mode */}
-      <div className="flex border-b border-dc-border flex-shrink-0">
+      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
         {/* Query Tabs - show Q1, Q2, etc. when multi-query, or single "Query" tab */}
         {isMultiQuery ? (
-          <div className="flex min-w-0 overflow-x-auto scrollbar-thin">
+          <div className="dc:flex dc:min-w-0 dc:overflow-x-auto scrollbar-thin">
             {Array.from({ length: queryCount }).map((_, index) => {
               const isActiveQuery = index === activeQueryIndex && activeTab === 'query'
               return (
                 <button
                   key={`q${index}`}
                   onClick={() => handleQueryTabClick(index)}
-                  className={`flex items-center gap-1 px-3 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
+                  className={`dc:flex dc:items-center dc:gap-1 dc:px-3 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
                     isActiveQuery
-                      ? 'text-dc-primary border-b-2 border-dc-primary'
+                      ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                       : 'text-dc-text-secondary hover:text-dc-text'
                   }`}
                 >
@@ -328,11 +328,11 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                     tabIndex={0}
                     onClick={(e) => handleRemoveQuery(e, index)}
                     onKeyDown={(e) => e.key === 'Enter' && handleRemoveQuery(e as unknown as React.MouseEvent, index)}
-                    className="p-0.5 rounded hover:bg-dc-danger-bg hover:text-dc-error transition-colors ml-0.5"
+                    className="dc:p-0.5 dc:rounded hover:bg-dc-danger-bg hover:text-dc-error dc:transition-colors dc:ml-0.5"
                     title="Remove query"
                     aria-label={`Remove ${getQueryTabLabel(index)}`}
                   >
-                    <CloseIcon className="w-3 h-3" />
+                    <CloseIcon className="dc:w-3 dc:h-3" />
                   </span>
                 </button>
               )
@@ -340,19 +340,19 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             {/* Add Query Button */}
             <button
               onClick={onAddQuery}
-              className="flex items-center justify-center px-2 py-3 text-dc-text-secondary hover:text-dc-text transition-colors flex-shrink-0"
+              className="dc:flex dc:items-center dc:justify-center dc:px-2 dc:py-3 text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex-shrink-0"
               title="Add query"
               aria-label="Add new query"
             >
-              <AddIcon className="w-4 h-4" />
+              <AddIcon className="dc:w-4 dc:h-4" />
             </button>
           </div>
         ) : (
           <button
             onClick={() => onActiveTabChange('query')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
               activeTab === 'query'
-                ? 'text-dc-primary border-b-2 border-dc-primary'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                 : 'text-dc-text-secondary hover:text-dc-text'
             }`}
           >
@@ -372,11 +372,11 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                     onAddQuery()
                   }
                 }}
-                className="ml-2 p-0.5 rounded hover:bg-dc-surface-hover transition-colors inline-flex items-center"
+                className="dc:ml-2 dc:p-0.5 dc:rounded hover:bg-dc-surface-hover dc:transition-colors dc:inline-flex dc:items-center"
                 title="Add another query"
                 aria-label="Add another query"
               >
-                <AddIcon className="w-3 h-3" />
+                <AddIcon className="dc:w-3 dc:h-3" />
               </span>
             )}
           </button>
@@ -385,13 +385,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('chart')}
           disabled={metrics.length === 0}
-          className={`px-4 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
-            isMultiQuery ? '' : 'flex-1'
+          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
+            isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'chart'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : metrics.length === 0
-                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
           title={metrics.length === 0 ? 'Add metrics to configure chart' : 'Chart configuration'}
@@ -401,13 +401,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('display')}
           disabled={metrics.length === 0}
-          className={`px-4 py-3 text-sm font-medium transition-colors flex-shrink-0 ${
-            isMultiQuery ? '' : 'flex-1'
+          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
+            isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'display'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : metrics.length === 0
-                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
           title={metrics.length === 0 ? 'Add metrics to configure display' : 'Display options'}
@@ -418,12 +418,12 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
       {/* Merge Strategy Controls (only shown when multiple queries and on query tab) */}
       {isMultiQuery && activeTab === 'query' && (
-        <div className="flex items-center gap-2 px-4 py-1.5 text-sm bg-dc-surface-secondary border-b border-dc-border">
-          {LinkIcon && <LinkIcon className="w-3.5 h-3.5 text-dc-text-muted flex-shrink-0" />}
+        <div className="dc:flex dc:items-center dc:gap-2 dc:px-4 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border-b border-dc-border">
+          {LinkIcon && <LinkIcon className="dc:w-3.5 dc:h-3.5 text-dc-text-muted dc:flex-shrink-0" />}
           <select
             value={mergeStrategy}
             onChange={(e) => onMergeStrategyChange?.(e.target.value as QueryMergeStrategy)}
-            className="px-2 py-1 text-xs bg-dc-surface border border-dc-border rounded text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
+            className="dc:px-2 dc:py-1 dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
           >
             <option value="concat">Separate series</option>
             <option value="merge">Merge by dimension</option>
@@ -436,7 +436,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
               bindingKey={funnelBindingKey ?? null}
               onChange={onFunnelBindingKeyChange}
               schema={schema}
-              className="w-[180px] flex-shrink-0"
+              className="dc:w-[180px] dc:flex-shrink-0"
             />
           )}
         </div>
@@ -444,16 +444,16 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
       {/* Adapter Validation Errors/Warnings (NEW - Phase 5) */}
       {adapterValidation && (adapterValidation.errors.length > 0 || adapterValidation.warnings.length > 0) && activeTab === 'query' && (
-        <div className="px-4 py-2 border-b border-dc-border bg-dc-warning-bg space-y-1">
+        <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-warning-bg dc:space-y-1">
           {adapterValidation.errors.map((error, i) => (
-            <div key={`adapter-error-${i}`} className="flex items-start gap-2 text-xs text-dc-error">
-              <WarningIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <div key={`adapter-error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
+              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
               <span>{error}</span>
             </div>
           ))}
           {adapterValidation.warnings.map((warning, i) => (
-            <div key={`adapter-warning-${i}`} className="flex items-start gap-2 text-xs text-dc-warning">
-              <InfoIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <div key={`adapter-warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
+              <InfoIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
               <span>{warning}</span>
             </div>
           ))}
@@ -462,16 +462,16 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
       {/* Multi-Query Validation Warnings (hidden in funnel mode - funnels can have same metrics) */}
       {multiQueryValidation && !isFunnelMode && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
-        <div className="px-4 py-2 border-b border-dc-border bg-dc-warning-bg">
+        <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-warning-bg">
           {multiQueryValidation.errors.map((error, i) => (
-            <div key={`error-${i}`} className="flex items-start gap-2 text-xs text-dc-error">
-              <WarningIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <div key={`error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
+              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
               <span>{error.message}</span>
             </div>
           ))}
           {multiQueryValidation.warnings.map((warning, i) => (
-            <div key={`warning-${i}`} className="flex items-start gap-2 text-xs text-dc-warning">
-              <WarningIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <div key={`warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
+              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
               <span>{warning.message}</span>
             </div>
           ))}
@@ -479,9 +479,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
       )}
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="dc:flex-1 dc:overflow-auto dc:p-4">
         {activeTab === 'query' ? (
-          <div className="space-y-6">
+          <div className="dc:space-y-6">
             {/* Metrics Section */}
             <MetricsSection
               metrics={metrics}
@@ -495,19 +495,19 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
             {/* Breakdown Section */}
             {breakdownsLocked ? (
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-dc-text">Dimensions</h4>
+              <div className="dc:mb-4">
+                <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
+                  <h4 className="dc:text-sm dc:font-medium text-dc-text">Dimensions</h4>
                 </div>
                 {/* Explanation with link to switch mode */}
-                <div className="flex items-start gap-2 px-3 py-2 mb-3 bg-dc-surface-secondary rounded border border-dc-border text-xs">
-                  {InfoIcon && <InfoIcon className="w-4 h-4 text-dc-text-muted flex-shrink-0 mt-0.5" />}
+                <div className="dc:flex dc:items-start dc:gap-2 dc:px-3 dc:py-2 dc:mb-3 bg-dc-surface-secondary dc:rounded dc:border border-dc-border dc:text-xs">
+                  {InfoIcon && <InfoIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:flex-shrink-0 dc:mt-0.5" />}
                   <span className="text-dc-text-muted">
                     In merge mode, dimensions are shared from Q1.
                     {onMergeStrategyChange && (
                       <button
                         onClick={() => onMergeStrategyChange('concat')}
-                        className="text-dc-primary hover:underline ml-1"
+                        className="text-dc-primary dc:hover:underline dc:ml-1"
                       >
                         Switch to separate series
                       </button>
@@ -516,7 +516,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                 </div>
                 {/* Show breakdown cards with granularity controls (but no remove) */}
                 {breakdowns.length > 0 && (
-                  <div className="space-y-1">
+                  <div className="dc:space-y-1">
                     {breakdowns.map((breakdown) => (
                       <BreakdownItemCard
                         key={breakdown.id}

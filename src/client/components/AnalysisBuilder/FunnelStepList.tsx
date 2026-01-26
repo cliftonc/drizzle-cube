@@ -82,13 +82,13 @@ const FunnelStepList = memo(function FunnelStepList({
   }, [])
 
   return (
-    <div className="space-y-4">
+    <div className="dc:space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="dc:flex dc:items-center dc:justify-between">
         <SectionHeading>
           Funnel Steps
           {steps.length > 0 && (
-            <span className="ml-1.5 text-xs font-normal text-dc-text-muted normal-case tracking-normal">
+            <span className="dc:ml-1.5 dc:text-xs dc:font-normal text-dc-text-muted dc:normal-case dc:tracking-normal">
               ({steps.length})
             </span>
           )}
@@ -97,20 +97,20 @@ const FunnelStepList = memo(function FunnelStepList({
 
       {/* Step List */}
       {steps.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-dc-text-muted mb-3">
+        <div className="text-center dc:py-8">
+          <p className="dc:text-sm text-dc-text-muted dc:mb-3">
             No steps defined. Add at least 2 steps to create a funnel.
           </p>
           <button
             onClick={onAddStep}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-dc-primary bg-dc-primary/10 rounded-md hover:bg-dc-primary/20 transition-colors"
+            className="dc:inline-flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium text-dc-primary bg-dc-primary/10 dc:rounded-md hover:bg-dc-primary/20 dc:transition-colors"
           >
-            <AddIcon className="w-4 h-4" />
+            <AddIcon className="dc:w-4 dc:h-4" />
             Add First Step
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="dc:space-y-2">
           {steps.map((step, index) => (
             <div
               key={step.id}
@@ -120,11 +120,11 @@ const FunnelStepList = memo(function FunnelStepList({
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
-              className={`transition-all ${
-                draggedIndex === index ? 'opacity-50' : ''
+              className={`dc:transition-all ${
+                draggedIndex === index ? 'dc:opacity-50' : ''
               } ${
                 dragOverIndex === index
-                  ? 'border-t-2 border-dc-primary pt-1'
+                  ? 'dc:border-t-2 border-dc-primary dc:pt-1'
                   : ''
               }`}
             >
@@ -147,16 +147,16 @@ const FunnelStepList = memo(function FunnelStepList({
       {steps.length > 0 && (
         <button
           onClick={onAddStep}
-          className="flex items-center justify-center gap-1.5 w-full py-2 text-sm font-medium text-dc-text-secondary bg-dc-surface border-2 border-dashed border-dc-border rounded-lg hover:border-dc-primary hover:text-dc-primary hover:bg-dc-primary/5 transition-colors"
+          className="dc:flex dc:items-center dc:justify-center dc:gap-1.5 dc:w-full dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary bg-dc-surface dc:border-2 dc:border-dashed border-dc-border dc:rounded-lg hover:border-dc-primary hover:text-dc-primary hover:bg-dc-primary/5 dc:transition-colors"
         >
-          <AddIcon className="w-4 h-4" />
+          <AddIcon className="dc:w-4 dc:h-4" />
           Add Step
         </button>
       )}
 
       {/* Validation Hint */}
       {steps.length === 1 && (
-        <p className="text-xs text-dc-warning text-center">
+        <p className="dc:text-xs text-dc-warning text-center">
           Add at least one more step to create a valid funnel
         </p>
       )}

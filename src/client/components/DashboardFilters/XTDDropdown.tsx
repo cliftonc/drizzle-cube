@@ -65,7 +65,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
   return (
     <div
       ref={dropdownRef}
-      className="absolute top-full left-0 mt-1 z-50 border rounded-lg shadow-lg min-w-[180px] py-1"
+      className="dc:absolute dc:top-full dc:left-0 dc:mt-1 dc:z-50 dc:border dc:rounded-lg dc:shadow-lg dc:min-w-[180px] dc:py-1"
       style={{
         backgroundColor: 'var(--dc-surface)',
         borderColor: 'var(--dc-border)',
@@ -86,7 +86,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
             key={option.id}
             type="button"
             onClick={() => onSelect(option.value)}
-            className="w-full px-3 py-2 text-left text-sm transition-colors flex items-center justify-between gap-2"
+            className="dc:w-full dc:px-3 dc:py-2 text-left dc:text-sm dc:transition-colors dc:flex dc:items-center dc:justify-between dc:gap-2"
             style={{
               backgroundColor: isActive ? 'var(--dc-primary-bg)' : 'transparent',
               color: 'var(--dc-text)'
@@ -102,11 +102,11 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
               }
             }}
           >
-            <div className="flex flex-col">
-              <span className="font-medium">{option.label}</span>
+            <div className="dc:flex dc:flex-col">
+              <span className="dc:font-medium">{option.label}</span>
               {dateRangeText && (
                 <span
-                  className="text-xs mt-0.5"
+                  className="dc:text-xs dc:mt-0.5"
                   style={{ color: 'var(--dc-text-secondary)' }}
                 >
                   {dateRangeText}
@@ -115,7 +115,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
             </div>
             {isActive && (
               <CheckIcon
-                className="w-4 h-4 shrink-0"
+                className="dc:w-4 dc:h-4 dc:shrink-0"
                 style={{ color: 'var(--dc-primary)' }}
               />
             )}

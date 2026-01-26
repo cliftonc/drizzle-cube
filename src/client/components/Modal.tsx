@@ -62,34 +62,34 @@ const Modal: React.FC<ModalProps> = ({
   const getSizeClasses = () => {
     switch (size) {
       case 'sm':
-        return 'max-w-md'
+        return 'dc:max-w-md'
       case 'md':
-        return 'max-w-lg'
+        return 'dc:max-w-lg'
       case 'lg':
-        return 'max-w-2xl'
+        return 'dc:max-w-2xl'
       case 'xl':
-        return 'max-w-6xl'
+        return 'dc:max-w-6xl'
       case 'xxl':
-        return 'max-w-[1400px]' // Good for retina/mac displays
+        return 'dc:max-w-[1400px]' // Good for retina/mac displays
       case 'full':
-        return 'max-w-7xl'
+        return 'dc:max-w-7xl'
       case 'fullscreen':
-        return 'w-[90vw] h-[90vh] max-w-none'
+        return 'dc:w-[90vw] dc:h-[90vh] dc:max-w-none'
       case 'fullscreen-mobile':
-        return 'w-full h-full md:w-[min(90vw,1400px)] md:h-[90vh]'
+        return 'dc:w-full dc:h-full dc:md:w-[min(90vw,1400px)] dc:md:h-[90vh]'
       default:
-        return 'max-w-lg'
+        return 'dc:max-w-lg'
     }
   }
 
   return (
     <div
-      className={`fixed inset-0 z-50 backdrop-blur-md ${size === 'fullscreen-mobile' ? 'flex md:flex md:items-center md:justify-center' : 'flex items-center justify-center'}`}
+      className={`dc:fixed dc:inset-0 dc:z-50 dc:backdrop-blur-md ${size === 'fullscreen-mobile' ? 'dc:flex dc:md:flex dc:md:items-center dc:md:justify-center' : 'dc:flex dc:items-center dc:justify-center'}`}
       style={{ backgroundColor: 'var(--dc-overlay)' }}
       onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div
-        className={`relative bg-dc-surface border border-dc-border ${size === 'fullscreen-mobile' ? 'rounded-none md:rounded-lg' : 'rounded-lg'} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'mx-4'} ${getSizeClasses()} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'max-h-[90vh]'} flex flex-col`}
+        className={`dc:relative bg-dc-surface dc:border border-dc-border ${size === 'fullscreen-mobile' ? 'dc:rounded-none dc:md:rounded-lg' : 'dc:rounded-lg'} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'dc:mx-4'} ${getSizeClasses()} ${size === 'fullscreen' || size === 'fullscreen-mobile' ? '' : 'dc:max-h-[90vh]'} dc:flex dc:flex-col`}
         style={{ boxShadow: 'var(--dc-shadow-2xl)' }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -98,9 +98,9 @@ const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-dc-border">
+          <div className="dc:flex dc:items-center dc:justify-between dc:px-6 dc:py-4 dc:border-b border-dc-border">
             {title && (
-              <h2 id="modal-title" className="text-xl font-semibold text-dc-text">
+              <h2 id="modal-title" className="dc:text-xl dc:font-semibold text-dc-text">
                 {title}
               </h2>
             )}
@@ -108,7 +108,7 @@ const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-dc-text-muted hover:text-dc-text-secondary transition-colors p-2 -mr-2"
+                className="text-dc-text-muted hover:text-dc-text-secondary dc:transition-colors dc:p-2 dc:-mr-2"
                 aria-label="Close modal"
               >
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,13 +120,13 @@ const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Content */}
-        <div className={`flex-1 overflow-y-auto ${noPadding ? '' : 'px-6 py-4'}`}>
+        <div className={`dc:flex-1 dc:overflow-y-auto ${noPadding ? '' : 'dc:px-6 dc:py-4'}`}>
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-dc-border bg-dc-surface-secondary">
+          <div className="dc:flex dc:items-center dc:justify-end dc:space-x-3 dc:px-6 dc:py-4 dc:border-t border-dc-border bg-dc-surface-secondary">
             {React.Children.toArray(footer)}
           </div>
         )}

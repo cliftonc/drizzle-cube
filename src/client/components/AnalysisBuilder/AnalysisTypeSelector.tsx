@@ -86,7 +86,7 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
   }, [hasEventStreamCubes])
 
   return (
-    <div className="flex items-center gap-0.5 p-1.5 border-b border-dc-border bg-dc-surface">
+    <div className="dc:flex dc:items-center dc:gap-0.5 dc:p-1.5 dc:border-b border-dc-border bg-dc-surface">
       {availableOptions.map((option) => {
         const isSelected = value === option.type
         const Icon = option.icon
@@ -98,18 +98,18 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
             disabled={disabled}
             title={option.description}
             className={`
-              flex items-center gap-1 px-2 py-1.5 rounded-md text-sm font-medium
-              transition-colors duration-150
+              dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:rounded-md dc:text-sm dc:font-medium
+              dc:transition-colors dc:duration-150
               ${
                 isSelected
-                  ? 'bg-dc-primary/10 text-dc-primary border border-dc-primary/30'
-                  : 'text-dc-text-secondary hover:bg-dc-bg-secondary hover:text-dc-text border border-transparent'
+                  ? 'bg-dc-primary/10 text-dc-primary dc:border border-dc-primary/30'
+                  : 'text-dc-text-secondary hover:bg-dc-bg-secondary hover:text-dc-text dc:border border-transparent'
               }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              ${disabled ? 'dc:opacity-50 dc:cursor-not-allowed' : 'dc:cursor-pointer'}
             `}
           >
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{option.label}</span>
+            <Icon className="dc:h-4 dc:w-4 dc:flex-shrink-0" />
+            <span className="dc:truncate">{option.label}</span>
           </button>
         )
       })}

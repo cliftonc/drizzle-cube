@@ -216,12 +216,12 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   if (!data || (Array.isArray(data) && data.length === 0)) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Configure retention analysis to see results
           </div>
         </div>
@@ -232,12 +232,12 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   if (!chartData || chartData.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Unable to render retention data</div>
-          <div className="text-xs text-dc-text-secondary">Data format may be incorrect</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
+          <div className="dc:text-xs text-dc-text-secondary">Data format may be incorrect</div>
         </div>
       </div>
     )
@@ -322,19 +322,19 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
 
   // Render heatmap table component (reused in heatmap and combined modes)
   const renderHeatmapTable = () => (
-    <table className="w-full border-collapse text-sm">
-      <thead className="sticky top-0 bg-dc-bg z-10">
+    <table className="dc:w-full dc:border-collapse dc:text-sm">
+      <thead className="dc:sticky dc:top-0 bg-dc-bg dc:z-10">
         <tr>
-          <th className="text-left p-2 font-medium text-dc-text border-b border-dc-border min-w-[100px] whitespace-nowrap">
+          <th className="text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px] dc:whitespace-nowrap">
             {retentionData?.breakdownValues?.length ? 'Segment' : 'Cohort'}
           </th>
-          <th className="text-right p-2 font-medium text-dc-text border-b border-dc-border min-w-[60px] whitespace-nowrap">
+          <th className="text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px] dc:whitespace-nowrap">
             {cohortLabel}
           </th>
           {retentionData?.periods.map((period) => (
             <th
               key={period}
-              className="text-center p-2 font-medium text-dc-text border-b border-dc-border min-w-[70px] whitespace-nowrap"
+              className="text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[70px] dc:whitespace-nowrap"
             >
               {formatPeriodLabel(period, retentionData?.granularity)}
             </th>
@@ -354,10 +354,10 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
               key={seriesKey}
               className={rowIndex % 2 === 0 ? 'bg-dc-bg' : 'bg-dc-surface-secondary'}
             >
-              <td className="p-2 font-medium text-dc-text border-b border-dc-border whitespace-nowrap">
+              <td className="dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:whitespace-nowrap">
                 {seriesKey}
               </td>
-              <td className="p-2 text-right text-dc-text-secondary border-b border-dc-border">
+              <td className="dc:p-2 text-right text-dc-text-secondary dc:border-b border-dc-border">
                 {cohortSize.toLocaleString()}
               </td>
               {retentionData?.periods.map((period) => {
@@ -369,7 +369,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
                 return (
                   <td
                     key={period}
-                    className="p-2 text-center border-b border-dc-border cursor-default transition-opacity hover:opacity-80"
+                    className="dc:p-2 text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
                     style={{ backgroundColor: bgColor, color: textColor }}
                     onMouseEnter={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect()
@@ -403,22 +403,22 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   const renderHeatmapTooltip = () =>
     heatmapTooltip && (
       <div
-        className="fixed z-50 px-3 py-2 bg-dc-surface border border-dc-border rounded shadow-lg text-sm pointer-events-none"
+        className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:text-sm dc:pointer-events-none"
         style={{
           left: heatmapTooltip.x,
           top: heatmapTooltip.y - 10,
           transform: 'translate(-50%, -100%)',
         }}
       >
-        <div className="font-medium text-dc-text mb-1">
+        <div className="dc:font-medium text-dc-text dc:mb-1">
           {heatmapTooltip.breakdownValue
             ? `${heatmapTooltip.breakdownValue} - ${formatPeriodLabel(heatmapTooltip.period, retentionData?.granularity)}`
             : formatPeriodLabel(heatmapTooltip.period, retentionData?.granularity)}
         </div>
-        <div className="text-dc-text-secondary space-y-0.5">
+        <div className="text-dc-text-secondary dc:space-y-0.5">
           <div>Cohort Size: {heatmapTooltip.cohortSize.toLocaleString()}</div>
           <div>Retained: {heatmapTooltip.retainedUsers.toLocaleString()}</div>
-          <div className="font-medium text-dc-text">
+          <div className="dc:font-medium text-dc-text">
             Rate: {formatPercentage(heatmapTooltip.retentionRate)}
           </div>
         </div>
@@ -428,7 +428,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   // Render heatmap mode (table-based only)
   if (displayMode === 'heatmap') {
     return (
-      <div className="relative w-full h-full overflow-auto" style={{ height }}>
+      <div className="dc:relative dc:w-full dc:h-full dc:overflow-auto" style={{ height }}>
         {renderHeatmapTable()}
         {renderHeatmapTooltip()}
       </div>
@@ -438,13 +438,13 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   // Combined mode: line chart on top, heatmap table below
   if (displayMode === 'combined') {
     return (
-      <div className="flex flex-col w-full h-full" style={{ height }}>
+      <div className="dc:flex dc:flex-col dc:w-full dc:h-full" style={{ height }}>
         {/* Line chart - takes remaining space after heatmap */}
-        <div className="flex-1 min-h-[200px]">
+        <div className="dc:flex-1 dc:min-h-[200px]">
           {renderLineChart('100%')}
         </div>
         {/* Heatmap table - auto-height based on content, scrolls if needed */}
-        <div className="flex-shrink-0 max-h-[40%] overflow-auto border-t border-dc-border">
+        <div className="dc:flex-shrink-0 dc:max-h-[40%] dc:overflow-auto dc:border-t border-dc-border">
           {renderHeatmapTable()}
         </div>
         {/* Shared heatmap tooltip */}

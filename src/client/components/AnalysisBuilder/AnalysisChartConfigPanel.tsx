@@ -313,9 +313,9 @@ export default function AnalysisChartConfigPanel({
 
   if (!chartConfigLoaded) {
     return (
-      <div className="space-y-6">
+      <div className="dc:space-y-6">
         <div>
-          <SectionHeading className="mb-2">Chart Type</SectionHeading>
+          <SectionHeading className="dc:mb-2">Chart Type</SectionHeading>
           <ChartTypeSelector
             selectedType={chartType}
             onTypeChange={onChartTypeChange}
@@ -324,7 +324,7 @@ export default function AnalysisChartConfigPanel({
             compact
           />
         </div>
-        <div className="text-center text-dc-text-muted text-sm py-4">
+        <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
           Loading chart configuration...
         </div>
       </div>
@@ -357,10 +357,10 @@ export default function AnalysisChartConfigPanel({
     unassignedFields.measures.length > 0
 
   return (
-    <div className="space-y-6">
+    <div className="dc:space-y-6">
       {/* Chart Type Selector */}
       <div>
-        <SectionHeading className="mb-2">Chart Type</SectionHeading>
+        <SectionHeading className="dc:mb-2">Chart Type</SectionHeading>
         <ChartTypeSelector
           selectedType={chartType}
           onTypeChange={onChartTypeChange}
@@ -373,10 +373,10 @@ export default function AnalysisChartConfigPanel({
       {/* Chart Axis Configuration - Dynamic Drop Zones */}
       {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (
         <div>
-          <SectionHeading className="mb-2">
+          <SectionHeading className="dc:mb-2">
             Chart Configuration
           </SectionHeading>
-          <div className="space-y-1">
+          <div className="dc:space-y-1">
             {chartTypeConfig.dropZones.map((dropZone) => (
               <AnalysisAxisDropZone
                 key={dropZone.key}
@@ -403,14 +403,14 @@ export default function AnalysisChartConfigPanel({
       {/* Unassigned Fields - Show fields from Query tab that haven't been assigned yet */}
       {!shouldSkipQuery && hasUnassignedFields && (
         <div>
-          <div className="mb-2">
+          <div className="dc:mb-2">
             <SectionHeading>Unassigned Fields</SectionHeading>
-            <div className="text-xs text-dc-text-muted mt-0.5">
+            <div className="dc:text-xs text-dc-text-muted dc:mt-0.5">
               Drag fields to chart axes above
             </div>
           </div>
-          <div className="border-2 border-dashed border-dc-border rounded-lg p-2 bg-dc-surface-secondary">
-            <div className="space-y-2">
+          <div className="dc:border-2 dc:border-dashed border-dc-border dc:rounded-lg dc:p-2 bg-dc-surface-secondary">
+            <div className="dc:space-y-2">
               {/* Measures */}
               {unassignedFields.measures.map((field) => {
                 const meta = getFieldMeta(field)
@@ -423,15 +423,15 @@ export default function AnalysisChartConfigPanel({
                     draggable
                     onDragStart={(e) => handleDragStart(e, field, 'available')}
                     onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                    className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
-                      <IconComponent className="w-4 h-4" />
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
+                      <IconComponent className="dc:w-4 dc:h-4" />
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-dc-text truncate">{meta.shortTitle}</div>
-                      <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
+                    <div className="dc:flex-1 dc:min-w-0">
+                      <div className="dc:text-sm text-dc-text dc:truncate">{meta.shortTitle}</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:truncate">{meta.cubeName}</div>
                     </div>
                   </div>
                 )
@@ -448,15 +448,15 @@ export default function AnalysisChartConfigPanel({
                     draggable
                     onDragStart={(e) => handleDragStart(e, field, 'available')}
                     onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                    className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-dimension text-dc-dimension-text flex-shrink-0">
-                      <DimensionIcon className="w-4 h-4" />
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-dimension text-dc-dimension-text dc:flex-shrink-0">
+                      <DimensionIcon className="dc:w-4 dc:h-4" />
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-dc-text truncate">{meta.shortTitle}</div>
-                      <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
+                    <div className="dc:flex-1 dc:min-w-0">
+                      <div className="dc:text-sm text-dc-text dc:truncate">{meta.shortTitle}</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:truncate">{meta.cubeName}</div>
                     </div>
                   </div>
                 )
@@ -473,15 +473,15 @@ export default function AnalysisChartConfigPanel({
                     draggable
                     onDragStart={(e) => handleDragStart(e, field, 'available')}
                     onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-2 p-2 bg-dc-surface rounded-lg hover:bg-dc-surface-tertiary transition-colors cursor-move ${isBeingDragged ? 'opacity-50 cursor-grabbing' : ''}`}
+                    className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface dc:rounded-lg hover:bg-dc-surface-tertiary dc:transition-colors dc:cursor-move ${isBeingDragged ? 'dc:opacity-50 dc:cursor-grabbing' : ''}`}
                     title={field}
                   >
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-time-dimension text-dc-time-dimension-text flex-shrink-0">
-                      <TimeDimensionIcon className="w-4 h-4" />
+                    <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0">
+                      <TimeDimensionIcon className="dc:w-4 dc:h-4" />
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-dc-text truncate">{meta.shortTitle}</div>
-                      <div className="text-xs text-dc-text-muted truncate">{meta.cubeName}</div>
+                    <div className="dc:flex-1 dc:min-w-0">
+                      <div className="dc:text-sm text-dc-text dc:truncate">{meta.shortTitle}</div>
+                      <div className="dc:text-xs text-dc-text-muted dc:truncate">{meta.cubeName}</div>
                     </div>
                   </div>
                 )
@@ -496,7 +496,7 @@ export default function AnalysisChartConfigPanel({
         availableFields.measures.length === 0 &&
         availableFields.dimensions.length === 0 &&
         availableFields.timeDimensions.length === 0 && (
-          <div className="text-center text-dc-text-muted text-sm py-4">
+          <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
             <p>Add metrics and breakdowns in the Query tab to configure your chart.</p>
           </div>
         )}

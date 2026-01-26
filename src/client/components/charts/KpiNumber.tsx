@@ -228,15 +228,15 @@ const KpiNumber = React.memo(function KpiNumber({
   if (!data || data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
         <div className="text-center text-dc-text-muted">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">No data points to display</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
         </div>
       </div>
     )
@@ -245,7 +245,7 @@ const KpiNumber = React.memo(function KpiNumber({
   if (valueFields.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full h-full"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined,
@@ -255,8 +255,8 @@ const KpiNumber = React.memo(function KpiNumber({
         }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Configuration Error</div>
-          <div className="text-xs">No measure fields configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+          <div className="dc:text-xs">No measure fields configured</div>
         </div>
       </div>
     )
@@ -267,7 +267,7 @@ const KpiNumber = React.memo(function KpiNumber({
     return (
       <div
         ref={containerRef}
-        className="flex flex-col items-center justify-center w-full h-full p-4"
+        className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4"
         style={{
           height: height === "100%" ? "100%" : height,
           minHeight: height === "100%" ? '200px' : undefined
@@ -275,7 +275,7 @@ const KpiNumber = React.memo(function KpiNumber({
       >
         {/* Field Label */}
         <div
-          className="text-dc-text-secondary font-bold text-center mb-3"
+          className="text-dc-text-secondary dc:font-bold text-center dc:mb-3"
           style={{
             fontSize: '14px',
             lineHeight: '1.2'
@@ -286,7 +286,7 @@ const KpiNumber = React.memo(function KpiNumber({
 
         {/* No Data Placeholder */}
         <div
-          className="font-bold leading-none text-dc-text-muted"
+          className="dc:font-bold dc:leading-none text-dc-text-muted"
           style={{
             fontSize: `${fontSize}px`
           }}
@@ -294,7 +294,7 @@ const KpiNumber = React.memo(function KpiNumber({
           —
         </div>
 
-        <div className="text-xs text-dc-text-muted mt-2">No data</div>
+        <div className="dc:text-xs text-dc-text-muted dc:mt-2">No data</div>
       </div>
     )
   }
@@ -302,7 +302,7 @@ const KpiNumber = React.memo(function KpiNumber({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col items-center justify-center w-full h-full p-4"
+      className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4"
       style={{
         height: height === "100%" ? "100%" : height,
         minHeight: height === "100%" ? '200px' : undefined
@@ -310,7 +310,7 @@ const KpiNumber = React.memo(function KpiNumber({
     >
         {/* Field Label - Bolder and bigger */}
         <div
-          className="text-dc-text-secondary font-bold text-center mb-3 flex items-center justify-center gap-1"
+          className="text-dc-text-secondary dc:font-bold text-center dc:mb-3 dc:flex dc:items-center dc:justify-center dc:gap-1"
           style={{
             fontSize: '14px',
             lineHeight: '1.2'
@@ -329,18 +329,18 @@ const KpiNumber = React.memo(function KpiNumber({
               title={skippedLastPeriod
                 ? `Excludes last ${granularity || 'period'}`
                 : `Excludes current incomplete ${granularity}`}
-              className="cursor-help"
+              className="dc:cursor-help"
             >
-              <Icon icon={infoCircleIcon} className="w-4 h-4 text-dc-text-muted opacity-70" />
+              <Icon icon={infoCircleIcon} className="dc:w-4 dc:h-4 text-dc-text-muted dc:opacity-70" />
             </span>
           )}
         </div>
 
         {/* Main KPI Value and Variance - Horizontal layout */}
-        <div className="flex items-center justify-center gap-4 mb-3">
+        <div className="dc:flex dc:items-center dc:justify-center dc:gap-4 dc:mb-3">
           <div
             ref={valueRef}
-            className="font-bold leading-none"
+            className="dc:font-bold dc:leading-none"
             style={{
               fontSize: `${fontSize}px`,
               color: valueColor
@@ -351,9 +351,9 @@ const KpiNumber = React.memo(function KpiNumber({
 
           {/* Target Variance Display - To the right of main value */}
           {targetValue !== null && variance !== null && (
-            <div className="flex flex-col items-start">
+            <div className="dc:flex dc:flex-col dc:items-start">
               <div
-                className="font-semibold"
+                className="dc:font-semibold"
                 style={{
                   fontSize: `${Math.max(12, fontSize * 0.3)}px`,
                   color: varianceColor,
@@ -363,7 +363,7 @@ const KpiNumber = React.memo(function KpiNumber({
                 {formatVariance(variance, 1)}
               </div>
               <div
-                className="text-dc-text-muted text-xs"
+                className="text-dc-text-muted dc:text-xs"
                 style={{
                   opacity: 0.7,
                   fontSize: `${Math.max(10, fontSize * 0.2)}px`
@@ -391,7 +391,7 @@ const KpiNumber = React.memo(function KpiNumber({
 
         {/* Data Histogram for multiple values */}
         {showStats && (
-          <div className="mt-4">
+          <div className="dc:mt-4">
             <DataHistogram
               values={values}
               min={min}

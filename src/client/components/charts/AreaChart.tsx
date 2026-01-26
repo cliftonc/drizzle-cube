@@ -39,10 +39,10 @@ const AreaChart = React.memo(function AreaChart({
 
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs text-dc-text-secondary">No data points to display in area chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in area chart</div>
           </div>
         </div>
       )
@@ -64,10 +64,10 @@ const AreaChart = React.memo(function AreaChart({
       yAxisFields = Array.isArray(chartConfig.y) ? chartConfig.y : [chartConfig.y]
     } else {
       return (
-        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">Invalid or missing chart axis configuration</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">Invalid or missing chart axis configuration</div>
           </div>
         </div>
       )
@@ -75,10 +75,10 @@ const AreaChart = React.memo(function AreaChart({
 
     if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">Missing required X-axis or Y-axis fields</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">Missing required X-axis or Y-axis fields</div>
           </div>
         </div>
       )
@@ -141,10 +141,10 @@ const AreaChart = React.memo(function AreaChart({
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs text-dc-text-secondary">No valid data points for area chart after transformation</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-xs text-dc-text-secondary">No valid data points for area chart after transformation</div>
           </div>
         </div>
       )
@@ -296,11 +296,11 @@ const AreaChart = React.memo(function AreaChart({
   } catch (error) {
     // 'AreaChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Area Chart Error</div>
-          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Area Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

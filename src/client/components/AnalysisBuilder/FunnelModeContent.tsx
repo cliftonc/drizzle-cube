@@ -89,14 +89,14 @@ const FunnelModeContent = memo(function FunnelModeContent({
   const hasDisplayTab = displayConfig && onDisplayConfigChange
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="dc:flex dc:flex-col dc:h-full">
       {/* Tab Bar */}
-      <div className="flex border-b border-dc-border flex-shrink-0">
+      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
         <button
           onClick={() => setActiveTab('steps')}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'steps'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : 'text-dc-text-secondary hover:text-dc-text'
           }`}
         >
@@ -105,11 +105,11 @@ const FunnelModeContent = memo(function FunnelModeContent({
         <button
           onClick={() => hasDisplayTab && setActiveTab('display')}
           disabled={!hasDisplayTab}
-          className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
             activeTab === 'display'
-              ? 'text-dc-primary border-b-2 border-dc-primary'
+              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
               : !hasDisplayTab
-                ? 'text-dc-text-muted cursor-not-allowed opacity-50'
+                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
           title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
@@ -120,7 +120,7 @@ const FunnelModeContent = memo(function FunnelModeContent({
 
       {/* Tab Content */}
       {activeTab === 'steps' ? (
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="dc:flex dc:flex-col dc:flex-1 dc:min-h-0">
           {/* Configuration Panel - Cube + Binding Key + Time Dimension */}
           <FunnelConfigPanel
             selectedCube={funnelCube}
@@ -133,7 +133,7 @@ const FunnelModeContent = memo(function FunnelModeContent({
           />
 
           {/* Step List - scrollable with extra bottom padding for "Add step" button */}
-          <div className="flex-1 min-h-0 overflow-auto p-4 pb-24">
+          <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4 dc:pb-24">
             <FunnelStepList
               steps={funnelSteps}
               activeStepIndex={activeFunnelStepIndex}
@@ -147,7 +147,7 @@ const FunnelModeContent = memo(function FunnelModeContent({
           </div>
         </div>
       ) : activeTab === 'display' && displayConfig && onDisplayConfigChange ? (
-        <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4">
           <AnalysisDisplayConfigPanel
             chartType={chartType}
             displayConfig={displayConfig}

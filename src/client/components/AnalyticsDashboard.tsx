@@ -99,7 +99,7 @@ export default function AnalyticsDashboard({
 
   return (
     <DashboardStoreProvider>
-      <div className="w-full">
+      <div className="dc:w-full">
         {/* Dashboard Grid (now includes filter panel) */}
         <DashboardGrid
           config={config}

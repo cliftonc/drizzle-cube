@@ -119,10 +119,10 @@ const BarChart = React.memo(function BarChart({
   try {
     if (!data || data.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No data available</div>
-            <div className="text-xs text-dc-text-secondary">No data points to display in bar chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in bar chart</div>
           </div>
         </div>
       )
@@ -130,10 +130,10 @@ const BarChart = React.memo(function BarChart({
 
     if (configError) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-warning" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">Configuration Error</div>
-            <div className="text-xs">{configError}</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">{configError}</div>
           </div>
         </div>
       )
@@ -178,17 +178,17 @@ const BarChart = React.memo(function BarChart({
     // Validate transformed data
     if (!chartData || chartData.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="text-center">
-            <div className="text-sm font-semibold mb-1">No valid data</div>
-            <div className="text-xs text-dc-text-secondary">No valid data points for bar chart after transformation</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-xs text-dc-text-secondary">No valid data points for bar chart after transformation</div>
           </div>
         </div>
       )
     }
 
     return (
-      <div className="relative w-full" style={{ height }}>
+      <div className="dc:relative dc:w-full" style={{ height }}>
         <ChartContainer height={skippedCount > 0 ? `calc(100% - 20px)` : "100%"}>
           <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset}>
           {safeDisplayConfig.showGrid && (
@@ -343,7 +343,7 @@ const BarChart = React.memo(function BarChart({
           </ComposedChart>
         </ChartContainer>
         {skippedCount > 0 && (
-          <div className="text-xs text-dc-text-muted text-center mt-1">
+          <div className="dc:text-xs text-dc-text-muted text-center dc:mt-1">
             {skippedCount} data point{skippedCount !== 1 ? 's' : ''} with no values hidden
           </div>
         )}
@@ -352,11 +352,11 @@ const BarChart = React.memo(function BarChart({
   } catch (error) {
     // 'BarChart rendering error
     return (
-      <div className="flex flex-col items-center justify-center w-full text-dc-error p-4" style={{ height }}>
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Bar Chart Error</div>
-          <div className="text-xs mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Bar Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
       </div>
     )

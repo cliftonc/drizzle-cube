@@ -42,21 +42,21 @@ export default function DashboardFilterItem({
     const dateRangeDisplay = formatDateRangeDisplay(simpleFilter)
 
     return (
-      <div className="flex items-start gap-2 px-2 py-1.5 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150">
+      <div className="dc:flex dc:items-start dc:gap-2 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150">
         {/* Time icon for universal filter */}
-        <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-time-dimension text-dc-time-dimension-text flex-shrink-0 mt-0.5">
-          {TimeDimensionIcon && <TimeDimensionIcon className="w-4 h-4" />}
+        <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-time-dimension text-dc-time-dimension-text dc:flex-shrink-0 dc:mt-0.5">
+          {TimeDimensionIcon && <TimeDimensionIcon className="dc:w-4 dc:h-4" />}
         </span>
 
         {/* Filter description - clickable to edit */}
         <button
           onClick={onClick}
-          className="flex-1 min-w-0 text-left"
+          className="dc:flex-1 dc:min-w-0 text-left"
           title={`${filter.label}: ${dateRangeDisplay}`}
         >
-          <div className="text-sm text-dc-text break-words">
-            <span className="font-medium">{filter.label}</span>
-            <span className="text-dc-text-muted mx-1">=</span>
+          <div className="dc:text-sm text-dc-text dc:break-words">
+            <span className="dc:font-medium">{filter.label}</span>
+            <span className="text-dc-text-muted dc:mx-1">=</span>
             <span className="text-dc-primary">{dateRangeDisplay || '(not set)'}</span>
           </div>
         </button>
@@ -67,10 +67,10 @@ export default function DashboardFilterItem({
             e.stopPropagation()
             onRemove()
           }}
-          className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+          className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0 dc:mt-0.5"
           title="Remove filter"
         >
-          {CloseIcon && <CloseIcon className="w-4 h-4" />}
+          {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
         </button>
       </div>
     )
@@ -104,30 +104,30 @@ export default function DashboardFilterItem({
   const needsConfiguration = !fieldName || (operatorMeta?.requiresValues && (!simpleFilter.values || simpleFilter.values.length === 0) && !simpleFilter.dateRange)
 
   return (
-    <div className="flex items-start gap-2 px-2 py-1.5 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150">
+    <div className="dc:flex dc:items-start dc:gap-2 dc:px-2 dc:py-1.5 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150">
       {/* Field type icon with appropriate background color */}
-      <span className={`w-6 h-6 flex items-center justify-center rounded ${iconBgClass} ${iconTextClass} flex-shrink-0 mt-0.5`}>
-        {FieldIcon && <FieldIcon className="w-4 h-4" />}
+      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass} dc:flex-shrink-0 dc:mt-0.5`}>
+        {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
       </span>
 
       {/* Filter description - clickable to edit */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left"
+        className="dc:flex-1 dc:min-w-0 text-left"
         title={needsConfiguration ? `${filter.label}: Click to configure` : `${filter.label}: ${fieldTitle} ${operatorLabel} ${valueDisplay}`}
       >
-        <div className="text-sm text-dc-text break-words">
+        <div className="dc:text-sm text-dc-text dc:break-words">
           {needsConfiguration ? (
             <>
-              <span className="font-medium">{filter.label}</span>
-              <span className="text-dc-text-muted ml-1 italic">Click to configure</span>
+              <span className="dc:font-medium">{filter.label}</span>
+              <span className="text-dc-text-muted dc:ml-1 dc:italic">Click to configure</span>
             </>
           ) : (
             <>
-              <span className="font-medium">{filter.label}</span>
+              <span className="dc:font-medium">{filter.label}</span>
               <span className="text-dc-text-muted">: </span>
               <span className="text-dc-text-secondary">{fieldTitle}</span>
-              <span className="text-dc-text-muted mx-1">{operatorLabel}</span>
+              <span className="text-dc-text-muted dc:mx-1">{operatorLabel}</span>
               <span className="text-dc-primary">{valueDisplay}</span>
             </>
           )}
@@ -140,10 +140,10 @@ export default function DashboardFilterItem({
           e.stopPropagation()
           onRemove()
         }}
-        className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+        className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0 dc:mt-0.5"
         title="Remove filter"
       >
-        {CloseIcon && <CloseIcon className="w-4 h-4" />}
+        {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
       </button>
     </div>
   )

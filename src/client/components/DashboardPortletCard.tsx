@@ -275,8 +275,8 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
           }}
           {...restHeaderProps}
         >
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <h3 className="font-semibold text-sm text-dc-text truncate">{portlet.title}</h3>
+          <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
+            <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate">{portlet.title}</h3>
             {editable && isEditMode && debugData && (
               <div
                 onMouseDown={(event) => {
@@ -302,7 +302,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             )}
           </div>
           <div
-            className="flex items-center gap-1 shrink-0 ml-4 -mr-2"
+            className="dc:flex dc:items-center dc:gap-1 dc:shrink-0 dc:ml-4 dc:-mr-2"
             onMouseDown={(event) => {
               event.stopPropagation()
               event.preventDefault()
@@ -317,7 +317,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
             {/* Cache indicator - show when result was served from cache */}
             {debugData?.cacheInfo && (
               <span
-                className="p-1 text-dc-text-muted opacity-40"
+                className="dc:p-1 text-dc-text-muted dc:opacity-40"
                 title={`Cached ${Math.round((Date.now() - new Date(debugData.cacheInfo.cachedAt).getTime()) / 1000)}s ago`}
               >
                 <svg
@@ -349,12 +349,12 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
               onMouseEnter={() => setIsHoveringRefresh(true)}
               onMouseLeave={() => setIsHoveringRefresh(false)}
               disabled={isInSelectionMode}
-              className={`p-1 bg-transparent border-none rounded-sm transition-colors ${
+              className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
                 isInSelectionMode
-                  ? 'cursor-not-allowed opacity-50 text-dc-text-secondary'
+                  ? 'dc:cursor-not-allowed dc:opacity-50 text-dc-text-secondary'
                   : showCacheBustIndicator
-                    ? 'cursor-pointer text-dc-warning bg-dc-warning-bg'
-                    : 'cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
+                    ? 'dc:cursor-pointer text-dc-warning bg-dc-warning-bg'
+                    : 'dc:cursor-pointer text-dc-text-secondary hover:bg-dc-surface-hover'
               }`}
               title={showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh portlet data (Shift+click to bypass cache)'}
             >
@@ -369,7 +369,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                   event.preventDefault()
                   handleCopyToClipboard(event)
                 }}
-                className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
                 title={copySuccess ? 'Copied!' : 'Copy chart to clipboard'}
               >
                 {copySuccess ? (
@@ -392,7 +392,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                     event.preventDefault()
                     callbacks.onOpenFilterConfig(portlet)
                   }}
-                  className="p-1 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-surface-hover transition-colors relative"
+                  className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors dc:relative"
                   title={`Configure dashboard filters${portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0 ? ` (${portlet.dashboardFilterMapping.length} active)` : ''}`}
                   style={{
                     color: portlet.dashboardFilterMapping && portlet.dashboardFilterMapping.length > 0
@@ -413,7 +413,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                     event.preventDefault()
                     callbacks.onDuplicate(portlet.id)
                   }}
-                  className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                  className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
                   title="Duplicate portlet"
                 >
                   <icons.CopyIcon style={ICON_STYLE} />
@@ -428,7 +428,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                     event.preventDefault()
                     callbacks.onEdit(portlet)
                   }}
-                  className="p-1 bg-transparent border-none rounded-sm text-dc-text-secondary cursor-pointer hover:bg-dc-surface-hover transition-colors"
+                  className="dc:p-1 bg-transparent dc:border-none dc:rounded-sm text-dc-text-secondary dc:cursor-pointer hover:bg-dc-surface-hover dc:transition-colors"
                   title="Edit portlet"
                 >
                   <icons.EditIcon style={ICON_STYLE} />
@@ -443,7 +443,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                     event.preventDefault()
                     callbacks.onDelete(portlet.id)
                   }}
-                  className="p-1 mr-0.5 bg-transparent border-none rounded-sm cursor-pointer hover:bg-dc-danger-bg text-dc-danger transition-colors"
+                  className="dc:p-1 dc:mr-0.5 bg-transparent dc:border-none dc:rounded-sm dc:cursor-pointer hover:bg-dc-danger-bg text-dc-danger dc:transition-colors"
                   title="Delete portlet"
                 >
                   <icons.DeleteIcon style={ICON_STYLE} />
@@ -456,7 +456,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
       <div
         ref={chartContainerRef}
-        className="flex-1 px-2 py-3 md:px-4 md:py-4 min-h-0 overflow-visible flex flex-col"
+        className="dc:flex-1 dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4 dc:min-h-0 dc:overflow-visible dc:flex dc:flex-col"
       >
         <AnalyticsPortlet
           ref={el => setPortletComponentRef(portlet.id, el)}

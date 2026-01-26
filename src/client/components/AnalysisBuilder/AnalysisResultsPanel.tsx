@@ -270,16 +270,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Loading state - initial load
   const renderLoading = () => (
-    <div className="h-full flex items-center justify-center">
+    <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
       <div className="text-center">
         <div
-          className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+          className="dc:animate-spin dc:rounded-full dc:h-12 dc:w-12 dc:border-b-2 dc:mx-auto dc:mb-4"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
-        <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+        <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
           Executing Query...
         </div>
-        <div className="text-xs text-dc-text-muted">
+        <div className="dc:text-xs text-dc-text-muted">
           Running your query against the cube API
         </div>
       </div>
@@ -288,25 +288,25 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Error state - no previous results
   const renderError = () => (
-    <div className="h-full flex flex-col">
+    <div className="dc:h-full dc:flex dc:flex-col">
       {renderHeader()}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="dc:flex-1 dc:flex dc:items-center dc:justify-center dc:p-4">
         {showDebug ? (
-          <div className="w-full h-full overflow-auto">
+          <div className="dc:w-full dc:h-full dc:overflow-auto">
             {renderDebug()}
           </div>
         ) : (
-          <div className="text-center max-w-md">
-            <ErrorIcon className="w-12 h-12 mx-auto text-dc-error mb-4" />
-            <div className="text-sm font-semibold text-dc-text mb-2">
+          <div className="text-center dc:max-w-md">
+            <ErrorIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-error dc:mb-4" />
+            <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
               Query Execution Failed
             </div>
-            <div className="text-sm text-dc-text-secondary mb-4">
+            <div className="dc:text-sm text-dc-text-secondary dc:mb-4">
               There was an error executing your query. Please check the query and try again.
             </div>
             {executionError && (
-              <div className="bg-dc-danger-bg border border-dc-error rounded-lg p-3 text-left">
-                <div className="text-xs font-mono text-dc-error break-words">
+              <div className="bg-dc-danger-bg dc:border border-dc-error dc:rounded-lg dc:p-3 text-left">
+                <div className="dc:text-xs font-mono text-dc-error dc:break-words">
                   {executionError}
                 </div>
               </div>
@@ -345,16 +345,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Waiting state - query built but not yet executed (debounce period)
   const renderWaiting = () => (
-    <div className="h-full flex items-center justify-center">
+    <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
       <div className="text-center">
         <div
-          className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4"
+          className="dc:animate-spin dc:rounded-full dc:h-12 dc:w-12 dc:border-b-2 dc:mx-auto dc:mb-4"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
-        <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+        <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
           Preparing Query...
         </div>
-        <div className="text-xs text-dc-text-muted">
+        <div className="dc:text-xs text-dc-text-muted">
           Your query will execute shortly
         </div>
       </div>
@@ -363,23 +363,23 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Manual refresh mode - query ready but needs user to click refresh
   const renderNeedsRefreshEmpty = () => (
-    <div className="h-full flex items-center justify-center">
+    <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
       <div className="text-center">
-        <svg className="w-12 h-12 mx-auto text-dc-warning mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="dc:w-12 dc:h-12 dc:mx-auto text-dc-warning dc:mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
-        <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+        <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
           Ready to Execute
         </div>
-        <div className="text-xs text-dc-text-muted mb-4">
+        <div className="dc:text-xs text-dc-text-muted dc:mb-4">
           Click refresh to run your query
         </div>
         {onRefreshClick && (
           <button
             onClick={() => onRefreshClick()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:opacity-90 rounded-lg transition-colors shadow-sm"
+            className="dc:inline-flex dc:items-center dc:gap-2 dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-white bg-dc-accent dc:hover:opacity-90 dc:rounded-lg dc:transition-colors dc:shadow-sm"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="dc:w-4 dc:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             Run Query
@@ -403,22 +403,22 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     }
 
     return (
-      <div className="h-full flex items-center justify-center pt-6">
-        <div className="text-center mb-16">
-          <ChartIcon className="w-12 h-12 mx-auto text-dc-text-muted mb-3" />
-          <div className="text-sm font-semibold text-dc-text-secondary mb-1">
+      <div className="dc:h-full dc:flex dc:items-center dc:justify-center dc:pt-6">
+        <div className="text-center dc:mb-16">
+          <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-text-muted dc:mb-3" />
+          <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
             No Results Yet
           </div>
-          <div className="text-xs text-dc-text-muted mb-4">
+          <div className="dc:text-xs text-dc-text-muted dc:mb-4">
             {emptyMessage}
           </div>
           {/* Prominent AI button when enabled (only for query mode) */}
           {enableAI && onAIToggle && !isRetentionMode && !isFunnelMode && !isFlowMode && (
             <button
               onClick={onAIToggle}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-dc-accent hover:bg-dc-accent rounded-lg transition-colors shadow-sm"
+              className="dc:inline-flex dc:items-center dc:gap-2 dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-white bg-dc-accent hover:bg-dc-accent dc:rounded-lg dc:transition-colors dc:shadow-sm"
             >
-              <SparklesIcon className="w-4 h-4" />
+              <SparklesIcon className="dc:w-4 dc:h-4" />
               Analyse with AI
             </button>
           )}
@@ -429,13 +429,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // No data returned state
   const renderNoData = () => (
-    <div className="h-full flex items-center justify-center">
+    <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
       <div className="text-center">
-        <SuccessIcon className="w-12 h-12 mx-auto text-dc-success mb-3" />
-        <div className="text-sm font-semibold text-dc-text mb-1">
+        <SuccessIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-success dc:mb-3" />
+        <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-1">
           Query Successful
         </div>
-        <div className="text-xs text-dc-text-muted">
+        <div className="dc:text-xs text-dc-text-muted">
           No data returned from the query
         </div>
       </div>
@@ -446,11 +446,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderChart = () => {
     if (!executionResults || executionResults.length === 0) {
       return (
-        <div className="flex items-center justify-center h-full text-dc-text-muted">
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="text-center">
-            <ChartIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <div className="text-sm font-semibold mb-1">No data to display</div>
-            <div className="text-xs">Run a query to see chart visualization</div>
+            <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
+            <div className="dc:text-xs">Run a query to see chart visualization</div>
           </div>
         </div>
       )
@@ -464,11 +464,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     if (!isValidChartType(effectiveChartType)) {
       return (
-        <div className="flex items-center justify-center h-full text-dc-text-muted">
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="text-center">
-            <WarningIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <div className="text-sm font-semibold mb-1">Unsupported chart type</div>
-            <div className="text-xs">{effectiveChartType}</div>
+            <WarningIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
+            <div className="dc:text-xs">{effectiveChartType}</div>
           </div>
         </div>
       )
@@ -491,8 +491,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         queryObject={combinedQueryForChart}
         height="100%"
         fallback={
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full" />
+          <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full" />
           </div>
         }
       />
@@ -520,27 +520,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     const funnelMeta = funnelDebugData?.funnelMetadata as FunnelMetadata | undefined
 
     return (
-      <div className="p-4 space-y-4 overflow-auto h-full">
+      <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
         {/* Funnel Mode Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Funnel Query</span>
+        <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
+          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Funnel Query</span>
           {funnelMeta?.stepCount && (
-            <span className="text-xs text-dc-text-muted">
+            <span className="dc:text-xs text-dc-text-muted">
               {funnelMeta.stepCount} steps
             </span>
           )}
           {funnelLoading && (
-            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
           )}
         </div>
 
         {/* Execution Error Banner (if any) */}
         {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
-            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
               Execution Error
             </h4>
-            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
           </div>
         )}
 
@@ -555,8 +555,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Server Query</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Server Query</h4>
+              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
                 No funnel query configured
               </div>
             </>
@@ -588,17 +588,17 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Funnel Metadata (step info) */}
         {funnelMeta && (
           <div>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Funnel Steps</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
-              <div className="flex flex-wrap gap-2">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Steps</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+              <div className="dc:flex dc:flex-wrap dc:gap-2">
                 {funnelMeta.steps.map((step, idx) => (
-                  <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-dc-bg border border-dc-border rounded text-sm">
-                    <span className="w-5 h-5 flex items-center justify-center bg-dc-accent text-white text-xs rounded-full">
+                  <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
+                    <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
                       {idx + 1}
                     </span>
                     <span className="text-dc-text">{step.name}</span>
                     {step.timeToConvert && (
-                      <span className="text-xs text-dc-text-muted">({step.timeToConvert})</span>
+                      <span className="dc:text-xs text-dc-text-muted">({step.timeToConvert})</span>
                     )}
                   </div>
                 ))}
@@ -608,7 +608,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         )}
 
         {/* Chart Config & Display Config in 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
           <div>
             <CodeBlock
               code={JSON.stringify(chartConfig, null, 2)}
@@ -638,8 +638,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
                 No results yet
               </div>
             </>
@@ -664,27 +664,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     } | undefined
 
     return (
-      <div className="p-4 space-y-4 overflow-auto h-full">
+      <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
         {/* Flow Mode Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Flow Query</span>
+        <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
+          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Flow Query</span>
           {flowMeta && (
-            <span className="text-xs text-dc-text-muted">
+            <span className="dc:text-xs text-dc-text-muted">
               {flowMeta.stepsBefore} before, {flowMeta.stepsAfter} after
             </span>
           )}
           {flowLoading && (
-            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
           )}
         </div>
 
         {/* Execution Error Banner (if any) */}
         {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
-            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
               Execution Error
             </h4>
-            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
           </div>
         )}
 
@@ -699,8 +699,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Server Query</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Server Query</h4>
+              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
                 No flow query configured
               </div>
             </>
@@ -732,9 +732,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Flow Metadata */}
         {flowMeta && (
           <div>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Flow Configuration</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Configuration</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+              <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
                 <div>
                   <span className="text-dc-text-muted">Starting Step:</span>{' '}
                   <span className="text-dc-text">{flowMeta.startingStep?.name || 'Not set'}</span>
@@ -757,7 +757,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         )}
 
         {/* Chart Config & Display Config in 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
           <div>
             <CodeBlock
               code={JSON.stringify(chartConfig, null, 2)}
@@ -787,8 +787,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
                 No results yet
               </div>
             </>
@@ -812,27 +812,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     } | undefined
 
     return (
-      <div className="p-4 space-y-4 overflow-auto h-full">
+      <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
         {/* Retention Mode Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-1 text-xs font-medium bg-dc-accent text-white rounded">Retention Query</span>
+        <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
+          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Retention Query</span>
           {retentionMeta && (
-            <span className="text-xs text-dc-text-muted">
+            <span className="dc:text-xs text-dc-text-muted">
               {retentionMeta.segmentCount || 1} segment(s), {retentionMeta.totalUsers} users
             </span>
           )}
           {retentionLoading && (
-            <span className="text-xs text-dc-text-muted animate-pulse">Loading SQL...</span>
+            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
           )}
         </div>
 
         {/* Execution Error Banner (if any) */}
         {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
-            <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
               Execution Error
             </h4>
-            <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
           </div>
         )}
 
@@ -847,11 +847,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Server Query</h4>
-              <div className="bg-dc-warning-bg border border-dc-warning rounded p-3 text-sm h-64 overflow-auto">
-                <div className="text-dc-warning font-medium mb-2">Configuration Incomplete</div>
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Server Query</h4>
+              <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
+                <div className="text-dc-warning dc:font-medium dc:mb-2">Configuration Incomplete</div>
                 {retentionValidation && retentionValidation.errors.length > 0 ? (
-                  <ul className="list-disc list-inside text-dc-text-secondary space-y-1">
+                  <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
                     {retentionValidation.errors.map((error, i) => (
                       <li key={i}>{error}</li>
                     ))}
@@ -889,9 +889,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Retention Metadata */}
         {retentionMeta && (
           <div>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Configuration</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Configuration</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+              <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
                 <div>
                   <span className="text-dc-text-muted">Retention Type:</span>{' '}
                   <span className="text-dc-text">{retentionMeta.retentionType || 'Classic'}</span>
@@ -916,24 +916,24 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Summary Statistics */}
         {retentionChartData?.summary && (
           <div>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Retention Summary</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
-              <div className="grid grid-cols-3 gap-4 text-sm">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Summary</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+              <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
                 <div>
                   <span className="text-dc-text-muted">Avg Period 1:</span>{' '}
-                  <span className="text-dc-text font-medium">
+                  <span className="text-dc-text dc:font-medium">
                     {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div>
                   <span className="text-dc-text-muted">Max Period 1:</span>{' '}
-                  <span className="text-dc-text font-medium">
+                  <span className="text-dc-text dc:font-medium">
                     {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div>
                   <span className="text-dc-text-muted">Min Period 1:</span>{' '}
-                  <span className="text-dc-text font-medium">
+                  <span className="text-dc-text dc:font-medium">
                     {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -943,7 +943,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         )}
 
         {/* Chart Config & Display Config in 2 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
           <div>
             <CodeBlock
               code={JSON.stringify(chartConfig, null, 2)}
@@ -980,8 +980,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             />
           ) : (
             <>
-              <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
                 No results yet
               </div>
             </>
@@ -993,17 +993,17 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Render debug view (multi-query or single query)
   const renderStandardDebug = () => (
-    <div className="p-4 space-y-4 overflow-auto h-full">
+    <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
       {/* Query tabs for multi-query mode */}
       {debugDataPerQuery.length > 1 && (
-        <div className="flex items-center gap-1 mb-4">
-          <span className="text-xs font-medium text-dc-text-muted mr-2">Query:</span>
-          <div className="flex border border-dc-border rounded-md overflow-hidden">
+        <div className="dc:flex dc:items-center dc:gap-1 dc:mb-4">
+          <span className="dc:text-xs dc:font-medium text-dc-text-muted dc:mr-2">Query:</span>
+          <div className="dc:flex dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
             {debugDataPerQuery.map((data, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveDebugIndex(idx)}
-                className={`px-3 py-1 text-xs font-medium transition-colors border-r last:border-r-0 border-dc-border ${
+                className={`dc:px-3 dc:py-1 dc:text-xs dc:font-medium dc:transition-colors dc:border-r dc:last:border-r-0 border-dc-border ${
                   activeDebugIndex === idx
                     ? 'bg-dc-accent text-white'
                     : 'bg-dc-bg text-dc-text-secondary hover:bg-dc-bg-secondary'
@@ -1011,10 +1011,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               >
                 Q{idx + 1}
                 {data.loading && (
-                  <span className="ml-1 opacity-70">•</span>
+                  <span className="dc:ml-1 dc:opacity-70">•</span>
                 )}
                 {data.error && (
-                  <span className="ml-1 text-dc-error">!</span>
+                  <span className="dc:ml-1 text-dc-error">!</span>
                 )}
               </button>
             ))}
@@ -1024,27 +1024,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
       {/* Execution Error Banner (if any) */}
       {executionError && (
-        <div className="bg-dc-danger-bg dark:bg-dc-danger-bg border border-dc-error dark:border-dc-error rounded p-3">
-          <h4 className="text-sm font-semibold text-dc-error dark:text-dc-error mb-1">
+        <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+          <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
             Execution Error
           </h4>
-          <p className="text-sm text-dc-error dark:text-dc-error">{executionError}</p>
+          <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
         </div>
       )}
 
       {/* Query Analysis - full width (at top for visibility) */}
       <div>
-        <h4 className="text-sm font-semibold text-dc-text mb-2">Query Analysis</h4>
+        <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Query Analysis</h4>
         {debugLoading ? (
-          <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
             Loading...
           </div>
         ) : debugAnalysis ? (
-          <div className="bg-dc-surface-secondary border border-dc-border rounded p-3">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
             <QueryAnalysisPanel analysis={debugAnalysis} />
           </div>
         ) : (
-          <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
             {debugError ? 'Analysis unavailable due to error' : 'Add metrics to see analysis'}
           </div>
         )}
@@ -1061,15 +1061,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               height="16rem"
             />
             {isShowingFunnelQuery && activeDebugIndex > 0 && (
-              <div className="mt-1 text-xs text-dc-text-muted">
+              <div className="dc:mt-1 dc:text-xs text-dc-text-muted">
                 <span className="text-dc-accent">ℹ</span> This query includes an IN filter with binding key values from the previous step
               </div>
             )}
           </>
         ) : (
           <>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Cube Query</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm h-64 overflow-auto">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Cube Query</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
               No query
             </div>
           </>
@@ -1099,7 +1099,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       />
 
       {/* Chart Config & Display Config in 2 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
         {/* Chart Config */}
         <div>
           <CodeBlock
@@ -1132,8 +1132,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           />
         ) : (
           <>
-            <h4 className="text-sm font-semibold text-dc-text mb-2">Server Response</h4>
-            <div className="bg-dc-surface-secondary border border-dc-border rounded p-3 text-dc-text-muted text-sm">
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
               No results yet
             </div>
           </>
@@ -1169,11 +1169,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     if (!executionResults || (Array.isArray(executionResults) && executionResults.length === 0)) {
       return (
-        <div className="flex items-center justify-center h-full text-dc-text-muted">
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="text-center">
-            <TableIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <div className="text-sm font-semibold mb-1">No flow data to display</div>
-            <div className="text-xs">Configure flow analysis to see results</div>
+            <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
+            <div className="dc:text-xs">Configure flow analysis to see results</div>
           </div>
         </div>
       )
@@ -1196,39 +1196,39 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     // If no data after parsing, show empty state
     if (nodes.length === 0 && links.length === 0) {
       return (
-        <div className="flex items-center justify-center h-full text-dc-text-muted">
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="text-center">
-            <TableIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <div className="text-sm font-semibold mb-1">No flow data to display</div>
-            <div className="text-xs">Configure flow analysis to see results</div>
+            <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
+            <div className="dc:text-xs">Configure flow analysis to see results</div>
           </div>
         </div>
       )
     }
 
     return (
-      <div className="h-full overflow-auto p-4 space-y-6">
+      <div className="dc:h-full dc:overflow-auto dc:p-4 dc:space-y-6">
         {/* Nodes Table */}
         <div>
-          <h3 className="text-sm font-semibold text-dc-text mb-2">
+          <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
             Nodes ({nodes.length})
           </h3>
-          <div className="border border-dc-border rounded overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
+            <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">Layer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">Name</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-dc-text-muted uppercase tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Layer</th>
+                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Name</th>
+                  <th className="dc:px-3 dc:py-2 text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dc-border bg-dc-surface">
+              <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
                 {nodes
                   .sort((a: Record<string, unknown>, b: Record<string, unknown>) => (a.layer as number) - (b.layer as number))
                   .map((node: Record<string, unknown>, idx: number) => (
                     <tr key={idx} className="hover:bg-dc-surface-hover">
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium ${
+                      <td className="dc:px-3 dc:py-2 dc:whitespace-nowrap">
+                        <span className={`dc:inline-flex dc:items-center dc:justify-center dc:w-6 dc:h-6 dc:rounded dc:text-xs dc:font-medium ${
                           (node.layer as number) === 0
                             ? 'bg-dc-primary text-white'
                             : (node.layer as number) < 0
@@ -1238,8 +1238,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                           {(node.layer as number) === 0 ? '★' : node.layer as number}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-dc-text">{node.name as string}</td>
-                      <td className="px-3 py-2 text-right text-dc-text font-mono">
+                      <td className="dc:px-3 dc:py-2 text-dc-text">{node.name as string}</td>
+                      <td className="dc:px-3 dc:py-2 text-right text-dc-text font-mono">
                         {(node.value as number)?.toLocaleString()}
                       </td>
                     </tr>
@@ -1251,20 +1251,20 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
         {/* Links Table */}
         <div>
-          <h3 className="text-sm font-semibold text-dc-text mb-2">
+          <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
             Transitions ({links.length})
           </h3>
-          <div className="border border-dc-border rounded overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
+            <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">From</th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-dc-text-muted uppercase tracking-wider">→</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-dc-text-muted uppercase tracking-wider">To</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-dc-text-muted uppercase tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">From</th>
+                  <th className="dc:px-3 dc:py-2 text-center dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">→</th>
+                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">To</th>
+                  <th className="dc:px-3 dc:py-2 text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dc-border bg-dc-surface">
+              <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
                 {links.map((link: Record<string, unknown>, idx: number) => {
                   // SankeyLink uses `source` and `target` (transformed), fallback to source_id/target_id (raw)
                   const sourceId = (link.source || link.source_id) as string || ''
@@ -1275,10 +1275,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
                   return (
                     <tr key={idx} className="hover:bg-dc-surface-hover">
-                      <td className="px-3 py-2 text-dc-text">{sourceName}</td>
-                      <td className="px-3 py-2 text-center text-dc-text-muted">→</td>
-                      <td className="px-3 py-2 text-dc-text">{targetName}</td>
-                      <td className="px-3 py-2 text-right text-dc-text font-mono">
+                      <td className="dc:px-3 dc:py-2 text-dc-text">{sourceName}</td>
+                      <td className="dc:px-3 dc:py-2 text-center text-dc-text-muted">→</td>
+                      <td className="dc:px-3 dc:py-2 text-dc-text">{targetName}</td>
+                      <td className="dc:px-3 dc:py-2 text-right text-dc-text font-mono">
                         {(link.value as number)?.toLocaleString()}
                       </td>
                     </tr>
@@ -1314,11 +1314,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     if (!tableData || tableData.length === 0) {
       return (
-        <div className="flex items-center justify-center h-full text-dc-text-muted">
+        <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="text-center">
-            <TableIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <div className="text-sm font-semibold mb-1">No data to display</div>
-            <div className="text-xs">Run a query to see table data</div>
+            <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
+            <div className="dc:text-xs">Run a query to see table data</div>
           </div>
         </div>
       )
@@ -1335,8 +1335,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         queryObject={tableQuery}
         height="100%"
         fallback={
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full" />
+          <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
+            <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full" />
           </div>
         }
       />
@@ -1345,13 +1345,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Overlay spinner for refreshing
   const renderOverlaySpinner = () => (
-    <div className="absolute inset-0 flex items-center justify-center bg-dc-surface bg-opacity-75 z-10">
+    <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center bg-dc-surface bg-opacity-75 dc:z-10">
       <div className="text-center">
         <div
-          className="animate-spin rounded-full h-10 w-10 border-b-2 mx-auto mb-2"
+          className="dc:animate-spin dc:rounded-full dc:h-10 dc:w-10 dc:border-b-2 dc:mx-auto dc:mb-2"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
-        <div className="text-xs text-dc-text-secondary">Refreshing results...</div>
+        <div className="dc:text-xs text-dc-text-secondary">Refreshing results...</div>
       </div>
     </div>
   )
@@ -1361,23 +1361,23 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     const hasResults = executionResults && executionResults.length > 0
 
     return (
-      <div className="px-4 py-2 border-b border-dc-border bg-dc-surface-secondary flex-shrink-0">
-        <div className="flex items-center justify-between">
+      <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary dc:flex-shrink-0">
+        <div className="dc:flex dc:items-center dc:justify-between">
           {/* Left side: Status and row count */}
-          <div className="flex items-center">
+          <div className="dc:flex dc:items-center">
             {executionStatus === 'refreshing' ? (
               <div
-                className="w-4 h-4 mr-2 rounded-full border-b-2 animate-spin"
+                className="dc:w-4 dc:h-4 dc:mr-2 dc:rounded-full dc:border-b-2 dc:animate-spin"
                 style={{ borderBottomColor: 'var(--dc-primary)' }}
               />
             ) : hasResults ? (
-              <SuccessIcon className="w-4 h-4 text-dc-success mr-2" />
+              <SuccessIcon className="dc:w-4 dc:h-4 text-dc-success dc:mr-2" />
             ) : executionStatus === 'error' ? (
-              <ErrorIcon className="w-4 h-4 text-dc-error mr-2" />
+              <ErrorIcon className="dc:w-4 dc:h-4 text-dc-error dc:mr-2" />
             ) : (
-              <WarningIcon className="w-4 h-4 text-dc-text-muted mr-2" />
+              <WarningIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:mr-2" />
             )}
-            <span className="text-sm text-dc-text-secondary">
+            <span className="dc:text-sm text-dc-text-secondary">
               {hasResults ? (
                 <>
                   {executionResults.length} row{executionResults.length !== 1 ? 's' : ''}
@@ -1385,7 +1385,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                     <span className="text-dc-text-muted"> of {totalRowCount.toLocaleString()}</span>
                   )}
                   {resultsStale && (
-                    <span className="text-dc-warning ml-2">• Results may be outdated</span>
+                    <span className="text-dc-warning dc:ml-2">• Results may be outdated</span>
                   )}
                 </>
               ) : executionStatus === 'error' ? (
@@ -1399,13 +1399,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           </div>
 
           {/* Right side: Display limit (table only) and Debug toggle */}
-          <div className="flex items-center gap-2">
+          <div className="dc:flex dc:items-center dc:gap-2">
             {/* Display Limit (only for table view) */}
             {hasResults && activeView === 'table' && !showDebug && onDisplayLimitChange && (
               <select
                 value={displayLimit}
                 onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
-                className="text-xs border border-dc-border rounded px-2 py-1 bg-dc-surface text-dc-text focus:outline-none focus:ring-1 focus:ring-dc-primary"
+                className="dc:text-xs dc:border border-dc-border dc:rounded dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
               >
                 <option value={50}>50 rows</option>
                 <option value={100}>100 rows</option>
@@ -1418,15 +1418,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             {enableAI && onAIToggle && (
               <button
                 onClick={onAIToggle}
-                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
                   isAIOpen
-                    ? 'text-white bg-dc-accent border border-dc-accent'
-                    : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
+                    ? 'text-white bg-dc-accent dc:border border-dc-accent'
+                    : 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
                 }`}
                 title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
               >
-                <SparklesIcon className="w-3 h-3" />
-                <span className="hidden sm:inline">Analyse with AI</span>
+                <SparklesIcon className="dc:w-3 dc:h-3" />
+                <span className="dc:hidden dc:sm:inline">Analyse with AI</span>
               </button>
             )}
 
@@ -1442,31 +1442,31 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             {onShareClick && (
               <button
                 onClick={onShareClick}
-                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
                   shareButtonState === 'idle' && canShare
-                    ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
+                    ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg'
                     : shareButtonState !== 'idle'
-                    ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg border border-dc-success dark:border-dc-success'
-                    : 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-not-allowed'
+                    ? 'text-dc-success dark:text-dc-success bg-dc-success-bg dark:bg-dc-success-bg dc:border border-dc-success dark:border-dc-success'
+                    : 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-not-allowed'
                 }`}
                 title={shareButtonState === 'idle' ? 'Share this analysis' : 'Link copied!'}
                 disabled={!canShare || shareButtonState !== 'idle'}
               >
                 {shareButtonState === 'idle' ? (
                   <>
-                    <ShareIcon className="w-3 h-3" />
-                    <span className="hidden sm:inline">Share</span>
+                    <ShareIcon className="dc:w-3 dc:h-3" />
+                    <span className="dc:hidden dc:sm:inline">Share</span>
                   </>
                 ) : shareButtonState === 'copied' ? (
                   <>
-                    <CheckIcon className="w-3 h-3" />
-                    <span className="hidden sm:inline">Copied!</span>
+                    <CheckIcon className="dc:w-3 dc:h-3" />
+                    <span className="dc:hidden dc:sm:inline">Copied!</span>
                   </>
                 ) : (
                   <>
-                    <CheckIcon className="w-3 h-3" />
-                    <span className="hidden sm:inline">Copied!</span>
-                    <span className="hidden lg:inline text-[10px] opacity-75">(no chart)</span>
+                    <CheckIcon className="dc:w-3 dc:h-3" />
+                    <span className="dc:hidden dc:sm:inline">Copied!</span>
+                    <span className="dc:hidden dc:lg:inline dc:text-[10px] dc:opacity-75">(no chart)</span>
                   </>
                 )}
               </button>
@@ -1479,17 +1479,17 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 onMouseEnter={() => setIsHoveringRefresh(true)}
                 onMouseLeave={() => setIsHoveringRefresh(false)}
                 disabled={isRefreshing}
-                className={`flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                className={`dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:transition-colors ${
                   isRefreshing
-                    ? 'text-dc-text-muted bg-dc-surface-secondary border border-dc-border cursor-wait'
+                    ? 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-wait'
                     : showCacheBustIndicator
-                      ? 'text-dc-warning bg-dc-warning-bg border border-dc-warning font-semibold'
-                      : 'text-dc-accent bg-dc-accent-bg border border-dc-accent hover:bg-dc-accent-bg'
+                      ? 'text-dc-warning bg-dc-warning-bg dc:border border-dc-warning dc:font-semibold'
+                      : 'text-dc-accent bg-dc-accent-bg dc:border border-dc-accent hover:bg-dc-accent-bg'
                 }`}
                 title={isRefreshing ? 'Refreshing...' : showCacheBustIndicator ? 'Click to refresh and bypass cache' : 'Refresh data (Shift+click to bypass cache)'}
               >
-                <RefreshIcon className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
+                <RefreshIcon className={`dc:w-3 dc:h-3 ${isRefreshing ? 'dc:animate-spin' : ''}`} />
+                <span className="dc:hidden dc:sm:inline">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
               </button>
             )}
 
@@ -1497,28 +1497,28 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             {onClearClick && canClear && (
               <button
                 onClick={() => setIsClearConfirmOpen(true)}
-                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover border border-dc-border rounded transition-colors"
+                className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded dc:transition-colors"
                 title={isFunnelMode ? 'Clear funnel' : 'Clear all query data'}
               >
-                <TrashIcon className="w-3 h-3" />
-                <span className="hidden sm:inline">Clear</span>
+                <TrashIcon className="dc:w-3 dc:h-3" />
+                <span className="dc:hidden dc:sm:inline">Clear</span>
               </button>
             )}
 
             {/* Debug Toggle Button */}
             <button
               onClick={() => setShowDebug(!showDebug)}
-              className={`p-1.5 rounded transition-colors relative ${
+              className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
                 showDebug
                   ? 'bg-dc-primary text-white'
                   : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
               }`}
               title={showDebug ? 'Hide debug info' : 'Show debug info'}
             >
-              <CodeIcon className="w-4 h-4" />
+              <CodeIcon className="dc:w-4 dc:h-4" />
               {/* Error indicator dot - show if ANY query has an error */}
               {(executionError || debugDataPerQuery.some(d => d.error)) && !showDebug && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-dc-danger-bg0 rounded-full" />
+                <span className="dc:absolute dc:-top-0.5 dc:-right-0.5 dc:w-2 dc:h-2 bg-dc-danger-bg0 dc:rounded-full" />
               )}
             </button>
           </div>
@@ -1526,10 +1526,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
         {/* Performance Warning */}
         {hasResults && totalRowCount !== null && totalRowCount > 1000 && (
-          <div className="mt-2 bg-dc-warning-bg border border-dc-warning rounded-lg p-2 flex items-start">
-            <WarningIcon className="w-4 h-4 text-dc-warning mr-2 shrink-0 mt-0.5" />
-            <div className="text-xs text-dc-warning">
-              <span className="font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
+          <div className="dc:mt-2 bg-dc-warning-bg dc:border border-dc-warning dc:rounded-lg dc:p-2 dc:flex dc:items-start">
+            <WarningIcon className="dc:w-4 dc:h-4 text-dc-warning dc:mr-2 dc:shrink-0 dc:mt-0.5" />
+            <div className="dc:text-xs text-dc-warning">
+              <span className="dc:font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
               Consider adding filters to improve performance.
             </div>
           </div>
@@ -1543,16 +1543,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (!needsRefresh || !onRefreshClick) return null
 
     return (
-      <div className="px-4 py-2 bg-dc-warning-bg border-b border-dc-warning flex items-center justify-between gap-3 flex-shrink-0">
-        <div className="flex items-center gap-2 text-dc-warning">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="dc:px-4 dc:py-2 bg-dc-warning-bg dc:border-b border-dc-warning dc:flex dc:items-center dc:justify-between dc:gap-3 dc:flex-shrink-0">
+        <div className="dc:flex dc:items-center dc:gap-2 text-dc-warning">
+          <svg className="dc:w-4 dc:h-4 dc:flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span className="text-sm font-medium">Query configuration changed. Results may be outdated.</span>
+          <span className="dc:text-sm dc:font-medium">Query configuration changed. Results may be outdated.</span>
         </div>
         <button
           onClick={() => onRefreshClick()}
-          className="px-3 py-1 text-xs font-medium bg-dc-warning text-white rounded hover:bg-dc-warning/90 transition-colors"
+          className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning text-white dc:rounded hover:bg-dc-warning/90 dc:transition-colors"
         >
           Refresh Now
         </button>
@@ -1566,9 +1566,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     if (!hasResults) {
       return (
-        <div className="h-full flex flex-col">
+        <div className="dc:h-full dc:flex dc:flex-col">
           {renderHeader()}
-          <div className="flex-1 min-h-0 relative overflow-auto">
+          <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
             {showDebug ? renderDebug() : renderNoData()}
           </div>
         </div>
@@ -1576,43 +1576,43 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     }
 
     return (
-      <div className="h-full flex flex-col">
+      <div className="dc:h-full dc:flex dc:flex-col">
         {renderHeader()}
         {renderNeedsRefreshBanner()}
 
         {/* Results Content */}
-        <div className="flex-1 min-h-0 relative overflow-auto">
+        <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
           {showDebug ? (
             renderDebug()
           ) : activeView === 'chart' ? (
-            <div className="p-4 h-full">{renderChart()}</div>
+            <div className="dc:p-4 dc:h-full">{renderChart()}</div>
           ) : isFlowMode ? (
-            <div className="h-full" key="table-flow">{renderFlowTable()}</div>
+            <div className="dc:h-full" key="table-flow">{renderFlowTable()}</div>
           ) : isMultiQuery ? (
-            <div className="h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
+            <div className="dc:h-full" key={`table-${activeTableIndex}`}>{renderTable(activeTableIndex)}</div>
           ) : (
-            <div className="h-full" key="table-single">{renderTable()}</div>
+            <div className="dc:h-full" key="table-single">{renderTable()}</div>
           )}
         </div>
 
         {/* View Toggle - Below content, centered */}
         {!showDebug && (
-          <div className="px-4 py-3 border-t border-dc-border bg-dc-surface flex justify-center flex-shrink-0">
-            <div className="flex items-center bg-dc-surface-secondary border border-dc-border rounded-md overflow-hidden">
+          <div className="dc:px-4 dc:py-3 dc:border-t border-dc-border bg-dc-surface dc:flex dc:justify-center dc:flex-shrink-0">
+            <div className="dc:flex dc:items-center bg-dc-surface-secondary dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
               {/* Chart button - always enabled for flow/funnel/retention modes which don't need traditional metrics */}
               <button
                 onClick={() => (hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) && onActiveViewChange('chart')}
                 disabled={!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode}
-                className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                   activeView === 'chart'
                     ? 'bg-dc-primary text-white'
                     : (!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode)
-                      ? 'text-dc-text-disabled bg-dc-surface-tertiary cursor-not-allowed'
+                      ? 'text-dc-text-disabled bg-dc-surface-tertiary dc:cursor-not-allowed'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                 }`}
                 title={(hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) ? 'Chart view' : 'Add metrics to enable chart view'}
               >
-                <ChartIcon className="w-4 h-4" />
+                <ChartIcon className="dc:w-4 dc:h-4" />
                 Chart
               </button>
 
@@ -1627,14 +1627,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                         onActiveViewChange('table')
                         onActiveTableChange?.(index)
                       }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                      className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                         activeView === 'table' && activeTableIndex === index
                           ? 'bg-dc-primary text-white'
                           : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                       }`}
                       title={`Table Q${index + 1}`}
                     >
-                      <TableIcon className="w-4 h-4" />
+                      <TableIcon className="dc:w-4 dc:h-4" />
                       Q{index + 1}
                     </button>
                   ))}
@@ -1644,28 +1644,28 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                       onActiveViewChange('table')
                       onActiveTableChange?.(-1)  // -1 = merged view
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    className={`dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                       activeView === 'table' && activeTableIndex === -1
                         ? 'bg-dc-primary text-white'
                         : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                     }`}
                     title="Merged table view"
                   >
-                    <TableIcon className="w-4 h-4" />
+                    <TableIcon className="dc:w-4 dc:h-4" />
                     Merged
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => onActiveViewChange('table')}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium transition-colors ${
+                  className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                     activeView === 'table'
                       ? 'bg-dc-primary text-white'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                   }`}
                   title="Table view"
                 >
-                  <TableIcon className="w-4 h-4" />
+                  <TableIcon className="dc:w-4 dc:h-4" />
                   Table
                 </button>
               )}
@@ -1711,14 +1711,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // This takes precedence over all other states for consistent UX across all modes
   if (needsRefresh && !hasResults) {
     return (
-      <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
+      <div className="dc:h-full dc:min-h-[400px] dc:flex dc:flex-col bg-dc-surface dc:relative">
         {renderNeedsRefreshEmpty()}
       </div>
     )
   }
 
   return (
-    <div className="h-full min-h-[400px] flex flex-col bg-dc-surface relative">
+    <div className="dc:h-full dc:min-h-[400px] dc:flex dc:flex-col bg-dc-surface dc:relative">
       {/* Main content */}
       {executionStatus === 'idle' && !hasModeSpecificContent && renderEmpty()}
       {executionStatus === 'idle' && hasModeSpecificContent && !hasResults && renderWaiting()}

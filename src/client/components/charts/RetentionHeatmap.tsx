@@ -177,12 +177,12 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
   if (!data || (Array.isArray(data) && data.length === 0)) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">No data available</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Configure retention analysis to see results
           </div>
         </div>
@@ -193,12 +193,12 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
   if (!matrix || matrix.length === 0) {
     return (
       <div
-        className="flex items-center justify-center w-full text-dc-text-muted"
+        className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
         <div className="text-center">
-          <div className="text-sm font-semibold mb-1">Unable to render retention data</div>
-          <div className="text-xs text-dc-text-secondary">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
+          <div className="dc:text-xs text-dc-text-secondary">
             Data format may be incorrect
           </div>
         </div>
@@ -210,21 +210,21 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
   const showLegend = displayConfig?.showLegend ?? true
 
   return (
-    <div className="relative w-full h-full overflow-auto" style={{ height }}>
+    <div className="dc:relative dc:w-full dc:h-full dc:overflow-auto" style={{ height }}>
       {/* Retention Matrix Table */}
-      <table className="w-full border-collapse text-sm">
-        <thead className="sticky top-0 bg-dc-bg z-10">
+      <table className="dc:w-full dc:border-collapse dc:text-sm">
+        <thead className="dc:sticky dc:top-0 bg-dc-bg dc:z-10">
           <tr>
-            <th className="text-left p-2 font-medium text-dc-text border-b border-dc-border min-w-[100px]">
+            <th className="text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px]">
               Cohort
             </th>
-            <th className="text-right p-2 font-medium text-dc-text border-b border-dc-border min-w-[80px]">
+            <th className="text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[80px]">
               Users
             </th>
             {periods.map(period => (
               <th
                 key={period}
-                className="text-center p-2 font-medium text-dc-text border-b border-dc-border min-w-[60px]"
+                className="text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px]"
               >
                 P{period}
               </th>
@@ -234,10 +234,10 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         <tbody>
           {matrix.map((row, rowIndex) => (
             <tr key={row.cohort} className={rowIndex % 2 === 0 ? 'bg-dc-bg' : 'bg-dc-surface-secondary'}>
-              <td className="p-2 font-medium text-dc-text border-b border-dc-border whitespace-nowrap">
+              <td className="dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:whitespace-nowrap">
                 {formatCohortPeriod(row.cohort)}
               </td>
-              <td className="p-2 text-right text-dc-text-secondary border-b border-dc-border">
+              <td className="dc:p-2 text-right text-dc-text-secondary dc:border-b border-dc-border">
                 {row.cohortSize.toLocaleString()}
               </td>
               {row.periods.map((cell, periodIndex) => {
@@ -249,7 +249,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
                 return (
                   <td
                     key={period}
-                    className="p-2 text-center border-b border-dc-border cursor-default transition-opacity hover:opacity-80"
+                    className="dc:p-2 text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
                     style={{ backgroundColor: bgColor, color: textColor }}
                     onMouseEnter={(e) => handleMouseEnter(e, row.cohort, period, cell)}
                     onMouseLeave={handleMouseLeave}
@@ -265,13 +265,13 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
 
       {/* Legend */}
       {showLegend && (
-        <div className="flex items-center justify-center mt-4 gap-2 text-xs text-dc-text-secondary">
+        <div className="dc:flex dc:items-center dc:justify-center dc:mt-4 dc:gap-2 dc:text-xs text-dc-text-secondary">
           <span>0%</span>
-          <div className="flex h-4">
+          <div className="dc:flex dc:h-4">
             {[0, 0.2, 0.4, 0.6, 0.8, 1].map(rate => (
               <div
                 key={rate}
-                className="w-6 h-4"
+                className="dc:w-6 dc:h-4"
                 style={{ backgroundColor: getRetentionColor(rate) }}
               />
             ))}
@@ -283,20 +283,20 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 px-3 py-2 bg-dc-surface border border-dc-border rounded shadow-lg text-sm pointer-events-none"
+          className="dc:fixed dc:z-50 dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:text-sm dc:pointer-events-none"
           style={{
             left: tooltip.x,
             top: tooltip.y - 10,
             transform: 'translate(-50%, -100%)',
           }}
         >
-          <div className="font-medium text-dc-text mb-1">
+          <div className="dc:font-medium text-dc-text dc:mb-1">
             {formatCohortPeriod(tooltip.cohort)} - Period {tooltip.period}
           </div>
-          <div className="text-dc-text-secondary space-y-0.5">
+          <div className="text-dc-text-secondary dc:space-y-0.5">
             <div>Cohort Size: {tooltip.cohortSize.toLocaleString()}</div>
             <div>Retained: {tooltip.retainedUsers.toLocaleString()}</div>
-            <div className="font-medium text-dc-text">
+            <div className="dc:font-medium text-dc-text">
               Rate: {formatPercentage(tooltip.retentionRate)}
             </div>
           </div>

@@ -59,11 +59,11 @@ export default function PortletContainer({
   }, [])
 
   return (
-    <div className="bg-dc-surface border border-dc-border rounded-lg flex flex-col h-full" style={{ boxShadow: 'var(--dc-shadow-sm)' }}>
+    <div className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col dc:h-full" style={{ boxShadow: 'var(--dc-shadow-sm)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-dc-border shrink-0 bg-dc-surface-secondary rounded-t-lg px-3 py-2 md:px-6 md:py-3">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h3 className="font-semibold text-sm truncate text-dc-text">{portlet.title}</h3>
+      <div className="dc:flex dc:items-center dc:justify-between dc:border-b border-dc-border dc:shrink-0 bg-dc-surface-secondary dc:rounded-t-lg dc:px-3 dc:py-2 dc:md:px-6 dc:md:py-3">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:flex-1 dc:min-w-0">
+          <h3 className="dc:font-semibold dc:text-sm dc:truncate text-dc-text">{portlet.title}</h3>
           {/* Debug button - right next to title */}
           {debugData && (
             <DebugModal
@@ -77,37 +77,37 @@ export default function PortletContainer({
           )}
         </div>
 
-        <div className="flex items-center gap-2 ml-4">
+        <div className="dc:flex dc:items-center dc:gap-2 dc:ml-4">
 
           {editable && (
             <>
               <button
                 onClick={() => onRefresh?.(portlet.id)}
-                className="p-1.5 hover:bg-dc-surface-hover rounded-sm text-dc-text-secondary"
+                className="dc:p-1.5 hover:bg-dc-surface-hover dc:rounded-sm text-dc-text-secondary"
                 title="Refresh"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="dc:h-4 dc:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
               <button
                 onClick={() => onEdit?.(portlet)}
-                className="p-1.5 hover:bg-dc-surface-hover rounded-sm text-dc-text-secondary"
+                className="dc:p-1.5 hover:bg-dc-surface-hover dc:rounded-sm text-dc-text-secondary"
                 title="Edit"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="dc:h-4 dc:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               <button
                 onClick={() => onDelete?.(portlet.id)}
-                className="p-1.5 rounded-sm text-dc-danger"
+                className="dc:p-1.5 dc:rounded-sm text-dc-danger"
                 style={{ backgroundColor: 'transparent' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-danger-bg)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 title="Delete"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="dc:h-4 dc:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -117,7 +117,7 @@ export default function PortletContainer({
       </div>
 
       {/* Content */}
-      <div className="px-2 py-3 md:px-4 md:pt-6 md:pb-4 flex-1 min-h-0">
+      <div className="dc:px-2 dc:py-3 dc:md:px-4 dc:md:pt-6 dc:md:pb-4 dc:flex-1 dc:min-h-0">
         <AnalyticsPortlet
           query={renderQuery}
           chartType={renderChartType}

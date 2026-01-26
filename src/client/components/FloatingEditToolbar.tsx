@@ -89,22 +89,22 @@ export default function FloatingEditToolbar({
 
   // Position classes - fixed positioning with vertical centering
   const positionClasses = position === 'left'
-    ? 'left-4'
-    : 'right-4'
+    ? 'dc:left-4'
+    : 'dc:right-4'
 
   // Animation: slide in from edge when edit bar not visible
   // When edit bar IS visible, slide out and hide
   const isHidden = isEditBarVisible
   const translateClasses = position === 'left'
-    ? (isHidden ? '-translate-x-16 opacity-0 pointer-events-none' : 'translate-x-0 opacity-100')
-    : (isHidden ? 'translate-x-16 opacity-0 pointer-events-none' : 'translate-x-0 opacity-100')
+    ? (isHidden ? 'dc:-translate-x-16 dc:opacity-0 dc:pointer-events-none' : 'dc:translate-x-0 dc:opacity-100')
+    : (isHidden ? 'dc:translate-x-16 dc:opacity-0 dc:pointer-events-none' : 'dc:translate-x-0 dc:opacity-100')
 
   // Use portal to render outside the grid container to avoid react-grid-layout issues
   const toolbarContent = (
     <div
-      className={`fixed top-1/2 -translate-y-1/2 z-50 flex flex-col gap-1.5 p-2
-        bg-dc-surface-tertiary border border-dc-border rounded-lg
-        transition-all duration-300 ease-in-out
+      className={`dc:fixed dc:top-1/2 dc:-translate-y-1/2 dc:z-50 dc:flex dc:flex-col dc:gap-1.5 dc:p-2
+        bg-dc-surface-tertiary dc:border border-dc-border dc:rounded-lg
+        dc:transition-all dc:duration-300 dc:ease-in-out
         ${positionClasses} ${translateClasses}`}
       style={{
         boxShadow: 'var(--dc-shadow-lg)'
@@ -121,7 +121,7 @@ export default function FloatingEditToolbar({
       {/* Layout Mode Switcher - only in edit mode with multiple modes */}
       {isEditMode && allowedModes.length > 1 && (
         <>
-          <div className="w-full h-px bg-dc-border my-0.5" />
+          <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
           <ToolbarButton
             icon={GridIcon}
             tooltip="Grid Layout"
@@ -142,8 +142,8 @@ export default function FloatingEditToolbar({
       {/* Color Palette - only in edit mode */}
       {isEditMode && (
         <>
-          <div className="w-full h-px bg-dc-border my-0.5" />
-          <div ref={paletteRef} className="relative">
+          <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
+          <div ref={paletteRef} className="dc:relative">
             <ToolbarButton
               icon={SwatchIcon}
               tooltip="Color Palette"
@@ -167,7 +167,7 @@ export default function FloatingEditToolbar({
       {/* Add Portlet - only in edit mode */}
       {isEditMode && (
         <>
-          <div className="w-full h-px bg-dc-border my-0.5" />
+          <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
           <ToolbarButton
             icon={AddIcon}
             tooltip="Add Portlet"
@@ -202,15 +202,15 @@ function ToolbarButton({ icon: Icon, tooltip, isActive, disabled, onClick }: Too
       onClick={onClick}
       disabled={disabled}
       title={tooltip}
-      className={`p-2 rounded-md transition-colors focus:outline-hidden focus:ring-2 focus:ring-dc-accent
+      className={`dc:p-2 dc:rounded-md dc:transition-colors focus:outline-hidden dc:focus:ring-2 focus:ring-dc-accent
         ${disabled
-          ? 'opacity-50 cursor-not-allowed bg-dc-surface-secondary text-dc-text-muted'
+          ? 'dc:opacity-50 dc:cursor-not-allowed bg-dc-surface-secondary text-dc-text-muted'
           : isActive
             ? 'bg-dc-accent-bg text-dc-accent'
             : 'bg-dc-surface text-dc-text-secondary hover:bg-dc-surface-hover'
         }`}
     >
-      <Icon className="w-5 h-5" />
+      <Icon className="dc:w-5 dc:h-5" />
     </button>
   )
 }
@@ -224,40 +224,40 @@ interface CompactPaletteDropdownProps {
 
 function CompactPaletteDropdown({ position, currentPalette, onPaletteChange }: CompactPaletteDropdownProps) {
   // Position dropdown opposite to toolbar position to avoid off-screen
-  const positionClasses = position === 'left' ? 'left-full ml-2' : 'right-full mr-2'
+  const positionClasses = position === 'left' ? 'dc:left-full dc:ml-2' : 'dc:right-full dc:mr-2'
 
   return (
     <div
-      className={`absolute top-0 ${positionClasses} w-52 bg-dc-surface border border-dc-border rounded-md z-50 max-h-72 overflow-y-auto`}
+      className={`dc:absolute dc:top-0 ${positionClasses} dc:w-52 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:z-50 dc:max-h-72 dc:overflow-y-auto`}
       style={{
         boxShadow: 'var(--dc-shadow-lg)'
       }}
     >
-      <div className="py-1">
+      <div className="dc:py-1">
         {COLOR_PALETTES.slice().sort((a, b) => a.label.localeCompare(b.label)).map((palette) => (
           <button
             key={palette.name}
             type="button"
             onClick={() => onPaletteChange(palette.name)}
-            className={`w-full px-3 py-2 text-left text-sm hover:bg-dc-surface-hover transition-colors ${
+            className={`dc:w-full dc:px-3 dc:py-2 text-left dc:text-sm hover:bg-dc-surface-hover dc:transition-colors ${
               palette.name === currentPalette ? 'bg-dc-surface-secondary text-dc-primary' : 'text-dc-text-secondary'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="dc:flex dc:items-center dc:gap-2">
               {/* Compact color preview - 4 series colors */}
-              <div className="flex gap-0.5 shrink-0">
+              <div className="dc:flex dc:gap-0.5 dc:shrink-0">
                 {palette.colors.slice(0, 4).map((color, index) => (
                   <div
                     key={index}
-                    className="w-2.5 h-2.5 rounded-xs border border-dc-border"
+                    className="dc:w-2.5 dc:h-2.5 rounded-xs dc:border border-dc-border"
                     style={{ backgroundColor: color }}
                   />
                 ))}
               </div>
-              <span className="text-xs font-medium truncate text-dc-text">{palette.label}</span>
+              <span className="dc:text-xs dc:font-medium dc:truncate text-dc-text">{palette.label}</span>
               {/* Current indicator */}
               {palette.name === currentPalette && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full shrink-0 bg-dc-primary" />
+                <div className="dc:ml-auto dc:w-1.5 dc:h-1.5 dc:rounded-full dc:shrink-0 bg-dc-primary" />
               )}
             </div>
           </button>

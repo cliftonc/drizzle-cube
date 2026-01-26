@@ -190,10 +190,10 @@ export interface LazyChartProps extends ChartProps {
 function DefaultChartFallback({ height }: { height?: string | number }) {
   return (
     <div
-      className="flex items-center justify-center w-full"
+      className="dc:flex dc:items-center dc:justify-center dc:w-full"
       style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
     >
-      <div className="animate-pulse bg-dc-surface-secondary rounded w-full h-full min-h-[100px]" />
+      <div className="dc:animate-pulse bg-dc-surface-secondary dc:rounded dc:w-full dc:h-full dc:min-h-[100px]" />
     </div>
   )
 }

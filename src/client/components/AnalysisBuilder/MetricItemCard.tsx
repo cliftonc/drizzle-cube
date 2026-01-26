@@ -47,11 +47,11 @@ const MetricItemCard = memo(function MetricItemCard({
   const getSortIcon = () => {
     switch (sortDirection) {
       case 'asc':
-        return ChevronUpIcon ? <ChevronUpIcon className="w-4 h-4" /> : '↑'
+        return ChevronUpIcon ? <ChevronUpIcon className="dc:w-4 dc:h-4" /> : '↑'
       case 'desc':
-        return ChevronDownIcon ? <ChevronDownIcon className="w-4 h-4" /> : '↓'
+        return ChevronDownIcon ? <ChevronDownIcon className="dc:w-4 dc:h-4" /> : '↓'
       default:
-        return ChevronUpDownIcon ? <ChevronUpDownIcon className="w-4 h-4" /> : '⇅'
+        return ChevronUpDownIcon ? <ChevronUpDownIcon className="dc:w-4 dc:h-4" /> : '⇅'
     }
   }
 
@@ -72,24 +72,24 @@ const MetricItemCard = memo(function MetricItemCard({
 
   return (
     <div
-      className={`flex items-center gap-2 p-2 bg-dc-surface-secondary rounded-lg group hover:bg-dc-surface-tertiary transition-all duration-150 ${
-        isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
-      } ${isDragging ? 'opacity-30' : ''}`}
+      className={`dc:flex dc:items-center dc:gap-2 dc:p-2 bg-dc-surface-secondary dc:rounded-lg dc:group hover:bg-dc-surface-tertiary dc:transition-all dc:duration-150 ${
+        isDraggable ? 'dc:cursor-grab dc:active:cursor-grabbing' : ''
+      } ${isDragging ? 'dc:opacity-30' : ''}`}
       draggable={isDraggable ? true : undefined}
       onDragStart={isDraggable ? (e) => onDragStart(e, index) : undefined}
       onDragEnd={isDraggable ? onDragEnd : undefined}
     >
       {/* Icon - colored background matching field selector */}
-      <span className="w-6 h-6 flex items-center justify-center rounded bg-dc-measure text-dc-measure-text flex-shrink-0">
-        {MeasureIcon && <MeasureIcon className="w-4 h-4" />}
+      <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-measure text-dc-measure-text dc:flex-shrink-0">
+        {MeasureIcon && <MeasureIcon className="dc:w-4 dc:h-4" />}
       </span>
 
       {/* Field Info */}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-dc-text truncate" title={metric.field}>
+      <div className="dc:flex-1 dc:min-w-0">
+        <div className="dc:text-sm text-dc-text dc:truncate" title={metric.field}>
           {displayTitle}
         </div>
-        <div className="text-xs text-dc-text-muted truncate">
+        <div className="dc:text-xs text-dc-text-muted dc:truncate">
           {cubeName}
         </div>
       </div>
@@ -98,16 +98,16 @@ const MetricItemCard = memo(function MetricItemCard({
       {onToggleSort && (
         <button
           onClick={onToggleSort}
-          className={`p-1 transition-opacity flex-shrink-0 flex items-center gap-0.5 ${
+          className={`dc:p-1 dc:transition-opacity dc:flex-shrink-0 dc:flex dc:items-center dc:gap-0.5 ${
             sortDirection
-              ? 'opacity-100 text-dc-primary'
-              : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
+              ? 'dc:opacity-100 text-dc-primary'
+              : 'dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
           }`}
           title={getSortTooltip()}
         >
           {getSortIcon()}
           {sortDirection && sortPriority && (
-            <span className="text-xs font-medium">({sortPriority})</span>
+            <span className="dc:text-xs dc:font-medium">({sortPriority})</span>
           )}
         </button>
       )}
@@ -115,10 +115,10 @@ const MetricItemCard = memo(function MetricItemCard({
       {/* Remove Button */}
       <button
         onClick={onRemove}
-        className="p-1 text-dc-text-muted hover:text-dc-danger opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0"
+        className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0"
         title="Remove metric"
       >
-        <CloseIcon className="w-4 h-4" />
+        <CloseIcon className="dc:w-4 dc:h-4" />
       </button>
     </div>
   )
