@@ -33,6 +33,11 @@ export interface CubeMetadata {
   dimensions: DimensionMetadata[]
   segments: any[]
   relationships?: CubeRelationshipMetadata[]
+  /**
+   * Hierarchies for structured drill-down paths
+   * Enables navigation through dimension levels (e.g., country -> region -> city)
+   */
+  hierarchies?: HierarchyMetadata[]
   /** Additional cube metadata (e.g., eventStream configuration for funnel queries) */
   meta?: Record<string, any>
 }
@@ -52,6 +57,12 @@ export interface MeasureMetadata {
    * Used by AI agents for natural language matching
    */
   synonyms?: string[]
+  /**
+   * Dimension names shown when drilling into this measure
+   * Full names like "CubeName.dimensionName" for cross-cube support
+   * If not specified, drilling is disabled for this measure
+   */
+  drillMembers?: string[]
 }
 
 /**
@@ -69,6 +80,29 @@ export interface DimensionMetadata {
    * Used by AI agents for natural language matching
    */
   synonyms?: string[]
+  /**
+   * Supported granularities for time dimensions
+   * Only present when type is 'time'
+   * Used for time-based drill-down (year -> quarter -> month -> week -> day)
+   */
+  granularities?: TimeGranularity[]
+}
+
+/**
+ * Hierarchy metadata for structured drill-down paths
+ */
+export interface HierarchyMetadata {
+  /** Unique identifier for the hierarchy */
+  name: string
+  /** Display title for the hierarchy */
+  title: string
+  /** Cube name this hierarchy belongs to */
+  cubeName: string
+  /**
+   * Full dimension names in order from least to most granular
+   * Format: "CubeName.dimensionName"
+   */
+  levels: string[]
 }
 
 /**

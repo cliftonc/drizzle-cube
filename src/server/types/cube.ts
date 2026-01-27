@@ -9,7 +9,8 @@ import type {
   DrizzleDatabase,
   QueryResult,
   MeasureType,
-  DimensionType
+  DimensionType,
+  TimeGranularity
 } from './core'
 import type { SemanticQuery } from './query'
 import type { FilterCacheManager } from '../filter-cache'
@@ -71,6 +72,23 @@ export interface MultiCubeQueryContext
 }
 
 /**
+ * Hierarchy definition for grouped drill-down paths
+ * Groups dimensions into ordered levels for structured navigation
+ */
+export interface Hierarchy {
+  /** Unique identifier for the hierarchy */
+  name: string
+  /** Display title for the hierarchy */
+  title?: string
+  /**
+   * Dimension names in order from least to most granular
+   * @example ['country', 'region', 'city'] for geographic hierarchy
+   * @example ['category', 'subcategory', 'product'] for product hierarchy
+   */
+  levels: string[]
+}
+
+/**
  * Cube definition focused on Drizzle query building
  */
 export interface Cube {
@@ -90,25 +108,32 @@ export interface Cube {
    * Should return FROM/JOIN/WHERE setup, NOT a complete SELECT
    */
   sql: (ctx: QueryContext) => BaseQueryDefinition
-  
+
   /** Cube dimensions using direct column references */
   dimensions: Record<string, Dimension>
-  
+
   /** Cube measures using direct column references */
   measures: Record<string, Measure>
-  
+
   /** Optional joins to other cubes for multi-cube queries */
   joins?: Record<string, CubeJoin>
-  
+
+  /**
+   * Hierarchies for structured drill-down paths
+   * Groups dimensions into levels for navigation (e.g., country -> region -> city)
+   * A dimension can appear in multiple hierarchies
+   */
+  hierarchies?: Record<string, Hierarchy>
+
   /** Whether cube is publicly accessible */
   public?: boolean
-  
+
   /** SQL alias for the cube */
   sqlAlias?: string
-  
+
   /** Data source identifier */
   dataSource?: string
-  
+
   /** Additional metadata */
   meta?: Record<string, any>
 }
@@ -132,18 +157,26 @@ export interface Dimension {
 
   /** Direct column reference or SQL expression */
   sql: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL)
-  
+
   /** Whether this is a primary key */
   primaryKey?: boolean
-  
+
   /** Whether to show in UI */
   shown?: boolean
-  
+
   /** Display format */
   format?: string
-  
+
   /** Additional metadata */
   meta?: Record<string, any>
+
+  /**
+   * Supported granularities for time dimensions
+   * If not specified for time dimensions, defaults to ['year', 'quarter', 'month', 'week', 'day']
+   * Only applies when type is 'time'
+   * @example ['year', 'quarter', 'month', 'day'] for a custom subset
+   */
+  granularities?: TimeGranularity[]
 }
 
 /**
@@ -201,6 +234,15 @@ export interface Measure {
 
   /** Additional metadata */
   meta?: Record<string, any>
+
+  /**
+   * Dimension names shown when drilling into this measure
+   * Can include cross-cube dimensions via joins (e.g., 'Products.name', 'Users.email')
+   * If not specified, drilling is disabled for this measure
+   * @example ['id', 'status', 'createdAt'] for same-cube dimensions
+   * @example ['Orders.id', 'Products.name', 'Users.city'] for cross-cube dimensions
+   */
+  drillMembers?: string[]
 
   /**
    * Statistical function configuration

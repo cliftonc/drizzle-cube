@@ -8,6 +8,7 @@ export const pieChartConfig: ChartTypeConfig = {
   icon: getChartTypeIcon('pie'),
   description: 'Show proportions of a whole',
   useCase: 'Best for showing percentage distribution or composition of a total (limit to 5-7 slices)',
+  clickableElements: { slice: true },
   dropZones: [
     {
       key: 'xAxis',

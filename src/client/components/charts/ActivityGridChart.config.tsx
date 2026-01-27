@@ -40,21 +40,22 @@ export const activityGridChartConfig: ChartTypeConfig = {
   ],
   validate: (config) => {
     const { dateField, valueField } = config
-    
+
     if (!dateField || (Array.isArray(dateField) && dateField.length === 0)) {
       return {
         isValid: false,
         message: 'Time dimension is required for activity grid'
       }
     }
-    
+
     if (!valueField || (Array.isArray(valueField) && valueField.length === 0)) {
       return {
         isValid: false,
         message: 'Activity measure is required for intensity mapping'
       }
     }
-    
+
     return { isValid: true }
-  }
+  },
+  clickableElements: { cell: true }
 }

@@ -186,7 +186,7 @@ const ScatterChart = React.memo(function ScatterChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsScatterChart margin={chartMargins}>
+        <RechartsScatterChart margin={chartMargins} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
             <CartesianGrid strokeDasharray="3 3" />
           )}

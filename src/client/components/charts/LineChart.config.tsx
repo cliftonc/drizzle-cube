@@ -8,6 +8,7 @@ export const lineChartConfig: ChartTypeConfig = {
   icon: getChartTypeIcon('line'),
   description: 'Show trends and changes over time',
   useCase: 'Best for continuous data, trends, time series, and showing relationships between multiple series',
+  clickableElements: { point: true },
   dropZones: [
     {
       key: 'xAxis',

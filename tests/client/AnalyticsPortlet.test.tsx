@@ -183,6 +183,18 @@ vi.mock('../../src/client/shared/utils', () => ({
   })
 }))
 
+// Mock useCubeMeta (needed for drill-down functionality)
+vi.mock('../../src/client/providers/CubeMetaContext', () => ({
+  useCubeMeta: vi.fn(() => ({
+    meta: null,
+    labelMap: {},
+    metaLoading: false,
+    metaError: null,
+    getFieldLabel: (name: string) => name,
+    refetchMeta: vi.fn()
+  }))
+}))
+
 // Helper to create mock result set
 function createMockResultSet(data: Record<string, unknown>[] = []): CubeResultSet {
   return {

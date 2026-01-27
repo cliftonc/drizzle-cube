@@ -34,7 +34,9 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -551,7 +553,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
         // Add hover effects and tooltips
         if (safeDisplayConfig.showTooltip) {
           rect
-            .style('cursor', 'pointer')
+            .style('cursor', drillEnabled ? 'pointer' : 'default')
             .on('mouseover', function(event) {
               select(this)
                 .style('stroke', '#000')
@@ -587,6 +589,22 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
                 .duration(200)
                 .style('opacity', 0)
             })
+        } else if (drillEnabled) {
+          // Set cursor for drill even without tooltips
+          rect.style('cursor', 'pointer')
+        }
+
+        // Add drill click handler
+        if (drillEnabled && onDataPointClick && cell) {
+          rect.on('click', function(event) {
+            onDataPointClick({
+              dataPoint: { [valueField]: cell.value, [dateField]: cell.date },
+              clickedField: valueField,
+              xValue: cell.label,
+              position: { x: event.pageX, y: event.pageY },
+              nativeEvent: event as unknown as React.MouseEvent
+            })
+          })
         }
       }
     }
@@ -695,7 +713,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
     return () => {
       tooltip.remove()
     }
-  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig, colorPalette, currentTheme, getFieldLabel, getGridMapping])
+  }, [data, chartConfig, displayConfig, queryObject, dimensions, dimensionsReady, safeDisplayConfig, colorPalette, currentTheme, getFieldLabel, getGridMapping, drillEnabled, onDataPointClick])
 
   if (!data || data.length === 0) {
     return (

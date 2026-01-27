@@ -8,7 +8,29 @@ import type { FunnelBindingKey } from './types/funnel'
 import type { FlowChartData } from './types/flow'
 import type { RetentionChartData } from './types/retention'
 
+// Time granularity type for drill-down support
+export type TimeGranularity = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'
+
 // Cube metadata types
+export interface CubeMetaMeasure {
+  name: string
+  title: string
+  shortTitle: string
+  type: string
+  /** Dimension names shown when drilling into this measure */
+  drillMembers?: string[]
+}
+
+export interface CubeMetaDimension {
+  name: string
+  title: string
+  shortTitle: string
+  type: string
+  /** Supported granularities for time dimensions (for time-based drill-down) */
+  granularities?: TimeGranularity[]
+}
+
+// Legacy type alias for backward compatibility
 export interface CubeMetaField {
   name: string
   title: string
@@ -25,14 +47,30 @@ export interface CubeMetaRelationship {
   }>
 }
 
+/**
+ * Hierarchy metadata for structured drill-down paths
+ */
+export interface CubeMetaHierarchy {
+  /** Unique identifier for the hierarchy */
+  name: string
+  /** Display title for the hierarchy */
+  title: string
+  /** Cube name this hierarchy belongs to */
+  cubeName: string
+  /** Full dimension names in order from least to most granular */
+  levels: string[]
+}
+
 export interface CubeMetaCube {
   name: string
   title: string
   description?: string
-  measures: CubeMetaField[]
-  dimensions: CubeMetaField[]
+  measures: CubeMetaMeasure[]
+  dimensions: CubeMetaDimension[]
   segments: CubeMetaField[]
   relationships?: CubeMetaRelationship[]
+  /** Hierarchies for structured drill-down paths */
+  hierarchies?: CubeMetaHierarchy[]
   /** Additional cube metadata (e.g., eventStream configuration for funnel queries) */
   meta?: {
     eventStream?: {
@@ -455,6 +493,20 @@ export interface AnalyticsPortletProps {
     data: any[] | FlowChartData | RetentionChartData
     chartType: ChartType
     cacheInfo?: { hit: true; cachedAt: string; ttlMs: number; ttlRemainingMs: number } | null
+    drillState?: {
+      isDrilling: boolean
+      drillPath: Array<{
+        id: string
+        label: string
+        clickedValue?: unknown
+        dimension?: string
+        granularity?: string
+        hierarchy?: string
+      }>
+      currentDrillDepth: number
+      originalQuery: any
+      activeQuery: any
+    }
   }) => void
 }
 
@@ -476,6 +528,12 @@ export interface ChartProps {
   queryObject?: CubeQuery
   height?: string | number
   colorPalette?: ColorPalette  // Complete palette with both colors and gradient
+
+  // Drill-down support
+  /** Handler for data point clicks - fires ChartDataPointClickEvent */
+  onDataPointClick?: (event: import('./types/drill').ChartDataPointClickEvent) => void
+  /** Whether drill-down is enabled (shows pointer cursor on clickable elements) */
+  drillEnabled?: boolean
 }
 
 // Thumbnail feature configuration
@@ -700,3 +758,17 @@ export interface AIExplainAnalysis {
     usingUserKey: boolean
   }
 }
+
+// Re-export drill types
+export type {
+  ChartDataPointClickEvent,
+  DrillOptionType,
+  DrillScope,
+  DrillOption,
+  DrillPathEntry,
+  DrillResult,
+  UseDrillInteractionOptions,
+  DrillInteraction,
+  DrillMenuProps,
+  DrillBreadcrumbProps,
+} from './types/drill'

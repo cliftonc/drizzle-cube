@@ -3,13 +3,17 @@
  * Simplified version with minimal dependencies
  */
 
-import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react'
+import React, { useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCubeLoadQuery, useMultiCubeLoadQuery, useFunnelQuery, useFlowQuery, useRetentionQuery, createQueryKey, createMultiQueryKey } from '../hooks/queries'
 import { useScrollContainer } from '../providers/ScrollContainerContext'
+import { useCubeMeta } from '../providers/CubeMetaContext'
 import ChartErrorBoundary from './ChartErrorBoundary'
 import LoadingIndicator from './LoadingIndicator'
+import { DrillMenu } from './DrillMenu'
+import { DrillBreadcrumb } from './DrillBreadcrumb'
+import { useDrillInteraction } from '../hooks/useDrillInteraction'
 import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
 import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
@@ -236,7 +240,63 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   const isFlowMode = serverFlowQuery !== null
   // Retention mode: ServerRetentionQuery format (cohort retention analysis)
   const isRetentionMode = serverRetentionQuery !== null
-  const shouldSkipSingle = !queryObject || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
+
+  // ========== Drill-Down State ==========
+  // Track the current drilled query (null means using the original/parsed query)
+  const [drilledQuery, setDrilledQuery] = useState<CubeQuery | null>(null)
+
+  // Reset drilled query when the base query changes (e.g., dashboard filters change)
+  const queryObjectJson = queryObject ? JSON.stringify(queryObject) : null
+  const previousQueryObjectJson = useRef<string | null>(null)
+  useEffect(() => {
+    if (queryObjectJson !== previousQueryObjectJson.current) {
+      previousQueryObjectJson.current = queryObjectJson
+      // Reset drill state when base query changes
+      if (drilledQuery) {
+        setDrilledQuery(null)
+      }
+    }
+  }, [queryObjectJson, drilledQuery])
+
+  // The active query is either the drilled query or the original parsed query
+  const activeQuery = drilledQuery || queryObject
+
+  // Get metadata for drill options (only for single query mode)
+  const { meta } = useCubeMeta()
+
+  // Drill interaction hook - only enabled for single query mode
+  const drill = useDrillInteraction({
+    query: activeQuery || { measures: [], dimensions: [] },
+    metadata: meta,
+    onQueryChange: (newQuery) => {
+      setDrilledQuery(newQuery)
+    },
+    chartConfig,
+    dashboardFilters,
+    dashboardFilterMapping,
+    enabled: !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && !!activeQuery
+  })
+
+  // Handle navigating back to root - restore the original query
+  const handleNavigateBack = useCallback(() => {
+    if (drill.drillPath.length === 1) {
+      // Going back to root - restore original query
+      setDrilledQuery(null)
+      // Clear the drill path by calling the hook's navigateBack
+    }
+    drill.navigateBack()
+  }, [drill])
+
+  // Handle navigating to a specific level
+  const handleNavigateToLevel = useCallback((index: number) => {
+    if (index === 0) {
+      // Navigate to root - restore original query
+      setDrilledQuery(null)
+    }
+    drill.navigateToLevel(index)
+  }, [drill])
+
+  const shouldSkipSingle = !activeQuery || shouldSkipQuery || (!eagerLoad && !isVisible) || isMultiQuery || isFunnelMode || isFlowMode || isRetentionMode
   const shouldSkipMulti = !multiQueryConfig || shouldSkipQuery || (!eagerLoad && !isVisible) || isFunnelMode || isFlowMode || isRetentionMode
   const shouldSkipFunnel = !isFunnelMode || shouldSkipQuery || (!eagerLoad && !isVisible)
   const shouldSkipFlow = !isFlowMode || shouldSkipQuery || (!eagerLoad && !isVisible)
@@ -250,7 +310,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   const funnelConfig = null
 
   // Use single query hook with TanStack Query (skip if multi-query or other skip conditions)
-  const singleQueryResult = useCubeLoadQuery(queryObject, {
+  // Use activeQuery to support drill-down (which replaces the query temporarily)
+  const singleQueryResult = useCubeLoadQuery(activeQuery, {
     skip: shouldSkipSingle,
     resetResultSetOnChange: true,
     debounceMs: 100, // Lower debounce for portlets (faster response)
@@ -377,10 +438,10 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
           queryClient.invalidateQueries({ queryKey: createMultiQueryKey(cleanedConfig) })
         }
         multiQueryResult.refetch({ bustCache })
-      } else if (queryObject) {
+      } else if (activeQuery) {
         // Clean the query to match the cache key format used by useCubeLoadQuery
         // This is important because the cache uses cleanQueryForServer(query) which removes empty arrays
-        const cleanedQuery = cleanQueryForServer(queryObject)
+        const cleanedQuery = cleanQueryForServer(activeQuery)
         if (bustCache) {
           queryClient.removeQueries({ queryKey: createQueryKey(cleanedQuery) })
         } else {
@@ -389,7 +450,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         singleQueryResult.refetch({ bustCache })
       }
     }
-  }), [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, queryObject, queryClient, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }), [isRetentionMode, isFlowMode, isFunnelMode, isMultiQuery, multiQueryConfig, activeQuery, queryClient, serverRetentionQuery, serverFlowQuery, serverFunnelQuery, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   const handleRetry = useCallback(() => {
     if (isRetentionMode) {
@@ -463,17 +524,34 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       const data = getData()
 
       if (data) {
+        // Include drill state in debug info if drilling is active
+        const drillDebugInfo = drill.drillPath.length > 0 ? {
+          isDrilling: true,
+          drillPath: drill.drillPath.map(entry => ({
+            id: entry.id,
+            label: entry.label,
+            clickedValue: entry.clickedValue,
+            dimension: entry.dimension,
+            granularity: entry.granularity,
+            hierarchy: entry.hierarchy
+          })),
+          currentDrillDepth: drill.drillPath.length,
+          originalQuery: queryObject,
+          activeQuery: activeQuery
+        } : undefined
+
         onDebugDataReadyRef.current({
-          chartConfig: chartConfig || {},
+          chartConfig: drill.currentChartConfig || chartConfig || {},
           displayConfig: displayConfig || {},
-          queryObject,
+          queryObject: activeQuery || queryObject,
           data,
           chartType,
-          cacheInfo: resultSet.cacheInfo?.()
+          cacheInfo: resultSet.cacheInfo?.(),
+          drillState: drillDebugInfo
         })
       }
     }
-  }, [chartConfig, displayConfig, queryObject, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowQueryResult.cacheInfo, funnelQueryResult.cacheInfo, retentionQueryResult.cacheInfo]) // Use ref for callback to prevent infinite loops
+  }, [chartConfig, displayConfig, queryObject, activeQuery, resultSet, chartType, error, isFunnelMode, isFlowMode, isRetentionMode, multiQueryData, serverFunnelQuery, serverFlowQuery, serverRetentionQuery, flowChartData, retentionChartData, flowQueryResult.cacheInfo, funnelQueryResult.cacheInfo, retentionQueryResult.cacheInfo, drill.drillPath, drill.currentChartConfig]) // Use ref for callback to prevent infinite loops
 
   // Validate that chartConfig is provided when required (not required for skipQuery charts)
   // Check if any dropZones are mandatory for this chart type
@@ -536,7 +614,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             <details>
               <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Query (with filters applied)</summary>
               <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
-                {queryObject ? JSON.stringify(queryObject, null, 2) : query}
+                {activeQuery ? JSON.stringify(activeQuery, null, 2) : query}
               </pre>
             </details>
 
@@ -545,7 +623,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
               <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
                 {JSON.stringify({
                   chartType,
-                  chartConfig,
+                  chartConfig: drill.currentChartConfig || chartConfig,
                   displayConfig: displayConfig
                 }, null, 2)}
               </pre>
@@ -572,11 +650,31 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             : (resultSet !== null && queryObject !== null)
 
     if (!hasValidData) {
+      // Check if we're in a drilled state - show more helpful message with back option
+      const isDrilledState = drill.drillPath.length > 0
+
       return (
-        <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-            <div className="dc:text-xs">Invalid query or no results</div>
+        <div ref={inViewRef} className="dc:flex dc:flex-col dc:w-full" style={{ height }}>
+          {/* Show breadcrumb when drilling even if no data */}
+          {isDrilledState && (
+            <div className="dc:mb-2 dc:flex-shrink-0">
+              <DrillBreadcrumb
+                path={drill.drillPath}
+                onNavigate={handleNavigateBack}
+                onLevelClick={handleNavigateToLevel}
+              />
+            </div>
+          )}
+          <div className="dc:flex dc:items-center dc:justify-center dc:flex-1 text-dc-text-muted">
+            <div className="text-center">
+              <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+              <div className="dc:text-xs text-dc-text-secondary">
+                {isDrilledState
+                  ? 'No data points to display for the current filter'
+                  : 'Invalid query or no results'
+                }
+              </div>
+            </div>
           </div>
         </div>
       )
@@ -658,15 +756,25 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       // For markdown chart, use empty data array
       const chartData = effectiveChartType === 'markdown' ? [] : data
 
+      // Determine if drill is enabled for this chart (only single query mode)
+      const isDrillEnabledForChart = !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && drill.drillEnabled
+
+      // Use drill chart config if available, otherwise fall back to original
+      const effectiveChartConfig = (isDrillEnabledForChart && drill.currentChartConfig)
+        ? drill.currentChartConfig
+        : chartConfig
+
       return (
         <LazyChart
           chartType={effectiveChartType}
           data={chartData}
-          chartConfig={chartConfig}
+          chartConfig={effectiveChartConfig}
           displayConfig={displayConfig}
-          queryObject={queryObject ?? undefined}
+          queryObject={activeQuery ?? undefined}
           height={chartHeight}
           colorPalette={colorPalette}
+          onDataPointClick={isDrillEnabledForChart ? drill.handleDataPointClick : undefined}
+          drillEnabled={isDrillEnabledForChart}
           fallback={
             <div
               className="dc:flex dc:items-center dc:justify-center dc:w-full"
@@ -690,8 +798,11 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     }
   }
 
+  // Check if drill is enabled for this portlet
+  const isDrillEnabled = !isMultiQuery && !isFunnelMode && !isFlowMode && !isRetentionMode && drill.drillEnabled
+
   return (
-    <div ref={inViewRef} className="dc:w-full dc:h-full">
+    <div ref={inViewRef} className="dc:w-full dc:h-full dc:relative">
       <ChartErrorBoundary
         portletTitle={_title}
         portletConfig={{
@@ -703,9 +814,33 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         cubeQuery={query}
       >
         <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: '200px' }}>
-          {renderChart()}
+          {/* Drill breadcrumb - shows when drilling into data */}
+          {isDrillEnabled && drill.drillPath.length > 0 && (
+            <div className="dc:mb-2 dc:flex-shrink-0">
+              <DrillBreadcrumb
+                path={drill.drillPath}
+                onNavigate={handleNavigateBack}
+                onLevelClick={handleNavigateToLevel}
+              />
+            </div>
+          )}
+
+          {/* Chart content */}
+          <div className="dc:flex-1 dc:min-h-0">
+            {renderChart()}
+          </div>
         </div>
       </ChartErrorBoundary>
+
+      {/* Drill menu - positioned absolutely near clicked point */}
+      {isDrillEnabled && drill.menuOpen && drill.menuPosition && (
+        <DrillMenu
+          options={drill.menuOptions}
+          position={drill.menuPosition}
+          onSelect={drill.handleOptionSelect}
+          onClose={drill.closeMenu}
+        />
+      )}
     </div>
   )
 }))

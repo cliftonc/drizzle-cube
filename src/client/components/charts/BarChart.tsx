@@ -14,7 +14,9 @@ const BarChart = React.memo(function BarChart({
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
@@ -190,9 +192,9 @@ const BarChart = React.memo(function BarChart({
     return (
       <div className="dc:relative dc:w-full" style={{ height }}>
         <ChartContainer height={skippedCount > 0 ? `calc(100% - 20px)` : "100%"}>
-          <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset}>
+          <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
           )}
           <XAxis
             dataKey="name"
@@ -296,6 +298,18 @@ const BarChart = React.memo(function BarChart({
                       CHART_COLORS[index % CHART_COLORS.length]
                 }
                 fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                cursor={drillEnabled ? 'pointer' : undefined}
+                onClick={(barData: any, dataIndex: number, event: React.MouseEvent) => {
+                  if (onDataPointClick && drillEnabled && barData) {
+                    onDataPointClick({
+                      dataPoint: enhancedChartData[dataIndex] || barData,
+                      clickedField: originalField || seriesKey,
+                      xValue: barData.name,
+                      position: { x: event.clientX, y: event.clientY },
+                      nativeEvent: event
+                    })
+                  }
+                }}
               >
                 {usePositiveNegativeColoring &&
                   chartData.map((entry, entryIndex) => {

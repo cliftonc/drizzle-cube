@@ -61,11 +61,12 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
   try {
     if (height === "100%") {
       // For 100% height, make the container fill the available flex space with proper sizing
+      // user-select: none prevents browser selection box from appearing when clicking/dragging on charts
       return (
         <div
           ref={containerRef}
           className="dc:w-full dc:h-full dc:flex-1 dc:flex dc:flex-col dc:relative"
-          style={{ minHeight: '250px', minWidth: '100px', overflow: 'hidden' }}
+          style={{ minHeight: '250px', minWidth: '100px', overflow: 'hidden', userSelect: 'none' }}
         >
           {isReady && containerSize.width > 0 && containerSize.height > 0 ? (
             <ResponsiveContainer
@@ -86,11 +87,13 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
     }
 
     // For specific heights, use them directly
+    // user-select: none prevents browser selection box from appearing when clicking/dragging on charts
     const containerStyle = {
       height: typeof height === 'number' ? `${height}px` : height,
       width: '100%',
       minHeight: '200px',
-      minWidth: '100px'
+      minWidth: '100px',
+      userSelect: 'none' as const
     }
 
     return (

@@ -44,5 +44,6 @@ export const treemapChartConfig: ChartTypeConfig = {
       type: 'axisFormat',
       description: 'Number formatting for size values'
     }
-  ]
+  ],
+  clickableElements: { cell: true }
 }

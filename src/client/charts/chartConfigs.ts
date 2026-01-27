@@ -68,32 +68,55 @@ export interface DisplayOptionConfig {
 }
 
 /**
+ * Configuration for which elements in a chart support clicking (for drill-down)
+ */
+export interface ClickableElementsConfig {
+  /** Bars in bar charts */
+  bar?: boolean
+  /** Points/dots in line/scatter charts */
+  point?: boolean
+  /** Slices in pie/donut charts */
+  slice?: boolean
+  /** Cells in heatmaps */
+  cell?: boolean
+  /** Nodes in treemaps, sankey diagrams */
+  node?: boolean
+  /** Areas in area charts */
+  area?: boolean
+  /** Rows in data tables */
+  row?: boolean
+}
+
+/**
  * Complete configuration for a chart type
  */
 export interface ChartTypeConfig {
   /** Configuration for each drop zone */
   dropZones: AxisDropZoneConfig[]
-  
+
   /** Simple display options (backward compatibility) - rendered as boolean checkboxes */
   displayOptions?: string[]
-  
+
   /** Structured display options with metadata for different input types */
   displayOptionsConfig?: DisplayOptionConfig[]
-  
+
   /** Optional custom validation function */
   validate?: (config: any) => { isValid: boolean; message?: string }
-  
+
   /** Icon component for the chart type */
   icon?: ComponentType<{ className?: string }>
-  
+
   /** Brief description of the chart */
   description?: string
-  
+
   /** When to use this chart type */
   useCase?: string
-  
+
   /** Whether this chart type skips query requirements (for content-based charts like markdown) */
   skipQuery?: boolean
+
+  /** Configuration for which elements support clicking (for drill-down) */
+  clickableElements?: ClickableElementsConfig
 }
 
 /**

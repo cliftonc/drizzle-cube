@@ -130,7 +130,7 @@ const RadarChart = React.memo(function RadarChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsRadarChart data={radarData} margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
+        <RechartsRadarChart data={radarData} margin={{ top: 20, right: 80, bottom: 20, left: 80 }} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
             <PolarGrid />
           )}

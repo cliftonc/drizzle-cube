@@ -8,13 +8,15 @@ import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../uti
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-const TreeMapChart = React.memo(function TreeMapChart({ 
-  data, 
+const TreeMapChart = React.memo(function TreeMapChart({
+  data,
   chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
@@ -180,9 +182,25 @@ const TreeMapChart = React.memo(function TreeMapChart({
     // Custom content renderer for treemap cells with HTML overlays
     const CustomizedContent = (props: any) => {
       const { x, y, width, height, index, name, size } = props
-      
+
       if (width < 20 || height < 20) return null // Don't render content for very small cells
-      
+
+      const handleClick = (event: React.MouseEvent) => {
+        event.stopPropagation()
+        const cellData = treemapData[index]
+        if (cellData && onDataPointClick) {
+          // Use query measures for proper field name (chartConfig.yAxis may contain display labels)
+          const measureField = queryObject?.measures?.[0] || chartConfig?.yAxis?.[0] || ''
+          onDataPointClick({
+            dataPoint: cellData,
+            clickedField: measureField,
+            xValue: name,
+            position: { x: event.clientX, y: event.clientY },
+            nativeEvent: event
+          })
+        }
+      }
+
       return (
         <g>
           <rect
@@ -195,10 +213,12 @@ const TreeMapChart = React.memo(function TreeMapChart({
               fillOpacity: hoveredIndex !== null ? (hoveredIndex === index ? 1 : 0.6) : 0.8,
               stroke: '#fff',
               strokeWidth: 2,
-              cursor: 'pointer'
+              cursor: drillEnabled ? 'pointer' : 'default',
+              pointerEvents: 'all'  // Ensure rect captures click events
             }}
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
+            onClick={drillEnabled && onDataPointClick ? handleClick : undefined}
           />
           <foreignObject 
             x={x} 

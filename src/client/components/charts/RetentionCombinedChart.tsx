@@ -253,7 +253,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
 
     return (
       <ChartContainer height={chartHeight}>
-        <ComposedChart data={chartData} margin={chartMargins}>
+        <ComposedChart data={chartData} margin={chartMargins} accessibilityLayer={false}>
           {showGrid && <CartesianGrid strokeDasharray="3 3" />}
           <XAxis
             dataKey="periodLabel"

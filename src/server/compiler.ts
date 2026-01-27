@@ -12,12 +12,14 @@ import type {
   MeasureMetadata,
   DimensionMetadata,
   CubeRelationshipMetadata,
+  HierarchyMetadata,
   Cube,
   QueryAnalysis,
   CacheConfig,
   ExplainOptions,
   ExplainResult,
-  ExecutionOptions
+  ExecutionOptions,
+  TimeGranularity
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
@@ -286,21 +288,44 @@ export class SemanticLayerCompiler {
   }
 
   /**
+   * Default time granularities for time dimensions (ordered from least to most granular)
+   * Used when dimension.granularities is not specified
+   */
+  private static readonly DEFAULT_TIME_GRANULARITIES: TimeGranularity[] = [
+    'year', 'quarter', 'month', 'week', 'day', 'hour'
+  ]
+
+  /**
    * Generate cube metadata for API responses from cubes
    * Optimized version that minimizes object iterations
+   * Includes drill-down support: drillMembers on measures, granularities on time dimensions, hierarchies
    */
   private generateCubeMetadata(cube: Cube): CubeMetadata {
     // Pre-allocate arrays for better performance
     const measureKeys = Object.keys(cube.measures)
     const dimensionKeys = Object.keys(cube.dimensions)
-    
+
     const measures: MeasureMetadata[] = new Array(measureKeys.length)
     const dimensions: DimensionMetadata[] = new Array(dimensionKeys.length)
 
-    // Process measures efficiently
+    // Process measures efficiently - include drillMembers for drill-down support
     for (let i = 0; i < measureKeys.length; i++) {
       const key = measureKeys[i]
       const measure = cube.measures[key]
+
+      // Normalize drillMembers to full qualified names (CubeName.fieldName)
+      let drillMembers: string[] | undefined
+      if (measure.drillMembers && measure.drillMembers.length > 0) {
+        drillMembers = measure.drillMembers.map(member => {
+          // If already qualified (contains dot), use as-is
+          if (member.includes('.')) {
+            return member
+          }
+          // Otherwise, prefix with cube name
+          return `${cube.name}.${member}`
+        })
+      }
+
       measures[i] = {
         name: `${cube.name}.${key}`,
         title: measure.title || key,
@@ -308,14 +333,22 @@ export class SemanticLayerCompiler {
         type: measure.type,
         format: undefined, // Measure doesn't have format field
         description: measure.description,
-        synonyms: measure.synonyms
+        synonyms: measure.synonyms,
+        drillMembers
       }
     }
 
-    // Process dimensions efficiently
+    // Process dimensions efficiently - include granularities for time dimensions
     for (let i = 0; i < dimensionKeys.length; i++) {
       const key = dimensionKeys[i]
       const dimension = cube.dimensions[key]
+
+      // For time dimensions, include granularities (use defaults if not specified)
+      let granularities: TimeGranularity[] | undefined
+      if (dimension.type === 'time') {
+        granularities = dimension.granularities || SemanticLayerCompiler.DEFAULT_TIME_GRANULARITIES
+      }
+
       dimensions[i] = {
         name: `${cube.name}.${key}`,
         title: dimension.title || key,
@@ -323,7 +356,8 @@ export class SemanticLayerCompiler {
         type: dimension.type,
         format: undefined, // Dimension doesn't have format field
         description: dimension.description,
-        synonyms: dimension.synonyms
+        synonyms: dimension.synonyms,
+        granularities
       }
     }
 
@@ -332,7 +366,7 @@ export class SemanticLayerCompiler {
     if (cube.joins) {
       for (const [, join] of Object.entries(cube.joins)) {
         const targetCube = typeof join.targetCube === 'function' ? join.targetCube() : join.targetCube
-        
+
         relationships.push({
           targetCube: targetCube.name,
           relationship: join.relationship,
@@ -344,7 +378,26 @@ export class SemanticLayerCompiler {
       }
     }
 
-    const result = {
+    // Process hierarchies if they exist - convert to full qualified names
+    const hierarchies: HierarchyMetadata[] = []
+    if (cube.hierarchies) {
+      for (const [, hierarchy] of Object.entries(cube.hierarchies)) {
+        hierarchies.push({
+          name: hierarchy.name,
+          title: hierarchy.title || hierarchy.name,
+          cubeName: cube.name,
+          // Convert level names to full qualified names
+          levels: hierarchy.levels.map(level => {
+            if (level.includes('.')) {
+              return level
+            }
+            return `${cube.name}.${level}`
+          })
+        })
+      }
+    }
+
+    const result: CubeMetadata = {
       name: cube.name,
       title: cube.title || cube.name,
       description: cube.description,
@@ -353,6 +406,7 @@ export class SemanticLayerCompiler {
       dimensions,
       segments: [], // Add segments support later if needed
       relationships: relationships.length > 0 ? relationships : undefined,
+      hierarchies: hierarchies.length > 0 ? hierarchies : undefined,
       meta: cube.meta
     }
 

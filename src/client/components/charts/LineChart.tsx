@@ -21,7 +21,9 @@ const LineChart = React.memo(function LineChart({
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
@@ -206,9 +208,9 @@ const LineChart = React.memo(function LineChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsLineChart data={enhancedChartData} margin={chartMargins}>
+        <RechartsLineChart data={enhancedChartData} margin={chartMargins} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && (
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
           )}
           <XAxis
             dataKey={effectiveXAxisKey}
@@ -324,20 +326,78 @@ const LineChart = React.memo(function LineChart({
             const strokeDashArray = isPriorPeriod ? getPriorPeriodStrokeDashArray(priorPeriodStyle) : undefined
             const opacity = isPriorPeriod ? priorPeriodOpacity : 1
 
+            // When drill is enabled, show persistent dots for better click targets
+            const lineColor = (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
+              CHART_COLORS[index % CHART_COLORS.length]
+
             return (
               <Line
                 key={seriesKey}
                 type="monotone"
                 dataKey={seriesKey}
                 yAxisId={axisId}
-                stroke={
-                  (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-                  CHART_COLORS[index % CHART_COLORS.length]
-                }
+                stroke={lineColor}
                 strokeWidth={isPriorPeriod ? 1.5 : 2}
                 strokeDasharray={strokeDashArray}
-                dot={isPriorPeriod ? false : { r: 3 }}
-                activeDot={isPriorPeriod ? false : { r: 5 }}
+                dot={isPriorPeriod ? false : (props: any) => {
+                  const { cx, cy, payload, key } = props
+                  if (cx === undefined || cy === undefined) return null
+
+                  const handleClick = (event: React.MouseEvent) => {
+                    event.stopPropagation()
+                    event.preventDefault()
+                    if (onDataPointClick) {
+                      onDataPointClick({
+                        dataPoint: payload,
+                        clickedField: originalField || seriesKey,
+                        xValue: payload.name,
+                        position: { x: event.clientX, y: event.clientY },
+                        nativeEvent: event
+                      })
+                    }
+                  }
+
+                  // When drill is enabled, render clickable dots with background to mask grid
+                  if (drillEnabled && onDataPointClick) {
+                    return (
+                      <g key={key}>
+                        {/* Background to mask grid lines - uses theme surface color */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill="var(--dc-surface)"
+                          style={{ pointerEvents: 'none' }}
+                        />
+                        {/* Visible dot with click handler */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={4}
+                          fill="var(--dc-surface)"
+                          stroke={lineColor}
+                          strokeWidth={2}
+                          cursor="pointer"
+                          onClick={(e: React.MouseEvent<SVGCircleElement>) => {
+                            handleClick(e as unknown as React.MouseEvent)
+                          }}
+                        />
+                      </g>
+                    )
+                  }
+
+                  // Non-drill mode: simple small dot
+                  return (
+                    <circle
+                      key={key}
+                      cx={cx}
+                      cy={cy}
+                      r={3}
+                      fill={lineColor}
+                    />
+                  )
+                }}
+                activeDot={false}
                 strokeOpacity={
                   hoveredLegend
                     ? (hoveredLegend === seriesKey ? 1 : 0.3)

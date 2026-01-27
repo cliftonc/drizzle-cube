@@ -7,13 +7,15 @@ import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, for
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-const PieChart = React.memo(function PieChart({ 
-  data, 
+const PieChart = React.memo(function PieChart({
+  data,
   chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
@@ -146,20 +148,32 @@ const PieChart = React.memo(function PieChart({
   
     return (
       <ChartContainer height={height}>
-        <RechartsPieChart>
+        <RechartsPieChart accessibilityLayer={false}>
           <Pie
             data={pieData}
             cx="50%"
             cy="50%"
             outerRadius="70%"
             dataKey="value"
-            label={!safeDisplayConfig.showLegend ? ({ name, percent }) => 
+            label={!safeDisplayConfig.showLegend ? ({ name, percent }) =>
               `${name} ${((percent || 0) * 100).toFixed(0)}%`
             : undefined}
+            cursor={drillEnabled ? 'pointer' : undefined}
+            onClick={(sliceData: any, _index: number, event: React.MouseEvent) => {
+              if (onDataPointClick && drillEnabled && sliceData) {
+                onDataPointClick({
+                  dataPoint: sliceData,
+                  clickedField: yAxisFields[0],
+                  xValue: sliceData.name,
+                  position: { x: event.clientX, y: event.clientY },
+                  nativeEvent: event
+                })
+              }
+            }}
           >
             {pieData.map((_entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
+              <Cell
+                key={`cell-${index}`}
                 fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
                 fillOpacity={hoveredLegend ? (hoveredLegend === pieData[index].name ? 1 : 0.3) : 1}
               />

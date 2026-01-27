@@ -8,13 +8,15 @@ import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-const AreaChart = React.memo(function AreaChart({ 
-  data, 
-  chartConfig, 
+const AreaChart = React.memo(function AreaChart({
+  data,
+  chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
-  colorPalette
+  colorPalette,
+  onDataPointClick,
+  drillEnabled
 }: ChartProps) {
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
@@ -155,8 +157,8 @@ const AreaChart = React.memo(function AreaChart({
 
     return (
       <ChartContainer height={height}>
-        <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset}>
-          {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" />}
+        <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
+          {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
           <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
           <YAxis
             yAxisId="left"
@@ -240,6 +242,10 @@ const AreaChart = React.memo(function AreaChart({
             // Look up the original field name to get its axis assignment
             const originalField = seriesKeyToField[seriesKey]
             const axisId = originalField && yAxisAssignment[originalField] === 'right' ? 'right' : 'left'
+            // When drill is enabled, show persistent dots for better click targets
+            const areaColor = (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
+              CHART_COLORS[index % CHART_COLORS.length]
+
             return (
               <Area
                 key={seriesKey}
@@ -247,18 +253,57 @@ const AreaChart = React.memo(function AreaChart({
                 dataKey={seriesKey}
                 yAxisId={axisId}
                 stackId={effectiveShouldStack ? 'stack' : undefined}
-                stroke={
-                  (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-                  CHART_COLORS[index % CHART_COLORS.length]
-                }
-                fill={
-                  (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-                  CHART_COLORS[index % CHART_COLORS.length]
-                }
+                stroke={areaColor}
+                fill={areaColor}
                 fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
                 strokeWidth={2}
                 strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
                 connectNulls={safeDisplayConfig.connectNulls}
+                dot={(props: any) => {
+                  const { cx, cy, payload, key } = props
+                  if (!drillEnabled || cx === undefined || cy === undefined) return null
+
+                  const handleClick = (event: React.MouseEvent) => {
+                    event.stopPropagation()
+                    event.preventDefault()
+                    if (onDataPointClick) {
+                      onDataPointClick({
+                        dataPoint: payload,
+                        clickedField: originalField || seriesKey,
+                        xValue: payload.name,
+                        position: { x: event.clientX, y: event.clientY },
+                        nativeEvent: event
+                      })
+                    }
+                  }
+
+                  return (
+                    <g key={key}>
+                      {/* Background to mask grid lines - uses theme surface color */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={6}
+                        fill="var(--dc-surface)"
+                        style={{ pointerEvents: 'none' }}
+                      />
+                      {/* Visible dot with click handler */}
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={4}
+                        fill="var(--dc-surface)"
+                        stroke={areaColor}
+                        strokeWidth={2}
+                        cursor="pointer"
+                        onClick={(e: React.MouseEvent<SVGCircleElement>) => {
+                          handleClick(e as unknown as React.MouseEvent)
+                        }}
+                      />
+                    </g>
+                  )
+                }}
+                activeDot={false}
               />
             )
           })}

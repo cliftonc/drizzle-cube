@@ -115,11 +115,12 @@ const RadialBarChart = React.memo(function RadialBarChart({
 
     return (
       <ChartContainer height={height}>
-        <RechartsRadialBarChart 
+        <RechartsRadialBarChart
           data={radialData}
           innerRadius="10%"
           outerRadius="80%"
           margin={{ top: 20, right: 30, bottom: 20, left: 30 }}
+          accessibilityLayer={false}
         >
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip

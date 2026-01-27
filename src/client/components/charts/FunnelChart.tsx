@@ -177,7 +177,7 @@ const FunnelChart = React.memo(function FunnelChart({
       <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col" style={{ height }}>
         <div className="dc:flex-1">
           <ResponsiveContainer width="100%" height="100%">
-            <RechartsFunnelChart layout={rechartsLayout}>
+            <RechartsFunnelChart layout={rechartsLayout} accessibilityLayer={false}>
               <Tooltip
                 formatter={(value) => typeof value === 'number' ? value.toLocaleString() : String(value)}
                 contentStyle={{

@@ -8,6 +8,7 @@ export const barChartConfig: ChartTypeConfig = {
   icon: getChartTypeIcon('bar'),
   description: 'Compare values across categories',
   useCase: 'Best for comparing discrete categories, showing rankings, or displaying changes over time',
+  clickableElements: { bar: true },
   dropZones: [
     {
       key: 'xAxis',

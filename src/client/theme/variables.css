@@ -518,6 +518,37 @@ html.neon {
 }
 
 /* ============================================================================
+   Recharts Focus Ring Handling (Recharts 3.x)
+   ============================================================================
+   Hide focus outline for mouse clicks. Recharts 3.x adds accessibility layer
+   with tabIndex on various elements which causes focus rings on click.
+   Using outline: none (not :focus-visible) because we disable accessibilityLayer
+   on chart components anyway for proper click handling.
+*/
+.recharts-surface:focus,
+.recharts-wrapper:focus,
+.recharts-area:focus,
+.recharts-area-area:focus,
+.recharts-area-curve:focus,
+.recharts-line:focus,
+.recharts-line-curve:focus,
+.recharts-bar:focus,
+.recharts-pie:focus,
+.recharts-sector:focus,
+.recharts-layer:focus {
+  outline: none;
+}
+
+/* Target all SVG elements inside recharts that might receive focus */
+.recharts-wrapper svg:focus,
+.recharts-wrapper g:focus,
+.recharts-wrapper path:focus,
+.recharts-wrapper rect:focus,
+.recharts-wrapper circle:focus {
+  outline: none;
+}
+
+/* ============================================================================
    Syntax Highlighting Theme Overrides
    ============================================================================
    Override highlight.js colors to integrate with drizzle-cube themes
