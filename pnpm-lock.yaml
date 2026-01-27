@@ -137,7 +137,7 @@ importers:
         version: 0.31.8
       drizzle-orm:
         specifier: ^0.45.0
-        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8)
+        version: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.2)(postgres@3.4.8)
       eslint:
         specifier: ^9.34.0
         version: 9.39.2(jiti@2.6.1)
@@ -163,11 +163,11 @@ importers:
         specifier: ^27.0.0
         version: 27.4.0
       modern-screenshot:
-        specifier: ^4.6.8
+        specifier: ^4.6.7
         version: 4.6.8
       mysql2:
-        specifier: ^3.14.3
-        version: 3.16.1
+        specifier: ^3.16.2
+        version: 3.16.2
       next:
         specifier: ^15.5.9
         version: 15.5.9(@babel/core@7.28.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -231,7 +231,7 @@ importers:
         version: 1.4.3-r.3
       '@leonardovida-md/drizzle-neo-duckdb':
         specifier: ^1.2.2
-        version: 1.2.2(@duckdb/node-api@1.4.3-r.3)(drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8))
+        version: 1.2.2(@duckdb/node-api@1.4.3-r.3)(drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.2)(postgres@3.4.8))
 
 packages:
 
@@ -3376,8 +3376,8 @@ packages:
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
 
-  mysql2@3.16.1:
-    resolution: {integrity: sha512-b75qsDB3ieYEzMsT1uRGsztM/sy6vWPY40uPZlVVl8eefAotFCoS7jaDB5DxDNtlW5kdVGd9jptSpkvujNxI2A==}
+  mysql2@3.16.2:
+    resolution: {integrity: sha512-JsqBpYNy7pH20lGfPuSyRSIcCxSeAIwxWADpV64nP9KeyN3ZKpHZgjKXuBKsh7dH6FbOvf1bOgoVKjSUPXRMTw==}
     engines: {node: '>= 8.0'}
 
   named-placeholders@1.1.6:
@@ -5049,10 +5049,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@leonardovida-md/drizzle-neo-duckdb@1.2.2(@duckdb/node-api@1.4.3-r.3)(drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8))':
+  '@leonardovida-md/drizzle-neo-duckdb@1.2.2(@duckdb/node-api@1.4.3-r.3)(drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.2)(postgres@3.4.8))':
     dependencies:
       '@duckdb/node-bindings-darwin-arm64': 1.4.2-r.1
-      drizzle-orm: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8)
+      drizzle-orm: 0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.2)(postgres@3.4.8)
       node-sql-parser: 5.4.0
     optionalDependencies:
       '@duckdb/node-api': 1.4.3-r.3
@@ -6536,13 +6536,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.1)(postgres@3.4.8):
+  drizzle-orm@0.45.1(@neondatabase/serverless@1.0.2)(@types/better-sqlite3@7.6.13)(@types/pg@8.16.0)(better-sqlite3@12.6.2)(mysql2@3.16.2)(postgres@3.4.8):
     optionalDependencies:
       '@neondatabase/serverless': 1.0.2
       '@types/better-sqlite3': 7.6.13
       '@types/pg': 8.16.0
       better-sqlite3: 12.6.2
-      mysql2: 3.16.1
+      mysql2: 3.16.2
       postgres: 3.4.8
 
   dunder-proto@1.0.1:
@@ -7358,7 +7358,7 @@ snapshots:
 
   muggle-string@0.4.1: {}
 
-  mysql2@3.16.1:
+  mysql2@3.16.2:
     dependencies:
       aws-ssl-profiles: 1.1.2
       denque: 2.1.0
