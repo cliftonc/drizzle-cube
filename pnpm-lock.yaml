@@ -154,7 +154,7 @@ importers:
         specifier: ^17.0.0
         version: 17.1.0
       hono:
-        specifier: ^4.11.6
+        specifier: ^4.0.0
         version: 4.11.6
       html2canvas:
         specifier: ^1.4.1
@@ -163,8 +163,8 @@ importers:
         specifier: ^27.0.0
         version: 27.4.0
       modern-screenshot:
-        specifier: ^4.6.7
-        version: 4.6.7
+        specifier: ^4.6.8
+        version: 4.6.8
       mysql2:
         specifier: ^3.14.3
         version: 3.16.1
@@ -3360,8 +3360,8 @@ packages:
   mlly@1.8.0:
     resolution: {integrity: sha512-l8D9ODSRWLe2KHJSifWGwBqpTZXIXTeo8mlKjY+E2HAakaTeNpqAyBZ8GSqLzHgw4XmHmC8whvpjJNMbFZN7/g==}
 
-  modern-screenshot@4.6.7:
-    resolution: {integrity: sha512-0GhgI6i6le4AhKzCvLYjwEmsP47kTsX45iT5yuAzsLTi/7i3Rjxe8fbH2VjGJLuyOThwsa0CdQAPd4auoEtsZg==}
+  modern-screenshot@4.6.8:
+    resolution: {integrity: sha512-GJkv/yWPOJTlxj1LZDU2k474cDyOWL+LVaqTdDWQwQ5d8zIuTz1892+1cV9V0ZpK6HYZFo/+BNLBbierO9d2TA==}
 
   moo@0.5.2:
     resolution: {integrity: sha512-iSAJLHYKnX41mKcJKjqvnAN9sf0LMDTXDEvFv+ffuRR9a1MIuXLjMNL6EsnDHSkKLTWNqQQ5uo61P4EbU4NU+Q==}
@@ -7348,7 +7348,7 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.2
 
-  modern-screenshot@4.6.7: {}
+  modern-screenshot@4.6.8: {}
 
   moo@0.5.2: {}
 
