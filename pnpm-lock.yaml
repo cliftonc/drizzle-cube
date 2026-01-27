@@ -44,7 +44,7 @@ importers:
         version: 11.2.0
       '@hono/node-server':
         specifier: ^1.19.0
-        version: 1.19.9(hono@4.11.6)
+        version: 1.19.9(hono@4.11.7)
       '@iconify-icons/heroicons-outline':
         specifier: ^1.2.5
         version: 1.2.5
@@ -154,8 +154,8 @@ importers:
         specifier: ^17.0.0
         version: 17.1.0
       hono:
-        specifier: ^4.0.0
-        version: 4.11.6
+        specifier: ^4.11.7
+        version: 4.11.7
       html2canvas:
         specifier: ^1.4.1
         version: 1.4.1
@@ -169,7 +169,7 @@ importers:
         specifier: ^3.14.3
         version: 3.16.2
       next:
-        specifier: ^15.5.10
+        specifier: ^15.5.9
         version: 15.5.10(@babel/core@7.28.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       postcss:
         specifier: ^8.5.6
@@ -2963,8 +2963,8 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
-  hono@4.11.6:
-    resolution: {integrity: sha512-ofIiiHyl34SV6AuhE3YT2mhO5HRWokce+eUYE82TsP6z0/H3JeJcjVWEMSIAiw2QkjDOEpES/lYsg8eEbsLtdw==}
+  hono@4.11.7:
+    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@6.0.0:
@@ -4893,9 +4893,9 @@ snapshots:
       '@fastify/forwarded': 3.0.1
       ipaddr.js: 2.3.0
 
-  '@hono/node-server@1.19.9(hono@4.11.6)':
+  '@hono/node-server@1.19.9(hono@4.11.7)':
     dependencies:
-      hono: 4.11.6
+      hono: 4.11.7
 
   '@humanfs/core@0.19.1': {}
 
@@ -7004,7 +7004,7 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
-  hono@4.11.6: {}
+  hono@4.11.7: {}
 
   html-encoding-sniffer@6.0.0:
     dependencies:
