@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
+import AngledXAxisTick from './AngledXAxisTick'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatAxisValue, formatTimeValue, getFieldGranularity } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
@@ -214,13 +215,10 @@ const LineChart = React.memo(function LineChart({
           )}
           <XAxis
             dataKey={effectiveXAxisKey}
-            tick={{ fontSize: 12 }}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-            tickFormatter={
+            type="category"
+            tick={<AngledXAxisTick tickFormatter={
               hasComparisonData
-                ? (value, index) => {
+                ? (value: string | number, index: number) => {
                     // For comparison data, show the date from the current period
                     // formatted according to the query's granularity
                     const row = chartData[index]
@@ -228,10 +226,11 @@ const LineChart = React.memo(function LineChart({
                       const granularity = getFieldGranularity(queryObject, xAxisField)
                       return formatTimeValue(row.__displayDate, granularity)
                     }
-                    return `Period ${value + 1}`
+                    return `Period ${Number(value) + 1}`
                   }
                 : undefined
-            }
+            } />}
+            height={60}
           />
           <YAxis
             yAxisId="left"

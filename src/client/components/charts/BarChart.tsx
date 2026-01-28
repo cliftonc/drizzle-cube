@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
+import AngledXAxisTick from './AngledXAxisTick'
 import { CHART_COLORS, POSITIVE_COLOR, NEGATIVE_COLOR, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, isValidNumericValue, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
@@ -198,9 +199,8 @@ const BarChart = React.memo(function BarChart({
           )}
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 12 }}
-            angle={-45}
-            textAnchor="end"
+            type="category"
+            tick={<AngledXAxisTick />}
             height={60}
           />
           <YAxis

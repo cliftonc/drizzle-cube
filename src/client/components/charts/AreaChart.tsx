@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
+import AngledXAxisTick from './AngledXAxisTick'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatAxisValue } from '../../utils/chartUtils'
 import { parseTargetValues, spreadTargetValues } from '../../utils/targetUtils'
@@ -159,7 +160,7 @@ const AreaChart = React.memo(function AreaChart({
       <ChartContainer height={height}>
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
+          <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} />
           <YAxis
             yAxisId="left"
             orientation="left"
