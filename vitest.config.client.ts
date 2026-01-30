@@ -17,7 +17,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      reportsDirectory: process.env.COVERAGE_DIR || './coverage/client',
+      reportsDirectory: process.env.COVERAGE_DIR || './coverage',
       include: [
         'src/client/**/*.{ts,tsx}'
       ],

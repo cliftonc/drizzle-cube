@@ -262,6 +262,7 @@
     "html2canvas": "^1.4.1",
     "jsdom": "^27.0.0",
     "modern-screenshot": "^4.6.7",
+    "msw": "^2.12.7",
     "mysql2": "^3.14.3",
     "next": "^15.5.9",
     "postcss": "^8.5.6",

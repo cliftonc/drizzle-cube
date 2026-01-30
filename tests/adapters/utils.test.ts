@@ -12,11 +12,18 @@ import {
   formatMetaResponse,
   formatErrorResponse,
   handleDryRun,
-  handleBatchRequest
+  handleBatchRequest,
+  formatCubeResponse,
+  getDatabaseType,
+  handleDiscover,
+  handleSuggest,
+  handleValidate,
+  handleLoad
 } from '../../src/adapters/utils'
 import {
   createTestSemanticLayer,
-  skipIfDuckDB
+  skipIfDuckDB,
+  getTestDatabaseType
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
@@ -239,6 +246,196 @@ describe('Adapter Utils', () => {
       const result = formatErrorResponse('Error')
 
       expect(result.status).toBe(500)
+    })
+
+    it('should handle 400 status', () => {
+      const result = formatErrorResponse('Bad Request', 400)
+
+      expect(result.error).toBe('Bad Request')
+      expect(result.status).toBe(400)
+    })
+
+    it('should handle 401 status', () => {
+      const result = formatErrorResponse('Unauthorized', 401)
+      expect(result.status).toBe(401)
+    })
+
+    it('should handle 404 status', () => {
+      const result = formatErrorResponse('Not Found', 404)
+      expect(result.status).toBe(404)
+    })
+
+    it('should handle 405 status', () => {
+      const result = formatErrorResponse('Method Not Allowed', 405)
+      expect(result.status).toBe(405)
+    })
+  })
+
+  describe('formatSqlString - extended', () => {
+    it('should format SQL for DuckDB dialect (uses PostgreSQL)', () => {
+      const sql = 'SELECT id, name FROM users WHERE id = 1'
+      const formatted = formatSqlString(sql, 'duckdb')
+
+      expect(formatted).toContain('SELECT')
+      expect(formatted).toContain('FROM')
+    })
+
+    it('should format complex SQL with JOINs', () => {
+      const sql = 'SELECT a.id, b.name FROM table_a a JOIN table_b b ON a.id = b.a_id WHERE a.status = 1'
+      const formatted = formatSqlString(sql, 'postgres')
+
+      expect(formatted).toContain('SELECT')
+      expect(formatted).toContain('JOIN')
+    })
+
+    it('should handle SQL with GROUP BY and HAVING', () => {
+      const sql = 'SELECT department, COUNT(*) as cnt FROM employees GROUP BY department HAVING COUNT(*) > 5'
+      const formatted = formatSqlString(sql, 'postgres')
+
+      expect(formatted).toContain('GROUP BY')
+    })
+
+    it('should handle SQL with subqueries', () => {
+      const sql = 'SELECT * FROM (SELECT id FROM users) as subq WHERE subq.id > 10'
+      const formatted = formatSqlString(sql, 'postgres')
+
+      expect(formatted).toBeDefined()
+    })
+
+    it('should handle SQL with ORDER BY and LIMIT', () => {
+      const sql = 'SELECT id FROM users ORDER BY id DESC LIMIT 10'
+      const formatted = formatSqlString(sql, 'postgres')
+
+      expect(formatted).toContain('ORDER BY')
+      expect(formatted).toContain('LIMIT')
+    })
+  })
+
+  describe('buildTransformedQuery - extended', () => {
+    it('should handle query with only dimensions', () => {
+      const query = {
+        dimensions: ['Cube.name', 'Cube.id']
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.sortedDimensions).toEqual(['Cube.name', 'Cube.id'])
+      expect(result.measures).toEqual([])
+    })
+
+    it('should handle query with only measures', () => {
+      const query = {
+        measures: ['Cube.count', 'Cube.sum']
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.measures).toEqual(['Cube.count', 'Cube.sum'])
+      expect(result.sortedDimensions).toEqual([])
+    })
+
+    it('should handle query with only timeDimensions', () => {
+      const query = {
+        timeDimensions: [
+          { dimension: 'Cube.createdAt', granularity: 'month', dateRange: 'last 3 months' }
+        ]
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.sortedTimeDimensions).toEqual(query.timeDimensions)
+      expect(result.timeDimensions).toEqual(query.timeDimensions)
+    })
+
+    it('should set leafMeasures to match measures', () => {
+      const query = {
+        measures: ['Cube.count', 'Cube.sum', 'Cube.avg']
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.leafMeasures).toEqual(query.measures)
+    })
+
+    it('should include granularityHierarchies as empty object', () => {
+      const result = buildTransformedQuery({ measures: ['Cube.count'] })
+
+      expect(result.granularityHierarchies).toEqual({})
+    })
+
+    it('should include ownedDimensions matching dimensions', () => {
+      const query = {
+        dimensions: ['Cube.a', 'Cube.b']
+      }
+
+      const result = buildTransformedQuery(query)
+
+      expect(result.ownedDimensions).toEqual(query.dimensions)
+    })
+  })
+
+  describe('calculateQueryComplexity - edge cases', () => {
+    it('should handle query at boundary between low and medium (5 points)', () => {
+      // 5 measures = 5 points = low
+      const query = {
+        measures: ['A.1', 'A.2', 'A.3', 'A.4', 'A.5']
+      }
+      expect(calculateQueryComplexity(query)).toBe('low')
+    })
+
+    it('should handle query at boundary (6 points = medium)', () => {
+      // 4 measures + 2 filters = 4 + 4 = 8 points = medium
+      const query = {
+        measures: ['A.1', 'A.2', 'A.3', 'A.4'],
+        filters: [
+          { member: 'A.x', operator: 'equals', values: ['y'] },
+          { member: 'A.y', operator: 'equals', values: ['z'] }
+        ]
+      }
+      expect(calculateQueryComplexity(query)).toBe('medium')
+    })
+
+    it('should handle query at boundary between medium and high (15 points)', () => {
+      // 5 measures + 5 dimensions + 2 filters + 1 time = 5 + 5 + 4 + 3 = 17 = high
+      const query = {
+        measures: ['A.1', 'A.2', 'A.3', 'A.4', 'A.5'],
+        dimensions: ['A.a', 'A.b', 'A.c', 'A.d', 'A.e'],
+        filters: [
+          { member: 'A.x', operator: 'equals', values: ['y'] },
+          { member: 'A.y', operator: 'equals', values: ['z'] }
+        ],
+        timeDimensions: [{ dimension: 'A.date', granularity: 'day' }]
+      }
+      expect(calculateQueryComplexity(query)).toBe('high')
+    })
+
+    it('should handle query with undefined arrays', () => {
+      const query = {
+        measures: undefined,
+        dimensions: undefined,
+        filters: undefined,
+        timeDimensions: undefined
+      }
+      expect(calculateQueryComplexity(query as any)).toBe('low')
+    })
+  })
+
+  describe('generateRequestId - extended', () => {
+    it('should generate many unique IDs', () => {
+      const ids = new Set<string>()
+      for (let i = 0; i < 100; i++) {
+        ids.add(generateRequestId())
+      }
+      expect(ids.size).toBe(100)
+    })
+
+    it('should contain timestamp in first part', () => {
+      const id = generateRequestId()
+      const timestamp = parseInt(id.split('-')[0], 10)
+      const now = Date.now()
+
+      // Should be within 1 second of now
+      expect(Math.abs(now - timestamp)).toBeLessThan(1000)
     })
   })
 

@@ -484,3 +484,96 @@ it.skipIf(skipIfDuckDB())('test that fails on DuckDB', async () => {
   // Test implementation
 })
 ```
+
+## Client Testing Architecture
+
+Client tests are located in `tests/client/` and use a separate Vitest configuration (`vitest.config.client.ts`).
+
+### Running Client Tests
+```bash
+npm run test:client              # Run all client tests
+npm run test:client:watch        # Watch mode
+npm run test:client:coverage     # With coverage report
+```
+
+### Test Infrastructure
+
+**Configuration**: `vitest.config.client.ts`
+- Environment: jsdom
+- Setup file: `tests/client-setup/setup.ts`
+- Coverage thresholds: 75% global, 90% core utilities, 85% hooks
+
+**Setup Files** (`tests/client-setup/`):
+- `setup.ts` - Browser API mocks (ResizeObserver, canvas, matchMedia) + MSW lifecycle
+- `msw-handlers.ts` - Mock Service Worker request handlers
+- `msw-server.ts` - MSW server instance
+- `test-utils.tsx` - Shared render utilities
+
+### MSW (Mock Service Worker)
+
+Client tests use MSW for API mocking instead of `vi.mock`. This intercepts requests at the network level for more realistic testing.
+
+**Default handlers** mock the Cube.js API:
+- `GET /cubejs-api/v1/meta` - Cube metadata
+- `POST /cubejs-api/v1/load` - Query execution
+- `POST /cubejs-api/v1/sql` - Dry run SQL preview
+
+**Override handlers in tests**:
+```typescript
+import { server } from '../client-setup/test-utils'
+import { http, HttpResponse } from 'msw'
+
+it('should handle API error', async () => {
+  server.use(
+    http.post('*/cubejs-api/v1/load', () => {
+      return HttpResponse.json({ error: 'Query failed' }, { status: 500 })
+    })
+  )
+  // Test error handling...
+})
+```
+
+### Test Utilities
+
+Use `renderWithProviders` for component tests:
+```typescript
+import { renderWithProviders, screen, userEvent } from '../client-setup/test-utils'
+
+it('should render component with providers', async () => {
+  const user = userEvent.setup()
+  renderWithProviders(<MyComponent />)
+
+  await user.click(screen.getByRole('button', { name: /submit/i }))
+  expect(screen.getByText('Success')).toBeInTheDocument()
+})
+```
+
+Use `createHookWrapper` for hook tests:
+```typescript
+import { renderHook, waitFor } from '@testing-library/react'
+import { createHookWrapper } from '../client-setup/test-utils'
+
+it('should fetch data', async () => {
+  const { wrapper } = createHookWrapper()
+  const { result } = renderHook(() => useCubeLoadQuery(query), { wrapper })
+
+  await waitFor(() => expect(result.current.rawData).toBeDefined())
+})
+```
+
+### Best Practices for Client Tests
+
+1. **User-centric queries** - Use `getByRole`, `getByText` instead of `getByTestId`
+2. **Test behavior, not implementation** - Avoid testing internal state
+3. **MSW for API mocking** - Don't use `vi.mock` for fetch/API calls
+4. **Avoid snapshot tests** - They're brittle and break on any change
+5. **Use userEvent over fireEvent** - More realistic user interactions
+6. **Clean up after tests** - MSW handlers reset automatically via `afterEach`
+
+### Key Files Reference
+
+- @tests/client-setup/setup.ts - Global test setup with MSW lifecycle
+- @tests/client-setup/msw-handlers.ts - Default API mock handlers
+- @tests/client-setup/msw-server.ts - MSW server instance
+- @tests/client-setup/test-utils.tsx - renderWithProviders and hook wrapper utilities
+- @vitest.config.client.ts - Client test configuration

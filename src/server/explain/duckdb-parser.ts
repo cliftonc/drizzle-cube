@@ -168,10 +168,15 @@ function parseDuckDBOperationLine(line: string): ExplainOperation | null {
   const cost = opMatch[4] ? parseFloat(opMatch[4]) : undefined
   const rows = opMatch[5] ? parseInt(opMatch[5], 10) : undefined
 
-  // For INDEX_SCAN, first param is index, second is table
-  if (type === 'INDEX_SCAN' && table && !index) {
-    index = table
-    table = undefined
+  // For INDEX_SCAN format: "INDEX_SCAN <index_name>" or "INDEX_SCAN <index_name> on <table_name>"
+  // opMatch[2] is the index name, opMatch[3] (after "on") is the table name
+  if (type === 'INDEX_SCAN') {
+    // Swap: what was captured as 'table' is actually the index name
+    // and what was captured as 'index' (after "on") is actually the table name
+    const actualIndex = table
+    const actualTable = index
+    index = actualIndex
+    table = actualTable
   }
 
   const operation: ExplainOperation = {

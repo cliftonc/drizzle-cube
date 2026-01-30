@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom'
-import { vi, beforeAll, afterAll } from 'vitest'
+import { vi, beforeAll, afterAll, afterEach } from 'vitest'
+import { server } from './msw-server'
 
 // Mock ResizeObserver (needed for Recharts)
 class ResizeObserverMock {
@@ -35,6 +36,9 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 // Mock HTMLCanvasElement.getContext (needed for chart libraries)
+// Mock scrollIntoView (used by keyboard navigation)
+Element.prototype.scrollIntoView = vi.fn()
+
 HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   fillRect: vi.fn(),
   clearRect: vi.fn(),
@@ -64,10 +68,23 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
 
 // Suppress console errors during tests (optional)
 const originalError = console.error
+
+// MSW and console setup
 beforeAll(() => {
+  // Start MSW server - intercept network requests
+  server.listen({ onUnhandledRequest: 'warn' })
+  // Suppress console errors
   console.error = vi.fn()
 })
 
+// Reset MSW handlers after each test to ensure clean state
+afterEach(() => {
+  server.resetHandlers()
+})
+
 afterAll(() => {
+  // Stop MSW server
+  server.close()
+  // Restore console.error
   console.error = originalError
 })

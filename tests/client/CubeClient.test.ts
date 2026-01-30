@@ -1,6 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { CubeClient } from '../../src/client/client/CubeClient'
 import type { CubeQuery } from '../../src/client/types'
+import { server } from '../client-setup/msw-server'
+
+// This is a unit test file that mocks fetch directly
+// We need to close MSW server to prevent it from intercepting requests
+beforeAll(() => {
+  server.close()
+})
+
+afterAll(() => {
+  server.listen()
+})
 
 // Mock fetch for API calls
 const mockFetch = vi.fn()
@@ -8,7 +19,7 @@ global.fetch = mockFetch
 
 describe('CubeClient', () => {
   let client: CubeClient
-  
+
   beforeEach(() => {
     vi.clearAllMocks()
     client = new CubeClient(undefined, {

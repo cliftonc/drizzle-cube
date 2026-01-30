@@ -381,13 +381,17 @@ export function suggestQuery(
 
   if (relevantCubes.length === 0) {
     // For analysis modes, still provide nextSteps guidance even without cubes
-    const nextSteps = analysisMode !== 'query'
+    // Return confidence 0.7 for analysis modes (mode was detected), 0 for query mode
+    const isAnalysisMode = analysisMode !== 'query'
+    const nextSteps = isAnalysisMode
       ? generateNextSteps(analysisMode, undefined)
       : undefined
     return {
       query: {},
-      confidence: 0,
-      reasoning: ['Could not identify relevant cubes for this query'],
+      confidence: isAnalysisMode ? 0.7 : 0,
+      reasoning: isAnalysisMode
+        ? [`Detected ${analysisMode} intent from natural language`]
+        : ['Could not identify relevant cubes for this query'],
       warnings,
       analysisMode,
       nextSteps
