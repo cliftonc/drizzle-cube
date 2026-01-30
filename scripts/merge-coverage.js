@@ -18,7 +18,7 @@ const { createContext } = libReport
 const coverageDir = './coverage'
 const clientCoverageDir = './coverage/client'
 const mergedCoverageDir = './coverage/merged'
-const dbDirs = ['postgres', 'mysql', 'sqlite']
+const dbDirs = ['postgres', 'mysql', 'sqlite', 'duckdb']
 
 console.log('🔄 Creating coverage index page and merging coverage...')
 
@@ -196,187 +196,239 @@ if (fs.existsSync(clientCoverageDir) && fs.existsSync(path.join(clientCoverageDi
   }
 }
 
-// Create HTML index page
+// Create HTML index page - styled to match Starlight
 const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drizzle-Cube Coverage Reports</title>
+    <title>Coverage Reports</title>
     <style>
+        :root {
+            --color-bg: #fff;
+            --color-bg-secondary: #f6f7f9;
+            --color-text: #1e1e1e;
+            --color-text-muted: #6b7280;
+            --color-border: #e5e7eb;
+            --color-accent: #3b82f6;
+            --color-success: #22c55e;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #18181b;
+                --color-bg-secondary: #27272a;
+                --color-text: #e4e4e7;
+                --color-text-muted: #a1a1aa;
+                --color-border: #3f3f46;
+                --color-accent: #60a5fa;
+                --color-success: #4ade80;
+            }
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
+            color: var(--color-text);
+            background: var(--color-bg);
+            padding: 2rem;
         }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+        .container { max-width: 1200px; margin: 0 auto; }
         h1 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .section { margin-bottom: 2rem; }
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted);
+            margin-bottom: 1rem;
         }
         .coverage-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
         }
         .coverage-card {
-            border: 2px solid #e1e8ed;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s ease;
+            display: block;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: 0.5rem;
+            padding: 1.25rem;
             text-decoration: none;
             color: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
         .coverage-card:hover {
-            border-color: #3498db;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 1px var(--color-accent);
         }
         .db-name {
-            font-size: 1.4em;
-            font-weight: bold;
-            margin-bottom: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
             text-transform: capitalize;
         }
         .coverage-percent {
-            font-size: 2em;
-            font-weight: bold;
-            color: #27ae60;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-success);
+            line-height: 1.2;
         }
         .coverage-label {
-            color: #7f8c8d;
-            font-size: 0.9em;
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-top: 0.25rem;
         }
-        .postgres { border-color: #336791; }
-        .postgres:hover { border-color: #336791; box-shadow: 0 4px 15px rgba(51, 103, 145, 0.2); }
-        .mysql { border-color: #4479A1; }
-        .mysql:hover { border-color: #4479A1; box-shadow: 0 4px 15px rgba(68, 121, 161, 0.2); }
-        .sqlite { border-color: #003B57; }
-        .sqlite:hover { border-color: #003B57; box-shadow: 0 4px 15px rgba(0, 59, 87, 0.2); }
-        .client { border-color: #61DAFB; }
-        .client:hover { border-color: #61DAFB; box-shadow: 0 4px 15px rgba(97, 218, 251, 0.2); }
-        .merged { border-color: #9b59b6; background: linear-gradient(135deg, #f8f4fc 0%, #fff 100%); }
-        .merged:hover { border-color: #9b59b6; box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3); }
-        .merged .coverage-percent { color: #9b59b6; }
-        .section-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin: 30px 0 15px 0;
-            color: #2c3e50;
-            border-bottom: 1px solid #e1e8ed;
-            padding-bottom: 5px;
+        .merged-card {
+            border-left: 3px solid var(--color-accent);
         }
-        .highlight-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-        }
-        .highlight-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        .highlight-card .db-name,
-        .highlight-card .coverage-percent,
-        .highlight-card .coverage-label {
-            color: white;
+        .merged-card .coverage-percent {
+            color: var(--color-accent);
         }
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e1e8ed;
-            color: #7f8c8d;
-            font-size: 0.9em;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
         }
         .footer a {
-            color: #3498db;
+            color: var(--color-accent);
             text-decoration: none;
         }
-        .footer a:hover {
-            text-decoration: underline;
-        }
+        .footer a:hover { text-decoration: underline; }
+        .meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+        .meta-item strong { display: block; color: var(--color-text); margin-bottom: 0.25rem; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🧪 Drizzle-Cube Test Coverage Reports</h1>
-
-        <p>This project tests against multiple databases and includes client-side React component testing.
-           Click on any section below to view its detailed coverage report.</p>
+        <h1>Test Coverage</h1>
+        <p class="subtitle">Coverage reports for server and client test suites</p>
 
         ${databaseStats.some(db => db.type === 'merged') ? `
-        <div class="section-title">🔀 Merged Coverage (Combined)</div>
-        <div class="coverage-grid">
-            ${databaseStats.filter(db => db.type === 'merged').map(db => `
-            <a href="${db.url}" class="coverage-card highlight-card merged">
-                <div class="db-name">Combined Server</div>
-                <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
-                <div class="coverage-label">PostgreSQL + MySQL + SQLite</div>
-            </a>
-            `).join('')}
+        <div class="section">
+            <div class="section-title">Combined Coverage</div>
+            <div class="coverage-grid">
+                ${databaseStats.filter(db => db.type === 'merged').map(db => `
+                <a href="${db.url}" class="coverage-card merged-card">
+                    <div class="db-name">All Databases</div>
+                    <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
+                    <div class="coverage-label">Merged from all adapters</div>
+                </a>
+                `).join('')}
+            </div>
         </div>
         ` : ''}
 
         ${databaseStats.some(db => db.type === 'server') ? `
-        <div class="section-title">🗄️ Server Coverage (Per Database)</div>
-        <div class="coverage-grid">
-            ${databaseStats.filter(db => db.type === 'server').map(db => `
-            <a href="${db.url}" class="coverage-card ${db.name}">
-                <div class="db-name">${db.name}</div>
-                <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
-                <div class="coverage-label">Line Coverage</div>
-            </a>
-            `).join('')}
+        <div class="section">
+            <div class="section-title">Server Coverage by Database</div>
+            <div class="coverage-grid">
+                ${databaseStats.filter(db => db.type === 'server').map(db => `
+                <a href="${db.url}" class="coverage-card">
+                    <div class="db-name">${db.name}</div>
+                    <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
+                    <div class="coverage-label">Line coverage</div>
+                </a>
+                `).join('')}
+            </div>
         </div>
         ` : ''}
 
         ${databaseStats.some(db => db.type === 'client') ? `
-        <div class="section-title">⚛️ Client Coverage (React Components)</div>
-        <div class="coverage-grid">
-            ${databaseStats.filter(db => db.type === 'client').map(db => `
-            <a href="${db.url}" class="coverage-card ${db.name}">
-                <div class="db-name">${db.name === 'client' ? 'React Client' : db.name}</div>
-                <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
-                <div class="coverage-label">Line Coverage</div>
-            </a>
-            `).join('')}
+        <div class="section">
+            <div class="section-title">Client Coverage</div>
+            <div class="coverage-grid">
+                ${databaseStats.filter(db => db.type === 'client').map(db => `
+                <a href="${db.url}" class="coverage-card">
+                    <div class="db-name">React Components</div>
+                    <div class="coverage-percent">${db.coverage}${db.coverage !== 'Error' ? '%' : ''}</div>
+                    <div class="coverage-label">Line coverage</div>
+                </a>
+                `).join('')}
+            </div>
         </div>
         ` : ''}
 
         <div class="footer">
-            <p><strong>Multi-Database Testing:</strong> Server tests run against PostgreSQL, MySQL, and SQLite to ensure compatibility and exercise different database adapter code paths.</p>
-
-            <p><strong>Merged Coverage:</strong> The combined report merges coverage from all databases, showing the true overall coverage when all database-specific code paths are exercised.</p>
-
-            <p><strong>Client Testing:</strong> React component tests use JSDOM and Testing Library for comprehensive UI coverage.</p>
-
-            <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-
-            <p>Coverage reports generated with <a href="https://vitest.dev/guide/coverage.html">Vitest</a> and
-               <a href="https://github.com/bcoe/v8-coverage">V8 Coverage</a>.</p>
+            <div class="meta">
+                <div class="meta-item">
+                    <strong>Generated</strong>
+                    ${new Date().toLocaleString()}
+                </div>
+                <div class="meta-item">
+                    <strong>Tools</strong>
+                    <a href="https://vitest.dev/guide/coverage.html">Vitest</a> + V8 Coverage
+                </div>
+            </div>
         </div>
     </div>
 </body>
 </html>`
 
-// Write the index page
-const indexPath = path.join(coverageDir, 'index.html')
-fs.writeFileSync(indexPath, indexHtml)
+// Write the dashboard page (named dashboard.html to avoid conflict with Starlight route)
+const dashboardPath = path.join(coverageDir, 'dashboard.html')
+fs.writeFileSync(dashboardPath, indexHtml)
 
-console.log(`\n✅ Coverage index page created!`)
-console.log(`📁 Main index: ${path.resolve(indexPath)}`)
+// Inject back link into all Istanbul-generated HTML files
+const backLinkStyle = `
+<style>
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .back-link:hover { text-decoration: underline; }
+  @media (prefers-color-scheme: dark) {
+    .back-link { color: #60a5fa; }
+  }
+</style>
+`
+const backLinkHtml = `<a href="../dashboard.html" class="back-link">&larr; Back to Coverage Dashboard</a>`
+
+function injectBackLink(htmlPath, depth = 1) {
+  if (!fs.existsSync(htmlPath)) return
+
+  let html = fs.readFileSync(htmlPath, 'utf8')
+
+  // Skip if already has back link
+  if (html.includes('back-link')) return
+
+  // Calculate relative path based on depth
+  const relativePath = depth === 1 ? '../dashboard.html' : '../'.repeat(depth) + 'dashboard.html'
+  const link = backLinkHtml.replace('../dashboard.html', relativePath)
+
+  // Inject style into head
+  html = html.replace('</head>', backLinkStyle + '</head>')
+
+  // Inject back link before h1
+  html = html.replace(/<h1>/, link + '\n        <h1>')
+
+  fs.writeFileSync(htmlPath, html)
+}
+
+// Inject back links into all coverage report index files
+const dirsToProcess = [...existingDbDirs, 'merged', 'client']
+for (const dir of dirsToProcess) {
+  const indexPath = path.join(coverageDir, dir, 'index.html')
+  injectBackLink(indexPath, 1)
+}
+console.log('   ✓ Injected back links into coverage reports')
+
+console.log(`\n✅ Coverage dashboard page created!`)
+console.log(`📁 Dashboard: ${path.resolve(dashboardPath)}`)
 console.log(`📊 Coverage reports available:`)
 
 for (const db of databaseStats) {

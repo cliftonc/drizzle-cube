@@ -1121,6 +1121,10 @@ export class QueryExecutor {
       }
     }
 
+    // Track which cubes have their security handled in JOIN ON clause
+    // This prevents duplicate security conditions in WHERE clause
+    const cubesWithSecurityInJoin = new Set<string>()
+
     // Add multi-cube joins (inter-cube joins)
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
       for (const joinCube of queryPlan.joinCubes) {
@@ -1143,6 +1147,10 @@ export class QueryExecutor {
           }
 
           // Add junction table join (source -> junction)
+          // NOTE: For junction tables (belongsToMany), security filters STAY in WHERE clause
+          // because the semantics of many-to-many relationships require filtering out
+          // non-matching records rather than returning them as NULLs.
+          // The security-in-JOIN-ON logic only applies to regular LEFT JOINs (hasMany/hasOne).
           try {
             switch (junctionTable.joinType || 'left') {
               case 'left':
@@ -1159,7 +1167,7 @@ export class QueryExecutor {
                 break
             }
 
-            // Add junction table security conditions to WHERE clause
+            // Junction table security goes in WHERE clause to properly filter records
             if (junctionWhereConditions.length > 0) {
               allWhereConditions.push(...junctionWhereConditions)
             }
@@ -1170,20 +1178,27 @@ export class QueryExecutor {
 
         let joinTarget: any
         let joinCondition: any
+        let securityCondition: SQL | undefined
 
         if (cteAlias) {
           // Join to CTE instead of base table - use sql table reference
           joinTarget = sql`${sql.identifier(cteAlias)}`
           // Build CTE join condition using the CTE alias
           joinCondition = this.cteBuilder.buildCTEJoinCondition(joinCube, cteAlias, queryPlan)
+          // CTE already has security applied inside it, don't apply again
+          securityCondition = undefined
         } else {
           // Check if this cube should join through a CTE (downstream cube)
           // Example: Teams joins through EmployeeTeams CTE when EmployeeTeams has measures
           const downstreamInfo = downstreamCubeMap.get(joinCube.cube.name)
 
           // Regular join to base table
+          // Get the cube's SQL definition ONCE to avoid SQL object mutation issues
           const joinCubeBase = joinCube.cube.sql(context)
           joinTarget = joinCubeBase.from
+
+          // Get security condition for this cube (for LEFT JOINs, will be added to ON clause)
+          securityCondition = joinCubeBase.where
 
           if (downstreamInfo) {
             // This cube joins THROUGH a CTE - build join condition referencing CTE alias
@@ -1203,19 +1218,38 @@ export class QueryExecutor {
           }
         }
 
+        const cubeJoinType = joinCube.joinType || 'left'
+        // For LEFT/RIGHT/FULL JOINs, include security in ON clause
+        // For INNER JOINs, security can go in WHERE (no difference in behavior)
+        const effectiveJoinCondition =
+          cubeJoinType !== 'inner' && securityCondition
+            ? and(joinCondition, securityCondition)
+            : joinCondition
+
         try {
-          switch (joinCube.joinType || 'left') {
+          switch (cubeJoinType) {
             case 'left':
-              drizzleQuery = drizzleQuery.leftJoin(joinTarget, joinCondition)
+              drizzleQuery = drizzleQuery.leftJoin(joinTarget, effectiveJoinCondition)
+              // Track that this cube's security is handled in JOIN ON
+              if (securityCondition) {
+                cubesWithSecurityInJoin.add(joinCube.cube.name)
+              }
               break
             case 'inner':
               drizzleQuery = drizzleQuery.innerJoin(joinTarget, joinCondition)
+              // Security can go in WHERE for INNER JOINs (no difference)
               break
             case 'right':
-              drizzleQuery = drizzleQuery.rightJoin(joinTarget, joinCondition)
+              drizzleQuery = drizzleQuery.rightJoin(joinTarget, effectiveJoinCondition)
+              if (securityCondition) {
+                cubesWithSecurityInJoin.add(joinCube.cube.name)
+              }
               break
             case 'full':
-              drizzleQuery = drizzleQuery.fullJoin(joinTarget, joinCondition)
+              drizzleQuery = drizzleQuery.fullJoin(joinTarget, effectiveJoinCondition)
+              if (securityCondition) {
+                cubesWithSecurityInJoin.add(joinCube.cube.name)
+              }
               break
           }
         } catch {
@@ -1238,7 +1272,13 @@ export class QueryExecutor {
         if (cteAlias) {
           continue
         }
-        
+
+        // Skip cubes whose security is already in JOIN ON clause (for LEFT/RIGHT/FULL JOINs)
+        // This prevents duplicate security conditions and preserves NULL rows in LEFT JOINs
+        if (cubesWithSecurityInJoin.has(joinCube.cube.name)) {
+          continue
+        }
+
         // Get the base query definition for this joined cube to access its WHERE conditions
         const joinCubeBase = joinCube.cube.sql(context)
         if (joinCubeBase.where) {
