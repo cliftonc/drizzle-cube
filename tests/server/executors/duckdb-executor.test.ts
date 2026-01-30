@@ -7,7 +7,7 @@
  * - Large LIMIT/OFFSET values cause integer overflow
  * - Designed for single-user OLAP workloads
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   DuckDBExecutor,
   createDuckDBExecutor

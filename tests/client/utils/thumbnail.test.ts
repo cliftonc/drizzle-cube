@@ -17,8 +17,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 describe('thumbnail utilities', () => {
   // Store original values to restore after tests
-  let originalWindow: typeof window | undefined
-  let originalDocument: typeof document | undefined
   let originalFetch: typeof fetch
 
   beforeEach(() => {

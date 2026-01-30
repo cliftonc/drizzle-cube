@@ -12,18 +12,11 @@ import {
   formatMetaResponse,
   formatErrorResponse,
   handleDryRun,
-  handleBatchRequest,
-  formatCubeResponse,
-  getDatabaseType,
-  handleDiscover,
-  handleSuggest,
-  handleValidate,
-  handleLoad
+  handleBatchRequest
 } from '../../src/adapters/utils'
 import {
   createTestSemanticLayer,
-  skipIfDuckDB,
-  getTestDatabaseType
+  skipIfDuckDB
 } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
 import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'

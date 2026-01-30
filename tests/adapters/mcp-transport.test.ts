@@ -3,7 +3,7 @@
  * Tests for Model Context Protocol transport utilities and JSON-RPC handling
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   negotiateProtocol,
   wantsEventStream,

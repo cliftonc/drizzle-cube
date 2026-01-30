@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { suggestQuery, type QuerySuggestion } from '../../../src/server/ai/suggestion.js'
+import { suggestQuery } from '../../../src/server/ai/suggestion.js'
 import type { CubeMetadata } from '../../../src/server/types/metadata.js'
 
 // =============================================================================
