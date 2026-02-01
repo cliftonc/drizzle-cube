@@ -14,6 +14,14 @@ export {
   useDryRunQuery,
   useMultiDryRunQueries,
   useDryRunQueries,
+  useFunnelQuery,
+  createFunnelQueryKey,
+  useFlowQuery,
+  createFlowQueryKey,
+  useRetentionQuery,
+  useExplainQuery,
+  createExplainQueryKey,
+  useExplainAI,
 } from './hooks/queries'
 export type {
   UseCubeMetaQueryOptions,
@@ -23,6 +31,18 @@ export type {
   UseMultiCubeLoadQueryOptions,
   UseMultiCubeLoadQueryResult,
   DebugDataEntry,
+  UseDryRunQueryOptions,
+  UseDryRunQueryResult,
+  UseMultiDryRunQueriesOptions,
+  UseMultiDryRunQueriesResult,
+  UseFlowQueryOptions,
+  UseFlowQueryResult,
+  UseRetentionQueryOptions,
+  UseRetentionQueryResult,
+  UseExplainQueryOptions,
+  UseExplainQueryResult,
+  UseExplainAIOptions,
+  UseExplainAIResult,
 } from './hooks/queries'
 
 // Other hooks

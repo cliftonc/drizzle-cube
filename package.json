@@ -63,6 +63,16 @@
       "types": "./dist/adapters/nextjs/index.d.ts",
       "import": "./dist/adapters/nextjs/index.js",
       "require": "./dist/adapters/nextjs/index.cjs"
+    },
+    "./adapters/utils": {
+      "types": "./dist/adapters/utils.d.ts",
+      "import": "./dist/adapters/utils.js",
+      "require": "./dist/adapters/utils.cjs"
+    },
+    "./adapters/types": {
+      "types": "./dist/adapters/types.d.ts",
+      "import": "./dist/adapters/types.js",
+      "require": "./dist/adapters/types.cjs"
     }
   },
   "files": [

@@ -18,7 +18,9 @@ export default defineConfig({
         'hono/index': resolve(__dirname, 'src/adapters/hono/index.ts'),
         'express/index': resolve(__dirname, 'src/adapters/express/index.ts'),
         'fastify/index': resolve(__dirname, 'src/adapters/fastify/index.ts'),
-        'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts')
+        'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts'),
+        'utils': resolve(__dirname, 'src/adapters/utils.ts'),
+        'types': resolve(__dirname, 'src/adapters/types.ts')
       },
       formats: ['es', 'cjs']
     },

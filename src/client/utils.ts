@@ -6,7 +6,7 @@
  */
 
 // Re-export all utilities
-export * from './utils'
+export * from './utils/index'
 
 // Utility-specific types (if any exist in utils)
 export type {} from './types'

@@ -18,6 +18,7 @@ export {
   RechartsRadarChart,
   RechartsRadialBarChart,
   RechartsTreeMapChart,
+  FunnelChart,
   DataTable
 } from './components/charts'
 

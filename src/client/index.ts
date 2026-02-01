@@ -21,6 +21,8 @@ import './styles.css'
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
 export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
+export { AnalyticsPage } from './components/AnalyticsPage'
+export { default as ChartErrorBoundary } from './components/ChartErrorBoundary'
 export { default as LoadingIndicator } from './components/LoadingIndicator'
 export type { LoadingIndicatorProps } from './components/LoadingIndicator'
 
@@ -40,6 +42,8 @@ export type { LazyChartProps } from './charts/ChartLoader'
 // Layout components
 export { default as DashboardGrid } from './components/DashboardGrid'
 export { default as PortletContainer } from './components/PortletContainer'
+export { default as DrillMenu } from './components/DrillMenu'
+export { default as DrillBreadcrumb } from './components/DrillBreadcrumb'
 export { DashboardThumbnailPlaceholder } from './components/DashboardThumbnailPlaceholder'
 export type { DashboardThumbnailPlaceholderProps } from './components/DashboardThumbnailPlaceholder'
 
@@ -51,6 +55,9 @@ export { default as ConfirmModal } from './components/ConfirmModal'
 
 // Analysis Builder (search-based query builder)
 export { default as AnalysisBuilder } from './components/AnalysisBuilderLazy'
+export type { AnalysisBuilderRef } from './components/AnalysisBuilder/types'
+export { ExecutionPlanPanel } from './components/AnalysisBuilder/ExecutionPlanPanel'
+export { ExplainAIPanel } from './components/AnalysisBuilder/ExplainAIPanel'
 
 // Data provider and hooks
 export {
@@ -64,6 +71,7 @@ export {
 export { ScrollContainerProvider, useScrollContainer } from './providers/ScrollContainerContext'
 export { useCubeFieldLabel } from './hooks/useCubeFieldLabel'
 export { createCubeClient } from './client/CubeClient'
+export { CubeClient } from './client/CubeClient'
 
 // TanStack Query hooks for data fetching
 export {
@@ -74,6 +82,9 @@ export {
   useDryRunQuery,
   useMultiDryRunQueries,
   useDryRunQueries,
+  useExplainQuery,
+  createExplainQueryKey,
+  useExplainAI,
   // Funnel query hook
   useFunnelQuery,
   createFunnelQueryKey,
@@ -89,6 +100,10 @@ export type {
   UseMultiCubeLoadQueryOptions,
   UseMultiCubeLoadQueryResult,
   DebugDataEntry,
+  UseExplainQueryOptions,
+  UseExplainQueryResult,
+  UseExplainAIOptions,
+  UseExplainAIResult,
   // Flow query types
   UseFlowQueryOptions,
   UseFlowQueryResult,
@@ -177,6 +192,7 @@ export type {
 export { useTheme } from './hooks/useTheme'
 export { useScrollDetection } from './hooks/useScrollDetection'
 export { useElementVisibility } from './hooks/useElementVisibility'
+export { useDrillInteraction } from './hooks/useDrillInteraction'
 
 // Types
 export type {
@@ -214,6 +230,31 @@ export type {
   FlowResultRow,
 } from './types'
 
+export {
+  isQueryConfig,
+  isFunnelConfig,
+  isFlowConfig,
+  isRetentionConfig,
+  isMultiQuery,
+  isSingleQuery,
+  isValidAnalysisConfig,
+  createDefaultQueryConfig,
+  createDefaultFunnelConfig,
+  createDefaultFlowConfig,
+  createDefaultRetentionConfig,
+  createDefaultConfig,
+  isValidAnalysisWorkspace,
+  createDefaultWorkspace
+} from './types/analysisConfig'
+export type {
+  AnalysisConfig,
+  QueryAnalysisConfig,
+  FunnelAnalysisConfig,
+  FlowAnalysisConfig,
+  RetentionAnalysisConfig,
+  AnalysisWorkspace
+} from './types/analysisConfig'
+
 // Multi-query type guard
 export { isMultiQueryConfig, isServerFunnelQuery, isServerFlowQuery, isSankeyData } from './types'
 
@@ -226,6 +267,9 @@ export type {
 
 // Utilities
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'
+export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration'
+export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail'
+export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils'
 
 // Multi-query utilities
 export {
