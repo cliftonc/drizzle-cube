@@ -49,9 +49,6 @@ export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 export { default as ConfirmModal } from './components/ConfirmModal'
 
-// Query Builder - Seamless shim that uses AnalysisBuilder internally
-export { default as QueryBuilder } from './components/QueryBuilderShim'
-
 // Analysis Builder (search-based query builder)
 export { default as AnalysisBuilder } from './components/AnalysisBuilderLazy'
 

@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
-import { DATE_RANGE_OPTIONS, type DateRangeType } from '../QueryBuilder/types'
+import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
 import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 
 const CloseIcon = getIcon('close')

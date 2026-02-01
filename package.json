@@ -103,7 +103,7 @@
     "coverage:open": "open coverage/index.html",
     "coverage:merged:open": "open coverage/merged/index.html",
     "coverage:client:open": "open coverage/client/index.html",
-    "test:postgres": "vitest run",
+    "test:postgres": "vitest run --config vitest.config.server.ts",
     "test:mysql": "TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts",
     "test:sqlite": "TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
     "test:duckdb": "TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",

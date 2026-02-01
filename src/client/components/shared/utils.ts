@@ -6,8 +6,8 @@
  */
 
 import type { CubeQuery, Filter, SimpleFilter } from '../../types'
-import type { MetaField, MetaResponse } from '../QueryBuilder/types'
-import { FILTER_OPERATORS } from '../QueryBuilder/types'
+import type { MetaField, MetaResponse } from './types'
+import { FILTER_OPERATORS } from './types'
 
 // ============================================================================
 // Re-export common utilities from shared module (canonical source)

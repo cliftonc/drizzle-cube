@@ -9,7 +9,7 @@ import React from 'react'
 import { getIcon } from '../../icons'
 import FilterItem from './FilterItem'
 import FilterGroup from './FilterGroup'
-import type { FilterBuilderProps } from '../QueryBuilder/types'
+import type { FilterBuilderProps } from './types'
 import type { SimpleFilter, GroupFilter } from '../../types'
 import {
   isSimpleFilter,

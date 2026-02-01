@@ -492,4 +492,321 @@ describe('AnalysisBuilder', () => {
       expect(screen.getByTestId('results-panel')).toBeInTheDocument()
     })
   })
+
+  describe('error handling', () => {
+    it('should handle query errors', () => {
+      mockUseCubeQueryResult.error = new Error('Query failed')
+
+      const initialQuery = {
+        measures: ['Employees.count']
+      }
+
+      render(<AnalysisBuilder initialQuery={initialQuery} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+
+    it('should handle multi-query errors', () => {
+      mockUseMultiCubeQueryResult.errors = [new Error('Query 1 failed'), null]
+
+      const multiQueryConfig = {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.avgSalary'] }
+        ],
+        mergeStrategy: 'concat' as const
+      }
+
+      render(<AnalysisBuilder initialQuery={multiQueryConfig} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+  })
+
+  describe('initial config', () => {
+    it('should render with initialQuery having filters', () => {
+      const initialQuery = {
+        measures: ['Employees.count'],
+        dimensions: ['Employees.department'],
+        filters: [
+          { member: 'Employees.department', operator: 'equals', values: ['Engineering'] }
+        ]
+      }
+
+      render(<AnalysisBuilder initialQuery={initialQuery} />)
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-filters')).toBe('1')
+    })
+
+    it('should render with time dimensions', () => {
+      const initialQuery = {
+        measures: ['Employees.count'],
+        timeDimensions: [
+          { dimension: 'Employees.createdAt', granularity: 'day' }
+        ]
+      }
+
+      render(<AnalysisBuilder initialQuery={initialQuery} />)
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-breakdowns')).toBe('1')
+    })
+  })
+
+  describe('chart types', () => {
+    it('should render with bar chart type', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'bar',
+            chartConfig: {},
+            displayConfig: {}
+          }}
+        />
+      )
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('bar')
+    })
+
+    it('should render with line chart type', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'line',
+            chartConfig: {},
+            displayConfig: {}
+          }}
+        />
+      )
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('line')
+    })
+
+    it('should render with pie chart type', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'pie',
+            chartConfig: {},
+            displayConfig: {}
+          }}
+        />
+      )
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('pie')
+    })
+
+    it('should render with area chart type', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'area',
+            chartConfig: {},
+            displayConfig: {}
+          }}
+        />
+      )
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('area')
+    })
+
+    it('should render with table chart type', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'table',
+            chartConfig: {},
+            displayConfig: {}
+          }}
+        />
+      )
+
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-chart-type')).toBe('table')
+    })
+  })
+
+  describe('ref API extended', () => {
+    it('should expose getAnalysisConfig method', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+
+      render(<AnalysisBuilder ref={ref} />)
+
+      expect(typeof ref.current?.getAnalysisConfig).toBe('function')
+    })
+
+    it('should expose getAnalysisType method', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+
+      render(<AnalysisBuilder ref={ref} />)
+
+      expect(typeof ref.current?.getAnalysisType).toBe('function')
+    })
+
+    it('getAnalysisConfig should return AnalysisConfig', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+      const initialQuery = {
+        measures: ['Employees.count'],
+        dimensions: ['Employees.department']
+      }
+
+      render(<AnalysisBuilder ref={ref} initialQuery={initialQuery} />)
+
+      const config = ref.current?.getAnalysisConfig()
+      expect(config).toBeDefined()
+      expect(config?.version).toBe(1)
+      expect(config?.analysisType).toBeDefined()
+    })
+
+    it('getAnalysisType should return analysis type', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+
+      render(<AnalysisBuilder ref={ref} />)
+
+      const analysisType = ref.current?.getAnalysisType()
+      expect(analysisType).toBe('query')
+    })
+
+    it('should expose executeQuery method', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+
+      render(<AnalysisBuilder ref={ref} />)
+
+      expect(typeof ref.current?.executeQuery).toBe('function')
+    })
+
+    it('should expose getFunnelState method', () => {
+      const ref = createRef<AnalysisBuilderRef>()
+
+      render(<AnalysisBuilder ref={ref} />)
+
+      expect(typeof ref.current?.getFunnelState).toBe('function')
+    })
+  })
+
+  describe('display config', () => {
+    it('should render with showLegend enabled', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'bar',
+            chartConfig: {},
+            displayConfig: { showLegend: true }
+          }}
+        />
+      )
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+
+    it('should render with showGrid enabled', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'bar',
+            chartConfig: {},
+            displayConfig: { showGrid: true }
+          }}
+        />
+      )
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+
+    it('should render with showTooltip disabled', () => {
+      render(
+        <AnalysisBuilder
+          initialChartConfig={{
+            chartType: 'bar',
+            chartConfig: {},
+            displayConfig: { showTooltip: false }
+          }}
+        />
+      )
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+  })
+
+  describe('multi-query merge strategies', () => {
+    it('should handle concat merge strategy', () => {
+      const multiQueryConfig = {
+        queries: [
+          { measures: ['Employees.count'] },
+          { measures: ['Employees.avgSalary'] }
+        ],
+        mergeStrategy: 'concat' as const
+      }
+
+      render(<AnalysisBuilder initialQuery={multiQueryConfig} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+
+    it('should handle merge merge strategy', () => {
+      const multiQueryConfig = {
+        queries: [
+          { measures: ['Employees.count'], dimensions: ['Employees.department'] },
+          { measures: ['Employees.avgSalary'], dimensions: ['Employees.department'] }
+        ],
+        mergeStrategy: 'merge' as const
+      }
+
+      render(<AnalysisBuilder initialQuery={multiQueryConfig} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+  })
+
+  describe('view mode', () => {
+    it('should render with chart view by default', () => {
+      render(<AnalysisBuilder />)
+
+      const resultsPanel = screen.getByTestId('results-panel')
+      expect(resultsPanel.getAttribute('data-view')).toBe('chart')
+    })
+  })
+
+  describe('localStorage edge cases', () => {
+    it('should handle corrupted localStorage data', () => {
+      // Save corrupted data
+      localStorage.setItem(STORAGE_KEY, 'not valid json')
+
+      // Should render without crashing
+      render(<AnalysisBuilder />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+
+    it('should handle missing state in localStorage', () => {
+      // Save valid JSON but with wrong structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ wrong: 'format' }))
+
+      // Should render without crashing
+      render(<AnalysisBuilder />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+  })
+
+  describe('empty initial states', () => {
+    it('should render with empty initialQuery', () => {
+      render(<AnalysisBuilder initialQuery={{}} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+      const queryPanel = screen.getByTestId('query-panel')
+      expect(queryPanel.getAttribute('data-metrics')).toBe('0')
+    })
+
+    it('should render with empty initialChartConfig', () => {
+      render(<AnalysisBuilder initialChartConfig={{}} />)
+
+      expect(screen.getByTestId('results-panel')).toBeInTheDocument()
+    })
+  })
 })

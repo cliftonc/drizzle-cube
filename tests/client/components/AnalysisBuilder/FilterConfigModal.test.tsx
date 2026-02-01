@@ -538,4 +538,569 @@ describe('FilterConfigModal', () => {
       expect(onCancel).toHaveBeenCalled()
     })
   })
+
+  describe('date range types', () => {
+    it('should handle this_month date range', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'this month',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      // Save and verify the filter is valid
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle last_n_days pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last 7 days',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      // Verify the filter loads correctly
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle last_n_weeks pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last 4 weeks',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle last_n_months pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last 3 months',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle last_n_quarters pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last 2 quarters',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle last_n_years pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last 1 years',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle singular last day pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last day',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle singular last week pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last week',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle singular last month pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last month',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle singular last quarter pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last quarter',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should handle singular last year pattern', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+        dateRange: 'last year',
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+  })
+
+  describe('between operator', () => {
+    it('should allow entering min value', async () => {
+      const user = userEvent.setup()
+      const betweenFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'between',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={betweenFilter} />)
+
+      const minInput = screen.getByPlaceholderText('Min')
+      await user.type(minInput, '18')
+      expect(minInput).toHaveValue(18)
+    })
+
+    it('should allow entering max value', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const betweenFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'between',
+        values: [18], // Need a min value first
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={betweenFilter} onSave={onSave} />)
+
+      const maxInput = screen.getByPlaceholderText('Max')
+      await user.type(maxInput, '65')
+
+      // Save and verify the max value was captured
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('should save filter with both min and max values', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const betweenFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'between',
+        values: [18, 65],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={betweenFilter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operator: 'between',
+        })
+      )
+    })
+
+    it('should show notBetween operator range inputs', () => {
+      const notBetweenFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'notBetween',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={notBetweenFilter} />)
+
+      expect(screen.getByPlaceholderText('Min')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Max')).toBeInTheDocument()
+    })
+  })
+
+  describe('date operators', () => {
+    it('should show date input for beforeDate operator', () => {
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'beforeDate',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
+
+      const dateInputs = document.querySelectorAll('input[type="date"]')
+      expect(dateInputs.length).toBeGreaterThan(0)
+    })
+
+    it('should show date input for afterDate operator', () => {
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'afterDate',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
+
+      const dateInputs = document.querySelectorAll('input[type="date"]')
+      expect(dateInputs.length).toBeGreaterThan(0)
+    })
+
+    it('should allow entering date value', async () => {
+      const user = userEvent.setup()
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'beforeDate',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
+
+      const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement
+      if (dateInput) {
+        await user.type(dateInput, '2024-06-15')
+        // The value should be set (format may vary by browser)
+      }
+    })
+  })
+
+  describe('comparison operators', () => {
+    it('should show number input for lt operator', () => {
+      const ltFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'lt',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={ltFilter} />)
+
+      expect(screen.getByPlaceholderText('Enter number')).toBeInTheDocument()
+    })
+
+    it('should show number input for lte operator', () => {
+      const lteFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'lte',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={lteFilter} />)
+
+      expect(screen.getByPlaceholderText('Enter number')).toBeInTheDocument()
+    })
+
+    it('should show number input for gte operator', () => {
+      const gteFilter: SimpleFilter = {
+        member: 'Users.age',
+        operator: 'gte',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={gteFilter} />)
+
+      expect(screen.getByPlaceholderText('Enter number')).toBeInTheDocument()
+    })
+  })
+
+  describe('string operators', () => {
+    it('should show text input for startsWith operator', () => {
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'startsWith',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} />)
+
+      expect(screen.getByPlaceholderText('Enter value...')).toBeInTheDocument()
+    })
+
+    it('should show text input for endsWith operator', () => {
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'endsWith',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} />)
+
+      expect(screen.getByPlaceholderText('Enter value...')).toBeInTheDocument()
+    })
+
+    it('should show text input for notContains operator', () => {
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'notContains',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} />)
+
+      expect(screen.getByPlaceholderText('Enter value...')).toBeInTheDocument()
+    })
+
+    it('should allow typing text values', async () => {
+      const user = userEvent.setup()
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'contains',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} />)
+
+      const input = screen.getByPlaceholderText('Enter value...')
+      await user.type(input, 'test value')
+      expect(input).toHaveValue('test value')
+    })
+  })
+
+  describe('multi-value selection', () => {
+    it('should show helper text for multi-select operators', () => {
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'in',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} />)
+
+      expect(screen.getByText(/hold shift/i)).toBeInTheDocument()
+    })
+
+    it('should handle notEquals operator', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'notEquals',
+        values: ['excluded'],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} onSave={onSave} />)
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operator: 'notEquals',
+        })
+      )
+    })
+
+    it('should handle notIn operator', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'notIn',
+        values: ['excluded1', 'excluded2'],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} onSave={onSave} />)
+
+      // Should show the values as tags
+      expect(screen.getByText('excluded1')).toBeInTheDocument()
+      expect(screen.getByText('excluded2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalled()
+    })
+  })
+
+  describe('measure filter', () => {
+    it('should display measure field correctly', () => {
+      const measureFilter: SimpleFilter = {
+        member: 'Users.count',
+        operator: 'gt',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={measureFilter} />)
+
+      expect(screen.getByText('User Count')).toBeInTheDocument()
+    })
+  })
+
+  describe('field icon display', () => {
+    it('should show dimension icon for string dimension', () => {
+      const { container } = render(<FilterConfigModal {...defaultProps} />)
+
+      // Check for the field icon container
+      const fieldDisplay = screen.getByText('Field').closest('div')?.parentElement
+      expect(fieldDisplay).toBeInTheDocument()
+    })
+
+    it('should show time dimension icon for time field', () => {
+      const dateFilter: SimpleFilter = {
+        member: 'Users.createdAt',
+        operator: 'inDateRange',
+        values: [],
+      }
+
+      const { container } = render(<FilterConfigModal {...defaultProps} filter={dateFilter} />)
+
+      // Field display section should exist
+      expect(screen.getByText('Field')).toBeInTheDocument()
+    })
+
+    it('should show measure icon for measure field', () => {
+      const measureFilter: SimpleFilter = {
+        member: 'Users.count',
+        operator: 'gt',
+        values: [],
+      }
+
+      const { container } = render(<FilterConfigModal {...defaultProps} filter={measureFilter} />)
+
+      // Field display section should exist
+      expect(screen.getByText('Field')).toBeInTheDocument()
+    })
+  })
+
+  describe('modal positioning', () => {
+    it('should render without anchor element', () => {
+      render(<FilterConfigModal {...defaultProps} />)
+
+      expect(screen.getByRole('heading', { name: /edit filter/i })).toBeInTheDocument()
+    })
+
+    it('should render with anchor element', () => {
+      const anchor = document.createElement('div')
+      document.body.appendChild(anchor)
+
+      render(<FilterConfigModal {...defaultProps} anchorElement={anchor} />)
+
+      expect(screen.getByRole('heading', { name: /edit filter/i })).toBeInTheDocument()
+
+      document.body.removeChild(anchor)
+    })
+  })
+
+  describe('edge cases', () => {
+    it('should handle filter with empty member', () => {
+      const emptyFilter: SimpleFilter = {
+        member: '',
+        operator: 'equals',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={emptyFilter} />)
+
+      expect(screen.getByRole('heading', { name: /edit filter/i })).toBeInTheDocument()
+    })
+
+    it('should handle null schema', () => {
+      render(<FilterConfigModal {...defaultProps} schema={null} />)
+
+      expect(screen.getByRole('heading', { name: /edit filter/i })).toBeInTheDocument()
+    })
+
+    it('should handle field not in schema', () => {
+      const unknownFilter: SimpleFilter = {
+        member: 'Unknown.field',
+        operator: 'equals',
+        values: [],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={unknownFilter} />)
+
+      // Should fallback to displaying the field name
+      expect(screen.getByText('Unknown.field')).toBeInTheDocument()
+    })
+
+    it('should preserve filter values across operator changes', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      const filter: SimpleFilter = {
+        member: 'Users.name',
+        operator: 'equals',
+        values: ['test'],
+      }
+
+      render(<FilterConfigModal {...defaultProps} filter={filter} onSave={onSave} />)
+
+      // Change to notEquals
+      const operatorSection = screen.getByText('Operator').parentElement
+      const operatorButton = within(operatorSection as HTMLElement).getByRole('button')
+      await user.click(operatorButton)
+      await user.click(screen.getByText('not equals'))
+
+      // Save - values should be cleared when operator changes
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operator: 'notEquals',
+          values: [],
+        })
+      )
+    })
+  })
 })

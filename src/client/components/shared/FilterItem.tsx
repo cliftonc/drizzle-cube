@@ -8,10 +8,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import FilterValueSelector from './FilterValueSelector'
-import type { FilterItemProps, MetaField, DateRangeType } from '../QueryBuilder/types'
+import type { FilterItemProps, MetaField, DateRangeType } from './types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
-import { DATE_RANGE_OPTIONS } from '../QueryBuilder/types'
+import { DATE_RANGE_OPTIONS } from './types'
 
 const CloseIcon = getIcon('close')
 const FilterIcon = getIcon('filter')

@@ -8,7 +8,7 @@
 import React, { useState } from 'react'
 import { getIcon } from '../../icons'
 import FilterItem from './FilterItem'
-import type { FilterGroupProps } from '../QueryBuilder/types'
+import type { FilterGroupProps } from './types'
 import type { SimpleFilter, GroupFilter } from '../../types'
 import {
   isSimpleFilter,

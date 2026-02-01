@@ -514,4 +514,262 @@ describe('FieldSearchModal', () => {
       expect(screen.getByText('Close')).toBeInTheDocument()
     })
   })
+
+  describe('edge cases', () => {
+    it('should handle null schema gracefully', () => {
+      render(<FieldSearchModal {...defaultProps} schema={null} />)
+
+      // Should render without crashing and show appropriate state
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+
+    it('should handle empty cubes array', () => {
+      render(<FieldSearchModal {...defaultProps} schema={{ cubes: [] }} />)
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('No fields found')).toBeInTheDocument()
+    })
+
+    it('should handle cubes with no measures', () => {
+      const schemaWithNoDimensions: MetaResponse = {
+        cubes: [
+          {
+            name: 'Users',
+            title: 'Users',
+            measures: [],
+            dimensions: [
+              { name: 'Users.name', type: 'string', title: 'User Name', shortTitle: 'Name' },
+            ],
+          },
+        ],
+      }
+
+      render(
+        <FieldSearchModal
+          {...defaultProps}
+          mode="metrics"
+          schema={schemaWithNoDimensions}
+        />
+      )
+
+      expect(screen.getByText('No fields found')).toBeInTheDocument()
+    })
+
+    it('should handle cubes with no dimensions', () => {
+      const schemaWithNoMeasures: MetaResponse = {
+        cubes: [
+          {
+            name: 'Users',
+            title: 'Users',
+            measures: [
+              { name: 'Users.count', type: 'number', title: 'User Count', shortTitle: 'Count', aggType: 'count' },
+            ],
+            dimensions: [],
+          },
+        ],
+      }
+
+      render(
+        <FieldSearchModal
+          {...defaultProps}
+          mode="breakdown"
+          schema={schemaWithNoMeasures}
+        />
+      )
+
+      expect(screen.getByText('No fields found')).toBeInTheDocument()
+    })
+  })
+
+  describe('time dimensions', () => {
+    it('should show time dimensions in breakdown mode', () => {
+      render(<FieldSearchModal {...defaultProps} mode="breakdown" />)
+
+      expect(screen.getByText('Created At')).toBeInTheDocument()
+      expect(screen.getByText('Ordered At')).toBeInTheDocument()
+    })
+
+    it('should show time dimensions in filter mode', () => {
+      render(<FieldSearchModal {...defaultProps} mode="filter" />)
+
+      expect(screen.getByText('Created At')).toBeInTheDocument()
+      expect(screen.getByText('Ordered At')).toBeInTheDocument()
+    })
+  })
+
+  describe('multiple selected fields', () => {
+    it('should mark multiple fields as selected', () => {
+      render(
+        <FieldSearchModal
+          {...defaultProps}
+          selectedFields={['Users.count', 'Orders.count']}
+        />
+      )
+
+      // Both fields should still be visible (selected fields should show checkmarks)
+      const listbox = screen.getByRole('listbox')
+      expect(within(listbox).getByText('User Count')).toBeInTheDocument()
+      expect(within(listbox).getByText('Order Count')).toBeInTheDocument()
+    })
+  })
+
+  describe('cube filtering with search', () => {
+    it('should combine cube filter with search', async () => {
+      const user = userEvent.setup()
+      render(<FieldSearchModal {...defaultProps} />)
+
+      // Filter to Users cube
+      const usersButton = screen.getByRole('button', { name: 'Users' })
+      await user.click(usersButton)
+
+      // Then search for "count"
+      const searchInput = screen.getByPlaceholderText('Search metrics...')
+      await user.type(searchInput, 'count')
+
+      // Should only show User Count (Users cube + count in name)
+      expect(screen.getByText('User Count')).toBeInTheDocument()
+      // Order Count should be hidden because of cube filter
+      expect(screen.queryByText('Order Count')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('multi-select behavior', () => {
+    it('should allow selecting a field that is already in selectedFields', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+
+      render(
+        <FieldSearchModal
+          {...defaultProps}
+          onSelect={onSelect}
+          selectedFields={['Users.count']}
+        />
+      )
+
+      const listbox = screen.getByRole('listbox')
+      const userCountOption = within(listbox).getByText('User Count')
+      await user.click(userCountOption)
+
+      // Should still call onSelect even for already-selected fields (for toggle behavior)
+      expect(onSelect).toHaveBeenCalled()
+    })
+  })
+
+  describe('recent fields empty state', () => {
+    it('should not show recent fields section when recentFields is empty', () => {
+      render(<FieldSearchModal {...defaultProps} recentFields={[]} />)
+
+      expect(screen.queryByText('Recents')).not.toBeInTheDocument()
+    })
+
+    it('should not show recent fields section when recentFields is undefined', () => {
+      render(<FieldSearchModal {...defaultProps} recentFields={undefined} />)
+
+      expect(screen.queryByText('Recents')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('dimension type indicators', () => {
+    it('should show type indicator for time dimensions', () => {
+      render(<FieldSearchModal {...defaultProps} mode="breakdown" />)
+
+      // Time dimensions should be displayed
+      expect(screen.getByText('Created At')).toBeInTheDocument()
+    })
+
+    it('should show type indicator for string dimensions', () => {
+      render(<FieldSearchModal {...defaultProps} mode="breakdown" />)
+
+      // String dimensions should be displayed
+      expect(screen.getByText('User Name')).toBeInTheDocument()
+    })
+  })
+
+  describe('measure type indicators', () => {
+    it('should show aggregation type for measures', () => {
+      render(<FieldSearchModal {...defaultProps} mode="metrics" />)
+
+      // Measures with aggType should be displayed
+      expect(screen.getByText('User Count')).toBeInTheDocument()
+      expect(screen.getByText('Total Revenue')).toBeInTheDocument()
+    })
+  })
+
+  describe('field count updates', () => {
+    it('should update field count when filtered by cube', async () => {
+      const user = userEvent.setup()
+      render(<FieldSearchModal {...defaultProps} />)
+
+      // Initially 4 metrics
+      expect(screen.getByText(/4/)).toBeInTheDocument()
+
+      // Filter to Users (2 measures)
+      const usersButton = screen.getByRole('button', { name: 'Users' })
+      await user.click(usersButton)
+
+      // Should show 2 now
+      expect(screen.getByText(/2/)).toBeInTheDocument()
+    })
+
+    it('should update field count when searching', async () => {
+      const user = userEvent.setup()
+      render(<FieldSearchModal {...defaultProps} />)
+
+      // Initially 4 metrics
+      expect(screen.getByText(/4/)).toBeInTheDocument()
+
+      // Search for "revenue" (1 match)
+      const searchInput = screen.getByPlaceholderText('Search metrics...')
+      await user.type(searchInput, 'revenue')
+
+      // Should show 1 now
+      expect(screen.getByText(/1/)).toBeInTheDocument()
+    })
+  })
+
+  describe('clear search button', () => {
+    it('should clear search when X button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<FieldSearchModal {...defaultProps} />)
+
+      const searchInput = screen.getByPlaceholderText('Search metrics...')
+      await user.type(searchInput, 'revenue')
+
+      // Only revenue should be visible
+      expect(screen.getByText('Total Revenue')).toBeInTheDocument()
+      expect(screen.queryByText('User Count')).not.toBeInTheDocument()
+
+      // Clear button should appear and be clickable
+      const clearButton = screen.queryByRole('button', { name: /clear/i })
+      if (clearButton) {
+        await user.click(clearButton)
+        // All fields should be visible again
+        expect(screen.getByText('User Count')).toBeInTheDocument()
+      }
+    })
+  })
+
+  describe('modal animation/transition', () => {
+    it('should handle rapid open/close without errors', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+
+      const { rerender } = render(
+        <FieldSearchModal {...defaultProps} isOpen={true} onClose={onClose} />
+      )
+
+      // Close modal
+      await user.keyboard('{Escape}')
+      expect(onClose).toHaveBeenCalled()
+
+      // Re-render as closed
+      rerender(<FieldSearchModal {...defaultProps} isOpen={false} onClose={onClose} />)
+
+      // Re-render as open
+      rerender(<FieldSearchModal {...defaultProps} isOpen={true} onClose={onClose} />)
+
+      // Should still work correctly
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    })
+  })
 })

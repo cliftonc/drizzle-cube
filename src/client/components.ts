@@ -18,9 +18,6 @@ export { default as DashboardEditModal } from './components/DashboardEditModal'
 export { default as Modal } from './components/Modal'
 export { default as AnalysisDisplayConfigPanel } from './components/AnalysisBuilder/AnalysisDisplayConfigPanel'
 
-// Query Builder (uses AnalysisBuilder via backward compatibility shim)
-export { default as QueryBuilder } from './components/QueryBuilderShim'
-
 // Component utilities
 export { 
   createDashboardLayout, 
