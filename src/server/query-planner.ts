@@ -17,7 +17,9 @@ import type {
   JoinPathStep,
   PreAggregationAnalysis,
   PropagatingFilter,
-  Filter
+  Filter,
+  IntermediateJoinInfo,
+  QueryWarning
 } from './types'
 
 import {
@@ -205,17 +207,21 @@ export class QueryPlanner {
     
     // For multi-cube queries, build join plan
     const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
-    
+
     // Detect hasMany relationships and plan pre-aggregation CTEs
-    const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query)
-    
+    const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query, ctx)
+
+    // Generate warnings for edge cases (e.g., fan-out without dimensions)
+    const warnings = this.generateWarnings(query, preAggregationCTEs)
+
     return {
       primaryCube,
       joinCubes,
       selections: {}, // Will be built by QueryBuilder
       whereConditions: [], // Will be built by QueryBuilder
       groupByFields: [], // Will be built by QueryBuilder
-      preAggregationCTEs
+      preAggregationCTEs,
+      warnings: warnings.length > 0 ? warnings : undefined
     }
   }
 
@@ -378,12 +384,23 @@ export class QueryPlanner {
    * Plan pre-aggregation CTEs for hasMany relationships to prevent fan-out
    * Note: belongsToMany relationships handle fan-out differently through their junction table structure
    * and don't require CTEs - the two-hop join with the junction table provides natural grouping
+   *
+   * CRITICAL FAN-OUT PREVENTION LOGIC:
+   * When a query contains ANY hasMany relationship in the join graph, ALL cubes with measures
+   * that could be affected by row multiplication need CTEs. This includes:
+   *
+   * 1. Cubes with direct hasMany FROM primary (existing logic)
+   * 2. Cubes with measures that would be multiplied due to hasMany elsewhere in the query
+   *    - Example: Query has Departments.totalBudget + Productivity.recordCount
+   *    - Employees hasMany → Productivity causes row multiplication
+   *    - Departments.totalBudget would be inflated without CTE pre-aggregation
    */
   private planPreAggregationCTEs(
-    _cubes: Map<string, Cube>,
+    cubes: Map<string, Cube>,
     primaryCube: Cube,
     joinCubes: QueryPlan['joinCubes'],
-    query: SemanticQuery
+    query: SemanticQuery,
+    ctx: QueryContext
   ): QueryPlan['preAggregationCTEs'] {
     const preAggCTEs: QueryPlan['preAggregationCTEs'] = []
 
@@ -391,95 +408,450 @@ export class QueryPlanner {
       return preAggCTEs // No measures, no fan-out risk
     }
 
-    // Check each join cube for hasMany relationships
+    // Step 1: Detect if any hasMany relationship exists in the query
+    const hasManyRelationships = this.detectHasManyInQuery(cubes, primaryCube, joinCubes)
+
+    // Step 2: If no hasMany relationships exist, no CTEs needed
+    if (hasManyRelationships.length === 0) {
+      return preAggCTEs
+    }
+
+    // Step 3: Identify all cubes that have measures in the query
+    const cubesWithMeasures = new Set<string>()
+    for (const measure of query.measures) {
+      const [cubeName] = measure.split('.')
+      cubesWithMeasures.add(cubeName)
+    }
+
+    // Also check for measures in filters
+    for (const cube of cubes.values()) {
+      const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
+      if (measuresFromFilters.length > 0) {
+        cubesWithMeasures.add(cube.name)
+      }
+    }
+
+    // Step 4: Build list of cubes to consider for CTE
+    // Note: The PRIMARY cube does NOT need a CTE - it's the base FROM clause
+    // CTEs are only for JOIN cubes that could be affected by fan-out
+    const allCubesToConsider: Array<{ cube: Cube; alias: string; isPrimary: boolean }> = []
+
+    // Add join cubes only (not primary cube)
     for (const joinCube of joinCubes) {
-      const hasManyJoinDef = this.findHasManyJoinDef(primaryCube, joinCube.cube.name)
-      if (!hasManyJoinDef) {
-        continue // Not a hasMany relationship
+      allCubesToConsider.push({
+        cube: joinCube.cube,
+        alias: joinCube.alias,
+        isPrimary: false
+      })
+    }
+
+    // Step 5: For each cube with measures, determine if it needs a CTE
+    for (const { cube, alias, isPrimary } of allCubesToConsider) {
+      const cteReason = this.getCTEReason(
+        cube,
+        primaryCube,
+        hasManyRelationships,
+        query
+      )
+
+      if (!cteReason) {
+        continue
       }
 
-      // Check if we have measures from this hasMany cube (from SELECT clause)
-      const measuresFromSelect = query.measures ? query.measures.filter(m =>
-        m.startsWith(joinCube.cube.name + '.')
-      ) : []
-
-      // Also check for measures referenced in filters (for HAVING clause)
-      // Only actual measures are included - dimension filters don't trigger CTE creation
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, joinCube.cube)
-
-      // Combine and deduplicate measures from both SELECT and filters
+      // Get measures from this cube
+      const measuresFromSelect = query.measures.filter(m =>
+        m.startsWith(cube.name + '.')
+      )
+      const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
       const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
 
       if (allMeasuresFromThisCube.length === 0) {
-        continue // No measures from this cube, no fan-out risk
+        continue // No measures from this cube
       }
 
-      // Extract join keys from the new array-based format
-      const joinKeys = hasManyJoinDef.on.map(joinOn => ({
-        sourceColumn: joinOn.source.name,
-        targetColumn: joinOn.target.name,
-        sourceColumnObj: joinOn.source,
-        targetColumnObj: joinOn.target
-      }))
+      // Analyze the full join path to detect multi-hop fan-out scenarios
+      // Example: Departments → Employees → EmployeeTeams
+      // If there's a hasMany on the intermediate path, we need to absorb
+      // intermediate tables into the CTE
+      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx)
+
+      let joinKeys: Array<{
+        sourceColumn: string
+        targetColumn: string
+        sourceColumnObj: any
+        targetColumnObj: any
+      }>
+      let intermediateJoins: IntermediateJoinInfo[] | undefined
+
+      if (pathAnalysis?.hasIntermediateHasMany && pathAnalysis.intermediateJoins.length > 0) {
+        // Multi-hop fan-out scenario: use the corrected join keys
+        // and include intermediate joins to be absorbed into the CTE
+        joinKeys = pathAnalysis.correctJoinKeys
+        intermediateJoins = pathAnalysis.intermediateJoins as IntermediateJoinInfo[]
+      } else {
+        // Standard path: use existing join key logic
+        // Find the join definition - could be from primary or from any cube in the chain
+        // For the primary cube, we need to find a join FROM another cube TO the primary
+        const joinInfo = isPrimary
+          ? this.findJoinInfoToCube(cubes, primaryCube.name)
+          : this.findJoinInfoForCube(cubes, primaryCube, cube.name)
+
+        if (!joinInfo) {
+          continue // No join info found
+        }
+
+        // Extract join keys from the join definition
+        // For primary cube, the join keys are reversed (target becomes source)
+        joinKeys = isPrimary
+          ? joinInfo.joinDef.on.map(joinOn => ({
+              sourceColumn: joinOn.target.name,
+              targetColumn: joinOn.source.name,
+              sourceColumnObj: joinOn.target,
+              targetColumnObj: joinOn.source
+            }))
+          : joinInfo.joinDef.on.map(joinOn => ({
+              sourceColumn: joinOn.source.name,
+              targetColumn: joinOn.target.name,
+              sourceColumnObj: joinOn.source,
+              targetColumnObj: joinOn.target
+            }))
+        intermediateJoins = undefined
+      }
 
       // Find propagating filters from related cubes that should apply to this CTE
-      const propagatingFilters = this.findPropagatingFilters(query, joinCube.cube, _cubes)
+      const propagatingFilters = this.findPropagatingFilters(query, cube, cubes)
 
       // Categorize measures for post-aggregation window function handling
-      // Window functions now operate on aggregated data, so we need to:
-      // 1. Collect regular aggregate measures
-      // 2. Collect base measures required by post-aggregation window functions
-      // 3. Window functions themselves are applied in the outer query, not in CTEs
-      const cubeMap = new Map([[joinCube.cube.name, joinCube.cube]])
+      const cubeMap = new Map([[cube.name, cube]])
       const { aggregateMeasures, requiredBaseMeasures } = MeasureBuilder.categorizeForPostAggregation(
         allMeasuresFromThisCube,
         cubeMap
       )
 
       // Combine aggregate measures with base measures required by window functions
-      // This ensures the CTE contains all data needed for window function computation
       const allAggregateMeasures = [...new Set([
         ...aggregateMeasures,
-        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(joinCube.cube.name + '.'))
+        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(cube.name + '.'))
       ])]
 
-      // Create aggregate CTE if we have any aggregate measures (including window base measures)
+      // Create aggregate CTE if we have any aggregate measures
       if (allAggregateMeasures.length > 0) {
         // Expand calculated measures to include their dependencies
         const expandedAggregateMeasures = this.expandCalculatedMeasureDependencies(
-          joinCube.cube,
+          cube,
           allAggregateMeasures
         )
 
         // Detect downstream cubes that need join keys in the CTE
-        // Example: If query has Teams.name dimension and EmployeeTeams.count measure,
-        // the EmployeeTeams CTE needs to include team_id so Teams can be joined through it
         const downstreamJoinKeys = this.findDownstreamJoinKeys(
-          joinCube.cube,
+          cube,
           query,
-          _cubes
+          cubes
         )
 
-        preAggCTEs!.push({
-          cube: joinCube.cube,
-          alias: joinCube.alias,
-          cteAlias: `${joinCube.cube.name.toLowerCase()}_agg`,
+        preAggCTEs.push({
+          cube,
+          alias,
+          cteAlias: `${cube.name.toLowerCase()}_agg`,
           joinKeys,
           measures: expandedAggregateMeasures,
           propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined,
           downstreamJoinKeys: downstreamJoinKeys.length > 0 ? downstreamJoinKeys : undefined,
-          cteType: 'aggregate'
+          intermediateJoins: intermediateJoins && intermediateJoins.length > 0 ? intermediateJoins : undefined,
+          cteType: 'aggregate',
+          cteReason
         })
       }
-
-      // NOTE: Window CTEs are no longer created here.
-      // Post-aggregation window functions are applied in the outer query (executor.ts)
-      // after the data has been aggregated. This follows the analytics pattern:
-      // 1. Aggregate data in CTE (GROUP BY dimensions)
-      // 2. Apply window functions to aggregated results in outer SELECT
     }
 
     return preAggCTEs
+  }
+
+  /**
+   * Find join information TO a cube (reverse lookup)
+   * Used when the primary cube needs a CTE and we need to find how other cubes join to it
+   */
+  private findJoinInfoToCube(
+    cubes: Map<string, Cube>,
+    targetCubeName: string
+  ): { sourceCube: Cube; joinDef: CubeJoin } | null {
+    for (const [, cube] of cubes) {
+      if (cube.name === targetCubeName) continue
+      if (cube.joins) {
+        for (const [, joinDef] of Object.entries(cube.joins)) {
+          const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+          if (resolvedTarget.name === targetCubeName) {
+            return { sourceCube: cube, joinDef: joinDef as CubeJoin }
+          }
+        }
+      }
+    }
+    return null
+  }
+
+  /**
+   * Analyze the join path from primary cube to a target CTE cube.
+   * Detects if there are intermediate hasMany relationships that would cause fan-out.
+   *
+   * Returns information about:
+   * - The full join path
+   * - Whether there are hasMany relationships ON the path (not just at the end)
+   * - Which intermediate tables need to be absorbed into the CTE
+   * - The correct join key to use (from primary cube's connection point)
+   *
+   * @param cubes Map of all registered cubes
+   * @param primaryCube The primary cube (FROM clause)
+   * @param targetCubeName The CTE cube we're analyzing the path to
+   * @param ctx Query context for security filtering
+   */
+  private analyzeJoinPathToPrimary(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    targetCubeName: string,
+    ctx: QueryContext
+  ): {
+    path: { fromCube: string; toCube: string; joinDef: CubeJoin }[]
+    hasIntermediateHasMany: boolean
+    intermediateJoins: IntermediateJoinInfo[]
+    correctJoinKeys: Array<{
+      sourceColumn: string
+      targetColumn: string
+      sourceColumnObj: any
+      targetColumnObj: any
+    }>
+  } | null {
+    const resolver = this.getResolver(cubes)
+    const joinPath = resolver.findPath(primaryCube.name, targetCubeName)
+
+    if (!joinPath || joinPath.length === 0) {
+      return null
+    }
+
+    // Analyze the path for hasMany relationships
+    const pathWithRelationships: { fromCube: string; toCube: string; joinDef: CubeJoin }[] = joinPath.map(step => ({
+      fromCube: step.fromCube,
+      toCube: step.toCube,
+      joinDef: step.joinDef as CubeJoin
+    }))
+
+    // Check if there are hasMany relationships BEFORE the final step
+    // (the final step to the CTE cube will be handled by CTE pre-aggregation)
+    const intermediateSteps = pathWithRelationships.slice(0, -1)
+    const hasManyOnPath = intermediateSteps.some(step => step.joinDef.relationship === 'hasMany')
+
+    if (!hasManyOnPath) {
+      // No intermediate hasMany - use existing logic
+      return {
+        path: pathWithRelationships,
+        hasIntermediateHasMany: false,
+        intermediateJoins: [],
+        correctJoinKeys: []
+      }
+    }
+
+    // There's a hasMany on the intermediate path!
+    // We need to absorb intermediate tables into the CTE
+
+    // Build intermediate join info for tables between primary and CTE cube
+    const intermediateJoins: IntermediateJoinInfo[] = []
+
+    // Find all intermediate cubes on the path
+    for (let i = 0; i < pathWithRelationships.length - 1; i++) {
+      const step = pathWithRelationships[i]
+      const nextStep = pathWithRelationships[i + 1]
+      const intermediateCube = cubes.get(step.toCube)
+
+      if (!intermediateCube) continue
+
+      // Get the security filter for this intermediate cube
+      const cubeBase = intermediateCube.sql(ctx)
+      const securityFilter = cubeBase.where
+
+      // Find the join column from this intermediate to the NEXT step
+      // This is the column that connects to the CTE cube (or next intermediate)
+      const cteJoinColumn = nextStep.joinDef.on[0]?.source
+
+      // Find the join column from primary to this intermediate
+      // This is the column that we'll GROUP BY in the CTE
+      const primaryJoinColumn = step.joinDef.on[0]?.target
+
+      intermediateJoins.push({
+        cube: intermediateCube,
+        joinDef: nextStep.joinDef as CubeJoin,
+        securityFilter,
+        primaryJoinColumn,
+        cteJoinColumn
+      })
+    }
+
+    // Calculate the correct join keys
+    // When there are intermediate hasMany, the CTE should:
+    // 1. JOIN to intermediate tables
+    // 2. GROUP BY the primary cube's join column (not the intermediate's)
+    // 3. Join directly to primary cube
+    const firstStep = pathWithRelationships[0]
+    const correctJoinKeys = firstStep.joinDef.on.map(joinOn => ({
+      sourceColumn: joinOn.source.name,  // Column on primary cube
+      targetColumn: joinOn.target.name,  // Column on first intermediate (which CTE will include via JOIN)
+      sourceColumnObj: joinOn.source,
+      targetColumnObj: joinOn.target
+    }))
+
+    return {
+      path: pathWithRelationships,
+      hasIntermediateHasMany: true,
+      intermediateJoins,
+      correctJoinKeys
+    }
+  }
+
+  /**
+   * Detect all hasMany relationships that could affect the query
+   *
+   * This searches ALL cubes involved in the query (including intermediary cubes)
+   * to find any hasMany relationships that could cause row multiplication.
+   *
+   * Key insight: A hasMany relationship in ANY cube that's part of the join path
+   * will cause fan-out. We need to detect hasMany from:
+   * 1. The primary cube
+   * 2. All join cubes
+   * 3. Any intermediate cubes that form the join path
+   */
+  private detectHasManyInQuery(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    joinCubes: QueryPlan['joinCubes']
+  ): Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> {
+    const hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> = []
+    const processedCubes = new Set<string>()
+
+    // Collect all cubes involved in this query
+    const involvedCubes = new Set<string>()
+    involvedCubes.add(primaryCube.name)
+    for (const joinCube of joinCubes) {
+      involvedCubes.add(joinCube.cube.name)
+    }
+
+    // Check ALL registered cubes that have hasMany relationships to cubes in the query
+    // This catches the case where Employees (not primary, maybe not in joinCubes)
+    // has hasMany → Productivity (in query)
+    for (const [cubeName, cube] of cubes) {
+      if (processedCubes.has(cubeName)) continue
+      processedCubes.add(cubeName)
+
+      if (!cube.joins) continue
+
+      for (const [, joinDef] of Object.entries(cube.joins)) {
+        if (joinDef.relationship === 'hasMany') {
+          const targetCube = resolveCubeReference(joinDef.targetCube)
+
+          // Only include if both source AND target are involved in the query
+          // This ensures we only detect hasMany that actually affects this query
+          if (involvedCubes.has(cubeName) || involvedCubes.has(targetCube.name)) {
+            hasManyRelationships.push({
+              fromCube: cubeName,
+              toCube: targetCube.name,
+              joinDef: joinDef as CubeJoin
+            })
+          }
+        }
+      }
+    }
+
+    return hasManyRelationships
+  }
+
+  /**
+   * Determine if and why a cube needs pre-aggregation (CTE)
+   *
+   * Returns:
+   * - 'hasMany': Cube is the TARGET of a hasMany relationship - needs SUM in outer query
+   * - 'fanOutPrevention': Cube has measures affected by hasMany elsewhere - needs MAX in outer query
+   * - null: No CTE needed
+   *
+   * Key insight: When ANY hasMany exists in a query, ALL cubes with additive measures (sum, count)
+   * that are joined to the hasMany source cube are at risk of inflation.
+   */
+  private getCTEReason(
+    cube: Cube,
+    _primaryCube: Cube,
+    hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }>,
+    query: SemanticQuery
+  ): 'hasMany' | 'fanOutPrevention' | null {
+    // Case 1: This cube is the TARGET of a hasMany - needs CTE with SUM aggregation
+    const isHasManyTarget = hasManyRelationships.some(
+      rel => rel.toCube === cube.name
+    )
+    if (isHasManyTarget) {
+      // Check if this cube has measures
+      const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
+      if (hasMeasures) {
+        return 'hasMany'
+      }
+    }
+
+    // Case 2: This cube has additive measures AND there's a hasMany elsewhere
+    // that would cause row multiplication for this cube
+    const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
+    if (!hasMeasures) {
+      return null // No measures from this cube, no CTE needed
+    }
+
+    // If there's any hasMany in the query and this cube has measures,
+    // and this cube is NOT the hasMany target, it's at risk of fan-out
+    for (const hasManyRel of hasManyRelationships) {
+      // If this cube is the source of the hasMany, it doesn't need CTE for its own measures
+      if (hasManyRel.fromCube === cube.name) {
+        continue
+      }
+
+      // If this cube is the target of the hasMany, it's already handled by Case 1
+      if (hasManyRel.toCube === cube.name) {
+        continue
+      }
+
+      // This cube has measures and there's a hasMany elsewhere that could multiply its rows
+      // Use fanOutPrevention reason - this means MAX will be used instead of SUM
+      return 'fanOutPrevention'
+    }
+
+    return null
+  }
+
+  /**
+   * Find join information for a cube from any cube in the query
+   * This extends findHasManyJoinDef to work with any relationship type
+   * and to search from any source cube, not just the primary
+   */
+  private findJoinInfoForCube(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    targetCubeName: string
+  ): { sourceCube: Cube; joinDef: CubeJoin } | null {
+    // First check primary cube
+    if (primaryCube.joins) {
+      for (const [, joinDef] of Object.entries(primaryCube.joins)) {
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        if (resolvedTarget.name === targetCubeName) {
+          return { sourceCube: primaryCube, joinDef: joinDef as CubeJoin }
+        }
+      }
+    }
+
+    // Check all other cubes in the query
+    for (const [, cube] of cubes) {
+      if (cube.name === primaryCube.name) continue
+      if (cube.joins) {
+        for (const [, joinDef] of Object.entries(cube.joins)) {
+          const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+          if (resolvedTarget.name === targetCubeName) {
+            return { sourceCube: cube, joinDef: joinDef as CubeJoin }
+          }
+        }
+      }
+    }
+
+    return null
   }
 
   /**
@@ -1188,6 +1560,7 @@ export class QueryPlanner {
           reason: hasWindowDeps
             ? `hasMany relationship from ${primaryCube.name} - requires pre-aggregation; includes base measures for post-aggregation window functions`
             : `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
+          reasonType: 'hasMany',
           measures: allAggregateMeasures,
           joinKeys,
           cteType: 'aggregate'
@@ -1199,4 +1572,91 @@ export class QueryPlanner {
 
     return preAggregations
   }
+
+  /**
+   * Generate warnings for query edge cases that users should be aware of.
+   * Currently detects:
+   * - FAN_OUT_NO_DIMENSIONS: Query has hasMany CTEs but no dimensions to group by
+   *
+   * Note: AVG measures in hasMany CTEs can produce mathematically imprecise results
+   * (average of averages vs weighted average), but this warning was removed as it
+   * fired too aggressively. The issue only occurs when the outer grouping is coarser
+   * than the CTE grouping, which is rare in practice. The limitation is documented
+   * in executor.ts comments.
+   */
+  private generateWarnings(
+    query: SemanticQuery,
+    preAggregationCTEs?: QueryPlan['preAggregationCTEs']
+  ): QueryWarning[] {
+    const warnings: QueryWarning[] = []
+
+    // Check for fan-out without dimensions warning
+    const fanOutWarning = this.checkFanOutNoDimensions(query, preAggregationCTEs)
+    if (fanOutWarning) {
+      warnings.push(fanOutWarning)
+    }
+
+    return warnings
+  }
+
+  /**
+   * Detect when a query has measures from multiple cubes with hasMany relationships
+   * but no dimensions to provide grouping context.
+   *
+   * This is an edge case where:
+   * - Query has measures from 2+ cubes
+   * - At least one CTE exists (indicating hasMany relationship)
+   * - Query has NO dimensions AND NO time dimensions with granularity
+   *
+   * The SQL is technically correct (CTEs with GROUP BY on join keys), but users
+   * may be confused by the aggregated results without visible grouping.
+   */
+  private checkFanOutNoDimensions(
+    query: SemanticQuery,
+    preAggregationCTEs?: QueryPlan['preAggregationCTEs']
+  ): QueryWarning | null {
+    // Must have CTEs (hasMany relationships)
+    if (!preAggregationCTEs || preAggregationCTEs.length === 0) {
+      return null
+    }
+
+    // Must have measures from multiple cubes
+    if (!query.measures || query.measures.length === 0) {
+      return null
+    }
+
+    const cubesWithMeasures = new Set<string>()
+    for (const measure of query.measures) {
+      const [cubeName] = measure.split('.')
+      cubesWithMeasures.add(cubeName)
+    }
+
+    if (cubesWithMeasures.size < 2) {
+      return null
+    }
+
+    // Check if query has any dimensions
+    const hasDimensions = query.dimensions && query.dimensions.length > 0
+
+    // Check if query has time dimensions with granularity (which act as grouping)
+    const hasTimeGranularity = query.timeDimensions?.some(td => td.granularity)
+
+    // If there are dimensions or time granularity, no warning needed
+    if (hasDimensions || hasTimeGranularity) {
+      return null
+    }
+
+    // Build the warning
+    return {
+      code: 'FAN_OUT_NO_DIMENSIONS',
+      message:
+        'Query combines measures from multiple cubes with hasMany relationships but has no dimensions. ' +
+        'Results are aggregated at the join key level, which may produce unexpected totals.',
+      severity: 'warning',
+      cubes: [...cubesWithMeasures].sort(),
+      measures: query.measures,
+      suggestion: 'Add a dimension to see per-group breakdowns, or add a time dimension with granularity.'
+    }
+  }
+
 }

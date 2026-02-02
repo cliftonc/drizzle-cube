@@ -151,6 +151,11 @@ export interface UseAnalysisQueryExecutionResult {
    * Used for manual refresh mode to show "needs refresh" indicator.
    */
   needsRefresh: boolean
+  /**
+   * Query warnings from the server (e.g., fan-out without dimensions).
+   * Displayed as a banner above results.
+   */
+  warnings: import('../shared/types').QueryWarning[] | undefined
 }
 
 export function useAnalysisQueryExecution(
@@ -422,6 +427,17 @@ export function useAnalysisQueryExecution(
     return singleQueryResult.needsRefresh
   }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiMode, retentionQueryResult.needsRefresh, flowQueryResult.needsRefresh, funnelQueryResult.needsRefresh, singleQueryResult.needsRefresh])
 
+  // Aggregate warnings from the appropriate mode hook
+  // Currently only supported for single-query mode (where useCubeLoadQuery exposes warnings)
+  const warnings = useMemo(() => {
+    // Single query mode has warnings from useCubeLoadQuery
+    if (isSingleMode && singleQueryResult.warnings) {
+      return singleQueryResult.warnings
+    }
+    // TODO: Add warnings support for multi-query, funnel, flow, and retention modes
+    return undefined
+  }, [isSingleMode, singleQueryResult.warnings])
+
   return {
     executionStatus,
     executionResults,
@@ -443,5 +459,6 @@ export function useAnalysisQueryExecution(
     retentionDebugData,
     retentionValidation: retentionValidation ?? null,
     needsRefresh,
+    warnings,
   }
 }

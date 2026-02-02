@@ -5,7 +5,7 @@
  * Used in the left panel of AnalysisBuilder.
  */
 
-import { useState, useEffect, useMemo, memo, useRef } from 'react'
+import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
@@ -15,7 +15,129 @@ import ColorPaletteSelector from '../ColorPaletteSelector'
 import { useExplainQuery } from '../../hooks/queries/useExplainQuery'
 import { useExplainAI } from '../../hooks/queries/useExplainAI'
 import type { CubeQuery } from '../../types'
+import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
+
+/**
+ * Generate markdown representation of query execution plan
+ */
+function generateExecutionPlanMarkdown(
+  analysis: QueryAnalysis,
+  query: CubeQuery | null,
+  sql?: { sql: string } | null
+): string {
+  const lines: string[] = []
+
+  lines.push('# Query Execution Plan')
+  lines.push('')
+
+  // Original query
+  if (query) {
+    lines.push('## Cube Query')
+    lines.push('')
+    lines.push('```json')
+    lines.push(JSON.stringify(query, null, 2))
+    lines.push('```')
+    lines.push('')
+  }
+
+  // Query summary
+  lines.push('## Query Summary')
+  lines.push('')
+  lines.push(`- **Cubes:** ${analysis.cubesInvolved.join(', ')}`)
+  lines.push(`- **Query Type:** ${analysis.querySummary.queryType.replace(/_/g, ' ')}`)
+  lines.push(`- **Joins:** ${analysis.querySummary.joinCount}`)
+  lines.push(`- **CTEs:** ${analysis.querySummary.cteCount}`)
+  lines.push('')
+
+  // Primary cube selection
+  lines.push('## Primary Cube Selection')
+  lines.push('')
+  lines.push(`**Selected:** ${analysis.primaryCube.selectedCube}`)
+  lines.push(`**Reason:** ${analysis.primaryCube.reason.replace(/_/g, ' ')}`)
+  lines.push(`**Explanation:** ${analysis.primaryCube.explanation}`)
+  lines.push('')
+
+  // Candidates if available
+  if (analysis.primaryCube.candidates && analysis.primaryCube.candidates.length > 1) {
+    lines.push('### Candidates Considered')
+    lines.push('')
+    lines.push('| Cube | Dimensions | Joins | Can Reach All |')
+    lines.push('|------|------------|-------|---------------|')
+    for (const c of analysis.primaryCube.candidates) {
+      const selected = c.cubeName === analysis.primaryCube.selectedCube ? ' ✓' : ''
+      lines.push(`| ${c.cubeName}${selected} | ${c.dimensionCount} | ${c.joinCount} | ${c.canReachAll ? 'Yes' : 'No'} |`)
+    }
+    lines.push('')
+  }
+
+  // Join paths
+  if (analysis.joinPaths.length > 0) {
+    lines.push('## Join Paths')
+    lines.push('')
+    for (const jp of analysis.joinPaths) {
+      if (jp.pathFound && jp.path) {
+        lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube} (${jp.pathLength} step${jp.pathLength !== 1 ? 's' : ''})`)
+        lines.push('')
+        for (const step of jp.path) {
+          lines.push(`- **${step.fromCube}** → **${step.toCube}** (${step.relationship}, ${step.joinType.toUpperCase()} JOIN)`)
+          for (const col of step.joinColumns) {
+            lines.push(`  - \`${col.sourceColumn}\` = \`${col.targetColumn}\``)
+          }
+        }
+        lines.push('')
+      } else if (!jp.pathFound) {
+        lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube}`)
+        lines.push('')
+        lines.push(`❌ **No path found**${jp.error ? `: ${jp.error}` : ''}`)
+        if (jp.visitedCubes && jp.visitedCubes.length > 0) {
+          lines.push(`Cubes visited: ${jp.visitedCubes.join(' → ')}`)
+        }
+        lines.push('')
+      }
+    }
+  }
+
+  // Pre-aggregation CTEs
+  if (analysis.preAggregations.length > 0) {
+    lines.push('## Pre-Aggregation CTEs')
+    lines.push('')
+    for (const cte of analysis.preAggregations) {
+      lines.push(`### ${cte.cubeName} (\`${cte.cteAlias}\`)`)
+      lines.push('')
+      lines.push(`**Reason:** ${cte.reason}`)
+      lines.push(`**Measures:** ${cte.measures.join(', ')}`)
+      if (cte.joinKeys.length > 0) {
+        lines.push('**Join Keys:**')
+        for (const jk of cte.joinKeys) {
+          lines.push(`- \`${jk.sourceColumn}\` = \`${jk.targetColumn}\``)
+        }
+      }
+      lines.push('')
+    }
+  }
+
+  // Warnings
+  if (analysis.warnings && analysis.warnings.length > 0) {
+    lines.push('## ⚠️ Warnings')
+    lines.push('')
+    for (const warning of analysis.warnings) {
+      lines.push(`- ${warning}`)
+    }
+    lines.push('')
+  }
+
+  // Generated SQL
+  if (sql?.sql) {
+    lines.push('## Generated SQL')
+    lines.push('')
+    lines.push('```sql')
+    lines.push(sql.sql)
+    lines.push('```')
+  }
+
+  return lines.join('\n')
+}
 
 /**
  * AnalysisResultsPanel displays query results with chart/table toggle.
@@ -83,7 +205,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   retentionServerQuery,
   retentionDebugData,
   retentionChartData,
-  retentionValidation
+  retentionValidation,
+  // Query warnings from server
+  warnings
 }: AnalysisResultsPanelProps) {
   // Determine funnel mode from analysisType (preferred) or legacy prop
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
@@ -99,6 +223,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Track shift key + hover state for cache bust visual feedback
   const [isShiftHeld, setIsShiftHeld] = useState(false)
   const [isHoveringRefresh, setIsHoveringRefresh] = useState(false)
+  // Copy as markdown state
+  const [copyMarkdownState, setCopyMarkdownState] = useState<'idle' | 'copied'>('idle')
 
   // Listen for shift key up/down to show visual feedback on refresh button (only when hovering)
   useEffect(() => {
@@ -145,6 +271,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Determine if we're showing funnel executed queries (for visual indicator)
   const isShowingFunnelQuery = Boolean(funnelExecutedQueries?.length && funnelExecutedQueries[activeDebugIndex])
+
+  // Copy execution plan as markdown
+  const handleCopyMarkdown = useCallback(() => {
+    if (!debugAnalysis) return
+    const markdown = generateExecutionPlanMarkdown(debugAnalysis, debugQuery, debugSql)
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCopyMarkdownState('copied')
+      setTimeout(() => setCopyMarkdownState('idle'), 2000)
+    })
+  }, [debugAnalysis, debugQuery, debugSql])
 
   // EXPLAIN PLAN hook - for standard query mode
   // Uses the current active debug query
@@ -1034,7 +1170,25 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
       {/* Query Analysis - full width (at top for visibility) */}
       <div>
-        <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Query Analysis</h4>
+        <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text">Query Analysis</h4>
+          {debugAnalysis && (
+            <button
+              onClick={handleCopyMarkdown}
+              className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex dc:items-center dc:gap-1"
+              title="Copy query, analysis, and SQL as markdown"
+            >
+              {copyMarkdownState === 'copied' ? (
+                <>
+                  <span className="text-dc-success">✓</span>
+                  Copied!
+                </>
+              ) : (
+                <>📋 Copy as Markdown</>
+              )}
+            </button>
+          )}
+        </div>
         {debugLoading ? (
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
             Loading...
@@ -1560,6 +1714,42 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     )
   }
 
+  // Query warnings banner (e.g., fan-out without dimensions)
+  const renderWarningsBanner = () => {
+    if (!warnings || warnings.length === 0) return null
+
+    return (
+      <>
+        {warnings.map((warning, index) => {
+          const WarningIcon = getIcon('warning')
+          const isError = warning.severity === 'error'
+          const bgClass = isError ? 'bg-dc-danger-bg' : 'bg-dc-warning-bg'
+          const borderClass = isError ? 'border-dc-error' : 'border-dc-warning'
+          const textClass = isError ? 'text-dc-error' : 'text-dc-warning'
+
+          return (
+            <div
+              key={`${warning.code}-${index}`}
+              className={`dc:px-4 dc:py-2 ${bgClass} dc:border-b ${borderClass} dc:flex dc:items-start dc:gap-3 dc:flex-shrink-0`}
+            >
+              <WarningIcon className={`dc:w-4 dc:h-4 dc:flex-shrink-0 dc:mt-0.5 ${textClass}`} />
+              <div className="dc:flex-1 dc:min-w-0">
+                <div className={`dc:text-sm dc:font-medium ${textClass}`}>
+                  {warning.message}
+                </div>
+                {warning.suggestion && (
+                  <div className={`dc:text-xs dc:mt-1 ${textClass} dc:opacity-80`}>
+                    💡 {warning.suggestion}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </>
+    )
+  }
+
   // Success state with data
   const renderSuccess = () => {
     const hasResults = executionResults && executionResults.length > 0
@@ -1579,6 +1769,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       <div className="dc:h-full dc:flex dc:flex-col">
         {renderHeader()}
         {renderNeedsRefreshBanner()}
+        {renderWarningsBanner()}
 
         {/* Results Content */}
         <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">

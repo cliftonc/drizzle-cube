@@ -591,6 +591,12 @@ export interface AnalysisResultsPanelProps {
    * Retention validation result (errors explaining why query cannot be built).
    */
   retentionValidation?: { isValid: boolean; errors: string[]; warnings: string[] } | null
+
+  /**
+   * Query warnings from server (e.g., fan-out without dimensions).
+   * Displayed as a banner above results.
+   */
+  warnings?: import('../../shared/types').QueryWarning[]
 }
 
 // ============================================================================

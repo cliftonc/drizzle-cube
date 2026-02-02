@@ -326,6 +326,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               retentionDebugData={analysis.retentionDebugData}
               retentionChartData={analysis.retentionChartData}
               retentionValidation={analysis.retentionValidation}
+              warnings={analysis.warnings}
             />
           </div>
         </div>

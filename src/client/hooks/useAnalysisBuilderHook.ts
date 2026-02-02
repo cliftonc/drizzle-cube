@@ -168,6 +168,11 @@ export interface UseAnalysisBuilderResult {
    * Used for manual refresh mode to show "needs refresh" indicator.
    */
   needsRefresh: boolean
+  /**
+   * Query warnings from the server (e.g., fan-out without dimensions).
+   * Displayed as a banner above results.
+   */
+  warnings: import('../shared/types').QueryWarning[] | undefined
   /** In funnel mode, the actually executed queries with binding key dimension and IN filters */
   funnelExecutedQueries: CubeQuery[] | null
   /** In funnel mode, the actual server query { funnel: {...} } sent to the API */
@@ -892,6 +897,7 @@ export function useAnalysisBuilder(
     isValidQuery: effectiveIsValidQuery,
     debugDataPerQuery: queryExecution.debugDataPerQuery,
     needsRefresh: queryExecution.needsRefresh,
+    warnings: queryExecution.warnings,
     funnelExecutedQueries: queryExecution.funnelExecutedQueries,
     funnelServerQuery: queryExecution.funnelServerQuery,
     funnelDebugData: queryExecution.funnelDebugData,

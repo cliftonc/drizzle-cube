@@ -40,6 +40,34 @@ export interface MetaResponse {
 }
 
 // ============================================================================
+// Query warning types (from server-side query planner)
+// ============================================================================
+
+/**
+ * Severity level for query warnings
+ */
+export type QueryWarningSeverity = 'info' | 'warning' | 'error'
+
+/**
+ * Warning emitted during query planning or execution
+ * Provides user-facing feedback about potential query issues
+ */
+export interface QueryWarning {
+  /** Unique code for programmatic handling (e.g., 'FAN_OUT_NO_DIMENSIONS') */
+  code: string
+  /** Human-readable warning message */
+  message: string
+  /** Severity level for UI styling */
+  severity: QueryWarningSeverity
+  /** Cubes involved in the warning (if applicable) */
+  cubes?: string[]
+  /** Measures involved in the warning (if applicable) */
+  measures?: string[]
+  /** Actionable suggestion for the user */
+  suggestion?: string
+}
+
+// ============================================================================
 // Query analysis types for debugging transparency
 // ============================================================================
 
@@ -88,10 +116,18 @@ export interface JoinPathAnalysis {
   visitedCubes?: string[]
 }
 
+/**
+ * Reason why a cube requires a CTE
+ */
+export type CTEReason = 'hasMany' | 'fanOutPrevention'
+
 export interface PreAggregationAnalysis {
   cubeName: string
   cteAlias: string
+  /** Why this cube needs a CTE (human-readable explanation) */
   reason: string
+  /** Typed reason for programmatic use */
+  reasonType?: CTEReason
   measures: string[]
   joinKeys: Array<{
     sourceColumn: string

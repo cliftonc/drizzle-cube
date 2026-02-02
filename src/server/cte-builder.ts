@@ -44,6 +44,7 @@ export class CTEBuilder {
    * 2. Applies security context filtering
    * 3. Groups by join keys and requested dimensions
    * 4. Handles propagating filters from related cubes
+   * 5. Handles multi-hop join paths by absorbing intermediate tables (fan-out prevention)
    */
   buildPreAggregationCTE(
     cteInfo: CTEInfo,
@@ -55,21 +56,41 @@ export class CTEBuilder {
     const cube = cteInfo.cube
     const cubeBase = cube.sql(context) // Gets security filtering!
 
+    // Check if this CTE needs to absorb intermediate tables (multi-hop fan-out prevention)
+    const hasIntermediateJoins = cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0
+
     // Build selections for CTE - include join keys and measures
     const cteSelections: Record<string, any> = {}
 
-    // Add join key columns - use the stored column objects
-    for (const joinKey of cteInfo.joinKeys) {
-      // Use the stored Drizzle column object if available
-      if (joinKey.targetColumnObj) {
-        cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
+    // For multi-hop paths with intermediate joins:
+    // - The join key needs to come from the INTERMEDIATE table, not the CTE table
+    // - Example: EmployeeTeams CTE joining through Employees to Departments
+    //   → CTE should GROUP BY employees.department_id, not employee_teams.employee_id
+    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
+      // Use the first intermediate table's connection to primary as the join key
+      const firstIntermediate = cteInfo.intermediateJoins[0]
+      const primaryConnectCol = firstIntermediate.primaryJoinColumn
 
-        // Also add an aliased version if there's a matching dimension with a different name
-        // This allows the main query to reference it by dimension name
-        for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
-          if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
-            // Add an aliased version: "column_name" as "dimensionName"
-            cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
+      // Add the primary-connected column from the intermediate table
+      // This column will be used to join the CTE directly to the primary cube
+      if (primaryConnectCol) {
+        const colName = primaryConnectCol.name
+        cteSelections[colName] = primaryConnectCol
+      }
+    } else {
+      // Standard path: Add join key columns - use the stored column objects
+      for (const joinKey of cteInfo.joinKeys) {
+        // Use the stored Drizzle column object if available
+        if (joinKey.targetColumnObj) {
+          cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
+
+          // Also add an aliased version if there's a matching dimension with a different name
+          // This allows the main query to reference it by dimension name
+          for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
+            if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
+              // Add an aliased version: "column_name" as "dimensionName"
+              cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
+            }
           }
         }
       }
@@ -144,6 +165,27 @@ export class CTEBuilder {
     let cteQuery = context.db
       .select(cteSelections)
       .from(cubeBase.from)
+
+    // If there are intermediate joins (multi-hop fan-out prevention),
+    // add JOINs to the intermediate tables inside the CTE
+    // Example: EmployeeTeams CTE needs to JOIN to Employees to get department_id
+    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
+      for (const intermediate of cteInfo.intermediateJoins) {
+        const intermediateCubeBase = intermediate.cube.sql(context)
+        const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
+
+        // Add JOIN with security context for the intermediate table
+        const intermediateConditions = [joinCondition]
+        if (intermediate.securityFilter) {
+          intermediateConditions.push(intermediate.securityFilter)
+        }
+
+        cteQuery = cteQuery.leftJoin(
+          intermediateCubeBase.from,
+          and(...intermediateConditions)!
+        )
+      }
+    }
 
     // Add additional query-specific WHERE conditions for this cube
     // IMPORTANT: Only apply dimension filters in CTE WHERE clause, not measure filters
@@ -249,9 +291,20 @@ export class CTEBuilder {
     }
 
     // Add join key columns to GROUP BY
-    for (const joinKey of cteInfo.joinKeys) {
-      if (joinKey.targetColumnObj) {
-        addGroupByField(joinKey.targetColumnObj)
+    // For multi-hop paths with intermediate joins, use the intermediate table's column
+    // that connects to the primary cube (e.g., employees.department_id)
+    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
+      // Use the primary-connected column from the first intermediate table
+      const firstIntermediate = cteInfo.intermediateJoins[0]
+      if (firstIntermediate.primaryJoinColumn) {
+        addGroupByField(firstIntermediate.primaryJoinColumn)
+      }
+    } else {
+      // Standard path: use the direct join keys
+      for (const joinKey of cteInfo.joinKeys) {
+        if (joinKey.targetColumnObj) {
+          addGroupByField(joinKey.targetColumnObj)
+        }
       }
     }
 
@@ -303,6 +356,11 @@ export class CTEBuilder {
    *
    * Creates the ON clause for joining a CTE to the main query.
    * Uses stored column objects for type-safe joins.
+   *
+   * For multi-hop paths with intermediate joins:
+   * - The CTE includes columns from intermediate tables
+   * - The join condition uses the intermediate's primary-connected column
+   * - Example: departments.id = employeeteams_agg.department_id (not employee_id!)
    */
   buildCTEJoinCondition(
     joinCube: QueryPlan['joinCubes'][0],
@@ -317,12 +375,22 @@ export class CTEBuilder {
 
     const conditions: SQL[] = []
 
-    // Build join conditions using join keys
-    for (const joinKey of cteInfo.joinKeys) {
-      // Use the stored source column object if available, otherwise fall back to identifier
-      const sourceCol = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
-      const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
-      conditions.push(eq(sourceCol as any, cteCol))
+    // Check if this is a multi-hop path with intermediate joins
+    if (cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0) {
+      // Use the intermediate table's primary-connected column
+      // Example: departments.id = employeeteams_agg.department_id
+      const firstIntermediate = cteInfo.intermediateJoins[0]
+      const primaryCol = cteInfo.joinKeys[0]?.sourceColumnObj
+      const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(firstIntermediate.primaryJoinColumn.name)}`
+      conditions.push(eq(primaryCol as any, cteCol))
+    } else {
+      // Standard path: build join conditions using join keys
+      for (const joinKey of cteInfo.joinKeys) {
+        // Use the stored source column object if available, otherwise fall back to identifier
+        const sourceCol = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
+        const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
+        conditions.push(eq(sourceCol as any, cteCol))
+      }
     }
 
     return conditions.length === 1 ? conditions[0] : and(...conditions)!

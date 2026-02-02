@@ -426,6 +426,24 @@ export interface PropagatingFilter {
 }
 
 /**
+ * Intermediate join information for multi-hop CTE paths
+ * When a CTE cube joins to primary through intermediate tables that have hasMany,
+ * these intermediate tables are absorbed into the CTE to prevent fan-out.
+ */
+export interface IntermediateJoinInfo {
+  /** The intermediate cube that's being absorbed into the CTE */
+  cube: Cube
+  /** The join definition from the intermediate cube to this CTE cube */
+  joinDef: CubeJoin
+  /** Security filter to apply to the intermediate table within the CTE */
+  securityFilter?: SQL
+  /** The column on the intermediate table that connects to the primary cube */
+  primaryJoinColumn: AnyColumn
+  /** The column on the intermediate table that connects to the CTE cube */
+  cteJoinColumn: AnyColumn
+}
+
+/**
  * Pre-aggregation CTE information
  * Describes a Common Table Expression used for pre-aggregating hasMany relationships
  */
@@ -450,6 +468,21 @@ export interface PreAggregationCTEInfo {
    */
   downstreamJoinKeys?: DownstreamJoinKeyInfo[]
   /**
+   * Intermediate joins that need to be absorbed into this CTE.
+   * When the path from primary cube to CTE cube goes through intermediate tables
+   * with hasMany relationships, those joins are included IN the CTE rather than
+   * in the main query to prevent fan-out.
+   *
+   * Example: Departments → Employees → EmployeeTeams
+   * - Primary: Departments
+   * - CTE: EmployeeTeams
+   * - Intermediate: Employees (has hasMany to EmployeeTeams)
+   *
+   * The CTE will JOIN to employees and GROUP BY employees.department_id,
+   * then join directly to Departments.
+   */
+  intermediateJoins?: IntermediateJoinInfo[]
+  /**
    * Type of CTE:
    * - 'aggregate': Standard CTE with GROUP BY for count/sum/avg measures
    *
@@ -458,6 +491,17 @@ export interface PreAggregationCTEInfo {
    * applied in the outer query SELECT clause, not in separate CTEs.
    */
   cteType?: 'aggregate'
+  /**
+   * Reason for creating this CTE:
+   * - 'hasMany': Direct hasMany relationship target - requires SUM in outer query
+   * - 'fanOutPrevention': Cube affected by hasMany elsewhere - requires MAX in outer query
+   *
+   * This determines how the outer query aggregates CTE values:
+   * - hasMany CTEs have multiple rows per join key, so SUM combines them
+   * - fanOutPrevention CTEs have one row per key, but get duplicated by joins,
+   *   so MAX retrieves the value without re-summing
+   */
+  cteReason?: 'hasMany' | 'fanOutPrevention'
 }
 
 /**
@@ -504,6 +548,8 @@ export interface QueryPlan {
   groupByFields: (SQL | AnyColumn)[]
   /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
   preAggregationCTEs?: PreAggregationCTEInfo[]
+  /** Warnings about potential query issues (e.g., fan-out without dimensions) */
+  warnings?: import('./core').QueryWarning[]
 }
 
 

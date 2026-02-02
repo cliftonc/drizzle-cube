@@ -17,6 +17,7 @@ import { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useCubeApi } from '../../providers/CubeApiProvider'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 import type { CubeQuery, CubeResultSet } from '../../types'
+import type { QueryWarning } from '../../shared/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { stableStringify } from '../../shared/queryKey'
 import { useDebounceQuery } from '../useDebounceQuery'
@@ -99,6 +100,8 @@ export interface UseCubeLoadQueryResult {
    * In auto-refresh mode, this is the same as refetch().
    */
   executeQuery: (options?: RefetchOptions) => void
+  /** Warnings from query planning (e.g., fan-out without dimensions) */
+  warnings: QueryWarning[] | undefined
 }
 
 /**
@@ -252,6 +255,18 @@ export function useCubeLoadQuery(
     }
   }, [queryResult.data])
 
+  // Extract warnings from result set
+  const warnings = useMemo((): QueryWarning[] | undefined => {
+    if (!queryResult.data?.loadResponse) return undefined
+    const lr = queryResult.data.loadResponse
+    // Handle nested structure: loadResponse.results[0].warnings
+    if (lr.results && lr.results[0]?.warnings) {
+      return lr.results[0].warnings
+    }
+    // Handle flat structure: loadResponse.warnings
+    return lr.warnings
+  }, [queryResult.data])
+
   // Execute query function - for manual refresh mode, triggers execution
   // Also serves as refetch in auto mode
   const executeQuery = useCallback((options?: RefetchOptions) => {
@@ -301,5 +316,6 @@ export function useCubeLoadQuery(
     clearCache,
     needsRefresh,
     executeQuery,
+    warnings,
   }
 }

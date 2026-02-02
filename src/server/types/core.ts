@@ -17,6 +17,30 @@ export interface SecurityContext {
 }
 
 /**
+ * Severity level for query warnings
+ */
+export type QueryWarningSeverity = 'info' | 'warning' | 'error'
+
+/**
+ * Warning emitted during query planning or execution
+ * Provides user-facing feedback about potential query issues
+ */
+export interface QueryWarning {
+  /** Unique code for programmatic handling (e.g., 'FAN_OUT_NO_DIMENSIONS') */
+  code: string
+  /** Human-readable warning message */
+  message: string
+  /** Severity level for UI styling */
+  severity: QueryWarningSeverity
+  /** Cubes involved in the warning (if applicable) */
+  cubes?: string[]
+  /** Measures involved in the warning (if applicable) */
+  measures?: string[]
+  /** Actionable suggestion for the user */
+  suggestion?: string
+}
+
+/**
  * Query execution result
  */
 export interface QueryResult {
@@ -40,6 +64,8 @@ export interface QueryResult {
     /** Remaining TTL in milliseconds (only present on cache hit) */
     ttlRemainingMs?: number
   }
+  /** Warnings about potential query issues (e.g., fan-out without dimensions) */
+  warnings?: QueryWarning[]
 }
 
 /**

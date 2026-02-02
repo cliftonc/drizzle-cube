@@ -234,7 +234,12 @@ export async function handleDryRun(
  */
 export function formatCubeResponse(
   query: SemanticQuery,
-  result: { data: any[]; annotation?: any; cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number } },
+  result: {
+    data: any[]
+    annotation?: any
+    cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number }
+    warnings?: Array<{ code: string; message: string; severity: string; cubes?: string[]; measures?: string[]; suggestion?: string }>
+  },
   semanticLayer: SemanticLayerCompiler
 ) {
   const dbType = getDatabaseType(semanticLayer)
@@ -258,7 +263,9 @@ export function formatCubeResponse(
       slowQuery: false,
       data: result.data,
       // Include cache metadata if present (indicates cache hit with TTL info)
-      ...(result.cache && { cache: result.cache })
+      ...(result.cache && { cache: result.cache }),
+      // Include warnings if present (e.g., fan-out without dimensions)
+      ...(result.warnings?.length && { warnings: result.warnings })
     }],
     pivotQuery: {
       ...query,

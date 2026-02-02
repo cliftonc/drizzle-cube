@@ -255,7 +255,9 @@ export class QueryExecutor {
 
       const result: QueryResult = {
         data: filledData,
-        annotation
+        annotation,
+        // Include warnings from query planning (e.g., fan-out without dimensions)
+        warnings: queryPlan.warnings?.length ? queryPlan.warnings : undefined
       }
 
       // Cache result before returning (without cache metadata - that's only on cache hits)
@@ -943,16 +945,24 @@ export class QueryExecutor {
                   context
                 )
               } else {
-                // For non-calculated measures, aggregate the CTE column directly
+                // For non-calculated measures, aggregate the CTE column based on CTE reason
+                // - 'hasMany' CTEs: Multiple rows per join key, so SUM combines them
+                // - 'fanOutPrevention' CTEs: One row per key but duplicated by joins, use MAX to retrieve value
+                const isFanOutPrevention = cteInfo.cteReason === 'fanOutPrevention'
+
                 switch (measure.type) {
                   case 'count':
                   case 'countDistinct':
                   case 'sum':
-                    aggregatedExpr = sum(cteColumn)
+                    // For fan-out prevention, use MAX to get the pre-aggregated value without re-summing
+                    // For hasMany, use SUM to combine multiple CTE rows
+                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
                     break
                   case 'avg':
-                    // For average of averages, we should use a weighted average, but for now use simple avg
-                    aggregatedExpr = this.databaseAdapter.buildAvg(cteColumn)
+                    // For average, use MAX for fanOut (one value), simple avg for hasMany
+                    // Note: For hasMany, this is an average of averages which isn't technically correct
+                    // but matches the current behavior
+                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : this.databaseAdapter.buildAvg(cteColumn)
                     break
                   case 'min':
                     aggregatedExpr = min(cteColumn)
@@ -961,11 +971,11 @@ export class QueryExecutor {
                     aggregatedExpr = max(cteColumn)
                     break
                   case 'number':
-                    // For number type, use sum to combine values
-                    aggregatedExpr = sum(cteColumn)
+                    // For number type, use max for fanOut, sum for hasMany
+                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
                     break
                   default:
-                    aggregatedExpr = sum(cteColumn)
+                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
                 }
               }
 
@@ -1125,9 +1135,35 @@ export class QueryExecutor {
     // This prevents duplicate security conditions in WHERE clause
     const cubesWithSecurityInJoin = new Set<string>()
 
+    // Identify cubes that have been absorbed as intermediates into CTEs
+    // These cubes should be SKIPPED in the main join plan because their
+    // join logic is handled inside the CTE
+    // Example: Departments → Employees → EmployeeTeams
+    // - EmployeeTeams CTE absorbs the Employees join
+    // - Main query should NOT have a separate Employees join for EmployeeTeams
+    const absorbedIntermediateCubes = new Set<string>()
+    if (queryPlan.preAggregationCTEs) {
+      for (const cteInfo of queryPlan.preAggregationCTEs) {
+        if (cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0) {
+          for (const intermediate of cteInfo.intermediateJoins) {
+            absorbedIntermediateCubes.add(intermediate.cube.name)
+          }
+        }
+      }
+    }
+
     // Add multi-cube joins (inter-cube joins)
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
       for (const joinCube of queryPlan.joinCubes) {
+        // Skip cubes that have been absorbed as intermediates into CTEs
+        // UNLESS the cube has its own measures in the query (then it needs its own join)
+        const cubeName = joinCube.cube.name
+        if (absorbedIntermediateCubes.has(cubeName) && !cteAliasMap.has(cubeName)) {
+          // This cube was absorbed as an intermediate - skip the join
+          // The CTE that absorbed it will handle the relationship
+          continue
+        }
+
         // Check if this cube has been pre-aggregated into a CTE
         const cteAlias = cteAliasMap.get(joinCube.cube.name)
 
@@ -1267,15 +1303,23 @@ export class QueryExecutor {
     // Add WHERE conditions from all joined cubes (including their security context filters)
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
       for (const joinCube of queryPlan.joinCubes) {
+        const cubeName = joinCube.cube.name
+
         // Skip if this cube is handled by a CTE (WHERE conditions are applied within the CTE)
-        const cteAlias = cteAliasMap.get(joinCube.cube.name)
+        const cteAlias = cteAliasMap.get(cubeName)
         if (cteAlias) {
+          continue
+        }
+
+        // Skip cubes that were absorbed as intermediates into CTEs
+        // Their security is applied within the CTE, not in the main query
+        if (absorbedIntermediateCubes.has(cubeName)) {
           continue
         }
 
         // Skip cubes whose security is already in JOIN ON clause (for LEFT/RIGHT/FULL JOINs)
         // This prevents duplicate security conditions and preserves NULL rows in LEFT JOINs
-        if (cubesWithSecurityInJoin.has(joinCube.cube.name)) {
+        if (cubesWithSecurityInJoin.has(cubeName)) {
           continue
         }
 

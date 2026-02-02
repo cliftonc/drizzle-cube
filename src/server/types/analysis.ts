@@ -86,13 +86,20 @@ export interface JoinPathAnalysis {
 /**
  * Pre-aggregation CTE analysis
  */
+/**
+ * Reason why a cube requires a CTE
+ */
+export type CTEReason = 'hasMany' | 'fanOutPrevention'
+
 export interface PreAggregationAnalysis {
   /** Cube being pre-aggregated */
   cubeName: string
   /** CTE alias in the query */
   cteAlias: string
-  /** Why this cube needs a CTE */
+  /** Why this cube needs a CTE (human-readable explanation) */
   reason: string
+  /** Typed reason for programmatic use */
+  reasonType?: CTEReason
   /** Measures included in CTE (aggregate measures + window base measures) */
   measures: string[]
   /** Join keys used */
