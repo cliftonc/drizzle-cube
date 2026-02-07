@@ -220,6 +220,12 @@ Then configure your API endpoint in `.drizzle-cube.json` and ask Claude things l
 - **Security** - Multi-tenant isolation via security context
 - **Cross-cube queries** - Automatic join resolution
 
+### Modeling Note: Multi-Fact Queries
+- For `FactA -> Dimension <- FactB` (star/snowflake patterns), define reverse `hasMany` joins on the center dimension back to each fact.
+- Example: if `Sales` and `Inventory` both `belongsTo Products`, `Products` should define `hasMany Sales` and `hasMany Inventory`.
+- Why: join-path traversal is directional. Without reverse joins, the planner may not be able to pick the center dimension as the primary cube, which can lead to fan-out-prone execution plans.
+- If you cannot add reverse joins immediately, include the center join key dimension (for example `Products.id`) in the query grain to reduce aggregation ambiguity.
+
 ### Client Components
 - **AnalysisBuilder** - Interactive query builder with chart visualization
 - **AnalyticsDashboard** - Configurable dashboards with grid layouts

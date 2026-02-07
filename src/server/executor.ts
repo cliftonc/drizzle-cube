@@ -906,10 +906,14 @@ export class QueryExecutor {
     // Get primary cube's base SQL definition
     const primaryCubeBase = queryPlan.primaryCube.sql(context)
     
+    const allCubes = queryPlan.joinCubes.length > 0
+      ? this.getCubesFromPlan(queryPlan)
+      : new Map<string, Cube>([[queryPlan.primaryCube.name, queryPlan.primaryCube]])
+
     // Build selections using QueryBuilder - but modify for CTEs
     const selections = this.queryBuilder.buildSelections(
-      queryPlan.joinCubes.length > 0 
-        ? this.getCubesFromPlan(queryPlan) // Multi-cube
+      queryPlan.joinCubes.length > 0
+        ? allCubes // Multi-cube
         : queryPlan.primaryCube, // Single cube
       query,
       context
@@ -925,7 +929,7 @@ export class QueryExecutor {
         for (const measureName of cteInfo.measures) {
           if (modifiedSelections[measureName]) {
             const [, fieldName] = measureName.split('.')
-            const cube = this.getCubesFromPlan(queryPlan).get(cubeName)
+            const cube = allCubes.get(cubeName)
             if (cube && cube.measures && cube.measures[fieldName]) {
               const measure = cube.measures[fieldName]
               const cteColumn = sql`${sql.identifier(cteInfo.cteAlias)}.${sql.identifier(fieldName)}`
@@ -936,7 +940,6 @@ export class QueryExecutor {
 
               if (measure.type === 'calculated' && measure.calculatedSql) {
                 // Use QueryBuilder's helper to build calculated measure from CTE columns
-                const allCubes = this.getCubesFromPlan(queryPlan)
                 aggregatedExpr = this.queryBuilder.buildCTECalculatedMeasure(
                   measure,
                   cube,
@@ -949,6 +952,14 @@ export class QueryExecutor {
                 // - 'hasMany' CTEs: Multiple rows per join key, so SUM combines them
                 // - 'fanOutPrevention' CTEs: One row per key but duplicated by joins, use MAX to retrieve value
                 const isFanOutPrevention = cteInfo.cteReason === 'fanOutPrevention'
+                // For hasMany CTEs, use MAX (not SUM) when query grain is already at the join key.
+                // This prevents duplication when the primary cube is lower-grain than the join key.
+                const useMaxAtJoinKeyGrain = this.shouldUseMaxForHasManyAtJoinKeyGrain(
+                  cteInfo,
+                  query,
+                  allCubes
+                )
+                const useMax = isFanOutPrevention || useMaxAtJoinKeyGrain
 
                 switch (measure.type) {
                   case 'count':
@@ -956,13 +967,13 @@ export class QueryExecutor {
                   case 'sum':
                     // For fan-out prevention, use MAX to get the pre-aggregated value without re-summing
                     // For hasMany, use SUM to combine multiple CTE rows
-                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
+                    aggregatedExpr = useMax ? max(cteColumn) : sum(cteColumn)
                     break
                   case 'avg':
                     // For average, use MAX for fanOut (one value), simple avg for hasMany
                     // Note: For hasMany, this is an average of averages which isn't technically correct
                     // but matches the current behavior
-                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : this.databaseAdapter.buildAvg(cteColumn)
+                    aggregatedExpr = useMax ? max(cteColumn) : this.databaseAdapter.buildAvg(cteColumn)
                     break
                   case 'min':
                     aggregatedExpr = min(cteColumn)
@@ -972,10 +983,10 @@ export class QueryExecutor {
                     break
                   case 'number':
                     // For number type, use max for fanOut, sum for hasMany
-                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
+                    aggregatedExpr = useMax ? max(cteColumn) : sum(cteColumn)
                     break
                   default:
-                    aggregatedExpr = isFanOutPrevention ? max(cteColumn) : sum(cteColumn)
+                    aggregatedExpr = useMax ? max(cteColumn) : sum(cteColumn)
                 }
               }
 
@@ -989,7 +1000,7 @@ export class QueryExecutor {
           const [selectionCubeName, fieldName] = selectionName.split('.')
           if (selectionCubeName === cubeName) {
             // This is a dimension/time dimension from a CTE cube
-            const cube = this.getCubesFromPlan(queryPlan).get(cubeName)
+            const cube = allCubes.get(cubeName)
             
             // Check if this is a dimension or time dimension from this cube
             const isDimension = cube && cube.dimensions?.[fieldName]
@@ -1027,8 +1038,6 @@ export class QueryExecutor {
     // Handle post-aggregation window functions
     // These window functions reference a base measure and operate on aggregated data
     if (query.measures) {
-      const allCubes = this.getCubesFromPlan(queryPlan)
-
       for (const measureName of query.measures) {
         const [cubeName, fieldName] = measureName.split('.')
         const cube = allCubes.get(cubeName)
@@ -1409,6 +1418,84 @@ export class QueryExecutor {
     }
     
     return cubes
+  }
+
+  /**
+   * For hasMany CTEs, detect when the outer query grain already matches the CTE join key.
+   * In that case, re-aggregation should use MAX (not SUM) to avoid multiplying values by
+   * lower-grain primary cube rows.
+   */
+  private shouldUseMaxForHasManyAtJoinKeyGrain(
+    cteInfo: NonNullable<QueryPlan['preAggregationCTEs']>[0],
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): boolean {
+    if (cteInfo.cteReason !== 'hasMany') {
+      return false
+    }
+
+    // If CTE includes additional grouping keys, SUM is still required.
+    if (cteInfo.downstreamJoinKeys && cteInfo.downstreamJoinKeys.length > 0) {
+      return false
+    }
+
+    // Multi-hop CTEs can include absorbed intermediate grouping and are not safe for this rule.
+    if (cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0) {
+      return false
+    }
+
+    const hasGrouping = Boolean(
+      (query.dimensions && query.dimensions.length > 0) ||
+      (query.timeDimensions && query.timeDimensions.length > 0)
+    )
+    if (!hasGrouping) {
+      return false
+    }
+
+    // If query selects dimensions from the CTE cube itself, CTE grain can exceed join key grain.
+    const selectsFromCTECube = Boolean(
+      query.dimensions?.some(d => d.startsWith(`${cteInfo.cube.name}.`)) ||
+      query.timeDimensions?.some(td => td.dimension.startsWith(`${cteInfo.cube.name}.`))
+    )
+    if (selectsFromCTECube) {
+      return false
+    }
+
+    // Safe only when all source-side join keys are present in the query grouping.
+    return cteInfo.joinKeys.length > 0 && cteInfo.joinKeys.every(joinKey =>
+      Boolean(joinKey.sourceColumnObj) && this.queryGroupsByColumn(joinKey.sourceColumnObj, query, cubes)
+    )
+  }
+
+  /**
+   * Checks whether query grouping includes a dimension backed by the given column.
+   */
+  private queryGroupsByColumn(column: any, query: SemanticQuery, cubes: Map<string, Cube>): boolean {
+    if (query.dimensions) {
+      for (const dimensionName of query.dimensions) {
+        const [cubeName, fieldName] = dimensionName.split('.')
+        const cube = cubes.get(cubeName)
+        if (cube?.dimensions?.[fieldName]?.sql === column) {
+          return true
+        }
+      }
+    }
+
+    // Only treat time dimensions as grouping by raw column when no granularity is applied.
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        if (timeDim.granularity) {
+          continue
+        }
+        const [cubeName, fieldName] = timeDim.dimension.split('.')
+        const cube = cubes.get(cubeName)
+        if (cube?.dimensions?.[fieldName]?.sql === column) {
+          return true
+        }
+      }
+    }
+
+    return false
   }
 
 
