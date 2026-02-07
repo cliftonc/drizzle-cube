@@ -36,7 +36,4 @@ jobs:
 
       - name: Publish to NPM
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # Note: Build runs automatically via prepublishOnly hook
-        # which executes: npm run lint && npm run typecheck && npm run build
+        
