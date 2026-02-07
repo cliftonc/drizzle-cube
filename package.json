@@ -229,7 +229,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.34.0",
+    "@eslint/js": "^10.0.0",
     "@fastify/cors": "^11.1.0",
     "@hono/node-server": "^1.19.0",
     "@iconify-icons/heroicons-outline": "^1.2.5",
@@ -264,7 +264,7 @@
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
-    "eslint": "^9.34.0",
+    "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.1.0",
     "fastify": "^5.6.2",
