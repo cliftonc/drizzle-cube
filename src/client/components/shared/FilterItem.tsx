@@ -270,7 +270,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
             <div className="dc:relative dc:flex-1 dc:min-w-0">
             <button
               onClick={handleFieldDropdownToggle}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
+              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
             >
               <span className="dc:truncate">
                 {selectedField ? (
@@ -313,7 +313,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         <button
                           key={`query-${field.name}`}
                           onClick={() => handleFieldChange(field.name)}
-                          className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
+                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                             field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                           }`}
                         >
@@ -345,7 +345,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                       <button
                         key={`all-${field.name}`}
                         onClick={() => handleFieldChange(field.name)}
-                        className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
+                        className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                           field.name === filter.member ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                         }`}
                       >
@@ -367,7 +367,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
 
                   {/* No results message */}
                   {filteredAllFields.length === 0 && (
-                    <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted text-center">
+                    <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted dc:text-center">
                       No fields found matching "{fieldSearchTerm}"
                     </div>
                   )}
@@ -386,7 +386,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
               <div className="dc:relative dc:shrink-0">
               <button
                 onClick={handleOperatorDropdownToggle}
-                className="dc:w-full dc:sm:w-32 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                className="dc:w-full dc:sm:w-32 dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
               >
                 <span className="dc:truncate">
                   {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
@@ -402,7 +402,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                     <button
                       key={operator.operator}
                       onClick={() => handleOperatorChange(operator.operator)}
-                      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
+                      className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                         operator.operator === filter.operator ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
@@ -426,7 +426,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         setIsOperatorDropdownOpen(false)
                         setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
                       }}
-                      className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+                      className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                     >
                       <span className="dc:truncate">{selectedRangeLabel}</span>
                       <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
@@ -440,7 +440,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                           <button
                             key={option.value}
                             onClick={() => handleRangeTypeChange(option.value)}
-                            className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
+                            className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover dc:focus:outline-none focus:bg-dc-surface-hover ${
                               option.value === rangeType ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                             }`}
                           >

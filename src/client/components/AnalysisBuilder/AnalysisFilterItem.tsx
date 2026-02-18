@@ -74,7 +74,7 @@ export default function AnalysisFilterItem({
         <button
           ref={buttonRef}
           onClick={() => setIsModalOpen(true)}
-          className="dc:flex-1 dc:min-w-0 text-left"
+          className="dc:flex-1 dc:min-w-0 dc:text-left"
           title={`${fieldTitle} ${operatorLabel} ${valueDisplay}`}
         >
           <div className="dc:text-sm text-dc-text dc:break-words">

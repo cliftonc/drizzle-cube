@@ -324,7 +324,7 @@ export default function AnalysisChartConfigPanel({
             compact
           />
         </div>
-        <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
+        <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
           Loading chart configuration...
         </div>
       </div>
@@ -496,7 +496,7 @@ export default function AnalysisChartConfigPanel({
         availableFields.measures.length === 0 &&
         availableFields.dimensions.length === 0 &&
         availableFields.timeDimensions.length === 0 && (
-          <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
+          <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
             <p>Add metrics and breakdowns in the Query tab to configure your chart.</p>
           </div>
         )}

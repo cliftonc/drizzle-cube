@@ -206,7 +206,7 @@ export function AxisFormatControls({
       {/* Preview */}
       <div className="dc:space-y-1">
         <label className="dc:text-xs text-dc-text-secondary">Preview</label>
-        <div className="dc:text-sm font-mono text-dc-text">
+        <div className="dc:text-sm dc:font-mono text-dc-text">
           {preview}
         </div>
       </div>

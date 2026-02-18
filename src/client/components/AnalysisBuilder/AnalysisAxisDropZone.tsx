@@ -403,7 +403,7 @@ export default function AnalysisAxisDropZone({
         }}
       >
         {fields.length === 0 ? (
-          <div className="dc:text-sm text-dc-text-muted text-center dc:py-2">
+          <div className="dc:text-sm text-dc-text-muted dc:text-center dc:py-2">
             {isFull ? 'Maximum items reached' : emptyText || `Drop fields here`}
           </div>
         ) : (

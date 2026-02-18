@@ -94,7 +94,7 @@ export default function ColorPaletteSelector({
                 key={palette.name}
                 type="button"
                 onClick={() => handlePaletteSelect(palette.name)}
-                className={`dc:w-full dc:px-3 dc:py-2 text-left dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                className={`dc:w-full dc:px-3 dc:py-2 dc:text-left dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                   palette.name === currentPalette ? 'bg-dc-surface-secondary' : 'text-dc-text-secondary'
                 }`}
                 style={palette.name === currentPalette ? { color: 'var(--dc-primary)' } : undefined}

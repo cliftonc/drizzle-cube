@@ -143,7 +143,7 @@ export default function ChartTypeSelector({
                     disabled={!isAvailable}
                     className={`
                       dc:relative dc:p-1.5 dc:rounded dc:border dc:transition-colors dc:duration-150
-                      text-left dc:group dc:min-h-[30px] dc:flex dc:items-center dc:justify-start
+                      dc:text-left dc:group dc:min-h-[30px] dc:flex dc:items-center dc:justify-start
                       ${!isAvailable
                         ? 'dc:opacity-50 dc:cursor-not-allowed bg-dc-surface'
                         : isSelected

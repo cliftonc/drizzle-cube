@@ -378,7 +378,7 @@ export default function DashboardFilterConfigModal({
                 setIsValueDropdownOpen(false)
                 setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
               }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
             >
               <span className="dc:truncate">{dateRangeLabel}</span>
               <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -392,7 +392,7 @@ export default function DashboardFilterConfigModal({
                   <button
                     key={option.value}
                     onClick={() => handleRangeTypeChange(option.value)}
-                    className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
+                    className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
                       option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                     }`}
                   >
@@ -522,7 +522,7 @@ export default function DashboardFilterConfigModal({
                 setIsDateRangeDropdownOpen(false)
                 setIsValueDropdownOpen(!isValueDropdownOpen)
               }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
             >
               <span className="text-dc-text-muted dc:truncate">
                 {valuesLoading ? 'Loading...' : 'Select value...'}
@@ -561,7 +561,7 @@ export default function DashboardFilterConfigModal({
                         <button
                           key={`${value}-${index}`}
                           onClick={() => handleValueSelect(value)}
-                          className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
+                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
                             isSelected ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                           }`}
                         >
@@ -679,14 +679,14 @@ export default function DashboardFilterConfigModal({
                       <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass}`}>
                         {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
                       </span>
-                      <span className="dc:flex-1 dc:text-sm dc:font-medium text-dc-text text-left">{fieldTitle}</span>
+                      <span className="dc:flex-1 dc:text-sm dc:font-medium text-dc-text dc:text-left">{fieldTitle}</span>
                     </>
                   ) : (
                     <>
                       <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-surface-tertiary text-dc-text-muted">
                         <DimensionIcon className="dc:w-4 dc:h-4" />
                       </span>
-                      <span className="dc:flex-1 dc:text-sm text-dc-text-muted text-left">Click to select a field</span>
+                      <span className="dc:flex-1 dc:text-sm text-dc-text-muted dc:text-left">Click to select a field</span>
                     </>
                   )}
                   <EditIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
@@ -707,7 +707,7 @@ export default function DashboardFilterConfigModal({
                       setIsDateRangeDropdownOpen(false)
                       setIsOperatorDropdownOpen(!isOperatorDropdownOpen)
                     }}
-                    className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
+                    className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
                   >
                     <span className="dc:truncate">{operatorLabel}</span>
                     <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
@@ -721,7 +721,7 @@ export default function DashboardFilterConfigModal({
                         <button
                           key={op.operator}
                           onClick={() => handleOperatorChange(op.operator as FilterOperator)}
-                          className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
+                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
                             op.operator === localFilter.operator ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                           }`}
                         >

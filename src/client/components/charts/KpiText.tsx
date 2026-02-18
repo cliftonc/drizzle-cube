@@ -73,7 +73,7 @@ const KpiText = React.memo(function KpiText({
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
         </div>
@@ -105,7 +105,7 @@ const KpiText = React.memo(function KpiText({
           borderColor: 'var(--dc-danger-border)'
         }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
           <div className="dc:text-xs">No measure fields configured</div>
         </div>
@@ -149,7 +149,7 @@ const KpiText = React.memo(function KpiText({
           borderColor: 'var(--dc-warning-border)'
         }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
           <div className="dc:text-xs">All values are null or invalid</div>
         </div>
@@ -265,7 +265,7 @@ const KpiText = React.memo(function KpiText({
         {/* Main KPI Text */}
         <div 
           ref={textRef}
-          className="dc:font-bold dc:leading-tight text-center"
+          className="dc:font-bold dc:leading-tight dc:text-center"
           style={{ 
             fontSize: `${fontSize}px`,
             color: valueColor 

@@ -82,7 +82,7 @@ export default function AnalysisDisplayConfigPanel({
 
   if (!chartConfigLoaded) {
     return (
-      <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
+      <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
         Loading display options...
       </div>
     )
@@ -95,7 +95,7 @@ export default function AnalysisDisplayConfigPanel({
 
   if (!hasDisplayOptions) {
     return (
-      <div className="text-center text-dc-text-muted dc:text-sm dc:py-4">
+      <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
         <p>No display options available for this chart type.</p>
       </div>
     )
@@ -247,7 +247,7 @@ export default function AnalysisDisplayConfigPanel({
                       }
                       placeholder={option.placeholder}
                       rows={8}
-                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent font-mono dc:resize-y bg-dc-surface text-dc-text"
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent dc:font-mono dc:resize-y bg-dc-surface text-dc-text"
                     />
                   ) : (
                     <input

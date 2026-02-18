@@ -224,7 +224,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
               e.stopPropagation()
               setIsEditingName(true)
             }}
-            className="dc:flex-1 text-left dc:text-sm dc:font-medium text-dc-text hover:text-dc-primary dc:truncate"
+            className="dc:flex-1 dc:text-left dc:text-sm dc:font-medium text-dc-text hover:text-dc-primary dc:truncate"
             title="Click to edit name"
           >
             {step.name || `Step ${stepIndex + 1}`}

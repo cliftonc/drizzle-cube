@@ -174,7 +174,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
             </p>
           )}
           <div className="dc:relative">
-            <pre className="dc:p-3 dc:text-xs bg-dc-surface-secondary dc:rounded dc:overflow-x-auto font-mono text-dc-text">
+            <pre className="dc:p-3 dc:text-xs bg-dc-surface-secondary dc:rounded dc:overflow-x-auto dc:font-mono text-dc-text">
               {rec.cubeCode}
             </pre>
             <div className="dc:absolute dc:top-1 dc:right-1">

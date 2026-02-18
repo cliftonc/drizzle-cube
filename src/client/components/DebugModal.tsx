@@ -103,7 +103,7 @@ export default function DebugModal({
         <div className="dc:grid dc:grid-cols-1 dc:lg:grid-cols-2 dc:gap-4 dc:flex-1 dc:overflow-auto">
           <div>
             <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Chart Type</h3>
-            <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-sm font-mono dc:border border-dc-border">
+            <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-sm dc:font-mono dc:border border-dc-border">
               {chartType}
             </div>
           </div>
@@ -135,28 +135,28 @@ export default function DebugModal({
 
           <div className="dc:lg:col-span-2">
             <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Chart Config</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(chartConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="dc:lg:col-span-2">
             <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Display Config</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(displayConfig, null, 2)}</code>
             </pre>
           </div>
 
           <div className="dc:lg:col-span-2">
             <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Query Object</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">{JSON.stringify(queryObject, null, 2)}</code>
             </pre>
           </div>
 
           <div className="dc:lg:col-span-2">
             <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Data Sample (first 3 rows)</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
+            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
               <code className="language-json">
                 {JSON.stringify(Array.isArray(data) ? data.slice(0, 3) : data, null, 2)}
               </code>

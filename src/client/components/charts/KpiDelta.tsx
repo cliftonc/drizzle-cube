@@ -204,7 +204,7 @@ const KpiDelta = React.memo(function KpiDelta({
           minHeight: height === "100%" ? "200px" : undefined,
         }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">
             No data points to display
@@ -242,7 +242,7 @@ const KpiDelta = React.memo(function KpiDelta({
           borderColor: "var(--dc-danger-border)",
         }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
           <div className="dc:text-xs">No measure field configured</div>
         </div>
@@ -302,7 +302,7 @@ const KpiDelta = React.memo(function KpiDelta({
           borderColor: "var(--dc-warning-border)",
         }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Insufficient Data</div>
           <div className="dc:text-xs">
             Delta calculation requires at least 2 data points
@@ -396,7 +396,7 @@ const KpiDelta = React.memo(function KpiDelta({
     >
       {/* Field Label */}
       <div
-        className="text-dc-text-secondary dc:font-bold text-center dc:mb-2 dc:flex dc:items-center dc:justify-center dc:gap-1"
+        className="text-dc-text-secondary dc:font-bold dc:text-center dc:mb-2 dc:flex dc:items-center dc:justify-center dc:gap-1"
         style={{
           fontSize: "14px",
           lineHeight: "1.2",
@@ -453,7 +453,7 @@ const KpiDelta = React.memo(function KpiDelta({
           </div>
 
           {/* Delta Values */}
-          <div className="text-left">
+          <div className="dc:text-left">
             <div
               className="dc:font-bold dc:leading-tight"
               style={{
@@ -482,7 +482,7 @@ const KpiDelta = React.memo(function KpiDelta({
       {/* Unit/Suffix (hidden when formatValue is provided) */}
       {displayConfig.suffix && !displayConfig.formatValue && (
         <div
-          className="text-dc-text-muted text-center dc:mb-3"
+          className="text-dc-text-muted dc:text-center dc:mb-3"
           style={{
             fontSize: "14px",
             lineHeight: "1.2",

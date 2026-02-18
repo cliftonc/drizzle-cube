@@ -280,7 +280,7 @@ const SankeyChart = React.memo(function SankeyChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Configure a flow analysis with a starting step and event dimension

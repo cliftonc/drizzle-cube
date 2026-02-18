@@ -123,7 +123,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
 
     return (
       <div
-        className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4 text-center dc:border dc:border-dashed dc:rounded-lg"
+        className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4 dc:text-center dc:border dc:border-dashed dc:rounded-lg"
         style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}
       >
         <div className="dc:text-sm dc:font-semibold dc:mb-1 text-dc-text-muted">Unable to display chart</div>

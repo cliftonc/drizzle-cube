@@ -234,7 +234,7 @@ const KpiNumber = React.memo(function KpiNumber({
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
         </div>
@@ -254,7 +254,7 @@ const KpiNumber = React.memo(function KpiNumber({
           borderColor: 'var(--dc-danger-border)'
         }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
           <div className="dc:text-xs">No measure fields configured</div>
         </div>
@@ -275,7 +275,7 @@ const KpiNumber = React.memo(function KpiNumber({
       >
         {/* Field Label */}
         <div
-          className="text-dc-text-secondary dc:font-bold text-center dc:mb-3"
+          className="text-dc-text-secondary dc:font-bold dc:text-center dc:mb-3"
           style={{
             fontSize: '14px',
             lineHeight: '1.2'
@@ -310,7 +310,7 @@ const KpiNumber = React.memo(function KpiNumber({
     >
         {/* Field Label - Bolder and bigger */}
         <div
-          className="text-dc-text-secondary dc:font-bold text-center dc:mb-3 dc:flex dc:items-center dc:justify-center dc:gap-1"
+          className="text-dc-text-secondary dc:font-bold dc:text-center dc:mb-3 dc:flex dc:items-center dc:justify-center dc:gap-1"
           style={{
             fontSize: '14px',
             lineHeight: '1.2'
@@ -378,7 +378,7 @@ const KpiNumber = React.memo(function KpiNumber({
         {/* Unit/Suffix - Larger, not bold (hidden when formatValue is provided) */}
         {displayConfig.suffix && !displayConfig.formatValue && (
           <div
-            className="text-dc-text-muted text-center"
+            className="text-dc-text-muted dc:text-center"
             style={{
               fontSize: '14px',
               lineHeight: '1.2',

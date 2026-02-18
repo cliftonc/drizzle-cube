@@ -12,7 +12,7 @@ import type { FieldDetailPanelProps } from './types'
 function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   if (!field) {
     return (
-      <div className="dc:p-6 text-center text-dc-text-muted">
+      <div className="dc:p-6 dc:text-center text-dc-text-muted">
         <p className="dc:text-sm">Hover over a field to see details</p>
       </div>
     )

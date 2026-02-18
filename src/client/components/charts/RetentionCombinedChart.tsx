@@ -219,7 +219,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Configure retention analysis to see results
@@ -235,7 +235,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
           <div className="dc:text-xs text-dc-text-secondary">Data format may be incorrect</div>
         </div>
@@ -325,16 +325,16 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
     <table className="dc:w-full dc:border-collapse dc:text-sm">
       <thead className="dc:sticky dc:top-0 bg-dc-bg dc:z-10">
         <tr>
-          <th className="text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px] dc:whitespace-nowrap">
+          <th className="dc:text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px] dc:whitespace-nowrap">
             {retentionData?.breakdownValues?.length ? 'Segment' : 'Cohort'}
           </th>
-          <th className="text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px] dc:whitespace-nowrap">
+          <th className="dc:text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px] dc:whitespace-nowrap">
             {cohortLabel}
           </th>
           {retentionData?.periods.map((period) => (
             <th
               key={period}
-              className="text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[70px] dc:whitespace-nowrap"
+              className="dc:text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[70px] dc:whitespace-nowrap"
             >
               {formatPeriodLabel(period, retentionData?.granularity)}
             </th>
@@ -357,7 +357,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
               <td className="dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:whitespace-nowrap">
                 {seriesKey}
               </td>
-              <td className="dc:p-2 text-right text-dc-text-secondary dc:border-b border-dc-border">
+              <td className="dc:p-2 dc:text-right text-dc-text-secondary dc:border-b border-dc-border">
                 {cohortSize.toLocaleString()}
               </td>
               {retentionData?.periods.map((period) => {
@@ -369,7 +369,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
                 return (
                   <td
                     key={period}
-                    className="dc:p-2 text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
+                    className="dc:p-2 dc:text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
                     style={{ backgroundColor: bgColor, color: textColor }}
                     onMouseEnter={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect()

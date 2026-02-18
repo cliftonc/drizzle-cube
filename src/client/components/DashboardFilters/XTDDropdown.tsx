@@ -86,7 +86,7 @@ const XTDDropdown: React.FC<XTDDropdownProps> = ({
             key={option.id}
             type="button"
             onClick={() => onSelect(option.value)}
-            className="dc:w-full dc:px-3 dc:py-2 text-left dc:text-sm dc:transition-colors dc:flex dc:items-center dc:justify-between dc:gap-2"
+            className="dc:w-full dc:px-3 dc:py-2 dc:text-left dc:text-sm dc:transition-colors dc:flex dc:items-center dc:justify-between dc:gap-2"
             style={{
               backgroundColor: isActive ? 'var(--dc-primary-bg)' : 'transparent',
               color: 'var(--dc-text)'

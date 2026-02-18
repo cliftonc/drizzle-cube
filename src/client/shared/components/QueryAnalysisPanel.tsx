@@ -83,7 +83,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
         </h4>
         <div className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
           <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2 dc:flex-wrap">
-            <span className="font-mono dc:font-medium text-dc-primary">
+            <span className="dc:font-mono dc:font-medium text-dc-primary">
               {analysis.primaryCube.selectedCube}
             </span>
             <span className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded ${getReasonBadgeClasses(analysis.primaryCube.reason)}`}>
@@ -101,7 +101,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
               <div className="dc:mt-2 dc:space-y-1 dc:ml-2">
                 {analysis.primaryCube.candidates.map((c, i) => (
                   <div key={i} className="dc:text-xs dc:flex dc:items-center dc:gap-2 dc:flex-wrap">
-                    <span className={`font-mono ${c.cubeName === analysis.primaryCube.selectedCube ? 'dc:font-bold text-dc-primary' : 'text-dc-text-muted'}`}>
+                    <span className={`dc:font-mono ${c.cubeName === analysis.primaryCube.selectedCube ? 'dc:font-bold text-dc-primary' : 'text-dc-text-muted'}`}>
                       {c.cubeName}
                     </span>
                     <span className="text-dc-text-muted">
@@ -137,9 +137,9 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
             {analysis.joinPaths.map((jp, idx) => (
               <div key={idx} className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
                 <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2 dc:flex-wrap">
-                  <span className="font-mono text-dc-text-secondary">{analysis.primaryCube.selectedCube}</span>
+                  <span className="dc:font-mono text-dc-text-secondary">{analysis.primaryCube.selectedCube}</span>
                   <ArrowRightIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
-                  <span className="font-mono dc:font-medium text-dc-text">{jp.targetCube}</span>
+                  <span className="dc:font-mono dc:font-medium text-dc-text">{jp.targetCube}</span>
                   {jp.pathFound ? (
                     <span className="dc:text-xs dc:px-2 dc:py-0.5 bg-dc-success-bg text-dc-success dc:rounded">
                       {jp.pathLength} step{jp.pathLength !== 1 ? 's' : ''}
@@ -154,9 +154,9 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                   <div className="dc:space-y-1 dc:ml-2">
                     {jp.path.map((step, stepIdx) => (
                       <div key={stepIdx} className="dc:flex dc:items-center dc:gap-1 dc:text-xs dc:flex-wrap">
-                        <span className="font-mono text-dc-text-secondary">{step.fromCube}</span>
+                        <span className="dc:font-mono text-dc-text-secondary">{step.fromCube}</span>
                         <ArrowRightIcon className="dc:w-3 dc:h-3 text-dc-text-muted" />
-                        <span className="font-mono text-dc-text">{step.toCube}</span>
+                        <span className="dc:font-mono text-dc-text">{step.toCube}</span>
                         <span className="text-dc-text-muted">
                           ({step.relationship}, {step.joinType} join)
                         </span>
@@ -199,9 +199,9 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
             {analysis.preAggregations.map((pa, idx) => (
               <div key={idx} className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
                 <div className="dc:flex dc:items-center dc:gap-2 dc:mb-1 dc:flex-wrap">
-                  <span className="font-mono dc:font-medium text-dc-text">{pa.cubeName}</span>
+                  <span className="dc:font-mono dc:font-medium text-dc-text">{pa.cubeName}</span>
                   <span className="dc:text-xs text-dc-text-muted">as</span>
-                  <code className="dc:text-xs bg-dc-surface-secondary dc:px-1 dc:rounded font-mono">{pa.cteAlias}</code>
+                  <code className="dc:text-xs bg-dc-surface-secondary dc:px-1 dc:rounded dc:font-mono">{pa.cteAlias}</code>
                 </div>
                 <p className="dc:text-xs text-dc-text-secondary">{pa.reason}</p>
                 <div className="dc:mt-1 dc:text-xs text-dc-text-muted">

@@ -64,7 +64,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
       // Default error display
       return (
-        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 text-center dc:border dc:border-dashed dc:rounded-lg"
+        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 dc:text-center dc:border dc:border-dashed dc:rounded-lg"
           style={{ borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
           <div className="dc:h-12 dc:w-12 dc:mb-4 text-dc-text-muted">⚠️</div>
           <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">
@@ -76,19 +76,19 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
           {/* Error details */}
           <div className="dc:w-full dc:max-w-2xl dc:mb-4">
-            <div className="bg-dc-surface-secondary dc:rounded-lg dc:p-3 text-left">
-              <div className="dc:text-xs font-mono dc:mb-2 text-dc-text">
+            <div className="bg-dc-surface-secondary dc:rounded-lg dc:p-3 dc:text-left">
+              <div className="dc:text-xs dc:font-mono dc:mb-2 text-dc-text">
                 <strong>Error:</strong> {this.state.error?.message}
               </div>
               {this.state.error?.name && (
-                <div className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
+                <div className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
                   <strong>Type:</strong> {this.state.error.name}
                 </div>
               )}
 
               {/* Portlet Config Debug Info */}
               {this.props.portletConfig && (
-                <details className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
+                <details className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
                   <summary className="dc:cursor-pointer">Portlet Configuration</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
@@ -99,7 +99,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
               {/* Cube Query Debug Info */}
               {this.props.cubeQuery && (
-                <details className="dc:text-xs font-mono text-dc-text-secondary dc:mb-2">
+                <details className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
                   <summary className="dc:cursor-pointer">Cube Query</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: '#d1fae5' }}>
@@ -112,7 +112,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               )}
 
               {this.state.errorInfo && (
-                <details className="dc:text-xs font-mono text-dc-text-secondary">
+                <details className="dc:text-xs dc:font-mono text-dc-text-secondary">
                   <summary className="dc:cursor-pointer">Component Stack</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap">{this.state.errorInfo}</pre>
                 </details>

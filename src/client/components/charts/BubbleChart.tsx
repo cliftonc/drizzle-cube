@@ -632,7 +632,7 @@ const BubbleChart = React.memo(function BubbleChart({
   if (!data || data.length === 0) {
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">No data points to display in bubble chart</div>
         </div>
@@ -645,7 +645,7 @@ const BubbleChart = React.memo(function BubbleChart({
   if (!hasValidConfig) {
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
           <div className="dc:text-xs">Bubble chart requires xAxis, yAxis, series, and sizeField dimensions</div>
           <div className="dc:text-xs dc:mt-1">Optional: colorField for bubble coloring</div>

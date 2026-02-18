@@ -203,7 +203,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
           {/* Dimension List */}
           <div className="dc:max-h-64 dc:overflow-y-auto dc:p-1">
             {Object.entries(filteredGroups).length === 0 ? (
-              <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted text-center">
+              <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted dc:text-center">
                 No matching dimensions found
               </div>
             ) : (

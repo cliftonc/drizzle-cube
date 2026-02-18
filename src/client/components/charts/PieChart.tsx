@@ -31,7 +31,7 @@ const PieChart = React.memo(function PieChart({
     if (!data || data.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in pie chart</div>
           </div>
@@ -58,7 +58,7 @@ const PieChart = React.memo(function PieChart({
     } else {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
             <div className="dc:text-xs">chartConfig.x/y or chartConfig.xAxis/yAxis required for pie chart</div>
           </div>
@@ -69,7 +69,7 @@ const PieChart = React.memo(function PieChart({
     if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
             <div className="dc:text-xs">Missing required X-axis or Y-axis fields</div>
           </div>
@@ -133,7 +133,7 @@ const PieChart = React.memo(function PieChart({
     if (pieData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
             <div className="dc:text-xs text-dc-text-secondary">
               {originalLength > 0
@@ -206,7 +206,7 @@ const PieChart = React.memo(function PieChart({
     // 'PieChart rendering error
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Pie Chart Error</div>
           <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
           <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>

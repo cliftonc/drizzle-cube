@@ -300,7 +300,7 @@ export default function FieldSearchModal({
             <div className="dc:p-2" role="group" aria-label="Cube categories">
               <button
                 onClick={() => setSelectedCube(null)}
-                className={`dc:w-full text-left dc:px-3 dc:py-2 dc:rounded-md dc:text-sm dc:transition-colors ${
+                className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:rounded-md dc:text-sm dc:transition-colors ${
                   selectedCube === null
                     ? 'bg-dc-primary/10 text-dc-primary dc:font-medium'
                     : 'text-dc-text hover:bg-dc-surface-hover'
@@ -313,7 +313,7 @@ export default function FieldSearchModal({
                 <button
                   key={cubeName}
                   onClick={() => setSelectedCube(cubeName)}
-                  className={`dc:w-full text-left dc:px-3 dc:py-2 dc:rounded-md dc:text-sm dc:transition-colors dc:truncate ${
+                  className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:rounded-md dc:text-sm dc:transition-colors dc:truncate ${
                     selectedCube === cubeName
                       ? 'bg-dc-primary/10 text-dc-primary dc:font-medium'
                       : 'text-dc-text hover:bg-dc-surface-hover'
@@ -336,7 +336,7 @@ export default function FieldSearchModal({
             aria-label="Available fields"
           >
             {filteredFields.length === 0 && recentOptions.length === 0 ? (
-              <div className="text-center dc:py-12 text-dc-text-muted">
+              <div className="dc:text-center dc:py-12 text-dc-text-muted">
                 <p className="dc:text-lg dc:mb-2">No fields found</p>
                 <p className="dc:text-sm">
                   {searchTerm

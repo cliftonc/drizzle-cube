@@ -59,7 +59,7 @@ function FieldSearchItem({
     <button
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:rounded-lg dc:flex dc:items-center dc:gap-3 dc:transition-colors dc:group ${
+      className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:rounded-lg dc:flex dc:items-center dc:gap-3 dc:transition-colors dc:group ${
         isFocused
           ? 'bg-dc-primary/10 dc:ring-1 ring-dc-primary'
           : isSelected

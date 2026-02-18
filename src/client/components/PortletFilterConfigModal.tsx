@@ -90,7 +90,7 @@ export default function PortletFilterConfigModal({
         {/* Content */}
         <div className="dc:flex-1 dc:overflow-y-auto dc:px-6 dc:py-4">
           {dashboardFilters.length === 0 ? (
-            <div className="text-center dc:py-8 text-dc-text-muted">
+            <div className="dc:text-center dc:py-8 text-dc-text-muted">
               <svg
                 className="dc:mx-auto dc:h-12 dc:w-12 dc:mb-3"
                 fill="none"

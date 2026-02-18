@@ -257,7 +257,7 @@ const HeatMapChart = React.memo(function HeatMapChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Run a query to see heatmap visualization
@@ -273,7 +273,7 @@ const HeatMapChart = React.memo(function HeatMapChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration required</div>
           <div className="dc:text-xs text-dc-text-secondary">
             {!xAxisField && 'X-axis dimension required. '}
@@ -291,7 +291,7 @@ const HeatMapChart = React.memo(function HeatMapChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
           <div className="dc:text-xs text-dc-text-secondary">
             The query returned no results for the heatmap

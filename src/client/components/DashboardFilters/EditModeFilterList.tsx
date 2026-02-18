@@ -169,7 +169,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
         {dashboardFilters.length === 0 && !isCollapsed && (
           <div className="dc:px-4 dc:pb-2">
             <div
-              className="dc:text-xs dc:p-2 dc:rounded-md text-center"
+              className="dc:text-xs dc:p-2 dc:rounded-md dc:text-center"
               style={{
                 backgroundColor: 'var(--dc-surface-secondary)',
                 color: 'var(--dc-text-secondary)'

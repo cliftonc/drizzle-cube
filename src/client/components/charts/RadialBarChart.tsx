@@ -26,7 +26,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
     if (!data || data.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in radial bar chart</div>
           </div>
@@ -70,7 +70,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
       if (!valueField) {
         return (
           <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-            <div className="text-center">
+            <div className="dc:text-center">
               <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
               <div className="dc:text-xs">No numeric field found for radial bar chart values</div>
             </div>
@@ -105,7 +105,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
     if (radialData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for radial bar chart after transformation</div>
           </div>
@@ -169,7 +169,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
     // 'RadialBarChart rendering error
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Radial Bar Chart Error</div>
           <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
           <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>

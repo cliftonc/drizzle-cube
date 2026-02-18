@@ -181,7 +181,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
             <div className="dc:relative dc:flex-1 dc:min-w-0">
               <button
                 onClick={handleTimeDimensionDropdownToggle}
-                className="dc:w-full dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
+                className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:min-w-0"
               >
                 <span className="dc:truncate">{timeDimension}</span>
                 <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:transition-transform ${
@@ -195,7 +195,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                     <button
                       key={td}
                       onClick={() => handleTimeDimensionChange(td)}
-                      className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                      className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                         td === timeDimension ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
@@ -214,7 +214,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
           <div className="dc:relative dc:shrink-0">
             <button
               onClick={handleRangeDropdownToggle}
-              className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
+              className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             >
               <span className="dc:truncate">{selectedRangeLabel}</span>
               <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
@@ -228,7 +228,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                   <button
                     key={option.value}
                     onClick={() => handleRangeTypeChange(option.value)}
-                    className={`dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
+                    className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover ${
                       option.value === rangeType ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                     }`}
                   >

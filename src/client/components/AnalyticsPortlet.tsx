@@ -560,7 +560,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   if (!chartConfig && hasMandatoryFields) {
     return (
       <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
           <div className="dc:text-xs text-dc-text-secondary">Please configure this chart</div>
         </div>
@@ -666,7 +666,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
             </div>
           )}
           <div className="dc:flex dc:items-center dc:justify-center dc:flex-1 text-dc-text-muted">
-            <div className="text-center">
+            <div className="dc:text-center">
               <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
               <div className="dc:text-xs text-dc-text-secondary">
                 {isDrilledState
@@ -745,7 +745,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       if (!isValidChartType(effectiveChartType)) {
         return (
           <div className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
-            <div className="text-center text-dc-text-muted">
+            <div className="dc:text-center text-dc-text-muted">
               <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
               <div className="dc:text-xs">{effectiveChartType}</div>
             </div>
@@ -789,7 +789,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       console.error('Chart rendering error:', error)
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted dc:p-4" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render chart</div>
             <div className="dc:text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
           </div>

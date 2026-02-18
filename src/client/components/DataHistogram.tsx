@@ -174,7 +174,7 @@ export default function DataHistogram({
       </div>
 
       {/* Average indicator */}
-      <div className="text-center dc:mt-1 dc:text-xs text-dc-text-muted">
+      <div className="dc:text-center dc:mt-1 dc:text-xs text-dc-text-muted">
         Average of {values.length} values
       </div>
     </div>

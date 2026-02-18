@@ -123,7 +123,7 @@ const BarChart = React.memo(function BarChart({
     if (!data || data.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in bar chart</div>
           </div>
@@ -134,7 +134,7 @@ const BarChart = React.memo(function BarChart({
     if (configError) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
             <div className="dc:text-xs">{configError}</div>
           </div>
@@ -182,7 +182,7 @@ const BarChart = React.memo(function BarChart({
     if (!chartData || chartData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for bar chart after transformation</div>
           </div>
@@ -357,7 +357,7 @@ const BarChart = React.memo(function BarChart({
           </ComposedChart>
         </ChartContainer>
         {skippedCount > 0 && (
-          <div className="dc:text-xs text-dc-text-muted text-center dc:mt-1">
+          <div className="dc:text-xs text-dc-text-muted dc:text-center dc:mt-1">
             {skippedCount} data point{skippedCount !== 1 ? 's' : ''} with no values hidden
           </div>
         )}
@@ -367,7 +367,7 @@ const BarChart = React.memo(function BarChart({
     // 'BarChart rendering error
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Bar Chart Error</div>
           <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
           <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>

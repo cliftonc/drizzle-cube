@@ -154,7 +154,7 @@ const FunnelChart = React.memo(function FunnelChart({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No funnel data</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Configure a funnel with at least 2 steps and a binding key
@@ -259,7 +259,7 @@ const FunnelChart = React.memo(function FunnelChart({
             return (
               <div key={step.name} className="dc:flex dc:flex-col dc:items-center dc:gap-2 dc:flex-1 dc:max-w-32 dc:h-full">
                 {/* Conversion Rate from Previous (top) */}
-                <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:min-h-16' : 'dc:min-h-10') : 'dc:h-5'} dc:flex-shrink-0 text-center`}>
+                <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:min-h-16' : 'dc:min-h-10') : 'dc:h-5'} dc:flex-shrink-0 dc:text-center`}>
                   {stepConversionRate !== null ? (
                     <div className="dc:text-xs text-dc-text-secondary">
                       {showConversion && <span>→ {stepConversionRate.toFixed(1)}%</span>}
@@ -303,7 +303,7 @@ const FunnelChart = React.memo(function FunnelChart({
                 </div>
 
                 {/* Step Label (bottom) */}
-                <div className="dc:flex-shrink-0 text-center">
+                <div className="dc:flex-shrink-0 dc:text-center">
                   <div className="dc:text-sm dc:font-medium text-dc-text dc:truncate" title={displayName}>
                     {displayName}
                   </div>
@@ -361,7 +361,7 @@ const FunnelChart = React.memo(function FunnelChart({
           return (
             <div key={step.name} className="dc:flex dc:items-center dc:gap-3">
               {/* Step Label */}
-              <div className="dc:w-24 dc:flex-shrink-0 text-right">
+              <div className="dc:w-24 dc:flex-shrink-0 dc:text-right">
                 <div className="dc:text-sm dc:font-medium text-dc-text dc:truncate" title={displayName}>
                   {displayName}
                 </div>
@@ -396,7 +396,7 @@ const FunnelChart = React.memo(function FunnelChart({
               </div>
 
               {/* Conversion Rate from Previous */}
-              <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:w-36' : 'dc:w-28') : 'dc:w-16'} dc:flex-shrink-0 text-left`}>
+              <div className={`${metricsCount > 0 ? (metricsCount > 1 ? 'dc:w-36' : 'dc:w-28') : 'dc:w-16'} dc:flex-shrink-0 dc:text-left`}>
                 {stepConversionRate !== null ? (
                   <div className="dc:text-xs text-dc-text-secondary">
                     {showConversion && <span>↓ {stepConversionRate.toFixed(1)}%</span>}

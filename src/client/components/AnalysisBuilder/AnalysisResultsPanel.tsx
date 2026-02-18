@@ -407,7 +407,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Loading state - initial load
   const renderLoading = () => (
     <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
-      <div className="text-center">
+      <div className="dc:text-center">
         <div
           className="dc:animate-spin dc:rounded-full dc:h-12 dc:w-12 dc:border-b-2 dc:mx-auto dc:mb-4"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
@@ -432,7 +432,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             {renderDebug()}
           </div>
         ) : (
-          <div className="text-center dc:max-w-md">
+          <div className="dc:text-center dc:max-w-md">
             <ErrorIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-error dc:mb-4" />
             <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
               Query Execution Failed
@@ -441,8 +441,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               There was an error executing your query. Please check the query and try again.
             </div>
             {executionError && (
-              <div className="bg-dc-danger-bg dc:border border-dc-error dc:rounded-lg dc:p-3 text-left">
-                <div className="dc:text-xs font-mono text-dc-error dc:break-words">
+              <div className="bg-dc-danger-bg dc:border border-dc-error dc:rounded-lg dc:p-3 dc:text-left">
+                <div className="dc:text-xs dc:font-mono text-dc-error dc:break-words">
                   {executionError}
                 </div>
               </div>
@@ -482,7 +482,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Waiting state - query built but not yet executed (debounce period)
   const renderWaiting = () => (
     <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
-      <div className="text-center">
+      <div className="dc:text-center">
         <div
           className="dc:animate-spin dc:rounded-full dc:h-12 dc:w-12 dc:border-b-2 dc:mx-auto dc:mb-4"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
@@ -500,7 +500,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Manual refresh mode - query ready but needs user to click refresh
   const renderNeedsRefreshEmpty = () => (
     <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
-      <div className="text-center">
+      <div className="dc:text-center">
         <svg className="dc:w-12 dc:h-12 dc:mx-auto text-dc-warning dc:mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
@@ -540,7 +540,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
     return (
       <div className="dc:h-full dc:flex dc:items-center dc:justify-center dc:pt-6">
-        <div className="text-center dc:mb-16">
+        <div className="dc:text-center dc:mb-16">
           <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-text-muted dc:mb-3" />
           <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
             No Results Yet
@@ -566,7 +566,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // No data returned state
   const renderNoData = () => (
     <div className="dc:h-full dc:flex dc:items-center dc:justify-center">
-      <div className="text-center">
+      <div className="dc:text-center">
         <SuccessIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-success dc:mb-3" />
         <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-1">
           Query Successful
@@ -583,7 +583,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (!executionResults || executionResults.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
-          <div className="text-center">
+          <div className="dc:text-center">
             <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
             <div className="dc:text-xs">Run a query to see chart visualization</div>
@@ -601,7 +601,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (!isValidChartType(effectiveChartType)) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
-          <div className="text-center">
+          <div className="dc:text-center">
             <WarningIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
             <div className="dc:text-xs">{effectiveChartType}</div>
@@ -1324,7 +1324,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (!executionResults || (Array.isArray(executionResults) && executionResults.length === 0)) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
-          <div className="text-center">
+          <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
             <div className="dc:text-xs">Configure flow analysis to see results</div>
@@ -1351,7 +1351,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (nodes.length === 0 && links.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
-          <div className="text-center">
+          <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
             <div className="dc:text-xs">Configure flow analysis to see results</div>
@@ -1371,9 +1371,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Layer</th>
-                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Name</th>
-                  <th className="dc:px-3 dc:py-2 text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Layer</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Name</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
                 </tr>
               </thead>
               <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
@@ -1393,7 +1393,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                         </span>
                       </td>
                       <td className="dc:px-3 dc:py-2 text-dc-text">{node.name as string}</td>
-                      <td className="dc:px-3 dc:py-2 text-right text-dc-text font-mono">
+                      <td className="dc:px-3 dc:py-2 dc:text-right text-dc-text dc:font-mono">
                         {(node.value as number)?.toLocaleString()}
                       </td>
                     </tr>
@@ -1412,10 +1412,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">From</th>
-                  <th className="dc:px-3 dc:py-2 text-center dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">→</th>
-                  <th className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">To</th>
-                  <th className="dc:px-3 dc:py-2 text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">From</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-center dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">→</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">To</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
                 </tr>
               </thead>
               <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
@@ -1430,9 +1430,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   return (
                     <tr key={idx} className="hover:bg-dc-surface-hover">
                       <td className="dc:px-3 dc:py-2 text-dc-text">{sourceName}</td>
-                      <td className="dc:px-3 dc:py-2 text-center text-dc-text-muted">→</td>
+                      <td className="dc:px-3 dc:py-2 dc:text-center text-dc-text-muted">→</td>
                       <td className="dc:px-3 dc:py-2 text-dc-text">{targetName}</td>
-                      <td className="dc:px-3 dc:py-2 text-right text-dc-text font-mono">
+                      <td className="dc:px-3 dc:py-2 dc:text-right text-dc-text dc:font-mono">
                         {(link.value as number)?.toLocaleString()}
                       </td>
                     </tr>
@@ -1469,7 +1469,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     if (!tableData || tableData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
-          <div className="text-center">
+          <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
             <div className="dc:text-xs">Run a query to see table data</div>
@@ -1500,7 +1500,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Overlay spinner for refreshing
   const renderOverlaySpinner = () => (
     <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center bg-dc-surface bg-opacity-75 dc:z-10">
-      <div className="text-center">
+      <div className="dc:text-center">
         <div
           className="dc:animate-spin dc:rounded-full dc:h-10 dc:w-10 dc:border-b-2 dc:mx-auto dc:mb-2"
           style={{ borderBottomColor: 'var(--dc-primary)' }}

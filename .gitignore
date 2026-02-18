@@ -1,5 +1,6 @@
 node_modules/
 .env
+.dev.vars
 dist/
 dist-preview/
 !mcp-server/dist/

@@ -294,7 +294,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
                   >
                     {listNumber}.
                   </span>
-                  <span className="text-center">
+                  <span className="dc:text-center">
                     {node.children.map((child, i) => renderNode(child, i))}
                   </span>
                 </li>
@@ -302,7 +302,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
             } else if (alignment === 'right') {
               return (
                 <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
-                  <span className="text-right">
+                  <span className="dc:text-right">
                     {node.children.map((child, i) => renderNode(child, i))}
                   </span>
                   <span 
@@ -338,7 +338,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
                   className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:mr-2 dc:shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
-                <span className="text-center">
+                <span className="dc:text-center">
                   {node.children.map((child, i) => renderNode(child, i))}
                 </span>
               </li>
@@ -346,7 +346,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
           } else if (alignment === 'right') {
             return (
               <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
-                <span className="text-right">
+                <span className="dc:text-right">
                   {node.children.map((child, i) => renderNode(child, i))}
                 </span>
                 <span 
@@ -388,7 +388,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
           minHeight: height === "100%" ? '200px' : undefined
         }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No content</div>
           <div className="dc:text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
         </div>

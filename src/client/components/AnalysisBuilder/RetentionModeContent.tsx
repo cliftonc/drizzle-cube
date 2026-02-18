@@ -340,7 +340,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
                       onChange={(e) => onPeriodsChange(parseInt(e.target.value, 10))}
                       className="dc:flex-1"
                     />
-                    <span className="dc:w-8 dc:text-sm dc:font-medium text-dc-text text-center">
+                    <span className="dc:w-8 dc:text-sm dc:font-medium text-dc-text dc:text-center">
                       {retentionPeriods}
                     </span>
                   </div>

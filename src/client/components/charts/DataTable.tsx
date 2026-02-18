@@ -52,7 +52,7 @@ const DataTable = React.memo(function DataTable({
         className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
         </div>
@@ -109,7 +109,7 @@ function PivotedTable({
         className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
         </div>
@@ -126,7 +126,7 @@ function PivotedTable({
               <th
                 key={col.key}
                 className={`dc:px-3 dc:py-2 dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider dc:whitespace-nowrap ${
-                  col.isTimeColumn ? 'text-right' : 'text-left'
+                  col.isTimeColumn ? 'dc:text-right' : 'dc:text-left'
                 }`}
               >
                 {col.label}
@@ -200,7 +200,7 @@ function PivotedTableRow({
           return (
             <td
               key={col.key}
-              className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm text-right text-dc-text"
+              className="dc:px-3 dc:py-2 dc:whitespace-nowrap dc:text-sm dc:text-right text-dc-text"
             >
               {formatPivotCellValue(value, leftYAxisFormat)}
             </td>
@@ -295,7 +295,7 @@ function FlatTable({
         className="dc:flex dc:items-center dc:justify-center dc:w-full"
         style={{ height }}
       >
-        <div className="text-center text-dc-text-muted">
+        <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No columns available</div>
           <div className="dc:text-xs text-dc-text-secondary">Data structure is invalid</div>
         </div>
@@ -311,7 +311,7 @@ function FlatTable({
             {columns.map((column) => (
               <th
                 key={column}
-                className="dc:px-3 dc:py-2 text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider"
+                className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider"
               >
                 {getFieldLabel(column)}
               </th>

@@ -176,19 +176,19 @@ export default function AnalysisFilterGroup({
               <div className="dc:absolute dc:right-0 dc:mt-1 dc:z-40 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:py-1 dc:min-w-[120px]">
                 <button
                   onClick={handleAddFilterClick}
-                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add Filter
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('and')}
-                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add AND Group
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('or')}
-                  className="dc:w-full text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
                   Add OR Group
                 </button>
@@ -212,7 +212,7 @@ export default function AnalysisFilterGroup({
       {/* Group Body - Filter List */}
       <div className="dc:p-1.5 dc:flex dc:flex-wrap dc:gap-2">
         {group.filters.length === 0 ? (
-          <div className="text-center dc:py-3">
+          <div className="dc:text-center dc:py-3">
             <p className="dc:text-xs text-dc-text-muted dc:mb-1">No conditions in this group</p>
             <button
               onClick={() => onAddFilter([])}

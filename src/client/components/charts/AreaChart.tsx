@@ -43,7 +43,7 @@ const AreaChart = React.memo(function AreaChart({
     if (!data || data.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in area chart</div>
           </div>
@@ -68,7 +68,7 @@ const AreaChart = React.memo(function AreaChart({
     } else {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
             <div className="dc:text-xs">Invalid or missing chart axis configuration</div>
           </div>
@@ -79,7 +79,7 @@ const AreaChart = React.memo(function AreaChart({
     if (!xAxisField || !yAxisFields || yAxisFields.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
             <div className="dc:text-xs">Missing required X-axis or Y-axis fields</div>
           </div>
@@ -145,7 +145,7 @@ const AreaChart = React.memo(function AreaChart({
     if (!chartData || chartData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for area chart after transformation</div>
           </div>
@@ -343,7 +343,7 @@ const AreaChart = React.memo(function AreaChart({
     // 'AreaChart rendering error
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Area Chart Error</div>
           <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
           <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>

@@ -917,7 +917,7 @@ export default function DashboardGrid({
     return (
       <>
         <div className="dc:flex dc:justify-center dc:items-center dc:min-h-[50vh]">
-          <div className="text-center">
+          <div className="dc:text-center">
             <ChartBarIcon style={{ width: '64px', height: '64px', color: 'var(--dc-text-muted)', margin: '0 auto 16px auto' }} />
             <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">No Portlets</h3>
             <p className="dc:text-sm text-dc-text-secondary dc:mb-4">Add your first portlet to start visualizing your data</p>

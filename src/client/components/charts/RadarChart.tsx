@@ -27,7 +27,7 @@ const RadarChart = React.memo(function RadarChart({
     if (!data || data.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in radar chart</div>
           </div>
@@ -76,7 +76,7 @@ const RadarChart = React.memo(function RadarChart({
       if (valueFields.length === 0) {
         return (
           <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-            <div className="text-center">
+            <div className="dc:text-center">
               <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
               <div className="dc:text-xs">No numeric fields found for radar chart values</div>
             </div>
@@ -120,7 +120,7 @@ const RadarChart = React.memo(function RadarChart({
     if (!radarData || radarData.length === 0) {
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="text-center">
+          <div className="dc:text-center">
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for radar chart after transformation</div>
           </div>
@@ -186,7 +186,7 @@ const RadarChart = React.memo(function RadarChart({
     // 'RadarChart rendering error
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Radar Chart Error</div>
           <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
           <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>

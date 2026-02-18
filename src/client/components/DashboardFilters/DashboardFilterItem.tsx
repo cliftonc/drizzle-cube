@@ -51,7 +51,7 @@ export default function DashboardFilterItem({
         {/* Filter description - clickable to edit */}
         <button
           onClick={onClick}
-          className="dc:flex-1 dc:min-w-0 text-left"
+          className="dc:flex-1 dc:min-w-0 dc:text-left"
           title={`${filter.label}: ${dateRangeDisplay}`}
         >
           <div className="dc:text-sm text-dc-text dc:break-words">
@@ -113,7 +113,7 @@ export default function DashboardFilterItem({
       {/* Filter description - clickable to edit */}
       <button
         onClick={onClick}
-        className="dc:flex-1 dc:min-w-0 text-left"
+        className="dc:flex-1 dc:min-w-0 dc:text-left"
         title={needsConfiguration ? `${filter.label}: Click to configure` : `${filter.label}: ${fieldTitle} ${operatorLabel} ${valueDisplay}`}
       >
         <div className="dc:text-sm text-dc-text dc:break-words">

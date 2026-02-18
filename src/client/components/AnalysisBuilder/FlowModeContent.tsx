@@ -255,7 +255,7 @@ const FlowModeContent = memo(function FlowModeContent({
                       disabled={chartType === 'sunburst'}
                       className="dc:flex-1 dc:disabled:cursor-not-allowed"
                     />
-                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text text-center">
+                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text dc:text-center">
                       {chartType === 'sunburst' ? '-' : stepsBefore}
                     </span>
                   </div>
@@ -275,7 +275,7 @@ const FlowModeContent = memo(function FlowModeContent({
                       onChange={(e) => onStepsAfterChange(parseInt(e.target.value, 10))}
                       className="dc:flex-1"
                     />
-                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text text-center">
+                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text dc:text-center">
                       {stepsAfter}
                     </span>
                   </div>

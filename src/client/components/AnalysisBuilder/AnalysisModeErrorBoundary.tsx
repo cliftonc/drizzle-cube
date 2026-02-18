@@ -79,7 +79,7 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 text-center bg-dc-surface">
+        <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-6 dc:text-center bg-dc-surface">
           <div className="dc:h-10 dc:w-10 dc:mb-3 text-dc-warning">
             {WarningIcon && <WarningIcon className="dc:w-10 dc:h-10" />}
           </div>
@@ -92,11 +92,11 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
           </p>
 
           {/* Error details (collapsible) */}
-          <details className="dc:w-full dc:max-w-md dc:mb-4 text-left">
+          <details className="dc:w-full dc:max-w-md dc:mb-4 dc:text-left">
             <summary className="dc:cursor-pointer dc:text-xs text-dc-text-muted hover:text-dc-text">
               Show error details
             </summary>
-            <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded dc:text-xs font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
+            <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded dc:text-xs dc:font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
               {this.state.error?.message || 'Unknown error'}
             </div>
           </details>

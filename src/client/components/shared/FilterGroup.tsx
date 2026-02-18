@@ -190,19 +190,19 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
               <div className="dc:absolute dc:right-0 dc:mt-1 dc:w-48 bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:z-30">
                 <button
                   onClick={handleAddSimpleFilter}
-                  className="dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
                   Add Filter
                 </button>
                 <button
                   onClick={handleAddAndGroup}
-                  className="dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
                   Add AND Group
                 </button>
                 <button
                   onClick={handleAddOrGroup}
-                  className="dc:w-full text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
+                  className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
                   Add OR Group
                 </button>
@@ -255,7 +255,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
         
         {/* Empty state */}
         {filters.length === 0 && (
-          <div className="text-center dc:py-4 text-dc-text-muted dc:text-sm">
+          <div className="dc:text-center dc:py-4 text-dc-text-muted dc:text-sm">
             No conditions in this group.
             <button
               onClick={handleAddSimpleFilter}

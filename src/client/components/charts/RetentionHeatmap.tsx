@@ -180,7 +180,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Configure retention analysis to see results
@@ -196,7 +196,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted"
         style={{ height }}
       >
-        <div className="text-center">
+        <div className="dc:text-center">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
           <div className="dc:text-xs text-dc-text-secondary">
             Data format may be incorrect
@@ -215,16 +215,16 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
       <table className="dc:w-full dc:border-collapse dc:text-sm">
         <thead className="dc:sticky dc:top-0 bg-dc-bg dc:z-10">
           <tr>
-            <th className="text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px]">
+            <th className="dc:text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px]">
               Cohort
             </th>
-            <th className="text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[80px]">
+            <th className="dc:text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[80px]">
               Users
             </th>
             {periods.map(period => (
               <th
                 key={period}
-                className="text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px]"
+                className="dc:text-center dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[60px]"
               >
                 P{period}
               </th>
@@ -237,7 +237,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
               <td className="dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:whitespace-nowrap">
                 {formatCohortPeriod(row.cohort)}
               </td>
-              <td className="dc:p-2 text-right text-dc-text-secondary dc:border-b border-dc-border">
+              <td className="dc:p-2 dc:text-right text-dc-text-secondary dc:border-b border-dc-border">
                 {row.cohortSize.toLocaleString()}
               </td>
               {row.periods.map((cell, periodIndex) => {
@@ -249,7 +249,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
                 return (
                   <td
                     key={period}
-                    className="dc:p-2 text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
+                    className="dc:p-2 dc:text-center dc:border-b border-dc-border dc:cursor-default dc:transition-opacity dc:hover:opacity-80"
                     style={{ backgroundColor: bgColor, color: textColor }}
                     onMouseEnter={(e) => handleMouseEnter(e, row.cohort, period, cell)}
                     onMouseLeave={handleMouseLeave}

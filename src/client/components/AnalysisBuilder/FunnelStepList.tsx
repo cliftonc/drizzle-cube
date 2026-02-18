@@ -97,7 +97,7 @@ const FunnelStepList = memo(function FunnelStepList({
 
       {/* Step List */}
       {steps.length === 0 ? (
-        <div className="text-center dc:py-8">
+        <div className="dc:text-center dc:py-8">
           <p className="dc:text-sm text-dc-text-muted dc:mb-3">
             No steps defined. Add at least 2 steps to create a funnel.
           </p>
@@ -156,7 +156,7 @@ const FunnelStepList = memo(function FunnelStepList({
 
       {/* Validation Hint */}
       {steps.length === 1 && (
-        <p className="dc:text-xs text-dc-warning text-center">
+        <p className="dc:text-xs text-dc-warning dc:text-center">
           Add at least one more step to create a valid funnel
         </p>
       )}

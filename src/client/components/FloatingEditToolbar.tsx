@@ -239,7 +239,7 @@ function CompactPaletteDropdown({ position, currentPalette, onPaletteChange }: C
             key={palette.name}
             type="button"
             onClick={() => onPaletteChange(palette.name)}
-            className={`dc:w-full dc:px-3 dc:py-2 text-left dc:text-sm hover:bg-dc-surface-hover dc:transition-colors ${
+            className={`dc:w-full dc:px-3 dc:py-2 dc:text-left dc:text-sm hover:bg-dc-surface-hover dc:transition-colors ${
               palette.name === currentPalette ? 'bg-dc-surface-secondary text-dc-primary' : 'text-dc-text-secondary'
             }`}
           >
