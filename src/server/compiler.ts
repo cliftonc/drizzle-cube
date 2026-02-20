@@ -88,11 +88,6 @@ export class SemanticLayerCompiler {
    * Validates calculated measures during registration
    */
   registerCube(cube: Cube): void {
-    // Debug: Log cube registration with meta
-    if (cube.meta) {
-      console.log(`[DEBUG] registerCube: ${cube.name} has meta:`, JSON.stringify(cube.meta))
-    }
-
     // Validate calculated measures
     this.validateCalculatedMeasures(cube)
 
@@ -408,11 +403,6 @@ export class SemanticLayerCompiler {
       relationships: relationships.length > 0 ? relationships : undefined,
       hierarchies: hierarchies.length > 0 ? hierarchies : undefined,
       meta: cube.meta
-    }
-
-    // Debug: Log if cube has meta
-    if (cube.meta) {
-      console.log(`[DEBUG] Cube ${cube.name} has meta:`, JSON.stringify(cube.meta))
     }
 
     return result
