@@ -502,16 +502,33 @@ export class QueryPlanner {
         }
 
         // Extract join keys from the join definition
-        // For belongsToMany, join keys come from through.sourceKey (on[] is empty)
+        // For belongsToMany, join keys come from through configuration (on[] is empty)
         if (joinInfo.joinDef.relationship === 'belongsToMany' && joinInfo.joinDef.through) {
-          // sourceKey[].source = CTE cube's column (goes into CTE SELECT/GROUP BY via targetColumnObj)
-          // sourceKey[].target = junction table's column (used in outer query join condition via sourceColumnObj)
-          joinKeys = joinInfo.joinDef.through.sourceKey.map(sk => ({
-            sourceColumn: sk.target.name,
-            targetColumn: sk.source.name,
-            sourceColumnObj: sk.target,
-            targetColumnObj: sk.source
-          }))
+          // Direction matters: when belongsToMany is defined on the primary cube,
+          // sourceKey connects primary->junction and targetKey connects junction->CTE.
+          // When defined on the CTE cube (or reversed), sourceKey connects CTE->junction.
+          const isDefinedOnPrimary = joinInfo.sourceCube?.name === primaryCube.name
+            && !('reversed' in joinInfo && joinInfo.reversed)
+
+          if (isDefinedOnPrimary) {
+            // targetKey connects junction -> CTE cube
+            joinKeys = joinInfo.joinDef.through.targetKey.map(tk => ({
+              sourceColumn: tk.source.name,     // junction table column
+              targetColumn: tk.target.name,     // CTE cube column
+              sourceColumnObj: tk.source,
+              targetColumnObj: tk.target
+            }))
+          } else {
+            // sourceKey connects CTE -> junction (existing logic)
+            // sourceKey[].source = CTE cube's column (goes into CTE SELECT/GROUP BY via targetColumnObj)
+            // sourceKey[].target = junction table's column (used in outer query join condition via sourceColumnObj)
+            joinKeys = joinInfo.joinDef.through.sourceKey.map(sk => ({
+              sourceColumn: sk.target.name,
+              targetColumn: sk.source.name,
+              sourceColumnObj: sk.target,
+              targetColumnObj: sk.source
+            }))
+          }
         } else {
           // For primary cube, the join keys are reversed (target becomes source)
           // For reversed joins (CTE cube has belongsTo back to primary), also swap
