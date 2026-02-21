@@ -502,7 +502,11 @@ export class QueryPlanner {
 
         // Extract join keys from the join definition
         // For primary cube, the join keys are reversed (target becomes source)
-        joinKeys = isPrimary
+        // For reversed joins (CTE cube has belongsTo back to primary), also swap
+        // source/target so that sourceColumnObj references the primary cube's column
+        // and targetColumnObj references the CTE cube's column
+        const shouldReverse = isPrimary || ('reversed' in joinInfo && joinInfo.reversed)
+        joinKeys = shouldReverse
           ? joinInfo.joinDef.on.map(joinOn => ({
               sourceColumn: joinOn.target.name,
               targetColumn: joinOn.source.name,
@@ -827,8 +831,8 @@ export class QueryPlanner {
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     targetCubeName: string
-  ): { sourceCube: Cube; joinDef: CubeJoin } | null {
-    // First check primary cube
+  ): { sourceCube: Cube; joinDef: CubeJoin; reversed?: boolean } | null {
+    // First check primary cube for a direct join to the target
     if (primaryCube.joins) {
       for (const [, joinDef] of Object.entries(primaryCube.joins)) {
         const resolvedTarget = resolveCubeReference(joinDef.targetCube)
@@ -838,9 +842,27 @@ export class QueryPlanner {
       }
     }
 
-    // Check all other cubes in the query
+    // Check if the target cube has a direct join BACK to the primary cube (reverse lookup)
+    // This handles the common case where a CTE cube has a belongsTo relationship
+    // to the primary cube (e.g., SurveyResponses.belongsTo(Users) via userId).
+    // This is preferred over searching all cubes because it uses a direct relationship
+    // to the primary cube, ensuring the CTE join keys reference columns that are
+    // actually in the FROM clause.
+    const targetCube = cubes.get(targetCubeName)
+    if (targetCube?.joins) {
+      for (const [, joinDef] of Object.entries(targetCube.joins)) {
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        if (resolvedTarget.name === primaryCube.name) {
+          // Found: target cube has a join back to primary cube
+          // Mark as reversed so the caller can swap source/target columns
+          return { sourceCube: targetCube, joinDef: joinDef as CubeJoin, reversed: true }
+        }
+      }
+    }
+
+    // Fallback: check all other cubes in the query
     for (const [, cube] of cubes) {
-      if (cube.name === primaryCube.name) continue
+      if (cube.name === primaryCube.name || cube.name === targetCubeName) continue
       if (cube.joins) {
         for (const [, joinDef] of Object.entries(cube.joins)) {
           const resolvedTarget = resolveCubeReference(joinDef.targetCube)
