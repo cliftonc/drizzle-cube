@@ -39,7 +39,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
     const executor = new QueryExecutor(dbExecutor)
     close = cleanup
 
-    const { employees, productivity, teams, employeeTeams } = await getTestSchema()
+    const { productivity, teams, employeeTeams } = await getTestSchema()
 
     // Declare cube variables for forward references
     let revTeamsCube: Cube<any>
