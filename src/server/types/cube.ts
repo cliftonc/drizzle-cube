@@ -538,6 +538,8 @@ export interface QueryPlan {
       joinCondition: SQL
       /** Optional security SQL function to apply to junction table */
       securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
+      /** Source cube name for the belongsToMany relationship (needed for CTE rewriting) */
+      sourceCubeName?: string
     }
   }>
   /** Combined field selections across all cubes (built by QueryBuilder) */

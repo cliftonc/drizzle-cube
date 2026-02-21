@@ -1180,6 +1180,38 @@ export class QueryExecutor {
         if (joinCube.junctionTable) {
           const junctionTable = joinCube.junctionTable
 
+          // When the source cube of the belongsToMany is a CTE, the junction table
+          // join condition references the original table which no longer exists in the
+          // outer query. Rebuild the condition to reference the CTE alias instead.
+          let junctionJoinCondition = junctionTable.joinCondition
+          const sourceCteAlias = junctionTable.sourceCubeName
+            ? cteAliasMap.get(junctionTable.sourceCubeName)
+            : undefined
+          if (sourceCteAlias) {
+            // Find the CTE's downstream join keys for this target cube
+            const cteInfo = queryPlan.preAggregationCTEs?.find(
+              (cte: { cube: Cube }) => cte.cube.name === junctionTable.sourceCubeName
+            )
+            const downstreamInfo = cteInfo?.downstreamJoinKeys?.find(
+              (d: { targetCubeName: string }) => d.targetCubeName === joinCube.cube.name
+            )
+            if (downstreamInfo && downstreamInfo.joinKeys.length > 0) {
+              const conditions: SQL[] = []
+              for (const joinKey of downstreamInfo.joinKeys) {
+                // sourceColumn = CTE cube's column name (e.g., "employeeId")
+                // targetColumnObj = junction table's column object
+                const cteCol = sql`${sql.identifier(sourceCteAlias)}.${sql.identifier(joinKey.sourceColumn)}`
+                const junctionCol = joinKey.targetColumnObj
+                if (junctionCol) {
+                  conditions.push(eq(junctionCol as any, cteCol))
+                }
+              }
+              if (conditions.length > 0) {
+                junctionJoinCondition = and(...conditions)!
+              }
+            }
+          }
+
           // Collect all WHERE conditions for junction table including security context
           const junctionWhereConditions: SQL[] = []
           if (junctionTable.securitySql) {
@@ -1199,16 +1231,16 @@ export class QueryExecutor {
           try {
             switch (junctionTable.joinType || 'left') {
               case 'left':
-                drizzleQuery = drizzleQuery.leftJoin(junctionTable.table, junctionTable.joinCondition)
+                drizzleQuery = drizzleQuery.leftJoin(junctionTable.table, junctionJoinCondition)
                 break
               case 'inner':
-                drizzleQuery = drizzleQuery.innerJoin(junctionTable.table, junctionTable.joinCondition)
+                drizzleQuery = drizzleQuery.innerJoin(junctionTable.table, junctionJoinCondition)
                 break
               case 'right':
-                drizzleQuery = drizzleQuery.rightJoin(junctionTable.table, junctionTable.joinCondition)
+                drizzleQuery = drizzleQuery.rightJoin(junctionTable.table, junctionJoinCondition)
                 break
               case 'full':
-                drizzleQuery = drizzleQuery.fullJoin(junctionTable.table, junctionTable.joinCondition)
+                drizzleQuery = drizzleQuery.fullJoin(junctionTable.table, junctionJoinCondition)
                 break
             }
 
@@ -1245,9 +1277,12 @@ export class QueryExecutor {
           // Get security condition for this cube (for LEFT JOINs, will be added to ON clause)
           securityCondition = joinCubeBase.where
 
-          if (downstreamInfo) {
+          if (downstreamInfo && !joinCube.junctionTable) {
             // This cube joins THROUGH a CTE - build join condition referencing CTE alias
             // e.g., Teams.id = employeeteams_agg.team_id
+            // Skip when a junction table is present (belongsToMany) because:
+            // - The junction table handles CTE-to-junction join separately
+            // - The target cube uses its original joinCondition (junction-to-target)
             const conditions: SQL[] = []
             for (const joinKey of downstreamInfo.joinKeys) {
               // Source column is in the CTE (e.g., team_id in employeeteams_agg)
