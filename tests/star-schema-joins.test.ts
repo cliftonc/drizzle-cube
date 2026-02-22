@@ -23,12 +23,13 @@ import { eq } from 'drizzle-orm'
 import { defineCube } from '../src/server/cube-utils'
 import type { Cube, QueryContext, BaseQueryDefinition } from '../src/server/types'
 import { QueryExecutor } from '../src/server/executor'
-import { createTestDatabaseExecutor, getTestSchema } from './helpers/test-database'
+import { createTestDatabaseExecutor, getTestSchema, getTestDatabaseType } from './helpers/test-database'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 describe('Star Schema: Fact-Dimension-Fact Joins', () => {
   let testExecutor: TestExecutor
+  let queryExecutor: QueryExecutor
   let cubes: Map<string, Cube>
   let close: () => void
 
@@ -41,8 +42,8 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
     cubes = await createStarSchemaCubes()
 
     // Create test executor
-    const executor = new QueryExecutor(dbExecutor)
-    testExecutor = new TestExecutor(executor, cubes, testSecurityContexts.org1)
+    queryExecutor = new QueryExecutor(dbExecutor)
+    testExecutor = new TestExecutor(queryExecutor, cubes, testSecurityContexts.org1)
   })
 
   afterAll(() => {
@@ -75,7 +76,7 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
       expect(result.data.length).toBeGreaterThan(0)
 
       for (const row of result.data) {
-        expect(row['Sales.totalRevenue']).toBeGreaterThanOrEqual(0)
+        expect(Number(row['Sales.totalRevenue'] ?? 0)).toBeGreaterThanOrEqual(0)
         expect(row['Products.name']).toBeDefined()
       }
     })
@@ -96,6 +97,34 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
         expect(row['Inventory.totalStock']).toBeGreaterThanOrEqual(0)
         expect(row['Products.name']).toBeDefined()
       }
+    })
+
+    it('should select multiFactMerge logical source for shared-dimension fact measures', () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+
+      const analysis = queryExecutor.analyzeQuery(cubes, query, testSecurityContexts.org1)
+      const measureStrategyStep = analysis.planningTrace?.steps.find(
+        step => step.phase === 'measure_strategy'
+      )
+
+      expect(measureStrategyStep?.details?.sourceType).toBe('multiFactMerge')
+    })
+
+    it('should generate merged group SQL for multi-fact queries', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+
+      const sqlResult = await queryExecutor.dryRunSQL(cubes, query, testSecurityContexts.org1)
+      const sqlText = sqlResult.sql.toLowerCase()
+
+      expect(sqlText).toContain('mf_group_1')
+      expect(sqlText).toContain('mf_group_2')
+      expect(sqlText).toContain('join')
     })
 
     it('should handle multiple dimensions from shared dimension', async () => {
@@ -127,10 +156,10 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
       expect(result.data.length).toBeGreaterThan(0)
 
       for (const row of result.data) {
-        expect(row['Sales.totalRevenue']).toBeGreaterThanOrEqual(0)
-        expect(row['Sales.avgOrderValue']).toBeGreaterThanOrEqual(0)
-        expect(row['Inventory.totalStock']).toBeGreaterThanOrEqual(0)
-        expect(row['Products.count']).toBeGreaterThan(0)
+        expect(Number(row['Sales.totalRevenue'] ?? 0)).toBeGreaterThanOrEqual(0)
+        expect(Number(row['Sales.avgOrderValue'] ?? 0)).toBeGreaterThanOrEqual(0)
+        expect(Number(row['Inventory.totalStock'] ?? 0)).toBeGreaterThanOrEqual(0)
+        expect(Number(row['Products.count'])).toBeGreaterThan(0)
         expect(row['Products.category']).toBeDefined()
       }
     })
@@ -289,6 +318,130 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
       // Depending on join type, may have different counts
       expect(allProductsResult.data).toBeDefined()
       expect(joinedResult.data).toBeDefined()
+    })
+  })
+
+  describe('Non-Overlapping Keys (Sparse Data)', () => {
+    // These tests verify that the multi-fact merge correctly preserves products
+    // that exist in only one fact table. Without FULL OUTER JOIN (or UNION fallback),
+    // a naive LEFT JOIN would silently drop these rows.
+
+    it('should return all 13 org-1 products including sparse ones', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      // Org-1 has 13 products: 10 original + E-Book Bundle + Prototype Widget + Spare Parts Kit
+      expect(result.data).toHaveLength(13)
+
+      const byName = new Map(result.data.map((r: any) => [r['Products.name'], r]))
+
+      // E-Book Bundle: has sales but NO inventory
+      const ebook = byName.get('E-Book Bundle')
+      expect(ebook).toBeDefined()
+      expect(Number(ebook['Sales.totalRevenue'])).toBeGreaterThan(0)
+      expect(Number(ebook['Inventory.totalStock'])).toBe(0)
+
+      // Prototype Widget: has inventory but NO sales
+      const prototype = byName.get('Prototype Widget')
+      expect(prototype).toBeDefined()
+      expect(Number(prototype['Sales.totalRevenue'])).toBe(0)
+      expect(Number(prototype['Inventory.totalStock'])).toBeGreaterThan(0)
+    })
+
+    it('should have exact COALESCE values for non-overlapping products', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+      const byName = new Map(result.data.map((r: any) => [r['Products.name'], r]))
+
+      // E-Book Bundle: 1 sale with revenue 1499.50, no inventory
+      const ebook = byName.get('E-Book Bundle')
+      expect(Number(ebook['Sales.totalRevenue'])).toBeCloseTo(1499.50, 1)
+      expect(Number(ebook['Inventory.totalStock'])).toBe(0)
+
+      // Prototype Widget: no sales, inventory stockLevel 25
+      const prototype = byName.get('Prototype Widget')
+      expect(Number(prototype['Sales.totalRevenue'])).toBe(0)
+      expect(Number(prototype['Inventory.totalStock'])).toBe(25)
+
+      // Spare Parts Kit: no sales, inventory stockLevel 60
+      const spareParts = byName.get('Spare Parts Kit')
+      expect(Number(spareParts['Sales.totalRevenue'])).toBe(0)
+      expect(Number(spareParts['Inventory.totalStock'])).toBe(60)
+    })
+
+    it('should have multi-fact merge row count equal to Products.count', async () => {
+      // Get total product count for org-1
+      const productQuery = TestQueryBuilder.create()
+        .measures(['Products.count'])
+        .build()
+      const productResult = await testExecutor.executeQuery(productQuery)
+      const totalProducts = Number(productResult.data[0]['Products.count'])
+
+      // Get multi-fact merge row count
+      const mergeQuery = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+      const mergeResult = await testExecutor.executeQuery(mergeQuery)
+
+      expect(mergeResult.data).toHaveLength(totalProducts)
+    })
+
+    it('should use correct SQL strategy per database engine', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name'])
+        .build()
+
+      const sqlResult = await queryExecutor.dryRunSQL(cubes, query, testSecurityContexts.org1)
+      const sqlText = sqlResult.sql.toLowerCase()
+
+      const dbType = getTestDatabaseType()
+
+      if (dbType === 'postgres' || dbType === 'duckdb') {
+        // PostgreSQL/DuckDB: native FULL OUTER JOIN
+        expect(sqlText).toContain('full join')
+      } else {
+        // MySQL/SQLite: UNION-based fallback with mf_all_keys CTE
+        expect(sqlText).toContain('mf_all_keys')
+        expect(sqlText).toContain('union')
+      }
+    })
+
+    it('should include multiple dimensions for non-overlapping products', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Sales.totalRevenue', 'Inventory.totalStock'])
+        .dimensions(['Products.name', 'Products.category'])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+      const byName = new Map(result.data.map((r: any) => [r['Products.name'], r]))
+
+      // E-Book Bundle should have both name and category
+      const ebook = byName.get('E-Book Bundle')
+      expect(ebook).toBeDefined()
+      expect(ebook['Products.name']).toBe('E-Book Bundle')
+      expect(ebook['Products.category']).toBe('Digital')
+
+      // Prototype Widget should have both name and category
+      const prototype = byName.get('Prototype Widget')
+      expect(prototype).toBeDefined()
+      expect(prototype['Products.name']).toBe('Prototype Widget')
+      expect(prototype['Products.category']).toBe('Warehouse Only')
+
+      // Spare Parts Kit should have both name and category
+      const spareParts = byName.get('Spare Parts Kit')
+      expect(spareParts).toBeDefined()
+      expect(spareParts['Products.name']).toBe('Spare Parts Kit')
+      expect(spareParts['Products.category']).toBe('Warehouse Only')
     })
   })
 })
