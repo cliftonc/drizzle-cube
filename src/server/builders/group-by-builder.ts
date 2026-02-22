@@ -17,7 +17,8 @@ import type {
   Cube,
   SemanticQuery,
   QueryContext,
-  JoinKeyInfo
+  JoinKeyInfo,
+  PhysicalQueryPlan
 } from '../types'
 
 import { resolveSqlExpression } from '../cube-utils'
@@ -62,7 +63,7 @@ export class GroupByBuilder {
     cubes: Map<string, Cube> | Cube,
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan?: any // Optional QueryPlan for CTE handling
+    queryPlan?: PhysicalQueryPlan
   ): (SQL | AnyColumn)[] {
     const groupFields: (SQL | AnyColumn)[] = []
 
@@ -122,11 +123,10 @@ export class GroupByBuilder {
         if (cube && cube.dimensions && cube.dimensions[fieldName]) {
 
           // Check if this dimension is from a CTE cube
-          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
+          const cteInfo = queryPlan?.preAggregationCTEs?.find((cte: any) => cte.cube.name === cubeName)
 
-          if (isFromCTE) {
+          if (cteInfo) {
             // For dimensions from CTE cubes, check if this is a join key that maps to the main table
-            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
             const matchingJoinKey = cteInfo.joinKeys.find((jk: JoinKeyInfo) => jk.targetColumn === fieldName)
 
             if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {
@@ -156,11 +156,10 @@ export class GroupByBuilder {
         if (cube && cube.dimensions && cube.dimensions[fieldName]) {
 
           // Check if this time dimension is from a CTE cube
-          const isFromCTE = queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
+          const cteInfo = queryPlan?.preAggregationCTEs?.find((cte: any) => cte.cube.name === cubeName)
 
-          if (isFromCTE) {
+          if (cteInfo) {
             // For time dimensions from CTE cubes, check if this is a join key that maps to the main table
-            const cteInfo = queryPlan.preAggregationCTEs.find((cte: any) => cte.cube.name === cubeName)
             const matchingJoinKey = cteInfo.joinKeys.find((jk: JoinKeyInfo) => jk.targetColumn === fieldName)
 
             if (matchingJoinKey && matchingJoinKey.sourceColumnObj) {

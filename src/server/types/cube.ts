@@ -516,38 +516,35 @@ export interface DownstreamJoinKeyInfo {
 }
 
 /**
- * Unified Query Plan for both single and multi-cube queries
- * - For single-cube queries: joinCubes array is empty
- * - For multi-cube queries: joinCubes contains the additional cubes to join
- * - selections, whereConditions, and groupByFields are populated by QueryBuilder
+ * Planned join entry used by runtime physical builders.
  */
-export interface QueryPlan {
-  /** Primary cube that drives the query */
-  primaryCube: Cube
-  /** Additional cubes to join (empty for single-cube queries) */
-  joinCubes: Array<{
-    cube: Cube
+export interface JoinCubePlanEntry {
+  cube: Cube
+  alias: string
+  joinType: 'inner' | 'left' | 'right' | 'full'
+  joinCondition: SQL
+  /** Junction table information for belongsToMany relationships */
+  junctionTable?: {
+    table: Table
     alias: string
     joinType: 'inner' | 'left' | 'right' | 'full'
     joinCondition: SQL
-    /** Junction table information for belongsToMany relationships */
-    junctionTable?: {
-      table: Table
-      alias: string
-      joinType: 'inner' | 'left' | 'right' | 'full'
-      joinCondition: SQL
-      /** Optional security SQL function to apply to junction table */
-      securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
-      /** Source cube name for the belongsToMany relationship (needed for CTE rewriting) */
-      sourceCubeName?: string
-    }
-  }>
-  /** Combined field selections across all cubes (built by QueryBuilder) */
-  selections: Record<string, SQL | AnyColumn>
-  /** WHERE conditions for the entire query (built by QueryBuilder) */
-  whereConditions: SQL[]
-  /** GROUP BY fields if aggregations are present (built by QueryBuilder) */
-  groupByFields: (SQL | AnyColumn)[]
+    /** Optional security SQL function to apply to junction table */
+    securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
+    /** Source cube name for the belongsToMany relationship (needed for CTE rewriting) */
+    sourceCubeName?: string
+  }
+}
+
+/**
+ * Runtime physical-plan context used by query execution builders.
+ * This is the only runtime plan context consumed by SQL builders.
+ */
+export interface PhysicalQueryPlan {
+  /** Primary cube that drives the query */
+  primaryCube: Cube
+  /** Additional cubes to join (empty for single-cube queries) */
+  joinCubes: JoinCubePlanEntry[]
   /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
   preAggregationCTEs?: PreAggregationCTEInfo[]
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */

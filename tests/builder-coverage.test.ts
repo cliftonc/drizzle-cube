@@ -21,7 +21,7 @@ import { MeasureBuilder } from '../src/server/builders/measure-builder'
 import { FilterBuilder } from '../src/server/builders/filter-builder'
 import { DateTimeBuilder } from '../src/server/builders/date-time-builder'
 import type { DatabaseAdapter, WindowFunctionType, WindowFunctionConfig } from '../src/server/adapters/base-adapter'
-import type { TimeGranularity, QueryContext, Cube, QueryPlan } from '../src/server/types'
+import type { TimeGranularity, QueryContext, Cube, PhysicalQueryPlan } from '../src/server/types'
 
 // ============================================
 // Mock Database Adapters
@@ -1293,7 +1293,7 @@ describe('MeasureBuilder', () => {
           measures: ['TestCube.count'],
           cube: cube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       const result = measureBuilder.buildHavingMeasureExpression(
         'TestCube',
@@ -1328,7 +1328,7 @@ describe('MeasureBuilder', () => {
           measures: ['TestCube.count', 'TestCube.ratio'],
           cube: cube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       const result = measureBuilder.buildHavingMeasureExpression(
         'TestCube',
@@ -1370,7 +1370,7 @@ describe('MeasureBuilder', () => {
           measures: ['JoinedCube.sum', 'JoinedCube.ratio'],
           cube: joinedCube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       const result = measureBuilder.buildHavingMeasureExpression(
         'JoinedCube',
@@ -1404,7 +1404,7 @@ describe('MeasureBuilder', () => {
           measures: ['TestCube.ratio'],
           cube: { name: 'TestCube' } as Cube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       expect(() => measureBuilder.buildHavingMeasureExpression(
         'TestCube',
@@ -1439,7 +1439,7 @@ describe('MeasureBuilder', () => {
           measures: Object.keys(cube.measures!).map(k => `TestCube.${k}`),
           cube: cube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       // Test each measure type
       for (const [key, measure] of Object.entries(cube.measures!)) {
@@ -1472,7 +1472,7 @@ describe('MeasureBuilder', () => {
           measures: ['TestCube.unknown'],
           cube: cube
         }]
-      } as any as QueryPlan
+      } as any as PhysicalQueryPlan
 
       const result = measureBuilder.buildHavingMeasureExpression(
         'TestCube',

@@ -9,9 +9,11 @@ The server core is the heart of drizzle-cube's semantic layer, built around a **
 ## Core Architecture Flow
 
 ```
-SemanticQuery → Compiler → Query Planner → Database Executor → SQL Result
-                    ↓
-               Cube Registry ← Security Context
+SemanticQuery → Compiler → LogicalPlanBuilder (+ LogicalPlanner phases) → Optimiser
+                    ↓                                              ↓
+               Cube Registry ← Security Context          DrizzlePlanBuilder + DrizzleSqlBuilder
+                                                                  ↓
+                                                         Database Executor → SQL Result
 ```
 
 ## Key Components
@@ -61,25 +63,35 @@ const executor = createDatabaseExecutor(drizzleDb, schema, 'postgres')
 
 **Key Pattern**: Each executor contains a database adapter for SQL generation differences.
 
-### 3. Query Planning (`query-planner.ts`)
+### 3. Logical + Physical Planning (`logical-plan/`, `physical-plan/`)
 
-**Purpose**: Intelligent multi-cube query planning and join optimization
+**Purpose**: Multi-stage planning from semantic query to executable Drizzle query
 **Key features**:
-- Automatic join detection and CTE generation
-- Multi-cube query merging
+- Logical planning phases (cube usage, primary cube selection, joins, CTE decisions)
+- Optional optimizer stage before SQL generation
+- Physical plan build with consistent SQL clause generation and CTE handling
 - Security context propagation across all tables
 
 **Core Pattern**:
 ```typescript
-// Handles complex multi-cube scenarios
-const planner = new QueryPlanner(cubesMap, databaseExecutor)
-const plan = planner.planQuery(semanticQuery, securityContext)
+const logicalPlanner = new LogicalPlanner()
+const logicalBuilder = new LogicalPlanBuilder(logicalPlanner)
+const { plan, analysis } = logicalBuilder.planWithAnalysis(cubesMap, semanticQuery, context)
+
+const sqlBuilder = new DrizzleSqlBuilder(databaseAdapter)
+const cteBuilder = new CTEBuilder(sqlBuilder)
+const physicalBuilder = new DrizzlePlanBuilder(sqlBuilder, cteBuilder, databaseAdapter)
+const physicalPlan = physicalBuilder.derivePhysicalPlanContext(plan)
+const drizzleQuery = physicalBuilder.build(physicalPlan, semanticQuery, context)
 ```
 
 ### 4. Query Execution (`executor.ts`)
 
 **Purpose**: Execute planned queries with proper SQL generation
-**Pattern**: Always delegates to database-specific adapters for SQL differences while maintaining business logic separation.
+**Pattern**:
+- Regular/comparison queries run through Logical -> Physical pipeline
+- Funnel/Flow/Retention keep dedicated builders (intentional)
+- Execution delegates to database-specific adapters for SQL differences while maintaining business logic separation.
 
 ### 5. Type System (`types/`)
 
@@ -630,7 +642,10 @@ This pattern may be simplified. Monitor: https://github.com/drizzle-team/drizzle
 
 - @src/server/compiler.ts:76 - Cube registration with validation
 - @src/server/executor.ts:45 - Multi-cube query coordination
-- @src/server/query-planner.ts:123 - Join detection logic
+- @src/server/logical-plan/logical-planner.ts - Logical planning phases and join/CTE decisions
+- @src/server/logical-plan/logical-plan-builder.ts - Logical plan composition and planning trace
+- @src/server/physical-plan/drizzle-plan-builder.ts - Logical to physical conversion
+- @src/server/physical-plan/drizzle-sql-builder.ts - Physical SQL clause builder
 - @src/server/executors/base-executor.ts:34 - Common executor functionality
 - @src/server/types/core.ts:15 - SecurityContext interface
 - @src/server/cube-utils.ts:41 - `isolateSqlExpression()` - SQL object isolation pattern

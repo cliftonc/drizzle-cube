@@ -1,5 +1,4 @@
-// Re-exports all types for the Drizzle Cube semantic layer
-// Maintains backward compatibility while providing a clean organization
+// Re-exports all types for the Drizzle Cube semantic layer.
 
 // Core types
 export * from './core'
@@ -31,17 +30,5 @@ export * from './utils'
 // Cache types
 export * from './cache'
 
-// Legacy compatibility - re-export with old names for backwards compatibility
-export type {
-  Cube as SemanticCube,
-  Dimension as SemanticDimension,
-  Measure as SemanticMeasure,
-  CubeJoin as SemanticJoin
-} from './cube'
-
-export type { 
-  QueryContext as SemanticQueryContext 
-} from './cube'
-
-// Maintain the old defineCube function name as well
+// Re-export defineCube helper
 export { defineCube } from '../cube-utils'

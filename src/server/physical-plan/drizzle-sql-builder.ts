@@ -1,7 +1,6 @@
 /**
- * Shared Query Builder
- * Contains all SQL building logic that was previously duplicated between executor and multi-cube-builder
- * Single source of truth for all SQL generation
+ * Drizzle SQL Clause Builder
+ * Builds SQL clauses (SELECT/WHERE/GROUP/HAVING/ORDER/LIMIT) for physical plan execution.
  */
 
 import {
@@ -23,16 +22,19 @@ import type {
   LogicalFilter,
   Cube,
   QueryContext,
-  QueryPlan
-} from './types'
+  PhysicalQueryPlan
+} from '../types'
 
-import { resolveSqlExpression } from './cube-utils'
-import type { DatabaseAdapter } from './adapters/base-adapter'
-import { getFilterKey, getTimeDimensionFilterKey } from './filter-cache'
-import { DateTimeBuilder, FilterBuilder, GroupByBuilder, MeasureBuilder } from './builders'
-import type { ResolvedMeasures } from './template-substitution'
+import { resolveSqlExpression } from '../cube-utils'
+import type { DatabaseAdapter } from '../adapters/base-adapter'
+import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache'
+import { DateTimeBuilder } from '../builders/date-time-builder'
+import { FilterBuilder } from '../builders/filter-builder'
+import { GroupByBuilder } from '../builders/group-by-builder'
+import { MeasureBuilder } from '../builders/measure-builder'
+import type { ResolvedMeasures } from '../template-substitution'
 
-export class QueryBuilder {
+export class DrizzleSqlBuilder {
   private dateTimeBuilder: DateTimeBuilder
   private filterBuilder: FilterBuilder
   private groupByBuilder: GroupByBuilder
@@ -168,7 +170,7 @@ export class QueryBuilder {
     fieldKey: string,
     measure: any,
     context: QueryContext,
-    queryPlan?: QueryPlan
+    queryPlan?: PhysicalQueryPlan
   ): SQL {
     return this.measureBuilder.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
   }
@@ -206,7 +208,7 @@ export class QueryBuilder {
     cubes: Map<string, Cube> | Cube,
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan?: QueryPlan,
+    queryPlan?: PhysicalQueryPlan,
     preBuiltFilters?: Map<string, SQL[]>
   ): SQL[] {
     const conditions: SQL[] = []
@@ -295,7 +297,7 @@ export class QueryBuilder {
     cubes: Map<string, Cube> | Cube, 
     query: SemanticQuery, 
     context: QueryContext,
-    queryPlan?: QueryPlan
+    queryPlan?: PhysicalQueryPlan
   ): SQL[] {
     const conditions: SQL[] = []
     
@@ -324,7 +326,7 @@ export class QueryBuilder {
     cubes: Map<string, Cube>,
     context: QueryContext,
     filterType: 'where' | 'having',
-    queryPlan?: QueryPlan
+    queryPlan?: PhysicalQueryPlan
   ): SQL | null {
     // Handle logical filters (AND/OR)
     // NOTE: We do NOT cache logical filters because they can contain mixed cube references.

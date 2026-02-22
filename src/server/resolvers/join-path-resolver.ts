@@ -1,13 +1,13 @@
 /**
  * JoinPathResolver - Handles join path finding and connectivity analysis
  *
- * Extracted from QueryPlanner for single responsibility.
+ * Extracted from LogicalPlanner for single responsibility.
  * Uses BFS algorithm to find shortest paths between cubes.
  * Includes connectivity caching for performance optimization.
  */
 
-import type { Cube, CubeJoin } from './types'
-import { resolveCubeReference, isolateSqlExpression } from './cube-utils'
+import type { Cube, CubeJoin } from '../types'
+import { resolveCubeReference, isolateSqlExpression } from '../cube-utils'
 import { eq, and, sql, type SQL } from 'drizzle-orm'
 
 /**

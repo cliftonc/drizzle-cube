@@ -1,18 +1,20 @@
 /**
- * Tests for QueryPlanner join functionality with new array-based joins
+ * Tests for LogicalPlanner join functionality with new array-based joins
  * Tests JoinPathResolver.buildJoinCondition() method
  */
 import { describe, it, expect, beforeAll } from 'vitest'
 import { eq, gte } from 'drizzle-orm'
-import { QueryPlanner } from '../src/server/query-planner'
-import { JoinPathResolver } from '../src/server/join-path-resolver'
+import { LogicalPlanner } from '../src/server/logical-plan/logical-planner'
+import { JoinPathResolver } from '../src/server/resolvers/join-path-resolver'
+import { LogicalPlanBuilder } from '../src/server/logical-plan'
 import { getTestSchema } from './helpers/test-database'
 import { createTestCubesForCurrentDatabase, getTestCubes } from './helpers/test-cubes'
 import type { QueryContext, CubeJoin, Cube } from '../src/server/types'
 
-describe('QueryPlanner - New Join System', () => {
+describe('LogicalPlanner - New Join System', () => {
   let schema: any
-  let queryPlanner: QueryPlanner
+  let queryPlanner: LogicalPlanner
+  let logicalPlanBuilder: LogicalPlanBuilder
   let joinResolver: JoinPathResolver
   let testCubes: any
   let cubesMap: Map<string, Cube>
@@ -21,7 +23,8 @@ describe('QueryPlanner - New Join System', () => {
   beforeAll(async () => {
     const { schema: testSchema } = await getTestSchema()
     schema = testSchema
-    queryPlanner = new QueryPlanner()
+    queryPlanner = new LogicalPlanner()
+    logicalPlanBuilder = new LogicalPlanBuilder(queryPlanner)
     testCubes = await createTestCubesForCurrentDatabase()
     cubesMap = await getTestCubes()
     joinResolver = new JoinPathResolver(cubesMap)
@@ -148,11 +151,13 @@ describe('QueryPlanner - New Join System', () => {
       }
 
       // This should not throw an error with lazy references
-      const plan = queryPlanner.createQueryPlan(cubes, query, context)
+      const plan = logicalPlanBuilder.plan(cubes, query, context)
+      const source = plan.source.type === 'simpleSource' ? plan.source : null
       
       expect(plan).toBeDefined()
-      expect(plan.primaryCube).toBeDefined()
-      expect(plan.joinCubes.length).toBeGreaterThan(0)
+      expect(source).toBeDefined()
+      expect(source?.primaryCube).toBeDefined()
+      expect(source?.joins.length).toBeGreaterThan(0)
     })
   })
 
@@ -244,13 +249,15 @@ describe('QueryPlanner - New Join System', () => {
         order: { 'Employees.name': 'asc' }
       }
 
-      const plan1 = queryPlanner.createQueryPlan(cubes, query1, context)
-      const plan2 = queryPlanner.createQueryPlan(cubes, query2, context)
+      const plan1 = logicalPlanBuilder.plan(cubes, query1, context)
+      const plan2 = logicalPlanBuilder.plan(cubes, query2, context)
+      const source1 = plan1.source.type === 'simpleSource' ? plan1.source : null
+      const source2 = plan2.source.type === 'simpleSource' ? plan2.source : null
 
       // Both plans should have the same CTE detection behavior
       // If one has CTEs, both should have CTEs
-      const plan1HasCTEs = plan1.preAggregationCTEs && plan1.preAggregationCTEs.length > 0
-      const plan2HasCTEs = plan2.preAggregationCTEs && plan2.preAggregationCTEs.length > 0
+      const plan1HasCTEs = Boolean(source1 && source1.ctes.length > 0)
+      const plan2HasCTEs = Boolean(source2 && source2.ctes.length > 0)
 
 
       // Both should detect the same need for pre-aggregation
@@ -258,7 +265,7 @@ describe('QueryPlanner - New Join System', () => {
 
       // If they both have CTEs, they should have the same number
       if (plan1HasCTEs && plan2HasCTEs) {
-        expect(plan1.preAggregationCTEs!.length).toBe(plan2.preAggregationCTEs!.length)
+        expect(source1!.ctes.length).toBe(source2!.ctes.length)
       }
     })
 
@@ -277,25 +284,27 @@ describe('QueryPlanner - New Join System', () => {
         measures: ['Productivity.totalLinesOfCode', 'Employees.count']
       }
 
-      const plan1 = queryPlanner.createQueryPlan(cubes, queryNoMessages, context)
-      const plan2 = queryPlanner.createQueryPlan(cubes, queryNoDimensions, context)
+      const plan1 = logicalPlanBuilder.plan(cubes, queryNoMessages, context)
+      const plan2 = logicalPlanBuilder.plan(cubes, queryNoDimensions, context)
+      const source1 = plan1.source.type === 'simpleSource' ? plan1.source : null
+      const source2 = plan2.source.type === 'simpleSource' ? plan2.source : null
 
 
       // Both should choose the same primary cube (alphabetical fallback: Employees)
-      expect(plan1.primaryCube.name).toBe(plan2.primaryCube.name)
-      expect(plan1.primaryCube.name).toBe('Employees') // Alphabetically first
+      expect(source1?.primaryCube.name).toBe(source2?.primaryCube.name)
+      expect(source1?.primaryCube.name).toBe('Employees') // Alphabetically first
 
       // Both should detect need for pre-aggregation because Productivity has hasMany from Employees
-      const plan1HasCTEs = plan1.preAggregationCTEs && plan1.preAggregationCTEs.length > 0
-      const plan2HasCTEs = plan2.preAggregationCTEs && plan2.preAggregationCTEs.length > 0
+      const plan1HasCTEs = Boolean(source1 && source1.ctes.length > 0)
+      const plan2HasCTEs = Boolean(source2 && source2.ctes.length > 0)
 
       expect(plan1HasCTEs).toBe(true)
       expect(plan2HasCTEs).toBe(true)
-      expect(plan1.preAggregationCTEs!.length).toBe(plan2.preAggregationCTEs!.length)
+      expect(source1!.ctes.length).toBe(source2!.ctes.length)
     })
   })
 
-  describe('analyzeQueryPlan() - Query Analysis', () => {
+  describe('planWithAnalysis() - Query Analysis', () => {
     describe('Primary Cube Selection Analysis', () => {
       it('should return single_cube reason for single cube queries', () => {
         const cubes = new Map()
@@ -306,7 +315,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         expect(analysis.primaryCube.reason).toBe('single_cube')
         expect(analysis.primaryCube.selectedCube).toBe('Employees')
@@ -327,7 +336,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name', 'Employees.email', 'Departments.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Employees has 2 dimensions, Departments has 1 - Employees should be primary
         expect(analysis.primaryCube.selectedCube).toBe('Employees')
@@ -364,12 +373,12 @@ describe('QueryPlanner - New Join System', () => {
           measures: ['ZetaCube.count', 'AlphaCube.count']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = queryPlanner.analyzePrimaryCube(['ZetaCube', 'AlphaCube'], query, cubes)
 
         // Should fall back to alphabetical (AlphaCube before ZetaCube)
-        expect(analysis.primaryCube.selectedCube).toBe('AlphaCube')
-        expect(analysis.primaryCube.reason).toBe('alphabetical_fallback')
-        expect(analysis.primaryCube.explanation).toContain('alphabetically')
+        expect(analysis.selectedCube).toBe('AlphaCube')
+        expect(analysis.reason).toBe('alphabetical_fallback')
+        expect(analysis.explanation).toContain('alphabetically')
       })
 
       it('should include candidate analysis details', () => {
@@ -382,7 +391,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Should have candidate info when multiple cubes are considered
         if (analysis.primaryCube.candidates) {
@@ -407,7 +416,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Should have join path from Employees to Productivity
         expect(analysis.joinPaths.length).toBeGreaterThan(0)
@@ -439,7 +448,7 @@ describe('QueryPlanner - New Join System', () => {
           measures: ['Employees.count', 'Productivity.totalLinesOfCode']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         const joinPath = analysis.joinPaths[0]
         expect(joinPath.visitedCubes).toBeDefined()
@@ -463,22 +472,10 @@ describe('QueryPlanner - New Join System', () => {
         cubes.set('Employees', testCubes.testEmployeesCube)
         cubes.set('DisconnectedCube', disconnectedCube)
 
-        const query = {
-          measures: ['Employees.count', 'DisconnectedCube.count']
-        }
-
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
-
-        // Should have a failed join path
-        const failedPath = analysis.joinPaths.find(p => !p.pathFound)
-        expect(failedPath).toBeDefined()
-        expect(failedPath!.pathFound).toBe(false)
-        expect(failedPath!.error).toBeDefined()
-        expect(failedPath!.error).toContain('No join path found')
-
-        // Should have warning in analysis
-        expect(analysis.warnings).toBeDefined()
-        expect(analysis.warnings!.length).toBeGreaterThan(0)
+        const failedPath = queryPlanner.analyzeJoinPathForTarget(cubes, 'Employees', 'DisconnectedCube')
+        expect(failedPath.pathFound).toBe(false)
+        expect(failedPath.error).toBeDefined()
+        expect(failedPath.error).toContain('No join path found')
       })
     })
 
@@ -493,7 +490,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Employees hasMany Productivity - should require pre-aggregation
         expect(analysis.preAggregations.length).toBeGreaterThan(0)
@@ -510,7 +507,7 @@ describe('QueryPlanner - New Join System', () => {
           measures: ['Employees.count', 'Productivity.avgLinesOfCode']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         if (analysis.preAggregations.length > 0) {
           const preAgg = analysis.preAggregations[0]
@@ -541,7 +538,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Employees.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Should not have pre-aggregations since only one cube has measures
         expect(analysis.preAggregations.length).toBe(0)
@@ -558,7 +555,7 @@ describe('QueryPlanner - New Join System', () => {
           measures: ['Employees.count']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         expect(analysis.querySummary.queryType).toBe('single_cube')
         expect(analysis.querySummary.joinCount).toBe(0)
@@ -576,7 +573,7 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: ['Departments.name']
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
+        const analysis = logicalPlanBuilder.planWithAnalysis(cubes, query, context).analysis
 
         // Only Employees has measures, so no CTE needed
         expect(analysis.querySummary.queryType).toBe('multi_cube_join')
@@ -592,12 +589,9 @@ describe('QueryPlanner - New Join System', () => {
           dimensions: []
         }
 
-        const analysis = queryPlanner.analyzeQueryPlan(cubes, query, context)
-
-        expect(analysis.cubeCount).toBe(0)
-        expect(analysis.cubesInvolved).toEqual([])
-        expect(analysis.warnings).toBeDefined()
-        expect(analysis.warnings!.length).toBeGreaterThan(0)
+        expect(() => logicalPlanBuilder.planWithAnalysis(cubes, query, context)).toThrow(
+          'No cubes found in query'
+        )
       })
     })
   })

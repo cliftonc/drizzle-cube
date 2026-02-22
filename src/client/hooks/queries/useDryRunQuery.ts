@@ -18,6 +18,18 @@ import type { QueryAnalysis } from '../../components/AnalysisBuilder/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { stableStringify } from '../../shared/queryKey'
 
+export type DryRunMode = 'regular' | 'funnel' | 'flow' | 'retention'
+
+interface DryRunResponsePayload {
+  sql?: { sql: string; params?: unknown[] }
+  analysis?: QueryAnalysis | null
+  mode?: DryRunMode
+  queryType?: string
+  joinType?: string
+  cubesUsed?: string[]
+  modeMetadata?: unknown
+}
+
 /**
  * Debug data entry for a single query
  */
@@ -26,6 +38,16 @@ export interface DebugDataEntry {
   sql: { sql: string; params: unknown[] } | null
   /** Query analysis (dimensions, measures, complexity, etc.) */
   analysis: QueryAnalysis | null
+  /** Server-reported dry-run mode */
+  mode?: DryRunMode | null
+  /** Query type label from server */
+  queryType?: string | null
+  /** Join strategy label from server */
+  joinType?: string | null
+  /** Referenced cubes from server */
+  cubesUsed?: string[]
+  /** Mode-specific metadata (replaces funnel/flow/retention split) */
+  modeMetadata?: unknown
   /** Whether this entry is loading */
   loading: boolean
   /** Error if fetch failed */
@@ -62,6 +84,28 @@ export interface UseDryRunQueryResult {
   refetch: () => void
 }
 
+function inferModeFromPayload(payload: DryRunResponsePayload): DryRunMode | null {
+  if (payload.mode) return payload.mode
+  if (payload.queryType === 'funnelQuery') return 'funnel'
+  if (payload.queryType === 'flowQuery') return 'flow'
+  if (payload.queryType === 'retentionQuery') return 'retention'
+  if (payload.queryType === 'regularQuery') return 'regular'
+  return null
+}
+
+function normalizeDryRunResult(payload: DryRunResponsePayload): Omit<DebugDataEntry, 'loading' | 'error'> {
+  const mode = inferModeFromPayload(payload)
+  return {
+    sql: payload.sql ? { sql: payload.sql.sql, params: payload.sql.params || [] } : null,
+    analysis: (payload.analysis || null) as QueryAnalysis | null,
+    mode,
+    queryType: payload.queryType || null,
+    joinType: payload.joinType || null,
+    cubesUsed: payload.cubesUsed || [],
+    modeMetadata: payload.modeMetadata
+  }
+}
+
 /**
  * TanStack Query hook for single query dry-run (debug) data
  *
@@ -80,6 +124,11 @@ export function useDryRunQuery(
   // Transform query for server
   const serverQuery = useMemo(() => {
     if (!query) return null
+    const modeQuery = query as CubeQuery & { funnel?: unknown; flow?: unknown; retention?: unknown }
+    // Preserve specialized mode payloads as-is; cleanQueryForServer strips non-Cube.js keys.
+    if (modeQuery.funnel || modeQuery.flow || modeQuery.retention) {
+      return query
+    }
     return cleanQueryForServer(query)
   }, [query])
 
@@ -88,18 +137,22 @@ export function useDryRunQuery(
     queryFn: async () => {
       if (!serverQuery) throw new Error('No query provided')
       const result = await cubeApi.dryRun(serverQuery)
-      return {
-        sql: result.sql,
-        analysis: result.analysis,
-      }
+      return normalizeDryRunResult(result as DryRunResponsePayload)
     },
     enabled: !!serverQuery && !skip,
     staleTime,
   })
 
   const debugData: DebugDataEntry = {
-    sql: queryResult.data?.sql ?? null,
-    analysis: queryResult.data?.analysis ?? null,
+    ...(queryResult.data || {
+      sql: null,
+      analysis: null,
+      mode: null,
+      queryType: null,
+      joinType: null,
+      cubesUsed: [],
+      modeMetadata: undefined
+    }),
     loading: queryResult.isLoading,
     error: queryResult.error ?? null,
   }
@@ -162,10 +215,7 @@ export function useMultiDryRunQueries(
       queryKey: createDryRunQueryKey(query),
       queryFn: async () => {
         const result = await cubeApi.dryRun(query)
-        return {
-          sql: result.sql,
-          analysis: result.analysis,
-        }
+        return normalizeDryRunResult(result as DryRunResponsePayload)
       },
       enabled: !skip,
       staleTime,
@@ -174,8 +224,15 @@ export function useMultiDryRunQueries(
 
   // Transform results to DebugDataEntry array
   const debugDataPerQuery: DebugDataEntry[] = queryResults.map((result) => ({
-    sql: result.data?.sql ?? null,
-    analysis: result.data?.analysis ?? null,
+    ...(result.data || {
+      sql: null,
+      analysis: null,
+      mode: null,
+      queryType: null,
+      joinType: null,
+      cubesUsed: [],
+      modeMetadata: undefined
+    }),
     loading: result.isLoading,
     error: result.error ?? null,
   }))
@@ -224,23 +281,7 @@ export function useDryRunQueries(options: {
   return useMultiDryRunQueries(queriesToFetch, { skip, staleTime })
 }
 
-/**
- * Debug data entry for funnel queries
- */
-export interface FunnelDebugDataEntry extends DebugDataEntry {
-  /** Funnel-specific metadata from server */
-  funnelMetadata?: {
-    stepCount: number
-    steps: Array<{
-      index: number
-      name: string
-      timeToConvert?: string
-      cube?: string
-    }>
-    bindingKey: unknown
-    timeDimension: unknown
-  }
-}
+export type FunnelDebugDataEntry = DebugDataEntry
 
 /**
  * TanStack Query hook for funnel query dry-run (debug) data
@@ -254,57 +295,10 @@ export function useFunnelDryRunQuery(
   serverQuery: unknown | null,
   options: UseDryRunQueryOptions = {}
 ): { debugData: FunnelDebugDataEntry; refetch: () => void } {
-  const { skip = false, staleTime = 5 * 60 * 1000 } = options
-  const { cubeApi } = useCubeApi()
-
-  const queryResult = useQuery({
-    queryKey: ['cube', 'dryRun', 'funnel', serverQuery ? stableStringify(serverQuery) : null] as const,
-    queryFn: async () => {
-      if (!serverQuery) throw new Error('No funnel query provided')
-      // Send the funnel query to dry-run endpoint
-      // The server will detect it's a funnel query and use dryRunFunnel
-      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
-      return {
-        sql: result.sql,
-        analysis: result.analysis,
-        funnelMetadata: (result as unknown as { funnel?: unknown }).funnel,
-      }
-    },
-    enabled: !!serverQuery && !skip,
-    staleTime,
-  })
-
-  const debugData: FunnelDebugDataEntry = {
-    sql: queryResult.data?.sql ?? null,
-    analysis: queryResult.data?.analysis ?? null,
-    loading: queryResult.isLoading,
-    error: queryResult.error ?? null,
-    funnelMetadata: queryResult.data?.funnelMetadata as FunnelDebugDataEntry['funnelMetadata'],
-  }
-
-  return {
-    debugData,
-    refetch: () => queryResult.refetch(),
-  }
+  return useDryRunQuery(serverQuery as CubeQuery | null, options)
 }
 
-/**
- * Debug data entry for flow queries
- */
-export interface FlowDebugDataEntry extends DebugDataEntry {
-  /** Flow-specific metadata from server */
-  flowMetadata?: {
-    stepsBefore: number
-    stepsAfter: number
-    bindingKey: unknown
-    timeDimension: unknown
-    eventDimension: string
-    startingStep: {
-      name: string
-      filter: unknown
-    }
-  }
-}
+export type FlowDebugDataEntry = DebugDataEntry
 
 /**
  * TanStack Query hook for flow query dry-run (debug) data
@@ -318,54 +312,10 @@ export function useFlowDryRunQuery(
   serverQuery: unknown | null,
   options: UseDryRunQueryOptions = {}
 ): { debugData: FlowDebugDataEntry; refetch: () => void } {
-  const { skip = false, staleTime = 5 * 60 * 1000 } = options
-  const { cubeApi } = useCubeApi()
-
-  const queryResult = useQuery({
-    queryKey: ['cube', 'dryRun', 'flow', serverQuery ? stableStringify(serverQuery) : null] as const,
-    queryFn: async () => {
-      if (!serverQuery) throw new Error('No flow query provided')
-      // Send the flow query to dry-run endpoint
-      // The server will detect it's a flow query and use dryRunFlow
-      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
-      return {
-        sql: result.sql,
-        analysis: result.analysis,
-        flowMetadata: (result as unknown as { flow?: unknown }).flow,
-      }
-    },
-    enabled: !!serverQuery && !skip,
-    staleTime,
-  })
-
-  const debugData: FlowDebugDataEntry = {
-    sql: queryResult.data?.sql ?? null,
-    analysis: queryResult.data?.analysis ?? null,
-    loading: queryResult.isLoading,
-    error: queryResult.error ?? null,
-    flowMetadata: queryResult.data?.flowMetadata as FlowDebugDataEntry['flowMetadata'],
-  }
-
-  return {
-    debugData,
-    refetch: () => queryResult.refetch(),
-  }
+  return useDryRunQuery(serverQuery as CubeQuery | null, options)
 }
 
-/**
- * Debug data entry for retention queries
- */
-export interface RetentionDebugDataEntry extends DebugDataEntry {
-  /** Retention-specific metadata from server */
-  retentionMetadata?: {
-    totalCohorts: number
-    totalUsers: number
-    periods: number
-    cohortGranularity: string
-    periodGranularity: string
-    retentionType: string
-  }
-}
+export type RetentionDebugDataEntry = DebugDataEntry
 
 /**
  * TanStack Query hook for retention query dry-run (debug) data
@@ -379,36 +329,5 @@ export function useRetentionDryRunQuery(
   serverQuery: unknown | null,
   options: UseDryRunQueryOptions = {}
 ): { debugData: RetentionDebugDataEntry; refetch: () => void } {
-  const { skip = false, staleTime = 5 * 60 * 1000 } = options
-  const { cubeApi } = useCubeApi()
-
-  const queryResult = useQuery({
-    queryKey: ['cube', 'dryRun', 'retention', serverQuery ? stableStringify(serverQuery) : null] as const,
-    queryFn: async () => {
-      if (!serverQuery) throw new Error('No retention query provided')
-      // Send the retention query to dry-run endpoint
-      // The server will detect it's a retention query and use dryRunRetention
-      const result = await cubeApi.dryRun(serverQuery as CubeQuery)
-      return {
-        sql: result.sql,
-        analysis: result.analysis,
-        retentionMetadata: (result as unknown as { retention?: unknown }).retention,
-      }
-    },
-    enabled: !!serverQuery && !skip,
-    staleTime,
-  })
-
-  const debugData: RetentionDebugDataEntry = {
-    sql: queryResult.data?.sql ?? null,
-    analysis: queryResult.data?.analysis ?? null,
-    loading: queryResult.isLoading,
-    error: queryResult.error ?? null,
-    retentionMetadata: queryResult.data?.retentionMetadata as RetentionDebugDataEntry['retentionMetadata'],
-  }
-
-  return {
-    debugData,
-    refetch: () => queryResult.refetch(),
-  }
+  return useDryRunQuery(serverQuery as CubeQuery | null, options)
 }

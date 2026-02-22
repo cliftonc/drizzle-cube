@@ -138,6 +138,24 @@ export interface QuerySummary {
 }
 
 /**
+ * Structured planner trace for explain/dry-run UIs.
+ * Captures key decisions made during logical planning.
+ */
+export interface PlanningTraceStep {
+  /** Pipeline phase name */
+  phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'warnings'
+  /** Short summary of what was decided */
+  decision: string
+  /** Optional machine-readable details */
+  details?: Record<string, unknown>
+}
+
+export interface PlanningTrace {
+  /** Ordered decision trace */
+  steps: PlanningTraceStep[]
+}
+
+/**
  * Complete query analysis result
  */
 export interface QueryAnalysis {
@@ -157,4 +175,6 @@ export interface QueryAnalysis {
   querySummary: QuerySummary
   /** Warnings or potential issues */
   warnings?: string[]
+  /** Structured decision trace for debugging and dry-run UIs */
+  planningTrace?: PlanningTrace
 }

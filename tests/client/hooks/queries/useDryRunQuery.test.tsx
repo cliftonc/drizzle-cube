@@ -682,9 +682,11 @@ describe('useFunnelDryRunQuery', () => {
   }
 
   const mockFunnelResponse = {
+    mode: 'funnel',
+    queryType: 'funnelQuery',
     sql: { sql: 'WITH funnel_cte AS (...)', params: [] },
     analysis: { complexity: 'medium' },
-    funnel: {
+    modeMetadata: {
       stepCount: 2,
       steps: [
         { index: 0, name: 'Step 1', cube: 'Events' },
@@ -731,9 +733,10 @@ describe('useFunnelDryRunQuery', () => {
         expect(result.current.debugData.loading).toBe(false)
       })
 
-      expect(result.current.debugData.funnelMetadata).toBeDefined()
-      expect(result.current.debugData.funnelMetadata?.stepCount).toBe(2)
-      expect(result.current.debugData.funnelMetadata?.steps).toHaveLength(2)
+      expect(result.current.debugData.modeMetadata).toBeDefined()
+      const metadata = result.current.debugData.modeMetadata as { stepCount?: number; steps?: unknown[] }
+      expect(metadata.stepCount).toBe(2)
+      expect(metadata.steps).toHaveLength(2)
     })
 
     it('should not fetch when query is null', async () => {
@@ -804,9 +807,11 @@ describe('useFlowDryRunQuery', () => {
   }
 
   const mockFlowResponse = {
+    mode: 'flow',
+    queryType: 'flowQuery',
     sql: { sql: 'WITH flow_cte AS (...)', params: [] },
     analysis: { complexity: 'high' },
-    flow: {
+    modeMetadata: {
       stepsBefore: 2,
       stepsAfter: 2,
       bindingKey: 'Events.userId',
@@ -855,10 +860,15 @@ describe('useFlowDryRunQuery', () => {
         expect(result.current.debugData.loading).toBe(false)
       })
 
-      expect(result.current.debugData.flowMetadata).toBeDefined()
-      expect(result.current.debugData.flowMetadata?.stepsBefore).toBe(2)
-      expect(result.current.debugData.flowMetadata?.stepsAfter).toBe(2)
-      expect(result.current.debugData.flowMetadata?.eventDimension).toBe('Events.eventType')
+      expect(result.current.debugData.modeMetadata).toBeDefined()
+      const metadata = result.current.debugData.modeMetadata as {
+        stepsBefore?: number
+        stepsAfter?: number
+        eventDimension?: string
+      }
+      expect(metadata.stepsBefore).toBe(2)
+      expect(metadata.stepsAfter).toBe(2)
+      expect(metadata.eventDimension).toBe('Events.eventType')
     })
 
     it('should not fetch when query is null', async () => {
@@ -926,9 +936,11 @@ describe('useRetentionDryRunQuery', () => {
   }
 
   const mockRetentionResponse = {
+    mode: 'retention',
+    queryType: 'retentionQuery',
     sql: { sql: 'WITH retention_cte AS (...)', params: [] },
     analysis: { complexity: 'high' },
-    retention: {
+    modeMetadata: {
       totalCohorts: 12,
       totalUsers: 1000,
       periods: 12,
@@ -974,11 +986,17 @@ describe('useRetentionDryRunQuery', () => {
         expect(result.current.debugData.loading).toBe(false)
       })
 
-      expect(result.current.debugData.retentionMetadata).toBeDefined()
-      expect(result.current.debugData.retentionMetadata?.totalCohorts).toBe(12)
-      expect(result.current.debugData.retentionMetadata?.totalUsers).toBe(1000)
-      expect(result.current.debugData.retentionMetadata?.periods).toBe(12)
-      expect(result.current.debugData.retentionMetadata?.retentionType).toBe('classic')
+      expect(result.current.debugData.modeMetadata).toBeDefined()
+      const metadata = result.current.debugData.modeMetadata as {
+        totalCohorts?: number
+        totalUsers?: number
+        periods?: number
+        retentionType?: string
+      }
+      expect(metadata.totalCohorts).toBe(12)
+      expect(metadata.totalUsers).toBe(1000)
+      expect(metadata.periods).toBe(12)
+      expect(metadata.retentionType).toBe('classic')
     })
 
     it('should not fetch when query is null', async () => {

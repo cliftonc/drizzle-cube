@@ -8,12 +8,12 @@
  */
 
 import { sql, SQL, and, eq } from 'drizzle-orm'
-import type { DatabaseAdapter } from './adapters/base-adapter'
+import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   FunnelQueryConfig,
   FunnelStep,
   FunnelResultRow
-} from './types/funnel'
+} from '../types/funnel'
 import type {
   Cube,
   QueryContext,
@@ -21,11 +21,11 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter
-} from './types'
-import { resolveSqlExpression } from './cube-utils'
-import { FilterBuilder } from './builders/filter-builder'
-import { DateTimeBuilder } from './builders/date-time-builder'
-import { JoinPathResolver } from './join-path-resolver'
+} from '../types'
+import { resolveSqlExpression } from '../cube-utils'
+import { FilterBuilder } from './filter-builder'
+import { DateTimeBuilder } from './date-time-builder'
+import { JoinPathResolver } from '../resolvers/join-path-resolver'
 
 /**
  * Info about a joined cube needed for cross-cube filtering

@@ -15,9 +15,9 @@ import type {
   QueryResult,
   TimeGranularity,
   PeriodComparisonMetadata
-} from './types'
-import { DateTimeBuilder } from './builders/date-time-builder'
-import type { DatabaseAdapter } from './adapters/base-adapter'
+} from '../types'
+import { DateTimeBuilder } from './date-time-builder'
+import type { DatabaseAdapter } from '../adapters/base-adapter'
 
 /**
  * Normalized period range with start/end dates and metadata

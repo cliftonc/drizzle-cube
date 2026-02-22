@@ -14,17 +14,17 @@ import {
 import type {
   SemanticQuery,
   QueryContext,
-  QueryPlan,
+  PhysicalQueryPlan,
   PropagatingFilter
-} from './types'
+} from '../types'
 
-import { resolveSqlExpression } from './cube-utils'
-import type { QueryBuilder } from './query-builder'
+import { resolveSqlExpression } from '../cube-utils'
+import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
 
 /**
- * CTE information type extracted from QueryPlan
+ * CTE information type extracted from runtime physical plan context
  */
-export type CTEInfo = NonNullable<QueryPlan['preAggregationCTEs']>[0]
+export type CTEInfo = NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[0]
 
 /**
  * CTEBuilder handles the construction of Common Table Expressions
@@ -34,7 +34,7 @@ export type CTEInfo = NonNullable<QueryPlan['preAggregationCTEs']>[0]
  * preventing the Cartesian product explosion that would occur with direct JOINs.
  */
 export class CTEBuilder {
-  constructor(private queryBuilder: QueryBuilder) {}
+  constructor(private queryBuilder: DrizzleSqlBuilder) {}
 
   /**
    * Build pre-aggregation CTE for hasMany relationships
@@ -50,7 +50,7 @@ export class CTEBuilder {
     cteInfo: CTEInfo,
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan: QueryPlan,
+    queryPlan: PhysicalQueryPlan,
     preBuiltFilterMap?: Map<string, SQL[]>
   ): any {
     const cube = cteInfo.cube
@@ -363,9 +363,9 @@ export class CTEBuilder {
    * - Example: departments.id = employeeteams_agg.department_id (not employee_id!)
    */
   buildCTEJoinCondition(
-    joinCube: QueryPlan['joinCubes'][0],
+    joinCube: PhysicalQueryPlan['joinCubes'][0],
     cteAlias: string,
-    queryPlan: QueryPlan
+    queryPlan: PhysicalQueryPlan
   ): SQL {
     // Find the pre-aggregation info for this join cube
     const cteInfo = queryPlan.preAggregationCTEs?.find((cte: any) => cte.cube.name === joinCube.cube.name)

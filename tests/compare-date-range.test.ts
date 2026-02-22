@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { ComparisonQueryBuilder } from '../src/server/comparison-query-builder'
+import { ComparisonQueryBuilder } from '../src/server/builders/comparison-query-builder'
 import { SemanticLayerCompiler } from '../src/server/compiler'
 import type { SemanticQuery } from '../src/server/types'
 import { createTestDatabaseExecutor } from './helpers/test-database'
