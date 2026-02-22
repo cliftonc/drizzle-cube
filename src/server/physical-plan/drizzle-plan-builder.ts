@@ -373,7 +373,6 @@ export class DrizzlePlanBuilder {
       )
 
       for (const measureName of regularMeasureNames) {
-        const [, localName] = measureName.split('.')
         const measureSqlBuilder = regularMeasureMap.get(measureName)
         if (!measureSqlBuilder) {
           return null
