@@ -170,7 +170,12 @@ export class CTEBuilder {
     // add JOINs to the intermediate tables inside the CTE
     // Example: EmployeeTeams CTE needs to JOIN to Employees to get department_id
     if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      for (const intermediate of cteInfo.intermediateJoins) {
+      // Join intermediate tables from CTE-nearest to primary-nearest.
+      // Example path Teams -> EmployeeTeams -> Employees -> Productivity CTE:
+      // we must join Employees first, then EmployeeTeams, otherwise ON clauses
+      // can reference tables that are not yet in scope.
+      const joinChain = [...cteInfo.intermediateJoins].reverse()
+      for (const intermediate of joinChain) {
         const intermediateCubeBase = intermediate.cube.sql(context)
         const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
 

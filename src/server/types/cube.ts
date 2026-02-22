@@ -555,6 +555,21 @@ export interface PhysicalQueryPlan {
     multipliedCubeName: string
     primaryKeyDimensions: string[]
   }
+  /**
+   * Optional multi-fact merge metadata.
+   * When present, SQL builders execute independent grouped subqueries and
+   * merge them by shared dimension keys.
+   */
+  multiFactMerge?: {
+    mergeStrategy: 'fullJoin' | 'leftJoin' | 'innerJoin'
+    sharedDimensions: string[]
+    groups: Array<{
+      alias: string
+      query: SemanticQuery
+      queryPlan: PhysicalQueryPlan
+      measures: string[]
+    }>
+  }
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */
   warnings?: import('./core').QueryWarning[]
 }

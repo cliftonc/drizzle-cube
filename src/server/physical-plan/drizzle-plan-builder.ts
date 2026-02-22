@@ -18,7 +18,8 @@ import type {
   LogicalNode,
   QueryNode,
   SimpleSource,
-  KeysDeduplication
+  KeysDeduplication,
+  MultiFactMerge
 } from '../logical-plan'
 import { resolveSqlExpression } from '../cube-utils'
 import {
@@ -47,6 +48,11 @@ export class DrizzlePlanBuilder {
    */
   derivePhysicalPlanContext(plan: QueryNode): PhysicalQueryPlan {
     const source = plan.source
+
+    if (source.type === 'multiFactMerge') {
+      return this.derivePhysicalPlanContextFromMultiFact(plan, source as MultiFactMerge)
+    }
+
     const simpleSource = this.resolvePhysicalSimpleSource(source)
     const keysDeduplicationMeta = this.resolveKeysDeduplicationMeta(source)
 
@@ -73,6 +79,71 @@ export class DrizzlePlanBuilder {
       })),
       keysDeduplication: keysDeduplicationMeta,
       warnings: plan.warnings.length > 0 ? plan.warnings : undefined
+    }
+  }
+
+  private derivePhysicalPlanContextFromMultiFact(
+    plan: QueryNode,
+    source: MultiFactMerge
+  ): PhysicalQueryPlan {
+    const groups = source.groups
+      .map((groupNode, index) => {
+        if (groupNode.type !== 'query') {
+          return null
+        }
+
+        const groupQueryNode = groupNode as QueryNode
+        const groupPhysicalPlan = this.derivePhysicalPlanContext(groupQueryNode)
+        const groupQuery = this.toSemanticQuery(groupQueryNode)
+
+        return {
+          alias: `mf_group_${index + 1}`,
+          query: groupQuery,
+          queryPlan: groupPhysicalPlan,
+          measures: groupQuery.measures ?? []
+        }
+      })
+      .filter((group): group is NonNullable<typeof group> => Boolean(group))
+
+    if (groups.length === 0) {
+      throw new Error('multiFactMerge requires at least one query group')
+    }
+
+    const baseGroup = groups[0]
+
+    return {
+      primaryCube: baseGroup.queryPlan.primaryCube,
+      joinCubes: baseGroup.queryPlan.joinCubes,
+      preAggregationCTEs: baseGroup.queryPlan.preAggregationCTEs,
+      warnings: plan.warnings.length > 0 ? plan.warnings : undefined,
+      multiFactMerge: {
+        mergeStrategy: source.mergeStrategy,
+        sharedDimensions: source.sharedDimensions.map(dimension => dimension.name),
+        groups
+      }
+    }
+  }
+
+  private toSemanticQuery(node: QueryNode): SemanticQuery {
+    const order =
+      node.orderBy.length > 0
+        ? Object.fromEntries(node.orderBy.map(entry => [entry.name, entry.direction]))
+        : undefined
+
+    return {
+      measures: node.measures.map(measure => measure.name),
+      dimensions: node.dimensions.map(dimension => dimension.name),
+      timeDimensions: node.timeDimensions.map(timeDimension => ({
+        dimension: timeDimension.name,
+        granularity: timeDimension.granularity,
+        dateRange: timeDimension.dateRange,
+        fillMissingDates: timeDimension.fillMissingDates,
+        compareDateRange: timeDimension.compareDateRange
+      })),
+      filters: node.filters,
+      order,
+      limit: node.limit,
+      offset: node.offset
     }
   }
 
@@ -148,6 +219,16 @@ export class DrizzlePlanBuilder {
       queryBuilder: this.queryBuilder,
       cteBuilder: this.cteBuilder,
       databaseAdapter: this.databaseAdapter
+    }
+
+    const multiFactMergeQuery = this.tryBuildMultiFactMergeQuery(
+      queryPlan,
+      query,
+      context,
+      deps
+    )
+    if (multiFactMergeQuery) {
+      return multiFactMergeQuery
     }
 
     const keysDedupQuery = this.tryBuildKeysDeduplicationQuery(
@@ -445,6 +526,224 @@ export class DrizzlePlanBuilder {
 
     finalQuery = deps.queryBuilder.applyLimitAndOffset(finalQuery, query)
     return finalQuery
+  }
+
+  private tryBuildMultiFactMergeQuery(
+    queryPlan: PhysicalQueryPlan,
+    query: SemanticQuery,
+    context: QueryContext,
+    deps: PhysicalBuildDependencies
+  ): any | null {
+    const multiFact = queryPlan.multiFactMerge
+    if (!multiFact || multiFact.groups.length < 2) {
+      return null
+    }
+
+    const sharedKeys = [
+      ...(query.dimensions ?? []),
+      ...(query.timeDimensions ?? []).map(timeDimension => timeDimension.dimension)
+    ]
+    const dedupedSharedKeys = Array.from(new Set(sharedKeys))
+    const needsFullJoinFallback =
+      dedupedSharedKeys.length > 0
+      && multiFact.mergeStrategy === 'fullJoin'
+      && !this.supportsFullOuterJoin()
+
+    const mergeStrategy = this.selectRuntimeMergeStrategy(
+      multiFact.mergeStrategy,
+      dedupedSharedKeys.length > 0
+    )
+
+    const groupCTEs = multiFact.groups.map(group => {
+      const groupQuery = this.build(group.queryPlan, group.query, context)
+      return context.db.$with(group.alias).as(groupQuery)
+    })
+
+    if (needsFullJoinFallback) {
+      return this.buildMultiFactUnionKeysFallbackQuery(
+        query,
+        context,
+        deps,
+        multiFact,
+        groupCTEs,
+        dedupedSharedKeys
+      )
+    }
+
+    const baseAlias = multiFact.groups[0].alias
+    const sourceAliases = multiFact.groups.map(group => group.alias)
+
+    const selectMap: Record<string, any> = {}
+    if (dedupedSharedKeys.length > 0) {
+      for (const key of dedupedSharedKeys) {
+        const keyExpr = this.coalesceQualifiedColumn(sourceAliases, key)
+        selectMap[key] = sql`${keyExpr}`.as(key)
+      }
+    }
+
+    for (const group of multiFact.groups) {
+      for (const measureName of group.measures) {
+        const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
+        selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
+      }
+    }
+
+    let finalQuery = context.db
+      .with(...groupCTEs)
+      .select(selectMap)
+      .from(sql`${sql.identifier(baseAlias)}`)
+
+    let currentKeyExpressions = new Map<string, SQL>()
+    for (const key of dedupedSharedKeys) {
+      currentKeyExpressions.set(
+        key,
+        sql`${sql.identifier(baseAlias)}.${sql.identifier(key)}`
+      )
+    }
+
+    for (let i = 1; i < multiFact.groups.length; i++) {
+      const groupAlias = multiFact.groups[i].alias
+
+      let joinCondition: SQL
+      if (dedupedSharedKeys.length === 0) {
+        joinCondition = sql`1 = 1`
+      } else {
+        const conditions: SQL[] = dedupedSharedKeys.map(key =>
+          eq(
+            currentKeyExpressions.get(key) as any,
+            sql`${sql.identifier(groupAlias)}.${sql.identifier(key)}` as any
+          )
+        )
+        joinCondition = conditions.length === 1 ? conditions[0] : and(...conditions)!
+      }
+
+      finalQuery = this.applyJoinByType(
+        finalQuery,
+        mergeStrategy,
+        sql`${sql.identifier(groupAlias)}`,
+        joinCondition
+      )
+
+      if (dedupedSharedKeys.length > 0 && mergeStrategy === 'full') {
+        for (const key of dedupedSharedKeys) {
+          currentKeyExpressions.set(
+            key,
+            sql`coalesce(${currentKeyExpressions.get(key)}, ${sql`${sql.identifier(groupAlias)}.${sql.identifier(key)}`})`
+          )
+        }
+      }
+    }
+
+    const orderBy = deps.queryBuilder.buildOrderBy(query, Object.keys(selectMap))
+    if (orderBy.length > 0) {
+      finalQuery = finalQuery.orderBy(...orderBy)
+    }
+
+    return deps.queryBuilder.applyLimitAndOffset(finalQuery, query)
+  }
+
+  private buildMultiFactUnionKeysFallbackQuery(
+    query: SemanticQuery,
+    context: QueryContext,
+    deps: PhysicalBuildDependencies,
+    multiFact: NonNullable<PhysicalQueryPlan['multiFactMerge']>,
+    groupCTEs: any[],
+    sharedKeys: string[]
+  ): any {
+    const allKeysAlias = 'mf_all_keys'
+    const unionKeyQueries = multiFact.groups.map(group =>
+      sql`select ${this.buildSharedKeySelection(group.alias, sharedKeys)} from ${sql.identifier(group.alias)}`
+    )
+    const unionedKeysSql = sql`${sql.join(unionKeyQueries, sql` union `)}`
+    const allKeysCte = context.db.$with(allKeysAlias).as(unionedKeysSql)
+
+    const selectMap: Record<string, any> = {}
+    for (const key of sharedKeys) {
+      selectMap[key] = sql`${sql.identifier(allKeysAlias)}.${sql.identifier(key)}`.as(key)
+    }
+    for (const group of multiFact.groups) {
+      for (const measureName of group.measures) {
+        const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
+        selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
+      }
+    }
+
+    let finalQuery = context.db
+      .with(...groupCTEs, allKeysCte)
+      .select(selectMap)
+      .from(sql`${sql.identifier(allKeysAlias)}`)
+
+    for (const group of multiFact.groups) {
+      const joinConditions: SQL[] = sharedKeys.map(key =>
+        eq(
+          sql`${sql.identifier(allKeysAlias)}.${sql.identifier(key)}` as any,
+          sql`${sql.identifier(group.alias)}.${sql.identifier(key)}` as any
+        )
+      )
+      const joinCondition = joinConditions.length === 1
+        ? joinConditions[0]
+        : and(...joinConditions)
+
+      finalQuery = finalQuery.leftJoin(
+        sql`${sql.identifier(group.alias)}`,
+        joinCondition!
+      )
+    }
+
+    const orderBy = deps.queryBuilder.buildOrderBy(query, Object.keys(selectMap))
+    if (orderBy.length > 0) {
+      finalQuery = finalQuery.orderBy(...orderBy)
+    }
+
+    return deps.queryBuilder.applyLimitAndOffset(finalQuery, query)
+  }
+
+  private buildSharedKeySelection(groupAlias: string, sharedKeys: string[]): SQL {
+    const selections = sharedKeys.map(key =>
+      sql`${sql.identifier(groupAlias)}.${sql.identifier(key)} as ${sql.identifier(key)}`
+    )
+    return sql.join(selections, sql`, `)
+  }
+
+  private selectRuntimeMergeStrategy(
+    requestedStrategy: 'fullJoin' | 'leftJoin' | 'innerJoin',
+    hasSharedKeys: boolean
+  ): 'inner' | 'left' | 'full' {
+    if (!hasSharedKeys) {
+      return 'inner'
+    }
+
+    if (requestedStrategy === 'innerJoin') {
+      return 'inner'
+    }
+
+    if (requestedStrategy === 'leftJoin') {
+      return 'left'
+    }
+
+    if (this.supportsFullOuterJoin()) {
+      return 'full'
+    }
+
+    return 'left'
+  }
+
+  private supportsFullOuterJoin(): boolean {
+    const engine = this.databaseAdapter.getEngineType()
+    return engine === 'postgres' || engine === 'duckdb'
+  }
+
+  private coalesceQualifiedColumn(aliases: string[], columnName: string): SQL {
+    if (aliases.length === 1) {
+      return sql`${sql.identifier(aliases[0])}.${sql.identifier(columnName)}`
+    }
+
+    const expressions = aliases.map(alias => sql`${sql.identifier(alias)}.${sql.identifier(columnName)}`)
+    let expr = expressions[0]
+    for (let i = 1; i < expressions.length; i++) {
+      expr = sql`coalesce(${expr}, ${expressions[i]})`
+    }
+    return expr
   }
 
   private canExecuteKeysDeduplication(

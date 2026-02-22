@@ -24,6 +24,7 @@ import type {
   SimpleSource,
   CTEPreAggregate,
   KeysDeduplication,
+  MultiFactMerge,
   MeasureRef,
   DimensionRef,
   TimeDimensionRef,
@@ -110,7 +111,8 @@ export class LogicalPlanBuilder {
       joinCubes,
       preAggregationCTEs,
       cubes,
-      query
+      query,
+      ctx
     )
     const source = sourceBuild.source
 
@@ -224,8 +226,24 @@ export class LogicalPlanBuilder {
     joinCubes: PhysicalQueryPlan['joinCubes'],
     preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>,
     cubes: Map<string, Cube>,
-    query: SemanticQuery
+    query: SemanticQuery,
+    ctx: QueryContext
   ): SourceBuildResult {
+    const multiFactSource = this.tryBuildMultiFactMergeSource(query, cubes, ctx)
+    if (multiFactSource) {
+      const measures = this.buildMeasureRefs(query, cubes)
+      const classification: MeasureClassification = {
+        regular: measures,
+        multiplied: [],
+        deduplicationSafe: []
+      }
+      return {
+        source: multiFactSource,
+        strategy: 'simple',
+        classification
+      }
+    }
+
     const simpleSource = this.buildSimpleSourceFromPhases(
       primaryCube,
       joinCubes,
@@ -306,6 +324,213 @@ export class LogicalPlanBuilder {
       joins,
       ctes
     }
+  }
+
+  /**
+   * Detect and build multi-fact merge for star-schema style queries where:
+   * - measures come from 2+ cubes
+   * - all grouping dimensions/timeDimensions come from one shared dimension cube
+   * - each measure cube directly belongsTo/hasOne that shared cube
+   */
+  private tryBuildMultiFactMergeSource(
+    query: SemanticQuery,
+    cubes: Map<string, Cube>,
+    ctx: QueryContext
+  ): MultiFactMerge | null {
+    if (!query.measures || query.measures.length < 2) {
+      return null
+    }
+
+    const measureCubes = new Set<string>()
+    for (const measure of query.measures) {
+      const [cubeName] = measure.split('.')
+      if (cubeName) measureCubes.add(cubeName)
+    }
+    if (measureCubes.size < 2) {
+      return null
+    }
+
+    const sharedDimensionCubeNames = new Set<string>()
+    for (const dimension of query.dimensions ?? []) {
+      const [cubeName] = dimension.split('.')
+      if (cubeName) sharedDimensionCubeNames.add(cubeName)
+    }
+    for (const timeDimension of query.timeDimensions ?? []) {
+      const [cubeName] = timeDimension.dimension.split('.')
+      if (cubeName) sharedDimensionCubeNames.add(cubeName)
+    }
+
+    if (sharedDimensionCubeNames.size !== 1) {
+      return null
+    }
+
+    const sharedDimensionCubeName = Array.from(sharedDimensionCubeNames)[0]
+    if (measureCubes.has(sharedDimensionCubeName)) {
+      return null
+    }
+
+    const sharedDimensionCube = cubes.get(sharedDimensionCubeName)
+    if (!sharedDimensionCube) {
+      return null
+    }
+
+    const measureCubeNames = Array.from(measureCubes)
+    const hasDirectSharedJoin = measureCubeNames.every(cubeName =>
+      this.hasDirectJoinToSharedDimension(cubes.get(cubeName), sharedDimensionCubeName)
+    )
+    if (!hasDirectSharedJoin) {
+      return null
+    }
+
+    const sharedDimensions = this.buildDimensionRefs(query, cubes)
+    const sharedTimeDimensions = this.buildTimeDimensionRefs(query, cubes)
+    const schema: LogicalSchema = {
+      measures: this.buildMeasureRefs(query, cubes),
+      dimensions: sharedDimensions,
+      timeDimensions: sharedTimeDimensions
+    }
+
+    const groupNodes: LogicalNode[] = []
+    for (const measureCubeName of measureCubeNames) {
+      const groupMeasures = (query.measures ?? []).filter(
+        measure => measure.startsWith(`${measureCubeName}.`)
+      )
+
+      const allowedCubes = new Set<string>([measureCubeName, sharedDimensionCubeName])
+      const groupQuery: SemanticQuery = {
+        measures: groupMeasures,
+        dimensions: query.dimensions,
+        timeDimensions: query.timeDimensions,
+        filters: this.projectFiltersToAllowedCubes(query.filters, allowedCubes)
+      }
+
+      const groupNode = this.buildGroupQueryNode(groupQuery, cubes, ctx)
+      if (!groupNode) {
+        return null
+      }
+      groupNodes.push(groupNode)
+    }
+
+    if (groupNodes.length < 2) {
+      return null
+    }
+
+    return {
+      type: 'multiFactMerge',
+      schema,
+      groups: groupNodes,
+      sharedDimensions,
+      mergeStrategy: 'fullJoin'
+    }
+  }
+
+  private hasDirectJoinToSharedDimension(
+    cube: Cube | undefined,
+    sharedDimensionCubeName: string
+  ): boolean {
+    if (!cube?.joins) {
+      return false
+    }
+
+    for (const [, joinDef] of Object.entries(cube.joins)) {
+      const target = joinDef.targetCube
+      const targetCube = typeof target === 'function' ? target() : target
+      if (!targetCube || targetCube.name !== sharedDimensionCubeName) {
+        continue
+      }
+
+      if (joinDef.relationship === 'belongsTo' || joinDef.relationship === 'hasOne') {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  private buildGroupQueryNode(
+    query: SemanticQuery,
+    cubes: Map<string, Cube>,
+    ctx: QueryContext
+  ): QueryNode | null {
+    const cubeNames = Array.from(this.queryPlanner.analyzeCubeUsage(query))
+    if (cubeNames.length === 0) {
+      return null
+    }
+
+    const primaryCubeSelection = this.queryPlanner.analyzePrimaryCube(cubeNames, query, cubes)
+    const primaryCube = cubes.get(primaryCubeSelection.selectedCube)
+    if (!primaryCube) {
+      return null
+    }
+
+    const joinCubes =
+      cubeNames.length > 1
+        ? this.queryPlanner.buildJoinPlanForPrimary(cubes, primaryCube, cubeNames, ctx, query)
+        : []
+
+    const preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']> =
+      cubeNames.length > 1
+        ? (this.queryPlanner.buildPreAggregationCTEs(cubes, primaryCube, joinCubes, query, ctx) ?? [])
+        : []
+
+    const warnings = this.queryPlanner.buildWarnings(query, preAggregationCTEs)
+    const sourceBuild = this.buildSourceFromPhases(
+      primaryCube,
+      joinCubes,
+      preAggregationCTEs,
+      cubes,
+      query,
+      ctx
+    )
+
+    return this.buildQueryNode(sourceBuild.source, query, cubes, warnings)
+  }
+
+  private projectFiltersToAllowedCubes(
+    filters: SemanticQuery['filters'] | undefined,
+    allowedCubes: Set<string>
+  ): SemanticQuery['filters'] | undefined {
+    if (!filters || filters.length === 0) {
+      return undefined
+    }
+
+    const projected = filters
+      .map(filter => this.projectFilterNodeToAllowedCubes(filter, allowedCubes))
+      .filter((filter): filter is NonNullable<typeof filter> => Boolean(filter))
+
+    return projected.length > 0 ? projected : undefined
+  }
+
+  private projectFilterNodeToAllowedCubes(
+    filter: NonNullable<SemanticQuery['filters']>[number],
+    allowedCubes: Set<string>
+  ): NonNullable<SemanticQuery['filters']>[number] | null {
+    if ('member' in filter) {
+      const [cubeName] = filter.member.split('.')
+      return cubeName && allowedCubes.has(cubeName) ? filter : null
+    }
+
+    if ('and' in filter) {
+      const projectedAnd = (filter.and ?? [])
+        .map(andFilter => this.projectFilterNodeToAllowedCubes(andFilter, allowedCubes))
+        .filter((andFilter): andFilter is NonNullable<typeof andFilter> => Boolean(andFilter))
+
+      if (projectedAnd.length === 0) return null
+      if (projectedAnd.length === 1) return projectedAnd[0]
+      return { and: projectedAnd }
+    }
+
+    if ('or' in filter) {
+      const projectedOr = (filter.or ?? [])
+        .map(orFilter => this.projectFilterNodeToAllowedCubes(orFilter, allowedCubes))
+        .filter((orFilter): orFilter is NonNullable<typeof orFilter> => Boolean(orFilter))
+
+      if (projectedOr.length === 0) return null
+      if (projectedOr.length === 1) return projectedOr[0]
+      return { or: projectedOr }
+    }
+
+    return null
   }
 
   private classifyMeasuresForStrategy(

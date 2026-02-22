@@ -1119,6 +1119,16 @@ export class QueryExecutor {
     if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
       allCubes.push(...queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
     }
+    if (queryPlan.multiFactMerge?.groups?.length) {
+      for (const group of queryPlan.multiFactMerge.groups) {
+        if (group.queryPlan.primaryCube) {
+          allCubes.push(group.queryPlan.primaryCube)
+        }
+        if (group.queryPlan.joinCubes?.length) {
+          allCubes.push(...group.queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
+        }
+      }
+    }
 
     // Generate measure annotations from all cubes
     if (query.measures) {
