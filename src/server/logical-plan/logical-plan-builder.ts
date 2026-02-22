@@ -292,6 +292,7 @@ export class LogicalPlanBuilder {
       alias: jc.alias,
       joinType: jc.joinType,
       joinCondition: jc.joinCondition,
+      relationship: jc.relationship,
       junctionTable: jc.junctionTable
     }))
 

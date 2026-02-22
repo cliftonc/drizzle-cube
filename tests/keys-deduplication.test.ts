@@ -220,10 +220,10 @@ describe(`Keys Deduplication (${dbType})`, () => {
   // D. Mixed measures (regular + multiplied in same query)
   // -----------------------------------------------------------------------
   it('Mixed: combines regular (Employees.totalSalary) and multiplied (Departments.totalBudget) via keysDeduplication', async () => {
-    // Query by Departments.name avoids the Teams→EmployeeTeams hasMany chain.
-    // The only hasMany detected is Employees→Productivity. Since Employees is
-    // the SOURCE of that hasMany, it stays regular. Departments gets
-    // fanOutPrevention → multiplied. This triggers keysDeduplication.
+    // Query by Departments.name — Employees is primary, Departments joined via belongsTo.
+    // Departments.totalBudget needs fanOutPrevention because the primary (Employees) has
+    // multiple rows per department, inflating SUM(budget). Employees.totalSalary stays
+    // regular. This mix of regular + multiplied triggers keysDeduplication.
     const mixedQuery = {
       measures: ['Employees.totalSalary', 'Departments.totalBudget'],
       dimensions: ['Departments.name']

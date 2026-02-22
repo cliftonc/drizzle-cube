@@ -353,6 +353,7 @@ export class LogicalPlanner {
             alias: `${toCube.toLowerCase()}_cube`,
             joinType: expanded.junctionJoins[1].joinType, // Use the target join type
             joinCondition: expanded.junctionJoins[1].condition, // Target join condition
+            relationship: 'belongsToMany',
             junctionTable: {
               table: joinDef.through.table,
               alias: `junction_${toCube.toLowerCase()}`,
@@ -379,7 +380,8 @@ export class LogicalPlanner {
             cube,
             alias: `${toCube.toLowerCase()}_cube`,
             joinType,
-            joinCondition
+            joinCondition,
+            relationship: joinDef.relationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
           })
         }
 
@@ -418,55 +420,22 @@ export class LogicalPlanner {
       return preAggCTEs // No measures, no fan-out risk
     }
 
-    // Step 1: Detect if any hasMany relationship exists in the query
-    const hasManyRelationships = this.detectHasManyInQuery(cubes, primaryCube, joinCubes)
+    // Step 1: Compute CTE reasons from the actual join plan (not all registered cubes)
+    const cteReasons = this.computeCTEReasons(primaryCube, joinCubes, query)
 
-    // Step 2: If no hasMany relationships exist, no CTEs needed
-    if (hasManyRelationships.length === 0) {
+    // Step 2: If no CTE reasons, no CTEs needed
+    if (cteReasons.size === 0) {
       return preAggCTEs
     }
 
-    // Step 3: Identify all cubes that have measures in the query
-    const cubesWithMeasures = new Set<string>()
-    for (const measure of query.measures) {
-      const [cubeName] = measure.split('.')
-      cubesWithMeasures.add(cubeName)
-    }
+    // Step 3: For each join cube that needs a CTE, build it
+    for (const joinCubeEntry of joinCubes) {
+      const cteReason = cteReasons.get(joinCubeEntry.cube.name)
+      if (!cteReason) continue
 
-    // Also check for measures in filters
-    for (const cube of cubes.values()) {
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
-      if (measuresFromFilters.length > 0) {
-        cubesWithMeasures.add(cube.name)
-      }
-    }
-
-    // Step 4: Build list of cubes to consider for CTE
-    // Note: The PRIMARY cube does NOT need a CTE - it's the base FROM clause
-    // CTEs are only for JOIN cubes that could be affected by fan-out
-    const allCubesToConsider: Array<{ cube: Cube; alias: string; isPrimary: boolean }> = []
-
-    // Add join cubes only (not primary cube)
-    for (const joinCube of joinCubes) {
-      allCubesToConsider.push({
-        cube: joinCube.cube,
-        alias: joinCube.alias,
-        isPrimary: false
-      })
-    }
-
-    // Step 5: For each cube with measures, determine if it needs a CTE
-    for (const { cube, alias, isPrimary } of allCubesToConsider) {
-      const cteReason = this.getCTEReason(
-        cube,
-        primaryCube,
-        hasManyRelationships,
-        query
-      )
-
-      if (!cteReason) {
-        continue
-      }
+      const cube = joinCubeEntry.cube
+      const alias = joinCubeEntry.alias
+      const isPrimary = false
 
       // Get measures from this cube
       const measuresFromSelect = query.measures.filter(m =>
@@ -780,117 +749,88 @@ export class LogicalPlanner {
   }
 
   /**
-   * Detect all hasMany relationships that could affect the query
+   * Compute CTE reasons from the actual join plan entries.
    *
-   * This searches ALL cubes involved in the query (including intermediary cubes)
-   * to find any hasMany relationships that could cause row multiplication.
+   * Instead of scanning all registered cubes (which causes false positives when
+   * unrelated hasMany relationships exist), this walks only the planned joins
+   * using the `relationship` field now stored on each JoinCubePlanEntry.
    *
-   * Key insight: A hasMany relationship in ANY cube that's part of the join path
-   * will cause fan-out. We need to detect hasMany from:
-   * 1. The primary cube
-   * 2. All join cubes
-   * 3. Any intermediate cubes that form the join path
+   * Algorithm:
+   * 1. Scan join plan entries for hasMany/belongsToMany relationships
+   * 2. If none found → return empty map (no CTEs needed)
+   * 3. hasMany/belongsToMany targets with measures → 'hasMany'
+   * 4. Other join cubes with measures (not hasMany source) → 'fanOutPrevention'
    */
-  private detectHasManyInQuery(
-    cubes: Map<string, Cube>,
-    primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes']
-  ): Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> {
-    const hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> = []
-    const processedCubes = new Set<string>()
-
-    // Collect all cubes involved in this query
-    const involvedCubes = new Set<string>()
-    involvedCubes.add(primaryCube.name)
-    for (const joinCube of joinCubes) {
-      involvedCubes.add(joinCube.cube.name)
-    }
-
-    // Check ALL registered cubes that have hasMany relationships to cubes in the query
-    // This catches the case where Employees (not primary, maybe not in joinCubes)
-    // has hasMany → Productivity (in query)
-    for (const [cubeName, cube] of cubes) {
-      if (processedCubes.has(cubeName)) continue
-      processedCubes.add(cubeName)
-
-      if (!cube.joins) continue
-
-      for (const [, joinDef] of Object.entries(cube.joins)) {
-        if (joinDef.relationship === 'hasMany') {
-          const targetCube = resolveCubeReference(joinDef.targetCube)
-
-          // Only include if both source AND target are involved in the query
-          // This ensures we only detect hasMany that actually affects this query
-          if (involvedCubes.has(cubeName) || involvedCubes.has(targetCube.name)) {
-            hasManyRelationships.push({
-              fromCube: cubeName,
-              toCube: targetCube.name,
-              joinDef: joinDef as CubeJoin
-            })
-          }
-        }
-      }
-    }
-
-    return hasManyRelationships
-  }
-
-  /**
-   * Determine if and why a cube needs pre-aggregation (CTE)
-   *
-   * Returns:
-   * - 'hasMany': Cube is the TARGET of a hasMany relationship - needs SUM in outer query
-   * - 'fanOutPrevention': Cube has measures affected by hasMany elsewhere - needs MAX in outer query
-   * - null: No CTE needed
-   *
-   * Key insight: When ANY hasMany exists in a query, ALL cubes with additive measures (sum, count)
-   * that are joined to the hasMany source cube are at risk of inflation.
-   */
-  private getCTEReason(
-    cube: Cube,
+  private computeCTEReasons(
     _primaryCube: Cube,
-    hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }>,
+    joinCubes: PhysicalQueryPlan['joinCubes'],
     query: SemanticQuery
-  ): 'hasMany' | 'fanOutPrevention' | null {
-    // Case 1: This cube is the TARGET of a hasMany - needs CTE with SUM aggregation
-    const isHasManyTarget = hasManyRelationships.some(
-      rel => rel.toCube === cube.name
-    )
-    if (isHasManyTarget) {
-      // Check if this cube has measures
-      const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
-      if (hasMeasures) {
-        return 'hasMany'
+  ): Map<string, 'hasMany' | 'fanOutPrevention'> {
+    const reasons = new Map<string, 'hasMany' | 'fanOutPrevention'>()
+
+    // Step 1: Classify join relationships from the actual join plan.
+    //
+    // Two kinds of grain mismatch cause measure inflation:
+    //
+    // A) hasMany / belongsToMany: the joined cube's rows multiply the primary's rows.
+    //    → The joined cube needs a 'hasMany' CTE (SUM in outer query).
+    //    → Other cubes with measures also need 'fanOutPrevention' (MAX in outer query).
+    //
+    // B) belongsTo: the primary has MULTIPLE rows per joined row (many-to-one).
+    //    Even without any hasMany, SUM(joinedCube.measure) is inflated by the number
+    //    of primary rows per join key (e.g., SUM(dept.budget) inflated by employee count).
+    //    → The belongsTo-joined cube with measures needs 'fanOutPrevention'.
+    const hasManyTargets = new Set<string>()
+    const belongsToTargetsWithMeasures = new Set<string>()
+
+    // Identify cubes with measures in the query (needed for both paths)
+    const cubesWithMeasures = new Set<string>()
+    if (query.measures) {
+      for (const measure of query.measures) {
+        const [cubeName] = measure.split('.')
+        cubesWithMeasures.add(cubeName)
       }
     }
 
-    // Case 2: This cube has additive measures AND there's a hasMany elsewhere
-    // that would cause row multiplication for this cube
-    const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
-    if (!hasMeasures) {
-      return null // No measures from this cube, no CTE needed
+    for (const jc of joinCubes) {
+      if (jc.relationship === 'hasMany' || jc.relationship === 'belongsToMany') {
+        hasManyTargets.add(jc.cube.name)
+      } else if (jc.relationship === 'belongsTo' && cubesWithMeasures.has(jc.cube.name)) {
+        // belongsTo from primary → primary has many rows per joined row
+        // The joined cube's measures are at risk of inflation
+        belongsToTargetsWithMeasures.add(jc.cube.name)
+      }
     }
 
-    // If there's any hasMany in the query and this cube has measures,
-    // and this cube is NOT the hasMany target, it's at risk of fan-out
-    for (const hasManyRel of hasManyRelationships) {
-      // If this cube is the source of the hasMany, it doesn't need CTE for its own measures
-      if (hasManyRel.fromCube === cube.name) {
-        continue
-      }
-
-      // If this cube is the target of the hasMany, it's already handled by Case 1
-      if (hasManyRel.toCube === cube.name) {
-        continue
-      }
-
-      // This cube has measures and there's a hasMany elsewhere that could multiply its rows
-      // Use fanOutPrevention reason - this means MAX will be used instead of SUM
-      return 'fanOutPrevention'
+    // Step 2: No multiplication risk → no CTEs needed
+    if (hasManyTargets.size === 0 && belongsToTargetsWithMeasures.size === 0) {
+      return reasons
     }
 
-    return null
+    // Step 3: Assign CTE reasons
+    for (const jc of joinCubes) {
+      if (!cubesWithMeasures.has(jc.cube.name)) continue
+
+      if (hasManyTargets.has(jc.cube.name)) {
+        // Direct hasMany/belongsToMany target → 'hasMany' (SUM in outer query)
+        reasons.set(jc.cube.name, 'hasMany')
+      } else if (belongsToTargetsWithMeasures.has(jc.cube.name)) {
+        // belongsTo join with measures → grain mismatch with primary
+        reasons.set(jc.cube.name, 'fanOutPrevention')
+      } else if (hasManyTargets.size > 0) {
+        // There's a hasMany elsewhere that multiplies rows.
+        // This cube has measures and is not the hasMany target → fanOutPrevention.
+        reasons.set(jc.cube.name, 'fanOutPrevention')
+      }
+    }
+
+    return reasons
   }
+
+  // NOTE: The former detectHasManyInQuery() and getCTEReason() methods were removed
+  // as part of the P3 refactor. They scanned ALL registered cubes (not just those in
+  // the join plan), causing false-positive hasMany detection. Their logic has been
+  // replaced by computeCTEReasons() above, which walks only the actual join plan.
 
   /**
    * Find join information for a cube from any cube in the query

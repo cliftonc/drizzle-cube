@@ -103,6 +103,8 @@ export interface JoinRef {
   joinType: 'inner' | 'left' | 'right' | 'full'
   /** Drizzle SQL join condition (pre-built by the planner) */
   joinCondition: SQL
+  /** Relationship type from the join definition */
+  relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   /** Junction table for belongsToMany relationships */
   junctionTable?: {
     table: Table

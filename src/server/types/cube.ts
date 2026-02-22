@@ -523,6 +523,8 @@ export interface JoinCubePlanEntry {
   alias: string
   joinType: 'inner' | 'left' | 'right' | 'full'
   joinCondition: SQL
+  /** Relationship type from the join definition that produced this entry */
+  relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   /** Junction table information for belongsToMany relationships */
   junctionTable?: {
     table: Table
