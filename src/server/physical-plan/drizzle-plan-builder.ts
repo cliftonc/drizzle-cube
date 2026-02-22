@@ -202,7 +202,8 @@ export class DrizzlePlanBuilder {
           multipliedCubeName,
           primaryKeyDimensions: keysSource.joinOn
             .map(joinRef => joinRef.alias?.split('.')[1] ?? '')
-            .filter(Boolean)
+            .filter(Boolean),
+          regularMeasures: keysSource.regularMeasures
         }
       : undefined
   }
@@ -358,6 +359,30 @@ export class DrizzlePlanBuilder {
       pkAliases.push(pkAlias)
     }
 
+    // Split measures into multiplied (agg CTE) and regular (keys CTE)
+    const regularMeasureNames = dedup.regularMeasures ?? []
+    const regularMeasureSet = new Set(regularMeasureNames)
+    const multipliedMeasures = query.measures.filter(m => !regularMeasureSet.has(m))
+
+    // Pre-aggregate regular measures in the keys CTE
+    if (regularMeasureNames.length > 0) {
+      const regularMeasureMap = deps.queryBuilder.buildResolvedMeasures(
+        regularMeasureNames,
+        allCubes,
+        context
+      )
+
+      for (const measureName of regularMeasureNames) {
+        const [, localName] = measureName.split('.')
+        const measureSqlBuilder = regularMeasureMap.get(measureName)
+        if (!measureSqlBuilder) {
+          return null
+        }
+        const regAlias = `__reg__${measureName.replace('.', '__')}`
+        keysSelections[regAlias] = sql`${measureSqlBuilder()}`.as(regAlias)
+      }
+    }
+
     const primaryCubeBase = queryPlan.primaryCube.sql(context)
     const keysWhereConditions: SQL[] = []
     if (primaryCubeBase.where) {
@@ -436,19 +461,52 @@ export class DrizzlePlanBuilder {
       aggGroupBy.push(expr)
     }
 
-    const measureMap = deps.queryBuilder.buildResolvedMeasures(
-      query.measures,
-      new Map([[multipliedCube.name, multipliedCube]]),
-      context
-    )
-
-    for (const measureName of query.measures) {
+    // Identify avg measures that need sum/count decomposition (only for multiplied measures)
+    const avgMeasureLocals = new Set<string>()
+    for (const measureName of multipliedMeasures) {
       const [, localName] = measureName.split('.')
-      const measureSqlBuilder = measureMap.get(measureName)
-      if (!measureSqlBuilder) {
-        return null
+      const measure = multipliedCube.measures?.[localName]
+      if (measure?.type === 'avg') {
+        avgMeasureLocals.add(localName)
       }
-      aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
+    }
+
+    // Build non-avg multiplied measures normally
+    const nonAvgMultiplied = multipliedMeasures.filter(m => {
+      const [, localName] = m.split('.')
+      return !avgMeasureLocals.has(localName)
+    })
+
+    if (nonAvgMultiplied.length > 0) {
+      const measureMap = deps.queryBuilder.buildResolvedMeasures(
+        nonAvgMultiplied,
+        new Map([[multipliedCube.name, multipliedCube]]),
+        context
+      )
+
+      for (const measureName of nonAvgMultiplied) {
+        const [, localName] = measureName.split('.')
+        const measureSqlBuilder = measureMap.get(measureName)
+        if (!measureSqlBuilder) {
+          return null
+        }
+        aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
+      }
+    }
+
+    // Decompose avg measures into sum + count for correct re-aggregation
+    for (const measureName of multipliedMeasures) {
+      const [, localName] = measureName.split('.')
+      if (!avgMeasureLocals.has(localName)) continue
+
+      const measure = multipliedCube.measures?.[localName]
+      if (!measure?.sql) return null
+
+      const baseExpr = resolveSqlExpression(measure.sql, context)
+      const sumAlias = `__avg_sum__${localName}`
+      const countAlias = `__avg_count__${localName}`
+      aggSelections[sumAlias] = sql`sum(${baseExpr})`.as(sumAlias)
+      aggSelections[countAlias] = sql`count(${baseExpr})`.as(countAlias)
     }
 
     let aggQuery = context.db
@@ -486,10 +544,24 @@ export class DrizzlePlanBuilder {
       outerSelections[timeDimension.dimension] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
         .as(timeDimension.dimension)
     }
-    for (const measureName of query.measures) {
+    // Multiplied measures: re-aggregate from agg CTE with type-specific logic
+    for (const measureName of multipliedMeasures) {
       const [, localName] = measureName.split('.')
-      const aggColumn = sql`${sql.identifier(aggAlias)}.${sql.identifier(localName)}`
-      outerSelections[measureName] = sql`coalesce(sum(${aggColumn}), 0)`.as(measureName)
+      const measure = multipliedCube.measures?.[localName]
+      outerSelections[measureName] = this.buildKeysOuterAggregation(
+        measure?.type ?? 'sum', aggAlias, localName, measureName
+      )
+    }
+
+    // Regular measures: re-aggregate from keys CTE with type-specific logic
+    for (const measureName of regularMeasureNames) {
+      const [cubeName, localName] = measureName.split('.')
+      const regularCube = allCubes.get(cubeName)
+      const measure = regularCube?.measures?.[localName]
+      const regAlias = `__reg__${measureName.replace('.', '__')}`
+      outerSelections[measureName] = this.buildKeysOuterAggregation(
+        measure?.type ?? 'sum', keysAlias, regAlias, measureName
+      )
     }
 
     let finalQuery = context.db
@@ -755,17 +827,18 @@ export class DrizzlePlanBuilder {
       return false
     }
 
-    if (!query.measures.every(measure => measure.startsWith(`${multipliedCubeName}.`))) {
-      return false
-    }
-
+    // Validate multiplied cube measures are supported types
     for (const measureName of query.measures) {
-      const [, localName] = measureName.split('.')
+      const [cubeName, localName] = measureName.split('.')
+      if (cubeName !== multipliedCubeName) {
+        // Regular measures are validated by the logical planner
+        continue
+      }
       const measure = multipliedCube.measures?.[localName]
       if (!measure) {
         return false
       }
-      if (!['sum', 'count', 'number'].includes(measure.type)) {
+      if (!['sum', 'count', 'number', 'min', 'max', 'avg'].includes(measure.type)) {
         return false
       }
     }
@@ -806,6 +879,44 @@ export class DrizzlePlanBuilder {
     return Object.entries(cube.dimensions ?? {})
       .filter(([, dimension]) => Boolean(dimension.primaryKey))
       .map(([name]) => name)
+  }
+
+  /**
+   * Build type-specific outer aggregation for keys deduplication.
+   * Each measure type needs different re-aggregation in the outer query:
+   * - sum/count/number: SUM (re-combine additive values)
+   * - min: MIN (preserve minimum across groups)
+   * - max: MAX (preserve maximum across groups)
+   * - avg: SUM(sums) / NULLIF(SUM(counts), 0) (weighted average from decomposed parts)
+   */
+  private buildKeysOuterAggregation(
+    measureType: string,
+    aggAlias: string,
+    localName: string,
+    measureName: string
+  ): any {
+    switch (measureType) {
+      case 'min': {
+        const col = sql`${sql.identifier(aggAlias)}.${sql.identifier(localName)}`
+        return sql`min(${col})`.as(measureName)
+      }
+      case 'max': {
+        const col = sql`${sql.identifier(aggAlias)}.${sql.identifier(localName)}`
+        return sql`max(${col})`.as(measureName)
+      }
+      case 'avg': {
+        const sumCol = sql`${sql.identifier(aggAlias)}.${sql.identifier(`__avg_sum__${localName}`)}`
+        const countCol = sql`${sql.identifier(aggAlias)}.${sql.identifier(`__avg_count__${localName}`)}`
+        return sql`sum(${sumCol}) / nullif(sum(${countCol}), 0)`.as(measureName)
+      }
+      case 'sum':
+      case 'count':
+      case 'number':
+      default: {
+        const col = sql`${sql.identifier(aggAlias)}.${sql.identifier(localName)}`
+        return sql`coalesce(sum(${col}), 0)`.as(measureName)
+      }
+    }
   }
 
   private applyJoinByType(

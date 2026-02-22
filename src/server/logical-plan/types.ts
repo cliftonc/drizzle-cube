@@ -233,6 +233,8 @@ export interface KeysDeduplication extends LogicalNodeBase {
   measureSource: LogicalNode
   /** Primary key columns to join on */
   joinOn: ColumnRef[]
+  /** Measure names NOT from the multiplied cube (pre-aggregated in keys CTE) */
+  regularMeasures?: string[]
 }
 
 /**

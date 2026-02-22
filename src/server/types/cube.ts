@@ -554,6 +554,8 @@ export interface PhysicalQueryPlan {
   keysDeduplication?: {
     multipliedCubeName: string
     primaryKeyDimensions: string[]
+    /** Measure names NOT from the multiplied cube (pre-aggregated in keys CTE) */
+    regularMeasures?: string[]
   }
   /**
    * Optional multi-fact merge metadata.

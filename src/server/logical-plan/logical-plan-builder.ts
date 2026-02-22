@@ -617,26 +617,38 @@ export class LogicalPlanBuilder {
       return false
     }
 
-    // For the first execution slice we only support measure sets fully sourced
-    // from the multiplied cube.
-    if (!queryMeasures.every(measure => measure.startsWith(`${multipliedCubeName}.`))) {
-      return false
-    }
-
     const multipliedCube = cubes.get(multipliedCubeName)
     if (!multipliedCube) {
       return false
     }
 
+    // Validate multiplied measures: must be additive types including min/max/avg
     for (const measureName of queryMeasures) {
-      const [, localName] = measureName.split('.')
+      const [cubeName, localName] = measureName.split('.')
+      if (cubeName !== multipliedCubeName) {
+        // This is a regular (non-multiplied) measure — validate it can be
+        // re-aggregated across keys CTE rows.
+        const regularCube = cubes.get(cubeName)
+        const regularMeasure = regularCube?.measures?.[localName]
+        if (!regularMeasure) {
+          return false
+        }
+        // Regular measures must be re-aggregatable in the keys CTE:
+        // sum/count/number → SUM in outer, min → MIN, max → MAX
+        // avg and countDistinct CANNOT be re-aggregated correctly
+        if (!['sum', 'count', 'number', 'min', 'max'].includes(regularMeasure.type)) {
+          return false
+        }
+        continue
+      }
+
       const measure = multipliedCube.measures?.[localName]
       if (!measure) {
         return false
       }
 
-      // Support additive base types only in this first pass.
-      if (!['sum', 'count', 'number'].includes(measure.type)) {
+      // Support additive base types and min/max/avg.
+      if (!['sum', 'count', 'number', 'min', 'max', 'avg'].includes(measure.type)) {
         return false
       }
     }
@@ -689,12 +701,17 @@ export class LogicalPlanBuilder {
       )
     )
 
+    const regularMeasures = classification.regular.length > 0
+      ? classification.regular.map(m => m.name)
+      : undefined
+
     return {
       type: 'keysDeduplication',
       schema: simpleSource.schema,
       keysSource: simpleSource,
       measureSource: simpleSource,
-      joinOn
+      joinOn,
+      regularMeasures
     }
   }
 
