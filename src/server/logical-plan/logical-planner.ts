@@ -483,7 +483,7 @@ export class LogicalPlanner {
       // Example: Departments → Employees → EmployeeTeams
       // If there's a hasMany on the intermediate path, we need to absorb
       // intermediate tables into the CTE
-      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx)
+      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx, query)
 
       let joinKeys: Array<{
         sourceColumn: string
@@ -502,9 +502,22 @@ export class LogicalPlanner {
         // Standard path: use existing join key logic
         // Find the join definition - could be from primary or from any cube in the chain
         // For the primary cube, we need to find a join FROM another cube TO the primary
+        const joinInfoFromPath =
+          !isPrimary && pathAnalysis?.path && pathAnalysis.path.length > 0
+            ? (() => {
+                const lastStep = pathAnalysis.path[pathAnalysis.path.length - 1]
+                const sourceCube = cubes.get(lastStep.fromCube)
+                if (!sourceCube) return null
+                return {
+                  sourceCube,
+                  joinDef: lastStep.joinDef as CubeJoin
+                }
+              })()
+            : null
+
         const joinInfo = isPrimary
           ? this.findJoinInfoToCube(cubes, primaryCube.name)
-          : this.findJoinInfoForCube(cubes, primaryCube, cube.name)
+          : joinInfoFromPath ?? this.findJoinInfoForCube(cubes, primaryCube, cube.name)
 
         if (!joinInfo) {
           continue // No join info found
@@ -651,7 +664,8 @@ export class LogicalPlanner {
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     targetCubeName: string,
-    ctx: QueryContext
+    ctx: QueryContext,
+    query: SemanticQuery
   ): {
     path: { fromCube: string; toCube: string; joinDef: CubeJoin }[]
     hasIntermediateHasMany: boolean
@@ -664,7 +678,24 @@ export class LogicalPlanner {
     }>
   } | null {
     const resolver = this.getResolver(cubes)
-    const joinPath = resolver.findPath(primaryCube.name, targetCubeName)
+    const preferredPathCubes = new Set<string>()
+
+    for (const measure of query.measures ?? []) {
+      const [cubeName] = measure.split('.')
+      if (cubeName) preferredPathCubes.add(cubeName)
+    }
+    for (const dimension of query.dimensions ?? []) {
+      const [cubeName] = dimension.split('.')
+      if (cubeName) preferredPathCubes.add(cubeName)
+    }
+    for (const timeDimension of query.timeDimensions ?? []) {
+      const [cubeName] = timeDimension.dimension.split('.')
+      if (cubeName) preferredPathCubes.add(cubeName)
+    }
+
+    const joinPath = preferredPathCubes.size > 0
+      ? resolver.findPathPreferring(primaryCube.name, targetCubeName, preferredPathCubes, new Set())
+      : resolver.findPath(primaryCube.name, targetCubeName)
 
     if (!joinPath || joinPath.length === 0) {
       return null

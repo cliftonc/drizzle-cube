@@ -380,20 +380,65 @@ export class CTEBuilder {
       // Use the intermediate table's primary-connected column
       // Example: departments.id = employeeteams_agg.department_id
       const firstIntermediate = cteInfo.intermediateJoins[0]
-      const primaryCol = cteInfo.joinKeys[0]?.sourceColumnObj
+      const primaryCol = this.resolveCTEJoinSourceColumn(
+        cteInfo.joinKeys[0],
+        cteInfo,
+        queryPlan
+      )
       const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(firstIntermediate.primaryJoinColumn.name)}`
       conditions.push(eq(primaryCol as any, cteCol))
     } else {
       // Standard path: build join conditions using join keys
       for (const joinKey of cteInfo.joinKeys) {
-        // Use the stored source column object if available, otherwise fall back to identifier
-        const sourceCol = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
+        const sourceCol = this.resolveCTEJoinSourceColumn(joinKey, cteInfo, queryPlan)
         const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
         conditions.push(eq(sourceCol as any, cteCol))
       }
     }
 
     return conditions.length === 1 ? conditions[0] : and(...conditions)!
+  }
+
+  /**
+   * Resolve source-side join expression for CTE joins.
+   *
+   * When two cubes are both materialized as CTEs in the same query, join keys can
+   * still point to the original table column object (e.g. departments.id). In that
+   * case the table is no longer present in FROM/JOIN, so rewrite to the upstream CTE
+   * alias column (e.g. departments_agg.id).
+   */
+  private resolveCTEJoinSourceColumn(
+    joinKey: CTEInfo['joinKeys'][number] | undefined,
+    currentCteInfo: CTEInfo,
+    queryPlan: PhysicalQueryPlan
+  ): SQL | any {
+    if (!joinKey) {
+      throw new Error(
+        `Missing join key while building CTE join condition for '${currentCteInfo.cube.name}'`
+      )
+    }
+
+    const defaultSource = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
+    if (!joinKey.sourceColumnObj || !queryPlan.preAggregationCTEs) {
+      return defaultSource
+    }
+
+    for (const candidate of queryPlan.preAggregationCTEs) {
+      if (candidate.cube.name === currentCteInfo.cube.name) {
+        continue
+      }
+
+      for (const [dimensionName, dimension] of Object.entries(candidate.cube.dimensions || {}) as Array<[string, any]>) {
+        if (typeof dimension.sql === 'function') {
+          continue
+        }
+        if (dimension.sql === joinKey.sourceColumnObj) {
+          return sql`${sql.identifier(candidate.cteAlias)}.${sql.identifier(dimensionName)}`
+        }
+      }
+    }
+
+    return defaultSource
   }
 
   /**
