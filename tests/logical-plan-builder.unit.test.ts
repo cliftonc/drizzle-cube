@@ -3,14 +3,20 @@ import { LogicalPlanBuilder } from '../src/server/logical-plan/logical-plan-buil
 import type { Cube, QueryContext, SemanticQuery } from '../src/server/types'
 import type { LogicalPlanner } from '../src/server/logical-plan/logical-planner'
 
-function createCube(name: string): Cube {
+function createCube(
+  name: string,
+  options?: {
+    dimensions?: Cube['dimensions']
+    measures?: Cube['measures']
+  }
+): Cube {
   return {
     name,
     sql: () => ({ from: {} as any }),
-    dimensions: {
+    dimensions: options?.dimensions ?? {
       id: { name: 'id', type: 'number', sql: {} as any, primaryKey: true }
     },
-    measures: {
+    measures: options?.measures ?? {
       count: { name: 'count', type: 'count', sql: {} as any }
     }
   }
@@ -142,5 +148,144 @@ describe('LogicalPlanBuilder (unit)', () => {
     expect(result.analysis.querySummary.cteCount).toBe(0)
     expect(result.analysis.planningTrace).toBeDefined()
     expect(result.analysis.planningTrace?.steps.length).toBeGreaterThan(0)
+  })
+
+  it('emits keysDeduplication source when multiplied measures have primary keys', () => {
+    const departmentsCube = createCube('Departments', {
+      measures: {
+        totalBudget: { name: 'totalBudget', type: 'sum', sql: {} as any }
+      }
+    })
+    const productivityCube = createCube('Productivity', {
+      measures: {
+        recordCount: { name: 'recordCount', type: 'count', sql: {} as any }
+      }
+    })
+    const cubes = new Map<string, Cube>([
+      ['Departments', departmentsCube],
+      ['Productivity', productivityCube]
+    ])
+
+    const query: SemanticQuery = {
+      measures: ['Departments.totalBudget']
+    }
+
+    const plannerStub = {
+      analyzeCubeUsage: vi.fn(() => new Set(['Departments', 'Productivity'])),
+      analyzePrimaryCube: vi.fn(() => ({
+        selectedCube: 'Departments',
+        reason: 'most_dimensions',
+        explanation: 'Departments selected'
+      })),
+      analyzeJoinPathForTarget: vi.fn(() => ({
+        targetCube: 'Productivity',
+        pathFound: true,
+        path: [],
+        pathLength: 0
+      })),
+      buildJoinPlanForPrimary: vi.fn(() => []),
+      buildPreAggregationCTEs: vi.fn(() => [
+        {
+          cube: departmentsCube,
+          alias: 'departments_cube',
+          cteAlias: 'departments_agg',
+          joinKeys: [
+            {
+              sourceColumn: 'id',
+              targetColumn: 'id',
+              sourceColumnObj: {} as any,
+              targetColumnObj: {} as any
+            }
+          ],
+          measures: ['Departments.totalBudget'],
+          cteType: 'aggregate',
+          cteReason: 'fanOutPrevention'
+        }
+      ]),
+      buildWarnings: vi.fn(() => [])
+    } as unknown as LogicalPlanner
+
+    const builder = new LogicalPlanBuilder(plannerStub)
+    const result = builder.planWithAnalysis(cubes, query, createContext())
+
+    expect(result.plan.source.type).toBe('keysDeduplication')
+    if (result.plan.source.type === 'keysDeduplication') {
+      expect(result.plan.source.joinOn.length).toBeGreaterThan(0)
+      expect(result.plan.source.measureSource.type).toBe('simpleSource')
+    }
+
+    const strategyStep = result.analysis.planningTrace?.steps.find(
+      step => step.phase === 'measure_strategy'
+    )
+    expect(strategyStep).toBeDefined()
+    expect(strategyStep?.details?.strategy).toBe('keysDeduplication')
+  })
+
+  it('falls back to simpleSource when multiplied measures do not have primary keys', () => {
+    const departmentsCube = createCube('Departments', {
+      dimensions: {
+        id: { name: 'id', type: 'number', sql: {} as any }
+      },
+      measures: {
+        totalBudget: { name: 'totalBudget', type: 'sum', sql: {} as any }
+      }
+    })
+    const productivityCube = createCube('Productivity', {
+      measures: {
+        recordCount: { name: 'recordCount', type: 'count', sql: {} as any }
+      }
+    })
+    const cubes = new Map<string, Cube>([
+      ['Departments', departmentsCube],
+      ['Productivity', productivityCube]
+    ])
+
+    const query: SemanticQuery = {
+      measures: ['Departments.totalBudget']
+    }
+
+    const plannerStub = {
+      analyzeCubeUsage: vi.fn(() => new Set(['Departments', 'Productivity'])),
+      analyzePrimaryCube: vi.fn(() => ({
+        selectedCube: 'Departments',
+        reason: 'most_dimensions',
+        explanation: 'Departments selected'
+      })),
+      analyzeJoinPathForTarget: vi.fn(() => ({
+        targetCube: 'Productivity',
+        pathFound: true,
+        path: [],
+        pathLength: 0
+      })),
+      buildJoinPlanForPrimary: vi.fn(() => []),
+      buildPreAggregationCTEs: vi.fn(() => [
+        {
+          cube: departmentsCube,
+          alias: 'departments_cube',
+          cteAlias: 'departments_agg',
+          joinKeys: [
+            {
+              sourceColumn: 'id',
+              targetColumn: 'id',
+              sourceColumnObj: {} as any,
+              targetColumnObj: {} as any
+            }
+          ],
+          measures: ['Departments.totalBudget'],
+          cteType: 'aggregate',
+          cteReason: 'fanOutPrevention'
+        }
+      ]),
+      buildWarnings: vi.fn(() => [])
+    } as unknown as LogicalPlanner
+
+    const builder = new LogicalPlanBuilder(plannerStub)
+    const result = builder.planWithAnalysis(cubes, query, createContext())
+
+    expect(result.plan.source.type).toBe('simpleSource')
+    const strategyStep = result.analysis.planningTrace?.steps.find(
+      step => step.phase === 'measure_strategy'
+    )
+    expect(strategyStep?.details?.strategy).toBe('ctePreAggregateFallback')
   })
 })

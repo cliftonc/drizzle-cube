@@ -547,6 +547,14 @@ export interface PhysicalQueryPlan {
   joinCubes: JoinCubePlanEntry[]
   /** Pre-aggregation CTEs for hasMany relationships to prevent fan-out */
   preAggregationCTEs?: PreAggregationCTEInfo[]
+  /**
+   * Optional keys-based deduplication metadata.
+   * When present, physical builders may choose a keys+aggregate execution path.
+   */
+  keysDeduplication?: {
+    multipliedCubeName: string
+    primaryKeyDimensions: string[]
+  }
   /** Warnings about potential query issues (e.g., fan-out without dimensions) */
   warnings?: import('./core').QueryWarning[]
 }

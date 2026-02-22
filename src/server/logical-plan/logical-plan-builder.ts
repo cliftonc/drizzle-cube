@@ -13,27 +13,44 @@
  * logical plan as the primary planning representation.
  */
 
-import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning } from '../types'
+import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure } from '../types'
 import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis'
 import type { SemanticQuery } from '../types/query'
 import type { LogicalPlanner } from './logical-planner'
 import { MeasureBuilder } from '../builders/measure-builder'
 import type {
+  LogicalNode,
   QueryNode,
   SimpleSource,
   CTEPreAggregate,
+  KeysDeduplication,
   MeasureRef,
   DimensionRef,
   TimeDimensionRef,
   OrderByRef,
   CubeRef,
   JoinRef,
-  LogicalSchema
+  LogicalSchema,
+  ColumnRef
 } from './types'
 
 export interface LogicalPlanWithAnalysis {
   plan: QueryNode
   analysis: QueryAnalysis
+}
+
+type MeasureStrategy = 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
+
+interface MeasureClassification {
+  regular: MeasureRef[]
+  multiplied: MeasureRef[]
+  deduplicationSafe: MeasureRef[]
+}
+
+interface SourceBuildResult {
+  source: LogicalNode
+  strategy: MeasureStrategy
+  classification: MeasureClassification
 }
 
 export class LogicalPlanBuilder {
@@ -88,13 +105,14 @@ export class LogicalPlanBuilder {
 
     const warnings = this.queryPlanner.buildWarnings(query, preAggregationCTEs)
 
-    const source = this.buildSourceFromPhases(
+    const sourceBuild = this.buildSourceFromPhases(
       primaryCube,
       joinCubes,
       preAggregationCTEs,
       cubes,
       query
     )
+    const source = sourceBuild.source
 
     const plan = this.buildQueryNode(source, query, cubes, warnings)
     const preAggregations = this.buildPreAggregationAnalysis(preAggregationCTEs)
@@ -131,6 +149,7 @@ export class LogicalPlanBuilder {
             : cubeNames.length > 1
               ? 'multi_cube_join'
               : 'single_cube',
+        measureStrategy: sourceBuild.strategy,
         joinCount: joinCubes.length,
         cteCount: preAggregationCTEs.length,
         hasPreAggregation: preAggregationCTEs.length > 0,
@@ -170,6 +189,17 @@ export class LogicalPlanBuilder {
             }
           },
           {
+            phase: 'measure_strategy',
+            decision: `Selected '${sourceBuild.strategy}' measure strategy`,
+            details: {
+              strategy: sourceBuild.strategy,
+              regularMeasures: sourceBuild.classification.regular.map(measure => measure.name),
+              multipliedMeasures: sourceBuild.classification.multiplied.map(measure => measure.name),
+              deduplicationSafeMeasures: sourceBuild.classification.deduplicationSafe.map(measure => measure.name),
+              sourceType: source.type
+            }
+          },
+          {
             phase: 'warnings',
             decision: warnings.length > 0
               ? `Generated ${warnings.length} planning warning${warnings.length === 1 ? '' : 's'}`
@@ -190,6 +220,42 @@ export class LogicalPlanBuilder {
   // ---------------------------------------------------------------------------
 
   private buildSourceFromPhases(
+    primaryCube: Cube,
+    joinCubes: PhysicalQueryPlan['joinCubes'],
+    preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>,
+    cubes: Map<string, Cube>,
+    query: SemanticQuery
+  ): SourceBuildResult {
+    const simpleSource = this.buildSimpleSourceFromPhases(
+      primaryCube,
+      joinCubes,
+      preAggregationCTEs,
+      cubes,
+      query
+    )
+
+    const classification = this.classifyMeasuresForStrategy(
+      simpleSource.schema.measures,
+      preAggregationCTEs
+    )
+    const strategy = this.selectMeasureStrategy(classification, query, cubes)
+
+    if (strategy === 'keysDeduplication') {
+      return {
+        source: this.buildKeysDeduplicationSource(simpleSource, classification),
+        strategy,
+        classification
+      }
+    }
+
+    return {
+      source: simpleSource,
+      strategy,
+      classification
+    }
+  }
+
+  private buildSimpleSourceFromPhases(
     primaryCube: Cube,
     joinCubes: PhysicalQueryPlan['joinCubes'],
     preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>,
@@ -242,8 +308,205 @@ export class LogicalPlanBuilder {
     }
   }
 
+  private classifyMeasuresForStrategy(
+    measures: MeasureRef[],
+    preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>
+  ): MeasureClassification {
+    const classification: MeasureClassification = {
+      regular: [],
+      multiplied: [],
+      deduplicationSafe: []
+    }
+
+    const multipliedCubes = new Set(
+      preAggregationCTEs
+        .filter(cte => cte.cteReason === 'fanOutPrevention')
+        .map(cte => cte.cube.name)
+    )
+
+    for (const measureRef of measures) {
+      const cube = measureRef.cube.cube
+      const measure = cube.measures?.[measureRef.localName]
+
+      if (!measure || !multipliedCubes.has(cube.name)) {
+        classification.regular.push(measureRef)
+        continue
+      }
+
+      if (this.isDeduplicationSafeMeasure(measure)) {
+        classification.deduplicationSafe.push(measureRef)
+      } else {
+        classification.multiplied.push(measureRef)
+      }
+    }
+
+    return classification
+  }
+
+  private selectMeasureStrategy(
+    classification: MeasureClassification,
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): MeasureStrategy {
+    if (classification.multiplied.length === 0) {
+      return 'simple'
+    }
+
+    const hasPrimaryKeysForAllMultiplied = classification.multiplied.every(
+      measure => this.getPrimaryKeyColumns(measure.cube.cube).length > 0
+    )
+
+    if (
+      hasPrimaryKeysForAllMultiplied &&
+      this.isKeysDeduplicationExecutionSupported(classification, query, cubes)
+    ) {
+      return 'keysDeduplication'
+    }
+
+    return 'ctePreAggregateFallback'
+  }
+
+  /**
+   * Initial execution scope for keys deduplication:
+   * - exactly one multiplied cube
+   * - all query measures belong to that cube
+   * - only additive measure types currently handled by the physical keys path
+   * - no measure filters (HAVING) in the query
+   */
+  private isKeysDeduplicationExecutionSupported(
+    classification: MeasureClassification,
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): boolean {
+    const multipliedCubeNames = new Set(
+      classification.multiplied.map(measure => measure.cube.name)
+    )
+
+    if (multipliedCubeNames.size !== 1) {
+      return false
+    }
+
+    const multipliedCubeName = Array.from(multipliedCubeNames)[0]
+    const queryMeasures = query.measures ?? []
+    if (queryMeasures.length === 0) {
+      return false
+    }
+
+    // For the first execution slice we only support measure sets fully sourced
+    // from the multiplied cube.
+    if (!queryMeasures.every(measure => measure.startsWith(`${multipliedCubeName}.`))) {
+      return false
+    }
+
+    const multipliedCube = cubes.get(multipliedCubeName)
+    if (!multipliedCube) {
+      return false
+    }
+
+    for (const measureName of queryMeasures) {
+      const [, localName] = measureName.split('.')
+      const measure = multipliedCube.measures?.[localName]
+      if (!measure) {
+        return false
+      }
+
+      // Support additive base types only in this first pass.
+      if (!['sum', 'count', 'number'].includes(measure.type)) {
+        return false
+      }
+    }
+
+    if (this.queryHasMeasureFilter(query, multipliedCubeName, multipliedCube)) {
+      return false
+    }
+
+    return true
+  }
+
+  private queryHasMeasureFilter(
+    query: SemanticQuery,
+    cubeName: string,
+    cube: Cube
+  ): boolean {
+    const hasMeasureMember = (member: string): boolean => {
+      const [memberCube, localName] = member.split('.')
+      return memberCube === cubeName && Boolean(cube.measures?.[localName])
+    }
+
+    const walk = (filters?: SemanticQuery['filters']): boolean => {
+      if (!filters) return false
+      for (const filter of filters) {
+        if ('and' in filter) {
+          if (walk(filter.and)) return true
+          continue
+        }
+        if ('or' in filter) {
+          if (walk(filter.or)) return true
+          continue
+        }
+        if ('member' in filter && hasMeasureMember(filter.member)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    return walk(query.filters)
+  }
+
+  private buildKeysDeduplicationSource(
+    simpleSource: SimpleSource,
+    classification: MeasureClassification
+  ): KeysDeduplication {
+    const joinOn = this.deduplicateColumnRefs(
+      classification.multiplied.flatMap(measure =>
+        this.getPrimaryKeyColumns(measure.cube.cube)
+      )
+    )
+
+    return {
+      type: 'keysDeduplication',
+      schema: simpleSource.schema,
+      keysSource: simpleSource,
+      measureSource: simpleSource,
+      joinOn
+    }
+  }
+
+  private isDeduplicationSafeMeasure(measure: Measure): boolean {
+    return measure.type === 'countDistinct' || measure.type === 'countDistinctApprox'
+  }
+
+  private getPrimaryKeyColumns(cube: Cube): ColumnRef[] {
+    const result: ColumnRef[] = []
+
+    for (const [dimensionName, dimension] of Object.entries(cube.dimensions ?? {})) {
+      if (!dimension.primaryKey || typeof dimension.sql === 'function') {
+        continue
+      }
+
+      result.push({
+        column: dimension.sql as any,
+        alias: `${cube.name}.${dimensionName}`
+      })
+    }
+
+    return result
+  }
+
+  private deduplicateColumnRefs(columns: ColumnRef[]): ColumnRef[] {
+    const deduplicated = new Map<string, ColumnRef>()
+    for (const column of columns) {
+      const key = column.alias ?? String((column.column as any)?.name ?? '')
+      if (!deduplicated.has(key)) {
+        deduplicated.set(key, column)
+      }
+    }
+    return Array.from(deduplicated.values())
+  }
+
   private buildQueryNode(
-    source: SimpleSource,
+    source: LogicalNode,
     query: SemanticQuery,
     cubes: Map<string, Cube>,
     warnings: QueryWarning[]

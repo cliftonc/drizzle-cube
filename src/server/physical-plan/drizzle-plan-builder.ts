@@ -1,3 +1,10 @@
+import {
+  and,
+  eq,
+  sql,
+  type SQL
+} from 'drizzle-orm'
+
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type { DrizzleSqlBuilder } from './drizzle-sql-builder'
 import type { CTEBuilder } from '../builders/cte-builder'
@@ -7,7 +14,13 @@ import type {
   QueryContext,
   SemanticQuery
 } from '../types'
-import type { QueryNode, SimpleSource } from '../logical-plan'
+import type {
+  LogicalNode,
+  QueryNode,
+  SimpleSource,
+  KeysDeduplication
+} from '../logical-plan'
+import { resolveSqlExpression } from '../cube-utils'
 import {
   buildCTEState,
   buildModifiedSelections,
@@ -34,13 +47,8 @@ export class DrizzlePlanBuilder {
    */
   derivePhysicalPlanContext(plan: QueryNode): PhysicalQueryPlan {
     const source = plan.source
-    if (source.type !== 'simpleSource') {
-      throw new Error(
-        `Current SQL builder only supports 'simpleSource' logical nodes, got '${source.type}'`
-      )
-    }
-
-    const simpleSource = source as SimpleSource
+    const simpleSource = this.resolvePhysicalSimpleSource(source)
+    const keysDeduplicationMeta = this.resolveKeysDeduplicationMeta(source)
 
     return {
       primaryCube: simpleSource.primaryCube.cube,
@@ -63,8 +71,69 @@ export class DrizzlePlanBuilder {
         cteType: cte.cteType,
         cteReason: cte.cteReason
       })),
+      keysDeduplication: keysDeduplicationMeta,
       warnings: plan.warnings.length > 0 ? plan.warnings : undefined
     }
+  }
+
+  private resolvePhysicalSimpleSource(source: LogicalNode): SimpleSource {
+    switch (source.type) {
+      case 'simpleSource':
+        return source as SimpleSource
+      case 'keysDeduplication':
+        return this.resolvePhysicalSimpleSourceFromKeysDedup(source as KeysDeduplication)
+      default:
+        throw new Error(
+          `Current SQL builder does not support logical node '${source.type}' in physical conversion`
+        )
+    }
+  }
+
+  private resolvePhysicalSimpleSourceFromKeysDedup(source: KeysDeduplication): SimpleSource {
+    const measureSource = source.measureSource
+    if (measureSource.type === 'simpleSource') {
+      return measureSource as SimpleSource
+    }
+
+    const keysSource = source.keysSource
+    if (keysSource.type === 'simpleSource') {
+      return keysSource as SimpleSource
+    }
+
+    throw new Error(
+      'keysDeduplication requires at least one simpleSource child for SQL physical conversion'
+    )
+  }
+
+  private resolveKeysDeduplicationMeta(
+    source: LogicalNode
+  ): PhysicalQueryPlan['keysDeduplication'] | undefined {
+    if (source.type !== 'keysDeduplication') {
+      return undefined
+    }
+
+    const keysSource = source as KeysDeduplication
+    const sourceAliases = new Set<string>()
+    for (const joinRef of keysSource.joinOn) {
+      if (!joinRef.alias) continue
+      const [cubeName, dimensionName] = joinRef.alias.split('.')
+      if (cubeName && dimensionName) {
+        sourceAliases.add(cubeName)
+      }
+    }
+
+    const multipliedCubeName = sourceAliases.size === 1
+      ? Array.from(sourceAliases)[0]
+      : ''
+
+    return multipliedCubeName
+      ? {
+          multipliedCubeName,
+          primaryKeyDimensions: keysSource.joinOn
+            .map(joinRef => joinRef.alias?.split('.')[1] ?? '')
+            .filter(Boolean)
+        }
+      : undefined
   }
 
   /**
@@ -79,6 +148,16 @@ export class DrizzlePlanBuilder {
       queryBuilder: this.queryBuilder,
       cteBuilder: this.cteBuilder,
       databaseAdapter: this.databaseAdapter
+    }
+
+    const keysDedupQuery = this.tryBuildKeysDeduplicationQuery(
+      queryPlan,
+      query,
+      context,
+      deps
+    )
+    if (keysDedupQuery) {
+      return keysDedupQuery
     }
 
     const cteState = buildCTEState(queryPlan, query, context, deps)
@@ -115,5 +194,337 @@ export class DrizzlePlanBuilder {
       joinState,
       deps
     )
+  }
+
+  private tryBuildKeysDeduplicationQuery(
+    queryPlan: PhysicalQueryPlan,
+    query: SemanticQuery,
+    context: QueryContext,
+    deps: PhysicalBuildDependencies
+  ): any | null {
+    const dedup = queryPlan.keysDeduplication
+    if (!dedup?.multipliedCubeName || !query.measures?.length) {
+      return null
+    }
+
+    const allCubes = queryPlan.joinCubes.length > 0
+      ? getCubesFromPlan(queryPlan)
+      : new Map<string, Cube>([[queryPlan.primaryCube.name, queryPlan.primaryCube]])
+    const multipliedCube = allCubes.get(dedup.multipliedCubeName)
+    if (!multipliedCube) {
+      return null
+    }
+
+    if (!this.canExecuteKeysDeduplication(query, multipliedCube, dedup.multipliedCubeName)) {
+      return null
+    }
+
+    const pkDimensions = dedup.primaryKeyDimensions.length > 0
+      ? dedup.primaryKeyDimensions
+      : this.getPrimaryKeyDimensions(multipliedCube)
+    if (pkDimensions.length === 0) {
+      return null
+    }
+
+    const keysAlias = `${dedup.multipliedCubeName.toLowerCase()}_keys`
+    const aggAlias = `${dedup.multipliedCubeName.toLowerCase()}_pk_agg`
+
+    const keysSelections: Record<string, any> = {}
+    const keyGroupBy: SQL[] = []
+
+    if (query.dimensions) {
+      for (const dimensionName of query.dimensions) {
+        const [cubeName, localName] = dimensionName.split('.')
+        const cube = allCubes.get(cubeName)
+        const dimension = cube?.dimensions?.[localName]
+        if (!cube || !dimension) {
+          return null
+        }
+        const expr = resolveSqlExpression(dimension.sql, context) as SQL
+        keysSelections[dimensionName] = sql`${expr}`.as(dimensionName)
+        keyGroupBy.push(expr)
+      }
+    }
+
+    if (query.timeDimensions) {
+      for (const timeDimension of query.timeDimensions) {
+        const [cubeName, localName] = timeDimension.dimension.split('.')
+        const cube = allCubes.get(cubeName)
+        const dimension = cube?.dimensions?.[localName]
+        if (!cube || !dimension) {
+          return null
+        }
+        const expr = deps.queryBuilder.buildTimeDimensionExpression(
+          dimension.sql,
+          timeDimension.granularity,
+          context
+        )
+        keysSelections[timeDimension.dimension] = sql`${expr}`.as(timeDimension.dimension)
+        keyGroupBy.push(expr)
+      }
+    }
+
+    const pkAliases: string[] = []
+    for (const pkDimension of pkDimensions) {
+      const dimension = multipliedCube.dimensions?.[pkDimension]
+      if (!dimension) {
+        return null
+      }
+      const expr = resolveSqlExpression(dimension.sql, context) as SQL
+      const pkAlias = `__pk__${pkDimension}`
+      keysSelections[pkAlias] = sql`${expr}`.as(pkAlias)
+      keyGroupBy.push(expr)
+      pkAliases.push(pkAlias)
+    }
+
+    const primaryCubeBase = queryPlan.primaryCube.sql(context)
+    const keysWhereConditions: SQL[] = []
+    if (primaryCubeBase.where) {
+      keysWhereConditions.push(primaryCubeBase.where)
+    }
+
+    let keysQuery = context.db
+      .select(keysSelections)
+      .from(primaryCubeBase.from)
+
+    if (primaryCubeBase.joins) {
+      for (const join of primaryCubeBase.joins) {
+        keysQuery = this.applyJoinByType(keysQuery, join.type ?? 'left', join.table, join.on)
+      }
+    }
+
+    for (const joinCube of queryPlan.joinCubes) {
+      if (joinCube.junctionTable) {
+        keysQuery = this.applyJoinByType(
+          keysQuery,
+          joinCube.junctionTable.joinType ?? 'left',
+          joinCube.junctionTable.table,
+          joinCube.junctionTable.joinCondition
+        )
+
+        if (joinCube.junctionTable.securitySql) {
+          const security = joinCube.junctionTable.securitySql(context.securityContext)
+          if (Array.isArray(security)) {
+            keysWhereConditions.push(...security)
+          } else {
+            keysWhereConditions.push(security)
+          }
+        }
+      }
+
+      const joinCubeBase = joinCube.cube.sql(context)
+      keysQuery = this.applyJoinByType(
+        keysQuery,
+        joinCube.joinType ?? 'left',
+        joinCubeBase.from,
+        joinCube.joinCondition
+      )
+      if (joinCubeBase.where) {
+        keysWhereConditions.push(joinCubeBase.where)
+      }
+    }
+
+    keysWhereConditions.push(
+      ...deps.queryBuilder.buildWhereConditions(allCubes, query, context)
+    )
+
+    if (keysWhereConditions.length > 0) {
+      keysQuery = keysQuery.where(
+        keysWhereConditions.length === 1
+          ? keysWhereConditions[0]
+          : and(...keysWhereConditions)
+      )
+    }
+
+    if (keyGroupBy.length > 0) {
+      keysQuery = keysQuery.groupBy(...keyGroupBy)
+    }
+
+    const keysCte = context.db.$with(keysAlias).as(keysQuery)
+
+    const multipliedBase = multipliedCube.sql(context)
+    const aggSelections: Record<string, any> = {}
+    const aggGroupBy: SQL[] = []
+    for (const pkDimension of pkDimensions) {
+      const dimension = multipliedCube.dimensions?.[pkDimension]
+      if (!dimension) {
+        return null
+      }
+      const expr = resolveSqlExpression(dimension.sql, context) as SQL
+      aggSelections[pkDimension] = sql`${expr}`.as(pkDimension)
+      aggGroupBy.push(expr)
+    }
+
+    const measureMap = deps.queryBuilder.buildResolvedMeasures(
+      query.measures,
+      new Map([[multipliedCube.name, multipliedCube]]),
+      context
+    )
+
+    for (const measureName of query.measures) {
+      const [, localName] = measureName.split('.')
+      const measureSqlBuilder = measureMap.get(measureName)
+      if (!measureSqlBuilder) {
+        return null
+      }
+      aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
+    }
+
+    let aggQuery = context.db
+      .select(aggSelections)
+      .from(multipliedBase.from)
+
+    const aggWhereConditions: SQL[] = []
+    if (multipliedBase.where) {
+      aggWhereConditions.push(multipliedBase.where)
+    }
+    aggWhereConditions.push(
+      ...deps.queryBuilder.buildWhereConditions(multipliedCube, query, context)
+    )
+
+    if (aggWhereConditions.length > 0) {
+      aggQuery = aggQuery.where(
+        aggWhereConditions.length === 1
+          ? aggWhereConditions[0]
+          : and(...aggWhereConditions)
+      )
+    }
+
+    if (aggGroupBy.length > 0) {
+      aggQuery = aggQuery.groupBy(...aggGroupBy)
+    }
+
+    const aggCte = context.db.$with(aggAlias).as(aggQuery)
+
+    const outerSelections: Record<string, any> = {}
+    for (const dimensionName of query.dimensions ?? []) {
+      outerSelections[dimensionName] = sql`${sql.identifier(keysAlias)}.${sql.identifier(dimensionName)}`
+        .as(dimensionName)
+    }
+    for (const timeDimension of query.timeDimensions ?? []) {
+      outerSelections[timeDimension.dimension] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
+        .as(timeDimension.dimension)
+    }
+    for (const measureName of query.measures) {
+      const [, localName] = measureName.split('.')
+      const aggColumn = sql`${sql.identifier(aggAlias)}.${sql.identifier(localName)}`
+      outerSelections[measureName] = sql`coalesce(sum(${aggColumn}), 0)`.as(measureName)
+    }
+
+    let finalQuery = context.db
+      .with(keysCte, aggCte)
+      .select(outerSelections)
+      .from(sql`${sql.identifier(keysAlias)}`)
+
+    const joinConditions: SQL[] = pkAliases.map((pkAlias, index) =>
+      eq(
+        sql`${sql.identifier(keysAlias)}.${sql.identifier(pkAlias)}` as any,
+        sql`${sql.identifier(aggAlias)}.${sql.identifier(pkDimensions[index])}` as any
+      )
+    )
+    const combinedJoin = joinConditions.length === 1
+      ? joinConditions[0]
+      : and(...joinConditions)
+
+    finalQuery = finalQuery.leftJoin(sql`${sql.identifier(aggAlias)}`, combinedJoin!)
+
+    const outerGroupBy = [
+      ...(query.dimensions ?? []).map(dimension => sql`${sql.identifier(keysAlias)}.${sql.identifier(dimension)}` as SQL),
+      ...(query.timeDimensions ?? []).map(timeDimension =>
+        sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}` as SQL
+      )
+    ]
+    if (outerGroupBy.length > 0) {
+      finalQuery = finalQuery.groupBy(...outerGroupBy)
+    }
+
+    const orderBy = deps.queryBuilder.buildOrderBy(query, Object.keys(outerSelections))
+    if (orderBy.length > 0) {
+      finalQuery = finalQuery.orderBy(...orderBy)
+    }
+
+    finalQuery = deps.queryBuilder.applyLimitAndOffset(finalQuery, query)
+    return finalQuery
+  }
+
+  private canExecuteKeysDeduplication(
+    query: SemanticQuery,
+    multipliedCube: Cube,
+    multipliedCubeName: string
+  ): boolean {
+    if (!query.measures?.length) {
+      return false
+    }
+
+    if (!query.measures.every(measure => measure.startsWith(`${multipliedCubeName}.`))) {
+      return false
+    }
+
+    for (const measureName of query.measures) {
+      const [, localName] = measureName.split('.')
+      const measure = multipliedCube.measures?.[localName]
+      if (!measure) {
+        return false
+      }
+      if (!['sum', 'count', 'number'].includes(measure.type)) {
+        return false
+      }
+    }
+
+    return !this.queryContainsMeasureFilter(query, multipliedCube, multipliedCubeName)
+  }
+
+  private queryContainsMeasureFilter(
+    query: SemanticQuery,
+    cube: Cube,
+    cubeName: string
+  ): boolean {
+    const visit = (filters?: SemanticQuery['filters']): boolean => {
+      if (!filters) return false
+      for (const filter of filters) {
+        if ('and' in filter) {
+          if (visit(filter.and)) return true
+          continue
+        }
+        if ('or' in filter) {
+          if (visit(filter.or)) return true
+          continue
+        }
+        if ('member' in filter) {
+          const [memberCube, localName] = filter.member.split('.')
+          if (memberCube === cubeName && cube.measures?.[localName]) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    return visit(query.filters)
+  }
+
+  private getPrimaryKeyDimensions(cube: Cube): string[] {
+    return Object.entries(cube.dimensions ?? {})
+      .filter(([, dimension]) => Boolean(dimension.primaryKey))
+      .map(([name]) => name)
+  }
+
+  private applyJoinByType(
+    drizzleQuery: any,
+    joinType: 'inner' | 'left' | 'right' | 'full',
+    joinTarget: any,
+    joinCondition: SQL
+  ): any {
+    switch (joinType) {
+      case 'inner':
+        return drizzleQuery.innerJoin(joinTarget, joinCondition)
+      case 'right':
+        return drizzleQuery.rightJoin(joinTarget, joinCondition)
+      case 'full':
+        return drizzleQuery.fullJoin(joinTarget, joinCondition)
+      case 'left':
+      default:
+        return drizzleQuery.leftJoin(joinTarget, joinCondition)
+    }
   }
 }

@@ -137,6 +137,7 @@ export interface PreAggregationAnalysis {
 
 export interface QuerySummary {
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
   joinCount: number
   cteCount: number
   hasPreAggregation: boolean
@@ -151,6 +152,13 @@ export interface QueryAnalysis {
   preAggregations: PreAggregationAnalysis[]
   querySummary: QuerySummary
   warnings?: string[]
+  planningTrace?: {
+    steps: Array<{
+      phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'measure_strategy' | 'warnings'
+      decision: string
+      details?: Record<string, unknown>
+    }>
+  }
 }
 
 // ============================================================================

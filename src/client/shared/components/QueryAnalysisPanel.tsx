@@ -15,7 +15,10 @@ interface QueryAnalysisPanelProps {
  * Format reason string for display
  */
 function formatReason(reason: string): string {
-  return reason.replace(/_/g, ' ')
+  return reason
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
 
 /**
@@ -45,6 +48,33 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
   const SuccessIcon = getIcon('success')
   const ErrorIcon = getIcon('error')
 
+  const summaryCards = [
+    {
+      label: 'Type',
+      value: formatReason(analysis.querySummary.queryType),
+    },
+    {
+      label: 'Cubes',
+      value: String(analysis.cubeCount),
+    },
+    {
+      label: 'Joins',
+      value: String(analysis.querySummary.joinCount),
+    },
+    {
+      label: 'CTEs',
+      value: String(analysis.querySummary.cteCount),
+    },
+    ...(analysis.querySummary.measureStrategy
+      ? [
+          {
+            label: 'Strategy',
+            value: formatReason(analysis.querySummary.measureStrategy),
+          },
+        ]
+      : []),
+  ]
+
   return (
     <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-lg dc:p-4 dc:space-y-4">
       {/* Query Summary Section */}
@@ -53,25 +83,16 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
           <InfoIcon className="dc:w-4 dc:h-4 dc:mr-2" />
           Query Summary
         </h4>
-        <div className="dc:grid dc:grid-cols-2 dc:md:grid-cols-4 dc:gap-2 dc:text-xs">
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Type:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">
-              {formatReason(analysis.querySummary.queryType)}
-            </span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Cubes:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.cubeCount}</span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Joins:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.querySummary.joinCount}</span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">CTEs:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.querySummary.cteCount}</span>
-          </div>
+        <div
+          className="dc:grid dc:gap-2 dc:text-xs"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+        >
+          {summaryCards.map(card => (
+            <div key={card.label} className="bg-dc-surface dc:p-2 dc:rounded">
+              <span className="text-dc-text-muted">{card.label}:</span>
+              <span className="dc:ml-1 dc:font-medium text-dc-text">{card.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 

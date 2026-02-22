@@ -123,6 +123,8 @@ export interface PreAggregationAnalysis {
 export interface QuerySummary {
   /** Query type: 'single_cube', 'multi_cube_join', or 'multi_cube_cte' */
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
+  /** Strategy selected for multiplied-measure handling */
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
   /** Total number of joins */
   joinCount: number
   /** Total number of CTEs */
@@ -143,7 +145,7 @@ export interface QuerySummary {
  */
 export interface PlanningTraceStep {
   /** Pipeline phase name */
-  phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'warnings'
+  phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'measure_strategy' | 'warnings'
   /** Short summary of what was decided */
   decision: string
   /** Optional machine-readable details */
