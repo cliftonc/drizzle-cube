@@ -4,7 +4,7 @@ This document provides comprehensive guidance for understanding and extending th
 
 ## Overview
 
-The database adapter system allows drizzle-cube to support multiple database engines (PostgreSQL, MySQL, and SQLite) by abstracting **only truly database-specific** SQL generation from the core business logic. Adapters should NOT duplicate functionality that Drizzle ORM already provides in a database-agnostic way.
+The database adapter system allows drizzle-cube to support multiple database engines (PostgreSQL, MySQL, SQLite, SingleStore, DuckDB) by abstracting **only truly database-specific** SQL generation from the core business logic. Adapters should NOT duplicate functionality that Drizzle ORM already provides in a database-agnostic way.
 
 ### Key Principle: Minimize Adapter Responsibilities
 
@@ -30,7 +30,9 @@ The database adapter system allows drizzle-cube to support multiple database eng
 **Concrete Adapters**:
 - `PostgresAdapter` - PostgreSQL-specific implementations
 - `MySQLAdapter` - MySQL-specific implementations  
-- SQLite adapter (planned)
+- `SQLiteAdapter` - SQLite-specific implementations
+- `SingleStoreAdapter` - SingleStore-specific implementations
+- `DuckDBAdapter` - DuckDB-specific implementations
 
 **Integration Points**:
 - `DatabaseExecutor` classes contain adapter instances
@@ -61,7 +63,7 @@ The `DatabaseAdapter` interface should ONLY contain truly database-specific oper
 ### Database Engine Types
 
 ```typescript
-type DatabaseEngine = 'postgres' | 'mysql' | 'sqlite';
+type DatabaseEngine = 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb';
 ```
 
 ## Current Implementations
@@ -167,14 +169,18 @@ export function createDatabaseAdapter(engineType: DatabaseEngine): DatabaseAdapt
     case 'mysql':
       return new MySQLAdapter();
     case 'sqlite':
-      return new SQLiteAdapter(); // Add this
+      return new SQLiteAdapter();
+    case 'singlestore':
+      return new SingleStoreAdapter();
+    case 'duckdb':
+      return new DuckDBAdapter();
     default:
       throw new Error(`Unsupported database engine: ${engineType}`);
   }
 }
 
 export function getSupportedEngines(): DatabaseEngine[] {
-  return ['postgres', 'mysql', 'sqlite']; // Add 'sqlite'
+  return ['postgres', 'mysql', 'sqlite', 'singlestore', 'duckdb'];
 }
 ```
 
@@ -214,15 +220,17 @@ export function createDatabaseExecutor<TSchema extends Record<string, unknown>>(
 The testing system supports running tests against multiple databases:
 
 **Environment Control**:
-- `TEST_DB_TYPE`: Controls which database to test ('postgres' | 'mysql' | 'both')
+- `TEST_DB_TYPE`: Controls which database to test (`postgres` | `mysql` | `sqlite` | `duckdb`)
 - Database-specific connection URLs with safety checks
 
 **Test Commands**:
 ```bash
-npm test                    # PostgreSQL only (default)
-npm run test:mysql         # MySQL only  
-npm run test:all           # Both databases sequentially
-TEST_DB_TYPE=mysql npm test # Explicit database selection
+npm test                     # PostgreSQL only (default)
+npm run test:mysql           # MySQL only
+npm run test:sqlite          # SQLite only
+npm run test:duckdb          # DuckDB only
+npm run test:all             # All server databases sequentially
+TEST_DB_TYPE=mysql npm test  # Explicit database selection
 ```
 
 ### Test Database Setup

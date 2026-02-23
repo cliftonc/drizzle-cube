@@ -141,7 +141,7 @@ const badQuery = sql.raw(`SELECT * FROM ${tableName} WHERE id = ${userId}`)
 ## Database Adapter Integration
 
 ### Purpose
-Handle SQL generation differences between PostgreSQL, MySQL, and SQLite while keeping business logic database-agnostic.
+Handle SQL generation differences between PostgreSQL, MySQL, SQLite, SingleStore, and DuckDB while keeping business logic database-agnostic.
 
 ### Pattern
 ```typescript
@@ -476,11 +476,14 @@ const result = await semanticLayer.execute({
 
 1. Query planner identifies all cubes needed (Sales, Inventory, Products)
 2. Chooses primary cube (typically the one with most dimensions)
-3. Uses BFS to find path from primary to all other cubes:
-   - Sales → Products (via `belongsTo`)
-   - Products → Inventory (via `hasMany`)
+3. Uses join-path resolution with query-aware scoring from primary to all other cubes:
+   - Preferred first-hop joins via `preferredFor`
+   - Query-member cube hints to keep grain semantics
+   - Shortest-path fallback when no preferred route exists
 4. Builds join plan including all cubes in the path
 5. Applies security context to every cube in the final query
+
+Join-path decisions and scoring candidates are exposed in analysis/dry-run metadata and shown in the Analysis Builder Debug panel (`Path scoring`).
 
 **Why hasMany is Required:**
 

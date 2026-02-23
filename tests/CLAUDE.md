@@ -223,7 +223,7 @@ it('should include table prefixes in multi-cube queries', async () => {
     .measures(['Employees.count', 'Departments.count'])
     .build()
     
-  const { sql } = await testExecutor.generateSql(query, securityContext)
+  const { sql } = await semanticLayer.dryRun(query, securityContext)
   
   // Verify security context is applied to ALL tables
   expect(sql).toContain('employees.organisation_id = $')

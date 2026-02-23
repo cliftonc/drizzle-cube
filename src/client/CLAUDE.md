@@ -193,6 +193,8 @@ All server state is managed exclusively by TanStack Query. **Never store API res
 | `useCubeMetaQuery` | Cube metadata with caching | `['cube', 'meta']` |
 | `useDryRunQuery` | SQL preview/debugging | `['cube', 'dryRun', query]` |
 
+`useDryRunQuery` returns SQL plus server analysis metadata used by the AnalysisBuilder Debug panel, including join-path selection and `Path scoring` candidate outcomes.
+
 ### useCubeLoadQuery Example
 
 ```typescript
@@ -516,7 +518,7 @@ type Filter = SimpleFilter | GroupFilter
 
 ## Analysis Mode Adapter Architecture
 
-The AnalysisBuilder supports multiple analysis modes (query, funnel, and future: flow, retention, cohort) through a **mode adapter pattern**. This keeps mode-specific logic encapsulated while the core store remains mode-agnostic.
+The AnalysisBuilder supports multiple analysis modes (`query`, `funnel`, `flow`, `retention`) through a **mode adapter pattern**. This keeps mode-specific logic encapsulated while the core store remains mode-agnostic.
 
 ### Core Concepts
 
@@ -539,10 +541,10 @@ The canonical format for persisting analysis state:
 ```typescript
 interface AnalysisConfig {
   version: 1
-  analysisType: 'query' | 'funnel'  // Future: 'flow' | 'retention' | 'cohort'
+  analysisType: 'query' | 'funnel' | 'flow' | 'retention'  // Future: 'cohort'
   activeView: 'table' | 'chart'
   charts: Partial<Record<AnalysisType, ChartConfig>>
-  query: CubeQuery | MultiQueryConfig | ServerFunnelQuery
+  query: CubeQuery | MultiQueryConfig | ServerFunnelQuery | ServerFlowQuery | ServerRetentionQuery
 }
 
 interface ChartConfig {
@@ -643,28 +645,28 @@ setChartType: (type) => set((state) => ({
 
 ### Adding a New Analysis Mode
 
-To add a new analysis type (e.g., "retention"):
+To add a new analysis type (e.g., "cohort"):
 
 1. **Define the AnalysisType** in `src/client/types/analysisConfig.ts`:
    ```typescript
-   export type AnalysisType = 'query' | 'funnel' | 'retention'
+   export type AnalysisType = 'query' | 'funnel' | 'flow' | 'retention' | 'cohort'
    ```
 
-2. **Create the adapter** in `src/client/adapters/retentionModeAdapter.ts`:
+2. **Create the adapter** in `src/client/adapters/cohortModeAdapter.ts`:
    ```typescript
-   export interface RetentionSliceState {
+   export interface CohortSliceState {
      cohortDimension: string | null
      retentionPeriod: 'day' | 'week' | 'month'
      // ... retention-specific state
    }
 
-   export const retentionModeAdapter: ModeAdapter<RetentionSliceState> = {
-     type: 'retention',
+   export const cohortModeAdapter: ModeAdapter<CohortSliceState> = {
+     type: 'cohort',
 
      createInitial() { return { cohortDimension: null, retentionPeriod: 'day' } },
 
      // Required for saveWorkspace/loadWorkspace
-     extractState(storeState: Record<string, unknown>): RetentionSliceState {
+     extractState(storeState: Record<string, unknown>): CohortSliceState {
        return {
          cohortDimension: storeState.cohortDimension as string | null,
          retentionPeriod: storeState.retentionPeriod as 'day' | 'week' | 'month',
@@ -683,12 +685,14 @@ To add a new analysis type (e.g., "retention"):
 
 3. **Register the adapter** in `src/client/adapters/index.ts`:
    ```typescript
-   import { retentionModeAdapter } from './retentionModeAdapter'
+   import { cohortModeAdapter } from './cohortModeAdapter'
 
    export function initializeAdapters(): void {
      adapterRegistry.register(queryModeAdapter)
      adapterRegistry.register(funnelModeAdapter)
-     adapterRegistry.register(retentionModeAdapter)  // Add here
+     adapterRegistry.register(flowModeAdapter)
+     adapterRegistry.register(retentionModeAdapter)
+     adapterRegistry.register(cohortModeAdapter)  // Add here
    }
    ```
 

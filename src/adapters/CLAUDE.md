@@ -49,7 +49,7 @@ interface AdapterOptions {
 const securityContext = await options.extractSecurityContext(request)
 
 // Security context is passed to ALL semantic layer operations
-const result = await semanticLayer.query(query, securityContext)
+const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
 ```
 
 ### Security Context Requirements
@@ -68,7 +68,7 @@ export function createCubeApi(options: ExpressAdapterOptions) {
   // POST /cubejs-api/v1/load
   router.post('/load', async (req, res) => {
     const securityContext = await options.extractSecurityContext(req)
-    const result = await options.semanticLayer.query(req.body, securityContext)
+    const result = await options.semanticLayer.executeMultiCubeQuery(req.body, securityContext)
     res.json(result)
   })
   
@@ -83,7 +83,7 @@ export async function registerCubeApi(fastify: FastifyInstance, options: Fastify
   // POST /cubejs-api/v1/load
   fastify.post('/cubejs-api/v1/load', async (request, reply) => {
     const securityContext = await options.extractSecurityContext(request)
-    const result = await options.semanticLayer.query(request.body, securityContext)
+    const result = await options.semanticLayer.executeMultiCubeQuery(request.body, securityContext)
     return result
   })
 }
@@ -99,7 +99,7 @@ export function createCubeApi(options: HonoAdapterOptions) {
   app.post('/load', async (c) => {
     const securityContext = await options.extractSecurityContext(c.req)
     const query = await c.req.json()
-    const result = await options.semanticLayer.query(query, securityContext)
+    const result = await options.semanticLayer.executeMultiCubeQuery(query, securityContext)
     return c.json(result)
   })
   
@@ -114,7 +114,7 @@ export function createCubeApi(options: NextjsAdapterOptions) {
   return {
     load: async (req: NextApiRequest, res: NextApiResponse) => {
       const securityContext = await options.extractSecurityContext(req)
-      const result = await options.semanticLayer.query(req.body, securityContext)
+      const result = await options.semanticLayer.executeMultiCubeQuery(req.body, securityContext)
       res.json(result)
     },
     // Other endpoints...
@@ -189,7 +189,7 @@ export async function handleDryRun(
   }
   
   // Generate SQL without execution
-  return semanticLayer.generateSql(query, securityContext)
+  return semanticLayer.dryRun(query, securityContext)
 }
 ```
 
@@ -209,7 +209,7 @@ interface ErrorResponse {
 ```typescript
 // In all adapters
 try {
-  const result = await semanticLayer.query(query, securityContext)
+  const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
   return formatResponse(result, requestId)
 } catch (error) {
   return formatErrorResponse(error, requestId, isDevelopment)
