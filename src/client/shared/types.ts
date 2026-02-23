@@ -114,6 +114,25 @@ export interface JoinPathAnalysis {
   pathLength?: number
   error?: string
   visitedCubes?: string[]
+  selection?: {
+    strategy: 'shortest' | 'preferred' | 'fallbackShortest'
+    preferredCubes?: string[]
+    selectedRank?: number
+    selectedScore?: number
+    candidates?: Array<{
+      rank: number
+      score: number
+      usesPreferredJoin: boolean
+      preferredCubesInPath: number
+      usesProcessed: boolean
+      scoreBreakdown: {
+        preferredJoinBonus: number
+        preferredCubeBonus: number
+        lengthPenalty: number
+      }
+      path: JoinPathStep[]
+    }>
+  }
 }
 
 /**
@@ -137,6 +156,7 @@ export interface PreAggregationAnalysis {
 
 export interface QuerySummary {
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback' | 'multiFactMerge'
   joinCount: number
   cteCount: number
   hasPreAggregation: boolean
@@ -151,6 +171,13 @@ export interface QueryAnalysis {
   preAggregations: PreAggregationAnalysis[]
   querySummary: QuerySummary
   warnings?: string[]
+  planningTrace?: {
+    steps: Array<{
+      phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'measure_strategy' | 'warnings'
+      decision: string
+      details?: Record<string, unknown>
+    }>
+  }
 }
 
 // ============================================================================

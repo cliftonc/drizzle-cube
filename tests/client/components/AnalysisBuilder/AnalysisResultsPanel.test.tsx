@@ -872,10 +872,10 @@ describe('AnalysisResultsPanel', () => {
             ],
           }}
           funnelDebugData={{
-            sql: 'SELECT step, count FROM funnel',
+            sql: { sql: 'SELECT step, count FROM funnel', params: [] },
             loading: false,
             error: null,
-            funnelMetadata: {
+            modeMetadata: {
               stepCount: 2,
               steps: [
                 { index: 0, name: 'Step 1' },
@@ -919,10 +919,10 @@ describe('AnalysisResultsPanel', () => {
             stepsAfter: 3,
           }}
           flowDebugData={{
-            sql: 'SELECT source, target, count FROM flow',
+            sql: { sql: 'SELECT source, target, count FROM flow', params: [] },
             loading: false,
             error: null,
-            flowMetadata: {
+            modeMetadata: {
               stepsBefore: 3,
               stepsAfter: 3,
               eventDimension: 'Events.name',
@@ -960,7 +960,7 @@ describe('AnalysisResultsPanel', () => {
             granularity: 'week',
           }}
           retentionDebugData={{
-            sql: 'SELECT cohort, period, count FROM retention',
+            sql: { sql: 'SELECT cohort, period, count FROM retention', params: [] },
             loading: false,
             error: null,
           }}

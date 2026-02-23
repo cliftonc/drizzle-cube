@@ -81,6 +81,26 @@ export interface JoinPathAnalysis {
   error?: string
   /** Cubes that were visited during BFS search */
   visitedCubes?: string[]
+  /** Path selection decision and scoring details (when preferred routing is used) */
+  selection?: {
+    strategy: 'shortest' | 'preferred' | 'fallbackShortest'
+    preferredCubes?: string[]
+    selectedRank?: number
+    selectedScore?: number
+    candidates?: Array<{
+      rank: number
+      score: number
+      usesPreferredJoin: boolean
+      preferredCubesInPath: number
+      usesProcessed: boolean
+      scoreBreakdown: {
+        preferredJoinBonus: number
+        preferredCubeBonus: number
+        lengthPenalty: number
+      }
+      path: JoinPathStep[]
+    }>
+  }
 }
 
 /**
@@ -123,6 +143,8 @@ export interface PreAggregationAnalysis {
 export interface QuerySummary {
   /** Query type: 'single_cube', 'multi_cube_join', or 'multi_cube_cte' */
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
+  /** Strategy selected for multiplied-measure handling / multi-fact merge */
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback' | 'multiFactMerge'
   /** Total number of joins */
   joinCount: number
   /** Total number of CTEs */
@@ -135,6 +157,24 @@ export interface QuerySummary {
    * data and are applied in the outer query after CTEs.
    */
   hasWindowFunctions?: boolean
+}
+
+/**
+ * Structured planner trace for explain/dry-run UIs.
+ * Captures key decisions made during logical planning.
+ */
+export interface PlanningTraceStep {
+  /** Pipeline phase name */
+  phase: 'cube_usage' | 'primary_cube_selection' | 'join_planning' | 'cte_planning' | 'measure_strategy' | 'warnings'
+  /** Short summary of what was decided */
+  decision: string
+  /** Optional machine-readable details */
+  details?: Record<string, unknown>
+}
+
+export interface PlanningTrace {
+  /** Ordered decision trace */
+  steps: PlanningTraceStep[]
 }
 
 /**
@@ -157,4 +197,6 @@ export interface QueryAnalysis {
   querySummary: QuerySummary
   /** Warnings or potential issues */
   warnings?: string[]
+  /** Structured decision trace for debugging and dry-run UIs */
+  planningTrace?: PlanningTrace
 }

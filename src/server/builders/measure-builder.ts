@@ -23,12 +23,12 @@ import {
 import type {
   Cube,
   QueryContext,
-  QueryPlan
+  PhysicalQueryPlan
 } from '../types'
 
 import { resolveSqlExpression } from '../cube-utils'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
-import { CalculatedMeasureResolver } from '../calculated-measure-resolver'
+import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver'
 import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution'
 
 export class MeasureBuilder {
@@ -302,7 +302,7 @@ export class MeasureBuilder {
     fieldKey: string,
     measure: any,
     context: QueryContext,
-    queryPlan?: QueryPlan
+    queryPlan?: PhysicalQueryPlan
   ): SQL {
     // Check if this measure is from a CTE cube
     if (queryPlan && queryPlan.preAggregationCTEs) {

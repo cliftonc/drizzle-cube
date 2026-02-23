@@ -8,7 +8,7 @@
  * - Detects circular dependencies
  */
 
-import type { Cube, Measure } from './types/cube'
+import type { Cube, Measure } from '../types/cube'
 
 /**
  * Dependency information for a calculated measure

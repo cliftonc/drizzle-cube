@@ -1,7 +1,7 @@
 /**
- * QueryBuilder Unit Tests
+ * DrizzleSqlBuilder Unit Tests
  *
- * Tests the QueryBuilder class methods in isolation with mocked dependencies.
+ * Tests the DrizzleSqlBuilder class methods in isolation with mocked dependencies.
  * Covers:
  * - buildResolvedMeasures() - regular, calculated, and dependency resolution
  * - buildSelections() - dimensions, time dimensions, measures
@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { QueryBuilder } from '../src/server/query-builder'
+import { DrizzleSqlBuilder } from '../src/server/physical-plan/drizzle-sql-builder'
 import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'
 import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'
@@ -109,13 +109,13 @@ function createMockContext(): QueryContext {
   }
 }
 
-describe('QueryBuilder Unit Tests', () => {
-  let queryBuilder: QueryBuilder
+describe('DrizzleSqlBuilder Unit Tests', () => {
+  let queryBuilder: DrizzleSqlBuilder
   let testCube: Cube
   let context: QueryContext
 
   beforeEach(() => {
-    queryBuilder = new QueryBuilder(new PostgresAdapter())
+    queryBuilder = new DrizzleSqlBuilder(new PostgresAdapter())
     testCube = createTestCube()
     context = createMockContext()
   })
@@ -688,7 +688,7 @@ describe('QueryBuilder Unit Tests', () => {
 
   describe('Database Adapter Variations', () => {
     it('should work with MySQL adapter', () => {
-      const mysqlBuilder = new QueryBuilder(new MySQLAdapter())
+      const mysqlBuilder = new DrizzleSqlBuilder(new MySQLAdapter())
       const cubeMap = new Map([['TestCube', testCube]])
       const query: SemanticQuery = {
         measures: ['TestCube.count'],
@@ -702,7 +702,7 @@ describe('QueryBuilder Unit Tests', () => {
     })
 
     it('should work with SQLite adapter', () => {
-      const sqliteBuilder = new QueryBuilder(new SQLiteAdapter())
+      const sqliteBuilder = new DrizzleSqlBuilder(new SQLiteAdapter())
       const cubeMap = new Map([['TestCube', testCube]])
       const query: SemanticQuery = {
         measures: ['TestCube.count'],

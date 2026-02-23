@@ -12,14 +12,9 @@ import {
   useFunnelQuery,
   useFlowQuery,
   useRetentionQuery,
+  useDryRunQuery,
   useDryRunQueries,
-  useFunnelDryRunQuery,
-  useFlowDryRunQuery,
-  useRetentionDryRunQuery,
   type DebugDataEntry,
-  type FunnelDebugDataEntry,
-  type FlowDebugDataEntry,
-  type RetentionDebugDataEntry,
 } from './queries'
 import { useCubeMeta } from '../providers/CubeProvider'
 import type { CubeQuery, MultiQueryConfig, FunnelBindingKey, QueryMergeStrategy, AnalysisType } from '../types'
@@ -113,9 +108,9 @@ export interface UseAnalysisQueryExecutionResult {
   funnelServerQuery: ServerFunnelQuery | null
   /**
    * Debug data specifically for funnel mode
-   * Contains the funnel SQL and funnel-specific metadata
+   * Contains unified dry-run SQL and mode metadata.
    */
-  funnelDebugData: FunnelDebugDataEntry | null
+  funnelDebugData: DebugDataEntry | null
   /**
    * The server flow query being executed (when analysisType === 'flow')
    */
@@ -126,9 +121,9 @@ export interface UseAnalysisQueryExecutionResult {
   flowChartData: FlowChartData | null
   /**
    * Debug data specifically for flow mode
-   * Contains the flow SQL and flow-specific metadata
+   * Contains unified dry-run SQL and mode metadata.
    */
-  flowDebugData: FlowDebugDataEntry | null
+  flowDebugData: DebugDataEntry | null
   /**
    * The server retention query being executed (when analysisType === 'retention')
    */
@@ -139,9 +134,9 @@ export interface UseAnalysisQueryExecutionResult {
   retentionChartData: RetentionChartData | null
   /**
    * Debug data specifically for retention mode
-   * Contains the retention SQL and retention-specific metadata
+   * Contains unified dry-run SQL and mode metadata.
    */
-  retentionDebugData: RetentionDebugDataEntry | null
+  retentionDebugData: DebugDataEntry | null
   /**
    * Retention validation result (errors explaining why query cannot be built)
    */
@@ -252,22 +247,22 @@ export function useAnalysisQueryExecution(
 
   // Funnel dry-run query (only in funnel mode)
   // Use the serverQuery from useFunnelQuery to get the unified funnel SQL
-  const funnelDryRunResult = useFunnelDryRunQuery(
-    funnelQueryResult.serverQuery,
+  const funnelDryRunResult = useDryRunQuery(
+    funnelQueryResult.serverQuery as CubeQuery | null,
     { skip: !isFunnelMode || !funnelQueryResult.serverQuery }
   )
 
   // Flow dry-run query (only in flow mode)
   // Use the serverQuery from useFlowQuery to get the unified flow SQL
-  const flowDryRunResult = useFlowDryRunQuery(
-    flowQueryResult.serverQuery,
+  const flowDryRunResult = useDryRunQuery(
+    flowQueryResult.serverQuery as CubeQuery | null,
     { skip: !isFlowMode || !flowQueryResult.serverQuery }
   )
 
   // Retention dry-run query (only in retention mode)
   // Use the serverRetentionQuery input to get the unified retention SQL
-  const retentionDryRunResult = useRetentionDryRunQuery(
-    serverRetentionQuery,
+  const retentionDryRunResult = useDryRunQuery(
+    serverRetentionQuery as CubeQuery | null,
     { skip: !isRetentionMode || !serverRetentionQuery }
   )
 

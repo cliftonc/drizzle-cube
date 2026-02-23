@@ -855,6 +855,8 @@ teamsCube = defineCube('Teams', {
     EmployeeTeams: {
       targetCube: () => employeeTeamsCube,
       relationship: 'hasMany',
+      // Prefer membership path when resolving team-level employee/fact queries.
+      preferredFor: ['Employees', 'Productivity', 'PREvents'],
       on: [
         { source: teams.id, target: employeeTeams.teamId }
       ]

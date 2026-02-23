@@ -469,6 +469,31 @@ describe('Adapter Utils', () => {
         expect(result.complexity).toBeDefined()
       })
 
+      it('should detect comparison dry-run mode and include period metadata', async () => {
+        const query = {
+          measures: ['Employees.count'],
+          timeDimensions: [
+            {
+              dimension: 'Employees.createdAt',
+              granularity: 'day',
+              compareDateRange: [
+                ['2024-03-01', '2024-03-07'],
+                ['2024-02-01', '2024-02-07']
+              ]
+            }
+          ]
+        }
+
+        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+
+        expect(result.valid).toBe(true)
+        expect(result.mode).toBe('comparison')
+        expect(result.queryType).toBe('comparisonQuery')
+        expect(result.modeMetadata).toBeDefined()
+        expect((result.modeMetadata as any).periodCount).toBe(2)
+        expect((result.modeMetadata as any).timeDimension).toBe('Employees.createdAt')
+      })
+
       it('should throw error for invalid query', async () => {
         const query = {
           measures: ['NonExistent.count']

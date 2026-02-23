@@ -1,35 +1,38 @@
 /**
  * Query Planner for Unified Query Architecture
  * Handles query planning, cube analysis, and join resolution
- * All SQL building has been moved to QueryBuilder
+ * All SQL building has been moved to DrizzleSqlBuilder
  */
 
 import type {
   Cube,
   QueryContext,
-  QueryPlan,
+  PhysicalQueryPlan,
   CubeJoin,
   SemanticQuery,
-  QueryAnalysis,
   PrimaryCubeAnalysis,
   PrimaryCubeCandidate,
   JoinPathAnalysis,
   JoinPathStep,
-  PreAggregationAnalysis,
   PropagatingFilter,
   Filter,
   IntermediateJoinInfo,
   QueryWarning
-} from './types'
+} from '../types'
 
 import {
   resolveCubeReference,
   getJoinType,
   expandBelongsToManyJoin
-} from './cube-utils'
+} from '../cube-utils'
 
-import { JoinPathResolver } from './join-path-resolver'
-import { MeasureBuilder } from './builders/measure-builder'
+import {
+  JoinPathResolver,
+  type InternalJoinPathStep,
+  type PreferredPathCandidateScore,
+  type PreferredPathSelection
+} from '../resolvers/join-path-resolver'
+import { MeasureBuilder } from '../builders/measure-builder'
 
 
 /**
@@ -46,7 +49,7 @@ import { MeasureBuilder } from './builders/measure-builder'
 //   measures: string[]
 // }
 
-export class QueryPlanner {
+export class LogicalPlanner {
   // Cache resolver per cubes map to avoid repeated instantiation
   private resolverCache: WeakMap<Map<string, Cube>, JoinPathResolver> = new WeakMap()
 
@@ -98,8 +101,27 @@ export class QueryPlanner {
         this.extractCubeNamesFromFilter(filter, cubesUsed)
       }
     }
+
+    // Extract cube names from ORDER BY members
+    if (query.order) {
+      for (const member of Object.keys(query.order)) {
+        const [cubeName] = member.split('.')
+        if (cubeName) {
+          cubesUsed.add(cubeName)
+        }
+      }
+    }
     
     return cubesUsed
+  }
+
+  /**
+   * Build query-level path hints (Cube-style) from all query members:
+   * measures, dimensions, time dimensions, filters, and order-by.
+   * These hints guide path selection toward the semantic query grain.
+   */
+  private collectPathHintCubes(query: SemanticQuery): Set<string> {
+    return this.analyzeCubeUsage(query)
   }
 
   /**
@@ -172,60 +194,6 @@ export class QueryPlanner {
   }
 
   /**
-   * Create a unified query plan that works for both single and multi-cube queries
-   */
-  createQueryPlan(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    ctx: QueryContext
-  ): QueryPlan {
-    const cubesUsed = this.analyzeCubeUsage(query)
-    const cubeNames = Array.from(cubesUsed)
-    
-    if (cubeNames.length === 0) {
-      throw new Error('No cubes found in query')
-    }
-    
-    // Choose primary cube
-    const primaryCubeName = this.choosePrimaryCube(cubeNames, query, cubes)
-    const primaryCube = cubes.get(primaryCubeName)
-    
-    if (!primaryCube) {
-      throw new Error(`Primary cube '${primaryCubeName}' not found`)
-    }
-    
-    // For single cube queries, return simple plan with empty join array
-    if (cubeNames.length === 1) {
-      return {
-        primaryCube,
-        joinCubes: [], // Empty for single cube
-        selections: {}, // Will be built by QueryBuilder
-        whereConditions: [], // Will be built by QueryBuilder
-        groupByFields: [] // Will be built by QueryBuilder
-      }
-    }
-    
-    // For multi-cube queries, build join plan
-    const joinCubes = this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
-
-    // Detect hasMany relationships and plan pre-aggregation CTEs
-    const preAggregationCTEs = this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query, ctx)
-
-    // Generate warnings for edge cases (e.g., fan-out without dimensions)
-    const warnings = this.generateWarnings(query, preAggregationCTEs)
-
-    return {
-      primaryCube,
-      joinCubes,
-      selections: {}, // Will be built by QueryBuilder
-      whereConditions: [], // Will be built by QueryBuilder
-      groupByFields: [], // Will be built by QueryBuilder
-      preAggregationCTEs,
-      warnings: warnings.length > 0 ? warnings : undefined
-    }
-  }
-
-  /**
    * Choose the primary cube based on query analysis
    * Uses a consistent strategy to avoid measure order dependencies
    *
@@ -249,6 +217,72 @@ export class QueryPlanner {
   }
 
   /**
+   * Analyze primary cube selection with candidate details.
+   * Exposed for LogicalPlanBuilder so dry-run/analyze can report
+   * exactly which selection rule was used.
+   */
+  analyzePrimaryCube(
+    cubeNames: string[],
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): PrimaryCubeAnalysis {
+    return this.analyzePrimaryCubeSelection(cubeNames, query, cubes)
+  }
+
+  /**
+   * Analyze join path for a specific target cube.
+   * Exposed for LogicalPlanBuilder to provide join decision trace.
+   */
+  analyzeJoinPathForTarget(
+    cubes: Map<string, Cube>,
+    fromCube: string,
+    toCube: string,
+    query?: SemanticQuery
+  ): JoinPathAnalysis {
+    return this.analyzeJoinPath(cubes, fromCube, toCube, query)
+  }
+
+  /**
+   * Build join plan for a known primary cube.
+   * Exposed for LogicalPlanBuilder so logical planning can compose
+   * planner phases directly.
+   */
+  buildJoinPlanForPrimary(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    cubeNames: string[],
+    ctx: QueryContext,
+    query: SemanticQuery
+  ): PhysicalQueryPlan['joinCubes'] {
+    return this.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
+  }
+
+  /**
+   * Build pre-aggregation CTE plan from a primary cube and join plan.
+   * Exposed for LogicalPlanBuilder phase composition.
+   */
+  buildPreAggregationCTEs(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    joinCubes: PhysicalQueryPlan['joinCubes'],
+    query: SemanticQuery,
+    ctx: QueryContext
+  ): PhysicalQueryPlan['preAggregationCTEs'] {
+    return this.planPreAggregationCTEs(cubes, primaryCube, joinCubes, query, ctx)
+  }
+
+  /**
+   * Generate query warnings from pre-aggregation analysis.
+   * Exposed for LogicalPlanBuilder phase composition.
+   */
+  buildWarnings(
+    query: SemanticQuery,
+    preAggregationCTEs?: PhysicalQueryPlan['preAggregationCTEs']
+  ): QueryWarning[] {
+    return this.generateWarnings(query, preAggregationCTEs)
+  }
+
+  /**
    * Build join plan for multi-cube query
    * Supports both direct joins and transitive joins through intermediate cubes
    *
@@ -262,13 +296,12 @@ export class QueryPlanner {
     cubeNames: string[],
     ctx: QueryContext,
     query: SemanticQuery
-  ): QueryPlan['joinCubes'] {
+  ): PhysicalQueryPlan['joinCubes'] {
     const resolver = this.getResolver(cubes)
-    const joinCubes: QueryPlan['joinCubes'] = []
+    const joinCubes: PhysicalQueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
 
-    // Identify cubes that have measures in the query - these should be preferred
-    // in join path selection to ensure semantically correct joins
+    // Cubes with measures are still needed for CTE pre-detection.
     const cubesWithMeasures = new Set<string>()
     if (query.measures) {
       for (const measure of query.measures) {
@@ -276,6 +309,9 @@ export class QueryPlanner {
         cubesWithMeasures.add(cubeName)
       }
     }
+
+    // Rust-style hinting: include all query member cubes to drive path selection.
+    const preferredPathCubes = this.collectPathHintCubes(query)
 
     // Pre-identify cubes that will become CTEs (hasMany relationships with measures)
     // IMPORTANT: We must NOT give "already processed" preference to CTE'd cubes because
@@ -315,7 +351,7 @@ export class QueryPlanner {
       const joinPath = resolver.findPathPreferring(
         primaryCube.name,
         cubeName,
-        cubesWithMeasures,
+        preferredPathCubes,
         effectiveProcessed
       )
       if (!joinPath || joinPath.length === 0) {
@@ -344,6 +380,7 @@ export class QueryPlanner {
             alias: `${toCube.toLowerCase()}_cube`,
             joinType: expanded.junctionJoins[1].joinType, // Use the target join type
             joinCondition: expanded.junctionJoins[1].condition, // Target join condition
+            relationship: 'belongsToMany',
             junctionTable: {
               table: joinDef.through.table,
               alias: `junction_${toCube.toLowerCase()}`,
@@ -370,7 +407,8 @@ export class QueryPlanner {
             cube,
             alias: `${toCube.toLowerCase()}_cube`,
             joinType,
-            joinCondition
+            joinCondition,
+            relationship: joinDef.relationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
           })
         }
 
@@ -399,65 +437,32 @@ export class QueryPlanner {
   private planPreAggregationCTEs(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
-    joinCubes: QueryPlan['joinCubes'],
+    joinCubes: PhysicalQueryPlan['joinCubes'],
     query: SemanticQuery,
     ctx: QueryContext
-  ): QueryPlan['preAggregationCTEs'] {
-    const preAggCTEs: QueryPlan['preAggregationCTEs'] = []
+  ): PhysicalQueryPlan['preAggregationCTEs'] {
+    const preAggCTEs: PhysicalQueryPlan['preAggregationCTEs'] = []
 
     if (!query.measures || query.measures.length === 0) {
       return preAggCTEs // No measures, no fan-out risk
     }
 
-    // Step 1: Detect if any hasMany relationship exists in the query
-    const hasManyRelationships = this.detectHasManyInQuery(cubes, primaryCube, joinCubes)
+    // Step 1: Compute CTE reasons from the actual join plan (not all registered cubes)
+    const cteReasons = this.computeCTEReasons(primaryCube, joinCubes, query)
 
-    // Step 2: If no hasMany relationships exist, no CTEs needed
-    if (hasManyRelationships.length === 0) {
+    // Step 2: If no CTE reasons, no CTEs needed
+    if (cteReasons.size === 0) {
       return preAggCTEs
     }
 
-    // Step 3: Identify all cubes that have measures in the query
-    const cubesWithMeasures = new Set<string>()
-    for (const measure of query.measures) {
-      const [cubeName] = measure.split('.')
-      cubesWithMeasures.add(cubeName)
-    }
+    // Step 3: For each join cube that needs a CTE, build it
+    for (const joinCubeEntry of joinCubes) {
+      const cteReason = cteReasons.get(joinCubeEntry.cube.name)
+      if (!cteReason) continue
 
-    // Also check for measures in filters
-    for (const cube of cubes.values()) {
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
-      if (measuresFromFilters.length > 0) {
-        cubesWithMeasures.add(cube.name)
-      }
-    }
-
-    // Step 4: Build list of cubes to consider for CTE
-    // Note: The PRIMARY cube does NOT need a CTE - it's the base FROM clause
-    // CTEs are only for JOIN cubes that could be affected by fan-out
-    const allCubesToConsider: Array<{ cube: Cube; alias: string; isPrimary: boolean }> = []
-
-    // Add join cubes only (not primary cube)
-    for (const joinCube of joinCubes) {
-      allCubesToConsider.push({
-        cube: joinCube.cube,
-        alias: joinCube.alias,
-        isPrimary: false
-      })
-    }
-
-    // Step 5: For each cube with measures, determine if it needs a CTE
-    for (const { cube, alias, isPrimary } of allCubesToConsider) {
-      const cteReason = this.getCTEReason(
-        cube,
-        primaryCube,
-        hasManyRelationships,
-        query
-      )
-
-      if (!cteReason) {
-        continue
-      }
+      const cube = joinCubeEntry.cube
+      const alias = joinCubeEntry.alias
+      const isPrimary = false
 
       // Get measures from this cube
       const measuresFromSelect = query.measures.filter(m =>
@@ -474,7 +479,7 @@ export class QueryPlanner {
       // Example: Departments → Employees → EmployeeTeams
       // If there's a hasMany on the intermediate path, we need to absorb
       // intermediate tables into the CTE
-      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx)
+      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx, query)
 
       let joinKeys: Array<{
         sourceColumn: string
@@ -493,9 +498,22 @@ export class QueryPlanner {
         // Standard path: use existing join key logic
         // Find the join definition - could be from primary or from any cube in the chain
         // For the primary cube, we need to find a join FROM another cube TO the primary
+        const joinInfoFromPath =
+          !isPrimary && pathAnalysis?.path && pathAnalysis.path.length > 0
+            ? (() => {
+                const lastStep = pathAnalysis.path[pathAnalysis.path.length - 1]
+                const sourceCube = cubes.get(lastStep.fromCube)
+                if (!sourceCube) return null
+                return {
+                  sourceCube,
+                  joinDef: lastStep.joinDef as CubeJoin
+                }
+              })()
+            : null
+
         const joinInfo = isPrimary
           ? this.findJoinInfoToCube(cubes, primaryCube.name)
-          : this.findJoinInfoForCube(cubes, primaryCube, cube.name)
+          : joinInfoFromPath ?? this.findJoinInfoForCube(cubes, primaryCube, cube.name)
 
         if (!joinInfo) {
           continue // No join info found
@@ -642,7 +660,8 @@ export class QueryPlanner {
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     targetCubeName: string,
-    ctx: QueryContext
+    ctx: QueryContext,
+    query: SemanticQuery
   ): {
     path: { fromCube: string; toCube: string; joinDef: CubeJoin }[]
     hasIntermediateHasMany: boolean
@@ -655,7 +674,11 @@ export class QueryPlanner {
     }>
   } | null {
     const resolver = this.getResolver(cubes)
-    const joinPath = resolver.findPath(primaryCube.name, targetCubeName)
+    const preferredPathCubes = this.collectPathHintCubes(query)
+
+    const joinPath = preferredPathCubes.size > 0
+      ? resolver.findPathPreferring(primaryCube.name, targetCubeName, preferredPathCubes, new Set())
+      : resolver.findPath(primaryCube.name, targetCubeName)
 
     if (!joinPath || joinPath.length === 0) {
       return null
@@ -740,117 +763,88 @@ export class QueryPlanner {
   }
 
   /**
-   * Detect all hasMany relationships that could affect the query
+   * Compute CTE reasons from the actual join plan entries.
    *
-   * This searches ALL cubes involved in the query (including intermediary cubes)
-   * to find any hasMany relationships that could cause row multiplication.
+   * Instead of scanning all registered cubes (which causes false positives when
+   * unrelated hasMany relationships exist), this walks only the planned joins
+   * using the `relationship` field now stored on each JoinCubePlanEntry.
    *
-   * Key insight: A hasMany relationship in ANY cube that's part of the join path
-   * will cause fan-out. We need to detect hasMany from:
-   * 1. The primary cube
-   * 2. All join cubes
-   * 3. Any intermediate cubes that form the join path
+   * Algorithm:
+   * 1. Scan join plan entries for hasMany/belongsToMany relationships
+   * 2. If none found → return empty map (no CTEs needed)
+   * 3. hasMany/belongsToMany targets with measures → 'hasMany'
+   * 4. Other join cubes with measures (not hasMany source) → 'fanOutPrevention'
    */
-  private detectHasManyInQuery(
-    cubes: Map<string, Cube>,
-    primaryCube: Cube,
-    joinCubes: QueryPlan['joinCubes']
-  ): Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> {
-    const hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }> = []
-    const processedCubes = new Set<string>()
-
-    // Collect all cubes involved in this query
-    const involvedCubes = new Set<string>()
-    involvedCubes.add(primaryCube.name)
-    for (const joinCube of joinCubes) {
-      involvedCubes.add(joinCube.cube.name)
-    }
-
-    // Check ALL registered cubes that have hasMany relationships to cubes in the query
-    // This catches the case where Employees (not primary, maybe not in joinCubes)
-    // has hasMany → Productivity (in query)
-    for (const [cubeName, cube] of cubes) {
-      if (processedCubes.has(cubeName)) continue
-      processedCubes.add(cubeName)
-
-      if (!cube.joins) continue
-
-      for (const [, joinDef] of Object.entries(cube.joins)) {
-        if (joinDef.relationship === 'hasMany') {
-          const targetCube = resolveCubeReference(joinDef.targetCube)
-
-          // Only include if both source AND target are involved in the query
-          // This ensures we only detect hasMany that actually affects this query
-          if (involvedCubes.has(cubeName) || involvedCubes.has(targetCube.name)) {
-            hasManyRelationships.push({
-              fromCube: cubeName,
-              toCube: targetCube.name,
-              joinDef: joinDef as CubeJoin
-            })
-          }
-        }
-      }
-    }
-
-    return hasManyRelationships
-  }
-
-  /**
-   * Determine if and why a cube needs pre-aggregation (CTE)
-   *
-   * Returns:
-   * - 'hasMany': Cube is the TARGET of a hasMany relationship - needs SUM in outer query
-   * - 'fanOutPrevention': Cube has measures affected by hasMany elsewhere - needs MAX in outer query
-   * - null: No CTE needed
-   *
-   * Key insight: When ANY hasMany exists in a query, ALL cubes with additive measures (sum, count)
-   * that are joined to the hasMany source cube are at risk of inflation.
-   */
-  private getCTEReason(
-    cube: Cube,
+  private computeCTEReasons(
     _primaryCube: Cube,
-    hasManyRelationships: Array<{ fromCube: string; toCube: string; joinDef: CubeJoin }>,
+    joinCubes: PhysicalQueryPlan['joinCubes'],
     query: SemanticQuery
-  ): 'hasMany' | 'fanOutPrevention' | null {
-    // Case 1: This cube is the TARGET of a hasMany - needs CTE with SUM aggregation
-    const isHasManyTarget = hasManyRelationships.some(
-      rel => rel.toCube === cube.name
-    )
-    if (isHasManyTarget) {
-      // Check if this cube has measures
-      const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
-      if (hasMeasures) {
-        return 'hasMany'
+  ): Map<string, 'hasMany' | 'fanOutPrevention'> {
+    const reasons = new Map<string, 'hasMany' | 'fanOutPrevention'>()
+
+    // Step 1: Classify join relationships from the actual join plan.
+    //
+    // Two kinds of grain mismatch cause measure inflation:
+    //
+    // A) hasMany / belongsToMany: the joined cube's rows multiply the primary's rows.
+    //    → The joined cube needs a 'hasMany' CTE (SUM in outer query).
+    //    → Other cubes with measures also need 'fanOutPrevention' (MAX in outer query).
+    //
+    // B) belongsTo: the primary has MULTIPLE rows per joined row (many-to-one).
+    //    Even without any hasMany, SUM(joinedCube.measure) is inflated by the number
+    //    of primary rows per join key (e.g., SUM(dept.budget) inflated by employee count).
+    //    → The belongsTo-joined cube with measures needs 'fanOutPrevention'.
+    const hasManyTargets = new Set<string>()
+    const belongsToTargetsWithMeasures = new Set<string>()
+
+    // Identify cubes with measures in the query (needed for both paths)
+    const cubesWithMeasures = new Set<string>()
+    if (query.measures) {
+      for (const measure of query.measures) {
+        const [cubeName] = measure.split('.')
+        cubesWithMeasures.add(cubeName)
       }
     }
 
-    // Case 2: This cube has additive measures AND there's a hasMany elsewhere
-    // that would cause row multiplication for this cube
-    const hasMeasures = query.measures?.some(m => m.startsWith(cube.name + '.'))
-    if (!hasMeasures) {
-      return null // No measures from this cube, no CTE needed
+    for (const jc of joinCubes) {
+      if (jc.relationship === 'hasMany' || jc.relationship === 'belongsToMany') {
+        hasManyTargets.add(jc.cube.name)
+      } else if (jc.relationship === 'belongsTo' && cubesWithMeasures.has(jc.cube.name)) {
+        // belongsTo from primary → primary has many rows per joined row
+        // The joined cube's measures are at risk of inflation
+        belongsToTargetsWithMeasures.add(jc.cube.name)
+      }
     }
 
-    // If there's any hasMany in the query and this cube has measures,
-    // and this cube is NOT the hasMany target, it's at risk of fan-out
-    for (const hasManyRel of hasManyRelationships) {
-      // If this cube is the source of the hasMany, it doesn't need CTE for its own measures
-      if (hasManyRel.fromCube === cube.name) {
-        continue
-      }
-
-      // If this cube is the target of the hasMany, it's already handled by Case 1
-      if (hasManyRel.toCube === cube.name) {
-        continue
-      }
-
-      // This cube has measures and there's a hasMany elsewhere that could multiply its rows
-      // Use fanOutPrevention reason - this means MAX will be used instead of SUM
-      return 'fanOutPrevention'
+    // Step 2: No multiplication risk → no CTEs needed
+    if (hasManyTargets.size === 0 && belongsToTargetsWithMeasures.size === 0) {
+      return reasons
     }
 
-    return null
+    // Step 3: Assign CTE reasons
+    for (const jc of joinCubes) {
+      if (!cubesWithMeasures.has(jc.cube.name)) continue
+
+      if (hasManyTargets.has(jc.cube.name)) {
+        // Direct hasMany/belongsToMany target → 'hasMany' (SUM in outer query)
+        reasons.set(jc.cube.name, 'hasMany')
+      } else if (belongsToTargetsWithMeasures.has(jc.cube.name)) {
+        // belongsTo join with measures → grain mismatch with primary
+        reasons.set(jc.cube.name, 'fanOutPrevention')
+      } else if (hasManyTargets.size > 0) {
+        // There's a hasMany elsewhere that multiplies rows.
+        // This cube has measures and is not the hasMany target → fanOutPrevention.
+        reasons.set(jc.cube.name, 'fanOutPrevention')
+      }
+    }
+
+    return reasons
   }
+
+  // NOTE: The former detectHasManyInQuery() and getCTEReason() methods were removed
+  // as part of the P3 refactor. They scanned ALL registered cubes (not just those in
+  // the join plan), causing false-positive hasMany detection. Their logic has been
+  // replaced by computeCTEReasons() above, which walks only the actual join plan.
 
   /**
    * Find join information for a cube from any cube in the query
@@ -1269,128 +1263,6 @@ export class QueryPlanner {
   }
 
   /**
-   * Analyze query planning decisions without building the full query
-   * Returns detailed metadata about how the query plan would be constructed
-   * Used for debugging and transparency in the playground UI
-   */
-  analyzeQueryPlan(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    _ctx: QueryContext
-  ): QueryAnalysis {
-    const cubesUsed = this.analyzeCubeUsage(query)
-    const cubeNames = Array.from(cubesUsed)
-
-    // Handle empty query
-    if (cubeNames.length === 0) {
-      return {
-        timestamp: new Date().toISOString(),
-        cubeCount: 0,
-        cubesInvolved: [],
-        primaryCube: {
-          selectedCube: '',
-          reason: 'single_cube',
-          explanation: 'No cubes found in query'
-        },
-        joinPaths: [],
-        preAggregations: [],
-        querySummary: {
-          queryType: 'single_cube',
-          joinCount: 0,
-          cteCount: 0,
-          hasPreAggregation: false
-        },
-        warnings: ['No cubes found in query - add measures or dimensions']
-      }
-    }
-
-    // Analyze primary cube selection
-    const primaryCubeAnalysis = this.analyzePrimaryCubeSelection(cubeNames, query, cubes)
-    const primaryCubeName = primaryCubeAnalysis.selectedCube
-
-    // Build analysis object
-    const analysis: QueryAnalysis = {
-      timestamp: new Date().toISOString(),
-      cubeCount: cubeNames.length,
-      cubesInvolved: cubeNames.sort(),
-      primaryCube: primaryCubeAnalysis,
-      joinPaths: [],
-      preAggregations: [],
-      querySummary: {
-        queryType: 'single_cube',
-        joinCount: 0,
-        cteCount: 0,
-        hasPreAggregation: false
-      },
-      warnings: []
-    }
-
-    // If multi-cube, analyze join paths
-    if (cubeNames.length > 1) {
-      const cubesToJoin = cubeNames.filter(name => name !== primaryCubeName)
-
-      for (const targetCube of cubesToJoin) {
-        analysis.joinPaths.push(
-          this.analyzeJoinPath(cubes, primaryCubeName, targetCube)
-        )
-      }
-
-      // Analyze pre-aggregation requirements
-      const primaryCube = cubes.get(primaryCubeName)
-      if (primaryCube) {
-        analysis.preAggregations = this.analyzePreAggregations(
-          cubes,
-          primaryCube,
-          cubesToJoin,
-          query
-        )
-      }
-
-      // Update summary
-      const successfulPaths = analysis.joinPaths.filter(p => p.pathFound)
-      const failedPaths = analysis.joinPaths.filter(p => !p.pathFound)
-
-      analysis.querySummary.joinCount = successfulPaths.length
-      analysis.querySummary.cteCount = analysis.preAggregations.length
-      analysis.querySummary.hasPreAggregation = analysis.preAggregations.length > 0
-
-      // Detect post-aggregation window functions in the query
-      const allCubes = new Map<string, Cube>()
-      for (const name of cubeNames) {
-        const cube = cubes.get(name)
-        if (cube) allCubes.set(name, cube)
-      }
-      const hasPostAggWindows = MeasureBuilder.hasPostAggregationWindows(
-        query.measures || [],
-        allCubes
-      )
-      analysis.querySummary.hasWindowFunctions = hasPostAggWindows
-
-      if (analysis.preAggregations.length > 0) {
-        analysis.querySummary.queryType = 'multi_cube_cte'
-      } else {
-        analysis.querySummary.queryType = 'multi_cube_join'
-      }
-
-      // Add warnings for failed paths
-      for (const failedPath of failedPaths) {
-        analysis.warnings!.push(
-          `No join path found to cube '${failedPath.targetCube}'. Check that joins are defined correctly.`
-        )
-      }
-
-      // Add info about post-aggregation window functions
-      if (hasPostAggWindows) {
-        analysis.warnings!.push(
-          `Query contains post-aggregation window functions which will be applied to aggregated results.`
-        )
-      }
-    }
-
-    return analysis
-  }
-
-  /**
    * Analyze why a particular cube was chosen as primary
    */
   private analyzePrimaryCubeSelection(
@@ -1490,11 +1362,16 @@ export class QueryPlanner {
   private analyzeJoinPath(
     cubes: Map<string, Cube>,
     fromCube: string,
-    toCube: string
+    toCube: string,
+    query?: SemanticQuery
   ): JoinPathAnalysis {
     // Use the resolver for BFS path finding (cached, optimized)
     const resolver = this.getResolver(cubes)
-    const internalPath = resolver.findPath(fromCube, toCube)
+    const preferredPathCubes = query ? this.collectPathHintCubes(query) : new Set<string>()
+    const preferredSelection: PreferredPathSelection | null = preferredPathCubes.size > 0
+      ? resolver.findPathPreferringDetailed(fromCube, toCube, preferredPathCubes)
+      : null
+    const internalPath = preferredSelection?.selectedPath ?? resolver.findPath(fromCube, toCube)
 
     // Build visited cubes list from path
     const visitedCubes = [fromCube]
@@ -1510,12 +1387,26 @@ export class QueryPlanner {
         targetCube: toCube,
         pathFound: false,
         error: `No join path found from '${fromCube}' to '${toCube}'. Ensure the target cube has a relationship defined (belongsTo, hasOne, hasMany, or belongsToMany).`,
-        visitedCubes
+        visitedCubes,
+        selection: this.buildJoinPathSelectionAnalysis(preferredSelection)
       }
     }
 
     // Convert internal path to analysis format
-    const pathSteps: JoinPathStep[] = internalPath.map(step => {
+    const pathSteps = this.convertInternalPathToJoinPathSteps(internalPath)
+
+    return {
+      targetCube: toCube,
+      pathFound: true,
+      path: pathSteps,
+      pathLength: pathSteps.length,
+      visitedCubes,
+      selection: this.buildJoinPathSelectionAnalysis(preferredSelection)
+    }
+  }
+
+  private convertInternalPathToJoinPathSteps(internalPath: InternalJoinPathStep[]): JoinPathStep[] {
+    return internalPath.map(step => {
       const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
       const joinColumns = step.joinDef.on.map(joinOn => ({
@@ -1543,99 +1434,43 @@ export class QueryPlanner {
 
       return result
     })
+  }
+
+  private buildJoinPathSelectionAnalysis(
+    selection: PreferredPathSelection | null
+  ): JoinPathAnalysis['selection'] {
+    if (!selection) {
+      return { strategy: 'shortest' }
+    }
+
+    const candidates = selection.candidates.map((candidate, index) =>
+      this.mapPreferredCandidate(candidate, index + 1)
+    )
 
     return {
-      targetCube: toCube,
-      pathFound: true,
-      path: pathSteps,
-      pathLength: pathSteps.length,
-      visitedCubes
+      strategy: selection.strategy,
+      preferredCubes: selection.preferredCubes,
+      selectedRank: selection.selectedIndex >= 0 ? selection.selectedIndex + 1 : undefined,
+      selectedScore: selection.selectedIndex >= 0
+        ? selection.candidates[selection.selectedIndex]?.score
+        : undefined,
+      candidates
     }
   }
 
-  /**
-   * Analyze pre-aggregation requirements for hasMany relationships
-   * This mirrors the logic in planPreAggregationCTEs to ensure analysis matches execution
-   */
-  private analyzePreAggregations(
-    cubes: Map<string, Cube>,
-    primaryCube: Cube,
-    cubesToJoin: string[],
-    query: SemanticQuery
-  ): PreAggregationAnalysis[] {
-    const preAggregations: PreAggregationAnalysis[] = []
-
-    // No measures in query means no fan-out risk, no CTEs needed
-    if (!query.measures || query.measures.length === 0) {
-      return preAggregations
+  private mapPreferredCandidate(
+    candidate: PreferredPathCandidateScore,
+    rank: number
+  ): NonNullable<NonNullable<JoinPathAnalysis['selection']>['candidates']>[number] {
+    return {
+      rank,
+      score: candidate.score,
+      usesPreferredJoin: candidate.usesPreferredJoin,
+      preferredCubesInPath: candidate.preferredCubesInPath,
+      usesProcessed: candidate.usesProcessed,
+      scoreBreakdown: candidate.scoreBreakdown,
+      path: this.convertInternalPathToJoinPathSteps(candidate.path)
     }
-
-    for (const targetCubeName of cubesToJoin) {
-      const hasManyJoinDef = this.findHasManyJoinDef(primaryCube, targetCubeName)
-      if (!hasManyJoinDef) {
-        continue
-      }
-
-      const targetCube = cubes.get(targetCubeName)
-      if (!targetCube) {
-        continue
-      }
-
-      // Check if we have measures from this cube (from SELECT clause)
-      const measuresFromSelect = query.measures.filter(m =>
-        m.startsWith(targetCubeName + '.')
-      )
-
-      // Also check for measures referenced in filters (for HAVING clause)
-      // Only actual measures are included - dimension filters don't trigger CTE creation
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, targetCube)
-
-      // Combine and deduplicate measures from both SELECT and filters
-      const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
-
-      if (allMeasuresFromThisCube.length === 0) {
-        continue
-      }
-
-      // Extract join keys
-      const joinKeys = hasManyJoinDef.on.map(joinOn => ({
-        sourceColumn: joinOn.source.name,
-        targetColumn: joinOn.target.name
-      }))
-
-      // Categorize measures for post-aggregation window function handling
-      const cubeMap = new Map([[targetCubeName, targetCube]])
-      const { aggregateMeasures, postAggWindowMeasures, requiredBaseMeasures } = MeasureBuilder.categorizeForPostAggregation(
-        allMeasuresFromThisCube,
-        cubeMap
-      )
-
-      // Combine aggregate measures with base measures required by window functions
-      const allAggregateMeasures = [...new Set([
-        ...aggregateMeasures,
-        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(targetCubeName + '.'))
-      ])]
-
-      // Create analysis for aggregate CTE if we have any aggregate measures
-      if (allAggregateMeasures.length > 0) {
-        const hasWindowDeps = postAggWindowMeasures.length > 0
-        preAggregations.push({
-          cubeName: targetCubeName,
-          cteAlias: `${targetCubeName.toLowerCase()}_agg`,
-          reason: hasWindowDeps
-            ? `hasMany relationship from ${primaryCube.name} - requires pre-aggregation; includes base measures for post-aggregation window functions`
-            : `hasMany relationship from ${primaryCube.name} - requires pre-aggregation to prevent row duplication (fan-out)`,
-          reasonType: 'hasMany',
-          measures: allAggregateMeasures,
-          joinKeys,
-          cteType: 'aggregate'
-        })
-      }
-
-      // Note: Window CTEs are no longer created - post-aggregation windows are applied in outer query
-    }
-
-    return preAggregations
   }
 
   /**
@@ -1651,7 +1486,7 @@ export class QueryPlanner {
    */
   private generateWarnings(
     query: SemanticQuery,
-    preAggregationCTEs?: QueryPlan['preAggregationCTEs']
+    preAggregationCTEs?: PhysicalQueryPlan['preAggregationCTEs']
   ): QueryWarning[] {
     const warnings: QueryWarning[] = []
 
@@ -1678,7 +1513,7 @@ export class QueryPlanner {
    */
   private checkFanOutNoDimensions(
     query: SemanticQuery,
-    preAggregationCTEs?: QueryPlan['preAggregationCTEs']
+    preAggregationCTEs?: PhysicalQueryPlan['preAggregationCTEs']
   ): QueryWarning | null {
     // Must have CTEs (hasMany relationships)
     if (!preAggregationCTEs || preAggregationCTEs.length === 0) {

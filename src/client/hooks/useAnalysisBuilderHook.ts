@@ -177,34 +177,16 @@ export interface UseAnalysisBuilderResult {
   funnelExecutedQueries: CubeQuery[] | null
   /** In funnel mode, the actual server query { funnel: {...} } sent to the API */
   funnelServerQuery: unknown | null
-  /** In funnel mode, unified debug data (SQL, analysis, funnel metadata) */
-  funnelDebugData: {
-    sql: { sql: string; params: unknown[] } | null
-    analysis: unknown | null
-    loading: boolean
-    error: Error | null
-    funnelMetadata?: unknown
-  } | null
+  /** In funnel mode, unified debug data (SQL, analysis, mode metadata) */
+  funnelDebugData: DebugDataEntry | null
   /** In flow mode, the actual server query { flow: {...} } sent to the API */
   flowServerQuery: unknown | null
-  /** In flow mode, unified debug data (SQL, analysis, flow metadata) */
-  flowDebugData: {
-    sql: { sql: string; params: unknown[] } | null
-    analysis: unknown | null
-    loading: boolean
-    error: Error | null
-    flowMetadata?: unknown
-  } | null
+  /** In flow mode, unified debug data (SQL, analysis, mode metadata) */
+  flowDebugData: DebugDataEntry | null
   /** In retention mode, the actual server query { retention: {...} } sent to the API */
   retentionServerQuery: unknown | null
-  /** In retention mode, unified debug data (SQL, analysis, retention metadata) */
-  retentionDebugData: {
-    sql: { sql: string; params: unknown[] } | null
-    analysis: unknown | null
-    loading: boolean
-    error: Error | null
-    retentionMetadata?: unknown
-  } | null
+  /** In retention mode, unified debug data (SQL, analysis, mode metadata) */
+  retentionDebugData: DebugDataEntry | null
   /** In retention mode, the chart data (cohort × period matrix) */
   retentionChartData: import('../types/retention').RetentionChartData | null
   /** In retention mode, validation result (errors explaining why query cannot be built) */

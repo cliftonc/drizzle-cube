@@ -10,18 +10,18 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
-import type { DatabaseAdapter } from './adapters/base-adapter'
+import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   RetentionQueryConfig,
   RetentionResultRow,
   RetentionBindingKeyMapping,
   RetentionDateRange
-} from './types/retention'
+} from '../types/retention'
 import {
   isRetentionMultiCubeBindingKey,
   extractCubeFromTimeDimension,
   extractDimensionFromTimeDimension
-} from './types/retention'
+} from '../types/retention'
 import type {
   Cube,
   QueryContext,
@@ -29,10 +29,10 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter
-} from './types'
-import { resolveSqlExpression } from './cube-utils'
-import { FilterBuilder } from './builders/filter-builder'
-import { DateTimeBuilder } from './builders/date-time-builder'
+} from '../types'
+import { resolveSqlExpression } from '../cube-utils'
+import { FilterBuilder } from './filter-builder'
+import { DateTimeBuilder } from './date-time-builder'
 
 /**
  * Resolved retention configuration with SQL expressions

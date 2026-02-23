@@ -5,7 +5,7 @@
  * Used in the left panel of AnalysisBuilder.
  */
 
-import { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, memo, useRef, useCallback } from 'react'
 import type { AnalysisResultsPanelProps } from './types'
 import { LazyChart, isValidChartType } from '../../charts/ChartLoader'
 import { getIcon } from '../../icons'
@@ -79,6 +79,34 @@ function generateExecutionPlanMarkdown(
       if (jp.pathFound && jp.path) {
         lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube} (${jp.pathLength} step${jp.pathLength !== 1 ? 's' : ''})`)
         lines.push('')
+        if (jp.selection) {
+          lines.push(`**Selection strategy:** ${jp.selection.strategy}`)
+          if (typeof jp.selection.selectedRank === 'number') {
+            lines.push(`**Selected rank:** #${jp.selection.selectedRank}`)
+          }
+          if (typeof jp.selection.selectedScore === 'number') {
+            lines.push(`**Selected score:** ${jp.selection.selectedScore}`)
+          }
+          if (jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0) {
+            lines.push(`**Preferred cubes:** ${jp.selection.preferredCubes.join(', ')}`)
+          }
+          if (jp.selection.candidates && jp.selection.candidates.length > 0) {
+            lines.push('**Path scoring candidates:**')
+            for (const candidate of jp.selection.candidates.slice(0, 5)) {
+              const candidatePath = candidate.path.length > 0
+                ? `${candidate.path[0].fromCube} → ${candidate.path.map(step => step.toCube).join(' → ')}`
+                : analysis.primaryCube.selectedCube
+              lines.push(
+                `- #${candidate.rank} score=${candidate.score} `
+                + `(preferredJoin=${candidate.scoreBreakdown.preferredJoinBonus}, `
+                + `preferredCube=${candidate.scoreBreakdown.preferredCubeBonus}, `
+                + `lengthPenalty=${candidate.scoreBreakdown.lengthPenalty}) `
+                + `${candidatePath}`
+              )
+            }
+          }
+          lines.push('')
+        }
         for (const step of jp.path) {
           lines.push(`- **${step.fromCube}** → **${step.toCube}** (${step.relationship}, ${step.joinType.toUpperCase()} JOIN)`)
           for (const col of step.joinColumns) {
@@ -256,6 +284,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const currentDebugData = debugDataPerQuery[activeDebugIndex] || {
     sql: null,
     analysis: null,
+    mode: null,
+    queryType: null,
+    joinType: null,
+    cubesUsed: [],
+    modeMetadata: undefined,
     loading: false,
     error: null
   }
@@ -635,7 +668,6 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     )
   }
 
-  // Type for funnel metadata
   interface FunnelMetadata {
     stepCount: number
     steps: Array<{
@@ -644,485 +676,184 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       timeToConvert?: string
       cube?: string
     }>
-    bindingKey: unknown
-    timeDimension: unknown
   }
 
-  // Render debug view for funnel mode (unified single query view)
-  const renderFunnelDebug = () => {
-    const funnelSql = funnelDebugData?.sql
-    const funnelLoading = funnelDebugData?.loading || false
-    const funnelError = funnelDebugData?.error
-    const funnelMeta = funnelDebugData?.funnelMetadata as FunnelMetadata | undefined
+  interface FlowMetadata {
+    stepsBefore?: number
+    stepsAfter?: number
+    eventDimension?: string
+    startingStep?: { name?: string; filter?: unknown }
+  }
 
+  interface RetentionMetadata {
+    totalUsers?: number
+    segmentCount?: number
+    periods?: number
+    granularity?: string
+    retentionType?: string
+  }
+
+  interface ModeDebugConfig {
+    label: string
+    badgeText?: string
+    serverQuery: unknown | null | undefined
+    serverQueryTitle: string
+    serverQueryMissing: React.ReactNode
+    debugData: {
+      sql: { sql: string; params: unknown[] } | null
+      loading: boolean
+      error: Error | null
+      modeMetadata?: unknown
+    } | null | undefined
+    sqlPlaceholder: string
+    explainResult: any
+    explainLoading: boolean
+    explainHasRun: boolean
+    explainError: Error | null
+    runExplain: () => void
+    metadataTitle?: string
+    metadataSection?: React.ReactNode
+    extraSection?: React.ReactNode
+    responseSection: React.ReactNode
+  }
+
+  const renderExecutionErrorBanner = () => {
+    if (!executionError) return null
     return (
-      <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
-        {/* Funnel Mode Header */}
-        <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
-          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Funnel Query</span>
-          {funnelMeta?.stepCount && (
-            <span className="dc:text-xs text-dc-text-muted">
-              {funnelMeta.stepCount} steps
-            </span>
-          )}
-          {funnelLoading && (
-            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
-          )}
-        </div>
-
-        {/* Execution Error Banner (if any) */}
-        {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
-            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
-              Execution Error
-            </h4>
-            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
-          </div>
-        )}
-
-        {/* Funnel Server Query - full width */}
-        <div>
-          {funnelServerQuery ? (
-            <CodeBlock
-              code={JSON.stringify(funnelServerQuery, null, 2)}
-              language="json"
-              title="Funnel Server Query"
-              height="16rem"
-            />
-          ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Server Query</h4>
-              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-                No funnel query configured
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
-        <ExecutionPlanPanel
-          sql={funnelSql}
-          sqlLoading={funnelLoading}
-          sqlError={funnelError}
-          sqlPlaceholder="Configure funnel binding key to generate SQL"
-          explainResult={funnelExplainResult}
-          explainLoading={funnelExplainLoading}
-          explainHasRun={funnelExplainHasRun}
-          explainError={funnelExplainError}
-          runExplain={runFunnelExplain}
-          aiAnalysis={aiAnalysis}
-          aiAnalysisLoading={aiAnalysisLoading}
-          aiAnalysisError={aiAnalysisError}
-          runAIAnalysis={runAIAnalysis}
-          clearAIAnalysis={clearAIAnalysis}
-          enableAI={enableAI}
-          query={funnelServerQuery}
-          title="Generated SQL"
-          height="16rem"
-        />
-
-        {/* Funnel Metadata (step info) */}
-        {funnelMeta && (
-          <div>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Steps</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
-              <div className="dc:flex dc:flex-wrap dc:gap-2">
-                {funnelMeta.steps.map((step, idx) => (
-                  <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
-                    <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
-                      {idx + 1}
-                    </span>
-                    <span className="text-dc-text">{step.name}</span>
-                    {step.timeToConvert && (
-                      <span className="dc:text-xs text-dc-text-muted">({step.timeToConvert})</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Chart Config & Display Config in 2 columns */}
-        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
-          <div>
-            <CodeBlock
-              code={JSON.stringify(chartConfig, null, 2)}
-              language="json"
-              title="Chart Config"
-              height="16rem"
-            />
-          </div>
-          <div>
-            <CodeBlock
-              code={JSON.stringify(displayConfig, null, 2)}
-              language="json"
-              title="Display Config"
-              height="16rem"
-            />
-          </div>
-        </div>
-
-        {/* Server Response - full width */}
-        <div>
-          {executionResults ? (
-            <CodeBlock
-              code={JSON.stringify(executionResults, null, 2)}
-              language="json"
-              title={`Server Response (${executionResults.length} rows)`}
-              maxHeight="24rem"
-            />
-          ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-                No results yet
-              </div>
-            </>
-          )}
-        </div>
+      <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
+        <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
+          Execution Error
+        </h4>
+        <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
       </div>
     )
   }
 
-  // Render debug view for flow mode (unified single query view)
-  const renderFlowDebug = () => {
-    const flowSql = flowDebugData?.sql
-    const flowLoading = flowDebugData?.loading || false
-    const flowError = flowDebugData?.error
-    const flowMeta = flowDebugData?.flowMetadata as {
-      stepsBefore?: number
-      stepsAfter?: number
-      bindingKey?: unknown
-      timeDimension?: unknown
-      eventDimension?: string
-      startingStep?: { name?: string; filter?: unknown }
-    } | undefined
-
-    return (
-      <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
-        {/* Flow Mode Header */}
-        <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
-          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Flow Query</span>
-          {flowMeta && (
-            <span className="dc:text-xs text-dc-text-muted">
-              {flowMeta.stepsBefore} before, {flowMeta.stepsAfter} after
-            </span>
-          )}
-          {flowLoading && (
-            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
-          )}
-        </div>
-
-        {/* Execution Error Banner (if any) */}
-        {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
-            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
-              Execution Error
-            </h4>
-            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
-          </div>
-        )}
-
-        {/* Flow Server Query - full width */}
-        <div>
-          {flowServerQuery ? (
-            <CodeBlock
-              code={JSON.stringify(flowServerQuery, null, 2)}
-              language="json"
-              title="Flow Server Query"
-              height="16rem"
-            />
-          ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Server Query</h4>
-              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-                No flow query configured
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
-        <ExecutionPlanPanel
-          sql={flowSql}
-          sqlLoading={flowLoading}
-          sqlError={flowError}
-          sqlPlaceholder="Configure flow to generate SQL"
-          explainResult={flowExplainResult}
-          explainLoading={flowExplainLoading}
-          explainHasRun={flowExplainHasRun}
-          explainError={flowExplainError}
-          runExplain={runFlowExplain}
-          aiAnalysis={aiAnalysis}
-          aiAnalysisLoading={aiAnalysisLoading}
-          aiAnalysisError={aiAnalysisError}
-          runAIAnalysis={runAIAnalysis}
-          clearAIAnalysis={clearAIAnalysis}
-          enableAI={enableAI}
-          query={flowServerQuery}
-          title="Generated SQL"
+  const renderSharedConfigBlocks = () => (
+    <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
+      <div>
+        <CodeBlock
+          code={JSON.stringify(chartConfig, null, 2)}
+          language="json"
+          title="Chart Config"
           height="16rem"
         />
-
-        {/* Flow Metadata */}
-        {flowMeta && (
-          <div>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Configuration</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
-              <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
-                <div>
-                  <span className="text-dc-text-muted">Starting Step:</span>{' '}
-                  <span className="text-dc-text">{flowMeta.startingStep?.name || 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Event Dimension:</span>{' '}
-                  <span className="text-dc-text">{flowMeta.eventDimension || 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Steps Before:</span>{' '}
-                  <span className="text-dc-text">{flowMeta.stepsBefore ?? 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Steps After:</span>{' '}
-                  <span className="text-dc-text">{flowMeta.stepsAfter ?? 'Not set'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Chart Config & Display Config in 2 columns */}
-        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
-          <div>
-            <CodeBlock
-              code={JSON.stringify(chartConfig, null, 2)}
-              language="json"
-              title="Chart Config"
-              height="16rem"
-            />
-          </div>
-          <div>
-            <CodeBlock
-              code={JSON.stringify(displayConfig, null, 2)}
-              language="json"
-              title="Display Config"
-              height="16rem"
-            />
-          </div>
-        </div>
-
-        {/* Server Response - full width */}
-        <div>
-          {executionResults ? (
-            <CodeBlock
-              code={JSON.stringify(executionResults, null, 2)}
-              language="json"
-              title="Server Response (Sankey Data)"
-              maxHeight="24rem"
-            />
-          ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-                No results yet
-              </div>
-            </>
-          )}
-        </div>
       </div>
-    )
-  }
+      <div>
+        <CodeBlock
+          code={JSON.stringify(displayConfig, null, 2)}
+          language="json"
+          title="Display Config"
+          height="16rem"
+        />
+      </div>
+    </div>
+  )
 
-  // Render debug view for retention mode (cohort retention analysis)
-  const renderRetentionDebug = () => {
-    const retentionSql = retentionDebugData?.sql
-    const retentionLoading = retentionDebugData?.loading || false
-    const retentionError = retentionDebugData?.error
-    const retentionMeta = retentionDebugData?.retentionMetadata as {
-      totalUsers?: number
-      segmentCount?: number
-      periods?: number
-      granularity?: string
-      retentionType?: string
-    } | undefined
+  const renderStandardResponseBlock = (title?: string) => (
+    <div>
+      {executionResults ? (
+        <CodeBlock
+          code={JSON.stringify(executionResults, null, 2)}
+          language="json"
+          title={title || `Server Response (${executionResults.length} rows)`}
+          maxHeight="24rem"
+        />
+      ) : (
+        <>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
+            No results yet
+          </div>
+        </>
+      )}
+    </div>
+  )
+
+  const renderRetentionResponseBlock = () => (
+    <div>
+      {retentionChartData ? (
+        <CodeBlock
+          code={JSON.stringify(retentionChartData, null, 2)}
+          language="json"
+          title={`Server Response (${retentionChartData.rows.length} rows, ${retentionChartData.periods.length} periods)`}
+          maxHeight="24rem"
+        />
+      ) : (
+        renderStandardResponseBlock()
+      )}
+    </div>
+  )
+
+  const renderModeDebug = (config: ModeDebugConfig) => {
+    const modeSql = config.debugData?.sql
+    const modeLoading = config.debugData?.loading || false
+    const modeError = config.debugData?.error || null
 
     return (
       <div className="dc:p-4 dc:space-y-4 dc:overflow-auto dc:h-full">
-        {/* Retention Mode Header */}
         <div className="dc:flex dc:items-center dc:gap-2 dc:mb-4">
-          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">Retention Query</span>
-          {retentionMeta && (
-            <span className="dc:text-xs text-dc-text-muted">
-              {retentionMeta.segmentCount || 1} segment(s), {retentionMeta.totalUsers} users
-            </span>
+          <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-accent text-white dc:rounded">
+            {config.label}
+          </span>
+          {config.badgeText && (
+            <span className="dc:text-xs text-dc-text-muted">{config.badgeText}</span>
           )}
-          {retentionLoading && (
+          {modeLoading && (
             <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
           )}
         </div>
 
-        {/* Execution Error Banner (if any) */}
-        {executionError && (
-          <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
-            <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
-              Execution Error
-            </h4>
-            <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
-          </div>
-        )}
+        {renderExecutionErrorBanner()}
 
-        {/* Retention Server Query - full width */}
         <div>
-          {retentionServerQuery ? (
+          {config.serverQuery ? (
             <CodeBlock
-              code={JSON.stringify(retentionServerQuery, null, 2)}
+              code={JSON.stringify(config.serverQuery, null, 2)}
               language="json"
-              title="Retention Server Query"
+              title={config.serverQueryTitle}
               height="16rem"
             />
           ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Server Query</h4>
-              <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
-                <div className="text-dc-warning dc:font-medium dc:mb-2">Configuration Incomplete</div>
-                {retentionValidation && retentionValidation.errors.length > 0 ? (
-                  <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
-                    {retentionValidation.errors.map((error, i) => (
-                      <li key={i}>{error}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-dc-text-muted">Configure the retention analysis settings to generate a query.</p>
-                )}
-              </div>
-            </>
+            config.serverQueryMissing
           )}
         </div>
 
-        {/* Generated SQL with Explain Plan and AI Analysis - full width */}
         <ExecutionPlanPanel
-          sql={retentionSql}
-          sqlLoading={retentionLoading}
-          sqlError={retentionError}
-          sqlPlaceholder="Configure retention to generate SQL"
-          explainResult={retentionExplainResult}
-          explainLoading={retentionExplainLoading}
-          explainHasRun={retentionExplainHasRun}
-          explainError={retentionExplainError}
-          runExplain={runRetentionExplain}
+          sql={modeSql}
+          sqlLoading={modeLoading}
+          sqlError={modeError}
+          sqlPlaceholder={config.sqlPlaceholder}
+          explainResult={config.explainResult}
+          explainLoading={config.explainLoading}
+          explainHasRun={config.explainHasRun}
+          explainError={config.explainError}
+          runExplain={config.runExplain}
           aiAnalysis={aiAnalysis}
           aiAnalysisLoading={aiAnalysisLoading}
           aiAnalysisError={aiAnalysisError}
           runAIAnalysis={runAIAnalysis}
           clearAIAnalysis={clearAIAnalysis}
           enableAI={enableAI}
-          query={retentionServerQuery}
+          query={config.serverQuery}
           title="Generated SQL"
           height="16rem"
         />
 
-        {/* Retention Metadata */}
-        {retentionMeta && (
+        {config.metadataTitle && config.metadataSection && (
           <div>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Configuration</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{config.metadataTitle}</h4>
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
-              <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
-                <div>
-                  <span className="text-dc-text-muted">Retention Type:</span>{' '}
-                  <span className="text-dc-text">{retentionMeta.retentionType || 'Classic'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Periods:</span>{' '}
-                  <span className="text-dc-text">{retentionMeta.periods ?? 'Not set'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Granularity:</span>{' '}
-                  <span className="text-dc-text">{retentionMeta.granularity || 'Week'}</span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Segments:</span>{' '}
-                  <span className="text-dc-text">{retentionMeta.segmentCount || 1}</span>
-                </div>
-              </div>
+              {config.metadataSection}
             </div>
           </div>
         )}
 
-        {/* Summary Statistics */}
-        {retentionChartData?.summary && (
-          <div>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Summary</h4>
-            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
-              <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
-                <div>
-                  <span className="text-dc-text-muted">Avg Period 1:</span>{' '}
-                  <span className="text-dc-text dc:font-medium">
-                    {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Max Period 1:</span>{' '}
-                  <span className="text-dc-text dc:font-medium">
-                    {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div>
-                  <span className="text-dc-text-muted">Min Period 1:</span>{' '}
-                  <span className="text-dc-text dc:font-medium">
-                    {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {config.extraSection}
 
-        {/* Chart Config & Display Config in 2 columns */}
-        <div className="dc:grid dc:grid-cols-1 dc:md:grid-cols-2 dc:gap-4">
-          <div>
-            <CodeBlock
-              code={JSON.stringify(chartConfig, null, 2)}
-              language="json"
-              title="Chart Config"
-              height="16rem"
-            />
-          </div>
-          <div>
-            <CodeBlock
-              code={JSON.stringify(displayConfig, null, 2)}
-              language="json"
-              title="Display Config"
-              height="16rem"
-            />
-          </div>
-        </div>
+        {renderSharedConfigBlocks()}
 
-        {/* Server Response - full width */}
-        <div>
-          {retentionChartData ? (
-            <CodeBlock
-              code={JSON.stringify(retentionChartData, null, 2)}
-              language="json"
-              title={`Server Response (${retentionChartData.rows.length} rows, ${retentionChartData.periods.length} periods)`}
-              maxHeight="24rem"
-            />
-          ) : executionResults ? (
-            <CodeBlock
-              code={JSON.stringify(executionResults, null, 2)}
-              language="json"
-              title={`Server Response (${executionResults.length} rows)`}
-              maxHeight="24rem"
-            />
-          ) : (
-            <>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
-              <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-                No results yet
-              </div>
-            </>
-          )}
-        </div>
+        {config.responseSection}
       </div>
     )
   }
@@ -1298,15 +1029,186 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
   // Route to appropriate debug view based on mode
   const renderDebug = () => {
-    if (isRetentionMode) {
-      return renderRetentionDebug()
-    }
-    if (isFlowMode) {
-      return renderFlowDebug()
-    }
     if (isFunnelMode) {
-      return renderFunnelDebug()
+      const metadata = funnelDebugData?.modeMetadata as FunnelMetadata | undefined
+      const metadataSection = metadata ? (
+        <div className="dc:flex dc:flex-wrap dc:gap-2">
+          {metadata.steps.map((step, idx) => (
+            <div key={idx} className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-1.5 bg-dc-bg dc:border border-dc-border dc:rounded dc:text-sm">
+              <span className="dc:w-5 dc:h-5 dc:flex dc:items-center dc:justify-center bg-dc-accent text-white dc:text-xs dc:rounded-full">
+                {idx + 1}
+              </span>
+              <span className="text-dc-text">{step.name}</span>
+              {step.timeToConvert && (
+                <span className="dc:text-xs text-dc-text-muted">({step.timeToConvert})</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null
+
+      return renderModeDebug({
+        label: 'Funnel Query',
+        badgeText: metadata?.stepCount ? `${metadata.stepCount} steps` : undefined,
+        serverQuery: funnelServerQuery,
+        serverQueryTitle: 'Funnel Server Query',
+        serverQueryMissing: (
+          <>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Server Query</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+              No funnel query configured
+            </div>
+          </>
+        ),
+        debugData: funnelDebugData,
+        sqlPlaceholder: 'Configure funnel binding key to generate SQL',
+        explainResult: funnelExplainResult,
+        explainLoading: funnelExplainLoading,
+        explainHasRun: funnelExplainHasRun,
+        explainError: funnelExplainError,
+        runExplain: runFunnelExplain,
+        metadataTitle: metadataSection ? 'Funnel Steps' : undefined,
+        metadataSection,
+        responseSection: renderStandardResponseBlock(),
+      })
     }
+
+    if (isRetentionMode) {
+      const metadata = retentionDebugData?.modeMetadata as RetentionMetadata | undefined
+      const metadataSection = metadata ? (
+        <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
+          <div>
+            <span className="text-dc-text-muted">Retention Type:</span>{' '}
+            <span className="text-dc-text">{metadata.retentionType || 'Classic'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Periods:</span>{' '}
+            <span className="text-dc-text">{metadata.periods ?? 'Not set'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Granularity:</span>{' '}
+            <span className="text-dc-text">{metadata.granularity || 'Week'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Segments:</span>{' '}
+            <span className="text-dc-text">{metadata.segmentCount || 1}</span>
+          </div>
+        </div>
+      ) : null
+
+      const extraSection = retentionChartData?.summary ? (
+        <div>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Summary</h4>
+          <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
+            <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
+              <div>
+                <span className="text-dc-text-muted">Avg Period 1:</span>{' '}
+                <span className="text-dc-text dc:font-medium">
+                  {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-dc-text-muted">Max Period 1:</span>{' '}
+                <span className="text-dc-text dc:font-medium">
+                  {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-dc-text-muted">Min Period 1:</span>{' '}
+                <span className="text-dc-text dc:font-medium">
+                  {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null
+
+      return renderModeDebug({
+        label: 'Retention Query',
+        badgeText: metadata ? `${metadata.segmentCount || 1} segment(s), ${metadata.totalUsers} users` : undefined,
+        serverQuery: retentionServerQuery,
+        serverQueryTitle: 'Retention Server Query',
+        serverQueryMissing: (
+          <>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Server Query</h4>
+            <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
+              <div className="text-dc-warning dc:font-medium dc:mb-2">Configuration Incomplete</div>
+              {retentionValidation && retentionValidation.errors.length > 0 ? (
+                <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
+                  {retentionValidation.errors.map((error, i) => (
+                    <li key={i}>{error}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-dc-text-muted">Configure the retention analysis settings to generate a query.</p>
+              )}
+            </div>
+          </>
+        ),
+        debugData: retentionDebugData,
+        sqlPlaceholder: 'Configure retention to generate SQL',
+        explainResult: retentionExplainResult,
+        explainLoading: retentionExplainLoading,
+        explainHasRun: retentionExplainHasRun,
+        explainError: retentionExplainError,
+        runExplain: runRetentionExplain,
+        metadataTitle: metadataSection ? 'Retention Configuration' : undefined,
+        metadataSection,
+        extraSection,
+        responseSection: renderRetentionResponseBlock(),
+      })
+    }
+
+    if (isFlowMode) {
+      const metadata = flowDebugData?.modeMetadata as FlowMetadata | undefined
+      const metadataSection = metadata ? (
+        <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
+          <div>
+            <span className="text-dc-text-muted">Starting Step:</span>{' '}
+            <span className="text-dc-text">{metadata.startingStep?.name || 'Not set'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Event Dimension:</span>{' '}
+            <span className="text-dc-text">{metadata.eventDimension || 'Not set'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Steps Before:</span>{' '}
+            <span className="text-dc-text">{metadata.stepsBefore ?? 'Not set'}</span>
+          </div>
+          <div>
+            <span className="text-dc-text-muted">Steps After:</span>{' '}
+            <span className="text-dc-text">{metadata.stepsAfter ?? 'Not set'}</span>
+          </div>
+        </div>
+      ) : null
+
+      return renderModeDebug({
+        label: 'Flow Query',
+        badgeText: metadata ? `${metadata.stepsBefore} before, ${metadata.stepsAfter} after` : undefined,
+        serverQuery: flowServerQuery,
+        serverQueryTitle: 'Flow Server Query',
+        serverQueryMissing: (
+          <>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Server Query</h4>
+            <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
+              No flow query configured
+            </div>
+          </>
+        ),
+        debugData: flowDebugData,
+        sqlPlaceholder: 'Configure flow to generate SQL',
+        explainResult: flowExplainResult,
+        explainLoading: flowExplainLoading,
+        explainHasRun: flowExplainHasRun,
+        explainError: flowExplainError,
+        runExplain: runFlowExplain,
+        metadataTitle: metadataSection ? 'Flow Configuration' : undefined,
+        metadataSection,
+        responseSection: renderStandardResponseBlock('Server Response (Sankey Data)'),
+      })
+    }
+
     return renderStandardDebug()
   }
 

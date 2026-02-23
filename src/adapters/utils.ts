@@ -112,6 +112,217 @@ export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
   return 'postgres' // default fallback
 }
 
+type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+type DryRunQueryType = 'regularQuery' | 'comparisonQuery' | 'funnelQuery' | 'flowQuery' | 'retentionQuery'
+type DryRunJoinType = 'single_cube' | 'multi_cube_join' | 'funnel_cte' | 'flow_cte' | 'retention_cte'
+
+interface DryRunResponseOptions {
+  mode: DryRunMode
+  queryType: DryRunQueryType
+  joinType: DryRunJoinType
+  complexity: string
+  query: SemanticQuery
+  cubesUsed: string[]
+  sqlResult: { sql: string; params?: unknown[] }
+  analysis?: QueryAnalysis
+  normalizedQueries?: unknown[]
+  transformedQueries?: unknown[]
+  modeMetadata?: unknown
+}
+
+function resolveDryRunMode(query: SemanticQuery): DryRunMode {
+  const activeModes: DryRunMode[] = []
+
+  const hasComparison = query.timeDimensions?.some(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+  if (hasComparison) {
+    activeModes.push('comparison')
+  }
+
+  if (query.funnel && query.funnel.steps?.length >= 2) {
+    activeModes.push('funnel')
+  }
+
+  if (query.flow && query.flow.bindingKey && query.flow.eventDimension) {
+    activeModes.push('flow')
+  }
+
+  if (query.retention && query.retention.bindingKey && query.retention.timeDimension) {
+    activeModes.push('retention')
+  }
+
+  if (activeModes.length === 0) {
+    return 'regular'
+  }
+
+  if (activeModes.length > 1) {
+    throw new Error(`Query contains multiple query modes: ${activeModes.join(', ')}`)
+  }
+
+  return activeModes[0]
+}
+
+function collectDryRunAnalysis(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+): QueryAnalysis | undefined {
+  try {
+    return semanticLayer.analyzeQuery(query, securityContext)
+  } catch (analysisError) {
+    // Analysis is optional - don't fail the dry-run if it fails
+    console.warn('Query analysis failed:', analysisError)
+    return undefined
+  }
+}
+
+function validateDryRunQuery(
+  query: SemanticQuery,
+  semanticLayer: SemanticLayerCompiler,
+  label: string
+): void {
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`${label} validation failed: ${validation.errors.join(', ')}`)
+  }
+}
+
+async function collectDryRunArtifacts(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  const sqlResult = await semanticLayer.dryRun(query, securityContext)
+  const analysis = collectDryRunAnalysis(query, securityContext, semanticLayer)
+  return { sqlResult, analysis }
+}
+
+function addCubeFromMember(member: string, cubesSet: Set<string>): void {
+  const [cubeName] = member.split('.')
+  if (cubeName) cubesSet.add(cubeName)
+}
+
+function addCubesFromMappings(
+  mappings: Array<{ cube: string }> | undefined,
+  cubesSet: Set<string>
+): void {
+  if (!mappings) return
+  for (const mapping of mappings) {
+    if (mapping.cube) cubesSet.add(mapping.cube)
+  }
+}
+
+function collectRegularReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+
+  query.measures?.forEach(measure => addCubeFromMember(measure, referencedCubes))
+  query.dimensions?.forEach(dimension => addCubeFromMember(dimension, referencedCubes))
+  query.timeDimensions?.forEach(timeDimension => addCubeFromMember(timeDimension.dimension, referencedCubes))
+
+  query.filters?.forEach(filter => {
+    extractCubeNamesFromFilter(filter, referencedCubes)
+  })
+
+  return Array.from(referencedCubes)
+}
+
+function collectFunnelReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const funnel = query.funnel!
+
+  if (typeof funnel.bindingKey === 'string') {
+    addCubeFromMember(funnel.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(funnel.bindingKey, referencedCubes)
+  }
+
+  if (typeof funnel.timeDimension === 'string') {
+    addCubeFromMember(funnel.timeDimension, referencedCubes)
+  } else {
+    addCubesFromMappings(funnel.timeDimension, referencedCubes)
+  }
+
+  for (const step of funnel.steps) {
+    if ('cube' in step && step.cube) referencedCubes.add(step.cube)
+  }
+
+  return Array.from(referencedCubes)
+}
+
+function collectFlowReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const flow = query.flow!
+
+  if (typeof flow.bindingKey === 'string') {
+    addCubeFromMember(flow.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(flow.bindingKey, referencedCubes)
+  }
+
+  if (typeof flow.timeDimension === 'string') {
+    addCubeFromMember(flow.timeDimension, referencedCubes)
+  } else {
+    addCubesFromMappings(flow.timeDimension, referencedCubes)
+  }
+
+  addCubeFromMember(flow.eventDimension, referencedCubes)
+
+  return Array.from(referencedCubes)
+}
+
+function collectRetentionReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const retention = query.retention!
+
+  if (typeof retention.timeDimension === 'string') {
+    addCubeFromMember(retention.timeDimension, referencedCubes)
+  } else if (retention.timeDimension?.cube) {
+    referencedCubes.add(retention.timeDimension.cube)
+  }
+
+  if (typeof retention.bindingKey === 'string') {
+    addCubeFromMember(retention.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(retention.bindingKey, referencedCubes)
+  }
+
+  for (const dimension of retention.breakdownDimensions || []) {
+    addCubeFromMember(dimension, referencedCubes)
+  }
+
+  return Array.from(referencedCubes)
+}
+
+function buildDryRunResponse(options: DryRunResponseOptions) {
+  const normalizedQueries = options.normalizedQueries || []
+  const transformedQueries = options.transformedQueries || normalizedQueries
+
+  return {
+    mode: options.mode,
+    queryType: options.queryType,
+    normalizedQueries,
+    queryOrder: options.cubesUsed,
+    transformedQueries,
+    pivotQuery: {
+      query: options.query,
+      cubes: options.cubesUsed
+    },
+    sql: {
+      sql: [options.sqlResult.sql],
+      params: options.sqlResult.params || []
+    },
+    complexity: options.complexity,
+    valid: true,
+    cubesUsed: options.cubesUsed,
+    joinType: options.joinType,
+    query: options.query,
+    analysis: options.analysis,
+    planningTrace: options.analysis?.planningTrace,
+    modeMetadata: options.modeMetadata
+  }
+}
+
 /**
  * Helper function to handle dry-run logic for all adapters
  */
@@ -120,70 +331,31 @@ export async function handleDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  // Check for funnel queries FIRST - they have their own dry-run path
-  // Funnel queries send { funnel: { ... } } and need special SQL generation
-  if (query.funnel && query.funnel.steps?.length >= 2) {
-    return handleFunnelDryRun(query, securityContext, semanticLayer)
+  const mode = resolveDryRunMode(query)
+
+  const handlers: Record<DryRunMode, () => Promise<any>> = {
+    regular: () => handleRegularDryRun(query, securityContext, semanticLayer),
+    comparison: () => handleComparisonDryRun(query, securityContext, semanticLayer),
+    funnel: () => handleFunnelDryRun(query, securityContext, semanticLayer),
+    flow: () => handleFlowDryRun(query, securityContext, semanticLayer),
+    retention: () => handleRetentionDryRun(query, securityContext, semanticLayer)
   }
 
-  // Check for flow queries - they have their own dry-run path
-  // Flow queries send { flow: { ... } } and need special SQL generation
-  if (query.flow && query.flow.bindingKey && query.flow.eventDimension) {
-    return handleFlowDryRun(query, securityContext, semanticLayer)
-  }
+  return handlers[mode]()
+}
 
-  // Check for retention queries - they have their own dry-run path
-  // Retention queries send { retention: { ... } } and need special SQL generation
-  if (query.retention && query.retention.bindingKey && query.retention.timeDimension) {
-    return handleRetentionDryRun(query, securityContext, semanticLayer)
-  }
-
-  // Validate query structure and field existence
-  const validation = semanticLayer.validateQuery(query)
-  if (!validation.isValid) {
-    throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
-  }
-
-  // Get all referenced cubes from measures and dimensions
-  const referencedCubes = new Set<string>()
-  
-  query.measures?.forEach(measure => {
-    const cubeName = measure.split('.')[0]
-    referencedCubes.add(cubeName)
-  })
-  
-  query.dimensions?.forEach(dimension => {
-    const cubeName = dimension.split('.')[0]
-    referencedCubes.add(cubeName)
-  })
-
-  // Also include cubes from timeDimensions and filters
-  query.timeDimensions?.forEach(timeDimension => {
-    const cubeName = timeDimension.dimension.split('.')[0]
-    referencedCubes.add(cubeName)
-  })
-
-  // Extract cubes from filters using recursive extraction to handle nested AND/OR
-  query.filters?.forEach(filter => {
-    extractCubeNamesFromFilter(filter, referencedCubes)
-  })
-
-  // Determine if this is a multi-cube query
-  const isMultiCube = referencedCubes.size > 1
-
-  // Generate SQL using the semantic layer compiler
-  let sqlResult
-  if (isMultiCube) {
-    // For multi-cube queries, use the new multi-cube SQL generation
-    sqlResult = await semanticLayer.generateMultiCubeSQL(query, securityContext)
-  } else {
-    // For single cube queries, use the cube-specific SQL generation
-    const cubeName = Array.from(referencedCubes)[0]
-    sqlResult = await semanticLayer.generateSQL(cubeName, query, securityContext)
-  }
+async function handleRegularDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Query')
+  const cubesUsed = collectRegularReferencedCubes(query)
+  const isMultiCube = cubesUsed.length > 1
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
 
   // Create normalized queries array (for Cube.js compatibility)
-  const normalizedQueries = Array.from(referencedCubes).map(cubeName => ({
+  const normalizedQueries = cubesUsed.map(cubeName => ({
     cube: cubeName,
     query: {
       measures: query.measures?.filter(m => m.startsWith(cubeName + '.')) || [],
@@ -196,37 +368,55 @@ export async function handleDryRun(
     }
   }))
 
-  // Generate query analysis for debugging transparency
-  let analysis: QueryAnalysis | undefined
-  try {
-    analysis = semanticLayer.analyzeQuery(query, securityContext)
-  } catch (analysisError) {
-    // Analysis is optional - don't fail the dry-run if it fails
-    console.warn('Query analysis failed:', analysisError)
-  }
-
-  // Build comprehensive response
-  return {
-    queryType: "regularQuery",
-    normalizedQueries,
-    queryOrder: Array.from(referencedCubes),
-    transformedQueries: normalizedQueries,
-    pivotQuery: {
-      query,
-      cubes: Array.from(referencedCubes)
-    },
-    sql: {
-      sql: [sqlResult.sql],
-      params: sqlResult.params || []
-    },
+  return buildDryRunResponse({
+    mode: 'regular',
+    queryType: 'regularQuery',
+    joinType: isMultiCube ? 'multi_cube_join' : 'single_cube',
     complexity: calculateQueryComplexity(query),
-    valid: true,
-    cubesUsed: Array.from(referencedCubes),
-    joinType: isMultiCube ? "multi_cube_join" : "single_cube",
     query,
-    // Query analysis for debugging and transparency
-    analysis
-  }
+    cubesUsed,
+    sqlResult,
+    analysis,
+    normalizedQueries
+  })
+}
+
+async function handleComparisonDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Comparison query')
+  const cubesUsed = collectRegularReferencedCubes(query)
+  const isMultiCube = cubesUsed.length > 1
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+
+  const comparisonTimeDimension = query.timeDimensions?.find(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+
+  const comparisonMetadata = comparisonTimeDimension
+    ? {
+        timeDimension: comparisonTimeDimension.dimension,
+        granularity: comparisonTimeDimension.granularity || 'day',
+        periodCount: comparisonTimeDimension.compareDateRange?.length ?? 0,
+        compareDateRange: comparisonTimeDimension.compareDateRange,
+        sqlPreviewPeriodIndex: 0,
+        note: 'Dry-run SQL preview shows the first comparison period; execution runs all periods and merges results.'
+      }
+    : undefined
+
+  return buildDryRunResponse({
+    mode: 'comparison',
+    queryType: 'comparisonQuery',
+    joinType: isMultiCube ? 'multi_cube_join' : 'single_cube',
+    complexity: calculateQueryComplexity(query),
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: comparisonMetadata
+  })
 }
 
 /**
@@ -453,80 +643,36 @@ async function handleFunnelDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  // Validate funnel query
-  const validation = semanticLayer.validateQuery(query)
-  if (!validation.isValid) {
-    throw new Error(`Funnel query validation failed: ${validation.errors.join(', ')}`)
-  }
-
-  // Get the funnel SQL using the dedicated dry-run method
-  const sqlResult = await semanticLayer.dryRunFunnel(query, securityContext)
-
-  // Extract cube names from the funnel configuration
-  const referencedCubes = new Set<string>()
+  validateDryRunQuery(query, semanticLayer, 'Funnel query')
+  const cubesUsed = collectFunnelReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const funnel = query.funnel!
 
-  // Extract from binding key
-  if (typeof funnel.bindingKey === 'string') {
-    const [cubeName] = funnel.bindingKey.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  } else if (Array.isArray(funnel.bindingKey)) {
-    for (const mapping of funnel.bindingKey) {
-      referencedCubes.add(mapping.cube)
-    }
+  const funnelMetadata = {
+    stepCount: funnel.steps.length,
+    steps: funnel.steps.map((step, index) => ({
+      index,
+      name: step.name,
+      timeToConvert: step.timeToConvert,
+      cube: 'cube' in step ? step.cube : undefined
+    })),
+    bindingKey: funnel.bindingKey,
+    timeDimension: funnel.timeDimension,
+    includeTimeMetrics: funnel.includeTimeMetrics,
+    globalTimeWindow: funnel.globalTimeWindow
   }
 
-  // Extract from time dimension
-  if (typeof funnel.timeDimension === 'string') {
-    const [cubeName] = funnel.timeDimension.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  } else if (Array.isArray(funnel.timeDimension)) {
-    for (const mapping of funnel.timeDimension) {
-      referencedCubes.add(mapping.cube)
-    }
-  }
-
-  // Extract from steps (multi-cube funnels have cube per step)
-  for (const step of funnel.steps) {
-    if ('cube' in step && step.cube) {
-      referencedCubes.add(step.cube)
-    }
-  }
-
-  // Build response structure
-  return {
+  return buildDryRunResponse({
+    mode: 'funnel',
     queryType: 'funnelQuery',
-    normalizedQueries: [], // Funnel is a single unified query
-    queryOrder: Array.from(referencedCubes),
-    transformedQueries: [],
-    pivotQuery: {
-      query,
-      cubes: Array.from(referencedCubes)
-    },
-    sql: {
-      sql: [sqlResult.sql],
-      params: sqlResult.params || []
-    },
-    complexity: 'high', // Funnel queries are inherently complex (CTEs)
-    valid: true,
-    cubesUsed: Array.from(referencedCubes),
     joinType: 'funnel_cte',
+    complexity: 'high',
     query,
-    // Funnel-specific metadata
-    funnel: {
-      stepCount: funnel.steps.length,
-      steps: funnel.steps.map((step, index) => ({
-        index,
-        name: step.name,
-        timeToConvert: step.timeToConvert,
-        cube: 'cube' in step ? step.cube : undefined
-      })),
-      bindingKey: funnel.bindingKey,
-      timeDimension: funnel.timeDimension,
-      includeTimeMetrics: funnel.includeTimeMetrics,
-      globalTimeWindow: funnel.globalTimeWindow
-    }
-  }
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: funnelMetadata
+  })
 }
 
 /**
@@ -538,71 +684,31 @@ async function handleFlowDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  // Validate flow query
-  const validation = semanticLayer.validateQuery(query)
-  if (!validation.isValid) {
-    throw new Error(`Flow query validation failed: ${validation.errors.join(', ')}`)
-  }
-
-  // Get the flow SQL using the dedicated dry-run method
-  const sqlResult = await semanticLayer.dryRunFlow(query, securityContext)
-
-  // Extract cube names from the flow configuration
-  const referencedCubes = new Set<string>()
+  validateDryRunQuery(query, semanticLayer, 'Flow query')
+  const cubesUsed = collectFlowReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const flow = query.flow!
 
-  // Extract from binding key
-  if (typeof flow.bindingKey === 'string') {
-    const [cubeName] = flow.bindingKey.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  } else if (Array.isArray(flow.bindingKey)) {
-    for (const mapping of flow.bindingKey) {
-      referencedCubes.add(mapping.cube)
-    }
+  const flowMetadata = {
+    stepsBefore: flow.stepsBefore,
+    stepsAfter: flow.stepsAfter,
+    bindingKey: flow.bindingKey,
+    timeDimension: flow.timeDimension,
+    eventDimension: flow.eventDimension,
+    startingStep: flow.startingStep
   }
 
-  // Extract from time dimension
-  if (typeof flow.timeDimension === 'string') {
-    const [cubeName] = flow.timeDimension.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  }
-
-  // Extract from event dimension
-  if (typeof flow.eventDimension === 'string') {
-    const [cubeName] = flow.eventDimension.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  }
-
-  // Build response structure
-  return {
+  return buildDryRunResponse({
+    mode: 'flow',
     queryType: 'flowQuery',
-    normalizedQueries: [], // Flow is a single unified query
-    queryOrder: Array.from(referencedCubes),
-    transformedQueries: [],
-    pivotQuery: {
-      measures: [],
-      dimensions: [],
-      timeDimensions: [],
-      order: {},
-      filters: [],
-      queryType: 'flowQuery',
-      joinType: 'flow_cte',
-      query,
-      // Flow-specific metadata
-      flow: {
-        stepsBefore: flow.stepsBefore,
-        stepsAfter: flow.stepsAfter,
-        bindingKey: flow.bindingKey,
-        timeDimension: flow.timeDimension,
-        eventDimension: flow.eventDimension,
-        startingStep: flow.startingStep
-      }
-    },
-    sql: {
-      sql: sqlResult.sql,
-      params: sqlResult.params || []
-    }
-  }
+    joinType: 'flow_cte',
+    complexity: 'high',
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: flowMetadata
+  })
 }
 
 /**
@@ -613,75 +719,32 @@ async function handleRetentionDryRun(
   securityContext: SecurityContext,
   semanticLayer: SemanticLayerCompiler
 ) {
-  // Validate retention query
-  const validation = semanticLayer.validateQuery(query)
-  if (!validation.isValid) {
-    throw new Error(`Retention query validation failed: ${validation.errors.join(', ')}`)
-  }
-
-  // Get the retention SQL using the dedicated dry-run method
-  const sqlResult = await semanticLayer.dryRunRetention(query, securityContext)
-
-  // Extract cube names from the retention configuration
-  const referencedCubes = new Set<string>()
+  validateDryRunQuery(query, semanticLayer, 'Retention query')
+  const cubesUsed = collectRetentionReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
   const retention = query.retention!
 
-  // Extract from time dimension (single dimension for both cohort and activity)
-  if (typeof retention.timeDimension === 'string') {
-    const [cubeName] = retention.timeDimension.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  } else if (retention.timeDimension && typeof retention.timeDimension === 'object') {
-    referencedCubes.add(retention.timeDimension.cube)
+  const retentionMetadata = {
+    timeDimension: retention.timeDimension,
+    bindingKey: retention.bindingKey,
+    granularity: retention.granularity,
+    periods: retention.periods,
+    retentionType: retention.retentionType,
+    breakdownDimensions: retention.breakdownDimensions,
+    segmentCount: retention.breakdownDimensions?.length || 1
   }
 
-  // Extract from binding key
-  if (typeof retention.bindingKey === 'string') {
-    const [cubeName] = retention.bindingKey.split('.')
-    if (cubeName) referencedCubes.add(cubeName)
-  } else if (Array.isArray(retention.bindingKey)) {
-    for (const mapping of retention.bindingKey) {
-      referencedCubes.add(mapping.cube)
-    }
-  }
-
-  // Extract from breakdown dimensions
-  if (retention.breakdownDimensions && Array.isArray(retention.breakdownDimensions)) {
-    for (const dim of retention.breakdownDimensions) {
-      const [cubeName] = dim.split('.')
-      if (cubeName) referencedCubes.add(cubeName)
-    }
-  }
-
-  // Build response structure
-  return {
+  return buildDryRunResponse({
+    mode: 'retention',
     queryType: 'retentionQuery',
-    normalizedQueries: [], // Retention is a single unified query
-    queryOrder: Array.from(referencedCubes),
-    transformedQueries: [],
-    pivotQuery: {
-      measures: [],
-      dimensions: [],
-      timeDimensions: [],
-      order: {},
-      filters: [],
-      queryType: 'retentionQuery',
-      joinType: 'retention_cte',
-      query,
-      // Retention-specific metadata
-      retention: {
-        timeDimension: retention.timeDimension,
-        bindingKey: retention.bindingKey,
-        granularity: retention.granularity,
-        periods: retention.periods,
-        retentionType: retention.retentionType,
-        breakdownDimensions: retention.breakdownDimensions,
-      }
-    },
-    sql: {
-      sql: sqlResult.sql,
-      params: sqlResult.params || []
-    }
-  }
+    joinType: 'retention_cte',
+    complexity: 'high',
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: retentionMetadata
+  })
 }
 
 // ============================================

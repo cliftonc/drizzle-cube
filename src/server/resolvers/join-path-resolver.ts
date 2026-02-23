@@ -1,13 +1,13 @@
 /**
  * JoinPathResolver - Handles join path finding and connectivity analysis
  *
- * Extracted from QueryPlanner for single responsibility.
+ * Extracted from LogicalPlanner for single responsibility.
  * Uses BFS algorithm to find shortest paths between cubes.
  * Includes connectivity caching for performance optimization.
  */
 
-import type { Cube, CubeJoin } from './types'
-import { resolveCubeReference, isolateSqlExpression } from './cube-utils'
+import type { Cube, CubeJoin } from '../types'
+import { resolveCubeReference, isolateSqlExpression } from '../cube-utils'
 import { eq, and, sql, type SQL } from 'drizzle-orm'
 
 /**
@@ -21,6 +21,38 @@ export interface InternalJoinPathStep {
   toCube: string
   /** The join definition from the source cube */
   joinDef: CubeJoin
+}
+
+/**
+ * Score breakdown for a candidate preferred path.
+ */
+export interface PreferredPathScoreBreakdown {
+  preferredJoinBonus: number
+  preferredCubeBonus: number
+  lengthPenalty: number
+}
+
+/**
+ * A scored candidate path considered by preferred-path selection.
+ */
+export interface PreferredPathCandidateScore {
+  path: InternalJoinPathStep[]
+  score: number
+  usesPreferredJoin: boolean
+  preferredCubesInPath: number
+  usesProcessed: boolean
+  scoreBreakdown: PreferredPathScoreBreakdown
+}
+
+/**
+ * Detailed preferred-path selection output for analysis/debug UIs.
+ */
+export interface PreferredPathSelection {
+  strategy: 'preferred' | 'fallbackShortest'
+  preferredCubes: string[]
+  selectedIndex: number
+  candidates: PreferredPathCandidateScore[]
+  selectedPath: InternalJoinPathStep[] | null
 }
 
 /**
@@ -146,18 +178,53 @@ export class JoinPathResolver {
     preferredCubes: Set<string>,
     alreadyProcessed: Set<string> = new Set()
   ): InternalJoinPathStep[] | null {
+    return this.findPathPreferringDetailed(fromCube, toCube, preferredCubes, alreadyProcessed).selectedPath
+  }
+
+  /**
+   * Find preferred path with candidate scoring telemetry.
+   * Used by analysis/debug panels to explain planner decisions.
+   */
+  findPathPreferringDetailed(
+    fromCube: string,
+    toCube: string,
+    preferredCubes: Set<string>,
+    alreadyProcessed: Set<string> = new Set()
+  ): PreferredPathSelection {
     // Find ALL paths WITHOUT excluding already-processed cubes from intermediate steps
     // This allows us to find paths through cubes that are already in the join plan
     // (e.g., going through EmployeeTeams to reach Teams)
     const allPaths = this.findAllPaths(fromCube, toCube, new Set()) // Note: empty exclusion set
     if (allPaths.length === 0) {
       // Fall back to standard path finding with exclusions
-      return this.findPath(fromCube, toCube, alreadyProcessed)
+      const fallbackPath = this.findPath(fromCube, toCube, alreadyProcessed)
+      const fallbackCandidate: PreferredPathCandidateScore[] = fallbackPath
+        ? [{
+            path: fallbackPath,
+            score: 0,
+            usesPreferredJoin: false,
+            preferredCubesInPath: 0,
+            usesProcessed: fallbackPath.some(step => alreadyProcessed.has(step.toCube)),
+            scoreBreakdown: {
+              preferredJoinBonus: 0,
+              preferredCubeBonus: 0,
+              lengthPenalty: 0
+            }
+          }]
+        : []
+
+      return {
+        strategy: 'fallbackShortest',
+        preferredCubes: Array.from(preferredCubes).sort(),
+        selectedIndex: fallbackPath ? 0 : -1,
+        candidates: fallbackCandidate,
+        selectedPath: fallbackPath
+      }
     }
 
     // Score paths with multiple criteria
-    const scored = allPaths.map(path => {
-      let score = 0
+    const scored: PreferredPathCandidateScore[] = allPaths.map(path => {
+      let preferredJoinBonus = 0
 
       // +10 for paths using joins with preferredFor that includes the target cube
       // ONLY apply this bonus when the preferredFor is on the FIRST hop from the starting cube.
@@ -172,24 +239,32 @@ export class JoinPathResolver {
       )
 
       if (usesPreferredJoin) {
-        score += 10
+        preferredJoinBonus = 10
       }
 
       // +1 for each preferred cube (cubes with measures) in the path
       // BUT penalize longer paths to prevent unnecessarily routing through preferred cubes
       // when a shorter direct path exists
       const preferredCubesInPath = path.filter(step => preferredCubes.has(step.toCube)).length
-      score += preferredCubesInPath
+      const preferredCubeBonus = preferredCubesInPath
 
       // Penalize path length: subtract (length - 1) to favor shorter paths
       // This ensures a direct path (length 1, penalty 0) beats a path through
       // preferred cubes (e.g., length 4, +1 for preferred, -3 for length = -2)
-      score -= (path.length - 1)
+      const lengthPenalty = path.length - 1
+      const score = preferredJoinBonus + preferredCubeBonus - lengthPenalty
 
       return {
         path,
         score,
-        usesProcessed: path.some(step => alreadyProcessed.has(step.toCube))
+        usesPreferredJoin,
+        preferredCubesInPath,
+        usesProcessed: path.some(step => alreadyProcessed.has(step.toCube)),
+        scoreBreakdown: {
+          preferredJoinBonus,
+          preferredCubeBonus,
+          lengthPenalty
+        }
       }
     })
 
@@ -200,7 +275,13 @@ export class JoinPathResolver {
       return a.path.length - b.path.length
     })
 
-    return scored[0].path
+    return {
+      strategy: 'preferred',
+      preferredCubes: Array.from(preferredCubes).sort(),
+      selectedIndex: scored.length > 0 ? 0 : -1,
+      candidates: scored,
+      selectedPath: scored[0]?.path ?? null
+    }
   }
 
   /**

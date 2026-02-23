@@ -14,17 +14,17 @@ import {
 import type {
   SemanticQuery,
   QueryContext,
-  QueryPlan,
+  PhysicalQueryPlan,
   PropagatingFilter
-} from './types'
+} from '../types'
 
-import { resolveSqlExpression } from './cube-utils'
-import type { QueryBuilder } from './query-builder'
+import { resolveSqlExpression } from '../cube-utils'
+import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
 
 /**
- * CTE information type extracted from QueryPlan
+ * CTE information type extracted from runtime physical plan context
  */
-export type CTEInfo = NonNullable<QueryPlan['preAggregationCTEs']>[0]
+export type CTEInfo = NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[0]
 
 /**
  * CTEBuilder handles the construction of Common Table Expressions
@@ -34,7 +34,7 @@ export type CTEInfo = NonNullable<QueryPlan['preAggregationCTEs']>[0]
  * preventing the Cartesian product explosion that would occur with direct JOINs.
  */
 export class CTEBuilder {
-  constructor(private queryBuilder: QueryBuilder) {}
+  constructor(private queryBuilder: DrizzleSqlBuilder) {}
 
   /**
    * Build pre-aggregation CTE for hasMany relationships
@@ -50,7 +50,7 @@ export class CTEBuilder {
     cteInfo: CTEInfo,
     query: SemanticQuery,
     context: QueryContext,
-    queryPlan: QueryPlan,
+    queryPlan: PhysicalQueryPlan,
     preBuiltFilterMap?: Map<string, SQL[]>
   ): any {
     const cube = cteInfo.cube
@@ -170,7 +170,12 @@ export class CTEBuilder {
     // add JOINs to the intermediate tables inside the CTE
     // Example: EmployeeTeams CTE needs to JOIN to Employees to get department_id
     if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      for (const intermediate of cteInfo.intermediateJoins) {
+      // Join intermediate tables from CTE-nearest to primary-nearest.
+      // Example path Teams -> EmployeeTeams -> Employees -> Productivity CTE:
+      // we must join Employees first, then EmployeeTeams, otherwise ON clauses
+      // can reference tables that are not yet in scope.
+      const joinChain = [...cteInfo.intermediateJoins].reverse()
+      for (const intermediate of joinChain) {
         const intermediateCubeBase = intermediate.cube.sql(context)
         const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
 
@@ -363,9 +368,9 @@ export class CTEBuilder {
    * - Example: departments.id = employeeteams_agg.department_id (not employee_id!)
    */
   buildCTEJoinCondition(
-    joinCube: QueryPlan['joinCubes'][0],
+    joinCube: PhysicalQueryPlan['joinCubes'][0],
     cteAlias: string,
-    queryPlan: QueryPlan
+    queryPlan: PhysicalQueryPlan
   ): SQL {
     // Find the pre-aggregation info for this join cube
     const cteInfo = queryPlan.preAggregationCTEs?.find((cte: any) => cte.cube.name === joinCube.cube.name)
@@ -380,20 +385,65 @@ export class CTEBuilder {
       // Use the intermediate table's primary-connected column
       // Example: departments.id = employeeteams_agg.department_id
       const firstIntermediate = cteInfo.intermediateJoins[0]
-      const primaryCol = cteInfo.joinKeys[0]?.sourceColumnObj
+      const primaryCol = this.resolveCTEJoinSourceColumn(
+        cteInfo.joinKeys[0],
+        cteInfo,
+        queryPlan
+      )
       const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(firstIntermediate.primaryJoinColumn.name)}`
       conditions.push(eq(primaryCol as any, cteCol))
     } else {
       // Standard path: build join conditions using join keys
       for (const joinKey of cteInfo.joinKeys) {
-        // Use the stored source column object if available, otherwise fall back to identifier
-        const sourceCol = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
+        const sourceCol = this.resolveCTEJoinSourceColumn(joinKey, cteInfo, queryPlan)
         const cteCol = sql`${sql.identifier(cteAlias)}.${sql.identifier(joinKey.targetColumn)}` // CTE column
         conditions.push(eq(sourceCol as any, cteCol))
       }
     }
 
     return conditions.length === 1 ? conditions[0] : and(...conditions)!
+  }
+
+  /**
+   * Resolve source-side join expression for CTE joins.
+   *
+   * When two cubes are both materialized as CTEs in the same query, join keys can
+   * still point to the original table column object (e.g. departments.id). In that
+   * case the table is no longer present in FROM/JOIN, so rewrite to the upstream CTE
+   * alias column (e.g. departments_agg.id).
+   */
+  private resolveCTEJoinSourceColumn(
+    joinKey: CTEInfo['joinKeys'][number] | undefined,
+    currentCteInfo: CTEInfo,
+    queryPlan: PhysicalQueryPlan
+  ): SQL | any {
+    if (!joinKey) {
+      throw new Error(
+        `Missing join key while building CTE join condition for '${currentCteInfo.cube.name}'`
+      )
+    }
+
+    const defaultSource = joinKey.sourceColumnObj || sql.identifier(joinKey.sourceColumn)
+    if (!joinKey.sourceColumnObj || !queryPlan.preAggregationCTEs) {
+      return defaultSource
+    }
+
+    for (const candidate of queryPlan.preAggregationCTEs) {
+      if (candidate.cube.name === currentCteInfo.cube.name) {
+        continue
+      }
+
+      for (const [dimensionName, dimension] of Object.entries(candidate.cube.dimensions || {}) as Array<[string, any]>) {
+        if (typeof dimension.sql === 'function') {
+          continue
+        }
+        if (dimension.sql === joinKey.sourceColumnObj) {
+          return sql`${sql.identifier(candidate.cteAlias)}.${sql.identifier(dimensionName)}`
+        }
+      }
+    }
+
+    return defaultSource
   }
 
   /**

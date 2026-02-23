@@ -880,6 +880,11 @@ export const enhancedProducts = [
   { name: 'Office Chair', category: 'Furniture', sku: 'CHR-ERG-BLK', price: 299.99, organisationId: 1 },
   { name: 'Standing Desk', category: 'Furniture', sku: 'DSK-STD-ADJ', price: 599.99, organisationId: 1 },
 
+  // Organization 1 - Non-overlapping key products (sparse data testing)
+  { name: 'E-Book Bundle', category: 'Digital', sku: 'EBK-BDL-01', price: 29.99, organisationId: 1 },          // productId 11 - Sales only, NO Inventory
+  { name: 'Prototype Widget', category: 'Warehouse Only', sku: 'PTY-WDG-01', price: 0.00, organisationId: 1 },  // productId 12 - Inventory only, NO Sales
+  { name: 'Spare Parts Kit', category: 'Warehouse Only', sku: 'SPR-KIT-01', price: 0.00, organisationId: 1 },   // productId 13 - Inventory only, NO Sales
+
   // Organization 2 - Different products
   { name: 'Tablet Pro', category: 'Electronics', sku: 'TAB-PRO-11', price: 899.99, organisationId: 2 },
   { name: 'Headphones', category: 'Electronics', sku: 'HPH-NC-PRO', price: 299.99, organisationId: 2 },
@@ -910,14 +915,17 @@ export const enhancedSales = [
   { productId: 9, quantity: 8, revenue: 2399.92, saleDate: new Date('2024-01-20T11:00:00Z'), organisationId: 1 },
   { productId: 10, quantity: 2, revenue: 1199.98, saleDate: new Date('2024-02-25T14:00:00Z'), organisationId: 1 },
 
-  // Organization 2 - Sales
-  { productId: 11, quantity: 10, revenue: 8999.90, saleDate: new Date('2024-01-08T10:00:00Z'), organisationId: 2 },
-  { productId: 12, quantity: 12, revenue: 3599.88, saleDate: new Date('2024-01-18T13:00:00Z'), organisationId: 2 },
-  { productId: 13, quantity: 6, revenue: 539.94, saleDate: new Date('2024-02-12T09:30:00Z'), organisationId: 2 },
+  // Organization 1 - Non-overlapping: E-Book Bundle (productId 11) has sales but NO inventory
+  { productId: 11, quantity: 50, revenue: 1499.50, saleDate: new Date('2024-02-01T09:00:00Z'), organisationId: 1 },
 
-  // Organization 3 - Sales
-  { productId: 14, quantity: 30, revenue: 599.70, saleDate: new Date('2024-01-22T11:00:00Z'), organisationId: 3 },
-  { productId: 15, quantity: 40, revenue: 599.60, saleDate: new Date('2024-02-08T10:30:00Z'), organisationId: 3 },
+  // Organization 2 - Sales (productIds shifted +3 for new org-1 products)
+  { productId: 14, quantity: 10, revenue: 8999.90, saleDate: new Date('2024-01-08T10:00:00Z'), organisationId: 2 },
+  { productId: 15, quantity: 12, revenue: 3599.88, saleDate: new Date('2024-01-18T13:00:00Z'), organisationId: 2 },
+  { productId: 16, quantity: 6, revenue: 539.94, saleDate: new Date('2024-02-12T09:30:00Z'), organisationId: 2 },
+
+  // Organization 3 - Sales (productIds shifted +3)
+  { productId: 17, quantity: 30, revenue: 599.70, saleDate: new Date('2024-01-22T11:00:00Z'), organisationId: 3 },
+  { productId: 18, quantity: 40, revenue: 599.60, saleDate: new Date('2024-02-08T10:30:00Z'), organisationId: 3 },
 
   // Edge cases - high volume sales
   { productId: 2, quantity: 100, revenue: 2999.00, saleDate: new Date('2024-03-01T10:00:00Z'), organisationId: 1 },
@@ -951,14 +959,18 @@ export const enhancedInventory = [
   { productId: 9, warehouse: 'Warehouse D', stockLevel: 40, organisationId: 1 },
   { productId: 10, warehouse: 'Warehouse D', stockLevel: 15, organisationId: 1 },
 
-  // Organization 2 - Warehouse E
-  { productId: 11, warehouse: 'Warehouse E', stockLevel: 60, organisationId: 2 },
-  { productId: 12, warehouse: 'Warehouse E', stockLevel: 80, organisationId: 2 },
-  { productId: 13, warehouse: 'Warehouse E', stockLevel: 45, organisationId: 2 },
+  // Organization 1 - Non-overlapping: Prototype Widget & Spare Parts Kit have inventory but NO sales
+  { productId: 12, warehouse: 'Warehouse A', stockLevel: 25, organisationId: 1 },
+  { productId: 13, warehouse: 'Warehouse A', stockLevel: 60, organisationId: 1 },
 
-  // Organization 3 - Warehouse F
-  { productId: 14, warehouse: 'Warehouse F', stockLevel: 200, organisationId: 3 },
-  { productId: 15, warehouse: 'Warehouse F', stockLevel: 350, organisationId: 3 },
+  // Organization 2 - Warehouse E (productIds shifted +3)
+  { productId: 14, warehouse: 'Warehouse E', stockLevel: 60, organisationId: 2 },
+  { productId: 15, warehouse: 'Warehouse E', stockLevel: 80, organisationId: 2 },
+  { productId: 16, warehouse: 'Warehouse E', stockLevel: 45, organisationId: 2 },
+
+  // Organization 3 - Warehouse F (productIds shifted +3)
+  { productId: 17, warehouse: 'Warehouse F', stockLevel: 200, organisationId: 3 },
+  { productId: 18, warehouse: 'Warehouse F', stockLevel: 350, organisationId: 3 },
 
   // Edge cases - out of stock (0 inventory)
   { productId: 1, warehouse: 'Warehouse C', stockLevel: 0, organisationId: 1 },

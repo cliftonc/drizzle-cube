@@ -14,14 +14,14 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
-import type { DatabaseAdapter } from './adapters/base-adapter'
+import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   FlowQueryConfig,
   FlowResultRow,
   SankeyNode,
   SankeyLink,
   FlowValidationResult,
-} from './types/flow'
+} from '../types/flow'
 import type {
   Cube,
   QueryContext,
@@ -29,10 +29,10 @@ import type {
   Filter,
   FilterCondition,
   LogicalFilter,
-} from './types'
-import { resolveSqlExpression } from './cube-utils'
-import { FilterBuilder } from './builders/filter-builder'
-import { DateTimeBuilder } from './builders/date-time-builder'
+} from '../types'
+import { resolveSqlExpression } from '../cube-utils'
+import { FilterBuilder } from './filter-builder'
+import { DateTimeBuilder } from './date-time-builder'
 
 /**
  * Type for CTE objects created by db.$with()

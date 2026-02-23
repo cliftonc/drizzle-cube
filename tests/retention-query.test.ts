@@ -22,7 +22,7 @@ const defaultDateRange: RetentionDateRange = {
   start: '2023-01-01',
   end: '2025-12-31'
 }
-import { RetentionQueryBuilder } from '../src/server/retention-query-builder'
+import { RetentionQueryBuilder } from '../src/server/builders/retention-query-builder'
 import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'
 import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'

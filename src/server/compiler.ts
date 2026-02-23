@@ -23,9 +23,8 @@ import type {
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
-import { QueryPlanner } from './query-planner'
 import { formatSqlString } from '../adapters/utils'
-import { CalculatedMeasureResolver } from './calculated-measure-resolver'
+import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
 
 export class SemanticLayerCompiler {
@@ -81,6 +80,35 @@ export class SemanticLayerCompiler {
    */
   hasExecutor(): boolean {
     return !!this.dbExecutor
+  }
+
+  /**
+   * Get configured executor or throw.
+   */
+  private requireExecutor(): DatabaseExecutor {
+    if (!this.dbExecutor) {
+      throw new Error('Database executor not configured')
+    }
+    return this.dbExecutor
+  }
+
+  /**
+   * Create a query executor with optional cache integration.
+   */
+  private createQueryExecutor(withCache: boolean = false): QueryExecutor {
+    const dbExecutor = this.requireExecutor()
+    return new QueryExecutor(dbExecutor, withCache ? this.cacheConfig : undefined)
+  }
+
+  /**
+   * Format SQL result using current engine dialect.
+   */
+  private formatSqlResult(result: { sql: string; params?: any[] }): { sql: string; params?: any[] } {
+    const engineType = this.requireExecutor().getEngineType()
+    return {
+      sql: formatSqlString(result.sql, engineType),
+      params: result.params
+    }
   }
 
   /**
@@ -195,11 +223,7 @@ export class SemanticLayerCompiler {
     securityContext: SecurityContext,
     options?: ExecutionOptions
   ): Promise<QueryResult> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor, this.cacheConfig)
+    const executor = this.createQueryExecutor(true)
     return executor.execute(this.cubes, query, securityContext, options)
   }
 
@@ -421,19 +445,9 @@ export class SemanticLayerCompiler {
       throw new Error(`Cube '${cubeName}' not found`)
     }
 
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
+    const executor = this.createQueryExecutor()
     const result = await executor.generateSQL(cube, query, securityContext)
-    
-    // Format the SQL using the appropriate dialect
-    const engineType = this.dbExecutor.getEngineType()
-    return {
-      sql: formatSqlString(result.sql, engineType),
-      params: result.params
-    }
+    return this.formatSqlResult(result)
   }
 
   /**
@@ -443,19 +457,21 @@ export class SemanticLayerCompiler {
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
+    const executor = this.createQueryExecutor()
     const result = await executor.generateMultiCubeSQL(this.cubes, query, securityContext)
-    
-    // Format the SQL using the appropriate dialect
-    const engineType = this.dbExecutor.getEngineType()
-    return {
-      sql: formatSqlString(result.sql, engineType),
-      params: result.params
-    }
+    return this.formatSqlResult(result)
+  }
+
+  /**
+   * Canonical dry-run SQL generation entrypoint for all query modes.
+   */
+  async dryRun(
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    const executor = this.createQueryExecutor()
+    const result = await executor.dryRunSQL(this.cubes, query, securityContext)
+    return this.formatSqlResult(result)
   }
 
   /**
@@ -466,19 +482,7 @@ export class SemanticLayerCompiler {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
-    const result = await executor.dryRunFunnel(this.cubes, query, securityContext)
-
-    // Format the SQL using the appropriate dialect
-    const engineType = this.dbExecutor.getEngineType()
-    return {
-      sql: formatSqlString(result.sql, engineType),
-      params: result.params
-    }
+    return this.dryRun(query, securityContext)
   }
 
   /**
@@ -489,19 +493,7 @@ export class SemanticLayerCompiler {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
-    const result = await executor.dryRunFlow(this.cubes, query, securityContext)
-
-    // Format the SQL using the appropriate dialect
-    const engineType = this.dbExecutor.getEngineType()
-    return {
-      sql: formatSqlString(result.sql, engineType),
-      params: result.params
-    }
+    return this.dryRun(query, securityContext)
   }
 
   /**
@@ -512,19 +504,7 @@ export class SemanticLayerCompiler {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
-    const result = await executor.dryRunRetention(this.cubes, query, securityContext)
-
-    // Format the SQL using the appropriate dialect
-    const engineType = this.dbExecutor.getEngineType()
-    return {
-      sql: formatSqlString(result.sql, engineType),
-      params: result.params
-    }
+    return this.dryRun(query, securityContext)
   }
 
   /**
@@ -537,11 +517,7 @@ export class SemanticLayerCompiler {
     securityContext: SecurityContext,
     options?: ExplainOptions
   ): Promise<ExplainResult> {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const executor = new QueryExecutor(this.dbExecutor)
+    const executor = this.createQueryExecutor()
     return executor.explainQuery(this.cubes, query, securityContext, options)
   }
 
@@ -603,19 +579,41 @@ export class SemanticLayerCompiler {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): QueryAnalysis {
-    if (!this.dbExecutor) {
-      throw new Error('Database executor not configured')
-    }
-
-    const planner = new QueryPlanner()
-    const ctx = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
-
-    return planner.analyzeQueryPlan(this.cubes, query, ctx)
+    const executor = this.createQueryExecutor(true)
+    return executor.analyzeQuery(this.cubes, query, securityContext)
   }
+}
+
+type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+
+function getActiveValidationModes(query: SemanticQuery): Exclude<ValidationMode, 'regular'>[] {
+  const activeModes: Exclude<ValidationMode, 'regular'>[] = []
+
+  if (query.timeDimensions?.some(td => td.compareDateRange && td.compareDateRange.length >= 2)) {
+    activeModes.push('comparison')
+  }
+
+  if (query.funnel !== undefined && query.funnel.steps?.length >= 2) {
+    activeModes.push('funnel')
+  }
+
+  if (query.flow !== undefined && query.flow.startingStep !== undefined && query.flow.eventDimension !== undefined) {
+    activeModes.push('flow')
+  }
+
+  if (
+    query.retention !== undefined &&
+    query.retention.timeDimension != null &&
+    query.retention.bindingKey != null
+  ) {
+    activeModes.push('retention')
+  }
+
+  if (activeModes.length === 0) {
+    return []
+  }
+
+  return activeModes
 }
 
 /**
@@ -627,79 +625,80 @@ export function validateQueryAgainstCubes(
   query: SemanticQuery
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
-
-  // Check for funnel queries - these have their own validation path
-  // Skip standard validation for funnel queries (validated separately in executor)
-  if (query.funnel !== undefined && query.funnel.steps?.length >= 2) {
-    // Basic funnel validation here - full validation happens in executor
-    // Just ensure the cube referenced by bindingKey exists
-    const bindingKey = query.funnel.bindingKey
-    if (typeof bindingKey === 'string') {
-      const [cubeName] = bindingKey.split('.')
-      if (cubeName && !cubes.has(cubeName)) {
-        errors.push(`Funnel binding key cube not found: ${cubeName}`)
-      }
-    } else if (Array.isArray(bindingKey)) {
-      for (const mapping of bindingKey) {
-        if (!cubes.has(mapping.cube)) {
-          errors.push(`Funnel binding key cube not found: ${mapping.cube}`)
-        }
-      }
-    }
-    return { isValid: errors.length === 0, errors }
+  const activeModes = getActiveValidationModes(query)
+  if (activeModes.length > 1) {
+    errors.push(`Query contains multiple query modes: ${activeModes.join(', ')}`)
+    return { isValid: false, errors }
   }
 
-  // Check for flow queries - these have their own validation path
-  // Skip standard validation for flow queries (validated separately in executor)
-  if (query.flow !== undefined && query.flow.startingStep !== undefined && query.flow.eventDimension !== undefined) {
-    // Basic flow validation here - full validation happens in executor
-    // Just ensure the cube referenced by bindingKey exists
-    const bindingKey = query.flow.bindingKey
-    if (typeof bindingKey === 'string') {
-      const [cubeName] = bindingKey.split('.')
+  const specialValidators: Record<Exclude<ValidationMode, 'regular' | 'comparison'>, () => void> = {
+    funnel: () => {
+      // Basic funnel validation here - full validation happens in executor
+      // Just ensure the cube referenced by bindingKey exists
+      const bindingKey = query.funnel!.bindingKey
+      if (typeof bindingKey === 'string') {
+        const [cubeName] = bindingKey.split('.')
+        if (cubeName && !cubes.has(cubeName)) {
+          errors.push(`Funnel binding key cube not found: ${cubeName}`)
+        }
+      } else if (Array.isArray(bindingKey)) {
+        for (const mapping of bindingKey) {
+          if (!cubes.has(mapping.cube)) {
+            errors.push(`Funnel binding key cube not found: ${mapping.cube}`)
+          }
+        }
+      }
+    },
+    flow: () => {
+      // Basic flow validation here - full validation happens in executor
+      // Just ensure the cube referenced by bindingKey exists
+      const bindingKey = query.flow!.bindingKey
+      if (typeof bindingKey === 'string') {
+        const [cubeName] = bindingKey.split('.')
+        if (cubeName && !cubes.has(cubeName)) {
+          errors.push(`Flow binding key cube not found: ${cubeName}`)
+        }
+      }
+    },
+    retention: () => {
+      const retention = query.retention!
+
+      // Validate cube from time dimension exists
+      const cubeName = extractCubeFromRetentionTimeDimension(retention.timeDimension)
       if (cubeName && !cubes.has(cubeName)) {
-        errors.push(`Flow binding key cube not found: ${cubeName}`)
+        errors.push(`Retention cube not found: ${cubeName}`)
+      }
+
+      // Validate binding key cube(s) exist
+      const bindingKey = retention.bindingKey
+      if (typeof bindingKey === 'string') {
+        const [bkCubeName] = bindingKey.split('.')
+        if (bkCubeName && !cubes.has(bkCubeName)) {
+          errors.push(`Retention binding key cube not found: ${bkCubeName}`)
+        }
+      } else if (Array.isArray(bindingKey)) {
+        for (const mapping of bindingKey) {
+          if (!cubes.has(mapping.cube)) {
+            errors.push(`Retention binding key cube not found: ${mapping.cube}`)
+          }
+        }
+      }
+
+      // Validate breakdown dimension cubes exist
+      if (retention.breakdownDimensions && Array.isArray(retention.breakdownDimensions)) {
+        for (const dim of retention.breakdownDimensions) {
+          const [bdCubeName] = dim.split('.')
+          if (bdCubeName && !cubes.has(bdCubeName)) {
+            errors.push(`Retention breakdown cube not found: ${bdCubeName}`)
+          }
+        }
       }
     }
-    return { isValid: errors.length === 0, errors }
   }
 
-  // Check for retention queries - these have their own validation path
-  // Skip standard validation for retention queries (validated separately in executor)
-  if (query.retention !== undefined &&
-      query.retention.timeDimension != null &&
-      query.retention.bindingKey != null) {
-    // Validate cube from time dimension exists
-    const cubeName = extractCubeFromRetentionTimeDimension(query.retention.timeDimension)
-    if (cubeName && !cubes.has(cubeName)) {
-      errors.push(`Retention cube not found: ${cubeName}`)
-    }
-
-    // Validate binding key cube(s) exist
-    const bindingKey = query.retention.bindingKey
-    if (typeof bindingKey === 'string') {
-      const [bkCubeName] = bindingKey.split('.')
-      if (bkCubeName && !cubes.has(bkCubeName)) {
-        errors.push(`Retention binding key cube not found: ${bkCubeName}`)
-      }
-    } else if (Array.isArray(bindingKey)) {
-      for (const mapping of bindingKey) {
-        if (!cubes.has(mapping.cube)) {
-          errors.push(`Retention binding key cube not found: ${mapping.cube}`)
-        }
-      }
-    }
-
-    // Validate breakdown dimension cubes exist
-    if (query.retention.breakdownDimensions && Array.isArray(query.retention.breakdownDimensions)) {
-      for (const dim of query.retention.breakdownDimensions) {
-        const [bdCubeName] = dim.split('.')
-        if (bdCubeName && !cubes.has(bdCubeName)) {
-          errors.push(`Retention breakdown cube not found: ${bdCubeName}`)
-        }
-      }
-    }
-
+  if (activeModes.length === 1 && activeModes[0] !== 'comparison') {
+    const mode = activeModes[0]
+    specialValidators[mode as keyof typeof specialValidators]()
     return { isValid: errors.length === 0, errors }
   }
 
@@ -860,4 +859,3 @@ function extractCubeFromRetentionTimeDimension(
   }
   return timeDim.cube
 }
-

@@ -28,14 +28,22 @@ import { getTestSchema } from './test-database'
  * This allows existing tests to work while we transition to fully dynamic approach
  */
 export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cube<any>>> {
-  const { testEmployeesCube, testDepartmentsCube, testProductivityCube, testTimeEntriesCube, testTeamsCube } = await createTestCubesForCurrentDatabase()
+  const {
+    testEmployeesCube,
+    testDepartmentsCube,
+    testProductivityCube,
+    testTimeEntriesCube,
+    testTeamsCube,
+    testEmployeeTeamsCube
+  } = await createTestCubesForCurrentDatabase()
 
   const allCubes = new Map([
     ['Employees', testEmployeesCube],
     ['Departments', testDepartmentsCube],
     ['Productivity', testProductivityCube],
     ['TimeEntries', testTimeEntriesCube],
-    ['Teams', testTeamsCube]
+    ['Teams', testTeamsCube],
+    ['EmployeeTeams', testEmployeeTeamsCube]
   ])
 
   if (!cubeNames) {
@@ -62,6 +70,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   testProductivityCube: Cube<any>
   testTimeEntriesCube: Cube<any>
   testTeamsCube: Cube<any>
+  testEmployeeTeamsCube: Cube<any>
 }> {
   const { employees, departments, productivity, timeEntries, teams, employeeTeams, dbTrue, dbFalse } = await getTestSchema()
 
@@ -71,6 +80,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
   let testProductivityCube: Cube<any>
   let testTimeEntriesCube: Cube<any>
   let testTeamsCube: Cube<any>
+  let testEmployeeTeamsCube: Cube<any>
   
   // Create employees cube with correct schema
   testEmployeesCube = defineCube('Employees', {
@@ -113,6 +123,14 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
           securitySql: (securityContext) =>
             eq(timeEntries.organisationId, securityContext.organisationId)
         }
+      },
+      EmployeeTeams: {
+        targetCube: () => testEmployeeTeamsCube,
+        relationship: 'hasMany',
+        preferredFor: ['Teams'],
+        on: [
+          { source: employees.id, target: employeeTeams.employeeId }
+        ]
       },
       // Many-to-many relationship to Teams through employeeTeams junction table
       Teams: {
@@ -778,6 +796,17 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
       where: eq(teams.organisationId, ctx.securityContext.organisationId)
     }),
 
+    joins: {
+      EmployeeTeams: {
+        targetCube: () => testEmployeeTeamsCube,
+        relationship: 'hasMany',
+        preferredFor: ['Employees', 'Productivity', 'TimeEntries'],
+        on: [
+          { source: teams.id, target: employeeTeams.teamId }
+        ]
+      }
+    },
+
     dimensions: {
       id: {
         name: 'id',
@@ -817,11 +846,94 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     }
   })
 
+  testEmployeeTeamsCube = defineCube('EmployeeTeams', {
+    title: 'Employee Team Membership Analytics',
+    description: 'Junction table between employees and teams',
+
+    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      from: employeeTeams,
+      where: eq(employeeTeams.organisationId, ctx.securityContext.organisationId)
+    }),
+
+    joins: {
+      Employees: {
+        targetCube: () => testEmployeesCube,
+        relationship: 'belongsTo',
+        on: [
+          { source: employeeTeams.employeeId, target: employees.id }
+        ]
+      },
+      Teams: {
+        targetCube: () => testTeamsCube,
+        relationship: 'belongsTo',
+        on: [
+          { source: employeeTeams.teamId, target: teams.id }
+        ]
+      }
+    },
+
+    dimensions: {
+      id: {
+        name: 'id',
+        title: 'Membership ID',
+        type: 'number',
+        sql: employeeTeams.id,
+        primaryKey: true
+      },
+      employeeId: {
+        name: 'employeeId',
+        title: 'Employee ID',
+        type: 'number',
+        sql: employeeTeams.employeeId
+      },
+      teamId: {
+        name: 'teamId',
+        title: 'Team ID',
+        type: 'number',
+        sql: employeeTeams.teamId
+      },
+      role: {
+        name: 'role',
+        title: 'Role',
+        type: 'string',
+        sql: employeeTeams.role
+      },
+      joinedAt: {
+        name: 'joinedAt',
+        title: 'Joined At',
+        type: 'time',
+        sql: employeeTeams.joinedAt
+      }
+    },
+
+    measures: {
+      count: {
+        name: 'count',
+        title: 'Total Team Memberships',
+        type: 'count',
+        sql: employeeTeams.id
+      },
+      distinctEmployees: {
+        name: 'distinctEmployees',
+        title: 'Unique Employees In Teams',
+        type: 'countDistinct',
+        sql: employeeTeams.employeeId
+      },
+      distinctTeams: {
+        name: 'distinctTeams',
+        title: 'Unique Teams',
+        type: 'countDistinct',
+        sql: employeeTeams.teamId
+      }
+    }
+  })
+
   return {
     testEmployeesCube,
     testDepartmentsCube,
     testProductivityCube,
     testTimeEntriesCube,
-    testTeamsCube
+    testTeamsCube,
+    testEmployeeTeamsCube
   }
 }

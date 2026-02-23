@@ -8,8 +8,41 @@ export { SemanticLayerCompiler } from './compiler'
 export { QueryExecutor } from './executor'
 
 // Export unified query building
-export { QueryPlanner } from './query-planner'
-export { QueryBuilder } from './query-builder'
+export { LogicalPlanner } from './logical-plan'
+export { DrizzleSqlBuilder } from './physical-plan'
+export {
+  CTEBuilder,
+  ComparisonQueryBuilder,
+  FunnelQueryBuilder,
+  FlowQueryBuilder,
+  RetentionQueryBuilder
+} from './builders'
+export {
+  CalculatedMeasureResolver,
+  JoinPathResolver
+} from './resolvers'
+
+// Export logical plan (multi-stage pipeline)
+export {
+  LogicalPlanBuilder,
+  IdentityOptimiser,
+  OptimiserPipeline
+} from './logical-plan'
+export type {
+  LogicalNode,
+  QueryNode,
+  SimpleSource,
+  CTEPreAggregate,
+  CubeRef,
+  MeasureRef,
+  DimensionRef,
+  LogicalPlanWithAnalysis,
+  PlanOptimiser,
+  OptimiserContext
+} from './logical-plan'
+
+// Export physical plan builder (logical -> Drizzle SQL)
+export { DrizzlePlanBuilder } from './physical-plan'
 
 // Export database executors
 export {

@@ -542,14 +542,18 @@ export interface AnalysisResultsPanelProps {
   funnelServerQuery?: unknown
   /**
    * Unified debug data for funnel queries (SQL, analysis, loading/error state).
-   * Contains the CTE-based SQL for the entire funnel.
+   * Uses common dry-run fields across all analysis modes.
    */
   funnelDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
+    queryType?: string | null
+    joinType?: string | null
+    cubesUsed?: string[]
+    modeMetadata?: unknown
     loading: boolean
     error: Error | null
-    funnelMetadata?: unknown
   } | null
   /**
    * The actual server flow query { flow: {...} } sent to the server.
@@ -558,14 +562,18 @@ export interface AnalysisResultsPanelProps {
   flowServerQuery?: unknown
   /**
    * Unified debug data for flow queries (SQL, analysis, loading/error state).
-   * Contains the CTE-based SQL for the flow analysis.
+   * Uses common dry-run fields across all analysis modes.
    */
   flowDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
+    queryType?: string | null
+    joinType?: string | null
+    cubesUsed?: string[]
+    modeMetadata?: unknown
     loading: boolean
     error: Error | null
-    flowMetadata?: unknown
   } | null
   /**
    * In retention mode, the actual server query { retention: {...} } sent to the API.
@@ -574,14 +582,18 @@ export interface AnalysisResultsPanelProps {
   retentionServerQuery?: unknown
   /**
    * Unified debug data for retention queries (SQL, analysis, loading/error state).
-   * Contains the CTE-based SQL for the retention analysis.
+   * Uses common dry-run fields across all analysis modes.
    */
   retentionDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
+    queryType?: string | null
+    joinType?: string | null
+    cubesUsed?: string[]
+    modeMetadata?: unknown
     loading: boolean
     error: Error | null
-    retentionMetadata?: unknown
   } | null
   /**
    * Retention chart data (cohort × period matrix) for rendering.

@@ -15,7 +15,10 @@ interface QueryAnalysisPanelProps {
  * Format reason string for display
  */
 function formatReason(reason: string): string {
-  return reason.replace(/_/g, ' ')
+  return reason
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
 
 /**
@@ -45,6 +48,33 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
   const SuccessIcon = getIcon('success')
   const ErrorIcon = getIcon('error')
 
+  const summaryCards = [
+    {
+      label: 'Type',
+      value: formatReason(analysis.querySummary.queryType),
+    },
+    {
+      label: 'Cubes',
+      value: String(analysis.cubeCount),
+    },
+    {
+      label: 'Joins',
+      value: String(analysis.querySummary.joinCount),
+    },
+    {
+      label: 'CTEs',
+      value: String(analysis.querySummary.cteCount),
+    },
+    ...(analysis.querySummary.measureStrategy
+      ? [
+          {
+            label: 'Strategy',
+            value: formatReason(analysis.querySummary.measureStrategy),
+          },
+        ]
+      : []),
+  ]
+
   return (
     <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded-lg dc:p-4 dc:space-y-4">
       {/* Query Summary Section */}
@@ -53,25 +83,16 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
           <InfoIcon className="dc:w-4 dc:h-4 dc:mr-2" />
           Query Summary
         </h4>
-        <div className="dc:grid dc:grid-cols-2 dc:md:grid-cols-4 dc:gap-2 dc:text-xs">
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Type:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">
-              {formatReason(analysis.querySummary.queryType)}
-            </span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Cubes:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.cubeCount}</span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">Joins:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.querySummary.joinCount}</span>
-          </div>
-          <div className="bg-dc-surface dc:p-2 dc:rounded">
-            <span className="text-dc-text-muted">CTEs:</span>
-            <span className="dc:ml-1 dc:font-medium text-dc-text">{analysis.querySummary.cteCount}</span>
-          </div>
+        <div
+          className="dc:grid dc:gap-2 dc:text-xs"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+        >
+          {summaryCards.map(card => (
+            <div key={card.label} className="bg-dc-surface dc:p-2 dc:rounded">
+              <span className="text-dc-text-muted">{card.label}:</span>
+              <span className="dc:ml-1 dc:font-medium text-dc-text">{card.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -168,6 +189,47 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                       </div>
                     ))}
                   </div>
+                )}
+                {jp.selection && (
+                  <div className="dc:mt-2 dc:ml-2 dc:text-xs text-dc-text-muted">
+                    <span className="dc:font-medium text-dc-text">Selection:</span>
+                    <span>{` ${formatReason(jp.selection.strategy)}`}</span>
+                    {typeof jp.selection.selectedRank === 'number' && (
+                      <span>{`, selected #${jp.selection.selectedRank}`}</span>
+                    )}
+                    {typeof jp.selection.selectedScore === 'number' && (
+                      <span>{`, score ${jp.selection.selectedScore}`}</span>
+                    )}
+                  </div>
+                )}
+                {jp.selection?.candidates && jp.selection.candidates.length > 0 && (
+                  <details className="dc:mt-2">
+                    <summary className="dc:text-xs text-dc-text-muted dc:cursor-pointer hover:text-dc-text">
+                      {`Path scoring candidates (${jp.selection.candidates.length})`}
+                    </summary>
+                    <div className="dc:mt-1 dc:ml-2 dc:space-y-1">
+                      {jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0 && (
+                        <div className="dc:text-xs text-dc-text-muted">
+                          preferred cubes: {jp.selection.preferredCubes.join(', ')}
+                        </div>
+                      )}
+                      {jp.selection.candidates.slice(0, 5).map(candidate => (
+                        <div key={candidate.rank} className="dc:text-xs text-dc-text-muted">
+                          <span className="dc:font-medium text-dc-text">
+                            #{candidate.rank}
+                          </span>
+                          <span>{` score ${candidate.score}`}</span>
+                          <span>{` (preferred+${candidate.scoreBreakdown.preferredJoinBonus + candidate.scoreBreakdown.preferredCubeBonus}, penalty-${candidate.scoreBreakdown.lengthPenalty})`}</span>
+                          <span>{`: `}</span>
+                          <span>
+                            {candidate.path.length > 0
+                              ? `${candidate.path[0].fromCube} → ${candidate.path.map(step => step.toCube).join(' → ')}`
+                              : analysis.primaryCube.selectedCube}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
                 {!jp.pathFound && jp.error && (
                   <p className="dc:text-xs text-dc-error dc:mt-1">{jp.error}</p>
