@@ -906,5 +906,25 @@ describe('LogicalPlanner - New Join System', () => {
       expect(path!.length).toBe(2)
       expect(path!.some(step => step.toCube === 'JunctionCube')).toBe(true)
     })
+
+    it('should expose candidate scoring details for analysis UIs', () => {
+      const details = joinResolver.findPathPreferringDetailed(
+        'Teams',
+        'Employees',
+        new Set(['Teams', 'Employees', 'EmployeeTeams']),
+        new Set()
+      )
+
+      expect(details.strategy).toBe('preferred')
+      expect(details.preferredCubes).toContain('EmployeeTeams')
+      expect(details.selectedIndex).toBeGreaterThanOrEqual(0)
+      expect(details.candidates.length).toBeGreaterThan(0)
+      expect(details.selectedPath).toBeDefined()
+
+      const topCandidate = details.candidates[0]
+      expect(typeof topCandidate.score).toBe('number')
+      expect(topCandidate.scoreBreakdown).toBeDefined()
+      expect(topCandidate.scoreBreakdown.lengthPenalty).toBeGreaterThanOrEqual(0)
+    })
   })
 })

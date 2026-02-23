@@ -91,7 +91,7 @@ export class LogicalPlanBuilder {
 
     const cubesToJoin = cubeNames.filter(name => name !== primaryCubeName)
     const joinPaths = cubesToJoin.map(targetCube =>
-      this.queryPlanner.analyzeJoinPathForTarget(cubes, primaryCubeName, targetCube)
+      this.queryPlanner.analyzeJoinPathForTarget(cubes, primaryCubeName, targetCube, query)
     )
 
     const joinCubes =
@@ -179,7 +179,13 @@ export class LogicalPlanBuilder {
             decision: `Planned ${joinCubes.length} join${joinCubes.length === 1 ? '' : 's'}`,
             details: {
               joinCount: joinCubes.length,
-              joinTargets: joinCubes.map(join => join.cube.name)
+              joinTargets: joinCubes.map(join => join.cube.name),
+              pathSelection: joinPaths.map(path => ({
+                targetCube: path.targetCube,
+                strategy: path.selection?.strategy,
+                selectedRank: path.selection?.selectedRank,
+                selectedScore: path.selection?.selectedScore
+              }))
             }
           },
           {

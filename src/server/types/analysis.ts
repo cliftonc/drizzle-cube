@@ -81,6 +81,26 @@ export interface JoinPathAnalysis {
   error?: string
   /** Cubes that were visited during BFS search */
   visitedCubes?: string[]
+  /** Path selection decision and scoring details (when preferred routing is used) */
+  selection?: {
+    strategy: 'shortest' | 'preferred' | 'fallbackShortest'
+    preferredCubes?: string[]
+    selectedRank?: number
+    selectedScore?: number
+    candidates?: Array<{
+      rank: number
+      score: number
+      usesPreferredJoin: boolean
+      preferredCubesInPath: number
+      usesProcessed: boolean
+      scoreBreakdown: {
+        preferredJoinBonus: number
+        preferredCubeBonus: number
+        lengthPenalty: number
+      }
+      path: JoinPathStep[]
+    }>
+  }
 }
 
 /**

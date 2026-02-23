@@ -114,6 +114,25 @@ export interface JoinPathAnalysis {
   pathLength?: number
   error?: string
   visitedCubes?: string[]
+  selection?: {
+    strategy: 'shortest' | 'preferred' | 'fallbackShortest'
+    preferredCubes?: string[]
+    selectedRank?: number
+    selectedScore?: number
+    candidates?: Array<{
+      rank: number
+      score: number
+      usesPreferredJoin: boolean
+      preferredCubesInPath: number
+      usesProcessed: boolean
+      scoreBreakdown: {
+        preferredJoinBonus: number
+        preferredCubeBonus: number
+        lengthPenalty: number
+      }
+      path: JoinPathStep[]
+    }>
+  }
 }
 
 /**

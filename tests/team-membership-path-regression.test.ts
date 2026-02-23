@@ -97,4 +97,35 @@ describe(`Team Membership Path Regression (${dbType})`, () => {
     expect(sqlText).toContain('employees_agg')
     expect(sqlText).toContain('employeeteams_agg')
   })
+
+  it('uses membership path for Teams.name + Productivity.avgLinesOfCode by month', async () => {
+    const avgQuery = {
+      measures: ['Productivity.avgLinesOfCode'],
+      dimensions: ['Teams.name'],
+      timeDimensions: [
+        {
+          dimension: 'Productivity.date',
+          granularity: 'month' as const
+        }
+      ]
+    }
+
+    const analysis = semanticLayer.analyzeQuery(avgQuery, testSecurityContexts.org1)
+    const productivityPath = analysis.joinPaths.find((path: any) => path.targetCube === 'Productivity')
+
+    expect(productivityPath?.pathFound).toBe(true)
+    expect(productivityPath?.path?.[0]?.fromCube).toBe('Teams')
+    expect(productivityPath?.path?.[0]?.toCube).toBe('EmployeeTeams')
+    expect(productivityPath?.selection?.strategy).toBe('preferred')
+    expect(productivityPath?.selection?.candidates?.length).toBeGreaterThan(0)
+    expect(productivityPath?.selection?.selectedRank).toBe(1)
+    expect(typeof productivityPath?.selection?.selectedScore).toBe('number')
+
+    const sqlResult = await semanticLayer.dryRun(avgQuery, testSecurityContexts.org1)
+    const sqlText = sqlResult.sql.toLowerCase()
+
+    expect(sqlText).toContain('employee_teams')
+    expect(sqlText).toContain('productivity_agg')
+    expect(sqlText).not.toContain('departments')
+  })
 })

@@ -190,6 +190,47 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                     ))}
                   </div>
                 )}
+                {jp.selection && (
+                  <div className="dc:mt-2 dc:ml-2 dc:text-xs text-dc-text-muted">
+                    <span className="dc:font-medium text-dc-text">Selection:</span>
+                    <span>{` ${formatReason(jp.selection.strategy)}`}</span>
+                    {typeof jp.selection.selectedRank === 'number' && (
+                      <span>{`, selected #${jp.selection.selectedRank}`}</span>
+                    )}
+                    {typeof jp.selection.selectedScore === 'number' && (
+                      <span>{`, score ${jp.selection.selectedScore}`}</span>
+                    )}
+                  </div>
+                )}
+                {jp.selection?.candidates && jp.selection.candidates.length > 0 && (
+                  <details className="dc:mt-2">
+                    <summary className="dc:text-xs text-dc-text-muted dc:cursor-pointer hover:text-dc-text">
+                      {`Path scoring candidates (${jp.selection.candidates.length})`}
+                    </summary>
+                    <div className="dc:mt-1 dc:ml-2 dc:space-y-1">
+                      {jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0 && (
+                        <div className="dc:text-xs text-dc-text-muted">
+                          preferred cubes: {jp.selection.preferredCubes.join(', ')}
+                        </div>
+                      )}
+                      {jp.selection.candidates.slice(0, 5).map(candidate => (
+                        <div key={candidate.rank} className="dc:text-xs text-dc-text-muted">
+                          <span className="dc:font-medium text-dc-text">
+                            #{candidate.rank}
+                          </span>
+                          <span>{` score ${candidate.score}`}</span>
+                          <span>{` (preferred+${candidate.scoreBreakdown.preferredJoinBonus + candidate.scoreBreakdown.preferredCubeBonus}, penalty-${candidate.scoreBreakdown.lengthPenalty})`}</span>
+                          <span>{`: `}</span>
+                          <span>
+                            {candidate.path.length > 0
+                              ? `${candidate.path[0].fromCube} → ${candidate.path.map(step => step.toCube).join(' → ')}`
+                              : analysis.primaryCube.selectedCube}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
                 {!jp.pathFound && jp.error && (
                   <p className="dc:text-xs text-dc-error dc:mt-1">{jp.error}</p>
                 )}

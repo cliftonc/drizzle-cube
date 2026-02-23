@@ -800,7 +800,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
       EmployeeTeams: {
         targetCube: () => testEmployeeTeamsCube,
         relationship: 'hasMany',
-        preferredFor: ['Employees'],
+        preferredFor: ['Employees', 'Productivity', 'TimeEntries'],
         on: [
           { source: teams.id, target: employeeTeams.teamId }
         ]

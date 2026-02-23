@@ -26,7 +26,12 @@ import {
   expandBelongsToManyJoin
 } from '../cube-utils'
 
-import { JoinPathResolver } from '../resolvers/join-path-resolver'
+import {
+  JoinPathResolver,
+  type InternalJoinPathStep,
+  type PreferredPathCandidateScore,
+  type PreferredPathSelection
+} from '../resolvers/join-path-resolver'
 import { MeasureBuilder } from '../builders/measure-builder'
 
 
@@ -96,8 +101,27 @@ export class LogicalPlanner {
         this.extractCubeNamesFromFilter(filter, cubesUsed)
       }
     }
+
+    // Extract cube names from ORDER BY members
+    if (query.order) {
+      for (const member of Object.keys(query.order)) {
+        const [cubeName] = member.split('.')
+        if (cubeName) {
+          cubesUsed.add(cubeName)
+        }
+      }
+    }
     
     return cubesUsed
+  }
+
+  /**
+   * Build query-level path hints (Cube-style) from all query members:
+   * measures, dimensions, time dimensions, filters, and order-by.
+   * These hints guide path selection toward the semantic query grain.
+   */
+  private collectPathHintCubes(query: SemanticQuery): Set<string> {
+    return this.analyzeCubeUsage(query)
   }
 
   /**
@@ -212,9 +236,10 @@ export class LogicalPlanner {
   analyzeJoinPathForTarget(
     cubes: Map<string, Cube>,
     fromCube: string,
-    toCube: string
+    toCube: string,
+    query?: SemanticQuery
   ): JoinPathAnalysis {
-    return this.analyzeJoinPath(cubes, fromCube, toCube)
+    return this.analyzeJoinPath(cubes, fromCube, toCube, query)
   }
 
   /**
@@ -276,8 +301,7 @@ export class LogicalPlanner {
     const joinCubes: PhysicalQueryPlan['joinCubes'] = []
     const processedCubes = new Set([primaryCube.name])
 
-    // Identify cubes that have measures in the query - these should be preferred
-    // in join path selection to ensure semantically correct joins
+    // Cubes with measures are still needed for CTE pre-detection.
     const cubesWithMeasures = new Set<string>()
     if (query.measures) {
       for (const measure of query.measures) {
@@ -285,6 +309,9 @@ export class LogicalPlanner {
         cubesWithMeasures.add(cubeName)
       }
     }
+
+    // Rust-style hinting: include all query member cubes to drive path selection.
+    const preferredPathCubes = this.collectPathHintCubes(query)
 
     // Pre-identify cubes that will become CTEs (hasMany relationships with measures)
     // IMPORTANT: We must NOT give "already processed" preference to CTE'd cubes because
@@ -324,7 +351,7 @@ export class LogicalPlanner {
       const joinPath = resolver.findPathPreferring(
         primaryCube.name,
         cubeName,
-        cubesWithMeasures,
+        preferredPathCubes,
         effectiveProcessed
       )
       if (!joinPath || joinPath.length === 0) {
@@ -647,20 +674,7 @@ export class LogicalPlanner {
     }>
   } | null {
     const resolver = this.getResolver(cubes)
-    const preferredPathCubes = new Set<string>()
-
-    for (const measure of query.measures ?? []) {
-      const [cubeName] = measure.split('.')
-      if (cubeName) preferredPathCubes.add(cubeName)
-    }
-    for (const dimension of query.dimensions ?? []) {
-      const [cubeName] = dimension.split('.')
-      if (cubeName) preferredPathCubes.add(cubeName)
-    }
-    for (const timeDimension of query.timeDimensions ?? []) {
-      const [cubeName] = timeDimension.dimension.split('.')
-      if (cubeName) preferredPathCubes.add(cubeName)
-    }
+    const preferredPathCubes = this.collectPathHintCubes(query)
 
     const joinPath = preferredPathCubes.size > 0
       ? resolver.findPathPreferring(primaryCube.name, targetCubeName, preferredPathCubes, new Set())
@@ -1348,11 +1362,16 @@ export class LogicalPlanner {
   private analyzeJoinPath(
     cubes: Map<string, Cube>,
     fromCube: string,
-    toCube: string
+    toCube: string,
+    query?: SemanticQuery
   ): JoinPathAnalysis {
     // Use the resolver for BFS path finding (cached, optimized)
     const resolver = this.getResolver(cubes)
-    const internalPath = resolver.findPath(fromCube, toCube)
+    const preferredPathCubes = query ? this.collectPathHintCubes(query) : new Set<string>()
+    const preferredSelection: PreferredPathSelection | null = preferredPathCubes.size > 0
+      ? resolver.findPathPreferringDetailed(fromCube, toCube, preferredPathCubes)
+      : null
+    const internalPath = preferredSelection?.selectedPath ?? resolver.findPath(fromCube, toCube)
 
     // Build visited cubes list from path
     const visitedCubes = [fromCube]
@@ -1368,12 +1387,26 @@ export class LogicalPlanner {
         targetCube: toCube,
         pathFound: false,
         error: `No join path found from '${fromCube}' to '${toCube}'. Ensure the target cube has a relationship defined (belongsTo, hasOne, hasMany, or belongsToMany).`,
-        visitedCubes
+        visitedCubes,
+        selection: this.buildJoinPathSelectionAnalysis(preferredSelection)
       }
     }
 
     // Convert internal path to analysis format
-    const pathSteps: JoinPathStep[] = internalPath.map(step => {
+    const pathSteps = this.convertInternalPathToJoinPathSteps(internalPath)
+
+    return {
+      targetCube: toCube,
+      pathFound: true,
+      path: pathSteps,
+      pathLength: pathSteps.length,
+      visitedCubes,
+      selection: this.buildJoinPathSelectionAnalysis(preferredSelection)
+    }
+  }
+
+  private convertInternalPathToJoinPathSteps(internalPath: InternalJoinPathStep[]): JoinPathStep[] {
+    return internalPath.map(step => {
       const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
       const joinColumns = step.joinDef.on.map(joinOn => ({
@@ -1401,13 +1434,42 @@ export class LogicalPlanner {
 
       return result
     })
+  }
+
+  private buildJoinPathSelectionAnalysis(
+    selection: PreferredPathSelection | null
+  ): JoinPathAnalysis['selection'] {
+    if (!selection) {
+      return { strategy: 'shortest' }
+    }
+
+    const candidates = selection.candidates.map((candidate, index) =>
+      this.mapPreferredCandidate(candidate, index + 1)
+    )
 
     return {
-      targetCube: toCube,
-      pathFound: true,
-      path: pathSteps,
-      pathLength: pathSteps.length,
-      visitedCubes
+      strategy: selection.strategy,
+      preferredCubes: selection.preferredCubes,
+      selectedRank: selection.selectedIndex >= 0 ? selection.selectedIndex + 1 : undefined,
+      selectedScore: selection.selectedIndex >= 0
+        ? selection.candidates[selection.selectedIndex]?.score
+        : undefined,
+      candidates
+    }
+  }
+
+  private mapPreferredCandidate(
+    candidate: PreferredPathCandidateScore,
+    rank: number
+  ): NonNullable<NonNullable<JoinPathAnalysis['selection']>['candidates']>[number] {
+    return {
+      rank,
+      score: candidate.score,
+      usesPreferredJoin: candidate.usesPreferredJoin,
+      preferredCubesInPath: candidate.preferredCubesInPath,
+      usesProcessed: candidate.usesProcessed,
+      scoreBreakdown: candidate.scoreBreakdown,
+      path: this.convertInternalPathToJoinPathSteps(candidate.path)
     }
   }
 

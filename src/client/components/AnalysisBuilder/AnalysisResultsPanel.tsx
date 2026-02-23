@@ -79,6 +79,34 @@ function generateExecutionPlanMarkdown(
       if (jp.pathFound && jp.path) {
         lines.push(`### ${analysis.primaryCube.selectedCube} → ${jp.targetCube} (${jp.pathLength} step${jp.pathLength !== 1 ? 's' : ''})`)
         lines.push('')
+        if (jp.selection) {
+          lines.push(`**Selection strategy:** ${jp.selection.strategy}`)
+          if (typeof jp.selection.selectedRank === 'number') {
+            lines.push(`**Selected rank:** #${jp.selection.selectedRank}`)
+          }
+          if (typeof jp.selection.selectedScore === 'number') {
+            lines.push(`**Selected score:** ${jp.selection.selectedScore}`)
+          }
+          if (jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0) {
+            lines.push(`**Preferred cubes:** ${jp.selection.preferredCubes.join(', ')}`)
+          }
+          if (jp.selection.candidates && jp.selection.candidates.length > 0) {
+            lines.push('**Path scoring candidates:**')
+            for (const candidate of jp.selection.candidates.slice(0, 5)) {
+              const candidatePath = candidate.path.length > 0
+                ? `${candidate.path[0].fromCube} → ${candidate.path.map(step => step.toCube).join(' → ')}`
+                : analysis.primaryCube.selectedCube
+              lines.push(
+                `- #${candidate.rank} score=${candidate.score} `
+                + `(preferredJoin=${candidate.scoreBreakdown.preferredJoinBonus}, `
+                + `preferredCube=${candidate.scoreBreakdown.preferredCubeBonus}, `
+                + `lengthPenalty=${candidate.scoreBreakdown.lengthPenalty}) `
+                + `${candidatePath}`
+              )
+            }
+          }
+          lines.push('')
+        }
         for (const step of jp.path) {
           lines.push(`- **${step.fromCube}** → **${step.toCube}** (${step.relationship}, ${step.joinType.toUpperCase()} JOIN)`)
           for (const col of step.joinColumns) {
