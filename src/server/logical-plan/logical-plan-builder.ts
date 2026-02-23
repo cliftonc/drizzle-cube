@@ -40,7 +40,7 @@ export interface LogicalPlanWithAnalysis {
   analysis: QueryAnalysis
 }
 
-type MeasureStrategy = 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
+type MeasureStrategy = 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback' | 'multiFactMerge'
 
 interface MeasureClassification {
   regular: MeasureRef[]
@@ -239,7 +239,7 @@ export class LogicalPlanBuilder {
       }
       return {
         source: multiFactSource,
-        strategy: 'simple',
+        strategy: 'multiFactMerge',
         classification
       }
     }

@@ -7,6 +7,8 @@
 import type {
   SecurityContext,
   SemanticQuery,
+  TimeDimension,
+  TimeGranularity,
   QueryResult,
   MeasureAnnotation,
   DimensionAnnotation,
@@ -32,6 +34,7 @@ import { validateQueryAgainstCubes } from './compiler'
 import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
 import { ComparisonQueryBuilder } from './builders/comparison-query-builder'
+import type { NormalizedPeriod } from './builders/comparison-query-builder'
 import { FunnelQueryBuilder } from './builders/funnel-query-builder'
 import { FlowQueryBuilder } from './builders/flow-query-builder'
 import { RetentionQueryBuilder } from './builders/retention-query-builder'
@@ -40,6 +43,13 @@ import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
 
 type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+
+interface ComparisonExecutionPlan {
+  timeDimension: TimeDimension
+  granularity: TimeGranularity
+  periods: NormalizedPeriod[]
+  periodQueries: SemanticQuery[]
+}
 
 export class QueryExecutor {
   private queryBuilder: DrizzleSqlBuilder
@@ -235,34 +245,16 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
-    // Get the time dimension with compareDateRange
-    const timeDimension = this.comparisonQueryBuilder.getComparisonTimeDimension(query)
-    if (!timeDimension || !timeDimension.compareDateRange) {
-      throw new Error('No compareDateRange found in query')
-    }
-
-    // Normalize periods (parse relative dates, etc.)
-    const periods = this.comparisonQueryBuilder.normalizePeriods(
-      timeDimension.compareDateRange
-    )
-
-    if (periods.length < 2) {
-      throw new Error('compareDateRange requires at least 2 periods')
-    }
-
-    // Get granularity (default to 'day' if not specified)
-    const granularity = timeDimension.granularity || 'day'
+    const comparisonPlan = this.buildComparisonExecutionPlan(query)
+    const { timeDimension, periods, granularity, periodQueries } = comparisonPlan
 
     // Execute query for each period in parallel
-    const periodResultPromises = periods.map(async (period) => {
-      // Create a sub-query for this specific period
-      const periodQuery = this.comparisonQueryBuilder.createPeriodQuery(query, period)
-
+    const periodResultPromises = periodQueries.map(async (periodQuery, periodIndex) => {
       // Execute using the standard path (this.execute handles the rest)
       // Note: We call executeStandardQuery to avoid recursion
       const result = await this.executeStandardQuery(cubes, periodQuery, securityContext)
 
-      return { result, period }
+      return { result, period: periods[periodIndex] }
     })
 
     // Wait for all period queries to complete
@@ -282,6 +274,31 @@ export class QueryExecutor {
     )
 
     return mergedResult
+  }
+
+  private buildComparisonExecutionPlan(query: SemanticQuery): ComparisonExecutionPlan {
+    const timeDimension = this.comparisonQueryBuilder.getComparisonTimeDimension(query)
+    if (!timeDimension || !timeDimension.compareDateRange) {
+      throw new Error('No compareDateRange found in query')
+    }
+
+    const periods = this.comparisonQueryBuilder.normalizePeriods(
+      timeDimension.compareDateRange
+    )
+    if (periods.length < 2) {
+      throw new Error('compareDateRange requires at least 2 periods')
+    }
+
+    const periodQueries = periods.map(period =>
+      this.comparisonQueryBuilder.createPeriodQuery(query, period)
+    )
+
+    return {
+      timeDimension,
+      granularity: timeDimension.granularity || 'day',
+      periods,
+      periodQueries
+    }
   }
 
   /**
@@ -1094,13 +1111,23 @@ export class QueryExecutor {
   ): Promise<{ sql: string; params?: any[] }> {
     const sqlGenerators: Record<QueryExecutionMode, () => Promise<{ sql: string; params?: any[] }>> = {
       regular: () => this.generateUnifiedSQL(cubes, query, securityContext),
-      comparison: () => this.generateUnifiedSQL(cubes, query, securityContext),
+      comparison: () => this.generateComparisonSQL(cubes, query, securityContext),
       funnel: () => this.dryRunFunnel(cubes, query, securityContext),
       flow: () => this.dryRunFlow(cubes, query, securityContext),
       retention: () => this.dryRunRetention(cubes, query, securityContext)
     }
 
     return sqlGenerators[mode]()
+  }
+
+  private async generateComparisonSQL(
+    cubes: Map<string, Cube>,
+    query: SemanticQuery,
+    securityContext: SecurityContext
+  ): Promise<{ sql: string; params?: any[] }> {
+    const comparisonPlan = this.buildComparisonExecutionPlan(query)
+    const firstPeriodQuery = comparisonPlan.periodQueries[0]
+    return this.generateUnifiedSQL(cubes, firstPeriodQuery, securityContext)
   }
 
   /**

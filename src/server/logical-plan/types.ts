@@ -180,7 +180,6 @@ export interface SimpleSource extends LogicalNodeBase {
 /**
  * Full key aggregate: merges results from multiple subqueries
  * that share the same dimension key set.
- * (Phase 3 — placeholder for now)
  */
 export interface FullKeyAggregate extends LogicalNodeBase {
   readonly type: 'fullKeyAggregate'
@@ -225,7 +224,6 @@ export interface CTEPreAggregate extends LogicalNodeBase {
 
 /**
  * Keys-based deduplication for multiplied measures.
- * (Phase 3 — type defined now for forward compatibility)
  */
 export interface KeysDeduplication extends LogicalNodeBase {
   readonly type: 'keysDeduplication'
@@ -242,7 +240,6 @@ export interface KeysDeduplication extends LogicalNodeBase {
 /**
  * Multi-fact merge: combines independent fact subqueries
  * that share dimensions.
- * (Phase 3 — type defined now for forward compatibility)
  */
 export interface MultiFactMerge extends LogicalNodeBase {
   readonly type: 'multiFactMerge'

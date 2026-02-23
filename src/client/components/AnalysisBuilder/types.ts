@@ -547,7 +547,7 @@ export interface AnalysisResultsPanelProps {
   funnelDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
-    mode?: 'regular' | 'funnel' | 'flow' | 'retention' | null
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
     queryType?: string | null
     joinType?: string | null
     cubesUsed?: string[]
@@ -567,7 +567,7 @@ export interface AnalysisResultsPanelProps {
   flowDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
-    mode?: 'regular' | 'funnel' | 'flow' | 'retention' | null
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
     queryType?: string | null
     joinType?: string | null
     cubesUsed?: string[]
@@ -587,7 +587,7 @@ export interface AnalysisResultsPanelProps {
   retentionDebugData?: {
     sql: { sql: string; params: unknown[] } | null
     analysis: unknown
-    mode?: 'regular' | 'funnel' | 'flow' | 'retention' | null
+    mode?: 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention' | null
     queryType?: string | null
     joinType?: string | null
     cubesUsed?: string[]

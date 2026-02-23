@@ -123,8 +123,8 @@ export interface PreAggregationAnalysis {
 export interface QuerySummary {
   /** Query type: 'single_cube', 'multi_cube_join', or 'multi_cube_cte' */
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
-  /** Strategy selected for multiplied-measure handling */
-  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
+  /** Strategy selected for multiplied-measure handling / multi-fact merge */
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback' | 'multiFactMerge'
   /** Total number of joins */
   joinCount: number
   /** Total number of CTEs */

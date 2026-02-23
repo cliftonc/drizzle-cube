@@ -18,7 +18,7 @@ import type { QueryAnalysis } from '../../components/AnalysisBuilder/types'
 import { cleanQueryForServer } from '../../shared/utils'
 import { stableStringify } from '../../shared/queryKey'
 
-export type DryRunMode = 'regular' | 'funnel' | 'flow' | 'retention'
+export type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
 interface DryRunResponsePayload {
   sql?: { sql: string; params?: unknown[] }
@@ -86,6 +86,7 @@ export interface UseDryRunQueryResult {
 
 function inferModeFromPayload(payload: DryRunResponsePayload): DryRunMode | null {
   if (payload.mode) return payload.mode
+  if (payload.queryType === 'comparisonQuery') return 'comparison'
   if (payload.queryType === 'funnelQuery') return 'funnel'
   if (payload.queryType === 'flowQuery') return 'flow'
   if (payload.queryType === 'retentionQuery') return 'retention'

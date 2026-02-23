@@ -584,10 +584,14 @@ export class SemanticLayerCompiler {
   }
 }
 
-type ValidationMode = 'regular' | 'funnel' | 'flow' | 'retention'
+type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
 function getActiveValidationModes(query: SemanticQuery): Exclude<ValidationMode, 'regular'>[] {
   const activeModes: Exclude<ValidationMode, 'regular'>[] = []
+
+  if (query.timeDimensions?.some(td => td.compareDateRange && td.compareDateRange.length >= 2)) {
+    activeModes.push('comparison')
+  }
 
   if (query.funnel !== undefined && query.funnel.steps?.length >= 2) {
     activeModes.push('funnel')
@@ -627,7 +631,7 @@ export function validateQueryAgainstCubes(
     return { isValid: false, errors }
   }
 
-  const specialValidators: Record<Exclude<ValidationMode, 'regular'>, () => void> = {
+  const specialValidators: Record<Exclude<ValidationMode, 'regular' | 'comparison'>, () => void> = {
     funnel: () => {
       // Basic funnel validation here - full validation happens in executor
       // Just ensure the cube referenced by bindingKey exists
@@ -692,9 +696,9 @@ export function validateQueryAgainstCubes(
     }
   }
 
-  if (activeModes.length === 1) {
+  if (activeModes.length === 1 && activeModes[0] !== 'comparison') {
     const mode = activeModes[0]
-    specialValidators[mode]()
+    specialValidators[mode as keyof typeof specialValidators]()
     return { isValid: errors.length === 0, errors }
   }
 

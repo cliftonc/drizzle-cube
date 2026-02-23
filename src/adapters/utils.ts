@@ -112,8 +112,8 @@ export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
   return 'postgres' // default fallback
 }
 
-type DryRunMode = 'regular' | 'funnel' | 'flow' | 'retention'
-type DryRunQueryType = 'regularQuery' | 'funnelQuery' | 'flowQuery' | 'retentionQuery'
+type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+type DryRunQueryType = 'regularQuery' | 'comparisonQuery' | 'funnelQuery' | 'flowQuery' | 'retentionQuery'
 type DryRunJoinType = 'single_cube' | 'multi_cube_join' | 'funnel_cte' | 'flow_cte' | 'retention_cte'
 
 interface DryRunResponseOptions {
@@ -132,6 +132,13 @@ interface DryRunResponseOptions {
 
 function resolveDryRunMode(query: SemanticQuery): DryRunMode {
   const activeModes: DryRunMode[] = []
+
+  const hasComparison = query.timeDimensions?.some(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+  if (hasComparison) {
+    activeModes.push('comparison')
+  }
 
   if (query.funnel && query.funnel.steps?.length >= 2) {
     activeModes.push('funnel')
@@ -328,6 +335,7 @@ export async function handleDryRun(
 
   const handlers: Record<DryRunMode, () => Promise<any>> = {
     regular: () => handleRegularDryRun(query, securityContext, semanticLayer),
+    comparison: () => handleComparisonDryRun(query, securityContext, semanticLayer),
     funnel: () => handleFunnelDryRun(query, securityContext, semanticLayer),
     flow: () => handleFlowDryRun(query, securityContext, semanticLayer),
     retention: () => handleRetentionDryRun(query, securityContext, semanticLayer)
@@ -370,6 +378,44 @@ async function handleRegularDryRun(
     sqlResult,
     analysis,
     normalizedQueries
+  })
+}
+
+async function handleComparisonDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Comparison query')
+  const cubesUsed = collectRegularReferencedCubes(query)
+  const isMultiCube = cubesUsed.length > 1
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+
+  const comparisonTimeDimension = query.timeDimensions?.find(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+
+  const comparisonMetadata = comparisonTimeDimension
+    ? {
+        timeDimension: comparisonTimeDimension.dimension,
+        granularity: comparisonTimeDimension.granularity || 'day',
+        periodCount: comparisonTimeDimension.compareDateRange?.length ?? 0,
+        compareDateRange: comparisonTimeDimension.compareDateRange,
+        sqlPreviewPeriodIndex: 0,
+        note: 'Dry-run SQL preview shows the first comparison period; execution runs all periods and merges results.'
+      }
+    : undefined
+
+  return buildDryRunResponse({
+    mode: 'comparison',
+    queryType: 'comparisonQuery',
+    joinType: isMultiCube ? 'multi_cube_join' : 'single_cube',
+    complexity: calculateQueryComplexity(query),
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: comparisonMetadata
   })
 }
 

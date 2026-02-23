@@ -110,7 +110,9 @@ describe('Star Schema: Fact-Dimension-Fact Joins', () => {
         step => step.phase === 'measure_strategy'
       )
 
+      expect(analysis.querySummary.measureStrategy).toBe('multiFactMerge')
       expect(measureStrategyStep?.details?.sourceType).toBe('multiFactMerge')
+      expect(measureStrategyStep?.details?.strategy).toBe('multiFactMerge')
     })
 
     it('should generate merged group SQL for multi-fact queries', async () => {

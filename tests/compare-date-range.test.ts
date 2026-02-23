@@ -223,6 +223,24 @@ describe('compareDateRange integration', () => {
     expect(result.annotation.periods?.labels.length).toBe(2)
   })
 
+  it('should dry-run comparison queries using the first normalized period SQL', async () => {
+    const sqlResult = await semanticLayer.dryRun({
+      measures: ['Productivity.totalLinesOfCode'],
+      timeDimensions: [{
+        dimension: 'Productivity.date',
+        granularity: 'day',
+        compareDateRange: [
+          ['2024-03-01', '2024-03-07'],
+          ['2024-02-01', '2024-02-07']
+        ]
+      }]
+    }, { organisationId: 1 })
+
+    expect(sqlResult.sql.toLowerCase()).toContain('productivity')
+    // The dry-run SQL should include explicit date range parameters from the first period.
+    expect((sqlResult.params || []).length).toBeGreaterThanOrEqual(3)
+  })
+
   it('should apply security context to all periods', async () => {
     // Execute for org 1
     const org1Result = await semanticLayer.execute({

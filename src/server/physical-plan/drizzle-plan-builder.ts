@@ -18,6 +18,7 @@ import type {
   LogicalNode,
   QueryNode,
   SimpleSource,
+  FullKeyAggregate,
   KeysDeduplication,
   MultiFactMerge
 } from '../logical-plan'
@@ -51,6 +52,9 @@ export class DrizzlePlanBuilder {
 
     if (source.type === 'multiFactMerge') {
       return this.derivePhysicalPlanContextFromMultiFact(plan, source as MultiFactMerge)
+    }
+    if (source.type === 'fullKeyAggregate') {
+      return this.derivePhysicalPlanContextFromFullKeyAggregate(plan, source as FullKeyAggregate)
     }
 
     const simpleSource = this.resolvePhysicalSimpleSource(source)
@@ -119,6 +123,45 @@ export class DrizzlePlanBuilder {
       multiFactMerge: {
         mergeStrategy: source.mergeStrategy,
         sharedDimensions: source.sharedDimensions.map(dimension => dimension.name),
+        groups
+      }
+    }
+  }
+
+  private derivePhysicalPlanContextFromFullKeyAggregate(
+    plan: QueryNode,
+    source: FullKeyAggregate
+  ): PhysicalQueryPlan {
+    const groups = source.subqueries.map((subqueryNode, index) => {
+      if (subqueryNode.type !== 'query') {
+        throw new Error('fullKeyAggregate currently requires query subqueries')
+      }
+
+      const groupQueryNode = subqueryNode as QueryNode
+      const groupPhysicalPlan = this.derivePhysicalPlanContext(groupQueryNode)
+      const groupQuery = this.toSemanticQuery(groupQueryNode)
+
+      return {
+        alias: `fka_group_${index + 1}`,
+        query: groupQuery,
+        queryPlan: groupPhysicalPlan,
+        measures: groupQuery.measures ?? []
+      }
+    })
+
+    if (groups.length === 0) {
+      throw new Error('fullKeyAggregate requires at least one subquery')
+    }
+
+    const baseGroup = groups[0]
+    return {
+      primaryCube: baseGroup.queryPlan.primaryCube,
+      joinCubes: baseGroup.queryPlan.joinCubes,
+      preAggregationCTEs: baseGroup.queryPlan.preAggregationCTEs,
+      warnings: plan.warnings.length > 0 ? plan.warnings : undefined,
+      multiFactMerge: {
+        mergeStrategy: 'fullJoin',
+        sharedDimensions: source.dimensions.map(dimension => dimension.name),
         groups
       }
     }

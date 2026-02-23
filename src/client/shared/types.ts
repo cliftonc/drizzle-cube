@@ -137,7 +137,7 @@ export interface PreAggregationAnalysis {
 
 export interface QuerySummary {
   queryType: 'single_cube' | 'multi_cube_join' | 'multi_cube_cte'
-  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback'
+  measureStrategy?: 'simple' | 'keysDeduplication' | 'ctePreAggregateFallback' | 'multiFactMerge'
   joinCount: number
   cteCount: number
   hasPreAggregation: boolean

@@ -136,6 +136,33 @@ describe('useDryRunQuery', () => {
       expect(result.current.debugData.error).toBeNull()
     })
 
+    it('should infer comparison mode from comparisonQuery payload', async () => {
+      server.use(
+        http.post('*/cubejs-api/v1/dry-run', () => {
+          return HttpResponse.json({
+            mode: 'comparison',
+            queryType: 'comparisonQuery',
+            sql: { sql: 'SELECT ...', params: [] },
+            analysis: { complexity: 'medium' },
+            modeMetadata: { periodCount: 2 }
+          })
+        })
+      )
+
+      const { wrapper } = createHookWrapper()
+      const { result } = renderHook(
+        () => useDryRunQuery(validQuery),
+        { wrapper }
+      )
+
+      await waitFor(() => {
+        expect(result.current.debugData.loading).toBe(false)
+      })
+
+      expect(result.current.debugData.mode).toBe('comparison')
+      expect(result.current.debugData.queryType).toBe('comparisonQuery')
+    })
+
     it('should clean query before sending to server', async () => {
       let receivedQuery: unknown = null
       server.use(

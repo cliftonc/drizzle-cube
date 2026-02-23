@@ -1,12 +1,23 @@
 # Design: Multi-Stage Query Pipeline
 
 **Priority**: 0 (Foundational)
-**Status**: Proposal
+**Status**: Implemented (core pipeline), with follow-on optimisation work remaining
 **Prerequisite for**: All other design proposals (P1-P5)
 
 ---
 
 ## Problem Statement
+
+## Implementation Status (2026-02-23)
+
+- Implemented:
+  - Logical → Optimiser → Physical pipeline for regular query execution, analysis, and dry-run SQL.
+  - `KeysDeduplication` and `MultiFactMerge` strategies in the new pipeline.
+  - `FullKeyAggregate` physical conversion support (mapped to grouped merge execution).
+  - Processor split for physical-plan assembly (`cte`, `selection`, `joins`, `predicates`, `window`).
+- Remaining:
+  - Advanced optimiser passes beyond `IdentityOptimiser` (plan simplification / pre-aggregation matching).
+  - Further internal simplification and targeted performance tuning.
 
 Drizzle-cube currently uses a single-pass architecture where `buildUnifiedQuery()` directly assembles SQL from the flat `QueryPlan` structure. This makes it difficult to:
 

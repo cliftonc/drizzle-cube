@@ -62,23 +62,26 @@ describe('DrizzlePlanBuilder physical conversion', () => {
     expect(physical.joinCubes).toHaveLength(0)
   })
 
-  it('throws for unsupported logical source types in physical conversion', () => {
+  it('accepts fullKeyAggregate source by converting query subqueries', () => {
     const cube = createCube('Employees')
     const simplePlan = createSimplePlan(cube)
 
-    const unsupportedPlan: QueryNode = {
+    const fullKeyAggregatePlan: QueryNode = {
       ...simplePlan,
       source: {
         type: 'fullKeyAggregate',
         schema: simplePlan.source.schema,
-        subqueries: [simplePlan.source],
+        subqueries: [simplePlan],
         dimensions: []
       }
     }
 
     const builder = new DrizzlePlanBuilder({} as any, {} as any, {} as any)
-    expect(() => builder.derivePhysicalPlanContext(unsupportedPlan)).toThrow(
-      "Current SQL builder does not support logical node 'fullKeyAggregate' in physical conversion"
-    )
+    const physical = builder.derivePhysicalPlanContext(fullKeyAggregatePlan)
+
+    expect(physical.primaryCube.name).toBe('Employees')
+    expect(physical.multiFactMerge).toBeDefined()
+    expect(physical.multiFactMerge?.groups).toHaveLength(1)
+    expect(physical.multiFactMerge?.groups[0].alias).toBe('fka_group_1')
   })
 })
