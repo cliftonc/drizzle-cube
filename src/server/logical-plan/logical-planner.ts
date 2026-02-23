@@ -938,6 +938,15 @@ export class LogicalPlanner {
         }
       }
     }
+    // Also collect cube names from filters - filters can reference cubes that need
+    // to join through the CTE (e.g., Repositories.id filter when PullRequests is a CTE)
+    if (query.filters) {
+      for (const filter of query.filters) {
+        this.extractCubeNamesFromFilter(filter, dimensionCubeNames)
+      }
+      // Remove the CTE cube itself (it might have been added from filters)
+      dimensionCubeNames.delete(cteCube.name)
+    }
 
     // For each dimension cube, check if it's directly joinable from the CTE cube
     if (cteCube.joins) {

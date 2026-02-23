@@ -13,7 +13,7 @@ import { ensureAnalysisConfig } from './configMigration'
  * @param filter - The filter to check
  * @returns true if the filter should be included, false otherwise
  */
-function shouldIncludeFilter(filter: Filter): boolean {
+export function shouldIncludeFilter(filter: Filter): boolean {
   // Handle SimpleFilter
   if ('member' in filter && 'operator' in filter) {
     const simpleFilter = filter as SimpleFilter

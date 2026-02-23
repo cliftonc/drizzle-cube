@@ -106,8 +106,9 @@ export function buildModifiedSelections(
               aggregatedExpr = max(cteColumn)
               break
             case 'number':
-              // For number type, use max for fanOut, sum for hasMany
-              aggregatedExpr = useMax ? max(cteColumn) : sum(cteColumn)
+              // number type measures contain custom aggregations (PERCENTILE, etc.)
+              // already computed in the CTE - use max to retrieve without re-summing
+              aggregatedExpr = max(cteColumn)
               break
             default:
               aggregatedExpr = useMax ? max(cteColumn) : sum(cteColumn)

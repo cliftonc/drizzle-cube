@@ -7,6 +7,7 @@
 import type { CubeQuery, Filter } from '../../../types'
 import type { MetricItem, BreakdownItem } from '../types'
 import { removeComparisonDateFilter, buildCompareDateRangeFromFilter } from './filterUtils'
+import { shouldIncludeFilter } from '../../../utils/filterUtils'
 
 /**
  * Convert metrics and breakdowns to CubeQuery format
@@ -32,6 +33,10 @@ export function buildCubeQuery(
       filteredFilters = removeComparisonDateFilter(filteredFilters, field)
     }
   }
+
+  // Strip filters with empty values (e.g., {member: "X.id", values: [], operator: "equals"})
+  // These generate AND FALSE conditions on the server
+  filteredFilters = filteredFilters.filter(f => shouldIncludeFilter(f))
 
   const query: CubeQuery = {
     measures: metrics.map((m) => m.field),
