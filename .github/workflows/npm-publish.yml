@@ -16,15 +16,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Check CI status
+      - name: Wait for CI to pass
         run: |
           COMMIT_SHA=${{ github.sha }}
-          CI_STATUS=$(gh run list --commit $COMMIT_SHA --workflow ci.yml --json conclusion --jq '.[0].conclusion')
-          if [ "$CI_STATUS" != "success" ]; then
-            echo "CI has not passed for commit $COMMIT_SHA (status: $CI_STATUS)"
-            exit 1
-          fi
-          echo "CI passed for commit $COMMIT_SHA"
+          echo "Waiting for CI to pass on commit $COMMIT_SHA..."
+
+          MAX_WAIT=600  # 10 minutes
+          INTERVAL=15
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            RUN_JSON=$(gh run list --commit $COMMIT_SHA --workflow ci.yml --json databaseId,status,conclusion --jq '.[0]')
+
+            if [ -z "$RUN_JSON" ] || [ "$RUN_JSON" = "null" ]; then
+              echo "No CI run found yet for $COMMIT_SHA, waiting... (${ELAPSED}s)"
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+              continue
+            fi
+
+            STATUS=$(echo "$RUN_JSON" | jq -r '.status')
+            CONCLUSION=$(echo "$RUN_JSON" | jq -r '.conclusion')
+            RUN_ID=$(echo "$RUN_JSON" | jq -r '.databaseId')
+
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "CI passed for commit $COMMIT_SHA (run $RUN_ID)"
+                exit 0
+              else
+                echo "CI failed for commit $COMMIT_SHA (conclusion: $CONCLUSION, run $RUN_ID)"
+                exit 1
+              fi
+            fi
+
+            echo "CI still running (status: $STATUS, run $RUN_ID), waiting... (${ELAPSED}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          echo "Timed out waiting for CI on commit $COMMIT_SHA after ${MAX_WAIT}s"
+          exit 1
         env:
           GH_TOKEN: ${{ github.token }}
 
