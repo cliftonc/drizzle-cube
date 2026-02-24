@@ -24,6 +24,22 @@ export function resolveCubeReference(
 }
 
 /**
+ * Reverse a semantic relationship type for bidirectional join path resolution.
+ * When traversing a join edge in reverse (target→source instead of source→target),
+ * the relationship semantics flip: belongsTo↔hasMany, hasOne stays hasOne,
+ * belongsToMany stays belongsToMany (symmetric).
+ */
+export function reverseRelationship(relationship: string): string {
+  switch (relationship) {
+    case 'belongsTo':     return 'hasMany'
+    case 'hasMany':       return 'belongsTo'
+    case 'hasOne':        return 'hasOne'
+    case 'belongsToMany': return 'belongsToMany'
+    default:              return relationship
+  }
+}
+
+/**
  * Derive SQL join type from semantic relationship
  */
 export function getJoinType(relationship: string, override?: string): string {

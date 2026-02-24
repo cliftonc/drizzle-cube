@@ -48,7 +48,7 @@ export interface JoinPathStep {
   fromCube: string
   /** Target cube name */
   toCube: string
-  /** Relationship type used */
+  /** Relationship type used (effective, after reversal if applicable) */
   relationship: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
   /** SQL join type that will be used */
   joinType: 'inner' | 'left' | 'right' | 'full'
@@ -63,6 +63,8 @@ export interface JoinPathStep {
     sourceColumns: string[]
     targetColumns: string[]
   }
+  /** True when this step was discovered via a reversed edge */
+  reversed?: boolean
 }
 
 /**

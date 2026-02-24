@@ -23,6 +23,7 @@ import type {
 import {
   resolveCubeReference,
   getJoinType,
+  reverseRelationship,
   expandBelongsToManyJoin
 } from '../cube-utils'
 
@@ -359,7 +360,7 @@ export class LogicalPlanner {
       }
 
       // Add all cubes in the join path
-      for (const { fromCube: pathFromCube, toCube, joinDef } of joinPath) {
+      for (const { fromCube: pathFromCube, toCube, joinDef, reversed } of joinPath) {
         if (processedCubes.has(toCube)) {
           continue // Skip if already processed
         }
@@ -369,8 +370,13 @@ export class LogicalPlanner {
           throw new Error(`Cube '${toCube}' not found`)
         }
 
+        // Compute effective relationship: reversed belongsTo↔hasMany
+        const effectiveRelationship = reversed
+          ? reverseRelationship(joinDef.relationship)
+          : joinDef.relationship
+
         // Check if this is a belongsToMany relationship
-        if (joinDef.relationship === 'belongsToMany' && joinDef.through) {
+        if (effectiveRelationship === 'belongsToMany' && joinDef.through) {
           // Expand the belongsToMany join into junction table joins
           const expanded = expandBelongsToManyJoin(joinDef, ctx.securityContext)
 
@@ -394,21 +400,22 @@ export class LogicalPlanner {
           // Regular join (belongsTo, hasOne, hasMany)
           // Build join condition using new array-based format
           // For regular table joins, we don't use artificial aliases - use actual table references
+          // Join condition is symmetric (eq(a,b) = eq(b,a)) so no change needed for reversed joins
           const joinCondition = resolver.buildJoinCondition(
             joinDef as CubeJoin,
             null, // No source alias needed - use the actual column
             null // No target alias needed - use the actual column
           )
 
-          // Derive join type from relationship
-          const joinType = getJoinType(joinDef.relationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+          // Derive join type from effective (possibly reversed) relationship
+          const joinType = getJoinType(effectiveRelationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
           joinCubes.push({
             cube,
             alias: `${toCube.toLowerCase()}_cube`,
             joinType,
             joinCondition,
-            relationship: joinDef.relationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+            relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
           })
         }
 
@@ -506,7 +513,8 @@ export class LogicalPlanner {
                 if (!sourceCube) return null
                 return {
                   sourceCube,
-                  joinDef: lastStep.joinDef as CubeJoin
+                  joinDef: lastStep.joinDef as CubeJoin,
+                  reversed: lastStep.reversed
                 }
               })()
             : null
@@ -663,7 +671,7 @@ export class LogicalPlanner {
     ctx: QueryContext,
     query: SemanticQuery
   ): {
-    path: { fromCube: string; toCube: string; joinDef: CubeJoin }[]
+    path: { fromCube: string; toCube: string; joinDef: CubeJoin; reversed?: boolean }[]
     hasIntermediateHasMany: boolean
     intermediateJoins: IntermediateJoinInfo[]
     correctJoinKeys: Array<{
@@ -684,17 +692,24 @@ export class LogicalPlanner {
       return null
     }
 
-    // Analyze the path for hasMany relationships
-    const pathWithRelationships: { fromCube: string; toCube: string; joinDef: CubeJoin }[] = joinPath.map(step => ({
+    // Analyze the path for hasMany relationships (accounting for reversed steps)
+    const pathWithRelationships: { fromCube: string; toCube: string; joinDef: CubeJoin; reversed?: boolean }[] = joinPath.map(step => ({
       fromCube: step.fromCube,
       toCube: step.toCube,
-      joinDef: step.joinDef as CubeJoin
+      joinDef: step.joinDef as CubeJoin,
+      reversed: step.reversed
     }))
 
     // Check if there are hasMany relationships BEFORE the final step
     // (the final step to the CTE cube will be handled by CTE pre-aggregation)
+    // Use effective relationship for reversed steps
     const intermediateSteps = pathWithRelationships.slice(0, -1)
-    const hasManyOnPath = intermediateSteps.some(step => step.joinDef.relationship === 'hasMany')
+    const hasManyOnPath = intermediateSteps.some(step => {
+      const effectiveRel = step.reversed
+        ? reverseRelationship(step.joinDef.relationship)
+        : step.joinDef.relationship
+      return effectiveRel === 'hasMany'
+    })
 
     if (!hasManyOnPath) {
       // No intermediate hasMany - use existing logic
@@ -1416,7 +1431,11 @@ export class LogicalPlanner {
 
   private convertInternalPathToJoinPathSteps(internalPath: InternalJoinPathStep[]): JoinPathStep[] {
     return internalPath.map(step => {
-      const joinType = getJoinType(step.joinDef.relationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+      // Use effective relationship (reversed if applicable)
+      const effectiveRelationship = step.reversed
+        ? reverseRelationship(step.joinDef.relationship)
+        : step.joinDef.relationship
+      const joinType = getJoinType(effectiveRelationship, step.joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
       const joinColumns = step.joinDef.on.map(joinOn => ({
         sourceColumn: joinOn.source.name,
@@ -1426,13 +1445,18 @@ export class LogicalPlanner {
       const result: JoinPathStep = {
         fromCube: step.fromCube,
         toCube: step.toCube,
-        relationship: step.joinDef.relationship,
+        relationship: effectiveRelationship as JoinPathStep['relationship'],
         joinType,
         joinColumns
       }
 
+      // Add reversed flag for analysis transparency
+      if (step.reversed) {
+        result.reversed = true
+      }
+
       // Add junction table info for belongsToMany
-      if (step.joinDef.relationship === 'belongsToMany' && step.joinDef.through) {
+      if (effectiveRelationship === 'belongsToMany' && step.joinDef.through) {
         const through = step.joinDef.through
         result.junctionTable = {
           tableName: (through.table as any)[Symbol.for('drizzle:Name')] || 'junction_table',

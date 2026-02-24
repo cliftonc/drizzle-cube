@@ -525,7 +525,12 @@ export class FlowQueryBuilder {
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) return null
 
-    const fieldExpr = resolveSqlExpression(dimension.sql, context)
+    // For non-time dimensions, use raw column so Drizzle preserves column type
+    // metadata for proper parameter binding (e.g., UUID columns need type info).
+    // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
+    const fieldExpr = dimension.type === 'time'
+      ? resolveSqlExpression(dimension.sql, context)
+      : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
 
     return this.filterBuilder.buildFilterCondition(
       fieldExpr,

@@ -1253,8 +1253,12 @@ export class QueryExecutor {
           continue
         }
 
-        // Build the filter SQL using the query builder
-        const fieldExpr = resolveSqlExpression(dimension.sql, context)
+        // For non-time dimensions, use raw column so Drizzle preserves column type
+        // metadata for proper parameter binding (e.g., UUID columns need type info).
+        // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
+        const fieldExpr = dimension.type === 'time'
+          ? resolveSqlExpression(dimension.sql, context)
+          : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
         const filterSQL = this.queryBuilder.buildFilterConditionPublic(
           fieldExpr,
           filter.operator,
@@ -1290,6 +1294,8 @@ export class QueryExecutor {
           const dimension = cube.dimensions?.[fieldName]
           if (!dimension) continue
 
+          // Time dimension date ranges always use isolated SQL because
+          // normalizeDate() returns ISO strings, not Date objects
           const fieldExpr = resolveSqlExpression(dimension.sql, context)
           const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
 

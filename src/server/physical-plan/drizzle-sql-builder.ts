@@ -275,8 +275,8 @@ export class DrizzleSqlBuilder {
           }
 
           const dimension = cube.dimensions[fieldName]
-          // Use the raw field expression for date filtering (not the truncated version)
-          // This ensures we filter on the actual timestamp values before aggregation
+          // Use isolated SQL for time dimension date range filtering because
+          // normalizeDate() returns ISO strings, not Date objects
           const fieldExpr = resolveSqlExpression(dimension.sql, context)
           const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
           if (dateCondition) {
@@ -375,25 +375,28 @@ export class DrizzleSqlBuilder {
         }
       }
 
-      // For array operators, we need the raw column (not isolated SQL)
-      // because Drizzle's array functions need column type metadata for proper encoding
-      // These CANNOT be cached because the raw column reference is required
-      const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filterCondition.operator)
+      // For non-time dimensions, use raw column expression so Drizzle preserves
+      // column type metadata for proper parameter binding (e.g., UUID columns).
+      // When columns are wrapped in sql`` template (isolation), type metadata is
+      // lost, causing PostgreSQL to bind parameters as text — which fails for
+      // typed columns like UUID.
+      // For time dimensions, keep isolated SQL because normalizeDate() returns
+      // ISO strings (not Date objects), and raw PgTimestamp columns would reject them.
+      const isTimeDimension = dimension.type === 'time'
 
       // Try to use cached filter SQL for parameter deduplication
       // This avoids creating duplicate parameters for the same filter values
-      // NOTE: Skip cache for array operators (they require raw column)
       // NOTE: We only use cache for non-CTE cubes (checked above)
-      if (!isArrayOperator && context.filterCache) {
+      if (context.filterCache) {
         const key = getFilterKey(filter)
         const cached = context.filterCache.get(key)
         if (cached) {
           return cached
         }
       }
-      const fieldExpr = isArrayOperator
-        ? (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
-        : resolveSqlExpression(dimension.sql, context)
+      const fieldExpr = isTimeDimension
+        ? resolveSqlExpression(dimension.sql, context)
+        : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
 
       return this.buildFilterCondition(
         fieldExpr,

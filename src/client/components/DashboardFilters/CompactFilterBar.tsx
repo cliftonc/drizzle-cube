@@ -6,7 +6,7 @@
  * and compact non-date filter display.
  */
 
-import React, { useState, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { getIcon } from '../../icons'
 import DatePresetChips from './DatePresetChips'
 import CustomDateDropdown from './CustomDateDropdown'
@@ -44,6 +44,19 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   onEditFilter,
   onRemoveFilter
 }) => {
+  // Local state for immediate UI feedback on filter value changes.
+  // Without this, changes require a full round-trip through the parent's
+  // onConfigChange → state update → re-render cycle before being visible.
+  // If the parent doesn't handle onConfigChange (or uses dashboardFilters prop),
+  // the round-trip never completes and clicks appear to do nothing.
+  const [localFilters, setLocalFilters] = useState<DashboardFilter[]>(dashboardFilters)
+
+  // Sync from props when parent updates (e.g., after round-trip completes,
+  // or when filters change externally)
+  useEffect(() => {
+    setLocalFilters(dashboardFilters)
+  }, [dashboardFilters])
+
   // Dropdown state
   const [showCustomDropdown, setShowCustomDropdown] = useState(false)
   const [showXTDDropdown, setShowXTDDropdown] = useState(false)
@@ -54,8 +67,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
   // Find universal time filter
   const universalTimeFilter = useMemo(() => {
-    return dashboardFilters.find(df => df.isUniversalTime)
-  }, [dashboardFilters])
+    return localFilters.find(df => df.isUniversalTime)
+  }, [localFilters])
 
   // Get current date range from universal time filter
   const currentDateRange = useMemo(() => {
@@ -88,8 +101,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
   // Get non-date filters (exclude universal time filter)
   const nonDateFilters = useMemo(() => {
-    return dashboardFilters.filter(df => !df.isUniversalTime)
-  }, [dashboardFilters])
+    return localFilters.filter(df => !df.isUniversalTime)
+  }, [localFilters])
 
   // Generate unique ID for new filters
   const generateFilterId = useCallback(() => {
@@ -100,7 +113,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   const handleDateRangeChange = useCallback((newDateRange: string | string[]) => {
     if (universalTimeFilter) {
       // Update existing filter
-      const updatedFilters = dashboardFilters.map(df => {
+      const updatedFilters = localFilters.map(df => {
         if (df.id === universalTimeFilter.id) {
           return {
             ...df,
@@ -113,6 +126,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         }
         return df
       })
+      setLocalFilters(updatedFilters)
       onDashboardFiltersChange(updatedFilters)
     } else {
       // Create new universal time filter
@@ -127,9 +141,11 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
           dateRange: newDateRange
         }
       }
-      onDashboardFiltersChange([...dashboardFilters, newFilter])
+      const updatedFilters = [...localFilters, newFilter]
+      setLocalFilters(updatedFilters)
+      onDashboardFiltersChange(updatedFilters)
     }
-  }, [dashboardFilters, universalTimeFilter, onDashboardFiltersChange, generateFilterId])
+  }, [localFilters, universalTimeFilter, onDashboardFiltersChange, generateFilterId])
 
   // Handle preset selection
   const handlePresetSelect = useCallback((presetValue: string) => {
@@ -150,11 +166,12 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
 
   // Handle filter value change (for non-date filters)
   const handleFilterChange = useCallback((filterId: string, updatedFilter: DashboardFilter) => {
-    const updatedFilters = dashboardFilters.map(df =>
+    const updatedFilters = localFilters.map(df =>
       df.id === filterId ? updatedFilter : df
     )
+    setLocalFilters(updatedFilters)
     onDashboardFiltersChange(updatedFilters)
-  }, [dashboardFilters, onDashboardFiltersChange])
+  }, [localFilters, onDashboardFiltersChange])
 
   // Calculate tooltip for active date range
   const dateRangeTooltip = useMemo(() => {
@@ -177,7 +194,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   }, [currentDateRange])
 
   // If no filters and not in edit mode, don't show anything
-  if (!isEditMode && dashboardFilters.length === 0) {
+  if (!isEditMode && localFilters.length === 0) {
     return null
   }
 

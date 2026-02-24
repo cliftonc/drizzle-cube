@@ -21,6 +21,8 @@ export interface InternalJoinPathStep {
   toCube: string
   /** The join definition from the source cube */
   joinDef: CubeJoin
+  /** True when this step was discovered via a reversed edge (target cube defines the join back to source) */
+  reversed?: boolean
 }
 
 /**
@@ -64,17 +66,58 @@ interface ConnectivityCacheEntry {
 }
 
 /**
- * Resolves join paths between cubes and manages connectivity caching
+ * Resolves join paths between cubes and manages connectivity caching.
+ * Supports bidirectional path finding: both forward (outgoing) joins and
+ * reverse (incoming) joins are traversable. Reversed steps are marked with
+ * `reversed: true` so downstream code can adjust join type and analysis.
  */
 export class JoinPathResolver {
   private cubes: Map<string, Cube>
   private connectivityCache: Map<string, ConnectivityCacheEntry> = new Map()
+  /** Maps cubeName → joins that TARGET that cube (incoming edges) */
+  private reverseIndex: Map<string, Array<{ definingCube: string; joinDef: CubeJoin }>>
 
   /**
    * @param cubes Map of cube name to cube definition
    */
   constructor(cubes: Map<string, Cube>) {
     this.cubes = cubes
+    this.reverseIndex = this.buildReverseIndex()
+  }
+
+  /**
+   * Build reverse adjacency index: for each cube's outgoing join A→B,
+   * store an entry under B pointing back to A.
+   *
+   * Excludes belongsToMany joins because reversing them requires swapping
+   * sourceKey/targetKey in the junction table configuration, which is
+   * error-prone. The 2-hop forward path through the junction table handles
+   * these relationships correctly.
+   */
+  private buildReverseIndex(): Map<string, Array<{ definingCube: string; joinDef: CubeJoin }>> {
+    const index = new Map<string, Array<{ definingCube: string; joinDef: CubeJoin }>>()
+
+    for (const [cubeName, cube] of this.cubes) {
+      if (!cube.joins) continue
+
+      for (const [, joinDef] of Object.entries(cube.joins)) {
+        // Skip belongsToMany — reversing junction table joins is complex
+        // and already handled by the forward 2-hop path
+        if (joinDef.relationship === 'belongsToMany') continue
+
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        const targetName = resolvedTarget.name
+
+        let entries = index.get(targetName)
+        if (!entries) {
+          entries = []
+          index.set(targetName, entries)
+        }
+        entries.push({ definingCube: cubeName, joinDef: joinDef as CubeJoin })
+      }
+    }
+
+    return index
   }
 
   /**
@@ -102,7 +145,7 @@ export class JoinPathResolver {
       return cached
     }
 
-    // BFS to find shortest path
+    // BFS to find shortest path (bidirectional: forward + reverse edges)
     const queue: Array<{ cube: string; path: InternalJoinPathStep[] }> = [
       { cube: fromCube, path: [] }
     ]
@@ -110,19 +153,41 @@ export class JoinPathResolver {
 
     while (queue.length > 0) {
       const { cube: currentCube, path } = queue.shift()!
-      const cubeDefinition = this.cubes.get(currentCube)
 
-      if (!cubeDefinition?.joins) {
-        continue
+      // --- Forward edges: outgoing joins from currentCube ---
+      const cubeDefinition = this.cubes.get(currentCube)
+      if (cubeDefinition?.joins) {
+        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const actualTargetName = resolvedTargetCube.name
+
+          if (visited.has(actualTargetName)) {
+            continue
+          }
+
+          const newPath: InternalJoinPathStep[] = [
+            ...path,
+            {
+              fromCube: currentCube,
+              toCube: actualTargetName,
+              joinDef
+            }
+          ]
+
+          if (actualTargetName === toCube) {
+            this.setInCache(cacheKey, newPath)
+            return newPath
+          }
+
+          visited.add(actualTargetName)
+          queue.push({ cube: actualTargetName, path: newPath })
+        }
       }
 
-      // Check all joins from current cube - resolve lazy references
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        // Resolve cube reference to get actual cube name
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
-        const actualTargetName = resolvedTargetCube.name
-
-        if (visited.has(actualTargetName)) {
+      // --- Reverse edges: incoming joins that target currentCube ---
+      const incomingJoins = this.reverseIndex.get(currentCube) || []
+      for (const { definingCube, joinDef } of incomingJoins) {
+        if (visited.has(definingCube)) {
           continue
         }
 
@@ -130,19 +195,19 @@ export class JoinPathResolver {
           ...path,
           {
             fromCube: currentCube,
-            toCube: actualTargetName,
-            joinDef
+            toCube: definingCube,
+            joinDef,
+            reversed: true
           }
         ]
 
-        if (actualTargetName === toCube) {
-          // Cache successful path
+        if (definingCube === toCube) {
           this.setInCache(cacheKey, newPath)
           return newPath
         }
 
-        visited.add(actualTargetName)
-        queue.push({ cube: actualTargetName, path: newPath })
+        visited.add(definingCube)
+        queue.push({ cube: definingCube, path: newPath })
       }
     }
 
@@ -234,9 +299,19 @@ export class JoinPathResolver {
       // - When routing FROM Employees TO Teams: preferredFor applies (first hop)
       // - When routing FROM Departments TO Teams: preferredFor should NOT apply
       //   even if the path goes through Employees
-      const usesPreferredJoin = path.some((step, index) =>
-        step.joinDef.preferredFor?.includes(toCube) && index === 0
-      )
+      //
+      // For reversed steps: the joinDef's preferredFor lists the original targets.
+      // When reversed, fromCube is the search origin so we check if preferredFor
+      // includes the fromCube of the path (which equals the overall search origin).
+      const usesPreferredJoin = path.some((step, index) => {
+        if (index !== 0) return false
+        if (step.reversed) {
+          // Reversed: joinDef.preferredFor was set on the toCube's join definition
+          // and lists cubes it prefers to be the route for. fromCube is the search origin.
+          return step.joinDef.preferredFor?.includes(fromCube) ?? false
+        }
+        return step.joinDef.preferredFor?.includes(toCube) ?? false
+      })
 
       if (usesPreferredJoin) {
         preferredJoinBonus = 10
@@ -317,17 +392,40 @@ export class JoinPathResolver {
         continue
       }
 
+      // --- Forward edges ---
       const cubeDefinition = this.cubes.get(currentCube)
-      if (!cubeDefinition?.joins) {
-        continue
+      if (cubeDefinition?.joins) {
+        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const actualTargetName = resolvedTargetCube.name
+
+          if (visited.has(actualTargetName)) {
+            continue
+          }
+
+          const newPath: InternalJoinPathStep[] = [
+            ...path,
+            {
+              fromCube: currentCube,
+              toCube: actualTargetName,
+              joinDef
+            }
+          ]
+
+          if (actualTargetName === toCube) {
+            allPaths.push(newPath)
+          } else {
+            const newVisited = new Set(visited)
+            newVisited.add(actualTargetName)
+            queue.push({ cube: actualTargetName, path: newPath, visited: newVisited })
+          }
+        }
       }
 
-      // Check all joins from current cube
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
-        const actualTargetName = resolvedTargetCube.name
-
-        if (visited.has(actualTargetName)) {
+      // --- Reverse edges ---
+      const incomingJoins = this.reverseIndex.get(currentCube) || []
+      for (const { definingCube, joinDef } of incomingJoins) {
+        if (visited.has(definingCube)) {
           continue
         }
 
@@ -335,19 +433,18 @@ export class JoinPathResolver {
           ...path,
           {
             fromCube: currentCube,
-            toCube: actualTargetName,
-            joinDef
+            toCube: definingCube,
+            joinDef,
+            reversed: true
           }
         ]
 
-        if (actualTargetName === toCube) {
-          // Found a path - add to results but don't stop (collect all paths)
+        if (definingCube === toCube) {
           allPaths.push(newPath)
         } else {
-          // Continue searching - create new visited set for this branch
           const newVisited = new Set(visited)
-          newVisited.add(actualTargetName)
-          queue.push({ cube: actualTargetName, path: newPath, visited: newVisited })
+          newVisited.add(definingCube)
+          queue.push({ cube: definingCube, path: newPath, visited: newVisited })
         }
       }
     }
@@ -366,13 +463,60 @@ export class JoinPathResolver {
     const otherCubes = allCubes.filter(name => name !== fromCube)
 
     for (const targetCube of otherCubes) {
-      const path = this.findPath(fromCube, targetCube, new Set())
+      // Use forward-only path finding for primary cube selection stability.
+      // Bidirectional path finding (findPath) is used for actual path resolution,
+      // but primary selection should only consider explicit outgoing joins to avoid
+      // changing join semantics (reversed belongsTo becomes hasMany, triggering CTEs).
+      const path = this.findForwardOnlyPath(fromCube, targetCube, new Set())
       if (!path || path.length === 0) {
         return false
       }
     }
 
     return true
+  }
+
+  /**
+   * Forward-only path finding (no reverse edges).
+   * Used by canReachAll for primary cube selection to preserve join semantics.
+   */
+  private findForwardOnlyPath(
+    fromCube: string,
+    toCube: string,
+    alreadyProcessed: Set<string>
+  ): InternalJoinPathStep[] | null {
+    if (fromCube === toCube) return []
+
+    const queue: Array<{ cube: string; path: InternalJoinPathStep[] }> = [
+      { cube: fromCube, path: [] }
+    ]
+    const visited = new Set([fromCube, ...alreadyProcessed])
+
+    while (queue.length > 0) {
+      const { cube: currentCube, path } = queue.shift()!
+      const cubeDefinition = this.cubes.get(currentCube)
+
+      if (!cubeDefinition?.joins) continue
+
+      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+        const actualTargetName = resolvedTargetCube.name
+
+        if (visited.has(actualTargetName)) continue
+
+        const newPath: InternalJoinPathStep[] = [
+          ...path,
+          { fromCube: currentCube, toCube: actualTargetName, joinDef }
+        ]
+
+        if (actualTargetName === toCube) return newPath
+
+        visited.add(actualTargetName)
+        queue.push({ cube: actualTargetName, path: newPath })
+      }
+    }
+
+    return null
   }
 
   /**
@@ -424,19 +568,27 @@ export class JoinPathResolver {
 
     while (queue.length > 0) {
       const currentCube = queue.shift()!
-      const cubeDefinition = this.cubes.get(currentCube)
 
-      if (!cubeDefinition?.joins) {
-        continue
+      // Forward edges
+      const cubeDefinition = this.cubes.get(currentCube)
+      if (cubeDefinition?.joins) {
+        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const targetName = resolvedTargetCube.name
+
+          if (!reachable.has(targetName)) {
+            reachable.add(targetName)
+            queue.push(targetName)
+          }
+        }
       }
 
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
-        const targetName = resolvedTargetCube.name
-
-        if (!reachable.has(targetName)) {
-          reachable.add(targetName)
-          queue.push(targetName)
+      // Reverse edges
+      const incomingJoins = this.reverseIndex.get(currentCube) || []
+      for (const { definingCube } of incomingJoins) {
+        if (!reachable.has(definingCube)) {
+          reachable.add(definingCube)
+          queue.push(definingCube)
         }
       }
     }
