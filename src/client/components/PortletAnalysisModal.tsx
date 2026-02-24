@@ -8,10 +8,6 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
-import {
-  mergeDashboardAndPortletFilters,
-  applyUniversalTimeFilters
-} from '../utils/filterUtils'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -23,7 +19,7 @@ interface PortletAnalysisModalProps {
   title: string
   submitText: string
   colorPalette?: ColorPalette
-  /** Dashboard filters to apply to preview (when editing portlet in dashboard context) */
+  /** @deprecated Dashboard filters are no longer merged into the editor - they are applied at execution time */
   dashboardFilters?: DashboardFilter[]
 }
 
@@ -46,8 +42,7 @@ export default function PortletAnalysisModal({
   initialData,
   title: modalTitle,
   submitText,
-  colorPalette,
-  dashboardFilters
+  colorPalette
 }: PortletAnalysisModalProps) {
 
   // Ref to AnalysisBuilder for getting current query and chart config
@@ -55,19 +50,6 @@ export default function PortletAnalysisModal({
 
   // Title state
   const [formTitle, setFormTitle] = useState('')
-
-  // Get applicable regular dashboard filters for this portlet
-  // Universal time filters are handled separately - they apply to timeDimensions, not the filters array
-  const applicableFilters = useMemo(() => {
-    if (!dashboardFilters || !portlet?.dashboardFilterMapping) {
-      return []
-    }
-    const mapping = portlet.dashboardFilterMapping
-    // Only include regular filters (not universal time filters which use __universal_time__ placeholder)
-    return dashboardFilters
-      .filter(df => !df.isUniversalTime && mapping.includes(df.id))
-      .map(df => df.filter)
-  }, [dashboardFilters, portlet?.dashboardFilterMapping])
 
   // =========================================================================
   // Load from analysisConfig (migrating from legacy format if needed)
@@ -80,8 +62,10 @@ export default function PortletAnalysisModal({
     return normalizedPortlet.analysisConfig
   }, [portlet])
 
-  // Parse initial query from derived config and merge dashboard filters
-  // AnalysisBuilder handles both single CubeQuery and MultiQueryConfig internally
+  // Parse initial query from derived config
+  // Dashboard filters are NOT merged here - they are applied at execution time
+  // by AnalyticsPortlet.tsx. The editor shows only the portlet's own filters
+  // to prevent dashboard filters from leaking into saved portlet config.
   const initialQuery = useMemo<CubeQuery | MultiQueryConfig | undefined>(() => {
     if (!derivedConfig) return undefined
 
@@ -89,44 +73,14 @@ export default function PortletAnalysisModal({
     const query = derivedConfig.query
     if (!query) return undefined
 
-    // Handle funnel mode - return the ServerFunnelQuery as-is (no filter merging)
+    // Handle funnel mode - return the ServerFunnelQuery as-is
     if (derivedConfig.analysisType === 'funnel') {
-      // For funnel, query is ServerFunnelQuery - return as-is
       return query as CubeQuery | MultiQueryConfig
     }
 
-    // Handle MultiQueryConfig
-    if ('queries' in query && Array.isArray(query.queries)) {
-      return {
-        ...query,
-        queries: query.queries.map((q: CubeQuery) => ({
-          ...q,
-          // Merge regular dashboard filters (not universal time)
-          filters: mergeDashboardAndPortletFilters(applicableFilters, q.filters, 'client'),
-          // Apply universal time filter dateRange to all time dimensions
-          timeDimensions: applyUniversalTimeFilters(
-            dashboardFilters,
-            portlet?.dashboardFilterMapping,
-            q.timeDimensions
-          )
-        }))
-      }
-    }
-
-    // Handle single CubeQuery
-    const cubeQuery = query as CubeQuery
-    return {
-      ...cubeQuery,
-      // Merge regular dashboard filters (not universal time)
-      filters: mergeDashboardAndPortletFilters(applicableFilters, cubeQuery.filters, 'client'),
-      // Apply universal time filter dateRange to all time dimensions
-      timeDimensions: applyUniversalTimeFilters(
-        dashboardFilters,
-        portlet?.dashboardFilterMapping,
-        cubeQuery.timeDimensions
-      )
-    }
-  }, [derivedConfig, applicableFilters, dashboardFilters, portlet?.dashboardFilterMapping])
+    // Return query as-is (single CubeQuery or MultiQueryConfig)
+    return query as CubeQuery | MultiQueryConfig
+  }, [derivedConfig])
 
   // Initial chart config from derived config
   const initialChartConfig = useMemo(() => {
