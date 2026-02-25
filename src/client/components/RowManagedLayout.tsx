@@ -1,5 +1,6 @@
 import { useState, useCallback, type HTMLAttributes, type ReactNode, type MouseEvent, type DragEvent } from 'react'
 import type { DashboardGridSettings, PortletConfig, RowLayout } from '../types'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 
 interface RowManagedLayoutProps {
   rows: RowLayout[]
@@ -85,7 +86,15 @@ export default function RowManagedLayout({
         />
       )}
       {rows.map((row, rowIndex) => {
-        const rowHeight = row.h * gridSettings.rowHeight
+        // Row auto-height only when all columns are markdown and request autoHeight.
+        const isAutoHeightRow = row.columns.length > 0 && row.columns.every(col => {
+          const portlet = portletMap.get(col.portletId)
+          if (!portlet) return false
+          const normalized = ensureAnalysisConfig(portlet)
+          const chartMode = normalized.analysisConfig.charts[normalized.analysisConfig.analysisType]
+          return chartMode?.chartType === 'markdown' && (chartMode.displayConfig?.autoHeight ?? true)
+        })
+        const rowHeight = isAutoHeightRow ? undefined : row.h * gridSettings.rowHeight
         const safeGridWidth = gridWidth || gridSettings.cols * gridSettings.rowHeight
         const paddingLeft = activeDropKey === `row-${rowIndex}-insert-0` ? COLUMN_GAP : 0
         const paddingRight = activeDropKey === `row-${rowIndex}-insert-${row.columns.length}` ? COLUMN_GAP : 0
@@ -97,7 +106,7 @@ export default function RowManagedLayout({
             <div
               className="dc-row-layout-row"
               style={{
-                height: rowHeight,
+                height: rowHeight ?? 'auto',
                 paddingLeft,
                 paddingRight,
               }}
@@ -107,26 +116,22 @@ export default function RowManagedLayout({
                 if (!portlet) return null
                 const width = column.w * unitWidth
 
-                const containerProps = {
-                  draggable: canEdit,
-                  'data-row-index': rowIndex.toString(),
-                  'data-column-index': columnIndex.toString(),
-                  'data-portlet-id': portlet.id,
-                  onDragStart: handlePortletDragStart,
-                  onDragEnd: handlePortletDragEnd,
-                  className: 'dc-row-layout-column'
-                } as HTMLAttributes<HTMLDivElement>
-
                 return (
                   <div
                     key={portlet.id}
-                    className="dc-row-layout-column-wrapper"
+                    className="dc-row-layout-column-wrapper dc-row-layout-column"
+                    draggable={canEdit}
+                    data-row-index={rowIndex.toString()}
+                    data-column-index={columnIndex.toString()}
+                    data-portlet-id={portlet.id}
+                    onDragStart={handlePortletDragStart}
+                    onDragEnd={handlePortletDragEnd}
                     style={{
                       flex: `0 0 ${width}px`,
                       maxWidth: `${width}px`
                     }}
                   >
-                    {renderPortlet(portlet, containerProps)}
+                    {renderPortlet(portlet)}
                     {columnIndex < row.columns.length - 1 && (
                       <div
                         className={`dc-column-resize-handle dc-split-handle${activeDropKey === `row-${rowIndex}-insert-${columnIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
@@ -186,8 +191,8 @@ export default function RowManagedLayout({
             )}
             {canEdit && (
               <div
-                className={`dc-row-resize-handle dc-split-handle${activeDropKey === `row-insert-${rowIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
-                onMouseDown={(event) => onRowResize(rowIndex, event)}
+                className={`dc-row-resize-handle dc-split-handle${isAutoHeightRow ? ' dc-row-resize-handle-drop-only' : ''}${activeDropKey === `row-insert-${rowIndex + 1}` ? ' dc-drop-zone-active' : ''}`}
+                onMouseDown={isAutoHeightRow ? undefined : (event) => onRowResize(rowIndex, event)}
                 onDragOver={(event) => {
                   event.preventDefault()
                   setDropActive(`row-insert-${rowIndex + 1}`)

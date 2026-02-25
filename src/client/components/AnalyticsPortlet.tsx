@@ -813,7 +813,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         }}
         cubeQuery={query}
       >
-        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: '200px' }}>
+        <div className="dc:w-full dc:h-full dc:flex dc:flex-col dc:flex-1" style={{ minHeight: chartType === 'markdown' ? undefined : '200px' }}>
           {/* Drill breadcrumb - shows when drilling into data */}
           {isDrillEnabled && drill.drillPath.length > 0 && (
             <div className="dc:mb-2 dc:flex-shrink-0">

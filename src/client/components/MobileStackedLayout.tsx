@@ -107,7 +107,9 @@ export default function MobileStackedLayout({
         // Markdown-specific display modes
         const isTransparent = renderChartType === 'markdown' && !!renderDisplayConfig?.transparentBackground
         const isAutoHeight = renderChartType === 'markdown' && (renderDisplayConfig?.autoHeight ?? true)
-        const shouldHideHeader = renderDisplayConfig?.hideHeader ?? (renderChartType === 'markdown')
+        const shouldHideHeader = renderChartType === 'markdown'
+          ? (renderDisplayConfig?.hideHeader ?? true) || !portlet.title
+          : (renderDisplayConfig?.hideHeader ?? false)
 
         // Calculate height: use stored h * rowHeight (80px), with minimum
         const portletHeight = Math.max(300, portlet.h * 80)

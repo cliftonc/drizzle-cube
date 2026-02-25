@@ -9,16 +9,33 @@ vi.mock('../../../src/client/components/AnalyticsPortlet', () => {
   const ReactMock = require('react')
   return {
     default: ReactMock.forwardRef(function MockAnalyticsPortlet(
-      props: { title?: string; onDebugDataReady?: (data: unknown) => void },
+      props: { title?: string; chartType?: string; height?: string | number; onDebugDataReady?: (data: unknown) => void },
       ref: React.Ref<unknown>
     ) {
+      ;(globalThis as any).__dcAnalyticsPortletRenderCount = ((globalThis as any).__dcAnalyticsPortletRenderCount || 0) + 1
       ReactMock.useImperativeHandle(ref, () => ({
         refresh: vi.fn()
       }))
-      return ReactMock.createElement('div', { 'data-testid': 'analytics-portlet' }, props.title || 'Portlet Content')
+      return ReactMock.createElement(
+        'div',
+        {
+          'data-testid': 'analytics-portlet',
+          'data-chart-type': props.chartType,
+          'data-height': props.height
+        },
+        props.title || 'Portlet Content'
+      )
     })
   }
 })
+
+function resetAnalyticsPortletRenderCount() {
+  ;(globalThis as any).__dcAnalyticsPortletRenderCount = 0
+}
+
+function getAnalyticsPortletRenderCount(): number {
+  return (globalThis as any).__dcAnalyticsPortletRenderCount || 0
+}
 
 // Mock DebugModal
 vi.mock('../../../src/client/components/DebugModal', () => {
@@ -42,7 +59,7 @@ vi.mock('../../../src/client/utils/thumbnail', () => ({
 import DashboardPortletCard from '../../../src/client/components/DashboardPortletCard'
 import type { PortletConfig } from '../../../src/client/types'
 import type { AnalysisConfig } from '../../../src/client/types/analysisConfig'
-import { DashboardStoreProvider } from '../../../src/client/stores/dashboardStore'
+import { DashboardStoreProvider, useDashboardStore } from '../../../src/client/stores/dashboardStore'
 import { CubeFeaturesProvider } from '../../../src/client/providers/CubeFeaturesProvider'
 
 // Mock icon components
@@ -91,6 +108,7 @@ const createMockPortlet = (overrides?: Partial<PortletConfig>): PortletConfig =>
 const createDefaultProps = () => ({
   portlet: createMockPortlet(),
   editable: true,
+  layoutMode: 'grid' as const,
   setPortletRef: vi.fn(),
   setPortletComponentRef: vi.fn(),
   callbacks: {
@@ -434,6 +452,25 @@ describe('DashboardPortletCard', () => {
       // In edit mode, header should be visible for editing controls
       expect(screen.getByRole('heading', { name: 'Sales Overview' })).toBeInTheDocument()
     })
+
+    it('should hide header in view mode when markdown transparentBackground is true even if hideHeader is false', () => {
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.charts.query!.chartType = 'markdown'
+      analysisConfig.charts.query!.displayConfig = {
+        hideHeader: false,
+        transparentBackground: true
+      }
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ analysisConfig })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} />
+        </TestWrapper>
+      )
+
+      expect(screen.queryByRole('heading', { name: 'Sales Overview' })).not.toBeInTheDocument()
+    })
   })
 
   describe('dashboard filter mapping indicator', () => {
@@ -482,6 +519,77 @@ describe('DashboardPortletCard', () => {
 
       const container = document.querySelector('[data-portlet-id="portlet-1"]')
       expect(container?.className).toContain('custom-class')
+    })
+  })
+
+  describe('render performance', () => {
+    it('should not re-render AnalyticsPortlet when edit mode toggles', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      resetAnalyticsPortletRenderCount()
+
+      function EditModeStoreHarness() {
+        const isEditMode = useDashboardStore((state) => state.isEditMode)
+        const setEditMode = useDashboardStore((state) => state.setEditMode)
+        return (
+          <>
+            <button onClick={() => setEditMode(!isEditMode)}>toggle-edit-mode</button>
+            <DashboardPortletCard {...props} />
+          </>
+        )
+      }
+
+      render(
+        <CubeFeaturesProvider features={{}}>
+          <DashboardStoreProvider>
+            <EditModeStoreHarness />
+          </DashboardStoreProvider>
+        </CubeFeaturesProvider>
+      )
+
+      const initialRenderCount = getAnalyticsPortletRenderCount()
+      await user.click(screen.getByRole('button', { name: 'toggle-edit-mode' }))
+
+      expect(getAnalyticsPortletRenderCount()).toBe(initialRenderCount)
+    })
+  })
+
+  describe('markdown height policy', () => {
+    it('should keep fixed height in grid layout even when markdown autoHeight is enabled', () => {
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.charts.query!.chartType = 'markdown'
+      analysisConfig.charts.query!.displayConfig = { autoHeight: true }
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ analysisConfig })
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} />
+        </TestWrapper>
+      )
+
+      const container = document.querySelector('[data-portlet-id="portlet-1"]')
+      expect(container?.className).toContain('dc:h-full')
+      expect(screen.getByTestId('analytics-portlet')).toHaveAttribute('data-height', '100%')
+    })
+
+    it('should use auto height in rows layout when markdown autoHeight is enabled', () => {
+      const analysisConfig = createMockAnalysisConfig()
+      analysisConfig.charts.query!.chartType = 'markdown'
+      analysisConfig.charts.query!.displayConfig = { autoHeight: true }
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ analysisConfig })
+      props.layoutMode = 'rows'
+
+      render(
+        <TestWrapper>
+          <DashboardPortletCard {...props} />
+        </TestWrapper>
+      )
+
+      const container = document.querySelector('[data-portlet-id="portlet-1"]')
+      expect(container?.className).not.toContain('dc:h-full')
+      expect(screen.getByTestId('analytics-portlet')).toHaveAttribute('data-height', 'auto')
     })
   })
 })

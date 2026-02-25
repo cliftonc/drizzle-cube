@@ -43,6 +43,7 @@ export default function TextPortletModal({
     return {
       content: '',
       hideHeader: true,
+      autoHeight: true,
       fontSize: 'medium' as const,
       alignment: 'left' as const,
       accentColorIndex: 0,
@@ -69,6 +70,7 @@ export default function TextPortletModal({
       setDisplayConfig({
         content: '',
         hideHeader: true,
+        autoHeight: true,
         fontSize: 'medium',
         alignment: 'left',
         accentColorIndex: 0,
@@ -98,19 +100,19 @@ export default function TextPortletModal({
     return candidate
   }, [title, titleTouched, portlet, existingTitles])
 
-  // Tie hideHeader to transparentBackground — show header when card has visible chrome
   const handleDisplayConfigChange = useCallback((config: ChartDisplayConfig) => {
-    setDisplayConfig({
-      ...config,
-      hideHeader: config.transparentBackground ? true : false,
-    })
+    setDisplayConfig(config)
   }, [])
 
   const handleSave = useCallback(() => {
-    // Hide header when transparent OR when title is empty
-    const finalDisplayConfig = {
+    // Keep markdown sizing policy explicit and preserve header setting independently.
+    const finalDisplayConfig: ChartDisplayConfig = {
       ...displayConfig,
-      hideHeader: !!displayConfig.transparentBackground || !resolvedTitle.trim(),
+      autoHeight: displayConfig.autoHeight ?? true,
+      hideHeader: displayConfig.hideHeader ?? true,
+    }
+    if (!resolvedTitle.trim()) {
+      finalDisplayConfig.hideHeader = true
     }
 
     const analysisConfig: AnalysisConfig = {
@@ -223,7 +225,7 @@ export default function TextPortletModal({
                   Preview
                 </div>
                 <div
-                  className="dc:border border-dc-border dc:rounded-lg dc:overflow-hidden"
+                  className="dc:overflow-hidden"
                   style={{ minHeight: '200px' }}
                 >
                   <MarkdownChart

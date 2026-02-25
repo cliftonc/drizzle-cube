@@ -25,6 +25,14 @@ function createTestPortlet(overrides: Partial<PortletConfig> = {}): PortletConfi
   }
 }
 
+function createMarkdownPortlet(overrides: Partial<PortletConfig> = {}): PortletConfig {
+  return createTestPortlet({
+    chartType: 'markdown',
+    displayConfig: { autoHeight: true },
+    ...overrides
+  })
+}
+
 // Helper to create test row
 function createTestRow(overrides: Partial<RowLayout> = {}): RowLayout {
   return {
@@ -106,6 +114,53 @@ describe('RowManagedLayout', () => {
       expect(row.style.height).toBe('320px')
     })
 
+    it('should render auto-height row for markdown when autoHeight is enabled', () => {
+      const portlet = createMarkdownPortlet({ id: 'p1' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          h: 4,
+          columns: [{ portletId: 'p1', w: 12 }]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
+        />
+      )
+
+      const row = container.querySelector('.dc-row-layout-row') as HTMLElement
+      expect(row.style.height).toBe('auto')
+    })
+
+    it('should keep fixed row height when markdown autoHeight is disabled', () => {
+      const portlet = createMarkdownPortlet({
+        id: 'p1',
+        displayConfig: { autoHeight: false }
+      })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          h: 4,
+          columns: [{ portletId: 'p1', w: 12 }]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
+        />
+      )
+
+      const row = container.querySelector('.dc-row-layout-row') as HTMLElement
+      expect(row.style.height).toBe('320px')
+    })
+
     it('should set CSS custom properties', () => {
       const { container } = render(<RowManagedLayout {...defaultProps} />)
 
@@ -165,12 +220,10 @@ describe('RowManagedLayout', () => {
       expect(screen.queryByTestId('portlet-missing')).not.toBeInTheDocument()
     })
 
-    it('should pass containerProps to renderPortlet', () => {
-      const renderPortlet = vi.fn((portlet: PortletConfig, containerProps: any) => (
+    it('should render draggable column wrapper when canEdit is true', () => {
+      const renderPortlet = vi.fn((portlet: PortletConfig) => (
         <div
           data-testid={`portlet-${portlet.id}`}
-          data-draggable={containerProps?.draggable}
-          className={containerProps?.className}
         >
           {portlet.title}
         </div>
@@ -192,9 +245,9 @@ describe('RowManagedLayout', () => {
         />
       )
 
-      const portletElement = screen.getByTestId('portlet-p1')
-      expect(portletElement).toHaveAttribute('data-draggable', 'true')
-      expect(portletElement.className).toContain('dc-row-layout-column')
+      const columnWrapper = document.querySelector('.dc-row-layout-column-wrapper') as HTMLDivElement
+      expect(columnWrapper).toHaveAttribute('draggable', 'true')
+      expect(columnWrapper.className).toContain('dc-row-layout-column')
     })
   })
 
@@ -358,6 +411,30 @@ describe('RowManagedLayout', () => {
       expect(resizeHandle).toBeInTheDocument()
     })
 
+    it('should render drop-only row handle for auto-height markdown rows', () => {
+      const portlet = createMarkdownPortlet({ id: 'p1' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          h: 4,
+          columns: [{ portletId: 'p1', w: 12 }]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
+          canEdit={true}
+        />
+      )
+
+      const resizeHandle = container.querySelector('.dc-row-resize-handle')
+      expect(resizeHandle).toBeInTheDocument()
+      expect(resizeHandle).toHaveClass('dc-row-resize-handle-drop-only')
+    })
+
     it('should render edge drop zones for each row when canEdit', () => {
       const rows: RowLayout[] = [createTestRow()]
 
@@ -444,6 +521,33 @@ describe('RowManagedLayout', () => {
         <RowManagedLayout
           {...defaultProps}
           rows={rows}
+          canEdit={true}
+          onNewRowDrop={onNewRowDrop}
+        />
+      )
+
+      const resizeHandle = container.querySelector('.dc-row-resize-handle')
+      fireEvent.drop(resizeHandle!)
+
+      expect(onNewRowDrop).toHaveBeenCalledWith(1)
+    })
+
+    it('should call onNewRowDrop(rowIndex + 1) when dropping on auto-height markdown row handle', () => {
+      const onNewRowDrop = vi.fn()
+      const portlet = createMarkdownPortlet({ id: 'p1' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          h: 4,
+          columns: [{ portletId: 'p1', w: 12 }]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
           canEdit={true}
           onNewRowDrop={onNewRowDrop}
         />
@@ -583,6 +687,33 @@ describe('RowManagedLayout', () => {
       expect(onRowResize).toHaveBeenCalledWith(0, expect.any(Object))
     })
 
+    it('should not call onRowResize on mousedown for auto-height markdown rows', () => {
+      const onRowResize = vi.fn()
+      const portlet = createMarkdownPortlet({ id: 'p1' })
+      const rows: RowLayout[] = [
+        createTestRow({
+          id: 'row-1',
+          h: 4,
+          columns: [{ portletId: 'p1', w: 12 }]
+        })
+      ]
+
+      const { container } = render(
+        <RowManagedLayout
+          {...defaultProps}
+          rows={rows}
+          portlets={[portlet]}
+          canEdit={true}
+          onRowResize={onRowResize}
+        />
+      )
+
+      const resizeHandle = container.querySelector('.dc-row-resize-handle')
+      fireEvent.mouseDown(resizeHandle!)
+
+      expect(onRowResize).not.toHaveBeenCalled()
+    })
+
     it('should call onColumnResize on mousedown', () => {
       const onColumnResize = vi.fn()
       const portlet1 = createTestPortlet({ id: 'p1' })
@@ -616,10 +747,9 @@ describe('RowManagedLayout', () => {
   describe('portlet drag events', () => {
     it('should call onPortletDragStart when portlet drag starts', () => {
       const onPortletDragStart = vi.fn()
-      const renderPortlet = vi.fn((portlet: PortletConfig, containerProps: any) => (
+      const renderPortlet = vi.fn((portlet: PortletConfig) => (
         <div
           data-testid={`portlet-${portlet.id}`}
-          {...containerProps}
         >
           {portlet.title}
         </div>
@@ -642,18 +772,17 @@ describe('RowManagedLayout', () => {
         />
       )
 
-      const portletElement = screen.getByTestId('portlet-p1')
-      fireEvent.dragStart(portletElement)
+      const columnWrapper = document.querySelector('.dc-row-layout-column-wrapper') as HTMLDivElement
+      fireEvent.dragStart(columnWrapper)
 
       expect(onPortletDragStart).toHaveBeenCalledWith(0, 0, 'p1', expect.any(Object))
     })
 
     it('should call onPortletDragEnd when portlet drag ends', () => {
       const onPortletDragEnd = vi.fn()
-      const renderPortlet = vi.fn((portlet: PortletConfig, containerProps: any) => (
+      const renderPortlet = vi.fn((portlet: PortletConfig) => (
         <div
           data-testid={`portlet-${portlet.id}`}
-          {...containerProps}
         >
           {portlet.title}
         </div>
@@ -676,8 +805,8 @@ describe('RowManagedLayout', () => {
         />
       )
 
-      const portletElement = screen.getByTestId('portlet-p1')
-      fireEvent.dragEnd(portletElement)
+      const columnWrapper = document.querySelector('.dc-row-layout-column-wrapper') as HTMLDivElement
+      fireEvent.dragEnd(columnWrapper)
 
       expect(onPortletDragEnd).toHaveBeenCalled()
     })

@@ -64,6 +64,13 @@ export const markdownConfig: ChartTypeConfig = {
       description: 'Remove card background, border, and shadow for seamless integration as section headers'
     },
     {
+      key: 'autoHeight',
+      label: 'Auto Height',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'In row and mobile layouts, size to markdown content instead of fixed row height'
+    },
+    {
       key: 'accentBorder',
       label: 'Accent Border',
       type: 'select',

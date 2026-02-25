@@ -324,6 +324,13 @@ export default function DashboardGrid({
     actions,
   } = dashboard
 
+  // Keep mutable references so high-frequency row interactions
+  // don't force callback identity churn into memoized portlet cards.
+  const actionsRef = useRef(actions)
+  actionsRef.current = actions
+  const canEditRef = useRef(canEdit)
+  canEditRef.current = canEdit
+
   // Sync draftRowsRef with store state (for mouse event handlers)
   useEffect(() => {
     draftRowsRef.current = draftRows
@@ -370,6 +377,8 @@ export default function DashboardGrid({
 
   // Set up initialization tracking
   useEffect(() => {
+    if (isInitialized) return
+
     // Mark as initialized after first render to prevent saves during load/resize
     const timer = setTimeout(() => {
       actions.setIsInitialized(true)
@@ -385,7 +394,7 @@ export default function DashboardGrid({
     }, 200) // Slightly longer delay to ensure responsive grid is fully settled
 
     return () => clearTimeout(timer)
-  }, [config.portlets, actions])
+  }, [isInitialized, config.portlets, actions])
 
   // Scroll detection now handled by useScrollDetection hook above (lines 373-378)
   // This eliminates the old window.addEventListener('scroll') listener that was
@@ -636,17 +645,17 @@ export default function DashboardGrid({
   }, [canEdit, gridSettings, gridWidth, resolvedRows, actions])
 
   const handlePortletDragStart = useCallback((rowIndex: number, colIndex: number, portletId: string, event: DragEvent<HTMLDivElement>) => {
-    if (!canEdit) return
+    if (!canEditRef.current) return
     dragStateRef.current = { rowIndex, colIndex, portletId }
-    actions.setIsDraggingPortlet(true)
+    actionsRef.current.setIsDraggingPortlet(true)
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', portletId)
-  }, [canEdit, actions])
+  }, [])
 
   const handlePortletDragEnd = useCallback(() => {
     dragStateRef.current = null
-    actions.setIsDraggingPortlet(false)
-  }, [actions])
+    actionsRef.current.setIsDraggingPortlet(false)
+  }, [])
 
   const handleRowDrop = useCallback((rowIndex: number, insertIndex: number | null) => {
     const dragState = dragStateRef.current
@@ -742,8 +751,8 @@ export default function DashboardGrid({
   // Handle portlet refresh - use action from hook
   // Pass { bustCache: true } to bypass client and server caches (shift+click)
   const handlePortletRefresh = useCallback((portletId: string, options?: { bustCache?: boolean }) => {
-    actions.refreshPortlet(portletId, options)
-  }, [actions])
+    actionsRef.current.refreshPortlet(portletId, options)
+  }, [])
 
   // Portlet CRUD operations - now use actions from useDashboard hook
   // The hook handles all logic including row layout updates, saving, and modal state
@@ -789,12 +798,12 @@ export default function DashboardGrid({
 
   // Handle deleting portlet - delegate to hook action
   const handleDeletePortlet = useCallback(async (portletId: string) => {
-    await actions.deletePortlet(portletId)
-  }, [actions])
+    await actionsRef.current.deletePortlet(portletId)
+  }, [])
 
   // Handle duplicating portlet - delegate to hook action with scroll to new portlet
   const handleDuplicatePortlet = useCallback(async (portletId: string) => {
-    const newPortletId = await actions.duplicatePortlet(portletId)
+    const newPortletId = await actionsRef.current.duplicatePortlet(portletId)
 
     // Scroll to the duplicated portlet after DOM update
     if (newPortletId) {
@@ -828,7 +837,7 @@ export default function DashboardGrid({
         }
       }, 200)
     }
-  }, [actions])
+  }, [])
 
   // Handle adding new portlet - delegate to hook action
   const handleAddPortlet = useCallback(() => {
@@ -845,11 +854,11 @@ export default function DashboardGrid({
     const normalized = ensureAnalysisConfig(portlet)
     const chartType = normalized.analysisConfig.charts[normalized.analysisConfig.analysisType]?.chartType
     if (chartType === 'markdown') {
-      actions.openEditText(portlet)
+      actionsRef.current.openEditText(portlet)
     } else {
-      actions.openEditPortlet(portlet)
+      actionsRef.current.openEditPortlet(portlet)
     }
-  }, [actions])
+  }, [])
 
   // Handle palette change - delegate to hook action
   const handlePaletteChange = useCallback(async (paletteName: string) => {
@@ -858,8 +867,8 @@ export default function DashboardGrid({
 
   // Handle opening filter config modal - delegate to hook action
   const handleOpenFilterConfig = useCallback((portlet: PortletConfig) => {
-    actions.openFilterConfig(portlet)
-  }, [actions])
+    actionsRef.current.openFilterConfig(portlet)
+  }, [])
 
   // Handle saving filter configuration - delegate to hook action
   const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
@@ -882,8 +891,8 @@ export default function DashboardGrid({
 
   // Handle toggling filter for a portlet - delegate to hook action
   const handleToggleFilterForPortlet = useCallback(async (portletId: string, filterId: string) => {
-    await actions.toggleFilterForPortlet(portletId, filterId)
-  }, [actions])
+    await actionsRef.current.toggleFilterForPortlet(portletId, filterId)
+  }, [])
 
   // Handle filter selection (click on filter chip) - delegate to hook action
   const handleFilterSelect = useCallback((filterId: string) => {
@@ -926,6 +935,7 @@ export default function DashboardGrid({
     <DashboardPortletCard
       portlet={portlet}
       editable={editable}
+      layoutMode={layoutMode}
       dashboardFilters={dashboardFilters}
       configEagerLoad={config.eagerLoad}
       loadingComponent={loadingComponent}
@@ -939,6 +949,7 @@ export default function DashboardGrid({
     />
   ), [
     editable,
+    layoutMode,
     dashboardFilters,
     config.eagerLoad,
     loadingComponent,

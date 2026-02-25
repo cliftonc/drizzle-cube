@@ -227,6 +227,20 @@
   height: 8px;
 }
 
+.dc-row-resize-handle-drop-only {
+  cursor: default;
+}
+
+.dc-row-resize-handle-drop-only:hover:not(.dc-drop-zone-active) {
+  background: transparent;
+}
+
+.dc-row-resize-handle-drop-only:hover:not(.dc-drop-zone-active)::after {
+  background: var(--dc-border);
+  opacity: 0;
+  height: 2px;
+}
+
 .dc-row-edge-drop {
   position: absolute;
   top: 0;

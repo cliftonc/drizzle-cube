@@ -1,4 +1,4 @@
-import { ReactElement, useState, useRef, useLayoutEffect } from 'react'
+import { ReactElement, useState, useRef, useLayoutEffect, startTransition } from 'react'
 import { ResponsiveContainer } from 'recharts'
 import LoadingIndicator from '../LoadingIndicator'
 
@@ -13,11 +13,54 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
   const containerRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+  const sizeRef = useRef({ width: 0, height: 0 })
+  const readyRef = useRef(false)
+  const pendingSizeRef = useRef<{ width: number; height: number } | null>(null)
+  const frameRef = useRef<number | null>(null)
 
   // Use useLayoutEffect to measure before paint
   useLayoutEffect(() => {
     let mounted = true
     let resizeObserver: ResizeObserver | null = null
+
+    const flushPendingSize = () => {
+      frameRef.current = null
+      if (!mounted) return
+      const pending = pendingSizeRef.current
+      pendingSizeRef.current = null
+      if (!pending) return
+
+      const nextWidth = Math.round(pending.width)
+      const nextHeight = Math.round(pending.height)
+      if (nextWidth <= 0 || nextHeight <= 0) return
+
+      const sizeChanged =
+        sizeRef.current.width !== nextWidth || sizeRef.current.height !== nextHeight
+      const shouldBecomeReady = !readyRef.current
+
+      if (!sizeChanged && !shouldBecomeReady) return
+
+      sizeRef.current = { width: nextWidth, height: nextHeight }
+      readyRef.current = true
+
+      // Resize-driven chart updates can come in bursts (one per portlet).
+      // Transitioning these avoids blocking urgent input and coalesces visual work.
+      startTransition(() => {
+        if (sizeChanged) {
+          setContainerSize({ width: nextWidth, height: nextHeight })
+        }
+        if (shouldBecomeReady) {
+          setIsReady(true)
+        }
+      })
+    }
+
+    const scheduleSizeUpdate = (width: number, height: number) => {
+      pendingSizeRef.current = { width, height }
+      if (frameRef.current === null) {
+        frameRef.current = requestAnimationFrame(flushPendingSize)
+      }
+    }
 
     const measureAndSetReady = () => {
       if (!mounted || !containerRef.current) return
@@ -25,23 +68,19 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
       const rect = containerRef.current.getBoundingClientRect()
       // Check both clientWidth/Height AND getBoundingClientRect for robustness
       const width = Math.max(containerRef.current.clientWidth, rect.width)
-      const height = Math.max(containerRef.current.clientHeight, rect.height)
+      const measuredHeight = Math.max(containerRef.current.clientHeight, rect.height)
 
-      if (width > 0 && height > 0) {
-        setContainerSize({ width, height })
-        setIsReady(true)
+      if (width > 0 && measuredHeight > 0) {
+        scheduleSizeUpdate(width, measuredHeight)
       }
     }
 
     // Set up ResizeObserver to detect when container gets valid dimensions
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width, height } = entry.contentRect
-        if (width > 0 && height > 0) {
-          setContainerSize({ width, height })
-          if (!isReady) {
-            setIsReady(true)
-          }
+        const { width, height: entryHeight } = entry.contentRect
+        if (width > 0 && entryHeight > 0) {
+          scheduleSizeUpdate(width, entryHeight)
         }
       }
     })
@@ -54,9 +93,13 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
 
     return () => {
       mounted = false
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
       resizeObserver?.disconnect()
     }
-  }, [isReady])
+  }, [])
 
   try {
     if (height === "100%") {

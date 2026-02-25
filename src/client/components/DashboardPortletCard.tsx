@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
-import type { DashboardFilter, PortletConfig } from '../types'
+import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
@@ -14,12 +14,13 @@ const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'curre
 
 /**
  * Simplified props interface after Zustand migration.
- * State (isEditMode, selectedFilterId, debugData) now comes from store.
+ * State (selectedFilterId, debugData) now comes from store.
  * Actions now come from callbacks prop or store.
  */
 interface DashboardPortletCardProps {
   portlet: PortletConfig
   editable: boolean
+  layoutMode?: DashboardLayoutMode
   dashboardFilters?: DashboardFilter[]
   configEagerLoad?: boolean
   loadingComponent?: ReactNode
@@ -58,6 +59,7 @@ function arePropsEqual(
   // Check scalar props
   if (
     prevProps.editable !== nextProps.editable ||
+    prevProps.layoutMode !== nextProps.layoutMode ||
     prevProps.configEagerLoad !== nextProps.configEagerLoad
   ) {
     return false
@@ -110,10 +112,70 @@ function shallowEqualObjects<T extends object>(
   return true
 }
 
+interface PortletChartBodyProps {
+  isTransparent: boolean
+  setChartContainerRef: (el: HTMLDivElement | null) => void
+  setPortletComponentRef: (el: { refresh: (options?: { bustCache?: boolean }) => void } | null) => void
+  renderQuery: string
+  renderChartType: ChartType
+  renderChartConfig: unknown
+  renderDisplayConfig: unknown
+  dashboardFilters?: DashboardFilter[]
+  dashboardFilterMapping?: string[]
+  eagerLoad: boolean
+  title: string
+  isMarkdownAutoHeight: boolean
+  colorPalette?: ColorPalette
+  loadingComponent?: ReactNode
+  onDebugDataReady: (data: PortletDebugDataEntry) => void
+}
+
+const PortletChartBody = React.memo(function PortletChartBody({
+  isTransparent,
+  setChartContainerRef,
+  setPortletComponentRef,
+  renderQuery,
+  renderChartType,
+  renderChartConfig,
+  renderDisplayConfig,
+  dashboardFilters,
+  dashboardFilterMapping,
+  eagerLoad,
+  title,
+  isMarkdownAutoHeight,
+  colorPalette,
+  loadingComponent,
+  onDebugDataReady,
+}: PortletChartBodyProps) {
+  return (
+    <div
+      ref={setChartContainerRef}
+      className={`dc:flex-1 dc:min-h-0 dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4'}`}
+    >
+      <AnalyticsPortlet
+        ref={setPortletComponentRef}
+        query={renderQuery}
+        chartType={renderChartType}
+        chartConfig={renderChartConfig as Record<string, unknown> | undefined}
+        displayConfig={renderDisplayConfig as Record<string, unknown> | undefined}
+        dashboardFilters={dashboardFilters}
+        dashboardFilterMapping={dashboardFilterMapping}
+        eagerLoad={eagerLoad}
+        title={title}
+        height={isMarkdownAutoHeight ? 'auto' : '100%'}
+        colorPalette={colorPalette}
+        loadingComponent={loadingComponent}
+        onDebugDataReady={onDebugDataReady}
+      />
+    </div>
+  )
+})
+
 // Memoize component - now using store for state, so fewer props to compare
 const DashboardPortletCard = React.memo(function DashboardPortletCard({
   portlet,
   editable,
+  layoutMode = 'grid',
   dashboardFilters,
   configEagerLoad,
   loadingComponent,
@@ -143,10 +205,14 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   // Markdown-specific display modes
   // isTransparent gated on !isEditMode so chrome is visible for editing
-  const isTransparent = renderChartType === 'markdown' && !!renderDisplayConfig?.transparentBackground && !isEditMode
+  const isMarkdown = renderChartType === 'markdown'
+  const markdownAutoHeightRequested = isMarkdown && (renderDisplayConfig?.autoHeight ?? true)
+  const isMarkdownAutoHeight = layoutMode !== 'grid' && markdownAutoHeightRequested
+  const isTransparentContent = isMarkdown && !!renderDisplayConfig?.transparentBackground
+  const isTransparent = isTransparentContent && !isEditMode
   // Hide header when: explicitly set to hide, OR markdown with no title
   const shouldHideHeader = renderChartType === 'markdown'
-    ? (renderDisplayConfig?.hideHeader ?? true) || !portlet.title
+    ? (renderDisplayConfig?.hideHeader ?? true) || !!renderDisplayConfig?.transparentBackground || !portlet.title
     : (renderDisplayConfig?.hideHeader ?? false)
 
   // Get setDebugData action from store
@@ -162,7 +228,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   // State and ref for copy-to-clipboard functionality
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyAvailable, setCopyAvailable] = useState(false)
-  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartContainerRef = useRef<HTMLDivElement | null>(null)
 
   // Track shift key + hover state for cache bust visual feedback on refresh button
   const [isShiftHeld, setIsShiftHeld] = useState(false)
@@ -217,7 +283,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     isTransparent
       ? 'dc:flex dc:flex-col dc:transition-all'
       : 'bg-dc-surface dc:border dc:rounded-lg dc:flex dc:flex-col dc:transition-all',
-    'dc:h-full',
+    isMarkdownAutoHeight ? '' : 'dc:h-full',
     isInSelectionMode ? 'dc:cursor-pointer' : '',
     containerProps?.className
   ]
@@ -251,10 +317,22 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
     setDebugData(portlet.id, data)
   }, [portlet.id, setDebugData])
 
+  const handleSetPortletRef = useCallback((el: HTMLDivElement | null) => {
+    setPortletRef(portlet.id, el)
+  }, [portlet.id, setPortletRef])
+
+  const handleSetPortletComponentRef = useCallback((el: { refresh: (options?: { bustCache?: boolean }) => void } | null) => {
+    setPortletComponentRef(portlet.id, el)
+  }, [portlet.id, setPortletComponentRef])
+
+  const handleSetChartContainerRef = useCallback((el: HTMLDivElement | null) => {
+    chartContainerRef.current = el
+  }, [])
+
   return (
     <div
       data-portlet-id={portlet.id}
-      ref={el => setPortletRef(portlet.id, el)}
+      ref={handleSetPortletRef}
       className={mergedContainerClassName}
       style={{
         boxShadow: isTransparent ? 'none' : 'var(--dc-shadow-sm)',
@@ -469,26 +547,23 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
         </div>
       )}
 
-      <div
-        ref={chartContainerRef}
-        className={`dc:flex-1 dc:min-h-0 dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4'}`}
-      >
-        <AnalyticsPortlet
-          ref={el => setPortletComponentRef(portlet.id, el)}
-          query={renderQuery}
-          chartType={renderChartType}
-          chartConfig={renderChartConfig}
-          displayConfig={renderDisplayConfig}
-          dashboardFilters={dashboardFilters}
-          dashboardFilterMapping={portlet.dashboardFilterMapping}
-          eagerLoad={portlet.eagerLoad ?? configEagerLoad ?? false}
-          title={portlet.title}
-          height="100%"
-          colorPalette={colorPalette}
-          loadingComponent={loadingComponent}
-          onDebugDataReady={handleDebugDataReady}
-        />
-      </div>
+      <PortletChartBody
+        isTransparent={isTransparentContent}
+        setChartContainerRef={handleSetChartContainerRef}
+        setPortletComponentRef={handleSetPortletComponentRef}
+        renderQuery={renderQuery}
+        renderChartType={renderChartType}
+        renderChartConfig={renderChartConfig}
+        renderDisplayConfig={renderDisplayConfig}
+        dashboardFilters={dashboardFilters}
+        dashboardFilterMapping={portlet.dashboardFilterMapping}
+        eagerLoad={portlet.eagerLoad ?? configEagerLoad ?? false}
+        title={portlet.title}
+        isMarkdownAutoHeight={isMarkdownAutoHeight}
+        colorPalette={colorPalette}
+        loadingComponent={loadingComponent}
+        onDebugDataReady={handleDebugDataReady}
+      />
     </div>
   )
 }, arePropsEqual)
