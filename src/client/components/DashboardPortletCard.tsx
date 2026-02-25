@@ -141,6 +141,14 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   const selectedFilterId = useDashboardStore(state => state.selectedFilterId)
   const debugData = useDashboardStore(state => state.debugData[portlet.id])
 
+  // Markdown-specific display modes
+  // isTransparent gated on !isEditMode so chrome is visible for editing
+  const isTransparent = renderChartType === 'markdown' && !!renderDisplayConfig?.transparentBackground && !isEditMode
+  // Hide header when: explicitly set to hide, OR markdown with no title
+  const shouldHideHeader = renderChartType === 'markdown'
+    ? (renderDisplayConfig?.hideHeader ?? true) || !portlet.title
+    : (renderDisplayConfig?.hideHeader ?? false)
+
   // Get setDebugData action from store
   const setDebugData = useDashboardStore(state => state.setDebugData)
 
@@ -206,8 +214,11 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   const isInSelectionMode = !!selectedFilterId
 
   const mergedContainerClassName = [
-    'bg-dc-surface border rounded-lg flex flex-col h-full transition-all',
-    isInSelectionMode ? 'cursor-pointer' : '',
+    isTransparent
+      ? 'dc:flex dc:flex-col dc:transition-all'
+      : 'bg-dc-surface dc:border dc:rounded-lg dc:flex dc:flex-col dc:transition-all',
+    'dc:h-full',
+    isInSelectionMode ? 'dc:cursor-pointer' : '',
     containerProps?.className
   ]
     .filter(Boolean)
@@ -246,14 +257,18 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       ref={el => setPortletRef(portlet.id, el)}
       className={mergedContainerClassName}
       style={{
-        boxShadow: 'var(--dc-shadow-sm)',
-        borderColor: isInSelectionMode && hasSelectedFilter
-          ? 'var(--dc-primary)'
-          : 'var(--dc-border)',
-        borderWidth: isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
-        backgroundColor: isInSelectionMode && hasSelectedFilter
-          ? 'rgba(var(--dc-primary-rgb), 0.05)'
-          : 'var(--dc-surface)',
+        boxShadow: isTransparent ? 'none' : 'var(--dc-shadow-sm)',
+        borderColor: isTransparent
+          ? 'transparent'
+          : isInSelectionMode && hasSelectedFilter
+            ? 'var(--dc-primary)'
+            : 'var(--dc-border)',
+        borderWidth: isTransparent ? '0' : isInSelectionMode && hasSelectedFilter ? '2px' : '1px',
+        backgroundColor: isTransparent
+          ? 'transparent'
+          : isInSelectionMode && hasSelectedFilter
+            ? 'rgba(var(--dc-primary-rgb), 0.05)'
+            : 'var(--dc-surface)',
         opacity: isInSelectionMode && !hasSelectedFilter ? '0.5' : '1',
         ...containerStyle
       }}
@@ -266,7 +281,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       }}
       {...restContainerProps}
     >
-      {(!renderDisplayConfig?.hideHeader || isEditMode) && (
+      {(!shouldHideHeader || isEditMode) && (
         <div
           className={mergedHeaderClassName}
           style={headerStyle}
@@ -456,7 +471,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
       <div
         ref={chartContainerRef}
-        className="dc:flex-1 dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4 dc:min-h-0 dc:overflow-visible dc:flex dc:flex-col"
+        className={`dc:flex-1 dc:min-h-0 dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3 dc:md:px-4 dc:md:py-4'}`}
       >
         <AnalyticsPortlet
           ref={el => setPortletComponentRef(portlet.id, el)}

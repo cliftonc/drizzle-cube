@@ -7,7 +7,7 @@ import { getChartTypeIcon } from '../../icons'
 export const markdownConfig: ChartTypeConfig = {
   icon: getChartTypeIcon('markdown'),
   description: 'Display custom markdown content with formatting',
-  useCase: 'Perfect for adding documentation, notes, instructions, or formatted text to dashboards',
+  useCase: 'Perfect for adding documentation, notes, section headers, instructions, or formatted text to dashboards',
   skipQuery: true, // This chart doesn't require a valid query
   dropZones: [], // No drop zones needed for markdown content
   displayOptionsConfig: [
@@ -15,8 +15,8 @@ export const markdownConfig: ChartTypeConfig = {
       key: 'content',
       label: 'Markdown Content',
       type: 'string',
-      placeholder: '# Welcome\n\nAdd your **markdown** content here:\n\n- Lists with bullets\n- [Links](https://example.com)\n- *Italic* and **bold** text',
-      description: 'Enter markdown text. Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), and lists (- item).'
+      placeholder: '# Welcome\n\nAdd your **markdown** content here:\n\n- Lists with bullets\n- [Links](https://example.com)\n- *Italic* and **bold** text\n\n---\n\nUse --- for horizontal rules.',
+      description: 'Enter markdown text. Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).'
     },
     {
       key: 'accentColorIndex',
@@ -48,7 +48,33 @@ export const markdownConfig: ChartTypeConfig = {
         { value: 'right', label: 'Right' }
       ],
       description: 'Horizontal alignment of the markdown content'
+    },
+    {
+      key: 'hideHeader',
+      label: 'Hide Header',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'Hide the portlet header bar (title and action buttons)'
+    },
+    {
+      key: 'transparentBackground',
+      label: 'Transparent Background',
+      type: 'boolean',
+      defaultValue: false,
+      description: 'Remove card background, border, and shadow for seamless integration as section headers'
+    },
+    {
+      key: 'accentBorder',
+      label: 'Accent Border',
+      type: 'select',
+      defaultValue: 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'left', label: 'Left' },
+        { value: 'top', label: 'Top' },
+        { value: 'bottom', label: 'Bottom' }
+      ],
+      description: 'Add an accent-colored border on one side of the content'
     }
-  ],
-  displayOptions: ['hideHeader']
+  ]
 }

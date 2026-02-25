@@ -14,7 +14,8 @@ import {
   type HTMLAttributes,
   type DragEvent,
   type MouseEvent,
-  type Ref
+  type Ref,
+  type CSSProperties,
 } from 'react'
 import ReactGridLayout, { verticalCompactor, type LayoutItem, type Layout } from 'react-grid-layout'
 import { getIcon } from '../icons'
@@ -36,9 +37,21 @@ const FilterIcon = getIcon('filter')
 const DesktopIcon = getIcon('desktop')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
+
+/** Inline "Tt" typography icon for Add Text buttons */
+function TextIcon({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <text x="1" y="20" fontSize="20" fontWeight="700" fontFamily="serif">T</text>
+      <text x="14" y="20" fontSize="13" fontWeight="600" fontFamily="serif">t</text>
+    </svg>
+  )
+}
 import PortletAnalysisModal from './PortletAnalysisModal'
+import TextPortletModal from './TextPortletModal'
 import PortletFilterConfigModal from './PortletFilterConfigModal'
 import ConfirmModal from './ConfirmModal'
+import { ensureAnalysisConfig } from '../utils/configMigration'
 import { useCubeFeatures } from '../providers/CubeProvider'
 import ColorPaletteSelector from './ColorPaletteSelector'
 import DashboardFilterPanel from './DashboardFilterPanel'
@@ -115,7 +128,7 @@ const DEFAULT_GRID_SETTINGS: DashboardGridSettings = {
   cols: 12,
   rowHeight: 80,
   minW: 2,
-  minH: 2
+  minH: 1
 }
 
 const createRowId = () => `row-${Date.now()}`
@@ -263,6 +276,8 @@ export default function DashboardGrid({
   const portletRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
   const portletComponentRefs = useRef<{ [key: string]: { refresh: () => void } | null }>({})
   const draftRowsRef = useRef<RowLayout[] | null>(null)
+  // Local ref for tracking latest drag rows synchronously (avoids stale reads from useEffect-synced ref)
+  const latestDragRowsRef = useRef<RowLayout[] | null>(null)
   const dragStateRef = useRef<{ rowIndex: number; colIndex: number; portletId: string } | null>(null)
 
   // =========================================================================
@@ -292,6 +307,8 @@ export default function DashboardGrid({
     selectedFilterId,
     isPortletModalOpen,
     editingPortlet,
+    isTextModalOpen,
+    editingTextPortlet,
     isFilterConfigModalOpen,
     filterConfigPortlet,
     deleteConfirmPortletId,
@@ -511,6 +528,7 @@ export default function DashboardGrid({
       ...row,
       columns: row.columns.map(column => ({ ...column }))
     }))
+    latestDragRowsRef.current = null
 
     const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientY - startY
@@ -522,13 +540,15 @@ export default function DashboardGrid({
           h: Math.max(gridSettings.minH, row.h + deltaUnits)
         }
       })
+      latestDragRowsRef.current = nextRows
       actions.setDraftRows(nextRows)
     }
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
-      const finalRows = draftRowsRef.current ?? startRows
+      const finalRows = latestDragRowsRef.current ?? startRows
+      latestDragRowsRef.current = null
       actions.updateRowLayout(finalRows)
     }
 
@@ -555,10 +575,13 @@ export default function DashboardGrid({
     const rowContentWidth = gridWidth - (row.columns.length - 1) * columnGap
     const unitWidth = rowContentWidth / gridSettings.cols
 
+    latestDragRowsRef.current = null
+
     const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const delta = moveEvent.clientX - startX
       const deltaUnits = Math.round(delta / unitWidth)
       if (deltaUnits === 0) {
+        latestDragRowsRef.current = startRows
         actions.setDraftRows(startRows)
         return
       }
@@ -596,13 +619,15 @@ export default function DashboardGrid({
           columns: adjustRowWidths(nextColumns, gridSettings)
         }
       })
+      latestDragRowsRef.current = nextRows
       actions.setDraftRows(nextRows)
     }
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
-      const finalRows = draftRowsRef.current ?? startRows
+      const finalRows = latestDragRowsRef.current ?? startRows
+      latestDragRowsRef.current = null
       actions.updateRowLayout(finalRows)
     }
 
@@ -706,7 +731,7 @@ export default function DashboardGrid({
 
     const newRow: RowLayout = {
       id: createRowId(),
-      h: Math.max(gridSettings.minH, 5),
+      h: Math.max(gridSettings.minH, 3),
       columns: equalizeRowColumns([movedColumn.portletId], gridSettings)
     }
     nextRows.splice(insertIndex, 0, newRow)
@@ -810,9 +835,20 @@ export default function DashboardGrid({
     actions.openAddPortlet()
   }, [actions])
 
-  // Handle editing existing portlet - delegate to hook action
+  // Handle adding new text portlet - delegate to hook action
+  const handleAddText = useCallback(() => {
+    actions.openAddText()
+  }, [actions])
+
+  // Handle editing existing portlet - route markdown to text modal, others to analysis builder
   const handleEditPortlet = useCallback((portlet: PortletConfig) => {
-    actions.openEditPortlet(portlet)
+    const normalized = ensureAnalysisConfig(portlet)
+    const chartType = normalized.analysisConfig.charts[normalized.analysisConfig.analysisType]?.chartType
+    if (chartType === 'markdown') {
+      actions.openEditText(portlet)
+    } else {
+      actions.openEditPortlet(portlet)
+    }
   }, [actions])
 
   // Handle palette change - delegate to hook action
@@ -922,19 +958,34 @@ export default function DashboardGrid({
             <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">No Portlets</h3>
             <p className="dc:text-sm text-dc-text-secondary dc:mb-4">Add your first portlet to start visualizing your data</p>
             {editable && (
-              <button
-                onClick={handleAddPortlet}
-                className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:border border-dc-border bg-dc-surface dc:rounded-md focus:outline-hidden dc:focus:ring-2"
-                style={{
-                  color: 'var(--dc-primary)',
-                  borderColor: 'var(--dc-primary)'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
-              >
-                <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
-                Add Portlet
-              </button>
+              <div className="dc:flex dc:items-center dc:gap-3">
+                <button
+                  onClick={handleAddText}
+                  className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:border border-dc-border bg-dc-surface dc:rounded-md focus:outline-hidden dc:focus:ring-2"
+                  style={{
+                    color: 'var(--dc-text-secondary)',
+                    borderColor: 'var(--dc-border)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
+                >
+                  <TextIcon className="dc:w-5 dc:h-5 dc:mr-2" />
+                  Add Text
+                </button>
+                <button
+                  onClick={handleAddPortlet}
+                  className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:border border-dc-border bg-dc-surface dc:rounded-md focus:outline-hidden dc:focus:ring-2"
+                  style={{
+                    color: 'var(--dc-primary)',
+                    borderColor: 'var(--dc-primary)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
+                >
+                  <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
+                  Add Portlet
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -950,6 +1001,16 @@ export default function DashboardGrid({
           colorPalette={colorPalette}
           dashboardFilters={dashboardFilters}
         />
+
+        {/* Text Portlet Modal */}
+        <TextPortletModal
+          isOpen={isTextModalOpen}
+          onClose={actions.closeTextModal}
+          onSave={handlePortletSave}
+          portlet={editingTextPortlet}
+          colorPalette={colorPalette}
+          existingTitles={config.portlets.map(p => p.title)}
+        />
       </>
     )
   }
@@ -963,7 +1024,7 @@ export default function DashboardGrid({
     w: portlet.w,
     h: portlet.h,
     minW: gridSettings.minW,
-    minH: gridSettings.minH,  // 2 rows at 80px = 160px minimum
+    minH: gridSettings.minH,
     // Only enable drag/resize in edit mode
     isDraggable: canEdit,
     isResizable: canEdit,
@@ -1117,6 +1178,18 @@ export default function DashboardGrid({
               />
 
               <button
+                onClick={handleAddText}
+                className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:border dc:rounded-md focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover"
+                style={{
+                  color: 'var(--dc-text-secondary)',
+                  borderColor: 'var(--dc-border)'
+                }}
+              >
+                <TextIcon className="dc:w-5 dc:h-5 dc:mr-2" />
+                Add Text
+              </button>
+
+              <button
                 onClick={handleAddPortlet}
                 className="dc:inline-flex dc:items-center dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:border dc:rounded-md focus:outline-hidden dc:focus:ring-2 dc:focus:ring-offset-2 border-dc-border bg-dc-surface hover:bg-dc-surface-hover"
                 style={{
@@ -1146,6 +1219,7 @@ export default function DashboardGrid({
           currentPalette={config.colorPalette || 'default'}
           onPaletteChange={actions.handlePaletteChange}
           onAddPortlet={actions.openAddPortlet}
+          onAddText={actions.openAddText}
         />
       )}
 
@@ -1245,6 +1319,16 @@ export default function DashboardGrid({
         submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
         colorPalette={colorPalette}
         dashboardFilters={dashboardFilters}
+      />
+
+      {/* Text Portlet Modal */}
+      <TextPortletModal
+        isOpen={isTextModalOpen}
+        onClose={actions.closeTextModal}
+        onSave={handlePortletSave}
+        portlet={editingTextPortlet}
+        colorPalette={colorPalette}
+        existingTitles={config.portlets.map(p => p.title)}
       />
 
       {/* Filter Configuration Modal */}

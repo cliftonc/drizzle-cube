@@ -16,6 +16,8 @@ interface AnalysisDisplayConfigPanelProps {
   displayConfig: ChartDisplayConfig
   colorPalette?: ColorPalette
   onDisplayConfigChange: (config: ChartDisplayConfig) => void
+  /** Keys to exclude from displayOptionsConfig rendering (e.g., ['content'] when content is managed elsewhere) */
+  excludeKeys?: string[]
 }
 
 /**
@@ -75,7 +77,8 @@ export default function AnalysisDisplayConfigPanel({
   chartType,
   displayConfig,
   colorPalette,
-  onDisplayConfigChange
+  onDisplayConfigChange,
+  excludeKeys,
 }: AnalysisDisplayConfigPanelProps) {
   // Get configuration for current chart type
   const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
@@ -198,7 +201,7 @@ export default function AnalysisDisplayConfigPanel({
           )}
 
           {/* New structured display options */}
-          {chartTypeConfig.displayOptionsConfig?.map((option) => (
+          {chartTypeConfig.displayOptionsConfig?.filter(option => !excludeKeys?.includes(option.key)).map((option) => (
             <div key={option.key} className={`dc:space-y-1 ${option.type === 'axisFormat' ? 'dc:mt-6 dc:pt-2' : ''}`}>
               {option.type === 'boolean' && (
                 <label className="dc:flex dc:items-center dc:space-x-2">

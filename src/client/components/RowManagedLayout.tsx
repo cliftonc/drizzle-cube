@@ -96,7 +96,11 @@ export default function RowManagedLayout({
           <div key={row.id} className="dc-row-layout-row-wrapper">
             <div
               className="dc-row-layout-row"
-              style={{ height: rowHeight, paddingLeft, paddingRight }}
+              style={{
+                height: rowHeight,
+                paddingLeft,
+                paddingRight,
+              }}
             >
               {row.columns.map((column, columnIndex) => {
                 const portlet = portletMap.get(column.portletId)

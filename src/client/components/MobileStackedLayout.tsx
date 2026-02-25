@@ -104,10 +104,15 @@ export default function MobileStackedLayout({
         const renderChartConfig = chartModeConfig?.chartConfig
         const renderDisplayConfig = chartModeConfig?.displayConfig
 
+        // Markdown-specific display modes
+        const isTransparent = renderChartType === 'markdown' && !!renderDisplayConfig?.transparentBackground
+        const isAutoHeight = renderChartType === 'markdown' && (renderDisplayConfig?.autoHeight ?? true)
+        const shouldHideHeader = renderDisplayConfig?.hideHeader ?? (renderChartType === 'markdown')
+
         // Calculate height: use stored h * rowHeight (80px), with minimum
         const portletHeight = Math.max(300, portlet.h * 80)
         // Header is approximately 40px when shown
-        const headerHeight = renderDisplayConfig?.hideHeader ? 0 : 40
+        const headerHeight = shouldHideHeader ? 0 : 40
         // Content height = total - header - padding (py-3 = 24px)
         const contentHeight = portletHeight - headerHeight - 24
 
@@ -115,14 +120,20 @@ export default function MobileStackedLayout({
           <div
             key={portlet.id}
             data-portlet-id={portlet.id}
-            className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col"
+            className={isTransparent
+              ? 'dc:flex dc:flex-col'
+              : 'bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:flex dc:flex-col'
+            }
             style={{
-              height: portletHeight,
-              boxShadow: 'var(--dc-shadow-sm)'
+              height: isAutoHeight ? 'auto' : portletHeight,
+              boxShadow: isTransparent ? 'none' : 'var(--dc-shadow-sm)',
+              borderColor: isTransparent ? 'transparent' : undefined,
+              borderWidth: isTransparent ? '0' : undefined,
+              backgroundColor: isTransparent ? 'transparent' : undefined,
             }}
           >
             {/* Portlet Header - Simplified for mobile (no edit controls) */}
-            {!renderDisplayConfig?.hideHeader && (
+            {!shouldHideHeader && (
               <div className="dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-2 dc:border-b border-dc-border dc:shrink-0 bg-dc-surface-secondary dc:rounded-t-lg">
                 <h3 className="dc:font-semibold dc:text-sm text-dc-text dc:truncate dc:flex-1">
                   {portlet.title}
@@ -141,8 +152,8 @@ export default function MobileStackedLayout({
 
             {/* Portlet Content - explicit height for charts to render */}
             <div
-              className="dc:px-2 dc:py-3 dc:overflow-visible dc:flex dc:flex-col"
-              style={{ height: contentHeight }}
+              className={`dc:overflow-visible dc:flex dc:flex-col${isTransparent ? '' : ' dc:px-2 dc:py-3'}`}
+              style={{ height: isAutoHeight ? 'auto' : contentHeight }}
             >
               <AnalyticsPortlet
                 ref={el => { portletComponentRefs.current[portlet.id] = el }}
@@ -154,7 +165,7 @@ export default function MobileStackedLayout({
                 dashboardFilterMapping={portlet.dashboardFilterMapping}
                 eagerLoad={portlet.eagerLoad ?? config.eagerLoad ?? false}
                 title={portlet.title}
-                height={contentHeight}
+                height={isAutoHeight ? 'auto' : contentHeight}
                 colorPalette={colorPalette}
               />
             </div>

@@ -15,6 +15,11 @@
   margin: 0 !important;
 }
 
+/* Grid items clip overflow to prevent content escaping fixed-height cells */
+.react-grid-item {
+  overflow: hidden;
+}
+
 /* Scaled grid wrapper styles - disable transitions during scaling to prevent jank */
 .scaled-grid-inner .react-grid-item {
   transition: none !important;
@@ -55,6 +60,10 @@
   width: 100%;
   align-items: stretch;
   gap: var(--dc-column-gap, 16px);
+}
+
+.dc-row-layout-row {
+  overflow: hidden;
 }
 
 .dc-row-layout-column-wrapper {

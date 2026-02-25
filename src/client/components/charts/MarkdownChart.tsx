@@ -2,7 +2,7 @@ import React from 'react'
 import type { ChartProps } from '../../types'
 
 interface MarkdownNode {
-  type: 'text' | 'bold' | 'italic' | 'link' | 'header' | 'list' | 'listItem' | 'paragraph' | 'break'
+  type: 'text' | 'bold' | 'italic' | 'link' | 'header' | 'list' | 'listItem' | 'paragraph' | 'break' | 'hr'
   content?: string
   url?: string
   level?: number
@@ -20,6 +20,8 @@ const MarkdownChart = React.memo(function MarkdownChart({
   const accentColorIndex = displayConfig.accentColorIndex ?? 0
   const fontSize = displayConfig.fontSize || 'medium'
   const alignment = displayConfig.alignment || 'left'
+  const transparentBackground = !!displayConfig.transparentBackground
+  const accentBorder = displayConfig.accentBorder || 'none'
 
   // Get accent color from palette
   const getAccentColor = (): string => {
@@ -61,6 +63,16 @@ const MarkdownChart = React.memo(function MarkdownChart({
           currentList = null
         }
         nodes.push({ type: 'break' })
+        continue
+      }
+
+      // Horizontal rule (---, ***, ___ with 3+ chars)
+      if (/^[-*_]{3,}$/.test(line)) {
+        if (currentList) {
+          nodes.push(currentList)
+          currentList = null
+        }
+        nodes.push({ type: 'hr' })
         continue
       }
 
@@ -371,6 +383,15 @@ const MarkdownChart = React.memo(function MarkdownChart({
         }
         return null
 
+      case 'hr':
+        return (
+          <hr
+            key={key}
+            className="dc:my-4 dc:border-none"
+            style={{ height: '2px', backgroundColor: accentColor, opacity: 0.3 }}
+          />
+        )
+
       case 'break':
         return <br key={key} />
 
@@ -380,12 +401,14 @@ const MarkdownChart = React.memo(function MarkdownChart({
   }
 
   if (!content.trim()) {
+    // When transparent, don't show any placeholder
+    if (transparentBackground) return null
+
     return (
       <div
         className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
         style={{
           height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? '200px' : undefined
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
@@ -398,12 +421,24 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
   const parsedNodes = parseMarkdown(content)
 
+  // Build accent border styles
+  const accentBorderStyle: React.CSSProperties = {}
+  if (accentBorder !== 'none') {
+    const borderProp = `border${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'borderLeft' | 'borderTop' | 'borderBottom'
+    accentBorderStyle[borderProp] = `4px solid ${accentColor}`
+    // Add small padding on the border side when transparent
+    if (transparentBackground) {
+      const paddingProp = `padding${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'paddingLeft' | 'paddingTop' | 'paddingBottom'
+      if (accentBorder === 'left') accentBorderStyle[paddingProp] = '12px'
+    }
+  }
+
   return (
-    <div 
-      className={`dc:p-4 dc:w-full dc:h-full dc:overflow-auto ${fontSizeClasses[fontSize as keyof typeof fontSizeClasses]} ${alignmentClasses[alignment as keyof typeof alignmentClasses]}`}
-      style={{ 
+    <div
+      className={`dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize as keyof typeof fontSizeClasses]} ${alignmentClasses[alignment as keyof typeof alignmentClasses]}`}
+      style={{
         height: height === "100%" ? "100%" : height,
-        minHeight: height === "100%" ? '200px' : undefined
+        ...accentBorderStyle
       }}
     >
       {parsedNodes.map((node, index) => renderNode(node, index))}

@@ -36,6 +36,7 @@ import React, { useMemo, useCallback, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import {
   useDashboardStore,
+  useDashboardStoreApi,
   type DashboardStore,
   type PortletDebugDataEntry,
 } from '../stores/dashboardStore'
@@ -97,6 +98,10 @@ export interface UseDashboardResult {
   isPortletModalOpen: boolean
   /** Portlet being edited */
   editingPortlet: PortletConfig | null
+  /** Whether text portlet modal is open */
+  isTextModalOpen: boolean
+  /** Portlet being edited in text modal */
+  editingTextPortlet: PortletConfig | null
   /** Whether filter config modal is open */
   isFilterConfigModalOpen: boolean
   /** Portlet for filter configuration */
@@ -111,8 +116,6 @@ export interface UseDashboardResult {
   lastKnownLayout: LayoutItem[]
   /** Whether component is initialized */
   isInitialized: boolean
-  /** Debug data per portlet */
-  debugData: Record<string, PortletDebugDataEntry>
 
   // =========================================================================
   // Computed Values
@@ -148,6 +151,9 @@ export interface UseDashboardActions {
   openAddPortlet: () => void
   openEditPortlet: (portlet: PortletConfig) => void
   closePortletModal: () => void
+  openAddText: () => void
+  openEditText: (portlet: PortletConfig) => void
+  closeTextModal: () => void
   openFilterConfig: (portlet: PortletConfig) => void
   closeFilterConfig: () => void
 
@@ -355,6 +361,8 @@ const selectStoreState = (state: DashboardStore) => ({
   selectedFilterId: state.selectedFilterId,
   isPortletModalOpen: state.isPortletModalOpen,
   editingPortlet: state.editingPortlet,
+  isTextModalOpen: state.isTextModalOpen,
+  editingTextPortlet: state.editingTextPortlet,
   isFilterConfigModalOpen: state.isFilterConfigModalOpen,
   filterConfigPortlet: state.filterConfigPortlet,
   deleteConfirmPortletId: state.deleteConfirmPortletId,
@@ -362,7 +370,8 @@ const selectStoreState = (state: DashboardStore) => ({
   isDraggingPortlet: state.isDraggingPortlet,
   lastKnownLayout: state.lastKnownLayout,
   isInitialized: state.isInitialized,
-  debugData: state.debugData,
+  // NOTE: debugData intentionally excluded — DashboardPortletCard reads it directly from store.
+  // Including it here would cause the entire hook to re-run on every portlet data load.
   thumbnailDirty: state.thumbnailDirty,
 })
 
@@ -373,6 +382,8 @@ const selectStoreActions = (state: DashboardStore) => ({
   exitFilterSelectionMode: state.exitFilterSelectionMode,
   openPortletModal: state.openPortletModal,
   closePortletModal: state.closePortletModal,
+  openTextModal: state.openTextModal,
+  closeTextModal: state.closeTextModal,
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,
@@ -414,6 +425,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
   const storeState = useDashboardStore(useShallow(selectStoreState))
   const storeActions = useDashboardStore(useShallow(selectStoreActions))
+  const storeApi = useDashboardStoreApi()
 
   // Get thumbnail feature config from context
   const { features } = useCubeFeatures()
@@ -422,6 +434,18 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
   // Keep refs for draft rows (needed for mouse event handlers)
   const draftRowsRef = useRef<RowLayout[] | null>(null)
   draftRowsRef.current = storeState.draftRows
+
+  // Refs for values used in stable callbacks (avoids recreating callbacks on every state change)
+  const configRef = useRef(config)
+  configRef.current = config
+  const onConfigChangeRef = useRef(onConfigChange)
+  onConfigChangeRef.current = onConfigChange
+  const onSaveRef = useRef(onSave)
+  onSaveRef.current = onSave
+  const thumbnailDirtyRef = useRef(storeState.thumbnailDirty)
+  thumbnailDirtyRef.current = storeState.thumbnailDirty
+  const onSaveThumbnailRef = useRef(onSaveThumbnail)
+  onSaveThumbnailRef.current = onSaveThumbnail
 
   // =========================================================================
   // Computed Values
@@ -494,15 +518,16 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
     // Capture thumbnail in background after UI has fully re-rendered
     // Use longer delay to ensure edit mode UI elements are removed and charts settle
-    if (storeState.thumbnailDirty && thumbnailConfig?.enabled && dashboardRef) {
+    // Read from refs to avoid recreating this callback on config/state changes
+    if (thumbnailDirtyRef.current && thumbnailConfig?.enabled && dashboardRef) {
       setTimeout(async () => {
         const thumbnailData = await captureThumbnail(dashboardRef, thumbnailConfig)
-        if (thumbnailData && onSaveThumbnail) {
+        if (thumbnailData && onSaveThumbnailRef.current) {
           try {
-            const thumbnailUrl = await onSaveThumbnail(thumbnailData)
+            const thumbnailUrl = await onSaveThumbnailRef.current(thumbnailData)
             // Optionally update config with URL
-            if (thumbnailUrl && onConfigChange) {
-              onConfigChange({ ...config, thumbnailUrl, thumbnailData: undefined })
+            if (thumbnailUrl && onConfigChangeRef.current) {
+              onConfigChangeRef.current({ ...configRef.current, thumbnailUrl, thumbnailData: undefined })
             }
           } catch (error) {
             console.error('Failed to save thumbnail:', error)
@@ -511,27 +536,29 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         storeActions.setThumbnailDirty(false)
       }, 500) // 500ms delay for re-render (edit mode UI removal + chart settling)
     }
-  }, [storeActions, storeState.thumbnailDirty, thumbnailConfig, dashboardRef, onSaveThumbnail, config, onConfigChange])
+  }, [storeActions, thumbnailConfig, dashboardRef])
 
   const toggleEditMode = useCallback(() => {
-    if (isResponsiveEditable) {
-      if (storeState.isEditMode) {
-        // Use exitEditMode to handle thumbnail capture
-        exitEditMode()
-      } else {
-        storeActions.setEditMode(true)
-      }
+    if (!isResponsiveEditable) return
+    // Read current state from store directly to avoid dependency on storeState.isEditMode
+    const store = storeApi.getState()
+    if (store.isEditMode) {
+      exitEditMode()
+    } else {
+      storeActions.setEditMode(true)
     }
-  }, [isResponsiveEditable, storeActions, storeState.isEditMode, exitEditMode])
+  }, [isResponsiveEditable, storeActions, storeApi, exitEditMode])
 
   const selectFilter = useCallback(
     (filterId: string | null) => {
       // Toggle selection: if already selected, deselect
+      // Read current state from store directly to avoid dependency on storeState.selectedFilterId
+      const currentSelectedId = storeApi.getState().selectedFilterId
       storeActions.setSelectedFilterId(
-        filterId === storeState.selectedFilterId ? null : filterId
+        filterId === currentSelectedId ? null : filterId
       )
     },
-    [storeActions, storeState.selectedFilterId]
+    [storeActions, storeApi]
   )
 
   // Modal actions
@@ -546,6 +573,18 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     [storeActions]
   )
 
+  // Text modal actions
+  const openAddText = useCallback(() => {
+    storeActions.openTextModal(null)
+  }, [storeActions])
+
+  const openEditText = useCallback(
+    (portlet: PortletConfig) => {
+      storeActions.openTextModal(portlet)
+    },
+    [storeActions]
+  )
+
   const openFilterConfig = useCallback(
     (portlet: PortletConfig) => {
       storeActions.openFilterConfigModal(portlet)
@@ -553,15 +592,16 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     [storeActions]
   )
 
-  // Layout change detection
+  // Layout change detection — reads from store directly for stability
   const hasLayoutActuallyChanged = useCallback(
     (newLayout: LayoutItem[]) => {
-      if (!storeState.isInitialized || storeState.lastKnownLayout.length === 0) {
+      const { isInitialized, lastKnownLayout } = storeApi.getState()
+      if (!isInitialized || lastKnownLayout.length === 0) {
         return false
       }
 
       for (const newItem of newLayout) {
-        const oldItem = storeState.lastKnownLayout.find((item) => item.i === newItem.i)
+        const oldItem = lastKnownLayout.find((item) => item.i === newItem.i)
         if (!oldItem) continue
 
         if (
@@ -575,110 +615,113 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       }
       return false
     },
-    [storeState.isInitialized, storeState.lastKnownLayout]
+    [storeApi]
   )
 
-  // Row layout update
+  // Row layout update — uses refs for config/callbacks to stay stable
   const updateRowLayout = useCallback(
     async (
       rows: RowLayout[],
       save = true,
       portletsOverride?: PortletConfig[]
     ) => {
-      if (!onConfigChange) return
+      if (!onConfigChangeRef.current) return
 
-      const portlets = portletsOverride ?? config.portlets
+      const portlets = portletsOverride ?? configRef.current.portlets
       const normalizedRows = normalizeRows(rows, portlets, gridSettings)
       const updatedPortlets = convertRowsToPortlets(normalizedRows, portlets)
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...configRef.current,
         layoutMode: 'rows',
         rows: normalizedRows,
         portlets: updatedPortlets,
       }
 
       storeActions.setDraftRows(null)
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (save && onSave) {
+      if (save && onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed after row layout change:', error)
         }
       }
     },
-    [config, gridSettings, onConfigChange, onSave, storeActions]
+    [gridSettings, storeActions]
   )
 
-  // Layout mode change
+  // Layout mode change — uses refs for stability
+  const layoutModeRef = useRef(layoutMode)
+  layoutModeRef.current = layoutMode
+  const canChangeLayoutModeRef = useRef(canChangeLayoutMode)
+  canChangeLayoutModeRef.current = canChangeLayoutMode
+
   const handleLayoutModeChange = useCallback(
     async (mode: DashboardLayoutMode) => {
       if (
-        !onConfigChange ||
-        mode === layoutMode ||
-        !canChangeLayoutMode ||
+        !onConfigChangeRef.current ||
+        mode === layoutModeRef.current ||
+        !canChangeLayoutModeRef.current ||
         !allowedModes.includes(mode)
       ) {
         return
       }
 
+      const cfg = configRef.current
       const baseRows = normalizeRows(
-        config.rows && config.rows.length > 0
-          ? config.rows
-          : convertPortletsToRows(config.portlets, gridSettings),
-        config.portlets,
+        cfg.rows && cfg.rows.length > 0
+          ? cfg.rows
+          : convertPortletsToRows(cfg.portlets, gridSettings),
+        cfg.portlets,
         gridSettings
       )
 
-      const updatedPortlets = convertRowsToPortlets(baseRows, config.portlets)
+      const updatedPortlets = convertRowsToPortlets(baseRows, cfg.portlets)
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...cfg,
         layoutMode: mode,
         rows: baseRows,
         portlets: updatedPortlets,
       }
 
       storeActions.setDraftRows(null)
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (onSave) {
+      if (onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed after layout mode switch:', error)
         }
       }
     },
-    [
-      allowedModes,
-      canChangeLayoutMode,
-      config,
-      gridSettings,
-      layoutMode,
-      onConfigChange,
-      onSave,
-      storeActions,
-    ]
+    [allowedModes, gridSettings, storeActions]
   )
 
-  // Portlet operations
+  // Portlet operations — uses refs and store.getState() for stability
+  const resolvedRowsRef = useRef(resolvedRows)
+  resolvedRowsRef.current = resolvedRows
+
   const savePortlet = useCallback(
     async (
       portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>
     ): Promise<string | null> => {
-      if (!onConfigChange) return null
+      if (!onConfigChangeRef.current) return null
 
-      let updatedPortlets = [...config.portlets]
+      const cfg = configRef.current
+      let updatedPortlets = [...cfg.portlets]
       let isNewPortlet = false
       let newPortletId: string | null = null
 
-      if (storeState.editingPortlet) {
+      const store = storeApi.getState()
+      const editingExisting = store.editingPortlet || store.editingTextPortlet
+      if (editingExisting) {
         // Editing existing portlet
         const index = updatedPortlets.findIndex(
-          (p) => p.id === storeState.editingPortlet!.id
+          (p) => p.id === editingExisting.id
         )
         if (index !== -1) {
           updatedPortlets[index] = portletData as PortletConfig
@@ -697,7 +740,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
         // Find best position for new portlet
         let maxY = 0
-        config.portlets.forEach((p) => {
+        cfg.portlets.forEach((p) => {
           if (p.y + p.h > maxY) {
             maxY = p.y + p.h
           }
@@ -707,15 +750,16 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         updatedPortlets.push(newPortlet)
       }
 
-      if (layoutMode === 'rows') {
+      if (layoutModeRef.current === 'rows') {
+        const currentRows = resolvedRowsRef.current
         const baseRows =
-          resolvedRows.length > 0
-            ? resolvedRows.map((row) => ({
+          currentRows.length > 0
+            ? currentRows.map((row) => ({
                 ...row,
                 columns: row.columns.map((col) => ({ ...col })),
               }))
             : normalizeRows(
-                config.rows ?? convertPortletsToRows(config.portlets, gridSettings),
+                cfg.rows ?? convertPortletsToRows(cfg.portlets, gridSettings),
                 updatedPortlets,
                 gridSettings
               )
@@ -726,7 +770,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
                 ...baseRows,
                 {
                   id: createRowId(),
-                  h: Math.max(gridSettings.minH, 5),
+                  h: Math.max(gridSettings.minH, 3),
                   columns: equalizeRowColumns([newPortletId], gridSettings),
                 },
               ]
@@ -735,16 +779,16 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         await updateRowLayout(nextRows, true, updatedPortlets)
       } else {
         const updatedConfig: DashboardConfig = {
-          ...config,
+          ...cfg,
           portlets: updatedPortlets,
         }
 
-        onConfigChange(updatedConfig)
+        onConfigChangeRef.current(updatedConfig)
 
-        if (onSave) {
+        if (onSaveRef.current) {
           try {
-            await onSave(updatedConfig)
-          storeActions.setThumbnailDirty(true)
+            await onSaveRef.current(updatedConfig)
+            storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
@@ -752,30 +796,22 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       }
 
       storeActions.closePortletModal()
+      storeActions.closeTextModal()
       return newPortletId
     },
-    [
-      config,
-      gridSettings,
-      layoutMode,
-      onConfigChange,
-      onSave,
-      resolvedRows,
-      storeActions,
-      storeState.editingPortlet,
-      updateRowLayout,
-    ]
+    [gridSettings, storeActions, storeApi, updateRowLayout]
   )
 
-  // Internal delete logic (called after confirmation)
+  // Internal delete logic (called after confirmation) — uses refs for stability
   const executeDeletePortlet = useCallback(
     async (portletId: string) => {
-      if (!onConfigChange) return
+      if (!onConfigChangeRef.current) return
 
-      const updatedPortlets = config.portlets.filter((p) => p.id !== portletId)
+      const cfg = configRef.current
+      const updatedPortlets = cfg.portlets.filter((p) => p.id !== portletId)
 
-      if (layoutMode === 'rows') {
-        const nextRows = resolvedRows
+      if (layoutModeRef.current === 'rows') {
+        const nextRows = resolvedRowsRef.current
           .map((row) => ({
             ...row,
             columns: row.columns.filter((col) => col.portletId !== portletId),
@@ -792,23 +828,23 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
         await updateRowLayout(nextRows, true, updatedPortlets)
       } else {
         const updatedConfig: DashboardConfig = {
-          ...config,
+          ...cfg,
           portlets: updatedPortlets,
         }
 
-        onConfigChange(updatedConfig)
+        onConfigChangeRef.current(updatedConfig)
 
-        if (onSave) {
+        if (onSaveRef.current) {
           try {
-            await onSave(updatedConfig)
-          storeActions.setThumbnailDirty(true)
+            await onSaveRef.current(updatedConfig)
+            storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
         }
       }
     },
-    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, storeActions, updateRowLayout]
+    [gridSettings, storeActions, updateRowLayout]
   )
 
   // Public delete action - opens confirmation modal
@@ -819,20 +855,21 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     [storeActions]
   )
 
-  // Confirm delete action - called when user confirms in modal
+  // Confirm delete action - reads from store directly for stability
   const confirmDelete = useCallback(async () => {
-    const portletId = storeState.deleteConfirmPortletId
+    const portletId = storeApi.getState().deleteConfirmPortletId
     if (!portletId) return
 
     await executeDeletePortlet(portletId)
     storeActions.closeDeleteConfirm()
-  }, [executeDeletePortlet, storeState.deleteConfirmPortletId, storeActions])
+  }, [executeDeletePortlet, storeActions, storeApi])
 
   const duplicatePortlet = useCallback(
     async (portletId: string): Promise<string | undefined> => {
-      if (!onConfigChange) return undefined
+      if (!onConfigChangeRef.current) return undefined
 
-      const originalPortlet = config.portlets.find((p) => p.id === portletId)
+      const cfg = configRef.current
+      const originalPortlet = cfg.portlets.find((p) => p.id === portletId)
       if (!originalPortlet) return undefined
 
       const duplicatedPortlet: PortletConfig = {
@@ -844,17 +881,17 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       }
 
       let maxY = 0
-      config.portlets.forEach((p) => {
+      cfg.portlets.forEach((p) => {
         if (p.y + p.h > maxY) {
           maxY = p.y + p.h
         }
       })
       duplicatedPortlet.y = maxY
 
-      const updatedPortlets = [...config.portlets, duplicatedPortlet]
+      const updatedPortlets = [...cfg.portlets, duplicatedPortlet]
 
-      if (layoutMode === 'rows') {
-        const baseRows = resolvedRows.map((row) => ({
+      if (layoutModeRef.current === 'rows') {
+        const baseRows = resolvedRowsRef.current.map((row) => ({
           ...row,
           columns: row.columns.map((col) => ({ ...col })),
         }))
@@ -862,23 +899,23 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
           ...baseRows,
           {
             id: createRowId(),
-            h: Math.max(gridSettings.minH, 5),
+            h: Math.max(gridSettings.minH, 3),
             columns: equalizeRowColumns([duplicatedPortlet.id], gridSettings),
           },
         ]
         await updateRowLayout(nextRows, true, updatedPortlets)
       } else {
         const updatedConfig: DashboardConfig = {
-          ...config,
+          ...cfg,
           portlets: updatedPortlets,
         }
 
-        onConfigChange(updatedConfig)
+        onConfigChangeRef.current(updatedConfig)
 
-        if (onSave) {
+        if (onSaveRef.current) {
           try {
-            await onSave(updatedConfig)
-          storeActions.setThumbnailDirty(true)
+            await onSaveRef.current(updatedConfig)
+            storeActions.setThumbnailDirty(true)
           } catch (error) {
             console.error('Auto-save failed:', error)
           }
@@ -887,7 +924,7 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
 
       return duplicatedPortlet.id
     },
-    [config, gridSettings, layoutMode, onConfigChange, onSave, resolvedRows, storeActions, updateRowLayout]
+    [gridSettings, storeActions, updateRowLayout]
   )
 
   const refreshPortlet = useCallback(
@@ -901,12 +938,13 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
     [portletComponentRefs, onPortletRefresh]
   )
 
-  // Filter operations
+  // Filter operations — uses refs for stability
   const toggleFilterForPortlet = useCallback(
     async (portletId: string, filterId: string) => {
-      if (!onConfigChange) return
+      if (!onConfigChangeRef.current) return
 
-      const updatedPortlets = config.portlets.map((p) => {
+      const cfg = configRef.current
+      const updatedPortlets = cfg.portlets.map((p) => {
         if (p.id === portletId) {
           const currentMapping = p.dashboardFilterMapping || []
           const hasFilter = currentMapping.includes(filterId)
@@ -922,29 +960,30 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       })
 
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...cfg,
         portlets: updatedPortlets,
       }
 
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (onSave) {
+      if (onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave, storeActions]
+    [storeActions]
   )
 
   const selectAllForFilter = useCallback(
     async (filterId: string) => {
-      if (!onConfigChange) return
+      if (!onConfigChangeRef.current) return
 
-      const updatedPortlets = config.portlets.map((p) => {
+      const cfg = configRef.current
+      const updatedPortlets = cfg.portlets.map((p) => {
         const currentMapping = p.dashboardFilterMapping || []
         if (!currentMapping.includes(filterId)) {
           return {
@@ -956,30 +995,32 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       })
 
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...cfg,
         portlets: updatedPortlets,
       }
 
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (onSave) {
+      if (onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave, storeActions]
+    [storeActions]
   )
 
   const saveFilterConfig = useCallback(
     async (mapping: string[]) => {
-      if (!onConfigChange || !storeState.filterConfigPortlet) return
+      const filterConfigPortlet = storeApi.getState().filterConfigPortlet
+      if (!onConfigChangeRef.current || !filterConfigPortlet) return
 
-      const updatedPortlets = config.portlets.map((p) => {
-        if (p.id === storeState.filterConfigPortlet!.id) {
+      const cfg = configRef.current
+      const updatedPortlets = cfg.portlets.map((p) => {
+        if (p.id === filterConfigPortlet.id) {
           return {
             ...p,
             dashboardFilterMapping: mapping,
@@ -989,46 +1030,46 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       })
 
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...cfg,
         portlets: updatedPortlets,
       }
 
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (onSave) {
+      if (onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave, storeActions, storeState.filterConfigPortlet]
+    [storeActions, storeApi]
   )
 
-  // Config operations
+  // Config operations — uses refs for stability
   const handlePaletteChange = useCallback(
     async (paletteName: string) => {
-      if (!onConfigChange) return
+      if (!onConfigChangeRef.current) return
 
       const updatedConfig: DashboardConfig = {
-        ...config,
+        ...configRef.current,
         colorPalette: paletteName,
       }
 
-      onConfigChange(updatedConfig)
+      onConfigChangeRef.current(updatedConfig)
 
-      if (onSave) {
+      if (onSaveRef.current) {
         try {
-          await onSave(updatedConfig)
+          await onSaveRef.current(updatedConfig)
           storeActions.setThumbnailDirty(true)
         } catch (error) {
           console.error('Auto-save failed:', error)
         }
       }
     },
-    [config, onConfigChange, onSave, storeActions]
+    [storeActions]
   )
 
   // =========================================================================
@@ -1048,6 +1089,9 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       openAddPortlet,
       openEditPortlet,
       closePortletModal: storeActions.closePortletModal,
+      openAddText,
+      openEditText,
+      closeTextModal: storeActions.closeTextModal,
       openFilterConfig,
       closeFilterConfig: storeActions.closeFilterConfigModal,
 
@@ -1095,6 +1139,8 @@ export function useDashboard(options: UseDashboardOptions): UseDashboardResult {
       storeActions,
       openAddPortlet,
       openEditPortlet,
+      openAddText,
+      openEditText,
       openFilterConfig,
       hasLayoutActuallyChanged,
       updateRowLayout,

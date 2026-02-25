@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import React, { type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '../../../src/client/providers/CubeProvider'
-import { DashboardStoreProvider } from '../../../src/client/stores/dashboardStore'
+import { DashboardStoreProvider, useDashboardStore } from '../../../src/client/stores/dashboardStore'
 import { useDashboard } from '../../../src/client/hooks/useDashboardHook'
 import type { DashboardConfig, PortletConfig, DashboardGridSettings, DashboardFilter } from '../../../src/client/types'
 
@@ -207,7 +207,10 @@ describe('useDashboardHook', () => {
     it('should have empty debug data initially', () => {
       const { wrapper } = createDashboardWrapper()
       const { result } = renderHook(
-        () => useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+        () => ({
+          dashboard: useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+          debugData: useDashboardStore(state => state.debugData),
+        }),
         { wrapper }
       )
 
@@ -1251,7 +1254,10 @@ describe('useDashboardHook', () => {
     it('should set debug data for a portlet', () => {
       const { wrapper } = createDashboardWrapper()
       const { result } = renderHook(
-        () => useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+        () => ({
+          dashboard: useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+          debugData: useDashboardStore(state => state.debugData),
+        }),
         { wrapper }
       )
 
@@ -1264,7 +1270,7 @@ describe('useDashboardHook', () => {
       }
 
       act(() => {
-        result.current.actions.setDebugData('portlet-1', debugEntry)
+        result.current.dashboard.actions.setDebugData('portlet-1', debugEntry)
       })
 
       expect(result.current.debugData['portlet-1']).toEqual(debugEntry)
@@ -1273,7 +1279,10 @@ describe('useDashboardHook', () => {
     it('should clear debug data for a specific portlet', () => {
       const { wrapper } = createDashboardWrapper()
       const { result } = renderHook(
-        () => useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+        () => ({
+          dashboard: useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+          debugData: useDashboardStore(state => state.debugData),
+        }),
         { wrapper }
       )
 
@@ -1286,12 +1295,12 @@ describe('useDashboardHook', () => {
       }
 
       act(() => {
-        result.current.actions.setDebugData('portlet-1', debugEntry)
-        result.current.actions.setDebugData('portlet-2', debugEntry)
+        result.current.dashboard.actions.setDebugData('portlet-1', debugEntry)
+        result.current.dashboard.actions.setDebugData('portlet-2', debugEntry)
       })
 
       act(() => {
-        result.current.actions.clearDebugData('portlet-1')
+        result.current.dashboard.actions.clearDebugData('portlet-1')
       })
 
       expect(result.current.debugData['portlet-1']).toBeUndefined()
@@ -1301,7 +1310,10 @@ describe('useDashboardHook', () => {
     it('should clear all debug data when no portletId specified', () => {
       const { wrapper } = createDashboardWrapper()
       const { result } = renderHook(
-        () => useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+        () => ({
+          dashboard: useDashboard({ config: mockConfig, gridSettings: mockGridSettings }),
+          debugData: useDashboardStore(state => state.debugData),
+        }),
         { wrapper }
       )
 
@@ -1314,12 +1326,12 @@ describe('useDashboardHook', () => {
       }
 
       act(() => {
-        result.current.actions.setDebugData('portlet-1', debugEntry)
-        result.current.actions.setDebugData('portlet-2', debugEntry)
+        result.current.dashboard.actions.setDebugData('portlet-1', debugEntry)
+        result.current.dashboard.actions.setDebugData('portlet-2', debugEntry)
       })
 
       act(() => {
-        result.current.actions.clearDebugData()
+        result.current.dashboard.actions.clearDebugData()
       })
 
       expect(result.current.debugData).toEqual({})

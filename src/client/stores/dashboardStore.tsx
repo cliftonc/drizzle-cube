@@ -91,6 +91,10 @@ export interface DashboardStoreState {
   filterConfigPortlet: PortletConfig | null
   /** Portlet ID pending delete confirmation (null = no confirmation active) */
   deleteConfirmPortletId: string | null
+  /** Whether text portlet modal is open */
+  isTextModalOpen: boolean
+  /** Portlet being edited in text modal (null = adding new) */
+  editingTextPortlet: PortletConfig | null
 
   // =========================================================================
   // Layout State
@@ -146,6 +150,10 @@ export interface DashboardStoreActions {
   openFilterConfigModal: (portlet: PortletConfig) => void
   /** Close filter config modal */
   closeFilterConfigModal: () => void
+  /** Open text portlet modal (optionally with a portlet to edit) */
+  openTextModal: (portlet?: PortletConfig | null) => void
+  /** Close text portlet modal */
+  closeTextModal: () => void
   /** Open delete confirmation for a portlet */
   openDeleteConfirm: (portletId: string) => void
   /** Close delete confirmation */
@@ -216,6 +224,8 @@ const createDefaultState = (): DashboardStoreState => ({
   isFilterConfigModalOpen: false,
   filterConfigPortlet: null,
   deleteConfirmPortletId: null,
+  isTextModalOpen: false,
+  editingTextPortlet: null,
 
   // Layout state
   draftRows: null,
@@ -308,6 +318,18 @@ function createStoreActions(
       set({
         isFilterConfigModalOpen: false,
         filterConfigPortlet: null,
+      }),
+
+    openTextModal: (portlet) =>
+      set({
+        isTextModalOpen: true,
+        editingTextPortlet: portlet ?? null,
+      }),
+
+    closeTextModal: () =>
+      set({
+        isTextModalOpen: false,
+        editingTextPortlet: null,
       }),
 
     openDeleteConfirm: (portletId: string) =>
@@ -500,6 +522,8 @@ export const selectModalState = (state: DashboardStore) => ({
   editingPortlet: state.editingPortlet,
   isFilterConfigModalOpen: state.isFilterConfigModalOpen,
   filterConfigPortlet: state.filterConfigPortlet,
+  isTextModalOpen: state.isTextModalOpen,
+  editingTextPortlet: state.editingTextPortlet,
 })
 
 /**
@@ -540,6 +564,8 @@ export const selectEditModeActions = (state: DashboardStore) => ({
 export const selectModalActions = (state: DashboardStore) => ({
   openPortletModal: state.openPortletModal,
   closePortletModal: state.closePortletModal,
+  openTextModal: state.openTextModal,
+  closeTextModal: state.closeTextModal,
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,
@@ -583,6 +609,8 @@ export const selectAllActions = (state: DashboardStore) => ({
   // Modals
   openPortletModal: state.openPortletModal,
   closePortletModal: state.closePortletModal,
+  openTextModal: state.openTextModal,
+  closeTextModal: state.closeTextModal,
   openFilterConfigModal: state.openFilterConfigModal,
   closeFilterConfigModal: state.closeFilterConfigModal,
   openDeleteConfirm: state.openDeleteConfirm,

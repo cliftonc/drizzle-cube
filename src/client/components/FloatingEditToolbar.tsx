@@ -23,6 +23,14 @@ const CheckIcon = getIcon('check')
 const GridIcon = getIcon('segment')
 const RowsIcon = getIcon('table')
 const AddIcon = getIcon('add')
+function TextIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <text x="1" y="20" fontSize="20" fontWeight="700" fontFamily="serif">T</text>
+      <text x="14" y="20" fontSize="13" fontWeight="600" fontFamily="serif">t</text>
+    </svg>
+  )
+}
 const SwatchIcon = getIcon('swatch')
 
 interface FloatingEditToolbarProps {
@@ -48,6 +56,8 @@ interface FloatingEditToolbarProps {
   onPaletteChange: (palette: string) => void
   /** Add new portlet */
   onAddPortlet: () => void
+  /** Add new text portlet */
+  onAddText?: () => void
 }
 
 export default function FloatingEditToolbar({
@@ -61,7 +71,8 @@ export default function FloatingEditToolbar({
   canChangeLayoutMode,
   currentPalette,
   onPaletteChange,
-  onAddPortlet
+  onAddPortlet,
+  onAddText
 }: FloatingEditToolbarProps) {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false)
   const paletteRef = useRef<HTMLDivElement>(null)
@@ -164,10 +175,17 @@ export default function FloatingEditToolbar({
         </>
       )}
 
-      {/* Add Portlet - only in edit mode */}
+      {/* Add Portlet / Add Text - only in edit mode */}
       {isEditMode && (
         <>
           <div className="dc:w-full dc:h-px bg-dc-border dc:my-0.5" />
+          {onAddText && (
+            <ToolbarButton
+              icon={TextIcon}
+              tooltip="Add Text"
+              onClick={onAddText}
+            />
+          )}
           <ToolbarButton
             icon={AddIcon}
             tooltip="Add Portlet"

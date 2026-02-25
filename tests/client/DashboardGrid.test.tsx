@@ -213,7 +213,7 @@ describe('DashboardGrid', () => {
 
       expect(capturedGridLayoutProps.layout[0]).toMatchObject({
         minW: 2,
-        minH: 2
+        minH: 1
       })
     })
   })
@@ -238,8 +238,9 @@ describe('DashboardGrid', () => {
         { wrapper: TestWrapper }
       )
 
-      const addButton = container.querySelector('button')
-      expect(addButton?.textContent).toContain('Add Portlet')
+      const buttons = Array.from(container.querySelectorAll('button'))
+      const addPortletButton = buttons.find(b => b.textContent?.includes('Add Portlet'))
+      expect(addPortletButton).toBeTruthy()
     })
   })
 

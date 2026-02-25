@@ -197,6 +197,9 @@ export interface ChartDisplayConfig {
   accentColorIndex?: number // Index of color from dashboard palette for headers, bullets, links
   fontSize?: 'small' | 'medium' | 'large' // Text size for markdown content
   alignment?: 'left' | 'center' | 'right' // Text alignment for markdown content
+  transparentBackground?: boolean // Remove card background, border, shadow, padding (for section headers)
+  autoHeight?: boolean // Card shrinks to fit content instead of filling grid cell (default: true for markdown)
+  accentBorder?: 'none' | 'left' | 'top' | 'bottom' // Accent-colored border on specified side
 
   // Axis formatting options (for Line, Area, Bar, Scatter charts)
   xAxisFormat?: AxisFormatConfig       // Formatting for X-axis values
