@@ -925,7 +925,7 @@ export function createMcpRpcHandler(
       }, { status: 426 })
     }
 
-    let body: unknown = null
+    let body: unknown
     try {
       body = await request.json()
     } catch {

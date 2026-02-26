@@ -375,11 +375,11 @@ export function generateComprehensiveProductivityData(insertedEmployees: any[]):
       const weekendWork = (profile.role.includes('Senior') || profile.role.includes('DevOps')) && 
                          Math.random() < 0.10 && isWeekend
       
-      let daysOff = false
+      let daysOff: boolean
       let linesOfCode = 0
       let pullRequests = 0
       let liveDeployments = 0
-      let happinessIndex = 7 // Base happiness
+      let happinessIndex: number
       
       if (!employee.active) {
         // Inactive employees have no productivity

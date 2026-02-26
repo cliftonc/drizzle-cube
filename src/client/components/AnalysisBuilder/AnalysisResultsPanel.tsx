@@ -1352,7 +1352,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const renderTable = (tableIndex?: number) => {
     // In multi-query mode, use specific query's results and query object
     // tableIndex: undefined = single query, -1 = merged view, 0+ = per-query view
-    let tableData: any[] | null = null
+    let tableData: any[] | null
     let tableQuery = allQueries?.[0]  // Default to first query
 
     if (isMultiQuery && tableIndex !== undefined && tableIndex >= 0 && perQueryResults) {

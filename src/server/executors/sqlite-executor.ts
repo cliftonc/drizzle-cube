@@ -39,7 +39,7 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
         throw new Error('SQLite database instance must have an all() or run() method')
       }
     } catch (error) {
-      throw new Error(`SQLite execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(`SQLite execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error })
     }
   }
 
@@ -119,7 +119,7 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
     const explainSql = `EXPLAIN QUERY PLAN ${queryWithValues}`
 
     // Execute through the database
-    let result: any[] = []
+    let result: any[]
     if (this.db.all) {
       result = this.db.all(sql.raw(explainSql))
     } else {
