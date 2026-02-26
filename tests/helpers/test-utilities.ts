@@ -259,8 +259,8 @@ export class QueryValidator {
       const actualValue = sampleRow[field]
       const actualType = actualValue === null ? 'null' : typeof actualValue
 
-      let isValidType = false
-      
+      let isValidType: boolean
+
       switch (expectedType) {
         case 'string':
           isValidType = actualType === 'string'

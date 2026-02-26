@@ -37,7 +37,7 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
     }
 
     // Plain text
-    nodes.push(<span key={key++}>{remaining}</span>)
+    nodes.push(<span key={key}>{remaining}</span>)
     break
   }
 

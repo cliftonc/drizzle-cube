@@ -203,7 +203,7 @@ export default function PortletAnalysisModal({
 
     // Validate content based on analysis type
     const { query, analysisType } = analysisConfig
-    let hasContent = false
+    let hasContent: boolean
 
     // Check for ServerFlowQuery format { flow: {...} }
     if ('flow' in query && query.flow) {

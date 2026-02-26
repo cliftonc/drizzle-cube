@@ -647,7 +647,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
             const centerIndex = (startIndex + endIndex) / 2
 
             // Year label (or year/month for hour granularity)
-            let labelText = ''
+            let labelText: string
             if (year > 9999) {
               // For hour granularity, year is encoded as YYYYMM
               const actualYear = Math.floor(year / 100)

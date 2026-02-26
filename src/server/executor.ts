@@ -173,7 +173,7 @@ export class QueryExecutor {
         error.message = `Query execution failed: ${message}`
         throw error
       }
-      throw new Error(`Query execution failed: Unknown error`)
+      throw new Error(`Query execution failed: Unknown error`, { cause: error })
     }
   }
 
