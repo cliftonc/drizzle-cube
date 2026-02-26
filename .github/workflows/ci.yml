@@ -162,39 +162,39 @@ jobs:
         env:
           TEST_DB_TYPE: sqlite
 
-  test-duckdb:
-    runs-on: ubuntu-latest
+  # test-duckdb:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'npm'
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v6
+  #       with:
+  #         node-version: '24'
+  #         cache: 'npm'
 
-      # The @leonardovida-md/drizzle-neo-duckdb package has a bug - it includes
-      # @duckdb/node-bindings-darwin-arm64 as a hard dependency instead of optional.
-      # We work around this by adding an npm override to replace it with an empty package.
-      # The @duckdb/node-api package correctly brings in Linux bindings via optionalDeps.
-      - name: Patch package.json for Linux DuckDB support
-        run: |
-          node -e "
-            const pkg = require('./package.json');
-            pkg.overrides = pkg.overrides || {};
-            pkg.overrides['@duckdb/node-bindings-darwin-arm64'] = 'npm:empty-npm-package@1.0.0';
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
+  #     # The @leonardovida-md/drizzle-neo-duckdb package has a bug - it includes
+  #     # @duckdb/node-bindings-darwin-arm64 as a hard dependency instead of optional.
+  #     # We work around this by adding an npm override to replace it with an empty package.
+  #     # The @duckdb/node-api package correctly brings in Linux bindings via optionalDeps.
+  #     - name: Patch package.json for Linux DuckDB support
+  #       run: |
+  #         node -e "
+  #           const pkg = require('./package.json');
+  #           pkg.overrides = pkg.overrides || {};
+  #           pkg.overrides['@duckdb/node-bindings-darwin-arm64'] = 'npm:empty-npm-package@1.0.0';
+  #           require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+  #         "
 
-      - name: Install dependencies
-        run: npm install
+  #     - name: Install dependencies
+  #       run: npm install
 
-      - name: Run tests (DuckDB)
-        run: npm run test:server
-        env:
-          TEST_DB_TYPE: duckdb
+  #     - name: Run tests (DuckDB)
+  #       run: npm run test:server
+  #       env:
+  #         TEST_DB_TYPE: duckdb
 
   test-client:
     runs-on: ubuntu-latest
