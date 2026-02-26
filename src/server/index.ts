@@ -98,6 +98,17 @@ export {
 } from './prompts'
 export type { Step0Result, PromptContext, DimensionValues, Step1Result } from './prompts'
 
+// Export agent (agentic AI notebook)
+export { handleAgentChat, getToolDefinitions, createToolExecutor, buildAgentSystemPrompt } from './agent'
+export type {
+  AgentChatRequest,
+  AgentConfig,
+  AgentSSEEvent,
+  PortletBlockData,
+  MarkdownBlockData,
+  ToolExecutionResult
+} from './agent'
+
 // Export AI-ready data layer utilities
 export {
   discoverCubes,

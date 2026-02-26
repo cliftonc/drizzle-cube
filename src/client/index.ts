@@ -21,6 +21,8 @@ import './styles.css'
 // Core analytics components
 export { default as AnalyticsPortlet } from './components/AnalyticsPortlet'
 export { default as AnalyticsDashboard } from './components/AnalyticsDashboard'
+export { default as AgenticNotebook } from './components/AgenticNotebook'
+export type { AgenticNotebookProps } from './components/AgenticNotebook'
 export { AnalyticsPage } from './components/AnalyticsPage'
 export { default as ChartErrorBoundary } from './components/ChartErrorBoundary'
 export { default as LoadingIndicator } from './components/LoadingIndicator'
@@ -171,6 +173,37 @@ export type {
   CreateDashboardStoreOptions,
   DashboardStoreProviderProps,
 } from './stores/dashboardStore'
+
+// Zustand stores - Notebook (Agentic AI)
+export {
+  NotebookStoreProvider,
+  useNotebookStore,
+  createNotebookStore,
+  selectBlocks,
+  selectMessages,
+  selectIsStreaming,
+  selectSessionId,
+  selectInputValue,
+  selectChatState,
+  selectChatActions,
+  selectBlockActions,
+} from './stores/notebookStore'
+export type {
+  NotebookStore,
+  NotebookStoreState,
+  NotebookStoreActions,
+  NotebookStoreProviderProps,
+  NotebookConfig,
+  NotebookBlock,
+  PortletBlock,
+  MarkdownBlock,
+  ChatMessage,
+  ToolCallRecord,
+} from './stores/notebookStore'
+
+// Agent chat hook
+export { useAgentChat } from './hooks/useAgentChat'
+export type { UseAgentChatOptions, UseAgentChatResult } from './hooks/useAgentChat'
 
 // Multi-query validation utilities
 export {

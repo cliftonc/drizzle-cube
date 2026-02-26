@@ -70,20 +70,22 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <a
-            href="https://www.drizzle-cube.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group bg-dc-card-bg hover:bg-dc-card-bg-hover border border-dc-card-border hover:border-dc-card-border-hover rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
+          <Link
+            to="/notebooks"
+            className="group bg-dc-surface hover:bg-dc-surface-hover border border-dc-border hover:border-dc-border-hover rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation relative"
           >
+            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 dark:from-purple-400 dark:to-pink-400 text-white text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 shadow-md z-10">
+              <SparklesIcon className="w-3 h-3" />
+              <span>AI Agent</span>
+            </div>
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">
                 <BookOpenIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-dc-text mb-1 sm:mb-2">Documentation</h3>
-              <p className="text-sm text-dc-text-muted">Learn how to use Drizzle Cube</p>
+              <h3 className="text-base sm:text-lg font-semibold text-dc-text mb-1 sm:mb-2">AI Notebooks</h3>
+              <p className="text-sm text-dc-text-muted">Explore data with AI</p>
             </div>
-          </a>
+          </Link>
 
           <a
             href="https://github.com/cliftonc/drizzle-cube"

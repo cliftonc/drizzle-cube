@@ -14,6 +14,7 @@ import type {
   CacheConfig,
   ExplainOptions
 } from '../../server'
+import type { AgentConfig } from '../../server/agent/types'
 import { SemanticLayerCompiler } from '../../server/compiler'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
@@ -119,6 +120,13 @@ export interface HonoAdapterOptions {
    * @default { enabled: true }
    */
   mcp?: MCPOptions
+
+  /**
+   * Agent configuration for the agentic AI notebook feature.
+   * When provided, enables the POST /agent/chat SSE endpoint.
+   * Requires `@anthropic-ai/sdk` as a peer dependency.
+   */
+  agent?: AgentConfig
 }
 
 /**
@@ -136,7 +144,8 @@ export function createCubeRoutes(
     cors: corsConfig,
     basePath = '/cubejs-api/v1',
     cache,
-    mcp = { enabled: true }
+    mcp = { enabled: true },
+    agent: agentConfig
   } = options
 
   // Validate required options
@@ -494,6 +503,92 @@ export function createCubeRoutes(
       }, 500)
     }
   })
+
+  // ============================================
+  // Agent (Agentic AI Notebook) Endpoint
+  // ============================================
+
+  if (agentConfig) {
+    /**
+     * POST /cubejs-api/v1/agent/chat - Agentic AI notebook chat
+     * Streams SSE events as the agent discovers data, executes queries,
+     * and creates visualizations.
+     */
+    app.post(`${basePath}/agent/chat`, async (c) => {
+      try {
+        const { handleAgentChat } = await import('../../server/agent/handler')
+
+        const body = await c.req.json()
+        const { message, sessionId } = body as { message: string; sessionId?: string }
+
+        if (!message || typeof message !== 'string') {
+          return c.json({ error: 'message is required and must be a string' }, 400)
+        }
+
+        // Resolve API key: server config or client header override
+        let apiKey = (agentConfig.apiKey || '').trim()
+        if (agentConfig.allowClientApiKey) {
+          const clientKey = c.req.header('x-agent-api-key')
+          if (clientKey) {
+            apiKey = clientKey.trim()
+          }
+        }
+
+        if (!apiKey) {
+          return c.json({
+            error: 'No API key configured. Set agent.apiKey in server config or send X-Agent-Api-Key header.'
+          }, 401)
+        }
+
+        // Extract security context (required for all queries)
+        const securityContext = await extractSecurityContext(c)
+
+        // Create SSE stream
+        const encoder = new TextEncoder()
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              const events = handleAgentChat({
+                message,
+                sessionId,
+                semanticLayer,
+                securityContext,
+                agentConfig,
+                apiKey
+              })
+
+              for await (const event of events) {
+                const sseData = `data: ${JSON.stringify(event)}\n\n`
+                controller.enqueue(encoder.encode(sseData))
+              }
+            } catch (error) {
+              const errorEvent = {
+                type: 'error',
+                data: { message: error instanceof Error ? error.message : 'Stream failed' }
+              }
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`))
+            } finally {
+              controller.close()
+            }
+          }
+        })
+
+        return new Response(stream, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+          }
+        })
+      } catch (error) {
+        console.error('Agent chat error:', error)
+        return c.json({
+          error: error instanceof Error ? error.message : 'Agent chat failed'
+        }, 500)
+      }
+    })
+  }
 
   // ============================================
   // MCP (AI-Ready) Endpoints

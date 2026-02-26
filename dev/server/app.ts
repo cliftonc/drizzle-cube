@@ -17,6 +17,7 @@ import { schema } from './schema.js'
 import { allCubes } from './cubes.js'
 import type { Schema } from './schema.js'
 import analyticsApp from './analytics-routes.js'
+import notebooksApp from './notebooks-routes.js'
 import aiApp from './ai-routes.js'
 
 interface Variables {
@@ -137,6 +138,8 @@ app.get('/', (c) => {
       'GET /api/analytics-pages': 'List all dashboards',
       'POST /api/analytics-pages': 'Create new dashboard',
       'POST /api/analytics-pages/create-example': 'Create example dashboard',
+      'GET /api/notebooks': 'List all notebooks',
+      'POST /api/notebooks': 'Create new notebook',
       'POST /api/ai/generate': 'Generate query with AI',
       'GET /api/ai/health': 'AI health check'
     },
@@ -226,7 +229,7 @@ const cubeApp = createCubeApp({
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Agent-Api-Key'],
     credentials: true
   },
   cache: {
@@ -237,6 +240,13 @@ const cubeApp = createCubeApp({
       const icon = event.type === 'hit' ? '✅' : event.type === 'miss' ? '❌' : '💾'
       console.log(`${icon} Cache ${event.type}: ${event.key.substring(0, 50)}... (${event.durationMs}ms)`)
     }
+  },
+  // Agent configuration for AI notebooks
+  agent: {
+    apiKey: getEnvVar('ANTHROPIC_API_KEY'),
+    allowClientApiKey: true, // Allow X-Agent-Api-Key header for dev
+    model: 'claude-sonnet-4-6',
+    maxTurns: 25
   }
 })
 
@@ -249,6 +259,13 @@ app.use('/api/analytics-pages/*', async (c, next) => {
   await next()
 })
 app.route('/api/analytics-pages', analyticsApp)
+
+// Mount notebooks API with database access
+app.use('/api/notebooks/*', async (c, next) => {
+  c.set('db', db)
+  await next()
+})
+app.route('/api/notebooks', notebooksApp)
 
 // Mount AI routes with database access and security context extractor
 app.use('/api/ai/*', async (c, next) => {

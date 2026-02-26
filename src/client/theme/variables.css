@@ -112,6 +112,7 @@
   --dc-accent-hover: #2563eb;
   --dc-accent-bg: #eff6ff;
   --dc-accent-border: #93c5fd;
+  --dc-accent-text: #ffffff;
 
   /* Muted/Subtle Colors - For secondary elements */
   --dc-muted: #6b7280;
@@ -213,6 +214,7 @@ html.dark {
   --dc-accent-hover: #3b82f6;
   --dc-accent-bg: #1e3a8a;
   --dc-accent-border: #2563eb;
+  --dc-accent-text: #ffffff;
 
   /* Muted/Subtle Colors - Dark mode versions */
   --dc-muted: #94a3b8;
@@ -313,6 +315,7 @@ html.neon {
   --dc-accent-hover: #00cccc;
   --dc-accent-bg: rgba(0, 255, 255, 0.15);
   --dc-accent-border: #00ffff;
+  --dc-accent-text: #0a0118;
 
   /* Muted/Subtle Colors - Neon versions */
   --dc-muted: #b0b0d0;
@@ -447,6 +450,7 @@ html.neon {
   .bg-dc-accent-bg { background-color: var(--dc-accent-bg); }
   .bg-dc-accent-hover { background-color: var(--dc-accent-hover); }
   .text-dc-accent { color: var(--dc-accent); }
+  .text-dc-accent-text { color: var(--dc-accent-text); }
   .border-dc-accent { border-color: var(--dc-accent); }
   .border-dc-accent-border { border-color: var(--dc-accent-border); }
   .ring-dc-accent { --tw-ring-color: var(--dc-accent); }

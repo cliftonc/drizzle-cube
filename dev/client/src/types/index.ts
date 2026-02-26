@@ -37,3 +37,50 @@ export interface UpdateAnalyticsPageRequest {
   config?: DashboardConfig
   order?: number
 }
+
+// Notebook types
+export interface NotebookConfig {
+  blocks: Array<{
+    id: string
+    type: 'portlet' | 'markdown'
+    title?: string
+    content?: string
+    query?: string
+    chartType?: string
+    chartConfig?: Record<string, unknown>
+    displayConfig?: Record<string, unknown>
+  }>
+  messages: Array<{
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    toolCalls?: Array<{ name: string; status: string; result?: unknown }>
+    timestamp: number
+  }>
+}
+
+export interface Notebook {
+  id: number
+  name: string
+  description?: string
+  organisationId: number
+  config: NotebookConfig | null
+  order: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateNotebookRequest {
+  name: string
+  description?: string
+  config?: NotebookConfig
+  order?: number
+}
+
+export interface UpdateNotebookRequest {
+  name?: string
+  description?: string
+  config?: NotebookConfig
+  order?: number
+}

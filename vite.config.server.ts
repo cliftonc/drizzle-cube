@@ -20,7 +20,7 @@ export default defineConfig({
     },
     outDir: 'dist/server',
     rollupOptions: {
-      external: ['drizzle-orm', 'yaml', 'fs'],
+      external: ['drizzle-orm', 'yaml', 'fs', '@anthropic-ai/sdk'],
       output: {
         globals: {
           'drizzle-orm': 'DrizzleORM'

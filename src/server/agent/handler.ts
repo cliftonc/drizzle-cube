@@ -1,0 +1,228 @@
+/**
+ * Agent Chat Handler
+ * Core streaming handler using the Anthropic Messages API with a manual agentic loop.
+ * Makes direct HTTP API calls — no subprocess spawning, fully edge-runtime compatible.
+ */
+
+import type { SemanticLayerCompiler } from '../compiler'
+import type { SecurityContext } from '../types'
+import type { AgentConfig, AgentSSEEvent } from './types'
+import { buildAgentSystemPrompt } from './system-prompt'
+import { getToolDefinitions, createToolExecutor } from './tools'
+
+/**
+ * Handle an agent chat request, yielding SSE events as the agent works.
+ *
+ * Uses the Anthropic Messages API (`@anthropic-ai/sdk`) with `stream: true`
+ * (raw async iterable) for Cloudflare Workers / edge-runtime compatibility.
+ * Implements a manual agentic loop: send messages → stream response → execute
+ * tool calls → append results → repeat until stop_reason !== 'tool_use'.
+ */
+export async function* handleAgentChat(options: {
+  message: string
+  sessionId?: string
+  semanticLayer: SemanticLayerCompiler
+  securityContext: SecurityContext
+  agentConfig: AgentConfig
+  apiKey: string
+}): AsyncGenerator<AgentSSEEvent> {
+  const { message, sessionId, semanticLayer, securityContext, agentConfig, apiKey } = options
+
+  // Dynamically import the Anthropic SDK (optional peer dependency)
+  let Anthropic: any
+  try {
+    const sdk = await import(/* webpackIgnore: true */ '@anthropic-ai/sdk')
+    Anthropic = sdk.default || sdk.Anthropic || sdk
+  } catch {
+    yield {
+      type: 'error',
+      data: {
+        message: '@anthropic-ai/sdk is required. Install it with: npm install @anthropic-ai/sdk'
+      }
+    }
+    return
+  }
+
+  // Create the Anthropic client
+  const client = new Anthropic({ apiKey })
+
+  // Build tool definitions and executor
+  const tools = getToolDefinitions()
+  const executor = createToolExecutor({ semanticLayer, securityContext })
+
+  // Build system prompt from cube metadata
+  const metadata = semanticLayer.getMetadata()
+  const systemPrompt = buildAgentSystemPrompt(metadata)
+
+  // Configure
+  const model = agentConfig.model || 'claude-sonnet-4-6'
+  const maxTurns = agentConfig.maxTurns || 25
+  const maxTokens = agentConfig.maxTokens || 4096
+
+  // Conversation messages
+  const messages: Array<{ role: string; content: unknown }> = [
+    { role: 'user', content: message }
+  ]
+
+  try {
+    for (let turn = 0; turn < maxTurns; turn++) {
+      // Call Messages API with streaming (raw async iterable — CF Workers safe)
+      const stream = await client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        tools,
+        messages,
+        stream: true
+      })
+
+      // Accumulate the assistant's response
+      const contentBlocks: Array<{ type: string; [key: string]: unknown }> = []
+      let currentBlockIndex = -1
+      let currentToolInputJson = ''
+      let stopReason = ''
+
+      for await (const event of stream) {
+        switch (event.type) {
+          case 'content_block_start': {
+            currentBlockIndex++
+            const block = event.content_block as { type: string; id?: string; name?: string; text?: string }
+            if (block.type === 'tool_use') {
+              contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} })
+              currentToolInputJson = ''
+              yield {
+                type: 'tool_use_start',
+                data: { id: block.id!, name: block.name!, input: undefined }
+              }
+            } else if (block.type === 'text') {
+              contentBlocks.push({ type: 'text', text: '' })
+            }
+            break
+          }
+
+          case 'content_block_delta': {
+            const delta = event.delta as { type: string; text?: string; partial_json?: string }
+            if (delta.type === 'text_delta' && delta.text) {
+              // Append text to current block
+              const textBlock = contentBlocks[currentBlockIndex]
+              if (textBlock) {
+                textBlock.text = (textBlock.text as string || '') + delta.text
+              }
+              yield { type: 'text_delta', data: delta.text }
+            } else if (delta.type === 'input_json_delta' && delta.partial_json) {
+              currentToolInputJson += delta.partial_json
+            }
+            break
+          }
+
+          case 'content_block_stop': {
+            // If the current block is a tool_use, parse accumulated JSON
+            const block = contentBlocks[currentBlockIndex]
+            if (block?.type === 'tool_use' && currentToolInputJson) {
+              try {
+                block.input = JSON.parse(currentToolInputJson)
+              } catch {
+                block.input = {}
+              }
+              currentToolInputJson = ''
+            }
+            break
+          }
+
+          case 'message_delta': {
+            const messageDelta = event.delta as { stop_reason?: string }
+            if (messageDelta.stop_reason) {
+              stopReason = messageDelta.stop_reason
+            }
+            break
+          }
+        }
+      }
+
+      // Push the complete assistant message into conversation history
+      messages.push({ role: 'assistant', content: contentBlocks })
+
+      // If the model didn't request tool use, we're done
+      if (stopReason !== 'tool_use') {
+        break
+      }
+
+      // Execute all tool calls and collect results
+      const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> = []
+
+      for (const block of contentBlocks) {
+        if (block.type !== 'tool_use') continue
+
+        const toolName = block.name as string
+        const toolInput = (block.input || {}) as Record<string, unknown>
+        const toolUseId = block.id as string
+
+        const executorFn = executor.get(toolName)
+        if (!executorFn) {
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUseId,
+            content: `Unknown tool: ${toolName}`,
+            is_error: true
+          })
+          yield {
+            type: 'tool_use_result',
+            data: { id: toolUseId, name: toolName, result: `Unknown tool: ${toolName}` }
+          }
+          continue
+        }
+
+        try {
+          const execResult = await executorFn(toolInput)
+
+          // Emit side-effect SSE event if present (add_portlet, add_markdown)
+          if (execResult.sideEffect) {
+            yield execResult.sideEffect
+          }
+
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUseId,
+            content: execResult.result,
+            ...(execResult.isError ? { is_error: true } : {})
+          })
+
+          yield {
+            type: 'tool_use_result',
+            data: { id: toolUseId, name: toolName, result: execResult.result }
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Tool execution failed'
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUseId,
+            content: errorMsg,
+            is_error: true
+          })
+          yield {
+            type: 'tool_use_result',
+            data: { id: toolUseId, name: toolName, result: errorMsg }
+          }
+        }
+      }
+
+      // Signal end of this turn before starting the next
+      yield { type: 'turn_complete', data: {} as Record<string, never> }
+
+      // Push tool results as a user message for the next turn
+      messages.push({ role: 'user', content: toolResults })
+    }
+
+    yield {
+      type: 'done',
+      data: { sessionId: sessionId || '' }
+    }
+  } catch (error) {
+    yield {
+      type: 'error',
+      data: {
+        message: error instanceof Error ? error.message : 'Agent execution failed'
+      }
+    }
+  }
+}

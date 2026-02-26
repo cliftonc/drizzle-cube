@@ -13,6 +13,7 @@ import type {
   CacheConfig,
   ExplainOptions
 } from '../../server'
+import type { AgentConfig } from '../../server/agent/types'
 import { SemanticLayerCompiler } from '../../server/compiler'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
@@ -144,6 +145,13 @@ export interface NextAdapterOptions {
    * @default { enabled: true }
    */
   mcp?: MCPOptions
+
+  /**
+   * Agent configuration for the agentic AI notebook feature.
+   * When provided, enables the POST /agent/chat SSE endpoint.
+   * Requires `@anthropic-ai/sdk` as a peer dependency.
+   */
+  agent?: AgentConfig
 }
 
 export interface RouteContext {
@@ -163,6 +171,7 @@ export interface CubeHandlers {
   batch: RouteHandler
   explain: RouteHandler
   mcpRpc?: RouteHandler
+  agentChat?: RouteHandler
 }
 
 /**
@@ -1039,6 +1048,121 @@ export function createMcpRpcHandler(
   }
 }
 
+// ============================================
+// Agent (Agentic AI Notebook) Handler
+// ============================================
+
+/**
+ * Create agent chat handler - Agentic AI notebook chat
+ * Streams SSE events as the agent discovers data, executes queries,
+ * and creates visualizations.
+ */
+export function createAgentChatHandler(
+  options: NextAdapterOptions
+): RouteHandler {
+  const { extractSecurityContext, cors, agent: agentConfig } = options
+
+  if (!agentConfig) {
+    throw new Error('agent config is required for createAgentChatHandler')
+  }
+
+  // Create semantic layer with all cubes registered
+  const semanticLayer = createSemanticLayer(options)
+
+  return async function agentChatHandler(request: NextRequest, context?: RouteContext) {
+    try {
+      if (request.method !== 'POST') {
+        return NextResponse.json(
+          { error: 'Method not allowed - use POST' },
+          { status: 405 }
+        )
+      }
+
+      const { handleAgentChat } = await import('../../server/agent/handler')
+
+      const body = await request.json()
+      const { message, sessionId } = body as { message: string; sessionId?: string }
+
+      if (!message || typeof message !== 'string') {
+        return NextResponse.json(
+          { error: 'message is required and must be a string' },
+          { status: 400 }
+        )
+      }
+
+      // Resolve API key: server config or client header override
+      let apiKey = (agentConfig.apiKey || '').trim()
+      if (agentConfig.allowClientApiKey) {
+        const clientKey = request.headers.get('x-agent-api-key')
+        if (clientKey) {
+          apiKey = clientKey.trim()
+        }
+      }
+
+      if (!apiKey) {
+        return NextResponse.json(
+          { error: 'No API key configured. Set agent.apiKey in server config or send X-Agent-Api-Key header.' },
+          { status: 401 }
+        )
+      }
+
+      // Extract security context (required for all queries)
+      const securityContext = await extractSecurityContext(request, context)
+
+      // Create SSE stream
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const events = handleAgentChat({
+              message,
+              sessionId,
+              semanticLayer,
+              securityContext,
+              agentConfig,
+              apiKey
+            })
+
+            for await (const event of events) {
+              const sseData = `data: ${JSON.stringify(event)}\n\n`
+              controller.enqueue(encoder.encode(sseData))
+            }
+          } catch (error) {
+            const errorEvent = {
+              type: 'error',
+              data: { message: error instanceof Error ? error.message : 'Stream failed' }
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`))
+          } finally {
+            controller.close()
+          }
+        }
+      })
+
+      const headers = new Headers({
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      })
+      if (cors) {
+        const corsHeaders = getCorsHeaders(request, cors)
+        Object.entries(corsHeaders).forEach(([key, value]) => headers.set(key, value))
+      }
+
+      return new Response(stream, { status: 200, headers })
+
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.error('Next.js agent chat handler error:', error)
+      }
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Agent chat failed' },
+        { status: 500 }
+      )
+    }
+  }
+}
+
 /**
  * Convenience function to create all route handlers
  *
@@ -1075,6 +1199,11 @@ export function createCubeHandlers(
   // Add MCP handlers if enabled
   if (mcp.enabled !== false) {
     handlers.mcpRpc = createMcpRpcHandler(options)
+  }
+
+  // Add agent handler if configured
+  if (options.agent) {
+    handlers.agentChat = createAgentChatHandler(options)
   }
 
   return handlers

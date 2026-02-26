@@ -14,6 +14,7 @@ import type {
   CacheConfig,
   ExplainOptions
 } from '../../server'
+import type { AgentConfig } from '../../server/agent/types'
 import { SemanticLayerCompiler } from '../../server/compiler'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { MySql2Database } from 'drizzle-orm/mysql2'
@@ -118,6 +119,13 @@ export interface FastifyAdapterOptions {
    * @default { enabled: true }
    */
   mcp?: MCPOptions
+
+  /**
+   * Agent configuration for the agentic AI notebook feature.
+   * When provided, enables the POST /agent/chat SSE endpoint.
+   * Requires `@anthropic-ai/sdk` as a peer dependency.
+   */
+  agent?: AgentConfig
 }
 
 /**
@@ -138,7 +146,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     basePath = '/cubejs-api/v1',
     bodyLimit = 10485760, // 10MB
     cache,
-    mcp = { enabled: true }
+    mcp = { enabled: true },
+    agent: agentConfig
   } = options
 
   // Validate required options
@@ -571,6 +580,93 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       })
     }
   })
+
+  // ============================================
+  // Agent (Agentic AI Notebook) Endpoint
+  // ============================================
+
+  if (agentConfig) {
+    /**
+     * POST /cubejs-api/v1/agent/chat - Agentic AI notebook chat
+     * Streams SSE events as the agent discovers data, executes queries,
+     * and creates visualizations.
+     */
+    fastify.post(`${basePath}/agent/chat`, {
+      bodyLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: true
+        }
+      }
+    }, async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { handleAgentChat } = await import('../../server/agent/handler')
+
+        const body = request.body as any
+        const { message, sessionId } = body as { message: string; sessionId?: string }
+
+        if (!message || typeof message !== 'string') {
+          return reply.status(400).send({ error: 'message is required and must be a string' })
+        }
+
+        // Resolve API key: server config or client header override
+        let apiKey = (agentConfig.apiKey || '').trim()
+        if (agentConfig.allowClientApiKey) {
+          const clientKey = request.headers['x-agent-api-key'] as string | undefined
+          if (clientKey) {
+            apiKey = clientKey.trim()
+          }
+        }
+
+        if (!apiKey) {
+          return reply.status(401).send({
+            error: 'No API key configured. Set agent.apiKey in server config or send X-Agent-Api-Key header.'
+          })
+        }
+
+        // Extract security context (required for all queries)
+        const securityContext = await extractSecurityContext(request)
+
+        // Set SSE headers and use raw response for streaming
+        reply.raw.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        })
+
+        try {
+          const events = handleAgentChat({
+            message,
+            sessionId,
+            semanticLayer,
+            securityContext,
+            agentConfig,
+            apiKey
+          })
+
+          for await (const event of events) {
+            reply.raw.write(`data: ${JSON.stringify(event)}\n\n`)
+          }
+        } catch (error) {
+          const errorEvent = {
+            type: 'error',
+            data: { message: error instanceof Error ? error.message : 'Stream failed' }
+          }
+          reply.raw.write(`data: ${JSON.stringify(errorEvent)}\n\n`)
+        } finally {
+          reply.raw.end()
+        }
+      } catch (error) {
+        request.log.error(error, 'Agent chat error')
+        if (!reply.raw.headersSent) {
+          return reply.status(500).send({
+            error: error instanceof Error ? error.message : 'Agent chat failed'
+          })
+        }
+      }
+    })
+  }
 
   // ============================================
   // MCP (AI-Ready) Endpoints

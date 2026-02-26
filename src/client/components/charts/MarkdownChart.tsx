@@ -1,17 +1,8 @@
-import React from 'react'
+import React, { useMemo } from 'react'
+import Markdown from 'markdown-to-jsx'
 import type { ChartProps } from '../../types'
 
-interface MarkdownNode {
-  type: 'text' | 'bold' | 'italic' | 'link' | 'header' | 'list' | 'listItem' | 'paragraph' | 'break' | 'hr'
-  content?: string
-  url?: string
-  level?: number
-  ordered?: boolean
-  children?: MarkdownNode[]
-  parentOrdered?: boolean // For list items to know if parent list is ordered
-}
-
-const MarkdownChart = React.memo(function MarkdownChart({ 
+const MarkdownChart = React.memo(function MarkdownChart({
   displayConfig = {},
   height = "100%",
   colorPalette
@@ -24,384 +15,89 @@ const MarkdownChart = React.memo(function MarkdownChart({
   const accentBorder = displayConfig.accentBorder || 'none'
 
   // Get accent color from palette
-  const getAccentColor = (): string => {
+  const accentColor = useMemo(() => {
     if (colorPalette?.colors && accentColorIndex < colorPalette.colors.length) {
       return colorPalette.colors[accentColorIndex]
     }
-    return '#8884d8' // Default color
-  }
-
-  const accentColor = getAccentColor()
+    return '#8884d8'
+  }, [colorPalette, accentColorIndex])
 
   // Font size mapping
-  const fontSizeClasses = {
+  const fontSizeClasses: Record<string, string> = {
     small: 'dc:text-sm',
     medium: 'dc:text-lg',
     large: 'dc:text-xl'
   }
 
   // Alignment mapping
-  const alignmentClasses = {
+  const alignmentClasses: Record<string, string> = {
     left: 'dc:text-left',
     center: 'dc:text-center',
     right: 'dc:text-right'
   }
 
-  // Simple markdown parser
-  const parseMarkdown = (text: string): MarkdownNode[] => {
-    const lines = text.split('\n')
-    const nodes: MarkdownNode[] = []
-    let currentList: MarkdownNode | null = null
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim()
-      
-      if (!line) {
-        // Empty line - end current list and add line break
-        if (currentList) {
-          nodes.push(currentList)
-          currentList = null
-        }
-        nodes.push({ type: 'break' })
-        continue
-      }
-
-      // Horizontal rule (---, ***, ___ with 3+ chars)
-      if (/^[-*_]{3,}$/.test(line)) {
-        if (currentList) {
-          nodes.push(currentList)
-          currentList = null
-        }
-        nodes.push({ type: 'hr' })
-        continue
-      }
-
-      // Headers
-      const headerMatch = line.match(/^(#{1,3})\s+(.*)$/)
-      if (headerMatch) {
-        if (currentList) {
-          nodes.push(currentList)
-          currentList = null
-        }
-        nodes.push({
-          type: 'header',
-          level: headerMatch[1].length,
-          content: headerMatch[2]
-        })
-        continue
-      }
-
-      // Unordered list
-      const unorderedMatch = line.match(/^[-*+]\s+(.*)$/)
-      if (unorderedMatch) {
-        if (!currentList || currentList.ordered) {
-          if (currentList) nodes.push(currentList)
-          currentList = { type: 'list', ordered: false, children: [] }
-        }
-        currentList.children!.push({
-          type: 'listItem',
-          children: parseInline(unorderedMatch[1]),
-          parentOrdered: false
-        })
-        continue
-      }
-
-      // Ordered list
-      const orderedMatch = line.match(/^\d+\.\s+(.*)$/)
-      if (orderedMatch) {
-        if (!currentList || !currentList.ordered) {
-          if (currentList) nodes.push(currentList)
-          currentList = { type: 'list', ordered: true, children: [] }
-        }
-        currentList.children!.push({
-          type: 'listItem',
-          children: parseInline(orderedMatch[1]),
-          parentOrdered: true
-        })
-        continue
-      }
-
-      // Regular paragraph
-      if (currentList) {
-        nodes.push(currentList)
-        currentList = null
-      }
-      
-      nodes.push({
-        type: 'paragraph',
-        children: parseInline(line)
-      })
-    }
-
-    // Add any remaining list
-    if (currentList) {
-      nodes.push(currentList)
-    }
-
-    return nodes
+  // Header size classes per fontSize setting
+  const headerSizes: Record<string, Record<number, string>> = {
+    small: { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' },
+    medium: { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' },
+    large: { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }
   }
 
-  // Parse inline elements (bold, italic, links)
-  const parseInline = (text: string): MarkdownNode[] => {
-    const nodes: MarkdownNode[] = []
-    let remaining = text
-    
-    while (remaining) {
-      // Try to match link first [text](url)
-      const linkMatch = remaining.match(/^(.*?)\[([^\]]+)\]\(([^)]+)\)(.*)$/)
-      if (linkMatch) {
-        const [, before, linkText, url, after] = linkMatch
-        if (before) {
-          nodes.push(...parseSimpleInline(before))
+  const headerMargins: Record<number, string> = { 1: 'dc:mb-4', 2: 'dc:mb-3', 3: 'dc:mb-2' }
+
+  // Build markdown-to-jsx options with dynamic accent color
+  const markdownOptions = useMemo(() => ({
+    overrides: {
+      h1: {
+        props: {
+          className: `dc:font-bold ${headerSizes[fontSize]?.[1] || 'dc:text-3xl'} ${headerMargins[1]}`,
+          style: { color: accentColor }
         }
-        nodes.push({
-          type: 'link',
-          content: linkText,
-          url: url
-        })
-        remaining = after
-        continue
-      }
-
-      // No more special formatting, parse remaining as simple inline
-      nodes.push(...parseSimpleInline(remaining))
-      break
-    }
-
-    return nodes
-  }
-
-  // Parse bold and italic
-  const parseSimpleInline = (text: string): MarkdownNode[] => {
-    const nodes: MarkdownNode[] = []
-    let remaining = text
-
-    while (remaining) {
-      // Try bold first **text**
-      const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*(.*)$/)
-      if (boldMatch) {
-        const [, before, boldText, after] = boldMatch
-        if (before) nodes.push({ type: 'text', content: before })
-        nodes.push({ type: 'bold', content: boldText })
-        remaining = after
-        continue
-      }
-
-      // Try italic *text*
-      const italicMatch = remaining.match(/^(.*?)\*([^*]+)\*(.*)$/)
-      if (italicMatch) {
-        const [, before, italicText, after] = italicMatch
-        if (before) nodes.push({ type: 'text', content: before })
-        nodes.push({ type: 'italic', content: italicText })
-        remaining = after
-        continue
-      }
-
-      // No more formatting, add as text
-      nodes.push({ type: 'text', content: remaining })
-      break
-    }
-
-    return nodes
-  }
-
-  // Render markdown nodes to React elements
-  const renderNode = (node: MarkdownNode, key: number, listNumber?: number): React.ReactNode => {
-    switch (node.type) {
-      case 'text':
-        return <span key={key} className="text-dc-text">{node.content}</span>
-
-      case 'bold':
-        return <strong key={key} className="dc:font-bold text-dc-text">{node.content}</strong>
-
-      case 'italic':
-        return <em key={key} className="dc:italic text-dc-text">{node.content}</em>
-
-      case 'link':
-        return (
-          <a 
-            key={key}
-            href={node.url}
-            target="_blank"
-            rel="nofollow noopener noreferrer"
-            className="dc:hover:underline dc:transition-colors"
-            style={{ color: accentColor }}
-          >
-            {node.content}
-          </a>
-        )
-
-      case 'header': {
-        // Header classes that scale with fontSize setting
-        const getHeaderClasses = (level: number, fontSize: string) => {
-          const baseClasses = 'dc:font-bold'
-          const marginClasses = {
-            1: 'dc:mb-4',
-            2: 'dc:mb-3',
-            3: 'dc:mb-2'
-          }
-
-          let sizeClasses = ''
-          if (fontSize === 'small') {
-            sizeClasses = { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' }[level] || 'dc:text-sm'
-          } else if (fontSize === 'large') {
-            sizeClasses = { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }[level] || 'dc:text-3xl'
-          } else { // medium (default)
-            sizeClasses = { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' }[level] || 'dc:text-xl'
-          }
-
-          return `${baseClasses} ${sizeClasses} ${marginClasses[level as keyof typeof marginClasses]}`
+      },
+      h2: {
+        props: {
+          className: `dc:font-bold ${headerSizes[fontSize]?.[2] || 'dc:text-2xl'} ${headerMargins[2]}`,
+          style: { color: accentColor }
         }
-
-        const HeaderTag = `h${node.level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
-        return (
-          <HeaderTag
-            key={key}
-            className={getHeaderClasses(node.level as number, fontSize)}
-            style={{ color: accentColor }}
-          >
-            {node.content}
-          </HeaderTag>
-        )
-      }
-
-      case 'paragraph':
-        return (
-          <p key={key} className="dc:mb-3 dc:leading-relaxed">
-            {node.children?.map((child, i) => renderNode(child, i))}
-          </p>
-        )
-
-      case 'list': {
-        const ListTag = node.ordered ? 'ol' : 'ul'
-        let listClasses = 'mb-3'
-
-        if (alignment === 'center') {
-          listClasses += ' list-none flex flex-col items-center'
-        } else if (alignment === 'right') {
-          listClasses += ' list-none ml-auto max-w-max'
-        } else {
-          listClasses += ' list-none ml-6'
+      },
+      h3: {
+        props: {
+          className: `dc:font-bold ${headerSizes[fontSize]?.[3] || 'dc:text-xl'} ${headerMargins[3]}`,
+          style: { color: accentColor }
         }
-
-        return (
-          <ListTag key={key} className={listClasses}>
-            {node.children?.map((child, i) => renderNode(child, i, node.ordered ? i + 1 : undefined))}
-          </ListTag>
-        )
-      }
-
-      case 'listItem':
-        if (node.children) {
-          // For ordered lists, use custom colored numbers
-          if (node.parentOrdered && listNumber !== undefined) {
-            const numberSizeClass = fontSizeClasses[fontSize as keyof typeof fontSizeClasses]
-            
-            if (alignment === 'center') {
-              return (
-                <li key={key} className="dc:mb-1 dc:flex dc:items-center dc:justify-center">
-                  <span 
-                    className={`dc:inline-block dc:mr-2 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
-                    style={{ color: accentColor }}
-                  >
-                    {listNumber}.
-                  </span>
-                  <span className="dc:text-center">
-                    {node.children.map((child, i) => renderNode(child, i))}
-                  </span>
-                </li>
-              )
-            } else if (alignment === 'right') {
-              return (
-                <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
-                  <span className="dc:text-right">
-                    {node.children.map((child, i) => renderNode(child, i))}
-                  </span>
-                  <span 
-                    className={`dc:inline-block dc:ml-2 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
-                    style={{ color: accentColor }}
-                  >
-                    {listNumber}.
-                  </span>
-                </li>
-              )
-            } else {
-              return (
-                <li key={key} className="dc:mb-1 dc:flex dc:items-start">
-                  <span 
-                    className={`dc:inline-block dc:mr-3 dc:shrink-0 ${numberSizeClass} dc:font-medium`}
-                    style={{ color: accentColor }}
-                  >
-                    {listNumber}.
-                  </span>
-                  <span className="dc:flex-1">
-                    {node.children.map((child, i) => renderNode(child, i))}
-                  </span>
-                </li>
-              )
-            }
-          }
-          
-          // For unordered lists, use custom bullets with alignment
-          if (alignment === 'center') {
-            return (
-              <li key={key} className="dc:mb-1 dc:flex dc:items-center dc:justify-center">
-                <span 
-                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:mr-2 dc:shrink-0"
-                  style={{ backgroundColor: accentColor }}
-                />
-                <span className="dc:text-center">
-                  {node.children.map((child, i) => renderNode(child, i))}
-                </span>
-              </li>
-            )
-          } else if (alignment === 'right') {
-            return (
-              <li key={key} className="dc:mb-1 dc:flex dc:items-start dc:justify-end">
-                <span className="dc:text-right">
-                  {node.children.map((child, i) => renderNode(child, i))}
-                </span>
-                <span 
-                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:ml-2 dc:mt-2 dc:shrink-0"
-                  style={{ backgroundColor: accentColor }}
-                />
-              </li>
-            )
-          } else {
-            return (
-              <li key={key} className="dc:mb-1 dc:flex dc:items-start">
-                <span 
-                  className="dc:inline-block dc:w-2 dc:h-2 dc:rounded-full dc:mr-3 dc:mt-2 dc:shrink-0"
-                  style={{ backgroundColor: accentColor }}
-                />
-                <span className="dc:flex-1">
-                  {node.children.map((child, i) => renderNode(child, i))}
-                </span>
-              </li>
-            )
-          }
+      },
+      p: { props: { className: 'dc:mb-3 dc:leading-relaxed text-dc-text' } },
+      strong: { props: { className: 'dc:font-bold text-dc-text' } },
+      em: { props: { className: 'dc:italic text-dc-text' } },
+      a: {
+        props: {
+          className: 'dc:hover:underline dc:transition-colors',
+          target: '_blank',
+          rel: 'nofollow noopener noreferrer',
+          style: { color: accentColor }
         }
-        return null
-
-      case 'hr':
-        return (
-          <hr
-            key={key}
-            className="dc:my-4 dc:border-none"
-            style={{ height: '2px', backgroundColor: accentColor, opacity: 0.3 }}
-          />
-        )
-
-      case 'break':
-        return <br key={key} />
-
-      default:
-        return null
-    }
-  }
+      },
+      code: { props: { className: 'dc:px-1 dc:py-0.5 dc:rounded dc:text-xs bg-dc-surface-secondary text-dc-accent dc:font-mono' } },
+      pre: { props: { className: 'dc:rounded-lg dc:p-3 dc:my-2 dc:overflow-x-auto dc:text-xs bg-dc-surface-secondary text-dc-text dc:font-mono' } },
+      ul: { props: { className: 'dc:list-disc dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },
+      ol: { props: { className: 'dc:list-decimal dc:ml-6 dc:mb-3 text-dc-text dc:space-y-1' } },
+      li: { props: { className: 'dc:mb-1 text-dc-text' } },
+      blockquote: { props: { className: 'dc:border-l-4 border-dc-accent dc:pl-3 dc:my-2 dc:italic text-dc-text-secondary' } },
+      hr: {
+        props: {
+          className: 'dc:my-4 dc:border-none',
+          style: { height: '2px', backgroundColor: accentColor, opacity: 0.3 }
+        }
+      },
+      table: { props: { className: 'dc:w-full dc:border-collapse dc:my-3 dc:text-sm' } },
+      thead: { props: { className: 'bg-dc-surface-secondary' } },
+      th: { props: { className: 'dc:px-3 dc:py-2 dc:text-left dc:font-semibold dc:text-xs text-dc-text-secondary dc:uppercase dc:tracking-wider border-dc-border dc:border-b' } },
+      td: { props: { className: 'dc:px-3 dc:py-2 text-dc-text border-dc-border dc:border-b' } },
+      tr: { props: { className: 'dc:hover:opacity-80' } },
+    },
+  }), [accentColor, fontSize])
 
   if (!content.trim()) {
-    // When transparent, don't show any placeholder
     if (transparentBackground) return null
 
     return (
@@ -419,14 +115,11 @@ const MarkdownChart = React.memo(function MarkdownChart({
     )
   }
 
-  const parsedNodes = parseMarkdown(content)
-
   // Build accent border styles
   const accentBorderStyle: React.CSSProperties = {}
   if (accentBorder !== 'none') {
     const borderProp = `border${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'borderLeft' | 'borderTop' | 'borderBottom'
     accentBorderStyle[borderProp] = `4px solid ${accentColor}`
-    // Add small padding on the border side when transparent
     if (transparentBackground) {
       const paddingProp = `padding${accentBorder.charAt(0).toUpperCase() + accentBorder.slice(1)}` as 'paddingLeft' | 'paddingTop' | 'paddingBottom'
       if (accentBorder === 'left') accentBorderStyle[paddingProp] = '12px'
@@ -435,13 +128,15 @@ const MarkdownChart = React.memo(function MarkdownChart({
 
   return (
     <div
-      className={`dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize as keyof typeof fontSizeClasses]} ${alignmentClasses[alignment as keyof typeof alignmentClasses]}`}
+      className={`dc:w-full dc:overflow-auto ${transparentBackground ? '' : 'dc:p-4 '}${fontSizeClasses[fontSize] || 'dc:text-lg'} ${alignmentClasses[alignment] || 'dc:text-left'}`}
       style={{
         height: height === "100%" ? "100%" : height,
         ...accentBorderStyle
       }}
     >
-      {parsedNodes.map((node, index) => renderNode(node, index))}
+      <Markdown options={markdownOptions}>
+        {content}
+      </Markdown>
     </div>
   )
 })

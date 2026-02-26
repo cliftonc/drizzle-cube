@@ -126,6 +126,37 @@ export const analyticsPages = pgTable('analytics_pages', {
   updatedAt: timestamp('updated_at').defaultNow()
 })
 
+// Notebooks table - for storing AI notebook configurations
+export const notebooks = pgTable('notebooks', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  name: text('name').notNull(),
+  description: text('description'),
+  organisationId: integer('organisation_id').notNull(),
+  config: jsonb('config').$type<{
+    blocks: Array<{
+      id: string
+      type: 'portlet' | 'markdown'
+      title?: string
+      content?: string
+      query?: string
+      chartType?: string
+      chartConfig?: Record<string, unknown>
+      displayConfig?: Record<string, unknown>
+    }>
+    messages: Array<{
+      id: string
+      role: 'user' | 'assistant'
+      content: string
+      toolCalls?: Array<{ name: string; status: string; result?: unknown }>
+      timestamp: number
+    }>
+  }>(),
+  order: integer('order').default(0),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+})
+
 // Settings table - for storing application configuration and counters
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),
@@ -193,6 +224,7 @@ export const schema = {
   teams,
   employeeTeams,
   analyticsPages,
+  notebooks,
   settings,
   employeesRelations,
   departmentsRelations,
