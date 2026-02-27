@@ -33,6 +33,7 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   heatmap: () => import('../components/charts/HeatMapChart.config'),
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap.config'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart.config'),
+  waterfall: () => import('../components/charts/WaterfallChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -58,6 +59,7 @@ const configExportNames: Record<ChartType, string> = {
   heatmap: 'heatmapChartConfig',
   retentionHeatmap: 'retentionHeatmapConfig',
   retentionCombined: 'retentionCombinedConfig',
+  waterfall: 'waterfallChartConfig',
 }
 
 // Cache for loaded configs
