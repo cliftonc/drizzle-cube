@@ -8,6 +8,7 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
 
 export const retentionHeatmapConfig: ChartTypeConfig = {
+  label: 'Retention Matrix',
   // RetentionHeatmap auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to cohort × period matrix
   dropZones: [],

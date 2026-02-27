@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChartType } from '../types'
 import type { ChartAvailabilityMap } from '../shared/chartDefaults'
-import type { ChartConfigRegistry } from '../charts/chartConfigs'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType
@@ -15,29 +15,9 @@ interface ChartTypeSelectorProps {
   excludeTypes?: ChartType[]
 }
 
-// Chart type display names (defined outside component to avoid recreation)
-const chartTypeLabels: Record<ChartType, string> = {
-  activityGrid: 'Activity Grid',
-  area: 'Area Chart',
-  bar: 'Bar Chart',
-  bubble: 'Bubble Chart',
-  funnel: 'Funnel Chart',
-  heatmap: 'Heatmap',
-  kpiDelta: 'KPI Delta',
-  kpiNumber: 'KPI Number',
-  kpiText: 'KPI Text',
-  line: 'Line Chart',
-  markdown: 'Markdown',
-  pie: 'Pie Chart',
-  radar: 'Radar Chart',
-  radialBar: 'Radial Bar Chart',
-  retentionCombined: 'Retention Chart',
-  retentionHeatmap: 'Retention Matrix',
-  sankey: 'Sankey Chart',
-  scatter: 'Scatter Plot',
-  sunburst: 'Sunburst Chart',
-  table: 'Data Table',
-  treemap: 'TreeMap'
+/** Get label for a chart type from the registry, falling back to the chart type key */
+function getLabel(type: ChartType): string {
+  return chartConfigRegistry[type]?.label || type
 }
 
 export default function ChartTypeSelector({
@@ -49,40 +29,17 @@ export default function ChartTypeSelector({
   excludeTypes = []
 }: ChartTypeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [configRegistry, setConfigRegistry] = useState<ChartConfigRegistry | null>(null)
 
-  useEffect(() => {
-    let isActive = true
+  // Derive chart types from the registry, filter excluded ones, and sort alphabetically by label
+  const chartTypes = useMemo(() =>
+    (Object.keys(chartConfigRegistry) as ChartType[])
+      .filter((type) => !excludeTypes.includes(type))
+      .sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
+  , [excludeTypes])
 
-    import('../charts/chartConfigRegistry')
-      .then((module) => {
-        if (isActive) {
-          setConfigRegistry(module.chartConfigRegistry)
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setConfigRegistry(null)
-        }
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [])
-
-  // Get chart types, filter excluded ones, and sort alphabetically by label
-  const chartTypes = (Object.keys(chartTypeLabels) as ChartType[])
-    .filter((type) => !excludeTypes.includes(type))
-    .sort((a, b) => {
-      const labelA = chartTypeLabels[a] || a
-      const labelB = chartTypeLabels[b] || b
-      return labelA.localeCompare(labelB)
-    })
-
-  const selectedConfig = configRegistry?.[selectedType]
+  const selectedConfig = chartConfigRegistry[selectedType]
   const SelectedIcon = selectedConfig?.icon
-  const selectedLabel = chartTypeLabels[selectedType]
+  const selectedLabel = getLabel(selectedType)
 
   return (
     <div className={`${className} dc:relative`}>
@@ -114,9 +71,9 @@ export default function ChartTypeSelector({
           <div className="dc:p-2">
             <div className={`dc:grid dc:gap-1.5 ${compact ? 'dc:grid-cols-2' : 'dc:grid-cols-2 dc:sm:grid-cols-3 dc:lg:grid-cols-4'}`}>
               {chartTypes.map((type) => {
-                const config = configRegistry?.[type]
+                const config = chartConfigRegistry[type]
                 const IconComponent = config?.icon
-                const label = chartTypeLabels[type]
+                const label = getLabel(type)
                 const isSelected = selectedType === type
                 const description = config?.description
                 const useCase = config?.useCase

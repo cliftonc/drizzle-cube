@@ -9,6 +9,7 @@ import { getChartTypeIcon } from '../../icons'
  * nodes and links representing user journeys.
  */
 export const sankeyChartConfig: ChartTypeConfig = {
+  label: 'Sankey Chart',
   icon: getChartTypeIcon('sankey'),
   description: 'Show flow between states or steps',
   useCase: 'Best for visualizing user journey flows, path analysis, or state transitions',

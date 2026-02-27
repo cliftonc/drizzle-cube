@@ -8,6 +8,7 @@ import { getChartTypeIcon } from '../../icons'
  * Best for showing patterns in matrix data like correlations, schedules, or category comparisons.
  */
 export const heatmapChartConfig: ChartTypeConfig = {
+  label: 'Heatmap',
   icon: getChartTypeIcon('heatmap'),
   description: 'Visualize intensity across two dimensions',
   useCase: 'Best for showing patterns in matrix data like correlations, schedules, or category comparisons',

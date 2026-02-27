@@ -91,6 +91,9 @@ export interface ClickableElementsConfig {
  * Complete configuration for a chart type
  */
 export interface ChartTypeConfig {
+  /** Display label for the chart type in the picker (e.g., 'Bar Chart', 'KPI Number') */
+  label?: string
+
   /** Configuration for each drop zone */
   dropZones: AxisDropZoneConfig[]
 

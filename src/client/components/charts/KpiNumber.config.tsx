@@ -5,6 +5,7 @@ import { getChartTypeIcon } from '../../icons'
  * Configuration for the KPI Number chart type
  */
 export const kpiNumberConfig: ChartTypeConfig = {
+  label: 'KPI Number',
   icon: getChartTypeIcon('kpiNumber'),
   description: 'Display key performance indicators as large numbers',
   useCase: 'Perfect for showing important metrics like revenue, user count, or other key business metrics in a prominent, easy-to-read format',

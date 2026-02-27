@@ -9,6 +9,7 @@ import { getChartTypeIcon } from '../../icons'
  * pre-calculated step names, values, and conversion rates.
  */
 export const funnelChartConfig: ChartTypeConfig = {
+  label: 'Funnel Chart',
   icon: getChartTypeIcon('funnel'),
   description: 'Show conversion through sequential steps',
   useCase: 'Best for visualizing user journey funnels, sales pipelines, or multi-step processes',
