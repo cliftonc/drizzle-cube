@@ -80,7 +80,7 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
     packageName: '@nivo/heatmap',
     installCommand: 'npm install @nivo/heatmap'
   }
-  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap
+  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, gauge
 }
 
 // Dynamic import functions for each chart type
@@ -106,6 +106,7 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   heatmap: () => import('../components/charts/HeatMapChart'),
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart'),
+  gauge: () => import('../components/charts/GaugeChart'),
 }
 
 /**

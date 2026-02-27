@@ -19,6 +19,7 @@ import { sunburstChartConfig } from '../components/charts/SunburstChart.config'
 import { heatmapChartConfig } from '../components/charts/HeatMapChart.config'
 import { retentionHeatmapConfig } from '../components/charts/RetentionHeatmap.config'
 import { retentionCombinedConfig } from '../components/charts/RetentionCombinedChart.config'
+import { gaugeChartConfig } from '../components/charts/GaugeChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -46,4 +47,5 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   heatmap: heatmapChartConfig,
   retentionHeatmap: retentionHeatmapConfig,
   retentionCombined: retentionCombinedConfig,
+  gauge: gaugeChartConfig,
 }
