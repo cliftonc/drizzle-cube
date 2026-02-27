@@ -487,8 +487,8 @@ describe('ChartLoader', () => {
 
       it('should return array with expected count of chart types', () => {
         const types = getAvailableChartTypes()
-        // Based on the ChartType definition, we have 21 chart types
-        expect(types.length).toBe(21)
+        // Based on the ChartType definition, we have 22 chart types (21 base + candlestick)
+        expect(types.length).toBe(22)
       })
     })
 

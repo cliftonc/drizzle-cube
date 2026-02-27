@@ -7,6 +7,7 @@ import { getChartTypeIcon } from '../../icons'
  * Supports both OHLC mode and simplified range (bid/ask spread) mode.
  */
 export const candlestickChartConfig: ChartTypeConfig = {
+  label: 'Candlestick Chart',
   icon: getChartTypeIcon('bar'),
   description: 'Financial candlestick chart showing open/close body and high/low wicks',
   useCase:
