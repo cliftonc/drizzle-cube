@@ -113,6 +113,7 @@ export type ChartType =
   | 'heatmap'
   | 'retentionHeatmap'
   | 'retentionCombined'
+  | 'measureProfile'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {

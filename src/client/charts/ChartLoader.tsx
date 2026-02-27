@@ -79,6 +79,10 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
   heatmap: {
     packageName: '@nivo/heatmap',
     installCommand: 'npm install @nivo/heatmap'
+  },
+  measureProfile: {
+    packageName: 'recharts',
+    installCommand: 'npm install recharts'
   }
   // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap
 }
@@ -106,6 +110,7 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   heatmap: () => import('../components/charts/HeatMapChart'),
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart'),
+  measureProfile: () => import('../components/charts/MeasureProfileChart'),
 }
 
 /**

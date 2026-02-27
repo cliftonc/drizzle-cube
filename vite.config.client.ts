@@ -23,7 +23,8 @@ const chartModuleNames = new Set([
   'SankeyChart',
   'ScatterChart',
   'SunburstChart',
-  'TreeMapChart'
+  'TreeMapChart',
+  'MeasureProfileChart'
 ])
 
 function normalizeId(id: string): string {
