@@ -7,3 +7,7 @@ dist-preview/
 coverage/
 .DS_Store
 *.log
+# Playwright
+playwright-report/
+test-results/
+.playwright-cache/
