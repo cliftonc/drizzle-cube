@@ -6,6 +6,7 @@ import { getChartTypeIcon } from '../../icons'
  * Use for decomposing a total into incremental positive/negative contributions.
  */
 export const waterfallChartConfig: ChartTypeConfig = {
+  label: 'Waterfall Chart',
   icon: getChartTypeIcon('bar'),
   description: 'Show cumulative effect of sequential positive and negative values',
   useCase:
