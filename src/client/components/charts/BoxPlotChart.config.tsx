@@ -11,6 +11,7 @@ import { getChartTypeIcon } from '../../icons'
  *  - Auto: single yAxis measure shown as a point (degenerate box)
  */
 export const boxPlotChartConfig: ChartTypeConfig = {
+  label: 'Box Plot',
   icon: getChartTypeIcon('bar'),
   description: 'Show statistical distribution (median, IQR, whiskers) across categories',
   useCase:
