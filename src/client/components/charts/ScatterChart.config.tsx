@@ -5,6 +5,7 @@ import { getChartTypeIcon } from '../../icons'
  * Configuration for the scatter chart type
  */
 export const scatterChartConfig: ChartTypeConfig = {
+  label: 'Scatter Plot',
   icon: getChartTypeIcon('scatter'),
   description: 'Reveal correlations between variables',
   useCase: 'Best for identifying patterns, correlations, outliers, and relationships between two measures',

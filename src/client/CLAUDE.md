@@ -470,6 +470,32 @@ interface ChartDisplayConfig {
 - **BubbleChart** - Bubble charts with size/color dimensions
 - **DataTable** - Sortable data tables
 
+### Adding a New Chart Type
+
+To add a new chart type, create the config and component files and register them. The chart type picker (`ChartTypeSelector`) derives its list automatically from `chartConfigRegistry` — no manual label map updates needed.
+
+1. **Add to `ChartType` union** in `src/client/types.ts`
+2. **Create the chart component** in `src/client/components/charts/MyChart.tsx`
+3. **Create the chart config** in `src/client/components/charts/MyChart.config.tsx`:
+   ```typescript
+   import type { ChartTypeConfig } from '../../charts/chartConfigs'
+   import { getChartTypeIcon } from '../../icons'
+
+   export const myChartConfig: ChartTypeConfig = {
+     label: 'My Chart',              // Required: display name in chart type picker
+     icon: getChartTypeIcon('bar'),   // Icon for picker and UI
+     description: 'Brief description',
+     useCase: 'When to use this chart',
+     dropZones: [ /* ... */ ],
+     displayOptionsConfig: [ /* ... */ ],
+   }
+   ```
+4. **Register in `chartConfigRegistry.ts`** — import and add the config entry
+5. **Register in `lazyChartConfigRegistry.ts`** — add dynamic import and export name mappings
+6. **Add to `ChartLoader.tsx`** — add the lazy component import
+
+The `label` field in the config is the single source of truth for the chart's display name. The picker, tooltips, and other UI automatically use it.
+
 ---
 
 ## Query Builder / AnalysisBuilder

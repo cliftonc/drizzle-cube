@@ -5,6 +5,7 @@ import { getChartTypeIcon } from '../../icons'
  * Configuration for the activity grid chart type
  */
 export const activityGridChartConfig: ChartTypeConfig = {
+  label: 'Activity Grid',
   icon: getChartTypeIcon('activityGrid'),
   description: 'GitHub-style activity grid showing temporal patterns across different time scales',
   useCase: 'Best for visualizing activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities',

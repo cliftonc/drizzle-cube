@@ -8,6 +8,7 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
 
 export const retentionCombinedConfig: ChartTypeConfig = {
+  label: 'Retention Chart',
   // RetentionCombinedChart auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to retention result data
   dropZones: [],

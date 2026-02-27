@@ -5,6 +5,7 @@ import { getChartTypeIcon } from '../../icons'
  * Configuration for the radial bar chart type
  */
 export const radialBarChartConfig: ChartTypeConfig = {
+  label: 'Radial Bar Chart',
   icon: getChartTypeIcon('radialBar'),
   description: 'Circular progress and KPI visualization',
   useCase: 'Best for showing progress toward goals, KPIs, or comparing percentages in a compact form',

@@ -17,6 +17,8 @@ import { funnelChartConfig } from '../components/charts/FunnelChart.config'
 import { sankeyChartConfig } from '../components/charts/SankeyChart.config'
 import { sunburstChartConfig } from '../components/charts/SunburstChart.config'
 import { heatmapChartConfig } from '../components/charts/HeatMapChart.config'
+import { retentionHeatmapConfig } from '../components/charts/RetentionHeatmap.config'
+import { retentionCombinedConfig } from '../components/charts/RetentionCombinedChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -42,4 +44,6 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   sankey: sankeyChartConfig,
   sunburst: sunburstChartConfig,
   heatmap: heatmapChartConfig,
+  retentionHeatmap: retentionHeatmapConfig,
+  retentionCombined: retentionCombinedConfig,
 }

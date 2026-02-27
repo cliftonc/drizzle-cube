@@ -5,6 +5,7 @@ import { getChartTypeIcon } from '../../icons'
  * Configuration for the line chart type
  */
 export const lineChartConfig: ChartTypeConfig = {
+  label: 'Line Chart',
   icon: getChartTypeIcon('line'),
   description: 'Show trends and changes over time',
   useCase: 'Best for continuous data, trends, time series, and showing relationships between multiple series',

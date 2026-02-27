@@ -9,6 +9,7 @@ import { getChartTypeIcon } from '../../icons'
  * radiating outward from the central starting step.
  */
 export const sunburstChartConfig: ChartTypeConfig = {
+  label: 'Sunburst Chart',
   icon: getChartTypeIcon('sunburst'),
   description: 'Show hierarchical flow as radial rings',
   useCase: 'Best for visualizing forward paths from a starting event in a compact radial layout',
