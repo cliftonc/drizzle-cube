@@ -6,6 +6,7 @@ import { getChartTypeIcon } from '../../icons'
  * Renders a half-circle arc gauge showing a single KPI value vs a target/max.
  */
 export const gaugeChartConfig: ChartTypeConfig = {
+  label: 'Gauge Chart',
   icon: getChartTypeIcon('kpiNumber'),
   description: 'Half-circle arc gauge for a single KPI value versus a maximum target',
   useCase:

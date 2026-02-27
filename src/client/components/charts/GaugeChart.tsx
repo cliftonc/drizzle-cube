@@ -138,6 +138,16 @@ const GaugeChart = React.memo(function GaugeChart({
     return { valueField, maxField, configError: null }
   }, [chartConfig, displayConfig])
 
+  // Computed before early returns to satisfy react-hooks/rules-of-hooks
+  const thresholds: ThresholdBand[] = Array.isArray(dc.thresholds) ? dc.thresholds : []
+  const thresholdBands = thresholds.length === 0
+    ? []
+    : [...thresholds].sort((a, b) => a.value - b.value).map((t, i, sorted) => {
+        const bandStart = i === 0 ? START_ANGLE : valueToAngle(sorted[i - 1].value, 0, 1)
+        const bandEnd = valueToAngle(t.value, 0, 1)
+        return { color: t.color, start: bandStart, end: bandEnd }
+      })
+
   // ---- empty state ----
   if (!data || data.length === 0) {
     return (
@@ -177,7 +187,6 @@ const GaugeChart = React.memo(function GaugeChart({
   const clampedValue = clamp(rawValue, minValue, effectiveMax)
   const fraction = (clampedValue - minValue) / (effectiveMax - minValue)
 
-  const thresholds: ThresholdBand[] = Array.isArray(dc.thresholds) ? dc.thresholds : []
   const fillColor = thresholds.length > 0 ? resolveColor(fraction, thresholds) : DEFAULT_FILL
 
   const showCenterLabel = dc.showCenterLabel ?? true
@@ -200,18 +209,6 @@ const GaugeChart = React.memo(function GaugeChart({
   const trackPath = buildArcPath(innerR, outerR, START_ANGLE, END_ANGLE)
   const fillAngle = valueToAngle(clampedValue, minValue, effectiveMax)
   const fillPath = buildArcPath(innerR, outerR, START_ANGLE, fillAngle)
-
-  // Threshold band arcs
-  const thresholdBands = useMemo(() => {
-    if (thresholds.length === 0) return []
-    const sorted = [...thresholds].sort((a, b) => a.value - b.value)
-    return sorted.map((t, i) => {
-      const bandStart = i === 0 ? START_ANGLE : valueToAngle(sorted[i - 1].value, 0, 1)
-      const bandEnd = valueToAngle(t.value, 0, 1)
-      return { color: t.color, start: bandStart, end: bandEnd }
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thresholds])
 
   const needleAngle = valueToAngle(clampedValue, minValue, effectiveMax)
 
