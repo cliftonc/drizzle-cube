@@ -378,6 +378,7 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
           width="100%"
           height={isTruncated ? `calc(100% - 20px)` : '100%'}
           viewBox={`0 0 ${containerWidth} ${typeof containerHeight === 'number' ? containerHeight : 400}`}
+          preserveAspectRatio="none"
           data-testid="boxplot-svg"
         >
           <g transform={`translate(${margin.left}, ${margin.top})`}>

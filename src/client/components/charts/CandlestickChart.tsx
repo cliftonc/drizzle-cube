@@ -17,9 +17,10 @@ interface CandleData {
   originalIndex: number
 }
 
-function parseNum(v: unknown): number {
-  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
-  return isNaN(n) ? 0 : n
+function parseNum(v: unknown): number | null {
+  if (v === undefined || v === null) return null
+  const n = typeof v === 'number' ? v : parseFloat(String(v))
+  return isNaN(n) ? null : n
 }
 
 function Candle({
@@ -218,19 +219,25 @@ const CandlestickChart = React.memo(function CandlestickChart({
   const candles: CandleData[] = useMemo(() => {
     if (configError || !data || data.length === 0) return []
     const rows = (data as Record<string, unknown>[]).slice(0, MAX_CANDLES)
-    return rows.map((row, i): CandleData => {
+    const result: CandleData[] = []
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
       const label = String(row[xField!] ?? `Bar ${i + 1}`)
-      let open = parseNum(row[openField])
-      let close = parseNum(row[closeField])
-      const high = highField ? parseNum(row[highField]) : Math.max(open, close)
-      const low = lowField ? parseNum(row[lowField]) : Math.min(open, close)
+      const rawOpen = parseNum(row[openField])
+      const rawClose = parseNum(row[closeField])
+      if (rawOpen === null || rawClose === null) continue
+
+      let open = rawOpen
+      let close = rawClose
+      const high = highField ? (parseNum(row[highField]) ?? Math.max(open, close)) : Math.max(open, close)
+      const low = lowField ? (parseNum(row[lowField]) ?? Math.min(open, close)) : Math.min(open, close)
 
       if (rangeMode === 'range') {
         open = low
         close = high
       }
 
-      return {
+      result.push({
         label,
         open,
         close,
@@ -238,33 +245,33 @@ const CandlestickChart = React.memo(function CandlestickChart({
         low: Math.min(open, close, low),
         isBullish: close >= open,
         originalIndex: i,
-      }
-    })
+      })
+    }
+    return result
   }, [data, xField, openField, closeField, highField, lowField, rangeMode, configError])
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display in candlestick chart</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (configError) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">{configError}</div>
-        </div>
-      </div>
-    )
-  }
-
   try {
+    if (!data || data.length === 0) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in candlestick chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (configError) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">{configError}</div>
+          </div>
+        </div>
+      )
+    }
     const margin = { top: 20, right: 20, bottom: 60, left: 70 }
     const containerWidth = dimensions.width || 600
     const containerHeight =

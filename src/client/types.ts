@@ -153,6 +153,11 @@ export interface ChartAxisConfig {
   yAxisAssignment?: Record<string, 'left' | 'right'>
 }
 
+export interface ThresholdBand {
+  value: number
+  color: string
+}
+
 export interface ChartDisplayConfig {
   showLegend?: boolean
   showGrid?: boolean
@@ -267,7 +272,7 @@ export interface ChartDisplayConfig {
   // Gauge chart specific display options
   minValue?: number
   maxValue?: number
-  thresholds?: string | { value: number; color: string }[]
+  thresholds?: string | ThresholdBand[]
   showCenterLabel?: boolean
   showPercentage?: boolean
 }

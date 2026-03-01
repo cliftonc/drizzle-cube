@@ -221,14 +221,58 @@ describe('GaugeChart', () => {
       render(<GaugeChart data={singleRow} chartConfig={valueConfig} />)
       expect(screen.queryByTestId('gauge-band-0')).not.toBeInTheDocument()
     })
+
+    it('should use threshold color matching the fraction', () => {
+      // value=80 out of max=100 → fraction=0.8
+      // Thresholds: 0.33 green, 0.66 amber, 1.0 red
+      // resolveColor picks last threshold where fraction >= t.value
+      // 0.8 >= 0.33 → green, 0.8 >= 0.66 → amber, 0.8 < 1.0 → stop
+      // Result: amber (#f59e0b)
+      const data = [{ 'M.v': 80 }]
+      render(
+        <GaugeChart
+          data={data}
+          chartConfig={{ yAxis: ['M.v'] }}
+          displayConfig={{
+            thresholds: [
+              { value: 0.33, color: '#22c55e' },
+              { value: 0.66, color: '#f59e0b' },
+              { value: 1.0, color: '#ef4444' },
+            ],
+          }}
+        />
+      )
+      const fill = screen.getByTestId('gauge-fill')
+      expect(fill.getAttribute('fill')).toBe('#f59e0b')
+    })
+
+    it('should filter out invalid threshold entries', () => {
+      const data = [{ 'M.v': 50 }]
+      render(
+        <GaugeChart
+          data={data}
+          chartConfig={{ yAxis: ['M.v'] }}
+          displayConfig={{
+            thresholds: [
+              { value: 0.5, color: '#22c55e' },
+              { value: 'bad', color: '#ff0000' } as any,
+              null as any,
+            ],
+          }}
+        />
+      )
+      // Only valid threshold should produce a band
+      expect(screen.getByTestId('gauge-band-0')).toBeInTheDocument()
+      expect(screen.queryByTestId('gauge-band-1')).not.toBeInTheDocument()
+    })
   })
 
   describe('data handling', () => {
-    it('should handle null measure value (defaults to 0)', () => {
+    it('should show no valid data when measure value is null', () => {
       const nullData = [{ 'M.v': null }]
       render(<GaugeChart data={nullData} chartConfig={{ yAxis: ['M.v'] }} />)
-      const fill = screen.getByTestId('gauge-fill')
-      expect(parseFloat(fill.getAttribute('data-fraction') ?? '1')).toBeCloseTo(0, 4)
+      expect(screen.getByText('No valid data')).toBeInTheDocument()
+      expect(screen.queryByTestId('gauge-fill')).not.toBeInTheDocument()
     })
 
     it('should handle string numeric value', () => {

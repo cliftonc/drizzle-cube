@@ -108,31 +108,30 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
     )
   }, [data, yAxisFields, seriesField, getFieldLabel, configError])
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display in measure profile chart</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (configError) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">{configError}</div>
-        </div>
-      </div>
-    )
-  }
-
   const showLegend = (displayConfig?.showLegend ?? true) && seriesKeys.length > 1
 
   try {
+    if (!data || data.length === 0) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in measure profile chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (configError) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">{configError}</div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="dc:relative dc:w-full" style={{ height }}>
         <ChartContainer height="100%">

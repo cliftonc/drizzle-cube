@@ -2,21 +2,17 @@ import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { arc } from 'd3-shape'
 import { formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
-import type { ChartProps } from '../../types'
-
-interface ThresholdBand {
-  value: number
-  color: string
-}
+import type { ChartProps, ThresholdBand } from '../../types'
 
 const START_ANGLE = -Math.PI * 0.75
 const END_ANGLE = Math.PI * 0.75
 const TRACK_COLOR = '#e2e8f0'
 const DEFAULT_FILL = '#6366f1'
 
-function parseNum(v: unknown): number {
-  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
-  return isNaN(n) ? 0 : n
+function parseNum(v: unknown): number | null {
+  if (v === undefined || v === null) return null
+  const n = typeof v === 'number' ? v : parseFloat(String(v))
+  return isNaN(n) ? null : n
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -111,14 +107,26 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const thresholds: ThresholdBand[] = useMemo(() => {
     const raw = displayConfig?.thresholds
-    if (Array.isArray(raw)) return raw
-    if (typeof raw === 'string' && raw.trim()) {
+    let arr: unknown[] | null = null
+    if (Array.isArray(raw)) {
+      arr = raw
+    } else if (typeof raw === 'string' && raw.trim()) {
       try {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) return parsed
-      } catch { /* invalid JSON — ignore */ }
+        if (Array.isArray(parsed)) arr = parsed
+      } catch (e) {
+        console.warn('GaugeChart: invalid threshold JSON', e)
+        return []
+      }
     }
-    return []
+    if (!arr) return []
+    return arr.filter(
+      (entry): entry is ThresholdBand =>
+        entry !== null &&
+        typeof entry === 'object' &&
+        typeof (entry as ThresholdBand).value === 'number' &&
+        typeof (entry as ThresholdBand).color === 'string'
+    )
   }, [displayConfig?.thresholds])
 
   const thresholdBands = thresholds.length === 0
@@ -129,69 +137,79 @@ const GaugeChart = React.memo(function GaugeChart({
         return { color: t.color, start: bandStart, end: bandEnd }
       })
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display in gauge chart</div>
-        </div>
-      </div>
-    )
-  }
-
-  if (configError) {
-    return (
-      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">{configError}</div>
-        </div>
-      </div>
-    )
-  }
-
-  const row = (data as Record<string, unknown>[])[0]
-  const rawValue = parseNum(row[valueField])
-  const minValue = displayConfig?.minValue ?? 0
-  const maxValue = displayConfig?.maxValue ?? (maxField ? parseNum(row[maxField]) : 100)
-
-  const effectiveMax = maxValue === minValue ? minValue + 1 : maxValue
-  const clampedValue = clamp(rawValue, minValue, effectiveMax)
-  const fraction = (clampedValue - minValue) / (effectiveMax - minValue)
-
-  const fillColor = thresholds.length > 0 ? resolveColor(fraction, thresholds) : DEFAULT_FILL
-
-  const showCenterLabel = displayConfig?.showCenterLabel ?? true
-  const showPercentage = displayConfig?.showPercentage ?? false
-  const yAxisFormat = displayConfig?.leftYAxisFormat
-
-  const containerW = dimensions.width || 300
-  const containerH = typeof height === 'number' ? height : (dimensions.height || 200)
-
-  const radius = Math.min(containerW / 2, containerH * 0.9) * 0.85
-  const outerR = radius
-  const innerR = radius * 0.6
-  const cx = containerW / 2
-  const cy = containerH * 0.7
-
-  const trackPath = buildArcPath(innerR, outerR, START_ANGLE, END_ANGLE)
-  const fillAngle = valueToAngle(clampedValue, minValue, effectiveMax)
-  const fillPath = buildArcPath(innerR, outerR, START_ANGLE, fillAngle)
-
-  const needleAngle = valueToAngle(clampedValue, minValue, effectiveMax)
-
-  const displayValue = yAxisFormat
-    ? formatAxisValue(rawValue, yAxisFormat)
-    : rawValue.toLocaleString()
-
-  const valueLabel = showPercentage
-    ? `${(fraction * 100).toFixed(1)}%`
-    : displayValue
-
-  const fieldLabel = getFieldLabel(valueField)
-
   try {
+    if (!data || data.length === 0) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-xs text-dc-text-secondary">No data points to display in gauge chart</div>
+          </div>
+        </div>
+      )
+    }
+
+    if (configError) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-xs">{configError}</div>
+          </div>
+        </div>
+      )
+    }
+
+    const row = (data as Record<string, unknown>[])[0]
+    const rawValue = parseNum(row[valueField])
+    if (rawValue === null) {
+      return (
+        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+          <div className="dc:text-center">
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-xs text-dc-text-secondary">Gauge value is not a valid number</div>
+          </div>
+        </div>
+      )
+    }
+    const minValue = displayConfig?.minValue ?? 0
+    const maxFieldValue = maxField ? parseNum(row[maxField]) : null
+    const maxValue = displayConfig?.maxValue ?? (maxFieldValue ?? 100)
+
+    const effectiveMax = maxValue === minValue ? minValue + 1 : maxValue
+    const clampedValue = clamp(rawValue, minValue, effectiveMax)
+    const fraction = (clampedValue - minValue) / (effectiveMax - minValue)
+
+    const fillColor = thresholds.length > 0 ? resolveColor(fraction, thresholds) : DEFAULT_FILL
+
+    const showCenterLabel = displayConfig?.showCenterLabel ?? true
+    const showPercentage = displayConfig?.showPercentage ?? false
+    const yAxisFormat = displayConfig?.leftYAxisFormat
+
+    const containerW = dimensions.width || 300
+    const containerH = typeof height === 'number' ? height : (dimensions.height || 200)
+
+    const radius = Math.min(containerW / 2, containerH * 0.9) * 0.85
+    const outerR = radius
+    const innerR = radius * 0.6
+    const cx = containerW / 2
+    const cy = containerH * 0.7
+
+    const trackPath = buildArcPath(innerR, outerR, START_ANGLE, END_ANGLE)
+    const fillAngle = valueToAngle(clampedValue, minValue, effectiveMax)
+    const fillPath = buildArcPath(innerR, outerR, START_ANGLE, fillAngle)
+
+    const needleAngle = valueToAngle(clampedValue, minValue, effectiveMax)
+
+    const displayValue = yAxisFormat
+      ? formatAxisValue(rawValue, yAxisFormat)
+      : rawValue.toLocaleString()
+
+    const valueLabel = showPercentage
+      ? `${(fraction * 100).toFixed(1)}%`
+      : displayValue
+
+    const fieldLabel = getFieldLabel(valueField)
     return (
       <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
         <svg

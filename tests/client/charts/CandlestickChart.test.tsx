@@ -150,6 +150,22 @@ describe('CandlestickChart', () => {
       expect(screen.getByTestId('candle-AAPL')).toBeInTheDocument()
       expect(screen.getByTestId('candle-MSFT')).toBeInTheDocument()
     })
+
+    it('should set open=low and close=high in range mode (always bullish)', () => {
+      const data = [
+        { 'Q.sym': 'X', 'Q.hi': 200, 'Q.lo': 100 },
+      ]
+      render(
+        <CandlestickChart
+          data={data}
+          chartConfig={{ xAxis: ['Q.sym'], yAxis: ['Q.hi', 'Q.lo'] }}
+          displayConfig={{ rangeMode: 'range' }}
+        />
+      )
+      const body = screen.getByTestId('candle-body-X')
+      // In range mode: open = low (100), close = high (200), so close >= open → bullish
+      expect(body.getAttribute('data-bullish')).toBe('true')
+    })
   })
 
   describe('data handling', () => {
@@ -168,17 +184,32 @@ describe('CandlestickChart', () => {
       expect(body.getAttribute('data-bullish')).toBe('true')
     })
 
-    it('should handle null measure values by defaulting to 0', () => {
+    it('should skip rows with null open/close values', () => {
       const nullData = [
         { 'Q.date': '2026-01-01', 'Q.open': null, 'Q.close': null, 'Q.high': null, 'Q.low': null },
       ]
-      const { container } = render(
+      render(
         <CandlestickChart
           data={nullData}
           chartConfig={{ xAxis: ['Q.date'], yAxis: ['Q.open', 'Q.close', 'Q.high', 'Q.low'] }}
         />
       )
-      expect(container.firstChild).toBeTruthy()
+      expect(screen.queryByTestId('candle-2026-01-01')).not.toBeInTheDocument()
+    })
+
+    it('should render valid rows and skip null rows', () => {
+      const mixedData = [
+        { 'Q.date': '2026-01-01', 'Q.open': 100, 'Q.close': 110, 'Q.high': 115, 'Q.low': 95 },
+        { 'Q.date': '2026-01-02', 'Q.open': null, 'Q.close': null, 'Q.high': null, 'Q.low': null },
+      ]
+      render(
+        <CandlestickChart
+          data={mixedData}
+          chartConfig={{ xAxis: ['Q.date'], yAxis: ['Q.open', 'Q.close', 'Q.high', 'Q.low'] }}
+        />
+      )
+      expect(screen.getByTestId('candle-2026-01-01')).toBeInTheDocument()
+      expect(screen.queryByTestId('candle-2026-01-02')).not.toBeInTheDocument()
     })
 
     it('should handle string numeric values', () => {

@@ -223,6 +223,58 @@ describe('WaterfallChart', () => {
     })
   })
 
+  describe('running total logic', () => {
+    it('should render with mixed positive and negative values summing to net positive', () => {
+      const mixedData = [
+        { 'M.cat': 'Revenue', 'M.val': 1000 },
+        { 'M.cat': 'Costs', 'M.val': -400 },
+        { 'M.cat': 'Tax', 'M.val': -100 },
+      ]
+      const { container } = render(
+        <WaterfallChart
+          data={mixedData}
+          chartConfig={{ xAxis: ['M.cat'], yAxis: ['M.val'] }}
+          displayConfig={{ showTotal: true }}
+        />
+      )
+      // Net = 1000 - 400 - 100 = 500 (positive total)
+      expect(container.firstChild).toBeTruthy()
+      expect(screen.getByText('Total')).toBeInTheDocument()
+    })
+
+    it('should render with values summing to net negative', () => {
+      const netNegData = [
+        { 'M.cat': 'Revenue', 'M.val': 200 },
+        { 'M.cat': 'Loss', 'M.val': -500 },
+      ]
+      const { container } = render(
+        <WaterfallChart
+          data={netNegData}
+          chartConfig={{ xAxis: ['M.cat'], yAxis: ['M.val'] }}
+          displayConfig={{ showTotal: true }}
+        />
+      )
+      // Net = 200 - 500 = -300 (negative total)
+      expect(container.firstChild).toBeTruthy()
+      expect(screen.getByText('Total')).toBeInTheDocument()
+    })
+
+    it('should render with values summing to exactly zero', () => {
+      const zeroSumData = [
+        { 'M.cat': 'In', 'M.val': 100 },
+        { 'M.cat': 'Out', 'M.val': -100 },
+      ]
+      const { container } = render(
+        <WaterfallChart
+          data={zeroSumData}
+          chartConfig={{ xAxis: ['M.cat'], yAxis: ['M.val'] }}
+          displayConfig={{ showTotal: true }}
+        />
+      )
+      expect(container.firstChild).toBeTruthy()
+    })
+  })
+
   describe('height prop', () => {
     it('should apply custom height', () => {
       const { container } = render(

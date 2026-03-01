@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { mockCubeApi, mockDashboardsApi, MOCK_META } from './fixtures/api-mocks'
+import { mockDashboardsApi } from './fixtures/api-mocks'
 
 /**
  * Rich mock metadata with enough measures and dimensions
