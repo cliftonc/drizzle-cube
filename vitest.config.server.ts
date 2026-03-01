@@ -30,7 +30,8 @@ export default defineConfig({
       '**/dist/**',
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
-      'tests/client/**'
+      'tests/client/**',
+      'tests/e2e/**'
     ],
     coverage: {
       provider: 'v8',
