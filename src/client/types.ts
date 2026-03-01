@@ -114,6 +114,10 @@ export type ChartType =
   | 'retentionHeatmap'
   | 'retentionCombined'
   | 'boxPlot'
+  | 'waterfall'
+  | 'candlestick'
+  | 'measureProfile'
+  | 'gauge'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {

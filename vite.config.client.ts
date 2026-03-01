@@ -24,7 +24,11 @@ const chartModuleNames = new Set([
   'ScatterChart',
   'SunburstChart',
   'TreeMapChart',
-  'BoxPlotChart'
+  'BoxPlotChart',
+  'WaterfallChart',
+  'CandlestickChart',
+  'MeasureProfileChart',
+  'GaugeChart'
 ])
 
 function normalizeId(id: string): string {

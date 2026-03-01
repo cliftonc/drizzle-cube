@@ -20,6 +20,10 @@ import { heatmapChartConfig } from '../components/charts/HeatMapChart.config'
 import { retentionHeatmapConfig } from '../components/charts/RetentionHeatmap.config'
 import { retentionCombinedConfig } from '../components/charts/RetentionCombinedChart.config'
 import { boxPlotChartConfig } from '../components/charts/BoxPlotChart.config'
+import { waterfallChartConfig } from '../components/charts/WaterfallChart.config'
+import { candlestickChartConfig } from '../components/charts/CandlestickChart.config'
+import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config'
+import { gaugeChartConfig } from '../components/charts/GaugeChart.config'
 import type { ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -48,4 +52,8 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   retentionHeatmap: retentionHeatmapConfig,
   retentionCombined: retentionCombinedConfig,
   boxPlot: boxPlotChartConfig,
+  waterfall: waterfallChartConfig,
+  candlestick: candlestickChartConfig,
+  measureProfile: measureProfileChartConfig,
+  gauge: gaugeChartConfig,
 }
