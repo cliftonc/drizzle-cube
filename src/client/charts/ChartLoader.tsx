@@ -88,7 +88,11 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
     packageName: 'recharts',
     installCommand: 'npm install recharts'
   },
-  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick, gauge
+  gauge: {
+    packageName: 'd3-shape',
+    installCommand: 'npm install d3-shape'
+  },
+  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
 }
 
 // Dynamic import functions for each chart type

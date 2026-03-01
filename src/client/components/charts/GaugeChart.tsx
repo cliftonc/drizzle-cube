@@ -95,14 +95,10 @@ const GaugeChart = React.memo(function GaugeChart({
     return () => observer.disconnect()
   }, [])
 
-  const dc = (displayConfig ?? {}) as Record<string, unknown>
-
   const { valueField, maxField, configError } = useMemo(() => {
     const yAxis: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
-      : chartConfig?.yAxis
-        ? [chartConfig.yAxis as string]
-        : []
+      : []
 
     const valueField = yAxis[0] ?? ''
     const maxField = yAxis[1] ?? ''
@@ -113,7 +109,18 @@ const GaugeChart = React.memo(function GaugeChart({
     return { valueField, maxField, configError: null }
   }, [chartConfig])
 
-  const thresholds: ThresholdBand[] = Array.isArray(dc.thresholds) ? dc.thresholds : []
+  const thresholds: ThresholdBand[] = useMemo(() => {
+    const raw = displayConfig?.thresholds
+    if (Array.isArray(raw)) return raw
+    if (typeof raw === 'string' && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) return parsed
+      } catch { /* invalid JSON — ignore */ }
+    }
+    return []
+  }, [displayConfig?.thresholds])
+
   const thresholdBands = thresholds.length === 0
     ? []
     : [...thresholds].sort((a, b) => a.value - b.value).map((t, i, sorted) => {
@@ -146,13 +153,8 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const row = (data as Record<string, unknown>[])[0]
   const rawValue = parseNum(row[valueField])
-  const minValue = (dc.minValue as number) ?? 0
-  const maxValue =
-    dc.maxValue !== undefined
-      ? (dc.maxValue as number)
-      : maxField
-        ? parseNum(row[maxField])
-        : 100
+  const minValue = displayConfig?.minValue ?? 0
+  const maxValue = displayConfig?.maxValue ?? (maxField ? parseNum(row[maxField]) : 100)
 
   const effectiveMax = maxValue === minValue ? minValue + 1 : maxValue
   const clampedValue = clamp(rawValue, minValue, effectiveMax)
@@ -160,9 +162,9 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const fillColor = thresholds.length > 0 ? resolveColor(fraction, thresholds) : DEFAULT_FILL
 
-  const showCenterLabel = (dc.showCenterLabel as boolean) ?? true
-  const showPercentage = (dc.showPercentage as boolean) ?? false
-  const yAxisFormat = dc.leftYAxisFormat
+  const showCenterLabel = displayConfig?.showCenterLabel ?? true
+  const showPercentage = displayConfig?.showPercentage ?? false
+  const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const containerW = dimensions.width || 300
   const containerH = typeof height === 'number' ? height : (dimensions.height || 200)
@@ -180,7 +182,7 @@ const GaugeChart = React.memo(function GaugeChart({
   const needleAngle = valueToAngle(clampedValue, minValue, effectiveMax)
 
   const displayValue = yAxisFormat
-    ? formatAxisValue(rawValue, yAxisFormat as Parameters<typeof formatAxisValue>[1])
+    ? formatAxisValue(rawValue, yAxisFormat)
     : rawValue.toLocaleString()
 
   const valueLabel = showPercentage
@@ -189,97 +191,103 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const fieldLabel = getFieldLabel(valueField)
 
-  return (
-    <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
-      <svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${containerW} ${containerH}`}
-        preserveAspectRatio="xMidYMid meet"
-        data-testid="gauge-svg"
-      >
-        <g transform={`translate(${cx}, ${cy})`}>
-          {/* Track (background arc) */}
-          <path
-            d={trackPath}
-            fill={TRACK_COLOR}
-            data-testid="gauge-track"
-          />
-
-          {/* Threshold band arcs (decorative markers) */}
-          {thresholdBands.map((band, i) => (
+  try {
+    return (
+      <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
+        <svg
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${containerW} ${containerH}`}
+          preserveAspectRatio="xMidYMid meet"
+          data-testid="gauge-svg"
+        >
+          <g transform={`translate(${cx}, ${cy})`}>
             <path
-              key={i}
-              d={buildArcPath(outerR + 4, outerR + 8, band.start, band.end)}
-              fill={band.color}
-              data-testid={`gauge-band-${i}`}
+              d={trackPath}
+              fill={TRACK_COLOR}
+              data-testid="gauge-track"
             />
-          ))}
 
-          {/* Fill arc */}
-          <path
-            d={fillPath}
-            fill={fillColor}
-            data-testid="gauge-fill"
-            data-fraction={fraction.toFixed(4)}
-          />
+            {thresholdBands.map((band, i) => (
+              <path
+                key={i}
+                d={buildArcPath(outerR + 4, outerR + 8, band.start, band.end)}
+                fill={band.color}
+                data-testid={`gauge-band-${i}`}
+              />
+            ))}
 
-          {/* Needle */}
-          <Needle angle={needleAngle} radius={radius} />
+            <path
+              d={fillPath}
+              fill={fillColor}
+              data-testid="gauge-fill"
+              data-fraction={fraction.toFixed(4)}
+            />
 
-          {/* Center label */}
-          {showCenterLabel && (
-            <g data-testid="gauge-label">
-              <text
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={radius * 0.22}
-                fontWeight="bold"
-                fill="currentColor"
-                dy={radius * 0.12}
-                data-testid="gauge-value-text"
-              >
-                {valueLabel}
-              </text>
-              <text
-                textAnchor="middle"
-                fontSize={radius * 0.13}
-                fill="currentColor"
-                className="text-dc-text-secondary"
-                dy={radius * 0.34}
-              >
-                {fieldLabel}
-              </text>
-            </g>
-          )}
+            <Needle angle={needleAngle} radius={radius} />
 
-          {/* Min / max labels */}
-          <text
-            x={Math.cos(START_ANGLE - Math.PI / 2) * (outerR + 14)}
-            y={Math.sin(START_ANGLE - Math.PI / 2) * (outerR + 14)}
-            textAnchor="middle"
-            fontSize={radius * 0.12}
-            fill="currentColor"
-            className="text-dc-text-secondary"
-            data-testid="gauge-min-label"
-          >
-            {yAxisFormat ? formatAxisValue(minValue, yAxisFormat as Parameters<typeof formatAxisValue>[1]) : minValue.toLocaleString()}
-          </text>
-          <text
-            x={Math.cos(END_ANGLE - Math.PI / 2) * (outerR + 14)}
-            y={Math.sin(END_ANGLE - Math.PI / 2) * (outerR + 14)}
-            textAnchor="middle"
-            fontSize={radius * 0.12}
-            fill="currentColor"
-            className="text-dc-text-secondary"
-            data-testid="gauge-max-label"
-          >
-            {yAxisFormat ? formatAxisValue(effectiveMax, yAxisFormat as Parameters<typeof formatAxisValue>[1]) : effectiveMax.toLocaleString()}
-          </text>
-        </g>
-      </svg>
-    </div>
-  )
+            {showCenterLabel && (
+              <g data-testid="gauge-label">
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={radius * 0.22}
+                  fontWeight="bold"
+                  fill="currentColor"
+                  dy={radius * 0.12}
+                  data-testid="gauge-value-text"
+                >
+                  {valueLabel}
+                </text>
+                <text
+                  textAnchor="middle"
+                  fontSize={radius * 0.13}
+                  fill="currentColor"
+                  className="text-dc-text-secondary"
+                  dy={radius * 0.34}
+                >
+                  {fieldLabel}
+                </text>
+              </g>
+            )}
+
+            <text
+              x={Math.cos(START_ANGLE - Math.PI / 2) * (outerR + 14)}
+              y={Math.sin(START_ANGLE - Math.PI / 2) * (outerR + 14)}
+              textAnchor="middle"
+              fontSize={radius * 0.12}
+              fill="currentColor"
+              className="text-dc-text-secondary"
+              data-testid="gauge-min-label"
+            >
+              {yAxisFormat ? formatAxisValue(minValue, yAxisFormat) : minValue.toLocaleString()}
+            </text>
+            <text
+              x={Math.cos(END_ANGLE - Math.PI / 2) * (outerR + 14)}
+              y={Math.sin(END_ANGLE - Math.PI / 2) * (outerR + 14)}
+              textAnchor="middle"
+              fontSize={radius * 0.12}
+              fill="currentColor"
+              className="text-dc-text-secondary"
+              data-testid="gauge-max-label"
+            >
+              {yAxisFormat ? formatAxisValue(effectiveMax, yAxisFormat) : effectiveMax.toLocaleString()}
+            </text>
+          </g>
+        </svg>
+      </div>
+    )
+  } catch (error) {
+    return (
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Gauge Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+        </div>
+      </div>
+    )
+  }
 })
 
 export default GaugeChart

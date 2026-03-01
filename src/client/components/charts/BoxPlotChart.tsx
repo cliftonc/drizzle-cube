@@ -21,7 +21,6 @@ function parseNumeric(v: unknown): number | null {
   return isNaN(n) ? null : n
 }
 
-/** Build box stats from 5-measure mode fields */
 function buildFrom5Measures(
   row: Record<string, unknown>,
   minField: string,
@@ -41,7 +40,7 @@ function buildFrom5Measures(
   return { label, min, q1, median, q3, max, color }
 }
 
-/** Build approximate box stats from 3-measure mode (avg ± stddev, median) */
+/** Build approximate box stats assuming normality: Q1/Q3 at ±1σ, whiskers at ±2σ */
 function buildFrom3Measures(
   row: Record<string, unknown>,
   avgField: string,
@@ -66,7 +65,6 @@ function buildFrom3Measures(
   }
 }
 
-// Render a single box plot element
 function BoxElement({
   x,
   boxWidth,
@@ -139,7 +137,6 @@ function BoxElement({
   )
 }
 
-// Y-axis tick renderer
 function YAxis({
   scale,
   domainMin,
@@ -214,7 +211,6 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
 
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
-  // Determine config mode and extract fields from chartConfig.yAxis positions
   const { xField, mode, fields, configError } = useMemo(() => {
     const xField = Array.isArray(chartConfig?.xAxis)
       ? chartConfig.xAxis[0]
@@ -222,9 +218,7 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
 
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
-      : chartConfig?.yAxis
-        ? [chartConfig.yAxis as string]
-        : []
+      : []
 
     if (!xField || yAxisFields.length === 0) {
       return {
@@ -265,7 +259,6 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
       }
     }
 
-    // 2-measure mode is invalid (not enough for any statistical mode)
     if (yAxisFields.length === 2) {
       return {
         xField,
@@ -356,104 +349,111 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
     )
   }
 
-  // Compute layout
-  const margin = { top: 20, right: 20, bottom: 60, left: 60 }
-  const containerWidth = dimensions.width || 600
-  const containerHeight = typeof height === 'number' ? height : (dimensions.height || 400)
-  const innerWidth = Math.max(containerWidth - margin.left - margin.right, 50)
-  const innerHeight = Math.max(containerHeight - margin.top - margin.bottom, 50)
+  try {
+    const margin = { top: 20, right: 20, bottom: 60, left: 60 }
+    const containerWidth = dimensions.width || 600
+    const containerHeight = typeof height === 'number' ? height : (dimensions.height || 400)
+    const innerWidth = Math.max(containerWidth - margin.left - margin.right, 50)
+    const innerHeight = Math.max(containerHeight - margin.top - margin.bottom, 50)
 
-  // Y scale: linear from min-of-all to max-of-all
-  const allValues = boxes.flatMap((b) => [b.min, b.max])
-  const rawMin = Math.min(...allValues)
-  const rawMax = Math.max(...allValues)
-  const padding = (rawMax - rawMin) * 0.1 || 1
-  const domainMin = rawMin - padding
-  const domainMax = rawMax + padding
+    const allValues = boxes.flatMap((b) => [b.min, b.max])
+    const rawMin = Math.min(...allValues)
+    const rawMax = Math.max(...allValues)
+    const padding = (rawMax - rawMin) * 0.1 || 1
+    const domainMin = rawMin - padding
+    const domainMax = rawMax + padding
 
-  const domainRange = domainMax - domainMin
-  const yScale = (v: number) =>
-    domainRange === 0 ? innerHeight / 2 : innerHeight - ((v - domainMin) / domainRange) * innerHeight
+    const domainRange = domainMax - domainMin
+    const yScale = (v: number) =>
+      domainRange === 0 ? innerHeight / 2 : innerHeight - ((v - domainMin) / domainRange) * innerHeight
 
-  const boxSpacing = innerWidth / boxes.length
-  const boxWidth = Math.min(boxSpacing * 0.6, 40)
+    const boxSpacing = innerWidth / boxes.length
+    const boxWidth = Math.min(boxSpacing * 0.6, 40)
 
-  const isTruncated = (data as unknown[]).length > MAX_BOXES
+    const isTruncated = (data as unknown[]).length > MAX_BOXES
 
-  return (
-    <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
-      <svg
-        width="100%"
-        height={isTruncated ? `calc(100% - 20px)` : '100%'}
-        viewBox={`0 0 ${containerWidth} ${typeof containerHeight === 'number' ? containerHeight : 400}`}
-        preserveAspectRatio="none"
-        data-testid="boxplot-svg"
-      >
-        <g transform={`translate(${margin.left}, ${margin.top})`}>
-          {/* Y Axis */}
-          <YAxis
-            scale={yScale}
-            domainMin={domainMin}
-            domainMax={domainMax}
-            width={innerWidth}
-            tickCount={5}
-            format={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
-          />
+    return (
+      <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
+        <svg
+          width="100%"
+          height={isTruncated ? `calc(100% - 20px)` : '100%'}
+          viewBox={`0 0 ${containerWidth} ${typeof containerHeight === 'number' ? containerHeight : 400}`}
+          data-testid="boxplot-svg"
+        >
+          <g transform={`translate(${margin.left}, ${margin.top})`}>
+            <YAxis
+              scale={yScale}
+              domainMin={domainMin}
+              domainMax={domainMax}
+              width={innerWidth}
+              tickCount={5}
+              format={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
+            />
 
-          {/* Box plot elements */}
-          {boxes.map((box, i) => {
-            const cx = boxSpacing * i + boxSpacing / 2
-            return (
-              <g
-                key={`${box.label}-${i}`}
-                onClick={(event: React.MouseEvent) => {
-                  if (onDataPointClick && drillEnabled) {
-                    onDataPointClick({
-                      dataPoint: { ...box },
-                      clickedField: xField ?? '',
-                      xValue: box.label,
-                      position: { x: event.clientX, y: event.clientY },
-                      nativeEvent: event,
-                    })
-                  }
-                }}
-                cursor={drillEnabled ? 'pointer' : undefined}
-              >
-                <BoxElement
-                  x={cx}
-                  boxWidth={boxWidth}
-                  minY={yScale(box.min)}
-                  q1Y={yScale(box.q1)}
-                  medianY={yScale(box.median)}
-                  q3Y={yScale(box.q3)}
-                  maxY={yScale(box.max)}
-                  color={box.color}
-                  label={box.label}
-                />
-                {/* X axis label */}
-                <text
-                  x={cx}
-                  y={innerHeight + 20}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill="currentColor"
-                  className="text-dc-text-secondary"
-                  data-testid={`x-label-${box.label}`}
+            {boxes.map((box, i) => {
+              const cx = boxSpacing * i + boxSpacing / 2
+              return (
+                <g
+                  key={`${box.label}-${i}`}
+                  onClick={(event: React.MouseEvent) => {
+                    if (onDataPointClick && drillEnabled) {
+                      onDataPointClick({
+                        dataPoint: { ...box },
+                        clickedField: xField ?? '',
+                        xValue: box.label,
+                        position: { x: event.clientX, y: event.clientY },
+                        nativeEvent: event,
+                      })
+                    }
+                  }}
+                  cursor={drillEnabled ? 'pointer' : undefined}
                 >
-                  {box.label}
-                </text>
-              </g>
-            )
-          })}
-        </g>
-      </svg>
-      {isTruncated && (
-        <div className="dc:text-xs text-dc-text-muted dc:text-center dc:mt-1">
-          Data truncated to {MAX_BOXES} groups (original: {(data as unknown[]).length})
+                  <title>{`${box.label}: min=${box.min}, Q1=${box.q1}, median=${box.median}, Q3=${box.q3}, max=${box.max}`}</title>
+                  <BoxElement
+                    x={cx}
+                    boxWidth={boxWidth}
+                    minY={yScale(box.min)}
+                    q1Y={yScale(box.q1)}
+                    medianY={yScale(box.median)}
+                    q3Y={yScale(box.q3)}
+                    maxY={yScale(box.max)}
+                    color={box.color}
+                    label={box.label}
+                  />
+                  <text
+                    x={cx}
+                    y={innerHeight + 20}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fill="currentColor"
+                    className="text-dc-text-secondary"
+                    data-testid={`x-label-${box.label}`}
+                  >
+                    {box.label}
+                  </text>
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+        {isTruncated && (
+          <div className="dc:text-xs text-dc-warning dc:text-center dc:mt-1">
+            Data truncated to {MAX_BOXES} groups (original: {(data as unknown[]).length})
+          </div>
+        )}
+      </div>
+    )
+  } catch (error) {
+    return (
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Box Plot Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
 })
 
 export default BoxPlotChart

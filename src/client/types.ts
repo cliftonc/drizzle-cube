@@ -248,6 +248,28 @@ export interface ChartDisplayConfig {
   // Retention chart specific display options
   /** Retention display mode: line chart, heatmap table, or combined view */
   retentionDisplayMode?: 'line' | 'heatmap' | 'combined'
+
+  // Waterfall chart specific display options
+  showTotal?: boolean
+  showConnectorLine?: boolean
+  showDataLabels?: boolean
+
+  // Candlestick chart specific display options
+  bullColor?: string
+  bearColor?: string
+  showWicks?: boolean
+  rangeMode?: 'ohlc' | 'range'
+
+  // Measure profile chart specific display options
+  showReferenceLineAtZero?: boolean
+  lineType?: 'monotone' | 'linear' | 'step'
+
+  // Gauge chart specific display options
+  minValue?: number
+  maxValue?: number
+  thresholds?: string | { value: number; color: string }[]
+  showCenterLabel?: boolean
+  showPercentage?: boolean
 }
 
 // Portlet configuration

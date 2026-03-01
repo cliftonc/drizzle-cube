@@ -86,6 +86,20 @@ describe('BoxPlotChart', () => {
       )
       expect(screen.getByText('Configuration Error')).toBeInTheDocument()
     })
+
+    it('should show config error when exactly 2 measures are provided', () => {
+      const twoMeasureData = [
+        { 'Trades.symbol': 'AAPL', 'Trades.avgPnl': 15, 'Trades.stddevPnl': 40 },
+      ]
+      render(
+        <BoxPlotChart
+          data={twoMeasureData}
+          chartConfig={{ xAxis: ['Trades.symbol'], yAxis: ['Trades.avgPnl', 'Trades.stddevPnl'] }}
+        />
+      )
+      expect(screen.getByText('Configuration Error')).toBeInTheDocument()
+      expect(screen.getByText(/BoxPlot requires 1 measure/)).toBeInTheDocument()
+    })
   })
 
   describe('5-measure mode', () => {
@@ -216,6 +230,26 @@ describe('BoxPlotChart', () => {
       )
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveStyle({ height: '100%' })
+    })
+  })
+
+  describe('colorPalette prop', () => {
+    it('should apply custom palette colors to box elements', () => {
+      const { container } = render(
+        <BoxPlotChart
+          data={fiveMeasureData}
+          chartConfig={fiveMeasureConfig}
+          colorPalette={{ colors: ['#ff0000', '#00ff00'] }}
+        />
+      )
+      // First box should get first palette color
+      const firstBox = screen.getByTestId('box-AAPL')
+      const rect = firstBox.querySelector('rect')
+      expect(rect?.getAttribute('fill')).toBe('#ff0000')
+      // Second box should get second palette color
+      const secondBox = screen.getByTestId('box-MSFT')
+      const rect2 = secondBox.querySelector('rect')
+      expect(rect2?.getAttribute('fill')).toBe('#00ff00')
     })
   })
 

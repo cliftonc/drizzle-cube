@@ -11,6 +11,7 @@ export const waterfallChartConfig: ChartTypeConfig = {
   useCase:
     'Best for P&L decomposition, cash flow analysis, budget variance, or any sequential contribution breakdown',
   clickableElements: { bar: true },
+  displayOptions: ['showTooltip', 'hideHeader'],
   dropZones: [
     {
       key: 'xAxis',

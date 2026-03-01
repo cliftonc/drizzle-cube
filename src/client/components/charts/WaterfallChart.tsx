@@ -104,10 +104,9 @@ const WaterfallChart = React.memo(function WaterfallChart({
 }: ChartProps) {
   const getFieldLabel = useCubeFieldLabel()
 
-  const dc = displayConfig as Record<string, unknown>
-  const showTotal = (dc?.showTotal as boolean) ?? true
-  const showConnectorLine = (dc?.showConnectorLine as boolean) ?? true
-  const showDataLabels = (dc?.showDataLabels as boolean) ?? false
+  const showTotal = displayConfig?.showTotal ?? true
+  const showConnectorLine = displayConfig?.showConnectorLine ?? true
+  const showDataLabels = displayConfig?.showDataLabels ?? false
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const { xAxisField, yAxisField, configError } = useMemo(() => {
@@ -172,94 +171,106 @@ const WaterfallChart = React.memo(function WaterfallChart({
     )
   }
 
-  return (
-    <div className="dc:relative dc:w-full" style={{ height }}>
-      <ChartContainer height="100%">
-        <ComposedChart data={chartData} margin={{ ...CHART_MARGINS, left: 40 }} accessibilityLayer={false}>
-          <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
-          <XAxis dataKey="label" type="category" tick={<AngledXAxisTick />} height={60} />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            tickFormatter={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
-          />
-          <ChartTooltip
-            formatter={(value: any, name: any, props: any) => {
-              if (name === '_connector') return ['', '']
-              const entry = props?.payload
-              if (!entry) return [value, name]
-              const displayValue = entry.displayValue ?? value
-              return [
-                yAxisFormat ? formatAxisValue(displayValue, yAxisFormat) : displayValue?.toLocaleString?.() ?? displayValue,
-                entry.isTotal ? 'Total' : entry.isNegative ? 'Decrease' : 'Increase',
-              ]
-            }}
-            labelFormatter={(label: string) => label}
-          />
-          <Legend
-            wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
-            {...{
-              payload: [
-                { value: 'Increase', type: 'rect' as const, color: POSITIVE_COLOR },
-                { value: 'Decrease', type: 'rect' as const, color: NEGATIVE_COLOR },
-                ...(showTotal ? [{ value: 'Total', type: 'rect' as const, color: TOTAL_COLOR }] : []),
-              ],
-            }}
-          />
-          <Bar dataKey="runningBase" stackId="wf" fill="transparent" legendType="none" isAnimationActive={false} />
-          <Bar
-            dataKey="value"
-            stackId="wf"
-            isAnimationActive={false}
-            cursor={drillEnabled ? 'pointer' : undefined}
-            onClick={(barData: any, _index: number, event: React.MouseEvent) => {
-              if (onDataPointClick && drillEnabled && barData && !barData.isTotal) {
-                onDataPointClick({
-                  dataPoint: barData,
-                  clickedField: yAxisField!,
-                  xValue: barData.label,
-                  position: { x: event.clientX, y: event.clientY },
-                  nativeEvent: event,
-                })
-              }
-            }}
-          >
-            {showDataLabels && (
-              <LabelList
-                dataKey="displayValue"
-                content={(props: any) => (
-                  <ValueLabel
-                    {...props}
-                    runningBase={chartData[props.index]?.runningBase}
-                    isNegative={chartData[props.index]?.isNegative}
-                    displayValue={chartData[props.index]?.displayValue}
-                  />
-                )}
+  try {
+    return (
+      <div className="dc:relative dc:w-full" style={{ height }}>
+        <ChartContainer height="100%">
+          <ComposedChart data={chartData} margin={{ ...CHART_MARGINS, left: 40 }} accessibilityLayer={false}>
+            <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
+            <XAxis dataKey="label" type="category" tick={<AngledXAxisTick />} height={60} />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              tickFormatter={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
+            />
+            <ChartTooltip
+              formatter={(value: any, name: any, props: any) => {
+                if (name === '_connector') return ['', '']
+                const entry = props?.payload
+                if (!entry) return [value, name]
+                const displayValue = entry.displayValue ?? value
+                return [
+                  yAxisFormat ? formatAxisValue(displayValue, yAxisFormat) : displayValue?.toLocaleString?.() ?? displayValue,
+                  entry.isTotal ? 'Total' : entry.isNegative ? 'Decrease' : 'Increase',
+                ]
+              }}
+              labelFormatter={(label: string) => label}
+            />
+            <Legend
+              wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }}
+              {...{
+                payload: [
+                  { value: 'Increase', type: 'rect' as const, color: POSITIVE_COLOR },
+                  { value: 'Decrease', type: 'rect' as const, color: NEGATIVE_COLOR },
+                  ...(showTotal ? [{ value: 'Total', type: 'rect' as const, color: TOTAL_COLOR }] : []),
+                ],
+              }}
+            />
+            <Bar dataKey="runningBase" stackId="wf" fill="transparent" legendType="none" isAnimationActive={false} />
+            <Bar
+              dataKey="value"
+              stackId="wf"
+              isAnimationActive={false}
+              cursor={drillEnabled ? 'pointer' : undefined}
+              onClick={(barData: any, _index: number, event: React.MouseEvent) => {
+                if (onDataPointClick && drillEnabled && barData && !barData.isTotal) {
+                  onDataPointClick({
+                    dataPoint: barData,
+                    clickedField: yAxisField!,
+                    xValue: barData.label,
+                    position: { x: event.clientX, y: event.clientY },
+                    nativeEvent: event,
+                  })
+                }
+              }}
+            >
+              {showDataLabels && (
+                <LabelList
+                  dataKey="displayValue"
+                  content={(props: any) => (
+                    <ValueLabel
+                      {...props}
+                      runningBase={chartData[props.index]?.runningBase}
+                      isNegative={chartData[props.index]?.isNegative}
+                      displayValue={chartData[props.index]?.displayValue}
+                    />
+                  )}
+                />
+              )}
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.isTotal ? TOTAL_COLOR : entry.isNegative ? NEGATIVE_COLOR : POSITIVE_COLOR}
+                />
+              ))}
+            </Bar>
+            {showConnectorLine && (
+              <Line
+                type="stepAfter"
+                dataKey="_connector"
+                stroke={CONNECTOR_COLOR}
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                dot={false}
+                activeDot={false}
+                legendType="none"
+                isAnimationActive={false}
               />
             )}
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.isTotal ? TOTAL_COLOR : entry.isNegative ? NEGATIVE_COLOR : POSITIVE_COLOR}
-              />
-            ))}
-          </Bar>
-          {showConnectorLine && (
-            <Line
-              type="stepAfter"
-              dataKey="_connector"
-              stroke={CONNECTOR_COLOR}
-              strokeWidth={1.5}
-              strokeDasharray="4 2"
-              dot={false}
-              activeDot={false}
-              legendType="none"
-              isAnimationActive={false}
-            />
-          )}
-        </ComposedChart>
-      </ChartContainer>
-    </div>
-  )
+          </ComposedChart>
+        </ChartContainer>
+      </div>
+    )
+  } catch (error) {
+    return (
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Waterfall Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+        </div>
+      </div>
+    )
+  }
 })
 
 export default WaterfallChart

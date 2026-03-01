@@ -55,7 +55,6 @@ function Candle({
 
   return (
     <g data-testid={`candle-${label}`}>
-      {/* Body */}
       <rect
         x={x - halfWidth}
         y={bodyTop}
@@ -67,7 +66,6 @@ function Candle({
       />
       {showWicks && (
         <>
-          {/* Upper wick */}
           <line
             x1={x}
             y1={highY}
@@ -77,7 +75,6 @@ function Candle({
             strokeWidth={1}
             data-testid={`wick-high-${label}`}
           />
-          {/* Lower wick */}
           <line
             x1={x}
             y1={bodyBottom}
@@ -162,11 +159,10 @@ const CandlestickChart = React.memo(function CandlestickChart({
     return () => observer.disconnect()
   }, [])
 
-  const dc = displayConfig as Record<string, unknown>
-  const bullColor = (dc?.bullColor as string) ?? BULL_COLOR_DEFAULT
-  const bearColor = (dc?.bearColor as string) ?? BEAR_COLOR_DEFAULT
-  const showWicks = (dc?.showWicks as boolean) ?? true
-  const rangeMode = (dc?.rangeMode as 'ohlc' | 'range') ?? 'ohlc'
+  const bullColor = displayConfig?.bullColor ?? BULL_COLOR_DEFAULT
+  const bearColor = displayConfig?.bearColor ?? BEAR_COLOR_DEFAULT
+  const showWicks = displayConfig?.showWicks ?? true
+  const rangeMode = displayConfig?.rangeMode ?? 'ohlc'
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const { xField, openField, closeField, highField, lowField, configError } = useMemo(() => {
@@ -176,9 +172,7 @@ const CandlestickChart = React.memo(function CandlestickChart({
 
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
-      : chartConfig?.yAxis
-        ? [chartConfig.yAxis as string]
-        : []
+      : []
 
     const openField = yAxisFields[0] ?? ''
     const closeField = (rangeMode === 'range' ? yAxisFields[0] : yAxisFields[1]) ?? ''
@@ -270,106 +264,117 @@ const CandlestickChart = React.memo(function CandlestickChart({
     )
   }
 
-  const margin = { top: 20, right: 20, bottom: 60, left: 70 }
-  const containerWidth = dimensions.width || 600
-  const containerHeight =
-    typeof height === 'number' ? height : dimensions.height || 400
-  const innerWidth = Math.max(containerWidth - margin.left - margin.right, 50)
-  const innerHeight = Math.max(
-    (typeof containerHeight === 'number' ? containerHeight : parseInt(String(containerHeight))) -
-      margin.top -
-      margin.bottom,
-    50
-  )
+  try {
+    const margin = { top: 20, right: 20, bottom: 60, left: 70 }
+    const containerWidth = dimensions.width || 600
+    const containerHeight =
+      typeof height === 'number' ? height : dimensions.height || 400
+    const innerWidth = Math.max(containerWidth - margin.left - margin.right, 50)
+    const innerHeight = Math.max(
+      (typeof containerHeight === 'number' ? containerHeight : parseInt(String(containerHeight)) || 400) -
+        margin.top -
+        margin.bottom,
+      50
+    )
 
-  const allValues = candles.flatMap((c) => [c.low, c.high])
-  const rawMin = Math.min(...allValues)
-  const rawMax = Math.max(...allValues)
-  const pad = (rawMax - rawMin) * 0.05 || 1
-  const domainMin = rawMin - pad
-  const domainMax = rawMax + pad
+    const allValues = candles.flatMap((c) => [c.low, c.high])
+    const rawMin = Math.min(...allValues)
+    const rawMax = Math.max(...allValues)
+    const pad = (rawMax - rawMin) * 0.05 || 1
+    const domainMin = rawMin - pad
+    const domainMax = rawMax + pad
 
-  const yScale = (v: number) =>
-    innerHeight - ((v - domainMin) / (domainMax - domainMin)) * innerHeight
+    const yScale = (v: number) =>
+      innerHeight - ((v - domainMin) / (domainMax - domainMin)) * innerHeight
 
-  const candleSpacing = innerWidth / candles.length
-  const candleWidth = Math.min(candleSpacing * 0.7, 20)
+    const candleSpacing = innerWidth / candles.length
+    const candleWidth = Math.min(candleSpacing * 0.7, 20)
 
-  const isTruncated = (data as unknown[]).length > MAX_CANDLES
+    const isTruncated = (data as unknown[]).length > MAX_CANDLES
 
-  return (
-    <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
-      <svg
-        width="100%"
-        height={isTruncated ? 'calc(100% - 20px)' : '100%'}
-        viewBox={`0 0 ${containerWidth} ${typeof containerHeight === 'number' ? containerHeight : 400}`}
-        preserveAspectRatio="none"
-        data-testid="candlestick-svg"
-      >
-        <g transform={`translate(${margin.left}, ${margin.top})`}>
-          <YAxisTicks
-            domainMin={domainMin}
-            domainMax={domainMax}
-            innerHeight={innerHeight}
-            tickCount={5}
-            format={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
-          />
+    return (
+      <div ref={containerRef} className="dc:relative dc:w-full" style={{ height }}>
+        <svg
+          width="100%"
+          height={isTruncated ? 'calc(100% - 20px)' : '100%'}
+          viewBox={`0 0 ${containerWidth} ${typeof containerHeight === 'number' ? containerHeight : 400}`}
+          data-testid="candlestick-svg"
+        >
+          <g transform={`translate(${margin.left}, ${margin.top})`}>
+            <YAxisTicks
+              domainMin={domainMin}
+              domainMax={domainMax}
+              innerHeight={innerHeight}
+              tickCount={5}
+              format={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
+            />
 
-          {candles.map((candle, i) => {
-            const cx = candleSpacing * i + candleSpacing / 2
-            return (
-              <g
-                key={candle.label + i}
-                onClick={(event: React.MouseEvent) => {
-                  if (onDataPointClick && drillEnabled) {
-                    onDataPointClick({
-                      dataPoint: { ...candle },
-                      clickedField: xField ?? '',
-                      xValue: candle.label,
-                      position: { x: event.clientX, y: event.clientY },
-                      nativeEvent: event,
-                    })
-                  }
-                }}
-                cursor={drillEnabled ? 'pointer' : undefined}
-              >
-                <Candle
-                  x={cx}
-                  candleWidth={candleWidth}
-                  openY={yScale(candle.open)}
-                  closeY={yScale(candle.close)}
-                  highY={yScale(candle.high)}
-                  lowY={yScale(candle.low)}
-                  isBullish={candle.isBullish}
-                  bullColor={bullColor}
-                  bearColor={bearColor}
-                  showWicks={showWicks}
-                  label={candle.label}
-                />
-                {/* X-axis label */}
-                <text
-                  x={cx}
-                  y={innerHeight + 20}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fill="currentColor"
-                  className="text-dc-text-secondary"
-                  data-testid={`x-label-${candle.label}`}
+            {candles.map((candle, i) => {
+              const cx = candleSpacing * i + candleSpacing / 2
+              return (
+                <g
+                  key={candle.label + i}
+                  onClick={(event: React.MouseEvent) => {
+                    if (onDataPointClick && drillEnabled) {
+                      onDataPointClick({
+                        dataPoint: { ...candle },
+                        clickedField: xField ?? '',
+                        xValue: candle.label,
+                        position: { x: event.clientX, y: event.clientY },
+                        nativeEvent: event,
+                      })
+                    }
+                  }}
+                  cursor={drillEnabled ? 'pointer' : undefined}
                 >
-                  {candle.label}
-                </text>
-              </g>
-            )
-          })}
-        </g>
-      </svg>
-      {isTruncated && (
-        <div className="dc:text-xs text-dc-text-muted dc:text-center dc:mt-1">
-          Showing first {MAX_CANDLES} candles (total: {(data as unknown[]).length})
+                  <title>{`${candle.label}: O=${candle.open} H=${candle.high} L=${candle.low} C=${candle.close}`}</title>
+                  <Candle
+                    x={cx}
+                    candleWidth={candleWidth}
+                    openY={yScale(candle.open)}
+                    closeY={yScale(candle.close)}
+                    highY={yScale(candle.high)}
+                    lowY={yScale(candle.low)}
+                    isBullish={candle.isBullish}
+                    bullColor={bullColor}
+                    bearColor={bearColor}
+                    showWicks={showWicks}
+                    label={candle.label}
+                  />
+                  <text
+                    x={cx}
+                    y={innerHeight + 20}
+                    textAnchor="middle"
+                    fontSize={10}
+                    fill="currentColor"
+                    className="text-dc-text-secondary"
+                    data-testid={`x-label-${candle.label}`}
+                  >
+                    {candle.label}
+                  </text>
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+        {isTruncated && (
+          <div className="dc:text-xs text-dc-warning dc:text-center dc:mt-1">
+            Showing first {MAX_CANDLES} candles (total: {(data as unknown[]).length})
+          </div>
+        )}
+      </div>
+    )
+  } catch (error) {
+    return (
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Candlestick Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
         </div>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
 })
 
 export default CandlestickChart

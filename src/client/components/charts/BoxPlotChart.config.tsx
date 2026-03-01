@@ -10,6 +10,7 @@ export const boxPlotChartConfig: ChartTypeConfig = {
   description: 'Show statistical distribution (median, IQR, whiskers) across categories',
   useCase:
     'Best for P&L spread per symbol, trade size distribution, latency distribution across platforms',
+  displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'xAxis',

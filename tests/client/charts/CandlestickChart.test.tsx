@@ -214,6 +214,24 @@ describe('CandlestickChart', () => {
     })
   })
 
+  describe('display config options', () => {
+    it('should apply custom bull/bear colors', () => {
+      render(
+        <CandlestickChart
+          data={ohlcData}
+          chartConfig={ohlcConfig}
+          displayConfig={{ bullColor: '#00ff00', bearColor: '#ff0000' }}
+        />
+      )
+      // Row 0: bullish (close > open) — should use custom bull color
+      const bullBody = screen.getByTestId('candle-body-2026-01-01')
+      expect(bullBody.getAttribute('fill')).toBe('#00ff00')
+      // Row 1: bearish (close < open) — should use custom bear color
+      const bearBody = screen.getByTestId('candle-body-2026-01-02')
+      expect(bearBody.getAttribute('fill')).toBe('#ff0000')
+    })
+  })
+
   describe('height prop', () => {
     it('should apply custom height', () => {
       const { container } = render(

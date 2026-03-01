@@ -11,17 +11,16 @@ import type { ChartProps } from '../../types'
 /**
  * Pivots N measures from chartConfig.yAxis[] into sequential X-axis points.
  * Each measure becomes one X-axis category; its numeric value is Y.
- * Supports multiple lines via a series dimension.
+ * When a series dimension is provided, values are averaged across all rows
+ * that share the same series value.
  *
- * Input (normal cube row):
- *   { 'Markouts.avgMinus2m': 10, 'Markouts.avgAtEvent': 0, 'Markouts.avgPlus2m': -5, 'Trades.symbol': 'AAPL' }
+ * Input (normal cube rows):
+ *   [{ 'Markouts.avgMinus2m': 10, 'Markouts.avgAtEvent': 0, 'Trades.symbol': 'AAPL' },
+ *    { 'Markouts.avgMinus2m': 12, 'Markouts.avgAtEvent': 1, 'Trades.symbol': 'AAPL' }]
  *
- * Output (one row per measure):
- *   [
- *     { measureKey: 'Markouts.avgMinus2m', measureLabel: 'avgMinus2m', AAPL: 10 },
- *     { measureKey: 'Markouts.avgAtEvent', measureLabel: 'avgAtEvent', AAPL: 0 },
- *     { measureKey: 'Markouts.avgPlus2m',  measureLabel: 'avgPlus2m',  AAPL: -5 },
- *   ]
+ * Output (one row per measure, values averaged per series):
+ *   [{ measureKey: 'Markouts.avgMinus2m', measureLabel: <getFieldLabel result>, AAPL: 11 },
+ *    { measureKey: 'Markouts.avgAtEvent', measureLabel: <getFieldLabel result>, AAPL: 0.5 }]
  */
 function pivotMeasuresToProfile(
   data: Record<string, unknown>[],
@@ -78,23 +77,19 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
   displayConfig = {},
   height = '100%',
   colorPalette,
-  onDataPointClick,
   drillEnabled,
 }: ChartProps) {
   const getFieldLabel = useCubeFieldLabel()
 
-  const dc = displayConfig as Record<string, unknown>
-  const showReferenceLineAtZero = (dc?.showReferenceLineAtZero as boolean) ?? true
-  const showDataLabels = (dc?.showDataLabels as boolean) ?? false
-  const lineType = (dc?.lineType as 'monotone' | 'linear' | 'step') ?? 'monotone'
-  const yAxisFormat = dc?.leftYAxisFormat
+  const showReferenceLineAtZero = displayConfig?.showReferenceLineAtZero ?? true
+  const showDataLabels = displayConfig?.showDataLabels ?? false
+  const lineType = displayConfig?.lineType ?? 'monotone'
+  const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const { yAxisFields, seriesField, configError } = useMemo(() => {
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
-      : chartConfig?.yAxis
-        ? [chartConfig.yAxis as string]
-        : []
+      : []
     const seriesField = Array.isArray(chartConfig?.series)
       ? chartConfig.series[0]
       : chartConfig?.series ?? undefined
@@ -137,63 +132,64 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
 
   const showLegend = (displayConfig?.showLegend ?? true) && seriesKeys.length > 1
 
-  return (
-    <div className="dc:relative dc:w-full" style={{ height }}>
-      <ChartContainer height="100%">
-        <LineChart data={profileData} margin={{ ...CHART_MARGINS, left: 40 }} accessibilityLayer={false}>
-          <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
-          <XAxis dataKey="measureLabel" type="category" tick={<AngledXAxisTick />} height={60} />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            tickFormatter={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
-          />
-          <ChartTooltip
-            formatter={(value: any, name: any) => {
-              if (value === null || value === undefined) return ['No data', name]
-              const formatted = yAxisFormat ? formatAxisValue(value, yAxisFormat) : value?.toLocaleString?.() ?? value
-              const displayName = name === '_value' ? (getFieldLabel(yAxisFields[0]?.split('.')[0]) || 'Value') : name
-              return [formatted, displayName]
-            }}
-          />
-          {showReferenceLineAtZero && (
-            <ReferenceLine y={0} stroke="var(--dc-border, #94a3b8)" strokeDasharray="4 2" />
-          )}
-          {showLegend && (
-            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-          )}
-          {seriesKeys.map((seriesKey, index) => (
-            <Line
-              key={seriesKey}
-              type={lineType}
-              dataKey={seriesKey}
-              name={seriesKey === '_value' ? (getFieldLabel(yAxisFields[0]?.split('.')[0]) || 'Value') : seriesKey}
-              stroke={
-                (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
-                CHART_COLORS[index % CHART_COLORS.length]
-              }
-              strokeWidth={2}
-              dot={showDataLabels ? { r: 4 } : { r: 3 }}
-              activeDot={{ r: 5 }}
-              label={showDataLabels ? { position: 'top', fontSize: 10 } : undefined}
-              isAnimationActive={false}
-              cursor={drillEnabled ? 'pointer' : undefined}
-              onClick={(lineData: any) => {
-                if (onDataPointClick && drillEnabled && lineData) {
-                  onDataPointClick({
-                    dataPoint: lineData,
-                    clickedField: lineData.measureKey ?? seriesKey,
-                    xValue: lineData.measureLabel,
-                    position: { x: 0, y: 0 },
-                    nativeEvent: lineData,
-                  })
-                }
+  try {
+    return (
+      <div className="dc:relative dc:w-full" style={{ height }}>
+        <ChartContainer height="100%">
+          <LineChart data={profileData} margin={{ ...CHART_MARGINS, left: 40 }} accessibilityLayer={false}>
+            <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />
+            <XAxis dataKey="measureLabel" type="category" tick={<AngledXAxisTick />} height={60} />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              tickFormatter={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
+            />
+            <ChartTooltip
+              formatter={(value: any, name: any) => {
+                if (value === null || value === undefined) return ['No data', name]
+                const formatted = yAxisFormat ? formatAxisValue(value, yAxisFormat) : value?.toLocaleString?.() ?? value
+                const displayName = name === '_value' ? (getFieldLabel(yAxisFields[0]?.split('.')[0]) || 'Value') : name
+                return [formatted, displayName]
               }}
             />
-          ))}
-        </LineChart>
-      </ChartContainer>
-    </div>
-  )
+            {showReferenceLineAtZero && (
+              <ReferenceLine y={0} stroke="var(--dc-border, #94a3b8)" strokeDasharray="4 2" />
+            )}
+            {showLegend && (
+              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+            )}
+            {seriesKeys.map((seriesKey, index) => (
+              <Line
+                key={seriesKey}
+                type={lineType}
+                dataKey={seriesKey}
+                name={seriesKey === '_value' ? (getFieldLabel(yAxisFields[0]?.split('.')[0]) || 'Value') : seriesKey}
+                stroke={
+                  (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) ||
+                  CHART_COLORS[index % CHART_COLORS.length]
+                }
+                strokeWidth={2}
+                dot={showDataLabels ? { r: 4 } : { r: 3 }}
+                activeDot={{ r: 5 }}
+                label={showDataLabels ? { position: 'top', fontSize: 10 } : undefined}
+                isAnimationActive={false}
+                cursor={drillEnabled ? 'pointer' : undefined}
+              />
+            ))}
+          </LineChart>
+        </ChartContainer>
+      </div>
+    )
+  } catch (error) {
+    return (
+      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">Measure Profile Chart Error</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
+          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+        </div>
+      </div>
+    )
+  }
 })
 
 export default MeasureProfileChart

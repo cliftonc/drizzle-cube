@@ -11,6 +11,7 @@ export const candlestickChartConfig: ChartTypeConfig = {
   useCase:
     'Best for EOD quotes (bid/ask spread per date/symbol), markout distribution bands, or OHLC price data',
   clickableElements: { bar: true },
+  displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'xAxis',

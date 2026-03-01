@@ -11,6 +11,7 @@ export const gaugeChartConfig: ChartTypeConfig = {
   useCase:
     'Best for high-water marks vs equity, margin utilisation, or any single value progress toward a goal',
   clickableElements: {},
+  displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'yAxis',
