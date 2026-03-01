@@ -34,7 +34,6 @@ function pivotMeasuresToProfile(
   }
 
   if (seriesField) {
-    // Multi-series: one line per unique dimension value
     const seriesValues = Array.from(new Set(data.map((row) => String(row[seriesField] ?? 'Unknown'))))
     const profileData = yAxisFields.map((field) => {
       const base: Record<string, unknown> = {
@@ -55,7 +54,6 @@ function pivotMeasuresToProfile(
     })
     return { profileData, seriesKeys: seriesValues }
   } else {
-    // Single series: aggregate all rows (average per measure)
     const VALUE_KEY = '_value'
     const profileData = yAxisFields.map((field) => {
       const values = data
@@ -86,9 +84,9 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
   const getFieldLabel = useCubeFieldLabel()
 
   const dc = displayConfig as Record<string, unknown>
-  const showReferenceLineAtZero: boolean = (dc?.showReferenceLineAtZero as boolean) ?? true
-  const showDataLabels: boolean = (dc?.showDataLabels as boolean) ?? false
-  const lineType: 'monotone' | 'linear' | 'step' = (dc?.lineType as 'monotone' | 'linear' | 'step') ?? 'monotone'
+  const showReferenceLineAtZero = (dc?.showReferenceLineAtZero as boolean) ?? true
+  const showDataLabels = (dc?.showDataLabels as boolean) ?? false
+  const lineType = (dc?.lineType as 'monotone' | 'linear' | 'step') ?? 'monotone'
   const yAxisFormat = dc?.leftYAxisFormat
 
   const { yAxisFields, seriesField, configError } = useMemo(() => {
@@ -137,7 +135,7 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
     )
   }
 
-  const showLegend: boolean = (displayConfig?.showLegend ?? true) && seriesKeys.length > 1
+  const showLegend = (displayConfig?.showLegend ?? true) && seriesKeys.length > 1
 
   return (
     <div className="dc:relative dc:w-full" style={{ height }}>

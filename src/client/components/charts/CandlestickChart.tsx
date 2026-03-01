@@ -22,7 +22,6 @@ function parseNum(v: unknown): number {
   return isNaN(n) ? 0 : n
 }
 
-// Renders a single candlestick candle
 function Candle({
   x,
   candleWidth,
@@ -94,7 +93,6 @@ function Candle({
   )
 }
 
-// Y-axis renderer
 function YAxisTicks({
   domainMin,
   domainMax,
@@ -165,10 +163,10 @@ const CandlestickChart = React.memo(function CandlestickChart({
   }, [])
 
   const dc = displayConfig as Record<string, unknown>
-  const bullColor: string = (dc?.bullColor as string) ?? BULL_COLOR_DEFAULT
-  const bearColor: string = (dc?.bearColor as string) ?? BEAR_COLOR_DEFAULT
-  const showWicks: boolean = (dc?.showWicks as boolean) ?? true
-  const rangeMode: 'ohlc' | 'range' = (dc?.rangeMode as 'ohlc' | 'range') ?? 'ohlc'
+  const bullColor = (dc?.bullColor as string) ?? BULL_COLOR_DEFAULT
+  const bearColor = (dc?.bearColor as string) ?? BEAR_COLOR_DEFAULT
+  const showWicks = (dc?.showWicks as boolean) ?? true
+  const rangeMode = (dc?.rangeMode as 'ohlc' | 'range') ?? 'ohlc'
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const { xField, openField, closeField, highField, lowField, configError } = useMemo(() => {
@@ -176,7 +174,6 @@ const CandlestickChart = React.memo(function CandlestickChart({
       ? chartConfig.xAxis[0]
       : chartConfig?.xAxis ?? chartConfig?.x
 
-    // yAxis positions: [open, close, high, low] for OHLC or [high, low] for range mode
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
       : chartConfig?.yAxis
@@ -234,7 +231,6 @@ const CandlestickChart = React.memo(function CandlestickChart({
       const high = highField ? parseNum(row[highField]) : Math.max(open, close)
       const low = lowField ? parseNum(row[lowField]) : Math.min(open, close)
 
-      // Range mode: use high as close, low as open
       if (rangeMode === 'range') {
         open = low
         close = high
@@ -274,7 +270,6 @@ const CandlestickChart = React.memo(function CandlestickChart({
     )
   }
 
-  // Layout
   const margin = { top: 20, right: 20, bottom: 60, left: 70 }
   const containerWidth = dimensions.width || 600
   const containerHeight =
@@ -287,7 +282,6 @@ const CandlestickChart = React.memo(function CandlestickChart({
     50
   )
 
-  // Y scale
   const allValues = candles.flatMap((c) => [c.low, c.high])
   const rawMin = Math.min(...allValues)
   const rawMax = Math.max(...allValues)

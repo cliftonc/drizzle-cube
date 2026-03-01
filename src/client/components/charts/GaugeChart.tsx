@@ -4,30 +4,15 @@ import { formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-// ---------- types ----------
-
 interface ThresholdBand {
   value: number
   color: string
 }
 
-interface GaugeDisplayConfig {
-  minValue?: number
-  maxValue?: number
-  thresholds?: ThresholdBand[]
-  showCenterLabel?: boolean
-  showPercentage?: boolean
-  leftYAxisFormat?: unknown
-}
-
-// ---------- constants ----------
-
-const START_ANGLE = -Math.PI * 0.75 // -135°
-const END_ANGLE = Math.PI * 0.75   //  135°
+const START_ANGLE = -Math.PI * 0.75
+const END_ANGLE = Math.PI * 0.75
 const TRACK_COLOR = '#e2e8f0'
 const DEFAULT_FILL = '#6366f1'
-
-// ---------- helpers ----------
 
 function parseNum(v: unknown): number {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
@@ -38,14 +23,12 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v))
 }
 
-/** Map a value in [min, max] to an angle in [START_ANGLE, END_ANGLE] */
 function valueToAngle(value: number, min: number, max: number): number {
   const span = max === min ? 1 : max - min
   const t = clamp((value - min) / span, 0, 1)
   return START_ANGLE + t * (END_ANGLE - START_ANGLE)
 }
 
-/** Resolve threshold color for a given fill fraction */
 function resolveColor(fraction: number, thresholds: ThresholdBand[]): string {
   const sorted = [...thresholds].sort((a, b) => a.value - b.value)
   let color = DEFAULT_FILL
@@ -54,8 +37,6 @@ function resolveColor(fraction: number, thresholds: ThresholdBand[]): string {
   }
   return color
 }
-
-// ---------- Arc path builder ----------
 
 function buildArcPath(
   innerRadius: number,
@@ -66,8 +47,6 @@ function buildArcPath(
   const pathFn = arc()
   return pathFn({ innerRadius, outerRadius, startAngle, endAngle }) ?? ''
 }
-
-// ---------- Needle ----------
 
 function Needle({ angle, radius }: { angle: number; radius: number }) {
   const needleLen = radius * 0.72
@@ -90,8 +69,6 @@ function Needle({ angle, radius }: { angle: number; radius: number }) {
     </g>
   )
 }
-
-// ---------- Main component ----------
 
 const GaugeChart = React.memo(function GaugeChart({
   data,
@@ -118,9 +95,8 @@ const GaugeChart = React.memo(function GaugeChart({
     return () => observer.disconnect()
   }, [])
 
-  const dc = (displayConfig ?? {}) as GaugeDisplayConfig
+  const dc = (displayConfig ?? {}) as Record<string, unknown>
 
-  // ---- field resolution from chartConfig.yAxis ----
   const { valueField, maxField, configError } = useMemo(() => {
     const yAxis: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
@@ -137,7 +113,6 @@ const GaugeChart = React.memo(function GaugeChart({
     return { valueField, maxField, configError: null }
   }, [chartConfig])
 
-  // Computed before early returns to satisfy react-hooks/rules-of-hooks
   const thresholds: ThresholdBand[] = Array.isArray(dc.thresholds) ? dc.thresholds : []
   const thresholdBands = thresholds.length === 0
     ? []
@@ -147,7 +122,6 @@ const GaugeChart = React.memo(function GaugeChart({
         return { color: t.color, start: bandStart, end: bandEnd }
       })
 
-  // ---- empty state ----
   if (!data || data.length === 0) {
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
@@ -159,7 +133,6 @@ const GaugeChart = React.memo(function GaugeChart({
     )
   }
 
-  // ---- config error ----
   if (configError) {
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
@@ -171,13 +144,12 @@ const GaugeChart = React.memo(function GaugeChart({
     )
   }
 
-  // ---- value extraction (use first row) ----
   const row = (data as Record<string, unknown>[])[0]
   const rawValue = parseNum(row[valueField])
-  const minValue = dc.minValue ?? 0
+  const minValue = (dc.minValue as number) ?? 0
   const maxValue =
     dc.maxValue !== undefined
-      ? dc.maxValue
+      ? (dc.maxValue as number)
       : maxField
         ? parseNum(row[maxField])
         : 100
@@ -188,22 +160,19 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const fillColor = thresholds.length > 0 ? resolveColor(fraction, thresholds) : DEFAULT_FILL
 
-  const showCenterLabel = dc.showCenterLabel ?? true
-  const showPercentage = dc.showPercentage ?? false
+  const showCenterLabel = (dc.showCenterLabel as boolean) ?? true
+  const showPercentage = (dc.showPercentage as boolean) ?? false
   const yAxisFormat = dc.leftYAxisFormat
 
-  // ---- layout ----
   const containerW = dimensions.width || 300
   const containerH = typeof height === 'number' ? height : (dimensions.height || 200)
 
-  // Gauge fills the lower ~60% of the container height (half-circle with padding)
   const radius = Math.min(containerW / 2, containerH * 0.9) * 0.85
   const outerR = radius
   const innerR = radius * 0.6
   const cx = containerW / 2
   const cy = containerH * 0.7
 
-  // Arc paths
   const trackPath = buildArcPath(innerR, outerR, START_ANGLE, END_ANGLE)
   const fillAngle = valueToAngle(clampedValue, minValue, effectiveMax)
   const fillPath = buildArcPath(innerR, outerR, START_ANGLE, fillAngle)

@@ -66,7 +66,6 @@ function transformToWaterfall(
   return result
 }
 
-// Custom label that shows the actual value above/below the bar
 interface ValueLabelProps {
   x?: number
   y?: number
@@ -106,9 +105,9 @@ const WaterfallChart = React.memo(function WaterfallChart({
   const getFieldLabel = useCubeFieldLabel()
 
   const dc = displayConfig as Record<string, unknown>
-  const showTotal: boolean = (dc?.showTotal as boolean) ?? true
-  const showConnectorLine: boolean = (dc?.showConnectorLine as boolean) ?? true
-  const showDataLabels: boolean = (dc?.showDataLabels as boolean) ?? false
+  const showTotal = (dc?.showTotal as boolean) ?? true
+  const showConnectorLine = (dc?.showConnectorLine as boolean) ?? true
+  const showDataLabels = (dc?.showDataLabels as boolean) ?? false
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
   const { xAxisField, yAxisField, configError } = useMemo(() => {
@@ -136,7 +135,6 @@ const WaterfallChart = React.memo(function WaterfallChart({
     )
   }, [data, xAxisField, yAxisField, showTotal, getFieldLabel, configError])
 
-  // Connector line data: connects top of each bar to top of next bar
   const connectorData = useMemo(() => {
     if (!showConnectorLine || waterfallData.length === 0) return []
     return waterfallData.map((d) => {
@@ -145,7 +143,6 @@ const WaterfallChart = React.memo(function WaterfallChart({
     })
   }, [waterfallData, showConnectorLine])
 
-  // Merge connector into main data
   const chartData = useMemo(() => {
     return waterfallData.map((d, i) => ({
       ...d,
@@ -208,9 +205,7 @@ const WaterfallChart = React.memo(function WaterfallChart({
               ],
             }}
           />
-          {/* Transparent spacer bar to float the value bar */}
           <Bar dataKey="runningBase" stackId="wf" fill="transparent" legendType="none" isAnimationActive={false} />
-          {/* Actual value bar */}
           <Bar
             dataKey="value"
             stackId="wf"
@@ -248,7 +243,6 @@ const WaterfallChart = React.memo(function WaterfallChart({
               />
             ))}
           </Bar>
-          {/* Connector line */}
           {showConnectorLine && (
             <Line
               type="stepAfter"

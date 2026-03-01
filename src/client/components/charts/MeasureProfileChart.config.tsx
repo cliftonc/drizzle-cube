@@ -2,9 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
 import { getChartTypeIcon } from '../../icons'
 
 /**
- * Configuration for the measure profile chart type.
- * Pivots N measures into sequential X-axis points — each measure becomes
- * one X-axis category and its value is plotted on Y.
+ * Configuration for the measure profile chart type
  */
 export const measureProfileChartConfig: ChartTypeConfig = {
   label: 'Measure Profile',

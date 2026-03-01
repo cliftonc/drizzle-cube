@@ -2,13 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
 import { getChartTypeIcon } from '../../icons'
 
 /**
- * Configuration for the box plot chart type.
- * Visualises the statistical distribution of a measure across groupings.
- *
- * Two modes:
- *  - 5-measure: explicit min/q1/median/q3/max fields (displayConfig)
- *  - 3-measure: avg + stddev + median fields (displayConfig), draws mean ± σ whiskers
- *  - Auto: single yAxis measure shown as a point (degenerate box)
+ * Configuration for the box plot chart type
  */
 export const boxPlotChartConfig: ChartTypeConfig = {
   label: 'Box Plot',

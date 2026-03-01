@@ -2,8 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
 import { getChartTypeIcon } from '../../icons'
 
 /**
- * Configuration for the waterfall chart type.
- * Use for decomposing a total into incremental positive/negative contributions.
+ * Configuration for the waterfall chart type
  */
 export const waterfallChartConfig: ChartTypeConfig = {
   label: 'Waterfall Chart',

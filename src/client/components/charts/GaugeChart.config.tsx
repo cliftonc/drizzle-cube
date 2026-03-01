@@ -2,8 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
 import { getChartTypeIcon } from '../../icons'
 
 /**
- * Configuration for the gauge chart type.
- * Renders a half-circle arc gauge showing a single KPI value vs a target/max.
+ * Configuration for the gauge chart type
  */
 export const gaugeChartConfig: ChartTypeConfig = {
   label: 'Gauge Chart',

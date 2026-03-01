@@ -2,9 +2,7 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
 import { getChartTypeIcon } from '../../icons'
 
 /**
- * Configuration for the candlestick chart type.
- * Renders financial candlestick bars with open/close body and high/low wicks.
- * Supports both OHLC mode and simplified range (bid/ask spread) mode.
+ * Configuration for the candlestick chart type
  */
 export const candlestickChartConfig: ChartTypeConfig = {
   label: 'Candlestick Chart',
