@@ -120,7 +120,7 @@ const GaugeChart = React.memo(function GaugeChart({
 
   const dc = (displayConfig ?? {}) as GaugeDisplayConfig
 
-  // ---- field resolution ----
+  // ---- field resolution from chartConfig.yAxis ----
   const { valueField, maxField, configError } = useMemo(() => {
     const yAxis: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
@@ -128,15 +128,14 @@ const GaugeChart = React.memo(function GaugeChart({
         ? [chartConfig.yAxis as string]
         : []
 
-    const dcRec = displayConfig as Record<string, unknown>
-    const valueField = String(dcRec?.valueField ?? yAxis[0] ?? '')
-    const maxField = String(dcRec?.maxField ?? yAxis[1] ?? '')
+    const valueField = yAxis[0] ?? ''
+    const maxField = yAxis[1] ?? ''
 
     if (!valueField) {
       return { valueField, maxField, configError: 'Gauge requires at least 1 measure in Y-Axis (current value)' }
     }
     return { valueField, maxField, configError: null }
-  }, [chartConfig, displayConfig])
+  }, [chartConfig])
 
   // Computed before early returns to satisfy react-hooks/rules-of-hooks
   const thresholds: ThresholdBand[] = Array.isArray(dc.thresholds) ? dc.thresholds : []

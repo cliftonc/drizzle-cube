@@ -45,24 +45,12 @@ const autoData = [
 
 const fiveMeasureConfig = {
   xAxis: ['Trades.symbol'],
-  yAxis: [],
-}
-const fiveMeasureDisplay = {
-  minField: 'Trades.minPnl',
-  q1Field: 'Trades.q1Pnl',
-  medianField: 'Trades.medianPnl',
-  q3Field: 'Trades.q3Pnl',
-  maxField: 'Trades.maxPnl',
+  yAxis: ['Trades.minPnl', 'Trades.q1Pnl', 'Trades.medianPnl', 'Trades.q3Pnl', 'Trades.maxPnl'],
 }
 
 const threeMeasureConfig = {
   xAxis: ['Trades.symbol'],
-  yAxis: [],
-}
-const threeMeasureDisplay = {
-  avgField: 'Trades.avgPnl',
-  stddevField: 'Trades.stddevPnl',
-  medianField: 'Trades.medianPnl',
+  yAxis: ['Trades.avgPnl', 'Trades.stddevPnl', 'Trades.medianPnl'],
 }
 
 const autoConfig = {
@@ -106,7 +94,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.queryByText('No data available')).not.toBeInTheDocument()
@@ -119,7 +106,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('box-AAPL')).toBeInTheDocument()
@@ -131,7 +117,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('x-label-AAPL')).toBeInTheDocument()
@@ -143,7 +128,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('median-AAPL')).toBeInTheDocument()
@@ -157,7 +141,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={threeMeasureData}
           chartConfig={threeMeasureConfig}
-          displayConfig={threeMeasureDisplay}
         />
       )
       expect(screen.getByTestId('boxplot-svg')).toBeInTheDocument()
@@ -168,7 +151,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={threeMeasureData}
           chartConfig={threeMeasureConfig}
-          displayConfig={threeMeasureDisplay}
         />
       )
       expect(screen.getByTestId('box-AAPL')).toBeInTheDocument()
@@ -285,13 +267,9 @@ describe('BoxPlotChart', () => {
       render(
         <BoxPlotChart
           data={wrongFieldData}
-          chartConfig={{ xAxis: ['Trades.symbol'], yAxis: [] }}
-          displayConfig={{
-            minField: 'Trades.minPnl',
-            q1Field: 'Trades.q1Pnl',
-            medianField: 'Trades.medianPnl',
-            q3Field: 'Trades.q3Pnl',
-            maxField: 'Trades.maxPnl',
+          chartConfig={{
+            xAxis: ['Trades.symbol'],
+            yAxis: ['Trades.minPnl', 'Trades.q1Pnl', 'Trades.medianPnl', 'Trades.q3Pnl', 'Trades.maxPnl'],
           }}
         />
       )

@@ -214,68 +214,64 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
 
   const yAxisFormat = displayConfig?.leftYAxisFormat
 
-  // Determine config mode and extract fields
+  // Determine config mode and extract fields from chartConfig.yAxis positions
   const { xField, mode, fields, configError } = useMemo(() => {
     const xField = Array.isArray(chartConfig?.xAxis)
       ? chartConfig.xAxis[0]
       : chartConfig?.xAxis ?? chartConfig?.x
 
-    // 5-measure mode: explicit q1/median/q3/min/max in displayConfig
-    const dc = displayConfig as Record<string, unknown>
-    const has5 = dc?.minField && dc?.q1Field && dc?.medianField && dc?.q3Field && dc?.maxField
-    // 3-measure mode: avgField + stddevField + medianField in displayConfig
-    const has3 = dc?.avgField && dc?.stddevField && dc?.medianField
-    // Auto mode: single yAxis measure used as median, stddev from value if available
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
       : chartConfig?.yAxis
         ? [chartConfig.yAxis as string]
         : []
 
-    if (!xField && !yAxisFields.length && !has5 && !has3) {
-      return {
-        xField,
-        mode: 'none' as const,
-        fields: {},
-        configError: 'BoxPlot requires an X-Axis dimension and at least one measure',
-      }
-    }
-
-    if (has5) {
-      return {
-        xField,
-        mode: '5measure' as const,
-        fields: {
-          minField: String(dc.minField),
-          q1Field: String(dc.q1Field),
-          medianField: String(dc.medianField),
-          q3Field: String(dc.q3Field),
-          maxField: String(dc.maxField),
-        },
-        configError: null,
-      }
-    }
-
-    if (has3) {
-      return {
-        xField,
-        mode: '3measure' as const,
-        fields: {
-          avgField: String(dc.avgField),
-          stddevField: String(dc.stddevField),
-          medianField: String(dc.medianField),
-        },
-        configError: null,
-      }
-    }
-
-    // Fallback: need at least xAxis + 1 measure in yAxis
     if (!xField || yAxisFields.length === 0) {
       return {
         xField,
         mode: 'none' as const,
         fields: {},
         configError: 'BoxPlot requires an X-Axis dimension and at least one measure in Y-Axis',
+      }
+    }
+
+    // 5-measure mode: yAxis = [min, q1, median, q3, max]
+    if (yAxisFields.length >= 5) {
+      return {
+        xField,
+        mode: '5measure' as const,
+        fields: {
+          minField: yAxisFields[0],
+          q1Field: yAxisFields[1],
+          medianField: yAxisFields[2],
+          q3Field: yAxisFields[3],
+          maxField: yAxisFields[4],
+        },
+        configError: null,
+      }
+    }
+
+    // 3-measure mode: yAxis = [avg, stddev, median]
+    if (yAxisFields.length >= 3) {
+      return {
+        xField,
+        mode: '3measure' as const,
+        fields: {
+          avgField: yAxisFields[0],
+          stddevField: yAxisFields[1],
+          medianField: yAxisFields[2],
+        },
+        configError: null,
+      }
+    }
+
+    // 2-measure mode is invalid (not enough for any statistical mode)
+    if (yAxisFields.length === 2) {
+      return {
+        xField,
+        mode: 'none' as const,
+        fields: {},
+        configError: 'BoxPlot requires 1 measure (auto), 3 (avg/stddev/median), or 5 (min/q1/median/q3/max)',
       }
     }
 
@@ -286,7 +282,7 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
       fields: { valueField: yAxisFields[0] },
       configError: null,
     }
-  }, [chartConfig, displayConfig])
+  }, [chartConfig])
 
   const boxes: BoxStats[] = useMemo(() => {
     if (configError || !data || data.length === 0 || mode === 'none') return []

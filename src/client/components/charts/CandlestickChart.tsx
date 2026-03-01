@@ -176,19 +176,17 @@ const CandlestickChart = React.memo(function CandlestickChart({
       ? chartConfig.xAxis[0]
       : chartConfig?.xAxis ?? chartConfig?.x
 
-    // Standard yAxis: [open, close, high, low] or [high, low] for range mode
+    // yAxis positions: [open, close, high, low] for OHLC or [high, low] for range mode
     const yAxisFields: string[] = Array.isArray(chartConfig?.yAxis)
       ? chartConfig.yAxis
       : chartConfig?.yAxis
         ? [chartConfig.yAxis as string]
         : []
 
-    // Allow explicit field names in displayConfig (overrides yAxis order)
-    const dc = displayConfig as Record<string, unknown>
-    const openField = String(dc?.openField ?? yAxisFields[0] ?? '')
-    const closeField = String(dc?.closeField ?? (rangeMode === 'range' ? yAxisFields[0] : yAxisFields[1]) ?? '')
-    const highField = String(dc?.highField ?? (rangeMode === 'range' ? yAxisFields[0] : yAxisFields[2]) ?? '')
-    const lowField = String(dc?.lowField ?? (rangeMode === 'range' ? yAxisFields[1] : yAxisFields[3]) ?? '')
+    const openField = yAxisFields[0] ?? ''
+    const closeField = (rangeMode === 'range' ? yAxisFields[0] : yAxisFields[1]) ?? ''
+    const highField = (rangeMode === 'range' ? yAxisFields[0] : yAxisFields[2]) ?? ''
+    const lowField = (rangeMode === 'range' ? yAxisFields[1] : yAxisFields[3]) ?? ''
 
     if (!xField) {
       return {
@@ -224,7 +222,7 @@ const CandlestickChart = React.memo(function CandlestickChart({
     }
 
     return { xField, openField, closeField, highField, lowField, configError: null }
-  }, [chartConfig, displayConfig, rangeMode])
+  }, [chartConfig, rangeMode])
 
   const candles: CandleData[] = useMemo(() => {
     if (configError || !data || data.length === 0) return []
