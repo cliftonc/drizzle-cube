@@ -13,11 +13,6 @@ vi.mock('../../../src/client/icons', () => ({
   getChartTypeIcon: () => null,
 }))
 
-// Mock hooks that require context
-vi.mock('../../../src/client/hooks/useCubeFieldLabel', () => ({
-  useCubeFieldLabel: () => (field: string) => field.split('.').pop() ?? field,
-}))
-
 // Sample data: pre-aggregated stats per symbol
 const fiveMeasureData = [
   {
@@ -254,18 +249,53 @@ describe('BoxPlotChart', () => {
       expect(screen.getByTestId('box-Only')).toBeInTheDocument()
     })
 
-    it('should handle null measure values gracefully', () => {
+    it('should show no valid data when all measure values are null', () => {
       const nullData = [
         { 'Trades.symbol': 'AAPL', 'Trades.avgPnl': null },
         { 'Trades.symbol': 'MSFT', 'Trades.avgPnl': undefined },
       ]
-      const { container } = render(
+      render(
         <BoxPlotChart
           data={nullData}
           chartConfig={{ xAxis: ['Trades.symbol'], yAxis: ['Trades.avgPnl'] }}
         />
       )
-      expect(container.firstChild).toBeTruthy()
+      expect(screen.getByText('No valid data')).toBeInTheDocument()
+    })
+
+    it('should skip rows with null fields and render valid ones', () => {
+      const mixedData = [
+        { 'M.cat': 'Valid', 'M.val': 42 },
+        { 'M.cat': 'Invalid', 'M.val': null },
+      ]
+      render(
+        <BoxPlotChart
+          data={mixedData}
+          chartConfig={{ xAxis: ['M.cat'], yAxis: ['M.val'] }}
+        />
+      )
+      expect(screen.getByTestId('box-Valid')).toBeInTheDocument()
+      expect(screen.queryByTestId('box-Invalid')).not.toBeInTheDocument()
+    })
+
+    it('should show no valid data when 5-measure fields are missing from data', () => {
+      const wrongFieldData = [
+        { 'Trades.symbol': 'AAPL', 'Wrong.field': 100 },
+      ]
+      render(
+        <BoxPlotChart
+          data={wrongFieldData}
+          chartConfig={{ xAxis: ['Trades.symbol'], yAxis: [] }}
+          displayConfig={{
+            minField: 'Trades.minPnl',
+            q1Field: 'Trades.q1Pnl',
+            medianField: 'Trades.medianPnl',
+            q3Field: 'Trades.q3Pnl',
+            maxField: 'Trades.maxPnl',
+          }}
+        />
+      )
+      expect(screen.getByText('No valid data')).toBeInTheDocument()
     })
 
     it('should handle negative values', () => {

@@ -1,7 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
+import { CHART_COLORS } from '../../utils/chartConstants'
 import { formatAxisValue } from '../../utils/chartUtils'
-import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
 const MAX_BOXES = 50
@@ -16,7 +15,11 @@ interface BoxStats {
   color: string
 }
 
-type WhiskerMode = 'iqr' | 'stddev'
+function parseNumeric(v: unknown): number | null {
+  if (v === undefined || v === null) return null
+  const n = typeof v === 'number' ? v : parseFloat(String(v))
+  return isNaN(n) ? null : n
+}
 
 /** Build box stats from 5-measure mode fields */
 function buildFrom5Measures(
@@ -29,19 +32,13 @@ function buildFrom5Measures(
   label: string,
   color: string
 ): BoxStats | null {
-  const parse = (v: unknown): number => {
-    const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
-    return isNaN(n) ? 0 : n
-  }
-  return {
-    label,
-    min: parse(row[minField]),
-    q1: parse(row[q1Field]),
-    median: parse(row[medianField]),
-    q3: parse(row[q3Field]),
-    max: parse(row[maxField]),
-    color,
-  }
+  const min = parseNumeric(row[minField])
+  const q1 = parseNumeric(row[q1Field])
+  const median = parseNumeric(row[medianField])
+  const q3 = parseNumeric(row[q3Field])
+  const max = parseNumeric(row[maxField])
+  if (min === null || q1 === null || median === null || q3 === null || max === null) return null
+  return { label, min, q1, median, q3, max, color }
 }
 
 /** Build approximate box stats from 3-measure mode (avg ± stddev, median) */
@@ -53,20 +50,18 @@ function buildFrom3Measures(
   label: string,
   color: string
 ): BoxStats | null {
-  const parse = (v: unknown): number => {
-    const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
-    return isNaN(n) ? 0 : n
-  }
-  const avg = parse(row[avgField])
-  const sd = Math.abs(parse(row[stddevField]))
-  const median = parse(row[medianField])
+  const avg = parseNumeric(row[avgField])
+  const sd = parseNumeric(row[stddevField])
+  const median = parseNumeric(row[medianField])
+  if (avg === null || sd === null || median === null) return null
+  const absSd = Math.abs(sd)
   return {
     label,
-    min: avg - 2 * sd,
-    q1: avg - sd,
+    min: avg - 2 * absSd,
+    q1: avg - absSd,
     median,
-    q3: avg + sd,
-    max: avg + 2 * sd,
+    q3: avg + absSd,
+    max: avg + 2 * absSd,
     color,
   }
 }
@@ -147,21 +142,25 @@ function BoxElement({
 // Y-axis tick renderer
 function YAxis({
   scale,
+  domainMin,
+  domainMax,
   width,
   tickCount = 5,
   format,
 }: {
   scale: (v: number) => number
+  domainMin: number
+  domainMax: number
   width: number
   tickCount?: number
   format?: (v: number) => string
 }) {
-  const [minVal, maxVal] = [0, 1] // placeholder; ticks computed from domain
   const ticks = useMemo(() => {
-    const domain = scale.domain?.() ?? [0, 1]
-    const step = (domain[1] - domain[0]) / (tickCount - 1)
-    return Array.from({ length: tickCount }, (_, i) => domain[0] + i * step)
-  }, [scale, tickCount])
+    const range = domainMax - domainMin
+    if (range === 0) return [domainMin]
+    const step = range / (tickCount - 1)
+    return Array.from({ length: tickCount }, (_, i) => domainMin + i * step)
+  }, [domainMin, domainMax, tickCount])
 
   return (
     <g data-testid="y-axis">
@@ -190,13 +189,11 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
   data,
   chartConfig,
   displayConfig = {},
-  queryObject,
   height = '100%',
   colorPalette,
   onDataPointClick,
   drillEnabled,
 }: ChartProps) {
-  const getFieldLabel = useCubeFieldLabel()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
@@ -215,9 +212,7 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
     return () => observer.disconnect()
   }, [])
 
-  const orientation: 'vertical' | 'horizontal' = displayConfig?.orientation ?? 'vertical'
   const yAxisFormat = displayConfig?.leftYAxisFormat
-  const colorBy: 'category' | 'value' = displayConfig?.colorBy ?? 'category'
 
   // Determine config mode and extract fields
   const { xField, mode, fields, configError } = useMemo(() => {
@@ -298,43 +293,36 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
     const rows = (data as Record<string, unknown>[]).slice(0, MAX_BOXES)
     const palette = colorPalette?.colors ?? CHART_COLORS
 
-    return rows.map((row, i): BoxStats => {
+    const results: BoxStats[] = []
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
       const label = xField ? String(row[xField] ?? `Row ${i + 1}`) : `Row ${i + 1}`
       const color = palette[i % palette.length]
 
+      let box: BoxStats | null = null
       if (mode === '5measure') {
-        return (
-          buildFrom5Measures(
-            row,
-            fields.minField!,
-            fields.q1Field!,
-            fields.medianField!,
-            fields.q3Field!,
-            fields.maxField!,
-            label,
-            color
-          ) ?? { label, min: 0, q1: 0, median: 0, q3: 0, max: 0, color }
+        box = buildFrom5Measures(
+          row,
+          fields.minField!,
+          fields.q1Field!,
+          fields.medianField!,
+          fields.q3Field!,
+          fields.maxField!,
+          label,
+          color
         )
+      } else if (mode === '3measure') {
+        box = buildFrom3Measures(row, fields.avgField!, fields.stddevField!, fields.medianField!, label, color)
+      } else {
+        // Auto: use value as median, build minimal box (value ± 0)
+        const v = parseNumeric(row[fields.valueField!])
+        if (v !== null) {
+          box = { label, min: v, q1: v, median: v, q3: v, max: v, color }
+        }
       }
-
-      if (mode === '3measure') {
-        return (
-          buildFrom3Measures(row, fields.avgField!, fields.stddevField!, fields.medianField!, label, color) ?? {
-            label,
-            min: 0,
-            q1: 0,
-            median: 0,
-            q3: 0,
-            max: 0,
-            color,
-          }
-        )
-      }
-
-      // Auto: use value as median, build minimal box (value ± 0)
-      const v = parseFloat(String(row[fields.valueField!] ?? 0)) || 0
-      return { label, min: v, q1: v, median: v, q3: v, max: v, color }
-    })
+      if (box) results.push(box)
+    }
+    return results
   }, [data, xField, mode, fields, colorPalette, configError])
 
   if (!data || data.length === 0) {
@@ -359,17 +347,25 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
     )
   }
 
+  if (boxes.length === 0) {
+    return (
+      <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
+        <div className="dc:text-center">
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+          <div className="dc:text-xs text-dc-text-secondary">
+            Could not compute box plot statistics from the provided data
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Compute layout
   const margin = { top: 20, right: 20, bottom: 60, left: 60 }
   const containerWidth = dimensions.width || 600
   const containerHeight = typeof height === 'number' ? height : (dimensions.height || 400)
   const innerWidth = Math.max(containerWidth - margin.left - margin.right, 50)
-  const innerHeight = Math.max(
-    (typeof containerHeight === 'number' ? containerHeight : parseInt(String(containerHeight))) -
-      margin.top -
-      margin.bottom,
-    50
-  )
+  const innerHeight = Math.max(containerHeight - margin.top - margin.bottom, 50)
 
   // Y scale: linear from min-of-all to max-of-all
   const allValues = boxes.flatMap((b) => [b.min, b.max])
@@ -379,11 +375,9 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
   const domainMin = rawMin - padding
   const domainMax = rawMax + padding
 
+  const domainRange = domainMax - domainMin
   const yScale = (v: number) =>
-    innerHeight - ((v - domainMin) / (domainMax - domainMin)) * innerHeight
-
-  // Assign a scale.domain() for the YAxis ticks helper
-  ;(yScale as any).domain = () => [domainMin, domainMax]
+    domainRange === 0 ? innerHeight / 2 : innerHeight - ((v - domainMin) / domainRange) * innerHeight
 
   const boxSpacing = innerWidth / boxes.length
   const boxWidth = Math.min(boxSpacing * 0.6, 40)
@@ -403,6 +397,8 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
           {/* Y Axis */}
           <YAxis
             scale={yScale}
+            domainMin={domainMin}
+            domainMax={domainMax}
             width={innerWidth}
             tickCount={5}
             format={yAxisFormat ? (v) => formatAxisValue(v, yAxisFormat) : undefined}
@@ -413,15 +409,15 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
             const cx = boxSpacing * i + boxSpacing / 2
             return (
               <g
-                key={box.label}
-                onClick={() => {
+                key={`${box.label}-${i}`}
+                onClick={(event: React.MouseEvent) => {
                   if (onDataPointClick && drillEnabled) {
                     onDataPointClick({
-                      dataPoint: box,
+                      dataPoint: { ...box },
                       clickedField: xField ?? '',
                       xValue: box.label,
-                      position: { x: 0, y: 0 },
-                      nativeEvent: undefined as any,
+                      position: { x: event.clientX, y: event.clientY },
+                      nativeEvent: event,
                     })
                   }
                 }}

@@ -87,17 +87,6 @@ export const boxPlotChartConfig: ChartTypeConfig = {
       description: 'Maximum measure for 5-measure full box plot',
     },
     {
-      key: 'orientation',
-      label: 'Orientation',
-      type: 'select',
-      defaultValue: 'vertical',
-      options: [
-        { value: 'vertical', label: 'Vertical (Y = value)' },
-        { value: 'horizontal', label: 'Horizontal (X = value)' },
-      ],
-      description: 'Chart orientation',
-    },
-    {
       key: 'leftYAxisFormat',
       label: 'Y-Axis Format',
       type: 'axisFormat',
