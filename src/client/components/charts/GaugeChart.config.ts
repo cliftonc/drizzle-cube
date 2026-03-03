@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the gauge chart type
  */
 export const gaugeChartConfig: ChartTypeConfig = {
   label: 'Gauge Chart',
-  icon: getChartTypeIcon('kpiNumber'),
   description: 'Half-circle arc gauge for a single KPI value versus a maximum target',
   useCase:
     'Best for high-water marks vs equity, margin utilisation, or any single value progress toward a goal',

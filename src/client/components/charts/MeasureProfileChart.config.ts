@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the measure profile chart type
  */
 export const measureProfileChartConfig: ChartTypeConfig = {
   label: 'Measure Profile',
-  icon: getChartTypeIcon('line'),
   description: 'Plot N measures as sequential X-axis points to visualise a profile or shape across intervals',
   useCase:
     'Best for markout interval analysis (e.g. avgMinus2m → avgAtEvent → avgPlus2h), metric profiles, or any pattern across ordered measures',

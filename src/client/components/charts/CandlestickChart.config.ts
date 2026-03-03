@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the candlestick chart type
  */
 export const candlestickChartConfig: ChartTypeConfig = {
   label: 'Candlestick Chart',
-  icon: getChartTypeIcon('bar'),
   description: 'Financial candlestick chart showing open/close body and high/low wicks',
   useCase:
     'Best for EOD quotes (bid/ask spread per date/symbol), markout distribution bands, or OHLC price data',

@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the waterfall chart type
  */
 export const waterfallChartConfig: ChartTypeConfig = {
   label: 'Waterfall Chart',
-  icon: getChartTypeIcon('bar'),
   description: 'Show cumulative effect of sequential positive and negative values',
   useCase:
     'Best for P&L decomposition, cash flow analysis, budget variance, or any sequential contribution breakdown',
