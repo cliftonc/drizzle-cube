@@ -54,6 +54,7 @@ function AgenticNotebookInner({
 
   const blockCount = useNotebookStore((s) => s.blocks.length)
   const messageCount = useNotebookStore((s) => s.messages.length)
+  const isStreaming = useNotebookStore((s) => s.isStreaming)
   const save = useNotebookStore((s) => s.save)
 
   // Track dirty state
@@ -66,7 +67,9 @@ function AgenticNotebookInner({
   }, [blockCount, messageCount, onDirtyStateChange])
 
   // Debounced save - fires 1s after blocks/messages count stabilizes
+  // Waits until streaming completes to avoid saving partial content
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const pendingSaveRef = useRef(false)
   const onSaveRef = useRef(onSave)
   onSaveRef.current = onSave
   // Track whether we've ever had content (so we save empty state on Clear but not on initial mount)
@@ -77,8 +80,16 @@ function AgenticNotebookInner({
     }
     if (!onSaveRef.current || !hasHadContentRef.current) return
 
+    if (isStreaming) {
+      // Mark that a save is needed once streaming completes
+      pendingSaveRef.current = true
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      return
+    }
+
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
+      pendingSaveRef.current = false
       const config = save()
       onSaveRef.current?.(config)
     }, 1000)
@@ -86,7 +97,19 @@ function AgenticNotebookInner({
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     }
-  }, [blockCount, messageCount, save])
+  }, [blockCount, messageCount, isStreaming, save])
+
+  // Flush pending save when streaming ends
+  useEffect(() => {
+    if (!isStreaming && pendingSaveRef.current && onSaveRef.current && hasHadContentRef.current) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = setTimeout(() => {
+        pendingSaveRef.current = false
+        const config = save()
+        onSaveRef.current?.(config)
+      }, 1000)
+    }
+  }, [isStreaming, save])
 
   // Explicit clear handler — save immediately with empty state
   const handleClear = useCallback(() => {
