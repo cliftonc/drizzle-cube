@@ -56,6 +56,18 @@ function buildCubeMetadataSummary(metadata: CubeMetadata[]): string {
       }
     }
 
+    // Event stream metadata (funnel/flow/retention support)
+    if (cube.meta?.eventStream) {
+      lines.push('')
+      lines.push('**Event Stream:** Yes (supports funnel, flow, retention queries)')
+      if (cube.meta.eventStream.bindingKey) {
+        lines.push(`- Binding key: \`${cube.name}.${cube.meta.eventStream.bindingKey}\``)
+      }
+      if (cube.meta.eventStream.timeDimension) {
+        lines.push(`- Time dimension: \`${cube.name}.${cube.meta.eventStream.timeDimension}\``)
+      }
+    }
+
     lines.push('')
   }
 
@@ -116,6 +128,60 @@ export function buildAgentSystemPrompt(metadata: CubeMetadata[]): string {
     '- Before calling `add_portlet`, verify the query is valid: all fields in `order` must also appear in `measures` or `dimensions`',
     '- Never put data tables in markdown blocks — use `add_portlet` with chartType "table" instead',
     '- Think out loud in the notebook: use `add_markdown` to share your reasoning at each step so users can follow along',
+    '',
+    '## Chart Selection Guide',
+    '',
+    'Choose chart types based on the user\'s intent and data shape:',
+    '',
+    '| Intent / Data Shape | Chart Type |',
+    '|---|---|',
+    '| Single headline metric (total revenue, user count) | `kpiNumber` |',
+    '| Headline metric with period-over-period change | `kpiDelta` |',
+    '| Compare discrete categories or rankings | `bar` |',
+    '| Trend over time (one or few series) | `line` |',
+    '| Trend over time showing volume/magnitude | `area` |',
+    '| Part-of-whole breakdown | `pie` (≤7 slices) |',
+    '| Correlation between two measures | `scatter` |',
+    '| Correlation with size/color third dimension | `bubble` |',
+    '| Intensity across two categorical dimensions | `heatmap` |',
+    '| Multi-variable comparison across categories | `radar` |',
+    '| Distribution/spread of values | `boxPlot` |',
+    '| Detailed row-level data or many columns | `table` |',
+    '',
+    'Analysis-mode-specific chart types (require the corresponding analysis mode):',
+    '',
+    '| Analysis Mode | Chart Type | Description |',
+    '|---|---|---|',
+    '| Funnel | `funnel` | Sequential step conversion bars with conversion rates |',
+    '| Flow | `sankey` | Flow diagram showing paths between states/steps |',
+    '| Flow | `sunburst` | Radial rings showing forward paths from a starting event |',
+    '| Retention | `retentionHeatmap` | Cohort × period retention matrix |',
+    '| Retention | `retentionCombined` | Retention with line chart, heatmap, or combined modes |',
+    '',
+    'Defaults: If unsure, use `bar` for categories, `line` for time series, `table` for exploratory data.',
+    '',
+    '## Analysis Mode Decision Tree',
+    '',
+    'The default mode is **query** (standard measures/dimensions). Switch to a special mode only when the user\'s question matches:',
+    '',
+    '- **Funnel mode** — "What is the conversion rate from step A → B → C?" or "How many users complete signup?"',
+    '  - Requires: an event-stream cube with `capabilities.funnel = true` from `discover_cubes`',
+    '  - Query format: `{ queryType: "funnel", bindingKey, timeDimension, steps: [...] }`',
+    '  - Chart type: `funnel`',
+    '',
+    '- **Flow mode** — "What paths do users take after signup?" or "Show me the most common navigation flows"',
+    '  - Requires: `capabilities.flow = true` from `discover_cubes`',
+    '  - Query format: `{ queryType: "flow", bindingKey, timeDimension, startStep, maxSteps }`',
+    '  - Chart types: `sankey` (flow diagram) or `sunburst` (radial paths)',
+    '',
+    '- **Retention mode** — "What % of users come back after 7 days?" or "Show me weekly retention cohorts"',
+    '  - Requires: `capabilities.retention = true` from `discover_cubes`',
+    '  - Query format: `{ queryType: "retention", bindingKey, timeDimension, retentionStep, ... }`',
+    '  - Chart types: `retentionHeatmap` (cohort matrix) or `retentionCombined` (line + heatmap)',
+    '',
+    'Before using funnel/flow/retention, check the `capabilities` object returned by `discover_cubes`. If the required capability is `false`, explain to the user that the data model does not support that analysis mode and suggest a standard query alternative.',
+    '',
+    'Event-stream cubes are marked in the Available Cubes section below with **Event Stream: Yes** and list their binding key and time dimension.',
     '',
     '---',
     '',

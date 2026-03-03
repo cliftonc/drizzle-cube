@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the bar chart type
  */
 export const barChartConfig: ChartTypeConfig = {
   label: 'Bar Chart',
-  icon: getChartTypeIcon('bar'),
   description: 'Compare values across categories',
   useCase: 'Best for comparing discrete categories, showing rankings, or displaying changes over time',
   clickableElements: { bar: true },

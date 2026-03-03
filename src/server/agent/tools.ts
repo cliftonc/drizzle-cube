@@ -7,6 +7,7 @@ import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentSSEEvent } from './types'
 import { handleDiscover, handleLoad } from '../../adapters/utils'
+import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation'
 
 /**
  * Result of executing a tool call
@@ -32,6 +33,13 @@ interface ToolDefinition {
     required?: string[]
   }
 }
+
+/** Chart types available to the agent */
+const AGENT_ALLOWED_CHART_TYPES = [
+  'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'bubble', 'table',
+  'kpiNumber', 'kpiDelta', 'funnel', 'heatmap', 'sankey', 'sunburst',
+  'retentionHeatmap', 'retentionCombined', 'boxPlot'
+]
 
 /**
  * Returns the array of tool definitions for the Anthropic Messages API.
@@ -126,7 +134,9 @@ export function getToolDefinitions(): ToolDefinition[] {
     {
       name: 'add_portlet',
       description:
-        'Add a chart or table visualization to the notebook. The query is validated before adding — if invalid, an error is returned so you can fix the query. The portlet fetches its own data - you do NOT need to pass data to it.',
+        'Add a chart visualization to the notebook.\n'
+        + buildChartRequirementsDescription(AGENT_ALLOWED_CHART_TYPES)
+        + '\nThe query is validated before adding. The portlet fetches its own data.',
       input_schema: {
         type: 'object',
         properties: {
@@ -134,10 +144,7 @@ export function getToolDefinitions(): ToolDefinition[] {
           query: { type: 'string', description: 'JSON string of the CubeQuery to visualize' },
           chartType: {
             type: 'string',
-            enum: [
-              'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'bubble', 'table',
-              'number', 'funnel', 'heatmap', 'sankey', 'retention'
-            ],
+            enum: AGENT_ALLOWED_CHART_TYPES,
             description: 'Chart type to render'
           },
           chartConfig: {
@@ -242,6 +249,13 @@ export function createToolExecutor(options: {
 
   // add_portlet
   executors.set('add_portlet', async (input) => {
+    // Resolve chart type aliases (backwards compat for common LLM mistakes)
+    const CHART_TYPE_ALIASES: Record<string, string> = {
+      'number': 'kpiNumber',
+      'retention': 'retentionHeatmap',
+    }
+    const resolvedChartType = CHART_TYPE_ALIASES[input.chartType as string] ?? input.chartType as string
+
     // Validate the query before adding the portlet
     let parsedQuery: Record<string, unknown>
     try {
@@ -261,18 +275,28 @@ export function createToolExecutor(options: {
       }
     }
 
+    // Validate and infer chart config against drop zone requirements
+    const inferredConfig = inferChartConfig(resolvedChartType, input.chartConfig as Record<string, unknown> | undefined, parsedQuery)
+    const configValidation = validateChartConfig(resolvedChartType, inferredConfig, parsedQuery)
+    if (!configValidation.isValid) {
+      return {
+        result: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}`,
+        isError: true
+      }
+    }
+
     const id = `portlet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const portletData = {
       id,
       title: input.title as string,
       query: input.query as string,
-      chartType: input.chartType as any,
-      chartConfig: input.chartConfig as Record<string, unknown> | undefined,
+      chartType: resolvedChartType,
+      chartConfig: inferredConfig,
       displayConfig: input.displayConfig as Record<string, unknown> | undefined
     }
 
     return {
-      result: `Portlet "${input.title}" added to notebook (id: ${id}, chart: ${input.chartType}). [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]`,
+      result: `Portlet "${input.title}" added to notebook (id: ${id}, chart: ${resolvedChartType}). [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]`,
       sideEffect: { type: 'add_portlet' as const, data: portletData as any }
     }
   })

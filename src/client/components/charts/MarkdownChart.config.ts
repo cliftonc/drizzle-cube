@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the Markdown chart type
  */
 export const markdownConfig: ChartTypeConfig = {
   label: 'Markdown',
-  icon: getChartTypeIcon('markdown'),
   description: 'Display custom markdown content with formatting',
   useCase: 'Perfect for adding documentation, notes, section headers, instructions, or formatted text to dashboards',
   skipQuery: true, // This chart doesn't require a valid query

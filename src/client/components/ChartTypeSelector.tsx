@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ChartType } from '../types'
 import type { ChartAvailabilityMap } from '../shared/chartDefaults'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import { getChartTypeIcon } from '../icons'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType
@@ -37,8 +38,7 @@ export default function ChartTypeSelector({
       .sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
   , [excludeTypes])
 
-  const selectedConfig = chartConfigRegistry[selectedType]
-  const SelectedIcon = selectedConfig?.icon
+  const SelectedIcon = getChartTypeIcon(selectedType)
   const selectedLabel = getLabel(selectedType)
 
   return (
@@ -72,7 +72,7 @@ export default function ChartTypeSelector({
             <div className={`dc:grid dc:gap-1.5 ${compact ? 'dc:grid-cols-2' : 'dc:grid-cols-2 dc:sm:grid-cols-3 dc:lg:grid-cols-4'}`}>
               {chartTypes.map((type) => {
                 const config = chartConfigRegistry[type]
-                const IconComponent = config?.icon
+                const IconComponent = getChartTypeIcon(type)
                 const label = getLabel(type)
                 const isSelected = selectedType === type
                 const description = config?.description

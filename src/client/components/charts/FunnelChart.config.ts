@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the funnel chart type
@@ -10,7 +9,6 @@ import { getChartTypeIcon } from '../../icons'
  */
 export const funnelChartConfig: ChartTypeConfig = {
   label: 'Funnel Chart',
-  icon: getChartTypeIcon('funnel'),
   description: 'Show conversion through sequential steps',
   useCase: 'Best for visualizing user journey funnels, sales pipelines, or multi-step processes',
   dropZones: [

@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the treemap chart type
  */
 export const treemapChartConfig: ChartTypeConfig = {
   label: 'TreeMap',
-  icon: getChartTypeIcon('treemap'),
   description: 'Visualize hierarchical data with nested rectangles',
   useCase: 'Best for showing part-to-whole relationships in hierarchical data, disk usage, budget allocation',
   dropZones: [

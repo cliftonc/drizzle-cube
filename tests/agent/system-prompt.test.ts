@@ -58,6 +58,38 @@ const multipleCubesMetadata: CubeMetadata[] = [
   },
 ]
 
+const eventStreamCubeMetadata: CubeMetadata[] = [
+  {
+    name: 'UserEvents',
+    description: 'User interaction events',
+    measures: [{ name: 'count', type: 'count' }],
+    dimensions: [
+      { name: 'userId', type: 'number' },
+      { name: 'eventName', type: 'string' },
+      { name: 'timestamp', type: 'time' },
+    ],
+    relationships: [],
+    meta: {
+      eventStream: {
+        bindingKey: 'userId',
+        timeDimension: 'timestamp',
+      },
+    },
+  },
+]
+
+const eventStreamNoKeysMetadata: CubeMetadata[] = [
+  {
+    name: 'PageViews',
+    measures: [{ name: 'count', type: 'count' }],
+    dimensions: [{ name: 'url', type: 'string' }],
+    relationships: [],
+    meta: {
+      eventStream: {},
+    },
+  },
+]
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -138,5 +170,61 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('`Productivity.totalLines` (sum)')
     expect(prompt).toContain('`Productivity` (hasMany)')
     expect(prompt).toContain('`Employees` (belongsTo)')
+  })
+
+  // ============================================================================
+  // Chart Selection Guide
+  // ============================================================================
+
+  it('should include chart selection guide section', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('## Chart Selection Guide')
+    expect(prompt).toContain('kpiNumber')
+    expect(prompt).toContain('kpiDelta')
+    expect(prompt).toContain('heatmap')
+    expect(prompt).toContain('boxPlot')
+  })
+
+  it('should include analysis-mode-specific chart types in the guide', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('Analysis-mode-specific chart types')
+    expect(prompt).toContain('`funnel`')
+    expect(prompt).toContain('`sankey`')
+    expect(prompt).toContain('`sunburst`')
+    expect(prompt).toContain('`retentionHeatmap`')
+    expect(prompt).toContain('`retentionCombined`')
+  })
+
+  it('should include analysis mode decision tree', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('## Analysis Mode Decision Tree')
+    expect(prompt).toContain('Funnel mode')
+    expect(prompt).toContain('Flow mode')
+    expect(prompt).toContain('Retention mode')
+    expect(prompt).toContain('capabilities')
+    expect(prompt).toContain('discover_cubes')
+  })
+
+  // ============================================================================
+  // Event Stream Metadata
+  // ============================================================================
+
+  it('should surface eventStream metadata with binding key and time dimension', () => {
+    const prompt = buildAgentSystemPrompt(eventStreamCubeMetadata)
+    expect(prompt).toContain('**Event Stream:** Yes')
+    expect(prompt).toContain('`UserEvents.userId`')
+    expect(prompt).toContain('`UserEvents.timestamp`')
+  })
+
+  it('should surface eventStream metadata without keys when not configured', () => {
+    const prompt = buildAgentSystemPrompt(eventStreamNoKeysMetadata)
+    expect(prompt).toContain('**Event Stream:** Yes')
+    expect(prompt).not.toContain('Binding key')
+    expect(prompt).not.toContain('Time dimension')
+  })
+
+  it('should not show eventStream section for cubes without it', () => {
+    const prompt = buildAgentSystemPrompt(singleCubeMetadata)
+    expect(prompt).not.toContain('**Event Stream:**')
   })
 })

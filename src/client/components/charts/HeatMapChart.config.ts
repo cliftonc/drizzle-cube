@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the heatmap chart type
@@ -9,7 +8,6 @@ import { getChartTypeIcon } from '../../icons'
  */
 export const heatmapChartConfig: ChartTypeConfig = {
   label: 'Heatmap',
-  icon: getChartTypeIcon('heatmap'),
   description: 'Visualize intensity across two dimensions',
   useCase: 'Best for showing patterns in matrix data like correlations, schedules, or category comparisons',
   dropZones: [

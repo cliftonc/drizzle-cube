@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the data table type
  */
 export const dataTableConfig: ChartTypeConfig = {
   label: 'Data Table',
-  icon: getChartTypeIcon('table'),
   description: 'Display detailed tabular data',
   useCase: 'Best for precise values, detailed analysis, sortable/filterable data exploration',
   dropZones: [

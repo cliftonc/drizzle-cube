@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the sankey chart type
@@ -10,7 +9,6 @@ import { getChartTypeIcon } from '../../icons'
  */
 export const sankeyChartConfig: ChartTypeConfig = {
   label: 'Sankey Chart',
-  icon: getChartTypeIcon('sankey'),
   description: 'Show flow between states or steps',
   useCase: 'Best for visualizing user journey flows, path analysis, or state transitions',
   dropZones: [

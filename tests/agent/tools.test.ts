@@ -85,8 +85,11 @@ describe('getToolDefinitions', () => {
     expect(chartTypeProp.enum).toContain('pie')
     expect(chartTypeProp.enum).toContain('scatter')
     expect(chartTypeProp.enum).toContain('table')
-    expect(chartTypeProp.enum).toContain('number')
+    expect(chartTypeProp.enum).toContain('kpiNumber')
     expect(chartTypeProp.enum).toContain('funnel')
+    expect(chartTypeProp.enum).toContain('sunburst')
+    expect(chartTypeProp.enum).toContain('retentionHeatmap')
+    expect(chartTypeProp.enum).toContain('retentionCombined')
   })
 
   it('should require [member, operator] on execute_query filter items', () => {
