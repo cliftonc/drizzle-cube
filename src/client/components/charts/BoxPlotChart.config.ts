@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the box plot chart type
  */
 export const boxPlotChartConfig: ChartTypeConfig = {
   label: 'Box Plot',
-  icon: getChartTypeIcon('bar'),
   description: 'Show statistical distribution (median, IQR, whiskers) across categories',
   useCase:
     'Best for P&L spread per symbol, trade size distribution, latency distribution across platforms',

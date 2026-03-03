@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the sunburst chart type
@@ -10,7 +9,6 @@ import { getChartTypeIcon } from '../../icons'
  */
 export const sunburstChartConfig: ChartTypeConfig = {
   label: 'Sunburst Chart',
-  icon: getChartTypeIcon('sunburst'),
   description: 'Show hierarchical flow as radial rings',
   useCase: 'Best for visualizing forward paths from a starting event in a compact radial layout',
   dropZones: [

@@ -58,6 +58,38 @@ const multipleCubesMetadata: CubeMetadata[] = [
   },
 ]
 
+const eventStreamCubeMetadata: CubeMetadata[] = [
+  {
+    name: 'UserEvents',
+    description: 'User interaction events',
+    measures: [{ name: 'count', type: 'count' }],
+    dimensions: [
+      { name: 'userId', type: 'number' },
+      { name: 'eventName', type: 'string' },
+      { name: 'timestamp', type: 'time' },
+    ],
+    relationships: [],
+    meta: {
+      eventStream: {
+        bindingKey: 'userId',
+        timeDimension: 'timestamp',
+      },
+    },
+  },
+]
+
+const eventStreamNoKeysMetadata: CubeMetadata[] = [
+  {
+    name: 'PageViews',
+    measures: [{ name: 'count', type: 'count' }],
+    dimensions: [{ name: 'url', type: 'string' }],
+    relationships: [],
+    meta: {
+      eventStream: {},
+    },
+  },
+]
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -74,6 +106,11 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Discover')
     expect(prompt).toContain('Query')
     expect(prompt).toContain('Visualize')
+  })
+
+  it('should include no-emoji rule', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('NEVER use emojis')
   })
 
   it('should include cube metadata when cubes provided', () => {
@@ -138,5 +175,99 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('`Productivity.totalLines` (sum)')
     expect(prompt).toContain('`Productivity` (hasMany)')
     expect(prompt).toContain('`Employees` (belongsTo)')
+  })
+
+  // ============================================================================
+  // Chart Selection Guide
+  // ============================================================================
+
+  it('should include chart selection guide section', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('## Chart Selection Guide')
+    expect(prompt).toContain('kpiNumber')
+    expect(prompt).toContain('kpiDelta')
+    expect(prompt).toContain('heatmap')
+    expect(prompt).toContain('boxPlot')
+  })
+
+  it('should demote kpiNumber/kpiDelta below standard chart types in the guide', () => {
+    const prompt = buildAgentSystemPrompt([])
+    // kpiNumber should appear AFTER bar, line, table in the chart table
+    const barIndex = prompt.indexOf('| Compare discrete categories')
+    const tableIndex = prompt.indexOf('| Detailed row-level data')
+    const kpiIndex = prompt.indexOf('| Single headline number')
+    const kpiDeltaIndex = prompt.indexOf('| Headline metric with period-over-period')
+    expect(barIndex).toBeGreaterThan(-1)
+    expect(tableIndex).toBeGreaterThan(-1)
+    expect(kpiIndex).toBeGreaterThan(tableIndex)
+    expect(kpiDeltaIndex).toBeGreaterThan(kpiIndex)
+  })
+
+  it('should include strong guidance to think about appropriate chart type', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('do NOT default to the first option')
+    expect(prompt).toContain('last resort')
+  })
+
+  it('should include analysis-mode-specific chart types in the guide', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('Analysis-mode-specific chart types')
+    expect(prompt).toContain('`funnel`')
+    expect(prompt).toContain('`sankey`')
+    expect(prompt).toContain('`sunburst`')
+    expect(prompt).toContain('`retentionHeatmap`')
+    expect(prompt).toContain('`retentionCombined`')
+  })
+
+  it('should include analysis mode decision tree with concrete tool examples', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('## Analysis Mode Decision Tree')
+    expect(prompt).toContain('Funnel mode')
+    expect(prompt).toContain('Flow mode')
+    expect(prompt).toContain('Retention mode')
+    expect(prompt).toContain('capabilities')
+    expect(prompt).toContain('discover_cubes')
+
+    // Verify concrete execute_query references
+    expect(prompt).toContain('execute_query')
+    expect(prompt).toContain('`execute_query` with `funnel` param')
+    expect(prompt).toContain('`execute_query` with `flow` param')
+    expect(prompt).toContain('`execute_query` with `retention` param')
+
+    // Verify concrete add_portlet references with correct chart types
+    expect(prompt).toContain('`add_portlet` with `chartType: "funnel"`')
+    expect(prompt).toContain('`add_portlet` with `chartType: "sankey"`')
+    expect(prompt).toContain('`add_portlet` with `chartType: "retentionCombined"`')
+
+    // Verify JSON format examples are present
+    expect(prompt).toContain('bindingKey')
+    expect(prompt).toContain('timeDimension')
+    expect(prompt).toContain('eventDimension')
+    expect(prompt).toContain('startingStep')
+    expect(prompt).toContain('dateRange')
+    expect(prompt).toContain('granularity')
+  })
+
+  // ============================================================================
+  // Event Stream Metadata
+  // ============================================================================
+
+  it('should surface eventStream metadata with binding key and time dimension', () => {
+    const prompt = buildAgentSystemPrompt(eventStreamCubeMetadata)
+    expect(prompt).toContain('**Event Stream:** Yes')
+    expect(prompt).toContain('`UserEvents.userId`')
+    expect(prompt).toContain('`UserEvents.timestamp`')
+  })
+
+  it('should surface eventStream metadata without keys when not configured', () => {
+    const prompt = buildAgentSystemPrompt(eventStreamNoKeysMetadata)
+    expect(prompt).toContain('**Event Stream:** Yes')
+    expect(prompt).not.toContain('Binding key')
+    expect(prompt).not.toContain('Time dimension')
+  })
+
+  it('should not show eventStream section for cubes without it', () => {
+    const prompt = buildAgentSystemPrompt(singleCubeMetadata)
+    expect(prompt).not.toContain('**Event Stream:**')
   })
 })

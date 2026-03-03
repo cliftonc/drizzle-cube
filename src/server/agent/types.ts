@@ -60,7 +60,7 @@ export interface MarkdownBlockData {
 export type AgentSSEEvent =
   | { type: 'text_delta'; data: string }
   | { type: 'tool_use_start'; data: { id: string; name: string; input?: unknown } }
-  | { type: 'tool_use_result'; data: { id: string; name: string; result?: unknown } }
+  | { type: 'tool_use_result'; data: { id: string; name: string; result?: unknown; isError?: boolean } }
   | { type: 'add_portlet'; data: PortletBlockData }
   | { type: 'add_markdown'; data: MarkdownBlockData }
   | { type: 'turn_complete'; data: Record<string, never> }

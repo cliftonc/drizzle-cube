@@ -96,10 +96,11 @@ function ToolCallIndicator({ toolCall }: { toolCall: ToolCallRecord }) {
 const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
   const hasContent = !!message.content?.trim()
+  const hasError = !!message.error
   const hasToolCalls = message.toolCalls && message.toolCalls.length > 0
 
   // Don't render empty assistant messages
-  if (!isUser && !hasContent && !hasToolCalls) return null
+  if (!isUser && !hasContent && !hasError && !hasToolCalls) return null
 
   return (
     <div className={`dc:flex dc:mb-3 ${isUser ? 'dc:justify-end' : 'dc:justify-start'}`}>
@@ -107,7 +108,9 @@ const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProp
         className={`dc:max-w-[85%] dc:rounded-lg dc:px-3 dc:py-2 dc:text-sm ${
           isUser
             ? 'bg-dc-accent text-dc-accent-text dc:rounded-br-sm'
-            : 'bg-dc-surface-secondary text-dc-text dc:rounded-bl-sm'
+            : hasError && !hasContent
+              ? 'bg-dc-warning-bg text-dc-text dc:rounded-bl-sm'
+              : 'bg-dc-surface-secondary text-dc-text dc:rounded-bl-sm'
         }`}
       >
         {/* Message text */}
@@ -117,9 +120,17 @@ const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProp
           </div>
         )}
 
+        {/* Error display */}
+        {hasError && (
+          <div className={`dc:flex dc:items-start dc:gap-2 ${hasContent ? 'dc:mt-2 dc:pt-2 dc:border-t dc:border-current dc:border-opacity-10' : ''}`}>
+            <span className="dc:text-base dc:leading-none dc:mt-0.5 text-dc-warning dc:flex-shrink-0">{'\u26A0'}</span>
+            <span className="text-dc-text-secondary">{message.error}</span>
+          </div>
+        )}
+
         {/* Tool call indicators */}
         {hasToolCalls && (
-          <div className={hasContent ? 'dc:mt-1 dc:border-t dc:border-current dc:border-opacity-10 dc:pt-1' : ''}>
+          <div className={hasContent || hasError ? 'dc:mt-1 dc:border-t dc:border-current dc:border-opacity-10 dc:pt-1' : ''}>
             {message.toolCalls!.map((tc, i) => (
               <ToolCallIndicator key={tc.id || i} toolCall={tc} />
             ))}

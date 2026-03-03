@@ -75,6 +75,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  error?: string
   toolCalls?: ToolCallRecord[]
   timestamp: number
 }
@@ -117,10 +118,12 @@ export interface NotebookStoreActions {
   addBlock: (block: NotebookBlock) => void
   removeBlock: (id: string) => void
   moveBlock: (id: string, direction: 'up' | 'down') => void
+  updateBlock: (id: string, updates: Partial<Omit<PortletBlock, 'id' | 'type'>>) => void
 
   // Chat actions
   addMessage: (message: ChatMessage) => void
   appendToLastAssistantMessage: (text: string) => void
+  setLastAssistantError: (error: string) => void
   addToolCallToLastAssistant: (toolCall: ToolCallRecord) => void
   updateLastToolCall: (update: Partial<ToolCallRecord>) => void
 
@@ -191,6 +194,13 @@ function createStoreActions(
         return { blocks: newBlocks }
       }),
 
+    updateBlock: (id, updates) =>
+      set((state) => ({
+        blocks: state.blocks.map((b) =>
+          b.id === id && b.type === 'portlet' ? { ...b, ...updates } : b
+        ),
+      })),
+
     // Chat actions
     addMessage: (message) =>
       set((state) => ({
@@ -206,6 +216,16 @@ function createStoreActions(
             ...lastMsg,
             content: lastMsg.content + text,
           }
+        }
+        return { messages }
+      }),
+
+    setLastAssistantError: (error) =>
+      set((state) => {
+        const messages = [...state.messages]
+        const lastMsg = messages[messages.length - 1]
+        if (lastMsg && lastMsg.role === 'assistant') {
+          messages[messages.length - 1] = { ...lastMsg, error }
         }
         return { messages }
       }),
@@ -350,6 +370,7 @@ export const selectChatState = (state: NotebookStore) => ({
 export const selectChatActions = (state: NotebookStore) => ({
   addMessage: state.addMessage,
   appendToLastAssistantMessage: state.appendToLastAssistantMessage,
+  setLastAssistantError: state.setLastAssistantError,
   addToolCallToLastAssistant: state.addToolCallToLastAssistant,
   updateLastToolCall: state.updateLastToolCall,
   setIsStreaming: state.setIsStreaming,
@@ -361,4 +382,5 @@ export const selectBlockActions = (state: NotebookStore) => ({
   addBlock: state.addBlock,
   removeBlock: state.removeBlock,
   moveBlock: state.moveBlock,
+  updateBlock: state.updateBlock,
 })

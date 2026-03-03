@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the bubble chart type
  */
 export const bubbleChartConfig: ChartTypeConfig = {
   label: 'Bubble Chart',
-  icon: getChartTypeIcon('bubble'),
   description: 'Compare three dimensions of data',
   useCase: 'Best for showing relationships between three variables (X, Y, and size), market analysis',
   dropZones: [

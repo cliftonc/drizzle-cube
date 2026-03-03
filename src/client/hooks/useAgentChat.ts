@@ -7,6 +7,34 @@ import { useRef, useCallback, useState } from 'react'
 import { useCubeApi } from '../providers/CubeProvider'
 import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore'
 
+/** Clean up raw API errors into user-friendly messages */
+function formatUserFacingError(message: string): string {
+  // Detect raw JSON error payloads (e.g. from Anthropic API)
+  if (message.startsWith('{') || message.includes('"type":"error"')) {
+    try {
+      const parsed = JSON.parse(message.replace(/^Error:\s*/, ''))
+      const errorType = parsed.error?.type || parsed.type || ''
+      const friendly: Record<string, string> = {
+        overloaded_error: 'The AI service is temporarily busy. Please try again in a moment.',
+        rate_limit_error: 'Too many requests. Please wait a moment and try again.',
+        api_error: 'The AI service encountered an error. Please try again.',
+        authentication_error: 'Authentication failed. Please check your configuration.',
+      }
+      return friendly[errorType] || 'The AI service encountered an error. Please try again.'
+    } catch {
+      return 'The AI service encountered an error. Please try again.'
+    }
+  }
+  // HTTP status errors
+  if (message.startsWith('Agent request failed:')) {
+    const status = message.match(/\d+/)?.[0]
+    if (status === '429') return 'Too many requests. Please wait a moment and try again.'
+    if (status === '503' || status === '529') return 'The AI service is temporarily busy. Please try again in a moment.'
+    return 'The AI service is temporarily unavailable. Please try again.'
+  }
+  return message
+}
+
 interface AgentSSEEvent {
   type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'add_markdown' | 'turn_complete' | 'done' | 'error'
   data: any
@@ -26,7 +54,7 @@ export interface UseAgentChatOptions {
   /** Called when a tool call starts */
   onToolStart: (id: string, name: string, input?: unknown) => void
   /** Called when a tool call completes */
-  onToolResult: (id: string, name: string, result?: unknown) => void
+  onToolResult: (id: string, name: string, result?: unknown, isError?: boolean) => void
   /** Called when the agent completes with session ID */
   onDone: (sessionId: string) => void
   /** Called when a turn completes (between agentic turns) */
@@ -76,7 +104,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
           onToolStart(event.data.id, event.data.name, event.data.input)
           break
         case 'tool_use_result':
-          onToolResult(event.data.id, event.data.name, event.data.result)
+          onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError)
           break
         case 'add_portlet':
           onAddPortlet({
@@ -193,7 +221,8 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
       }
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
-        onError(error instanceof Error ? error.message : 'Stream failed')
+        const raw = error instanceof Error ? error.message : 'Stream failed'
+        onError(formatUserFacingError(raw))
       }
     } finally {
       setIsStreaming(false)

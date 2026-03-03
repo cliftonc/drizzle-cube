@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the area chart type
  */
 export const areaChartConfig: ChartTypeConfig = {
   label: 'Area Chart',
-  icon: getChartTypeIcon('area'),
   description: 'Emphasize magnitude of change over time',
   useCase: 'Best for showing cumulative totals, volume changes, or stacked comparisons over time',
   dropZones: [

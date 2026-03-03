@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the radar chart type
  */
 export const radarChartConfig: ChartTypeConfig = {
   label: 'Radar Chart',
-  icon: getChartTypeIcon('radar'),
   description: 'Compare multiple metrics across categories',
   useCase: 'Best for multivariate comparisons, performance metrics, strengths/weaknesses analysis',
   dropZones: [

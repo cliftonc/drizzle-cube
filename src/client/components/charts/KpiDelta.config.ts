@@ -1,12 +1,10 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { getChartTypeIcon } from '../../icons'
 
 /**
  * Configuration for the KPI Delta chart type
  */
 export const kpiDeltaConfig: ChartTypeConfig = {
   label: 'KPI Delta',
-  icon: getChartTypeIcon('kpiDelta'),
   description: 'Display change between latest and previous values with trend indicators',
   useCase: 'Perfect for showing performance changes over time, such as revenue growth, user acquisition changes, or other metrics where the trend and delta are more important than the absolute value',
   dropZones: [

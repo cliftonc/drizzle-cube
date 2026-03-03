@@ -209,7 +209,7 @@ describe('handleAgentChat', () => {
   })
 
   it('should emit sideEffect events (add_portlet) from tool execution', async () => {
-    const queryJson = JSON.stringify({ measures: ['Employees.count'] })
+    const queryJson = JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] })
     const toolInput = JSON.stringify({
       title: 'Employee Count',
       query: queryJson,

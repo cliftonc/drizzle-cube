@@ -1,29 +1,24 @@
-import { ComponentType } from 'react'
-
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
  */
 export interface AxisDropZoneConfig {
   /** The key to store this field in chartConfig (e.g., 'xAxis', 'yAxis', 'sizeField') */
   key: string
-  
+
   /** Display label for the drop zone */
   label: string
-  
+
   /** Optional description/help text shown below the label */
   description?: string
-  
+
   /** Whether at least one field is required in this drop zone */
   mandatory?: boolean
-  
+
   /** Maximum number of items allowed in this drop zone */
   maxItems?: number
-  
+
   /** Which field types this drop zone accepts */
   acceptTypes?: ('dimension' | 'timeDimension' | 'measure')[]
-  
-  /** Optional icon component to display */
-  icon?: ComponentType<{ className?: string }>
 
   /** Placeholder text when drop zone is empty */
   emptyText?: string
@@ -105,9 +100,6 @@ export interface ChartTypeConfig {
 
   /** Optional custom validation function */
   validate?: (config: any) => { isValid: boolean; message?: string }
-
-  /** Icon component for the chart type */
-  icon?: ComponentType<{ className?: string }>
 
   /** Brief description of the chart */
   description?: string
