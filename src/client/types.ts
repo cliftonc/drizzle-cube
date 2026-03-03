@@ -114,6 +114,10 @@ export type ChartType =
   | 'retentionHeatmap'
   | 'retentionCombined'
   | 'boxPlot'
+  | 'waterfall'
+  | 'candlestick'
+  | 'measureProfile'
+  | 'gauge'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
@@ -147,6 +151,11 @@ export interface ChartAxisConfig {
   // Dual Y-axis support: per-measure axis assignment (left or right)
   // Default: 'left' for all measures (backward compatible)
   yAxisAssignment?: Record<string, 'left' | 'right'>
+}
+
+export interface ThresholdBand {
+  value: number
+  color: string
 }
 
 export interface ChartDisplayConfig {
@@ -244,6 +253,28 @@ export interface ChartDisplayConfig {
   // Retention chart specific display options
   /** Retention display mode: line chart, heatmap table, or combined view */
   retentionDisplayMode?: 'line' | 'heatmap' | 'combined'
+
+  // Waterfall chart specific display options
+  showTotal?: boolean
+  showConnectorLine?: boolean
+  showDataLabels?: boolean
+
+  // Candlestick chart specific display options
+  bullColor?: string
+  bearColor?: string
+  showWicks?: boolean
+  rangeMode?: 'ohlc' | 'range'
+
+  // Measure profile chart specific display options
+  showReferenceLineAtZero?: boolean
+  lineType?: 'monotone' | 'linear' | 'step'
+
+  // Gauge chart specific display options
+  minValue?: number
+  maxValue?: number
+  thresholds?: string | ThresholdBand[]
+  showCenterLabel?: boolean
+  showPercentage?: boolean
 }
 
 // Portlet configuration

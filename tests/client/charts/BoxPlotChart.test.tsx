@@ -45,24 +45,12 @@ const autoData = [
 
 const fiveMeasureConfig = {
   xAxis: ['Trades.symbol'],
-  yAxis: [],
-}
-const fiveMeasureDisplay = {
-  minField: 'Trades.minPnl',
-  q1Field: 'Trades.q1Pnl',
-  medianField: 'Trades.medianPnl',
-  q3Field: 'Trades.q3Pnl',
-  maxField: 'Trades.maxPnl',
+  yAxis: ['Trades.minPnl', 'Trades.q1Pnl', 'Trades.medianPnl', 'Trades.q3Pnl', 'Trades.maxPnl'],
 }
 
 const threeMeasureConfig = {
   xAxis: ['Trades.symbol'],
-  yAxis: [],
-}
-const threeMeasureDisplay = {
-  avgField: 'Trades.avgPnl',
-  stddevField: 'Trades.stddevPnl',
-  medianField: 'Trades.medianPnl',
+  yAxis: ['Trades.avgPnl', 'Trades.stddevPnl', 'Trades.medianPnl'],
 }
 
 const autoConfig = {
@@ -98,6 +86,20 @@ describe('BoxPlotChart', () => {
       )
       expect(screen.getByText('Configuration Error')).toBeInTheDocument()
     })
+
+    it('should show config error when exactly 2 measures are provided', () => {
+      const twoMeasureData = [
+        { 'Trades.symbol': 'AAPL', 'Trades.avgPnl': 15, 'Trades.stddevPnl': 40 },
+      ]
+      render(
+        <BoxPlotChart
+          data={twoMeasureData}
+          chartConfig={{ xAxis: ['Trades.symbol'], yAxis: ['Trades.avgPnl', 'Trades.stddevPnl'] }}
+        />
+      )
+      expect(screen.getByText('Configuration Error')).toBeInTheDocument()
+      expect(screen.getByText(/BoxPlot requires 1 measure/)).toBeInTheDocument()
+    })
   })
 
   describe('5-measure mode', () => {
@@ -106,7 +108,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.queryByText('No data available')).not.toBeInTheDocument()
@@ -119,7 +120,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('box-AAPL')).toBeInTheDocument()
@@ -131,7 +131,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('x-label-AAPL')).toBeInTheDocument()
@@ -143,7 +142,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={fiveMeasureData}
           chartConfig={fiveMeasureConfig}
-          displayConfig={fiveMeasureDisplay}
         />
       )
       expect(screen.getByTestId('median-AAPL')).toBeInTheDocument()
@@ -157,7 +155,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={threeMeasureData}
           chartConfig={threeMeasureConfig}
-          displayConfig={threeMeasureDisplay}
         />
       )
       expect(screen.getByTestId('boxplot-svg')).toBeInTheDocument()
@@ -168,7 +165,6 @@ describe('BoxPlotChart', () => {
         <BoxPlotChart
           data={threeMeasureData}
           chartConfig={threeMeasureConfig}
-          displayConfig={threeMeasureDisplay}
         />
       )
       expect(screen.getByTestId('box-AAPL')).toBeInTheDocument()
@@ -237,6 +233,26 @@ describe('BoxPlotChart', () => {
     })
   })
 
+  describe('colorPalette prop', () => {
+    it('should apply custom palette colors to box elements', () => {
+      const { container } = render(
+        <BoxPlotChart
+          data={fiveMeasureData}
+          chartConfig={fiveMeasureConfig}
+          colorPalette={{ colors: ['#ff0000', '#00ff00'] }}
+        />
+      )
+      // First box should get first palette color
+      const firstBox = screen.getByTestId('box-AAPL')
+      const rect = firstBox.querySelector('rect')
+      expect(rect?.getAttribute('fill')).toBe('#ff0000')
+      // Second box should get second palette color
+      const secondBox = screen.getByTestId('box-MSFT')
+      const rect2 = secondBox.querySelector('rect')
+      expect(rect2?.getAttribute('fill')).toBe('#00ff00')
+    })
+  })
+
   describe('edge cases', () => {
     it('should handle single data point', () => {
       const singleRow = [{ 'M.cat': 'Only', 'M.val': 42 }]
@@ -285,13 +301,9 @@ describe('BoxPlotChart', () => {
       render(
         <BoxPlotChart
           data={wrongFieldData}
-          chartConfig={{ xAxis: ['Trades.symbol'], yAxis: [] }}
-          displayConfig={{
-            minField: 'Trades.minPnl',
-            q1Field: 'Trades.q1Pnl',
-            medianField: 'Trades.medianPnl',
-            q3Field: 'Trades.q3Pnl',
-            maxField: 'Trades.maxPnl',
+          chartConfig={{
+            xAxis: ['Trades.symbol'],
+            yAxis: ['Trades.minPnl', 'Trades.q1Pnl', 'Trades.medianPnl', 'Trades.q3Pnl', 'Trades.maxPnl'],
           }}
         />
       )

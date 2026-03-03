@@ -79,8 +79,20 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
   heatmap: {
     packageName: '@nivo/heatmap',
     installCommand: 'npm install @nivo/heatmap'
-  }
-  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot
+  },
+  waterfall: {
+    packageName: 'recharts',
+    installCommand: 'npm install recharts'
+  },
+  measureProfile: {
+    packageName: 'recharts',
+    installCommand: 'npm install recharts'
+  },
+  gauge: {
+    packageName: 'd3-shape',
+    installCommand: 'npm install d3-shape'
+  },
+  // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
 }
 
 // Dynamic import functions for each chart type
@@ -107,6 +119,10 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   retentionHeatmap: () => import('../components/charts/RetentionHeatmap'),
   retentionCombined: () => import('../components/charts/RetentionCombinedChart'),
   boxPlot: () => import('../components/charts/BoxPlotChart'),
+  waterfall: () => import('../components/charts/WaterfallChart'),
+  candlestick: () => import('../components/charts/CandlestickChart'),
+  measureProfile: () => import('../components/charts/MeasureProfileChart'),
+  gauge: () => import('../components/charts/GaugeChart'),
 }
 
 /**

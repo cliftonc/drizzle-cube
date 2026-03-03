@@ -109,6 +109,8 @@
     "test:client:watch": "vitest --watch --config vitest.config.client.ts",
     "test:client:coverage": "vitest run --coverage --config vitest.config.client.ts",
     "test:client:ui": "vitest --ui --config vitest.config.client.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "coverage:index": "node scripts/merge-coverage.js",
     "coverage:open": "open coverage/index.html",
     "coverage:merged:open": "open coverage/merged/index.html",
@@ -233,6 +235,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@playwright/test": "^1.58.2",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^10.0.0",
     "@fastify/cors": "^11.1.0",
