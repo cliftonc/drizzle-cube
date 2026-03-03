@@ -416,7 +416,7 @@ describe('createToolExecutor', () => {
       const fn = executor.get('add_portlet')!
       const result = await fn({
         title: 'My Chart',
-        query: JSON.stringify({ measures: ['Employees.count'] }),
+        query: JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] }),
         chartType: 'bar',
       })
 
@@ -435,7 +435,7 @@ describe('createToolExecutor', () => {
         securityContext: mockSecurityContext,
       })
       const fn = executor.get('add_portlet')!
-      const queryStr = JSON.stringify({ measures: ['Employees.count'] })
+      const queryStr = JSON.stringify({ measures: ['Employees.count'], dimensions: ['Employees.name'] })
       const result = await fn({
         title: 'Employee Count',
         query: queryStr,

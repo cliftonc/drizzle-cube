@@ -49,6 +49,46 @@ export function validateChartConfig(
     }
   }
 
+  // Bar charts must have an xAxis dimension
+  if (chartType === 'bar') {
+    const xAxis = chartConfig?.xAxis
+    const hasXAxis = Array.isArray(xAxis) ? xAxis.length > 0 : !!xAxis
+    if (!hasXAxis) {
+      const dimensions = (_query.dimensions as string[] | undefined) ?? []
+      const timeDimensions = (_query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
+      const hasDimensions = dimensions.length > 0 || timeDimensions.length > 0
+      if (hasDimensions) {
+        errors.push(
+          'chartConfig.xAxis is required for bar charts. Put a dimension in xAxis so bars have category labels.'
+        )
+      } else {
+        errors.push(
+          'Bar charts need an xAxis dimension for category labels. Add a dimension to the query or use "table" chart type instead.'
+        )
+      }
+    }
+  }
+
+  // series must not duplicate xAxis (causes sparse, broken-looking charts)
+  if (chartConfig?.xAxis && chartConfig?.series) {
+    const xAxisFields = new Set(
+      Array.isArray(chartConfig.xAxis)
+        ? (chartConfig.xAxis as string[])
+        : [chartConfig.xAxis as string]
+    )
+    const seriesFields = Array.isArray(chartConfig.series)
+      ? (chartConfig.series as string[])
+      : [chartConfig.series as string]
+    const duplicates = seriesFields.filter(f => xAxisFields.has(f))
+    if (duplicates.length > 0) {
+      errors.push(
+        `chartConfig.series must not contain the same field as xAxis (found: ${duplicates.join(', ')}). ` +
+        'The series field is only for splitting into grouped/stacked sub-series by a DIFFERENT dimension. ' +
+        'Remove the duplicate from series.'
+      )
+    }
+  }
+
   return { isValid: errors.length === 0, errors }
 }
 
@@ -107,8 +147,20 @@ export function inferChartConfig(
 
     if (candidates.length === 0) continue
 
+    // For series zone, exclude fields already used in xAxis to prevent duplicates
+    let filtered = candidates
+    if (zone.key === 'series') {
+      const xAxisFields = new Set(
+        Array.isArray(result.xAxis)
+          ? (result.xAxis as string[])
+          : result.xAxis ? [result.xAxis as string] : []
+      )
+      filtered = candidates.filter(f => !xAxisFields.has(f))
+      if (filtered.length === 0) continue
+    }
+
     const max = zone.maxItems ?? Infinity
-    const sliced = candidates.slice(0, max)
+    const sliced = filtered.slice(0, max)
 
     if (sliced.length > 0) {
       result[zone.key] = sliced

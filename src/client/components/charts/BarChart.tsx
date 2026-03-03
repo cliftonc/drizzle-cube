@@ -155,6 +155,13 @@ const BarChart = React.memo(function BarChart({
       return typeof value === 'number' && value < 0
     })
 
+    // Color each bar by its x-axis category when there's a single measure and no series dimension.
+    // This gives each category a distinct color without needing to abuse the series field.
+    const useColorByCategory = seriesKeys.length === 1
+      && !usePositiveNegativeColoring
+      && !seriesFields.length
+      && chartData.length > 1
+
     // Determine if legend will be shown
     const showLegend = safeDisplayConfig.showLegend
 
@@ -319,6 +326,17 @@ const BarChart = React.memo(function BarChart({
                       <Cell
                         key={`cell-${entryIndex}`}
                         fill={fillColor}
+                        fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                      />
+                    )
+                  })}
+                {useColorByCategory &&
+                  chartData.map((_entry, entryIndex) => {
+                    const colors = colorPalette?.colors || CHART_COLORS
+                    return (
+                      <Cell
+                        key={`cat-${entryIndex}`}
+                        fill={colors[entryIndex % colors.length]}
                         fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
                       />
                     )
