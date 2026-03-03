@@ -76,7 +76,7 @@ export const QUERY_RULES_PROMPT: MCPPrompt = {
         type: 'text' as const,
         text: [
           'Rules (keep JSON only):',
-          '- Use only measures/dimensions/timeDimensions from schema.',
+          '- Use only measures/dimensions/timeDimensions from schema. Fields are always `CubeName.fieldName` — never use just the cube name (e.g. `PullRequests.count` not `PullRequests`).',
           '- timeDimensions: include granularity when grouping; use inDateRange filter for relative windows; combine when both requested.',
           '- Funnel detection keywords: funnel, conversion, journey, drop off, step by step; use funnel format only if eventStream metadata exists.',
           '- Funnel rules: bindingKey/timeDimension from cube metadata; include time filter on step 0 (default last 6 months) using inDateRange; steps ordered; flat filters.',

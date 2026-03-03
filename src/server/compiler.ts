@@ -726,7 +726,10 @@ export function validateQueryAgainstCubes(
 
       // Check if measure exists on cube
       if (!cube.measures[fieldName]) {
-        errors.push(`Measure '${fieldName}' not found on cube '${cubeName}'`)
+        const hint = fieldName === cubeName
+          ? `. Did you mean one of: ${Object.keys(cube.measures).slice(0, 5).map(m => `'${cubeName}.${m}'`).join(', ')}?`
+          : ''
+        errors.push(`Measure '${fieldName}' not found on cube '${cubeName}'${hint}`)
       }
     }
   }
@@ -752,7 +755,10 @@ export function validateQueryAgainstCubes(
 
       // Check if dimension exists on cube
       if (!cube.dimensions[fieldName]) {
-        errors.push(`Dimension '${fieldName}' not found on cube '${cubeName}'`)
+        const hint = fieldName === cubeName
+          ? `. Did you mean one of: ${Object.keys(cube.dimensions).slice(0, 5).map(d => `'${cubeName}.${d}'`).join(', ')}?`
+          : ''
+        errors.push(`Dimension '${fieldName}' not found on cube '${cubeName}'${hint}`)
       }
     }
   }
@@ -843,7 +849,10 @@ function validateFilter(
 
   // Check if field exists on cube (can be dimension or measure)
   if (!cube.dimensions[fieldName] && !cube.measures[fieldName]) {
-    errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)`)
+    const hint = fieldName === cubeName
+      ? `. Did you mean one of: ${[...Object.keys(cube.dimensions), ...Object.keys(cube.measures)].slice(0, 5).map(f => `'${cubeName}.${f}'`).join(', ')}?`
+      : ''
+    errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)${hint}`)
   }
 }
 

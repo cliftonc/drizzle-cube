@@ -75,6 +75,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  error?: string
   toolCalls?: ToolCallRecord[]
   timestamp: number
 }
@@ -122,6 +123,7 @@ export interface NotebookStoreActions {
   // Chat actions
   addMessage: (message: ChatMessage) => void
   appendToLastAssistantMessage: (text: string) => void
+  setLastAssistantError: (error: string) => void
   addToolCallToLastAssistant: (toolCall: ToolCallRecord) => void
   updateLastToolCall: (update: Partial<ToolCallRecord>) => void
 
@@ -214,6 +216,16 @@ function createStoreActions(
             ...lastMsg,
             content: lastMsg.content + text,
           }
+        }
+        return { messages }
+      }),
+
+    setLastAssistantError: (error) =>
+      set((state) => {
+        const messages = [...state.messages]
+        const lastMsg = messages[messages.length - 1]
+        if (lastMsg && lastMsg.role === 'assistant') {
+          messages[messages.length - 1] = { ...lastMsg, error }
         }
         return { messages }
       }),
@@ -358,6 +370,7 @@ export const selectChatState = (state: NotebookStore) => ({
 export const selectChatActions = (state: NotebookStore) => ({
   addMessage: state.addMessage,
   appendToLastAssistantMessage: state.appendToLastAssistantMessage,
+  setLastAssistantError: state.setLastAssistantError,
   addToolCallToLastAssistant: state.addToolCallToLastAssistant,
   updateLastToolCall: state.updateLastToolCall,
   setIsStreaming: state.setIsStreaming,

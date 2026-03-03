@@ -32,6 +32,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   const {
     addMessage,
     appendToLastAssistantMessage,
+    setLastAssistantError,
     addToolCallToLastAssistant,
     updateLastToolCall,
     setIsStreaming,
@@ -78,8 +79,8 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
       ensureNewMessage()
       addToolCallToLastAssistant({ id, name, input, status: 'running' })
     }, [ensureNewMessage, addToolCallToLastAssistant]),
-    onToolResult: useCallback((id: string, _name: string, result?: unknown) => {
-      updateLastToolCall({ id, status: 'complete', result })
+    onToolResult: useCallback((id: string, _name: string, result?: unknown, isError?: boolean) => {
+      updateLastToolCall({ id, status: isError ? 'error' : 'complete', result })
     }, [updateLastToolCall]),
     onAddPortlet: useCallback((data: PortletBlock) => {
       addBlock(data)
@@ -99,9 +100,9 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     }, [setSessionId, setIsStreaming]),
     onError: useCallback((message: string) => {
       ensureNewMessage()
-      appendToLastAssistantMessage(`\n\nError: ${message}`)
+      setLastAssistantError(message)
       setIsStreaming(false)
-    }, [ensureNewMessage, appendToLastAssistantMessage, setIsStreaming]),
+    }, [ensureNewMessage, setLastAssistantError, setIsStreaming]),
   })
 
   // Send a message (used by both Send and Continue)

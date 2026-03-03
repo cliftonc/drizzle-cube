@@ -167,7 +167,7 @@ export async function* handleAgentChat(options: {
           })
           yield {
             type: 'tool_use_result',
-            data: { id: toolUseId, name: toolName, result: `Unknown tool: ${toolName}` }
+            data: { id: toolUseId, name: toolName, result: `Unknown tool: ${toolName}`, isError: true }
           }
           continue
         }
@@ -189,7 +189,7 @@ export async function* handleAgentChat(options: {
 
           yield {
             type: 'tool_use_result',
-            data: { id: toolUseId, name: toolName, result: execResult.result }
+            data: { id: toolUseId, name: toolName, result: execResult.result, ...(execResult.isError ? { isError: true } : {}) }
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Tool execution failed'
@@ -201,7 +201,7 @@ export async function* handleAgentChat(options: {
           })
           yield {
             type: 'tool_use_result',
-            data: { id: toolUseId, name: toolName, result: errorMsg }
+            data: { id: toolUseId, name: toolName, result: errorMsg, isError: true }
           }
         }
       }
@@ -221,8 +221,54 @@ export async function* handleAgentChat(options: {
     yield {
       type: 'error',
       data: {
-        message: error instanceof Error ? error.message : 'Agent execution failed'
+        message: formatAgentError(error)
       }
     }
   }
+}
+
+/**
+ * Format agent errors into user-friendly messages.
+ * Anthropic SDK errors contain raw JSON that shouldn't leak to users.
+ */
+function formatAgentError(error: unknown): string {
+  if (!error || !(error instanceof Error)) {
+    return 'Something went wrong. Please try again.'
+  }
+
+  const msg = error.message || ''
+
+  // Anthropic API errors — extract the type and return a friendly message
+  const ANTHROPIC_ERROR_MESSAGES: Record<string, string> = {
+    overloaded_error: 'The AI service is temporarily overloaded. Please try again in a moment.',
+    rate_limit_error: 'Too many requests. Please wait a moment and try again.',
+    api_error: 'The AI service encountered an error. Please try again.',
+    authentication_error: 'Authentication failed. Please check your API key configuration.',
+    invalid_request_error: 'There was a problem with the request. Please try again.',
+  }
+
+  // Check for Anthropic SDK error with status/type
+  const anyError = error as any
+  if (anyError.status || anyError.type) {
+    const errorType = anyError.error?.type || anyError.type || ''
+    if (ANTHROPIC_ERROR_MESSAGES[errorType]) {
+      return ANTHROPIC_ERROR_MESSAGES[errorType]
+    }
+  }
+
+  // Check if the message looks like raw JSON
+  if (msg.startsWith('{') || msg.startsWith('Error: {')) {
+    try {
+      const parsed = JSON.parse(msg.replace(/^Error:\s*/, ''))
+      const errorType = parsed.error?.type || parsed.type || ''
+      if (ANTHROPIC_ERROR_MESSAGES[errorType]) {
+        return ANTHROPIC_ERROR_MESSAGES[errorType]
+      }
+    } catch {
+      // Not JSON, fall through
+    }
+    return 'The AI service encountered an error. Please try again.'
+  }
+
+  return msg
 }

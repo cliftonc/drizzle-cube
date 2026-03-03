@@ -133,7 +133,7 @@ describe('useAgentChat', () => {
         await result.current.sendMessage('test')
       })
 
-      expect(callbacks.onToolResult).toHaveBeenCalledWith('t-1', 'discover_cubes', 'cubes found')
+      expect(callbacks.onToolResult).toHaveBeenCalledWith('t-1', 'discover_cubes', 'cubes found', undefined)
     })
 
     it('should call onAddPortlet with type:portlet for add_portlet events', async () => {
