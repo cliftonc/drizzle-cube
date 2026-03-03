@@ -1,11 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import DebugModal from '../../../src/client/components/DebugModal'
 
-// Mock syntax highlighting
+// Mock syntax highlighting used by CodeBlock
 vi.mock('../../../src/client/utils/syntaxHighlighting', () => ({
-  highlightCodeBlocks: vi.fn().mockResolvedValue(undefined)
+  loadSyntaxHighlighter: vi.fn().mockResolvedValue(undefined),
+  getSyntaxHighlighter: vi.fn().mockReturnValue(null),
 }))
 
 describe('DebugModal', () => {
@@ -107,8 +108,8 @@ describe('DebugModal', () => {
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // The xAxis field shows "Array: [Products.category]"
-      expect(screen.getByText(/Array: \[Products\.category\]/)).toBeInTheDocument()
+      // New format: "xAxis: [Products.category]"
+      expect(screen.getByText(/xAxis: \[Products\.category\]/)).toBeInTheDocument()
     })
 
     it('should display yAxis array values', async () => {
@@ -118,8 +119,8 @@ describe('DebugModal', () => {
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // The yAxis field shows "Array: [Sales.revenue]"
-      expect(screen.getByText(/Array: \[Sales\.revenue\]/)).toBeInTheDocument()
+      // New format: "yAxis: [Sales.revenue]"
+      expect(screen.getByText(/yAxis: \[Sales\.revenue\]/)).toBeInTheDocument()
     })
 
     it('should display Chart Config section', async () => {
@@ -174,14 +175,13 @@ describe('DebugModal', () => {
   })
 
   describe('JSON display', () => {
-    it('should display JSON-formatted chart config', async () => {
+    it('should display code blocks with language-json class', async () => {
       const user = userEvent.setup()
       const props = createDefaultProps()
       render(<DebugModal {...props} />)
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // Check that JSON is rendered in code blocks
       const codeBlocks = document.querySelectorAll('code.language-json')
       expect(codeBlocks.length).toBeGreaterThan(0)
     })
@@ -202,7 +202,6 @@ describe('DebugModal', () => {
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // The data sample should only show 3 items
       const dataSampleSection = screen.getByText('Data Sample (first 3 rows)').closest('div')
       expect(dataSampleSection).toBeInTheDocument()
     })
@@ -217,7 +216,6 @@ describe('DebugModal', () => {
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // Should still render without error
       expect(screen.getByText('Data Sample (first 3 rows)')).toBeInTheDocument()
     })
   })
@@ -342,9 +340,6 @@ describe('DebugModal', () => {
       const modalContent = screen.getByText('Chart Debug Information').closest('div[class*="dc:absolute"]')
       expect(modalContent).toBeTruthy()
       await user.click(modalContent!)
-
-      // Outer handler should not be called for clicks inside modal
-      // Note: The stopPropagation is on the modal container, so initial render clicks may propagate
     })
   })
 
@@ -410,7 +405,7 @@ describe('DebugModal', () => {
   })
 
   describe('string vs array display', () => {
-    it('should indicate when xAxis is a string', async () => {
+    it('should display string xAxis as JSON string', async () => {
       const user = userEvent.setup()
       const props = {
         ...createDefaultProps(),
@@ -423,34 +418,33 @@ describe('DebugModal', () => {
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // Check that xAxis shows as String with its value
-      expect(screen.getByText(/String: "Products\.category"/)).toBeInTheDocument()
+      // New format: xAxis: "Products.category"
+      expect(screen.getByText(/xAxis: "Products\.category"/)).toBeInTheDocument()
     })
 
-    it('should indicate when xAxis is an array', async () => {
+    it('should display array xAxis with brackets', async () => {
       const user = userEvent.setup()
       const props = createDefaultProps()
       render(<DebugModal {...props} />)
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      // Check that xAxis shows as Array with its value
-      expect(screen.getByText(/Array: \[Products\.category\]/)).toBeInTheDocument()
+      // New format: xAxis: [Products.category]
+      expect(screen.getByText(/xAxis: \[Products\.category\]/)).toBeInTheDocument()
     })
   })
 
   describe('syntax highlighting', () => {
-    it('should trigger syntax highlighting when modal opens', async () => {
-      const { highlightCodeBlocks } = await import('../../../src/client/utils/syntaxHighlighting')
+    it('should call loadSyntaxHighlighter when modal opens', async () => {
+      const { loadSyntaxHighlighter } = await import('../../../src/client/utils/syntaxHighlighting')
       const user = userEvent.setup()
       const props = createDefaultProps()
       render(<DebugModal {...props} />)
 
       await user.click(screen.getByTitle('Debug chart configuration'))
 
-      await waitFor(() => {
-        expect(highlightCodeBlocks).toHaveBeenCalled()
-      })
+      // CodeBlock calls loadSyntaxHighlighter on mount
+      expect(loadSyntaxHighlighter).toHaveBeenCalled()
     })
   })
 
@@ -458,7 +452,7 @@ describe('DebugModal', () => {
     it('should not close modal when ESC is pressed and modal is closed', async () => {
       const user = userEvent.setup()
       const props = createDefaultProps()
-      const { rerender } = render(<DebugModal {...props} />)
+      render(<DebugModal {...props} />)
 
       // Modal is closed, press ESC
       await user.keyboard('{Escape}')

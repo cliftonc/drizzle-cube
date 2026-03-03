@@ -117,6 +117,7 @@ export interface NotebookStoreActions {
   addBlock: (block: NotebookBlock) => void
   removeBlock: (id: string) => void
   moveBlock: (id: string, direction: 'up' | 'down') => void
+  updateBlock: (id: string, updates: Partial<Omit<PortletBlock, 'id' | 'type'>>) => void
 
   // Chat actions
   addMessage: (message: ChatMessage) => void
@@ -190,6 +191,13 @@ function createStoreActions(
         ;[newBlocks[idx], newBlocks[swapIdx]] = [newBlocks[swapIdx], newBlocks[idx]]
         return { blocks: newBlocks }
       }),
+
+    updateBlock: (id, updates) =>
+      set((state) => ({
+        blocks: state.blocks.map((b) =>
+          b.id === id && b.type === 'portlet' ? { ...b, ...updates } : b
+        ),
+      })),
 
     // Chat actions
     addMessage: (message) =>
@@ -361,4 +369,5 @@ export const selectBlockActions = (state: NotebookStore) => ({
   addBlock: state.addBlock,
   removeBlock: state.removeBlock,
   moveBlock: state.moveBlock,
+  updateBlock: state.updateBlock,
 })

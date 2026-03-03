@@ -108,6 +108,11 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Visualize')
   })
 
+  it('should include no-emoji rule', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('NEVER use emojis')
+  })
+
   it('should include cube metadata when cubes provided', () => {
     const prompt = buildAgentSystemPrompt(singleCubeMetadata)
     expect(prompt).toContain('Employees')
@@ -185,6 +190,25 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('boxPlot')
   })
 
+  it('should demote kpiNumber/kpiDelta below standard chart types in the guide', () => {
+    const prompt = buildAgentSystemPrompt([])
+    // kpiNumber should appear AFTER bar, line, table in the chart table
+    const barIndex = prompt.indexOf('| Compare discrete categories')
+    const tableIndex = prompt.indexOf('| Detailed row-level data')
+    const kpiIndex = prompt.indexOf('| Single headline number')
+    const kpiDeltaIndex = prompt.indexOf('| Headline metric with period-over-period')
+    expect(barIndex).toBeGreaterThan(-1)
+    expect(tableIndex).toBeGreaterThan(-1)
+    expect(kpiIndex).toBeGreaterThan(tableIndex)
+    expect(kpiDeltaIndex).toBeGreaterThan(kpiIndex)
+  })
+
+  it('should include strong guidance to think about appropriate chart type', () => {
+    const prompt = buildAgentSystemPrompt([])
+    expect(prompt).toContain('do NOT default to the first option')
+    expect(prompt).toContain('last resort')
+  })
+
   it('should include analysis-mode-specific chart types in the guide', () => {
     const prompt = buildAgentSystemPrompt([])
     expect(prompt).toContain('Analysis-mode-specific chart types')
@@ -195,7 +219,7 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('`retentionCombined`')
   })
 
-  it('should include analysis mode decision tree', () => {
+  it('should include analysis mode decision tree with concrete tool examples', () => {
     const prompt = buildAgentSystemPrompt([])
     expect(prompt).toContain('## Analysis Mode Decision Tree')
     expect(prompt).toContain('Funnel mode')
@@ -203,6 +227,25 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Retention mode')
     expect(prompt).toContain('capabilities')
     expect(prompt).toContain('discover_cubes')
+
+    // Verify concrete execute_query references
+    expect(prompt).toContain('execute_query')
+    expect(prompt).toContain('`execute_query` with `funnel` param')
+    expect(prompt).toContain('`execute_query` with `flow` param')
+    expect(prompt).toContain('`execute_query` with `retention` param')
+
+    // Verify concrete add_portlet references with correct chart types
+    expect(prompt).toContain('`add_portlet` with `chartType: "funnel"`')
+    expect(prompt).toContain('`add_portlet` with `chartType: "sankey"`')
+    expect(prompt).toContain('`add_portlet` with `chartType: "retentionCombined"`')
+
+    // Verify JSON format examples are present
+    expect(prompt).toContain('bindingKey')
+    expect(prompt).toContain('timeDimension')
+    expect(prompt).toContain('eventDimension')
+    expect(prompt).toContain('startingStep')
+    expect(prompt).toContain('dateRange')
+    expect(prompt).toContain('granularity')
   })
 
   // ============================================================================

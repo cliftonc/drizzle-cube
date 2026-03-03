@@ -78,7 +78,7 @@ export function getToolDefinitions(): ToolDefinition[] {
     {
       name: 'execute_query',
       description:
-        'Execute a semantic query and return data results. The query follows the Cube.js query format with measures, dimensions, filters, timeDimensions, order, and limit.',
+        'Execute a semantic query and return data results. Supports standard queries (measures/dimensions) and analysis modes (funnel/flow/retention). Only provide ONE mode per call.',
       input_schema: {
         type: 'object',
         properties: {
@@ -125,6 +125,75 @@ export function getToolDefinitions(): ToolDefinition[] {
           limit: {
             type: 'number',
             description: 'Row limit'
+          },
+          funnel: {
+            type: 'object',
+            properties: {
+              bindingKey: { type: 'string', description: 'Entity binding key (e.g., "Events.userId")' },
+              timeDimension: { type: 'string', description: 'Time dimension (e.g., "Events.timestamp")' },
+              steps: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    filter: {},
+                    timeToConvert: { type: 'string', description: 'ISO 8601 duration (e.g., "P7D")' }
+                  },
+                  required: ['name']
+                },
+                description: 'Funnel steps (min 2)'
+              },
+              includeTimeMetrics: { type: 'boolean' },
+              globalTimeWindow: { type: 'string' }
+            },
+            required: ['bindingKey', 'timeDimension', 'steps'],
+            description: 'Funnel analysis config. When provided, measures/dimensions are ignored.'
+          },
+          flow: {
+            type: 'object',
+            properties: {
+              bindingKey: { type: 'string' },
+              timeDimension: { type: 'string' },
+              eventDimension: { type: 'string', description: 'Dimension whose values become node labels' },
+              startingStep: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  filter: {}
+                },
+                required: ['name']
+              },
+              stepsBefore: { type: 'number', description: 'Steps before starting step (0-5)' },
+              stepsAfter: { type: 'number', description: 'Steps after starting step (0-5)' },
+              entityLimit: { type: 'number' },
+              outputMode: { type: 'string', enum: ['sankey', 'sunburst'] }
+            },
+            required: ['bindingKey', 'timeDimension', 'eventDimension', 'startingStep'],
+            description: 'Flow analysis config. When provided, measures/dimensions are ignored.'
+          },
+          retention: {
+            type: 'object',
+            properties: {
+              timeDimension: { type: 'string' },
+              bindingKey: { type: 'string' },
+              dateRange: {
+                type: 'object',
+                properties: {
+                  start: { type: 'string', description: 'YYYY-MM-DD' },
+                  end: { type: 'string', description: 'YYYY-MM-DD' }
+                },
+                required: ['start', 'end']
+              },
+              granularity: { type: 'string', enum: ['day', 'week', 'month'] },
+              periods: { type: 'number' },
+              retentionType: { type: 'string', enum: ['classic', 'rolling'] },
+              cohortFilters: {},
+              activityFilters: {},
+              breakdownDimensions: { type: 'array', items: { type: 'string' } }
+            },
+            required: ['timeDimension', 'bindingKey', 'dateRange', 'granularity', 'periods'],
+            description: 'Retention analysis config. When provided, measures/dimensions are ignored.'
           }
         }
       }
@@ -141,7 +210,10 @@ export function getToolDefinitions(): ToolDefinition[] {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Title for the visualization' },
-          query: { type: 'string', description: 'JSON string of the CubeQuery to visualize' },
+          query: {
+            type: 'string',
+            description: 'JSON string of the query. Standard: {"measures":[...],"dimensions":[...]}. Funnel: {"funnel":{"bindingKey":"...","timeDimension":"...","steps":[...]}}. Flow: {"flow":{"bindingKey":"...","timeDimension":"...","eventDimension":"...","startingStep":{...}}}. Retention: {"retention":{"timeDimension":"...","bindingKey":"...","dateRange":{"start":"...","end":"..."},"granularity":"...","periods":N}}.'
+          },
           chartType: {
             type: 'string',
             enum: AGENT_ALLOWED_CHART_TYPES,
@@ -223,14 +295,25 @@ export function createToolExecutor(options: {
   // execute_query
   executors.set('execute_query', async (input) => {
     try {
-      const query = {
-        measures: input.measures as string[] | undefined,
-        dimensions: input.dimensions as string[] | undefined,
-        filters: input.filters as Array<{ member: string; operator: string; values?: unknown[] }> | undefined,
-        timeDimensions: input.timeDimensions as Array<{ dimension: string; granularity?: string; dateRange?: unknown }> | undefined,
-        order: input.order as Record<string, 'asc' | 'desc'> | undefined,
-        limit: input.limit as number | undefined
+      let query: Record<string, unknown>
+
+      if (input.funnel) {
+        query = { funnel: input.funnel }
+      } else if (input.flow) {
+        query = { flow: input.flow }
+      } else if (input.retention) {
+        query = { retention: input.retention }
+      } else {
+        query = {
+          measures: input.measures as string[] | undefined,
+          dimensions: input.dimensions as string[] | undefined,
+          filters: input.filters as Array<{ member: string; operator: string; values?: unknown[] }> | undefined,
+          timeDimensions: input.timeDimensions as Array<{ dimension: string; granularity?: string; dateRange?: unknown }> | undefined,
+          order: input.order as Record<string, 'asc' | 'desc'> | undefined,
+          limit: input.limit as number | undefined
+        }
       }
+
       const result = await handleLoad(semanticLayer, securityContext, { query: query as any })
       return {
         result: JSON.stringify({
@@ -275,14 +358,22 @@ export function createToolExecutor(options: {
       }
     }
 
-    // Validate and infer chart config against drop zone requirements
-    const inferredConfig = inferChartConfig(resolvedChartType, input.chartConfig as Record<string, unknown> | undefined, parsedQuery)
-    const configValidation = validateChartConfig(resolvedChartType, inferredConfig, parsedQuery)
-    if (!configValidation.isValid) {
-      return {
-        result: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}`,
-        isError: true
+    // Chart config inference and validation — skip for analysis-mode queries
+    // (funnel/sankey/sunburst/retention charts auto-configure from data)
+    const isAnalysisMode = !!(parsedQuery.funnel || parsedQuery.flow || parsedQuery.retention)
+    let finalChartConfig: Record<string, unknown>
+    if (isAnalysisMode) {
+      finalChartConfig = (input.chartConfig as Record<string, unknown>) ?? {}
+    } else {
+      const inferredConfig = inferChartConfig(resolvedChartType, input.chartConfig as Record<string, unknown> | undefined, parsedQuery)
+      const configValidation = validateChartConfig(resolvedChartType, inferredConfig, parsedQuery)
+      if (!configValidation.isValid) {
+        return {
+          result: `Chart config invalid — fix these errors and retry:\n${configValidation.errors.join('\n')}`,
+          isError: true
+        }
       }
+      finalChartConfig = inferredConfig
     }
 
     const id = `portlet-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
@@ -291,7 +382,7 @@ export function createToolExecutor(options: {
       title: input.title as string,
       query: input.query as string,
       chartType: resolvedChartType,
-      chartConfig: inferredConfig,
+      chartConfig: finalChartConfig,
       displayConfig: input.displayConfig as Record<string, unknown> | undefined
     }
 

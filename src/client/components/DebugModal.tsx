@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { highlightCodeBlocks } from '../utils/syntaxHighlighting'
 import type { FlowChartData } from '../types/flow'
 import type { RetentionChartData } from '../types/retention'
+import { CodeBlock } from '../shared/components/CodeBlock'
 
 interface DebugModalProps {
   chartConfig: any
@@ -34,20 +34,6 @@ export default function DebugModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
 
-  // Trigger syntax highlighting when modal opens and content is rendered
-  useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure DOM is updated
-      const timer = setTimeout(() => {
-        highlightCodeBlocks().catch((err) => {
-          console.debug('Syntax highlighting not available:', err)
-        })
-      }, 10)
-
-      return () => clearTimeout(timer)
-    }
-  }, [isOpen])
-
 
   if (!isOpen) {
     return (
@@ -73,6 +59,14 @@ export default function DebugModal({
       </button>
     )
   }
+
+  const fieldAnalysis = [
+    `xAxis: ${Array.isArray(chartConfig?.xAxis) ? `[${chartConfig.xAxis.join(', ')}]` : JSON.stringify(chartConfig?.xAxis ?? null)}`,
+    `yAxis: ${Array.isArray(chartConfig?.yAxis) ? `[${chartConfig.yAxis.join(', ')}]` : JSON.stringify(chartConfig?.yAxis ?? null)}`,
+    `series: ${Array.isArray(chartConfig?.series) ? `[${chartConfig.series.join(', ')}]` : JSON.stringify(chartConfig?.series ?? null)}`,
+    ...(chartConfig?.sizeField ? [`sizeField: ${JSON.stringify(chartConfig.sizeField)}`] : []),
+    ...(chartConfig?.colorField ? [`colorField: ${JSON.stringify(chartConfig.colorField)}`] : []),
+  ].join('\n')
 
   return (
     <div
@@ -101,70 +95,50 @@ export default function DebugModal({
         </div>
 
         <div className="dc:grid dc:grid-cols-1 dc:lg:grid-cols-2 dc:gap-4 dc:flex-1 dc:overflow-auto">
-          <div>
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Chart Type</h3>
-            <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-sm dc:font-mono dc:border border-dc-border">
-              {chartType}
-            </div>
-          </div>
+          <CodeBlock
+            code={chartType}
+            language="json"
+            title="Chart Type"
+            maxHeight="3rem"
+          />
 
-          <div>
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Field Analysis</h3>
-            <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-xs dc:space-y-1 dc:border border-dc-border">
-              <div>
-                <strong>xAxis:</strong> {Array.isArray(chartConfig?.xAxis) ? `Array: [${chartConfig.xAxis.join(', ')}]` : `String: "${chartConfig?.xAxis}"`}
-              </div>
-              <div>
-                <strong>yAxis:</strong> {Array.isArray(chartConfig?.yAxis) ? `Array: [${chartConfig.yAxis.join(', ')}]` : `String: "${chartConfig?.yAxis}"`}
-              </div>
-              <div>
-                <strong>series:</strong> {Array.isArray(chartConfig?.series) ? `Array: [${chartConfig.series.join(', ')}]` : `String: "${chartConfig?.series}"`}
-              </div>
-              {chartConfig?.sizeField && (
-                <div>
-                  <strong>sizeField:</strong> {Array.isArray(chartConfig?.sizeField) ? `Array: [${chartConfig.sizeField.join(', ')}]` : `String: "${chartConfig?.sizeField}"`}
-                </div>
-              )}
-              {chartConfig?.colorField && (
-                <div>
-                  <strong>colorField:</strong> {Array.isArray(chartConfig?.colorField) ? `Array: [${chartConfig.colorField.join(', ')}]` : `String: "${chartConfig?.colorField}"`}
-                </div>
-              )}
-            </div>
-          </div>
+          <CodeBlock
+            code={fieldAnalysis}
+            language="json"
+            title="Field Analysis"
+            maxHeight="8rem"
+          />
 
-          <div className="dc:lg:col-span-2">
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Chart Config</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <code className="language-json">{JSON.stringify(chartConfig, null, 2)}</code>
-            </pre>
-          </div>
+          <CodeBlock
+            code={JSON.stringify(chartConfig, null, 2)}
+            language="json"
+            title="Chart Config"
+            className="dc:lg:col-span-2"
+          />
 
-          <div className="dc:lg:col-span-2">
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Display Config</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <code className="language-json">{JSON.stringify(displayConfig, null, 2)}</code>
-            </pre>
-          </div>
+          <CodeBlock
+            code={JSON.stringify(displayConfig, null, 2)}
+            language="json"
+            title="Display Config"
+            className="dc:lg:col-span-2"
+          />
+
+          <CodeBlock
+            code={JSON.stringify(queryObject, null, 2)}
+            language="json"
+            title="Query Object"
+            className="dc:lg:col-span-2"
+          />
+
+          <CodeBlock
+            code={JSON.stringify(Array.isArray(data) ? data.slice(0, 3) : data, null, 2)}
+            language="json"
+            title="Data Sample (first 3 rows)"
+            className="dc:lg:col-span-2"
+          />
 
           <div className="dc:lg:col-span-2">
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Query Object</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <code className="language-json">{JSON.stringify(queryObject, null, 2)}</code>
-            </pre>
-          </div>
-
-          <div className="dc:lg:col-span-2">
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Data Sample (first 3 rows)</h3>
-            <pre className="text-dc-text-secondary dc:overflow-x-auto dc:font-mono dc:p-2 dc:rounded-sm dc:border border-dc-border" style={{ fontSize: '10px', lineHeight: '1.4' }}>
-              <code className="language-json">
-                {JSON.stringify(Array.isArray(data) ? data.slice(0, 3) : data, null, 2)}
-              </code>
-            </pre>
-          </div>
-
-          <div className="dc:lg:col-span-2">
-            <h3 className="dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">Cache Status</h3>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Cache Status</h4>
             <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-xs dc:border border-dc-border">
               {cacheInfo ? (
                 <div className="dc:flex dc:items-center dc:gap-4 dc:flex-wrap">

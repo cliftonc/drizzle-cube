@@ -2,16 +2,23 @@
  * NotebookCanvas - Left panel displaying notebook blocks
  */
 
-import React, { useCallback, useRef, useEffect } from 'react'
+import React, { useCallback, useRef, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useNotebookStore, selectBlocks, selectBlockActions } from '../../stores/notebookStore'
+import type { PortletBlock } from '../../stores/notebookStore'
+import type { PortletConfig } from '../../types'
+import { ensureAnalysisConfig } from '../../utils/configMigration'
 import NotebookPortletBlock from './NotebookPortletBlock'
 import NotebookMarkdownBlock from './NotebookMarkdownBlock'
+import PortletAnalysisModal from '../PortletAnalysisModal'
 
 const NotebookCanvas = React.memo(function NotebookCanvas() {
   const blocks = useNotebookStore(selectBlocks)
-  const { removeBlock, moveBlock } = useNotebookStore(useShallow(selectBlockActions))
+  const { removeBlock, moveBlock, updateBlock } = useNotebookStore(useShallow(selectBlockActions))
   const endRef = useRef<HTMLDivElement>(null)
+
+  // Edit modal state
+  const [editingBlock, setEditingBlock] = useState<PortletBlock | null>(null)
 
   // Auto-scroll only when NEW blocks are added (not on initial load)
   const prevCountRef = useRef(blocks.length)
@@ -25,12 +32,33 @@ const NotebookCanvas = React.memo(function NotebookCanvas() {
   const handleRemove = useCallback((id: string) => removeBlock(id), [removeBlock])
   const handleMoveUp = useCallback((id: string) => moveBlock(id, 'up'), [moveBlock])
   const handleMoveDown = useCallback((id: string) => moveBlock(id, 'down'), [moveBlock])
+  const handleEdit = useCallback((block: PortletBlock) => setEditingBlock(block), [])
+
+  const handleEditSave = useCallback((portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => {
+    if (!editingBlock) return
+
+    // Normalize to ensure analysisConfig exists
+    const normalized = ensureAnalysisConfig(portletData as PortletConfig)
+    const { analysisConfig } = normalized
+
+    if (analysisConfig) {
+      const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
+      updateBlock(editingBlock.id, {
+        title: portletData.title,
+        query: JSON.stringify(analysisConfig.query),
+        chartType: chartModeConfig?.chartType || 'bar',
+        chartConfig: chartModeConfig?.chartConfig,
+        displayConfig: chartModeConfig?.displayConfig,
+      })
+    }
+
+    setEditingBlock(null)
+  }, [editingBlock, updateBlock])
 
   if (blocks.length === 0) {
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
         <div className="dc:text-center dc:max-w-sm dc:px-6">
-          <div className="dc:text-4xl dc:mb-4 dc:opacity-30">&#x1F4CA;</div>
           <h3 className="dc:text-base dc:font-semibold text-dc-text dc:mb-2">
             Your notebook is empty
           </h3>
@@ -57,6 +85,7 @@ const NotebookCanvas = React.memo(function NotebookCanvas() {
               onRemove={handleRemove}
               onMoveUp={handleMoveUp}
               onMoveDown={handleMoveDown}
+              onEdit={handleEdit}
               isFirst={isFirst}
               isLast={isLast}
             />
@@ -80,6 +109,24 @@ const NotebookCanvas = React.memo(function NotebookCanvas() {
         return null
       })}
       <div ref={endRef} />
+
+      {/* Edit modal */}
+      <PortletAnalysisModal
+        isOpen={!!editingBlock}
+        onClose={() => setEditingBlock(null)}
+        onSave={handleEditSave}
+        portlet={editingBlock ? {
+          id: editingBlock.id,
+          title: editingBlock.title,
+          query: editingBlock.query,
+          chartType: editingBlock.chartType,
+          chartConfig: editingBlock.chartConfig,
+          displayConfig: editingBlock.displayConfig,
+          w: 5, h: 4, x: 0, y: 0,
+        } : null}
+        title="Edit Visualization"
+        submitText="Update"
+      />
     </div>
   )
 })

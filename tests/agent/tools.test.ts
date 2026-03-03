@@ -100,6 +100,57 @@ describe('getToolDefinitions', () => {
     }
     expect(filtersProp.items.required).toEqual(['member', 'operator'])
   })
+
+  it('should include funnel property on execute_query with required fields', () => {
+    const tools = getToolDefinitions()
+    const executeQuery = tools.find((t) => t.name === 'execute_query')!
+    const funnelProp = executeQuery.input_schema.properties.funnel as {
+      type: string
+      required: string[]
+      properties: Record<string, unknown>
+    }
+    expect(funnelProp.type).toBe('object')
+    expect(funnelProp.required).toEqual(['bindingKey', 'timeDimension', 'steps'])
+    expect(funnelProp.properties).toHaveProperty('bindingKey')
+    expect(funnelProp.properties).toHaveProperty('steps')
+  })
+
+  it('should include flow property on execute_query with required fields', () => {
+    const tools = getToolDefinitions()
+    const executeQuery = tools.find((t) => t.name === 'execute_query')!
+    const flowProp = executeQuery.input_schema.properties.flow as {
+      type: string
+      required: string[]
+      properties: Record<string, unknown>
+    }
+    expect(flowProp.type).toBe('object')
+    expect(flowProp.required).toEqual(['bindingKey', 'timeDimension', 'eventDimension', 'startingStep'])
+    expect(flowProp.properties).toHaveProperty('eventDimension')
+    expect(flowProp.properties).toHaveProperty('startingStep')
+  })
+
+  it('should include retention property on execute_query with required fields', () => {
+    const tools = getToolDefinitions()
+    const executeQuery = tools.find((t) => t.name === 'execute_query')!
+    const retentionProp = executeQuery.input_schema.properties.retention as {
+      type: string
+      required: string[]
+      properties: Record<string, unknown>
+    }
+    expect(retentionProp.type).toBe('object')
+    expect(retentionProp.required).toEqual(['timeDimension', 'bindingKey', 'dateRange', 'granularity', 'periods'])
+    expect(retentionProp.properties).toHaveProperty('dateRange')
+    expect(retentionProp.properties).toHaveProperty('retentionType')
+  })
+
+  it('should mention funnel/flow/retention formats in add_portlet query description', () => {
+    const tools = getToolDefinitions()
+    const addPortlet = tools.find((t) => t.name === 'add_portlet')!
+    const queryProp = addPortlet.input_schema.properties.query as { description: string }
+    expect(queryProp.description).toContain('Funnel')
+    expect(queryProp.description).toContain('Flow')
+    expect(queryProp.description).toContain('Retention')
+  })
 })
 
 // ============================================================================
@@ -232,6 +283,84 @@ describe('createToolExecutor', () => {
       expect(result.result).toContain('Query execution failed')
       expect(result.result).toContain('unknown measure')
     })
+
+    it('should pass funnel config directly to handleLoad', async () => {
+      const mockData = { data: [{ step: 'Signup', count: 100 }], annotation: {} }
+      mockHandleLoad.mockResolvedValue(mockData as any)
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('execute_query')!
+      const funnelConfig = {
+        bindingKey: 'Events.userId',
+        timeDimension: 'Events.timestamp',
+        steps: [{ name: 'Signup' }, { name: 'Purchase' }],
+      }
+      const result = await fn({ funnel: funnelConfig })
+
+      expect(mockHandleLoad).toHaveBeenCalledWith(
+        semanticLayer,
+        mockSecurityContext,
+        { query: { funnel: funnelConfig } }
+      )
+      expect(result.isError).toBeUndefined()
+      const parsed = JSON.parse(result.result)
+      expect(parsed.rowCount).toBe(1)
+    })
+
+    it('should pass flow config directly to handleLoad', async () => {
+      const mockData = { data: [{ source: 'A', target: 'B', value: 10 }], annotation: {} }
+      mockHandleLoad.mockResolvedValue(mockData as any)
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('execute_query')!
+      const flowConfig = {
+        bindingKey: 'Events.userId',
+        timeDimension: 'Events.timestamp',
+        eventDimension: 'Events.eventName',
+        startingStep: { name: 'Signup' },
+        stepsAfter: 3,
+      }
+      const result = await fn({ flow: flowConfig })
+
+      expect(mockHandleLoad).toHaveBeenCalledWith(
+        semanticLayer,
+        mockSecurityContext,
+        { query: { flow: flowConfig } }
+      )
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('should pass retention config directly to handleLoad', async () => {
+      const mockData = { data: [{ cohort: '2024-01', period: 0, retained: 100 }], annotation: {} }
+      mockHandleLoad.mockResolvedValue(mockData as any)
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('execute_query')!
+      const retentionConfig = {
+        timeDimension: 'Events.timestamp',
+        bindingKey: 'Events.userId',
+        dateRange: { start: '2024-01-01', end: '2024-03-31' },
+        granularity: 'week',
+        periods: 8,
+      }
+      const result = await fn({ retention: retentionConfig })
+
+      expect(mockHandleLoad).toHaveBeenCalledWith(
+        semanticLayer,
+        mockSecurityContext,
+        { query: { retention: retentionConfig } }
+      )
+      expect(result.isError).toBeUndefined()
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -321,6 +450,92 @@ describe('createToolExecutor', () => {
           chartType: 'bar',
         },
       })
+    })
+
+    it('should skip chart config inference for funnel queries', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('add_portlet')!
+      const funnelQuery = JSON.stringify({
+        funnel: {
+          bindingKey: 'Events.userId',
+          timeDimension: 'Events.timestamp',
+          steps: [{ name: 'Signup' }, { name: 'Purchase' }],
+        },
+      })
+      const result = await fn({
+        title: 'Signup Funnel',
+        query: funnelQuery,
+        chartType: 'funnel',
+      })
+
+      expect(result.isError).toBeUndefined()
+      expect(result.sideEffect).toBeDefined()
+      expect(result.sideEffect!.type).toBe('add_portlet')
+      const data = result.sideEffect!.data as Record<string, unknown>
+      expect(data.chartType).toBe('funnel')
+      expect(data.chartConfig).toEqual({})
+    })
+
+    it('should skip chart config inference for flow queries', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('add_portlet')!
+      const flowQuery = JSON.stringify({
+        flow: {
+          bindingKey: 'Events.userId',
+          timeDimension: 'Events.timestamp',
+          eventDimension: 'Events.eventName',
+          startingStep: { name: 'Signup' },
+        },
+      })
+      const result = await fn({
+        title: 'User Flow',
+        query: flowQuery,
+        chartType: 'sankey',
+      })
+
+      expect(result.isError).toBeUndefined()
+      const data = result.sideEffect!.data as Record<string, unknown>
+      expect(data.chartType).toBe('sankey')
+      expect(data.chartConfig).toEqual({})
+    })
+
+    it('should skip chart config inference for retention queries', async () => {
+      semanticLayer.validateQuery.mockReturnValue({ isValid: true, errors: [] })
+
+      const executor = createToolExecutor({
+        semanticLayer,
+        securityContext: mockSecurityContext,
+      })
+      const fn = executor.get('add_portlet')!
+      const retentionQuery = JSON.stringify({
+        retention: {
+          timeDimension: 'Events.timestamp',
+          bindingKey: 'Events.userId',
+          dateRange: { start: '2024-01-01', end: '2024-03-31' },
+          granularity: 'week',
+          periods: 8,
+        },
+      })
+      const result = await fn({
+        title: 'Weekly Retention',
+        query: retentionQuery,
+        chartType: 'retentionCombined',
+      })
+
+      expect(result.isError).toBeUndefined()
+      const data = result.sideEffect!.data as Record<string, unknown>
+      expect(data.chartType).toBe('retentionCombined')
+      expect(data.chartConfig).toEqual({})
     })
 
     it('should pass through chartConfig and displayConfig', async () => {
