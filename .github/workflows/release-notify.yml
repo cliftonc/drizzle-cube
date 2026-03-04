@@ -55,10 +55,31 @@ jobs:
             -f body="$DISCUSSION_BODY"
 
       - name: Post to Discord
-        uses: SethCohen/github-releases-to-discord@v1
-        with:
-          webhook_url: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
-          color: "5793266"
-          username: "Drizzle Cube"
-          footer_title: "drizzle-cube"
-          reduce_headings: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+          RELEASE_NAME: ${{ steps.release.outputs.name }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          BODY=$(cat /tmp/release_body.txt)
+          VERSION="${RELEASE_TAG#v}"
+
+          # Build Discord embed payload using jq to safely handle special characters
+          PAYLOAD=$(jq -n \
+            --arg name "$RELEASE_NAME" \
+            --arg url "$RELEASE_URL" \
+            --arg body "$BODY" \
+            --arg npm "https://www.npmjs.com/package/drizzle-cube/v/${VERSION}" \
+            '{
+              username: "Drizzle Cube",
+              embeds: [{
+                title: $name,
+                url: $url,
+                description: ($body + "\n\n[NPM Package](" + $npm + ")"),
+                color: 5793266
+              }]
+            }')
+
+          curl -sf -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK"
