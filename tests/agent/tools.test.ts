@@ -20,7 +20,7 @@ const mockHandleLoad = vi.mocked(handleLoad)
 // Mock semantic layer
 function createMockSemanticLayer() {
   return {
-    getMetadata: vi.fn(),
+    getMetadata: vi.fn().mockReturnValue([]),
     validateQuery: vi.fn(),
   } as any
 }

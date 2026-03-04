@@ -383,23 +383,94 @@ export function createToolExecutor(options: {
     return { result: JSON.stringify(metadata, null, 2) }
   })
 
+  // Build a metadata lookup for field validation
+  // Metadata names are already fully qualified: "CubeName.fieldName"
+  const cubeMetadataMap = new Map<string, { measures: string[]; dimensions: string[] }>()
+  for (const cube of semanticLayer.getMetadata()) {
+    cubeMetadataMap.set(cube.name, {
+      measures: (cube.measures || []).map(m => m.name),
+      dimensions: (cube.dimensions || []).map(d => d.name),
+    })
+  }
+
+  /** Format available fields for error hints (metadata names are already "Cube.field") */
+  const formatAvailable = (cubeName: string, label: string): string => {
+    const cubeMeta = cubeMetadataMap.get(cubeName)
+    const available = label === 'measures' ? cubeMeta?.measures : cubeMeta?.dimensions
+    if (!available || available.length === 0) return ''
+    // Metadata names are already fully qualified (e.g. "Teams.count")
+    return ` Available ${label}: ${available.slice(0, 5).map(m => `"${m}"`).join(', ')}`
+  }
+
   // execute_query
   executors.set('execute_query', async (input) => {
     try {
-      // Validate Cube.member format before executing — catches common LLM mistakes early
-      const validateFields = (fields: unknown, label: string): void => {
-        if (!Array.isArray(fields)) return
-        const invalid = fields.filter((f: unknown) => typeof f === 'string' && !f.includes('.'))
-        if (invalid.length > 0) {
-          throw new Error(
-            `Invalid ${label}: ${invalid.map((f: unknown) => `"${f}"`).join(', ')}. ` +
-            `All ${label} must use "CubeName.fieldName" format (e.g., "PullRequests.count", "Teams.name"). ` +
-            `Use discover_cubes or get_cube_metadata to find valid field names.`
-          )
+      // Validate and auto-correct Cube.member format before executing
+      const validateAndFixFields = (fields: unknown, label: string): string[] | undefined => {
+        if (!Array.isArray(fields)) return undefined
+        const errors: string[] = []
+        const fixed: string[] = []
+
+        for (const f of fields) {
+          if (typeof f !== 'string') { fixed.push(f as string); continue }
+
+          const parts = f.split('.')
+
+          if (parts.length === 1) {
+            // No dot at all — e.g. "TeamMembers"
+            errors.push(`"${f}" is not valid — must be "CubeName.fieldName".${formatAvailable(f, label)}`)
+            continue
+          }
+
+          if (parts.length === 3 && parts[0] === parts[1]) {
+            // CubeName.CubeName.fieldName — e.g. "Teams.Teams.name" → auto-correct to "Teams.name"
+            const corrected = `${parts[0]}.${parts[2]}`
+            fixed.push(corrected)
+            continue
+          }
+
+          if (parts.length === 2 && parts[0] === parts[1]) {
+            // CubeName.CubeName — e.g. "TeamMembers.TeamMembers"
+            errors.push(`"${f}" is WRONG — "${parts[0]}" is the cube name, not a ${label.replace(/s$/, '')}.${formatAvailable(parts[0], label)}`)
+            continue
+          }
+
+          // Normal "CubeName.fieldName" — pass through
+          fixed.push(f)
+        }
+
+        if (errors.length > 0) {
+          throw new Error(`Invalid ${label}:\n${errors.join('\n')}`)
+        }
+        return fixed
+      }
+      input.measures = validateAndFixFields(input.measures, 'measures') ?? input.measures
+      input.dimensions = validateAndFixFields(input.dimensions, 'dimensions') ?? input.dimensions
+
+      // Auto-fix CubeName.CubeName.field → CubeName.field in filters and timeDimensions
+      const fixDoublePrefixed = (field: string): string => {
+        const parts = field.split('.')
+        if (parts.length === 3 && parts[0] === parts[1]) {
+          return `${parts[0]}.${parts[2]}`
+        }
+        return field
+      }
+
+      if (Array.isArray(input.filters)) {
+        for (const filter of input.filters as Array<Record<string, unknown>>) {
+          if (typeof filter.member === 'string') {
+            filter.member = fixDoublePrefixed(filter.member)
+          }
         }
       }
-      validateFields(input.measures, 'measures')
-      validateFields(input.dimensions, 'dimensions')
+
+      if (Array.isArray(input.timeDimensions)) {
+        for (const td of input.timeDimensions as Array<Record<string, unknown>>) {
+          if (typeof td.dimension === 'string') {
+            td.dimension = fixDoublePrefixed(td.dimension)
+          }
+        }
+      }
 
       let query: Record<string, unknown>
 
@@ -429,8 +500,20 @@ export function createToolExecutor(options: {
         }, null, 2)
       }
     } catch (error) {
+      // Include the attempted query in the error so the agent (and developer) can debug
+      const attemptedQuery = {
+        measures: input.measures,
+        dimensions: input.dimensions,
+        filters: input.filters,
+        timeDimensions: input.timeDimensions,
+        order: input.order,
+        limit: input.limit,
+        ...(input.funnel ? { funnel: input.funnel } : {}),
+        ...(input.flow ? { flow: input.flow } : {}),
+        ...(input.retention ? { retention: input.retention } : {}),
+      }
       return {
-        result: `Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        result: `Query execution failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nAttempted query:\n${JSON.stringify(attemptedQuery, null, 2)}`,
         isError: true
       }
     }
@@ -459,7 +542,7 @@ export function createToolExecutor(options: {
     const validation = semanticLayer.validateQuery(parsedQuery as any)
     if (!validation.isValid) {
       return {
-        result: `Invalid query — fix these errors and retry:\n${validation.errors.join('\n')}`,
+        result: `Invalid query — fix these errors and retry:\n${validation.errors.join('\n')}\n\nAttempted query:\n${JSON.stringify(parsedQuery, null, 2)}`,
         isError: true
       }
     }
