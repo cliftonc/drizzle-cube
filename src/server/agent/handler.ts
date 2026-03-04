@@ -26,6 +26,8 @@ export async function* handleAgentChat(options: {
   securityContext: SecurityContext
   agentConfig: AgentConfig
   apiKey: string
+  /** Per-request context appended to the system prompt (e.g. user info, tenant context) */
+  systemContext?: string
 }): AsyncGenerator<AgentSSEEvent> {
   const { message, history, semanticLayer, securityContext, agentConfig, apiKey } = options
   const sessionId = options.sessionId || crypto.randomUUID()
@@ -55,9 +57,12 @@ export async function* handleAgentChat(options: {
   const tools = getToolDefinitions()
   const executor = createToolExecutor({ semanticLayer, securityContext })
 
-  // Build system prompt from cube metadata
+  // Build system prompt from cube metadata + optional per-request context
   const metadata = semanticLayer.getMetadata()
-  const systemPrompt = buildAgentSystemPrompt(metadata)
+  let systemPrompt = buildAgentSystemPrompt(metadata)
+  if (options.systemContext) {
+    systemPrompt += `\n\n## User Context\n\n${options.systemContext}`
+  }
 
   // Configure
   const model = agentConfig.model || 'claude-sonnet-4-6'

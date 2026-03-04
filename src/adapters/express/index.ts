@@ -559,6 +559,9 @@ export function createCubeRouter(
         // Extract security context (required for all queries)
         const securityContext = await extractSecurityContext(req, res)
 
+        // Build per-request system context from the callback (if configured)
+        const systemContext = agentConfig.buildSystemContext?.(securityContext)
+
         // Set SSE headers
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
@@ -574,7 +577,8 @@ export function createCubeRouter(
             semanticLayer,
             securityContext,
             agentConfig,
-            apiKey
+            apiKey,
+            systemContext,
           })
 
           for await (const event of events) {

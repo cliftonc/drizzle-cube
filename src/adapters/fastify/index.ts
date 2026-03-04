@@ -628,6 +628,9 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         // Extract security context (required for all queries)
         const securityContext = await extractSecurityContext(request)
 
+        // Build per-request system context from the callback (if configured)
+        const systemContext = agentConfig.buildSystemContext?.(securityContext)
+
         // Set SSE headers and use raw response for streaming
         reply.raw.writeHead(200, {
           'Content-Type': 'text/event-stream',
@@ -643,7 +646,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
             semanticLayer,
             securityContext,
             agentConfig,
-            apiKey
+            apiKey,
+            systemContext,
           })
 
           for await (const event of events) {

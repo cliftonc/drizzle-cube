@@ -1109,6 +1109,9 @@ export function createAgentChatHandler(
       // Extract security context (required for all queries)
       const securityContext = await extractSecurityContext(request, context)
 
+      // Build per-request system context from the callback (if configured)
+      const systemContext = agentConfig.buildSystemContext?.(securityContext)
+
       // Create SSE stream
       const encoder = new TextEncoder()
       const stream = new ReadableStream({
@@ -1121,7 +1124,8 @@ export function createAgentChatHandler(
               semanticLayer,
               securityContext,
               agentConfig,
-              apiKey
+              apiKey,
+              systemContext,
             })
 
             for await (const event of events) {

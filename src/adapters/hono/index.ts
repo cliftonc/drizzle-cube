@@ -543,6 +543,9 @@ export function createCubeRoutes(
         // Extract security context (required for all queries)
         const securityContext = await extractSecurityContext(c)
 
+        // Build per-request system context from the callback (if configured)
+        const systemContext = agentConfig.buildSystemContext?.(securityContext)
+
         // Create SSE stream
         const encoder = new TextEncoder()
         const stream = new ReadableStream({
@@ -555,7 +558,8 @@ export function createCubeRoutes(
                 semanticLayer,
                 securityContext,
                 agentConfig,
-                apiKey
+                apiKey,
+                systemContext,
               })
 
               for await (const event of events) {

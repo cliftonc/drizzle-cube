@@ -100,6 +100,16 @@ export interface AgentConfig {
   allowClientApiKey?: boolean
   /** Optional observability hooks for tracing */
   observability?: AgentObservabilityHooks
+  /**
+   * Build per-request system context for the LLM prompt from the authenticated security context.
+   * Called on every agent chat request with the resolved security context.
+   * The returned string is appended to the system prompt under "## User Context".
+   *
+   * @example
+   * buildSystemContext: (securityContext) =>
+   *   `User: ${securityContext.userName}, Role: ${securityContext.role}`
+   */
+  buildSystemContext?: (securityContext: Record<string, unknown>) => string | undefined
 }
 
 /**
