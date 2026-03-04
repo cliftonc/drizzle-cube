@@ -84,13 +84,13 @@ export function getToolDefinitions(): ToolDefinition[] {
         properties: {
           measures: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'Aggregation measures (e.g., ["Employees.count"])'
+            items: { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
+            description: 'Aggregation measures — MUST be "CubeName.measureName" format (e.g., ["PullRequests.count", "Issues.openCount"]). NEVER use just the cube name.'
           },
           dimensions: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'Grouping dimensions (e.g., ["Employees.name"])'
+            items: { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
+            description: 'Grouping dimensions — MUST be "CubeName.dimensionName" format (e.g., ["Teams.name", "Employees.department"]). NEVER use just the cube name.'
           },
           filters: {
             type: 'array',
@@ -386,6 +386,21 @@ export function createToolExecutor(options: {
   // execute_query
   executors.set('execute_query', async (input) => {
     try {
+      // Validate Cube.member format before executing — catches common LLM mistakes early
+      const validateFields = (fields: unknown, label: string): void => {
+        if (!Array.isArray(fields)) return
+        const invalid = fields.filter((f: unknown) => typeof f === 'string' && !f.includes('.'))
+        if (invalid.length > 0) {
+          throw new Error(
+            `Invalid ${label}: ${invalid.map((f: unknown) => `"${f}"`).join(', ')}. ` +
+            `All ${label} must use "CubeName.fieldName" format (e.g., "PullRequests.count", "Teams.name"). ` +
+            `Use discover_cubes or get_cube_metadata to find valid field names.`
+          )
+        }
+      }
+      validateFields(input.measures, 'measures')
+      validateFields(input.dimensions, 'dimensions')
+
       let query: Record<string, unknown>
 
       if (input.funnel) {
