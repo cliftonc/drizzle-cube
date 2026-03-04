@@ -38,6 +38,51 @@ export interface AgentChatRequest {
 }
 
 /**
+ * Observability hooks for tracing agent chat lifecycle events.
+ * Called synchronously (fire-and-forget) — implementations should not throw.
+ */
+export interface AgentObservabilityHooks {
+  /** Called once when agent chat starts */
+  onChatStart?: (event: {
+    traceId: string
+    sessionId?: string
+    message: string
+    model: string
+    historyLength: number
+  }) => void
+
+  /** Called after each Anthropic API call completes */
+  onGenerationEnd?: (event: {
+    traceId: string
+    turn: number
+    model: string
+    stopReason: string
+    inputTokens?: number
+    outputTokens?: number
+    durationMs: number
+  }) => void
+
+  /** Called after each tool execution */
+  onToolEnd?: (event: {
+    traceId: string
+    turn: number
+    toolName: string
+    toolUseId: string
+    isError: boolean
+    durationMs: number
+  }) => void
+
+  /** Called when agent chat completes */
+  onChatEnd?: (event: {
+    traceId: string
+    sessionId?: string
+    totalTurns: number
+    durationMs: number
+    error?: string
+  }) => void
+}
+
+/**
  * Agent configuration options (provided in adapter options).
  * Uses `@anthropic-ai/sdk` (the standard Anthropic API client) for direct
  * HTTP API calls — no subprocess spawning, fully edge-runtime compatible.
@@ -53,6 +98,8 @@ export interface AgentConfig {
   maxTokens?: number
   /** Allow X-Agent-Api-Key header to override server apiKey */
   allowClientApiKey?: boolean
+  /** Optional observability hooks for tracing */
+  observability?: AgentObservabilityHooks
 }
 
 /**
@@ -97,5 +144,5 @@ export type AgentSSEEvent =
   | { type: 'add_markdown'; data: MarkdownBlockData }
   | { type: 'dashboard_saved'; data: DashboardSavedData }
   | { type: 'turn_complete'; data: Record<string, never> }
-  | { type: 'done'; data: { sessionId: string } }
+  | { type: 'done'; data: { sessionId: string; traceId?: string } }
   | { type: 'error'; data: { message: string } }

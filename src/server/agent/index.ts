@@ -10,6 +10,7 @@ export { buildAgentSystemPrompt } from './system-prompt'
 export type {
   AgentChatRequest,
   AgentConfig,
+  AgentObservabilityHooks,
   AgentSSEEvent,
   AgentHistoryMessage,
   AgentHistoryToolCall,

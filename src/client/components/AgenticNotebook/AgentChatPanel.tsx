@@ -2,13 +2,17 @@
  * AgentChatPanel - Right panel containing chat messages and input
  */
 
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useNotebookStore, selectChatState, selectChatActions } from '../../stores/notebookStore'
 import { useAgentChat } from '../../hooks/useAgentChat'
 import type { PortletBlock, MarkdownBlock, ChatMessage as ChatMessageType } from '../../stores/notebookStore'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
+import { getIcon } from '../../icons'
+
+const ThumbUpIcon = getIcon('thumbUp')
+const ThumbDownIcon = getIcon('thumbDown')
 
 interface AgentChatPanelProps {
   agentEndpoint?: string
@@ -16,6 +20,8 @@ interface AgentChatPanelProps {
   onClear?: () => void
   /** Called when the agent saves a dashboard. Presence enables the "Save as Dashboard" button. */
   onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
+  /** Called when user submits feedback (thumbs up/down) */
+  onScore?: (data: { traceId: string; value: number; comment?: string }) => void
   /** Custom loading indicator for tool call spinners */
   loadingComponent?: React.ReactNode
   /** Initial prompt to auto-send on mount */
@@ -27,11 +33,14 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   agentApiKey,
   onClear,
   onDashboardSaved,
+  onScore,
   loadingComponent,
   initialPrompt,
 }: AgentChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialPromptSentRef = useRef(false)
+  const [lastTraceId, setLastTraceId] = useState<string | null>(null)
+  const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set())
 
   // Track whether the next content should start a new assistant message
   // (set after turn_complete, cleared when first content of new turn arrives)
@@ -113,10 +122,11 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
       // should start a new bubble (created lazily by ensureNewMessage)
       needsNewMessageRef.current = true
     }, []),
-    onDone: useCallback((sid: string) => {
+    onDone: useCallback((sid: string, traceId?: string) => {
       needsNewMessageRef.current = false
       setSessionId(sid)
       setIsStreaming(false)
+      if (traceId) setLastTraceId(traceId)
     }, [setSessionId, setIsStreaming]),
     onError: useCallback((message: string) => {
       ensureNewMessage()
@@ -198,6 +208,8 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     abort()
     setIsStreaming(false)
     reset()
+    setLastTraceId(null)
+    setScoredTraceIds(new Set())
     onClear?.()
   }, [abort, setIsStreaming, reset, onClear])
 
@@ -207,7 +219,15 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     )
   }, [doSend])
 
+  const handleScore = useCallback((value: number) => {
+    if (!lastTraceId || !onScore) return
+    onScore({ traceId: lastTraceId, value })
+    setScoredTraceIds(prev => new Set(prev).add(lastTraceId))
+  }, [lastTraceId, onScore])
+
   const showSaveAsDashboard = !!onDashboardSaved && !isStreaming && portletBlockCount > 0 && messages.length > 0
+  const showFeedback = !!onScore && !isStreaming && lastTraceId && messages.length > 0 && !scoredTraceIds.has(lastTraceId)
+  const lastScored = lastTraceId ? scoredTraceIds.has(lastTraceId) : false
 
   return (
     <div className="dc:flex dc:flex-col dc:h-full bg-dc-surface">
@@ -249,6 +269,34 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
               loadingComponent={loadingComponent}
             />
           ))
+        )}
+        {/* Feedback (thumbs up/down) */}
+        {(showFeedback || lastScored) && (
+          <div className="dc:flex dc:items-center dc:justify-center dc:gap-3 dc:py-4 dc:mt-2">
+            {lastScored ? (
+              <span className="dc:text-sm text-dc-text-secondary">Thanks for your feedback!</span>
+            ) : (
+              <>
+                <span className="dc:text-sm text-dc-text-secondary">Was this helpful?</span>
+                <div className="dc:flex dc:items-center dc:gap-2">
+                  <button
+                    onClick={() => handleScore(1)}
+                    className="dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:rounded-lg dc:text-sm dc:font-medium border-dc-border dc:border text-dc-success hover:bg-dc-success-bg dc:transition-colors bg-dc-surface dc:cursor-pointer"
+                  >
+                    <ThumbUpIcon className="dc:w-4 dc:h-4" />
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => handleScore(0)}
+                    className="dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:rounded-lg dc:text-sm dc:font-medium border-dc-border dc:border text-dc-error hover:bg-dc-danger-bg dc:transition-colors bg-dc-surface dc:cursor-pointer"
+                  >
+                    <ThumbDownIcon className="dc:w-4 dc:h-4" />
+                    No
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

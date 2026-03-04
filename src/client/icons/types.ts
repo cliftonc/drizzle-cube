@@ -73,6 +73,8 @@ export interface IconRegistry {
   codeBracket: IconDefinition
   swatch: IconDefinition
   camera: IconDefinition
+  thumbUp: IconDefinition
+  thumbDown: IconDefinition
 
   // Field type icons
   measure: IconDefinition

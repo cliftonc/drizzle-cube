@@ -103,6 +103,7 @@ export { handleAgentChat, getToolDefinitions, createToolExecutor, buildAgentSyst
 export type {
   AgentChatRequest,
   AgentConfig,
+  AgentObservabilityHooks,
   AgentSSEEvent,
   PortletBlockData,
   MarkdownBlockData,

@@ -39,6 +39,8 @@ import bookOpen from '@iconify-icons/heroicons-outline/book-open'
 import codeBracket from '@iconify-icons/heroicons-outline/code-bracket'
 import swatch from '@iconify-icons/heroicons-outline/swatch'
 import camera from '@iconify-icons/heroicons-outline/camera'
+import handThumbUp from '@iconify-icons/heroicons-solid/hand-thumb-up'
+import handThumbDown from '@iconify-icons/heroicons-solid/hand-thumb-down'
 
 // HeroIcons Solid (for field type indicators and measures)
 import chartBarSolid from '@iconify-icons/heroicons-solid/chart-bar'
@@ -118,6 +120,8 @@ export const DEFAULT_ICONS: IconRegistry = {
   codeBracket: { icon: codeBracket, category: 'action' },
   swatch: { icon: swatch, category: 'action' },
   camera: { icon: camera, category: 'action' },
+  thumbUp: { icon: handThumbUp, category: 'action' },
+  thumbDown: { icon: handThumbDown, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },

@@ -59,6 +59,18 @@ export default function NotebookViewPage() {
     }
   }, [id, updateNotebook])
 
+  const handleScore = useCallback(async (data: { traceId: string; value: number; comment?: string }) => {
+    try {
+      await fetch('/api/agent/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+    } catch (err) {
+      console.error('Failed to submit score:', err)
+    }
+  }, [])
+
   const handleDashboardSaved = useCallback(async (data: { title: string; description?: string; dashboardConfig: any }) => {
     try {
       const page = await createDashboard.mutateAsync({
@@ -177,6 +189,7 @@ export default function NotebookViewPage() {
           onSave={handleSave}
           agentApiKey={apiKey || undefined}
           onDashboardSaved={handleDashboardSaved}
+          onScore={handleScore}
           loadingComponent={<DrizzleCubeLoader />}
           initialPrompt={initialPrompt}
         />

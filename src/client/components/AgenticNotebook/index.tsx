@@ -37,6 +37,8 @@ export interface AgenticNotebookProps {
   colorPalette?: ColorPalette
   /** Called when the agent saves a dashboard. Presence enables the "Save as Dashboard" button. */
   onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
+  /** Called when user submits feedback (thumbs up/down). Receives traceId from the last agent response. */
+  onScore?: (data: { traceId: string; value: number; comment?: string }) => void
   /** Custom loading indicator for tool call spinners (defaults to LoadingIndicator) */
   loadingComponent?: ReactNode
   /** Additional CSS class name */
@@ -54,6 +56,7 @@ function AgenticNotebookInner({
   onSave,
   onDirtyStateChange,
   onDashboardSaved,
+  onScore,
   loadingComponent,
   className,
   initialPrompt,
@@ -181,6 +184,7 @@ function AgenticNotebookInner({
           agentApiKey={agentApiKey}
           onClear={handleClear}
           onDashboardSaved={onDashboardSaved}
+          onScore={onScore}
           loadingComponent={loadingComponent}
           initialPrompt={initialPrompt}
         />

@@ -231,7 +231,7 @@ describe('useAgentChat', () => {
         await result.current.sendMessage('test')
       })
 
-      expect(callbacks.onDone).toHaveBeenCalledWith('sess-abc')
+      expect(callbacks.onDone).toHaveBeenCalledWith('sess-abc', undefined)
     })
 
     it('should call onError for error events', async () => {

@@ -5,9 +5,11 @@
 import dotenv from 'dotenv'
 import { serve } from '@hono/node-server'
 
-// Load environment variables from dev/.env
+// Load environment variables from dev/.env BEFORE importing app
+// (static imports are hoisted, so we must use dynamic import)
 dotenv.config({ path: 'dev/.env' })
-import app from './app.js'
+
+const { default: app } = await import('./app.js')
 
 const port = parseInt(process.env.PORT || '3001')
 

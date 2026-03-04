@@ -349,7 +349,7 @@ describe('handleAgentChat', () => {
     expect(turnCompleteEvents.length).toBe(1)
   })
 
-  it('should default to empty sessionId when none provided', async () => {
+  it('should generate a sessionId when none provided', async () => {
     mockMessagesCreate.mockResolvedValue(
       createTextResponseStream('Hello')
     )
@@ -359,8 +359,9 @@ describe('handleAgentChat', () => {
     )
 
     const doneEvent = events.find((e) => e.type === 'done')
-    expect(
-      (doneEvent!.data as { sessionId: string }).sessionId
-    ).toBe('')
+    const sessionId = (doneEvent!.data as { sessionId: string }).sessionId
+    // Should generate a UUID when no sessionId is provided
+    expect(sessionId).toBeTruthy()
+    expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 })

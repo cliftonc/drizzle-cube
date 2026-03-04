@@ -27,7 +27,11 @@ export async function* handleAgentChat(options: {
   agentConfig: AgentConfig
   apiKey: string
 }): AsyncGenerator<AgentSSEEvent> {
-  const { message, sessionId, history, semanticLayer, securityContext, agentConfig, apiKey } = options
+  const { message, history, semanticLayer, securityContext, agentConfig, apiKey } = options
+  const sessionId = options.sessionId || crypto.randomUUID()
+  const observability = agentConfig.observability
+  const traceId = crypto.randomUUID()
+  const chatStartTime = Date.now()
 
   // Dynamically import the Anthropic SDK (optional peer dependency)
   let Anthropic: any
@@ -59,6 +63,17 @@ export async function* handleAgentChat(options: {
   const model = agentConfig.model || 'claude-sonnet-4-6'
   const maxTurns = agentConfig.maxTurns || 25
   const maxTokens = agentConfig.maxTokens || 4096
+
+  // Notify observability that chat has started
+  try {
+    observability?.onChatStart?.({
+      traceId,
+      sessionId,
+      message,
+      model,
+      historyLength: history?.length ?? 0,
+    })
+  } catch { /* observability must never break the agent */ }
 
   // Conversation messages — rebuild from history if provided (e.g. after notebook reload)
   const messages: Array<{ role: string; content: unknown }> = []
@@ -104,8 +119,10 @@ export async function* handleAgentChat(options: {
   // Add the new user message
   messages.push({ role: 'user', content: message })
 
+  let lastTurn = 0
   try {
     for (let turn = 0; turn < maxTurns; turn++) {
+      lastTurn = turn + 1
       // Call Messages API with streaming (raw async iterable — CF Workers safe)
       const stream = await client.messages.create({
         model,
@@ -121,6 +138,9 @@ export async function* handleAgentChat(options: {
       let currentBlockIndex = -1
       let currentToolInputJson = ''
       let stopReason = ''
+      let inputTokens: number | undefined
+      let outputTokens: number | undefined
+      const generationStart = Date.now()
 
       for await (const event of stream) {
         switch (event.type) {
@@ -169,8 +189,20 @@ export async function* handleAgentChat(options: {
             break
           }
 
+          case 'message_start': {
+            const msg = (event as any).message
+            if (msg?.usage?.input_tokens != null) {
+              inputTokens = msg.usage.input_tokens
+            }
+            break
+          }
+
           case 'message_delta': {
             const messageDelta = event.delta as { stop_reason?: string }
+            const deltaUsage = (event as any).usage
+            if (deltaUsage?.output_tokens != null) {
+              outputTokens = deltaUsage.output_tokens
+            }
             if (messageDelta.stop_reason) {
               stopReason = messageDelta.stop_reason
             }
@@ -178,6 +210,19 @@ export async function* handleAgentChat(options: {
           }
         }
       }
+
+      // Notify observability that this generation (API call) has completed
+      try {
+        observability?.onGenerationEnd?.({
+          traceId,
+          turn,
+          model,
+          stopReason,
+          inputTokens,
+          outputTokens,
+          durationMs: Date.now() - generationStart,
+        })
+      } catch { /* observability must never break the agent */ }
 
       // Push the complete assistant message into conversation history
       messages.push({ role: 'assistant', content: contentBlocks })
@@ -212,6 +257,7 @@ export async function* handleAgentChat(options: {
           continue
         }
 
+        const toolStart = Date.now()
         try {
           const execResult = await executorFn(toolInput)
 
@@ -231,6 +277,14 @@ export async function* handleAgentChat(options: {
             type: 'tool_use_result',
             data: { id: toolUseId, name: toolName, result: execResult.result, ...(execResult.isError ? { isError: true } : {}) }
           }
+
+          try {
+            observability?.onToolEnd?.({
+              traceId, turn, toolName, toolUseId,
+              isError: !!execResult.isError,
+              durationMs: Date.now() - toolStart,
+            })
+          } catch { /* observability must never break the agent */ }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Tool execution failed'
           toolResults.push({
@@ -243,6 +297,14 @@ export async function* handleAgentChat(options: {
             type: 'tool_use_result',
             data: { id: toolUseId, name: toolName, result: errorMsg, isError: true }
           }
+
+          try {
+            observability?.onToolEnd?.({
+              traceId, turn, toolName, toolUseId,
+              isError: true,
+              durationMs: Date.now() - toolStart,
+            })
+          } catch { /* observability must never break the agent */ }
         }
       }
 
@@ -253,11 +315,30 @@ export async function* handleAgentChat(options: {
       messages.push({ role: 'user', content: toolResults })
     }
 
+    try {
+      observability?.onChatEnd?.({
+        traceId,
+        sessionId,
+        totalTurns: lastTurn,
+        durationMs: Date.now() - chatStartTime,
+      })
+    } catch { /* observability must never break the agent */ }
+
     yield {
       type: 'done',
-      data: { sessionId: sessionId || '' }
+      data: { sessionId: sessionId || '', traceId }
     }
   } catch (error) {
+    try {
+      observability?.onChatEnd?.({
+        traceId,
+        sessionId,
+        totalTurns: 0,
+        durationMs: Date.now() - chatStartTime,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } catch { /* observability must never break the agent */ }
+
     yield {
       type: 'error',
       data: {

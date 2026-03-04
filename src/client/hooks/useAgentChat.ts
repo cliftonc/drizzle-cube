@@ -57,8 +57,8 @@ export interface UseAgentChatOptions {
   onToolStart: (id: string, name: string, input?: unknown) => void
   /** Called when a tool call completes */
   onToolResult: (id: string, name: string, result?: unknown, isError?: boolean) => void
-  /** Called when the agent completes with session ID */
-  onDone: (sessionId: string) => void
+  /** Called when the agent completes with session ID and optional trace ID */
+  onDone: (sessionId: string, traceId?: string) => void
   /** Called when a turn completes (between agentic turns) */
   onTurnComplete?: () => void
   /** Called on error */
@@ -135,7 +135,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
           cb.onTurnComplete?.()
           break
         case 'done':
-          cb.onDone(event.data.sessionId)
+          cb.onDone(event.data.sessionId, event.data.traceId)
           break
         case 'error':
           cb.onError(event.data.message)

@@ -19,6 +19,7 @@ import type { Schema } from './schema.js'
 import analyticsApp from './analytics-routes.js'
 import notebooksApp from './notebooks-routes.js'
 import aiApp from './ai-routes.js'
+import { initLangfuse, createLangfuseObservability } from './langfuse.js'
 
 interface Variables {
   db: DrizzleDatabase<Schema>
@@ -213,6 +214,9 @@ app.get('/api/docs', (c) => {
   })
 })
 
+// Initialize Langfuse tracing (if configured via env vars)
+const langfuseTracer = initLangfuse()
+
 // Create cache provider for query result caching
 const cacheProvider = new MemoryCacheProvider({
   defaultTtlMs: 60000, // 1 minute default TTL
@@ -246,7 +250,8 @@ const cubeApp = createCubeApp({
     apiKey: getEnvVar('ANTHROPIC_API_KEY'),
     allowClientApiKey: true, // Allow X-Agent-Api-Key header for dev
     model: 'claude-haiku-4-5',
-    maxTurns: 25
+    maxTurns: 25,
+    ...(langfuseTracer && { observability: createLangfuseObservability(langfuseTracer) }),
   }
 })
 
@@ -266,6 +271,37 @@ app.use('/api/notebooks/*', async (c, next) => {
   await next()
 })
 app.route('/api/notebooks', notebooksApp)
+
+// Score endpoint for Langfuse user feedback (agent chat traces)
+app.post('/api/agent/score', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { traceId, value, comment } = body as { traceId: string; value: number; comment?: string }
+
+    if (!traceId || typeof value !== 'number') {
+      return c.json({ error: 'traceId and numeric value are required' }, 400)
+    }
+
+    if (!langfuseTracer) {
+      // No-op when Langfuse is not configured
+      return c.json({ success: true })
+    }
+
+    langfuseTracer.createScore({
+      traceId,
+      name: 'user-feedback',
+      value,
+      dataType: 'BOOLEAN',
+      comment,
+    })
+
+    await langfuseTracer.flush()
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('Error submitting score:', error)
+    return c.json({ error: 'Failed to submit score' }, 500)
+  }
+})
 
 // Mount AI routes with database access and security context extractor
 app.use('/api/ai/*', async (c, next) => {
