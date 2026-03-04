@@ -1,0 +1,64 @@
+name: Release Notifications
+
+on:
+  workflow_run:
+    workflows: ["Publish to NPM"]
+    types: [completed]
+
+permissions:
+  discussions: write
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Get release info
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The workflow_run event doesn't carry release data directly,
+          # so fetch the latest release from the API
+          RELEASE_JSON=$(gh api repos/${{ github.repository }}/releases/latest)
+          echo "tag=$(echo "$RELEASE_JSON" | jq -r '.tag_name')" >> "$GITHUB_OUTPUT"
+          echo "name=$(echo "$RELEASE_JSON" | jq -r '.name')" >> "$GITHUB_OUTPUT"
+          echo "url=$(echo "$RELEASE_JSON" | jq -r '.html_url')" >> "$GITHUB_OUTPUT"
+
+          # Write body to a file to avoid shell interpretation of backticks etc.
+          echo "$RELEASE_JSON" | jq -r '.body' > /tmp/release_body.txt
+
+      - name: Post to GitHub Discussions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_NAME: ${{ steps.release.outputs.name }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          BODY=$(cat /tmp/release_body.txt)
+          DISCUSSION_BODY="${BODY}
+
+          ---
+          [View full release on GitHub](${RELEASE_URL}) | [NPM package](https://www.npmjs.com/package/drizzle-cube/v/${VERSION})"
+
+          gh api graphql -f query='
+            mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+              createDiscussion(input: {repositoryId: $repoId, categoryId: $categoryId, title: $title, body: $body}) {
+                discussion { url }
+              }
+            }' \
+            -f repoId="R_kgDOPfOdig" \
+            -f categoryId="DIC_kwDOPfOdis4Cuiyt" \
+            -f title="$RELEASE_NAME" \
+            -f body="$DISCUSSION_BODY"
+
+      - name: Post to Discord
+        uses: SethCohen/github-releases-to-discord@v1
+        with:
+          webhook_url: ${{ secrets.DISCORD_RELEASES_WEBHOOK }}
+          color: "5793266"
+          username: "Drizzle Cube"
+          footer_title: "drizzle-cube"
+          reduce_headings: true
