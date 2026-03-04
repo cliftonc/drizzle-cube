@@ -472,6 +472,14 @@ export function createToolExecutor(options: {
         }
       }
 
+      if (input.order && typeof input.order === 'object' && !Array.isArray(input.order)) {
+        const fixedOrder: Record<string, unknown> = {}
+        for (const [key, val] of Object.entries(input.order as Record<string, unknown>)) {
+          fixedOrder[fixDoublePrefixed(key)] = val
+        }
+        input.order = fixedOrder
+      }
+
       let query: Record<string, unknown>
 
       if (input.funnel) {
