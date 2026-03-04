@@ -6,7 +6,7 @@
 
 import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
-import type { AgentConfig, AgentSSEEvent } from './types'
+import type { AgentConfig, AgentSSEEvent, AgentHistoryMessage } from './types'
 import { buildAgentSystemPrompt } from './system-prompt'
 import { getToolDefinitions, createToolExecutor } from './tools'
 
@@ -21,12 +21,13 @@ import { getToolDefinitions, createToolExecutor } from './tools'
 export async function* handleAgentChat(options: {
   message: string
   sessionId?: string
+  history?: AgentHistoryMessage[]
   semanticLayer: SemanticLayerCompiler
   securityContext: SecurityContext
   agentConfig: AgentConfig
   apiKey: string
 }): AsyncGenerator<AgentSSEEvent> {
-  const { message, sessionId, semanticLayer, securityContext, agentConfig, apiKey } = options
+  const { message, sessionId, history, semanticLayer, securityContext, agentConfig, apiKey } = options
 
   // Dynamically import the Anthropic SDK (optional peer dependency)
   let Anthropic: any
@@ -59,10 +60,49 @@ export async function* handleAgentChat(options: {
   const maxTurns = agentConfig.maxTurns || 25
   const maxTokens = agentConfig.maxTokens || 4096
 
-  // Conversation messages
-  const messages: Array<{ role: string; content: unknown }> = [
-    { role: 'user', content: message }
-  ]
+  // Conversation messages — rebuild from history if provided (e.g. after notebook reload)
+  const messages: Array<{ role: string; content: unknown }> = []
+
+  if (history && history.length > 0) {
+    for (const msg of history) {
+      if (msg.role === 'user') {
+        messages.push({ role: 'user', content: msg.content })
+      } else if (msg.role === 'assistant') {
+        // Build Anthropic content blocks from the stored message
+        const contentBlocks: Array<{ type: string; [key: string]: unknown }> = []
+        if (msg.content) {
+          contentBlocks.push({ type: 'text', text: msg.content })
+        }
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+          for (const tc of msg.toolCalls) {
+            contentBlocks.push({
+              type: 'tool_use',
+              id: tc.id,
+              name: tc.name,
+              input: tc.input || {},
+            })
+          }
+          // Push assistant message
+          messages.push({ role: 'assistant', content: contentBlocks })
+          // Push tool results as the following user message
+          messages.push({
+            role: 'user',
+            content: msg.toolCalls.map((tc) => ({
+              type: 'tool_result',
+              tool_use_id: tc.id,
+              content: typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result ?? ''),
+              ...(tc.status === 'error' ? { is_error: true } : {}),
+            })),
+          })
+        } else if (contentBlocks.length > 0) {
+          messages.push({ role: 'assistant', content: msg.content })
+        }
+      }
+    }
+  }
+
+  // Add the new user message
+  messages.push({ role: 'user', content: message })
 
   try {
     for (let turn = 0; turn < maxTurns; turn++) {

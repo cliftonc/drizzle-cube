@@ -604,7 +604,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         const { handleAgentChat } = await import('../../server/agent/handler')
 
         const body = request.body as any
-        const { message, sessionId } = body as { message: string; sessionId?: string }
+        const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
 
         if (!message || typeof message !== 'string') {
           return reply.status(400).send({ error: 'message is required and must be a string' })
@@ -639,6 +639,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
           const events = handleAgentChat({
             message,
             sessionId,
+            history,
             semanticLayer,
             securityContext,
             agentConfig,

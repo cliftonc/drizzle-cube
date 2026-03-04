@@ -9,13 +9,14 @@
  */
 
 export interface LoadingIndicatorProps {
-  /** Size variant: 'sm' (24px), 'md' (32px), 'lg' (48px) */
-  size?: 'sm' | 'md' | 'lg'
+  /** Size variant: 'xs' (12px), 'sm' (24px), 'md' (32px), 'lg' (48px) */
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   /** Additional CSS classes */
   className?: string
 }
 
 const sizeClasses = {
+  xs: 'dc:h-3 dc:w-3',
   sm: 'dc:h-6 dc:w-6',
   md: 'dc:h-8 dc:w-8',
   lg: 'dc:h-12 dc:w-12'

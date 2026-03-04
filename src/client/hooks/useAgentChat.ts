@@ -36,7 +36,7 @@ function formatUserFacingError(message: string): string {
 }
 
 interface AgentSSEEvent {
-  type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'add_markdown' | 'turn_complete' | 'done' | 'error'
+  type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'add_markdown' | 'dashboard_saved' | 'turn_complete' | 'done' | 'error'
   data: any
 }
 
@@ -49,6 +49,8 @@ export interface UseAgentChatOptions {
   onAddPortlet: (data: PortletBlock) => void
   /** Called when agent adds a markdown block to the notebook */
   onAddMarkdown: (data: MarkdownBlock) => void
+  /** Called when the agent saves a dashboard configuration */
+  onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
   /** Called when streaming text arrives */
   onTextDelta: (text: string) => void
   /** Called when a tool call starts */
@@ -63,9 +65,22 @@ export interface UseAgentChatOptions {
   onError: (message: string) => void
 }
 
+/** Simplified message format for sending conversation history */
+export interface AgentHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+  toolCalls?: Array<{
+    id: string
+    name: string
+    input?: unknown
+    result?: unknown
+    status: 'running' | 'complete' | 'error'
+  }>
+}
+
 export interface UseAgentChatResult {
-  /** Send a message to the agent */
-  sendMessage: (content: string, sessionId?: string | null) => Promise<void>
+  /** Send a message to the agent, optionally with prior conversation history */
+  sendMessage: (content: string, sessionId?: string | null, history?: AgentHistoryMessage[]) => Promise<void>
   /** Whether the agent is currently streaming */
   isStreaming: boolean
   /** Abort the current stream */
@@ -77,55 +92,53 @@ export interface UseAgentChatResult {
  * Uses fetch() with ReadableStream to consume SSE events.
  */
 export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
-  const {
-    agentEndpoint,
-    agentApiKey,
-    onAddPortlet,
-    onAddMarkdown,
-    onTextDelta,
-    onToolStart,
-    onToolResult,
-    onTurnComplete,
-    onDone,
-    onError,
-  } = options
+  const { agentEndpoint, agentApiKey } = options
 
   const { cubeApi } = useCubeApi()
   const abortControllerRef = useRef<AbortController | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
 
-  const sendMessage = useCallback(async (content: string, sessionId?: string | null) => {
+  // Store callbacks in a ref so handleEvent always reads the latest
+  // without causing sendMessage to be recreated on every render
+  const callbacksRef = useRef(options)
+  callbacksRef.current = options
+
+  const sendMessage = useCallback(async (content: string, sessionId?: string | null, history?: AgentHistoryMessage[]) => {
     function handleEvent(event: AgentSSEEvent) {
+      const cb = callbacksRef.current
       switch (event.type) {
         case 'text_delta':
-          onTextDelta(event.data)
+          cb.onTextDelta(event.data)
           break
         case 'tool_use_start':
-          onToolStart(event.data.id, event.data.name, event.data.input)
+          cb.onToolStart(event.data.id, event.data.name, event.data.input)
           break
         case 'tool_use_result':
-          onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError)
+          cb.onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError)
           break
         case 'add_portlet':
-          onAddPortlet({
+          cb.onAddPortlet({
             ...event.data,
             type: 'portlet',
           })
           break
         case 'add_markdown':
-          onAddMarkdown({
+          cb.onAddMarkdown({
             ...event.data,
             type: 'markdown',
           })
           break
+        case 'dashboard_saved':
+          cb.onDashboardSaved?.(event.data)
+          break
         case 'turn_complete':
-          onTurnComplete?.()
+          cb.onTurnComplete?.()
           break
         case 'done':
-          onDone(event.data.sessionId)
+          cb.onDone(event.data.sessionId)
           break
         case 'error':
-          onError(event.data.message)
+          cb.onError(event.data.message)
           break
       }
     }
@@ -162,6 +175,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
         body: JSON.stringify({
           message: content,
           ...(sessionId ? { sessionId } : {}),
+          ...(history && history.length > 0 ? { history } : {}),
         }),
         signal: controller.signal,
       })
@@ -222,13 +236,13 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         const raw = error instanceof Error ? error.message : 'Stream failed'
-        onError(formatUserFacingError(raw))
+        callbacksRef.current.onError(formatUserFacingError(raw))
       }
     } finally {
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [cubeApi, agentEndpoint, agentApiKey, onAddPortlet, onAddMarkdown, onTextDelta, onToolStart, onToolResult, onTurnComplete, onDone, onError])
+  }, [cubeApi, agentEndpoint, agentApiKey])
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {

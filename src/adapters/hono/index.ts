@@ -519,7 +519,7 @@ export function createCubeRoutes(
         const { handleAgentChat } = await import('../../server/agent/handler')
 
         const body = await c.req.json()
-        const { message, sessionId } = body as { message: string; sessionId?: string }
+        const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
 
         if (!message || typeof message !== 'string') {
           return c.json({ error: 'message is required and must be a string' }, 400)
@@ -551,6 +551,7 @@ export function createCubeRoutes(
               const events = handleAgentChat({
                 message,
                 sessionId,
+                history,
                 semanticLayer,
                 securityContext,
                 agentConfig,

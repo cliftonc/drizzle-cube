@@ -245,7 +245,7 @@ const cubeApp = createCubeApp({
   agent: {
     apiKey: getEnvVar('ANTHROPIC_API_KEY'),
     allowClientApiKey: true, // Allow X-Agent-Api-Key header for dev
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5',
     maxTurns: 25
   }
 })

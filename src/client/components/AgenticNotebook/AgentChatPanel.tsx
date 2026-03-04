@@ -6,7 +6,7 @@ import React, { useRef, useEffect, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useNotebookStore, selectChatState, selectChatActions } from '../../stores/notebookStore'
 import { useAgentChat } from '../../hooks/useAgentChat'
-import type { PortletBlock, MarkdownBlock } from '../../stores/notebookStore'
+import type { PortletBlock, MarkdownBlock, ChatMessage as ChatMessageType } from '../../stores/notebookStore'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 
@@ -14,14 +14,24 @@ interface AgentChatPanelProps {
   agentEndpoint?: string
   agentApiKey?: string
   onClear?: () => void
+  /** Called when the agent saves a dashboard. Presence enables the "Save as Dashboard" button. */
+  onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
+  /** Custom loading indicator for tool call spinners */
+  loadingComponent?: React.ReactNode
+  /** Initial prompt to auto-send on mount */
+  initialPrompt?: string
 }
 
 const AgentChatPanel = React.memo(function AgentChatPanel({
   agentEndpoint,
   agentApiKey,
   onClear,
+  onDashboardSaved,
+  loadingComponent,
+  initialPrompt,
 }: AgentChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const initialPromptSentRef = useRef(false)
 
   // Track whether the next content should start a new assistant message
   // (set after turn_complete, cleared when first content of new turn arrives)
@@ -43,6 +53,15 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   const sessionId = useNotebookStore((s) => s.sessionId)
   const addBlock = useNotebookStore((s) => s.addBlock)
   const reset = useNotebookStore((s) => s.reset)
+  const portletBlockCount = useNotebookStore((s) => s.blocks.filter((b) => b.type === 'portlet').length)
+
+  // Refs for values doSend reads at call-time (avoids recreating callbacks on every text delta)
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+  const isStreamingRef = useRef(isStreaming)
+  isStreamingRef.current = isStreaming
+  const sessionIdRef = useRef(sessionId)
+  sessionIdRef.current = sessionId
 
   // Lazily create a new assistant message when needed (between turns)
   const ensureNewMessage = useCallback(() => {
@@ -88,6 +107,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     onAddMarkdown: useCallback((data: MarkdownBlock) => {
       addBlock(data)
     }, [addBlock]),
+    onDashboardSaved,
     onTurnComplete: useCallback(() => {
       // Don't create a new message yet — just flag that the next turn
       // should start a new bubble (created lazily by ensureNewMessage)
@@ -106,10 +126,18 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   })
 
   // Send a message (used by both Send and Continue)
+  // Reads messages/isStreaming/sessionId from refs to avoid recreating on every text delta
   const doSend = useCallback((content: string) => {
-    if (!content || isStreaming) return
+    if (!content || isStreamingRef.current) return
 
     needsNewMessageRef.current = false
+
+    // Capture current messages as history BEFORE adding the new ones
+    const history = messagesRef.current.map((m: ChatMessageType) => ({
+      role: m.role,
+      content: m.content,
+      ...(m.toolCalls && m.toolCalls.length > 0 ? { toolCalls: m.toolCalls } : {}),
+    }))
 
     // Add user message
     addMessage({
@@ -131,13 +159,26 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     setInputValue('')
     setIsStreaming(true)
 
-    // Send to agent
-    sendMessage(content, sessionId)
-  }, [isStreaming, addMessage, setInputValue, setIsStreaming, sendMessage, sessionId])
+    // Send to agent with conversation history for session continuity
+    sendMessage(content, sessionIdRef.current, history)
+  }, [addMessage, setInputValue, setIsStreaming, sendMessage])
+
+  // Auto-send initial prompt on mount (doSend is stable so this won't re-trigger)
+  useEffect(() => {
+    if (initialPrompt && !initialPromptSentRef.current && messages.length === 0) {
+      initialPromptSentRef.current = true
+      // Small delay to ensure chat hook is fully initialized
+      const timer = setTimeout(() => doSend(initialPrompt), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [initialPrompt, messages.length, doSend])
+
+  const inputValueRef = useRef(inputValue)
+  inputValueRef.current = inputValue
 
   const handleSend = useCallback(() => {
-    doSend(inputValue.trim())
-  }, [inputValue, doSend])
+    doSend(inputValueRef.current.trim())
+  }, [doSend])
 
   const handleStop = useCallback(() => {
     abort()
@@ -156,21 +197,40 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     onClear?.()
   }, [abort, setIsStreaming, reset, onClear])
 
+  const handleSaveAsDashboard = useCallback(() => {
+    doSend(
+      'Save the current notebook as a dashboard with a professional layout, section headers, and appropriate filters.'
+    )
+  }, [doSend])
+
+  const showSaveAsDashboard = !!onDashboardSaved && !isStreaming && portletBlockCount > 0 && messages.length > 0
+
   return (
     <div className="dc:flex dc:flex-col dc:h-full bg-dc-surface">
       {/* Header */}
       <div className="dc:flex dc:items-center dc:justify-between dc:px-4 dc:py-3 border-dc-border dc:border-b">
         <h3 className="dc:text-sm dc:font-semibold text-dc-text">AI Assistant</h3>
-        {(messages.length > 0) && (
-          <button
-            onClick={handleClear}
-            disabled={isStreaming}
-            className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-text-secondary dc:hover:opacity-80 dc:disabled:opacity-40"
-            title="Clear notebook and chat"
-          >
-            Clear
-          </button>
-        )}
+        <div className="dc:flex dc:items-center dc:gap-1">
+          {showSaveAsDashboard && (
+            <button
+              onClick={handleSaveAsDashboard}
+              className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-accent dc:hover:opacity-80"
+              title="Save notebook as a dashboard"
+            >
+              Save as Dashboard
+            </button>
+          )}
+          {(messages.length > 0) && (
+            <button
+              onClick={handleClear}
+              disabled={isStreaming}
+              className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-text-secondary dc:hover:opacity-80 dc:disabled:opacity-40"
+              title="Clear notebook and chat"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -178,7 +238,13 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
         {messages.length === 0 ? (
           <EmptyState />
         ) : (
-          messages.map((msg) => <ChatMessage key={msg.id} message={msg} />)
+          messages.map((msg) => (
+            <ChatMessage
+              key={msg.id}
+              message={msg}
+              loadingComponent={loadingComponent}
+            />
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>

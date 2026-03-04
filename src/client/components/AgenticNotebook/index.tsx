@@ -20,6 +20,7 @@ import {
 import NotebookCanvas from './NotebookCanvas'
 import AgentChatPanel from './AgentChatPanel'
 import type { ColorPalette } from '../../types'
+import type { ReactNode } from 'react'
 
 export interface AgenticNotebookProps {
   /** Initial config to restore (saved notebooks) */
@@ -34,8 +35,14 @@ export interface AgenticNotebookProps {
   onDirtyStateChange?: (isDirty: boolean) => void
   /** Color palette for charts */
   colorPalette?: ColorPalette
+  /** Called when the agent saves a dashboard. Presence enables the "Save as Dashboard" button. */
+  onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
+  /** Custom loading indicator for tool call spinners (defaults to LoadingIndicator) */
+  loadingComponent?: ReactNode
   /** Additional CSS class name */
   className?: string
+  /** Initial prompt to auto-send on mount */
+  initialPrompt?: string
 }
 
 /**
@@ -46,7 +53,10 @@ function AgenticNotebookInner({
   agentApiKey,
   onSave,
   onDirtyStateChange,
+  onDashboardSaved,
+  loadingComponent,
   className,
+  initialPrompt,
 }: Omit<AgenticNotebookProps, 'config' | 'colorPalette'>) {
   const [dividerPosition, setDividerPosition] = useState(60) // 60% left, 40% right
   const containerRef = useRef<HTMLDivElement>(null)
@@ -170,6 +180,9 @@ function AgenticNotebookInner({
           agentEndpoint={agentEndpoint}
           agentApiKey={agentApiKey}
           onClear={handleClear}
+          onDashboardSaved={onDashboardSaved}
+          loadingComponent={loadingComponent}
+          initialPrompt={initialPrompt}
         />
       </div>
     </div>

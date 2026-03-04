@@ -11,6 +11,9 @@ export type {
   AgentChatRequest,
   AgentConfig,
   AgentSSEEvent,
+  AgentHistoryMessage,
+  AgentHistoryToolCall,
   PortletBlockData,
-  MarkdownBlockData
+  MarkdownBlockData,
+  DashboardSavedData
 } from './types'

@@ -3,7 +3,27 @@
  * Types for the agentic AI notebook handler
  */
 
-import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../../client/types'
+import type { ChartType, ChartAxisConfig, ChartDisplayConfig, DashboardConfig } from '../../client/types'
+
+/**
+ * A tool call from a prior conversation turn (for history replay)
+ */
+export interface AgentHistoryToolCall {
+  id: string
+  name: string
+  input?: unknown
+  result?: unknown
+  status: 'running' | 'complete' | 'error'
+}
+
+/**
+ * A message from a prior conversation (for history replay)
+ */
+export interface AgentHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+  toolCalls?: AgentHistoryToolCall[]
+}
 
 /**
  * Request body for the agent chat endpoint
@@ -13,6 +33,8 @@ export interface AgentChatRequest {
   message: string
   /** Session ID for multi-turn conversations */
   sessionId?: string
+  /** Prior conversation history for session continuity (e.g. after notebook reload) */
+  history?: AgentHistoryMessage[]
 }
 
 /**
@@ -55,6 +77,16 @@ export interface MarkdownBlockData {
 }
 
 /**
+ * Data emitted when the agent saves a dashboard via the save_as_dashboard tool.
+ * The client receives this via SSE and can persist the config however it chooses.
+ */
+export interface DashboardSavedData {
+  title: string
+  description?: string
+  dashboardConfig: DashboardConfig
+}
+
+/**
  * SSE events emitted by the agent handler
  */
 export type AgentSSEEvent =
@@ -63,6 +95,7 @@ export type AgentSSEEvent =
   | { type: 'tool_use_result'; data: { id: string; name: string; result?: unknown; isError?: boolean } }
   | { type: 'add_portlet'; data: PortletBlockData }
   | { type: 'add_markdown'; data: MarkdownBlockData }
+  | { type: 'dashboard_saved'; data: DashboardSavedData }
   | { type: 'turn_complete'; data: Record<string, never> }
   | { type: 'done'; data: { sessionId: string } }
   | { type: 'error'; data: { message: string } }

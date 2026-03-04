@@ -32,9 +32,9 @@ const mockSecurityContext = { organisationId: 'org-test' }
 // ============================================================================
 
 describe('getToolDefinitions', () => {
-  it('should return exactly 5 tools', () => {
+  it('should return exactly 6 tools', () => {
     const tools = getToolDefinitions()
-    expect(tools).toHaveLength(5)
+    expect(tools).toHaveLength(6)
   })
 
   it('should return tools with correct names', () => {
@@ -46,6 +46,7 @@ describe('getToolDefinitions', () => {
       'execute_query',
       'add_portlet',
       'add_markdown',
+      'save_as_dashboard',
     ])
   })
 
@@ -165,17 +166,18 @@ describe('createToolExecutor', () => {
     semanticLayer = createMockSemanticLayer()
   })
 
-  it('should return a Map with 5 entries matching tool names', () => {
+  it('should return a Map with 6 entries matching tool names', () => {
     const executor = createToolExecutor({
       semanticLayer,
       securityContext: mockSecurityContext,
     })
-    expect(executor.size).toBe(5)
+    expect(executor.size).toBe(6)
     expect(executor.has('discover_cubes')).toBe(true)
     expect(executor.has('get_cube_metadata')).toBe(true)
     expect(executor.has('execute_query')).toBe(true)
     expect(executor.has('add_portlet')).toBe(true)
     expect(executor.has('add_markdown')).toBe(true)
+    expect(executor.has('save_as_dashboard')).toBe(true)
   })
 
   // --------------------------------------------------------------------------

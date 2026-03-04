@@ -535,7 +535,7 @@ export function createCubeRouter(
       try {
         const { handleAgentChat } = await import('../../server/agent/handler')
 
-        const { message, sessionId } = req.body as { message: string; sessionId?: string }
+        const { message, sessionId, history } = req.body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
 
         if (!message || typeof message !== 'string') {
           return res.status(400).json({ error: 'message is required and must be a string' })
@@ -570,6 +570,7 @@ export function createCubeRouter(
           const events = handleAgentChat({
             message,
             sessionId,
+            history,
             semanticLayer,
             securityContext,
             agentConfig,

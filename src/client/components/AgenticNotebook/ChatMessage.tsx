@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react'
 import type { ChatMessage as ChatMessageType, ToolCallRecord } from '../../stores/notebookStore'
+import LoadingIndicator from '../LoadingIndicator'
 
 /** Simple inline markdown parser for bold, italic, and code in chat text */
 function renderInlineMarkdown(text: string): React.ReactNode[] {
@@ -46,6 +47,8 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
 
 interface ChatMessageProps {
   message: ChatMessageType
+  /** Custom loading indicator for tool call spinners */
+  loadingComponent?: React.ReactNode
 }
 
 /** Tool call label mapping for user-friendly display */
@@ -57,7 +60,7 @@ const TOOL_LABELS: Record<string, string> = {
   add_markdown: 'Adding explanation',
 }
 
-function ToolCallIndicator({ toolCall }: { toolCall: ToolCallRecord }) {
+function ToolCallIndicator({ toolCall, loadingComponent }: { toolCall: ToolCallRecord; loadingComponent?: React.ReactNode }) {
   const [expanded, setExpanded] = useState(false)
   const label = TOOL_LABELS[toolCall.name] || toolCall.name
   const isRunning = toolCall.status === 'running'
@@ -69,7 +72,9 @@ function ToolCallIndicator({ toolCall }: { toolCall: ToolCallRecord }) {
         className="dc:flex dc:items-center dc:gap-1.5 text-dc-text-secondary dc:hover:opacity-80 dc:transition-opacity"
       >
         {isRunning ? (
-          <span className="dc:inline-block dc:w-3 dc:h-3 dc:border-2 border-dc-accent dc:border-t-transparent dc:rounded-full dc:animate-spin" />
+          loadingComponent
+            ? <span className="dc:inline-flex dc:items-center dc:justify-center dc:h-3 dc:w-3">{loadingComponent}</span>
+            : <LoadingIndicator size="xs" />
         ) : (
           <span className="dc:text-xs">
             {toolCall.status === 'error' ? '\u2717' : '\u2713'}
@@ -93,7 +98,11 @@ function ToolCallIndicator({ toolCall }: { toolCall: ToolCallRecord }) {
   )
 }
 
-const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProps) {
+const MSG_FADE_IN: React.CSSProperties = {
+  animation: 'dc-msg-in 100ms ease-out',
+}
+
+const ChatMessage = React.memo(function ChatMessage({ message, loadingComponent }: ChatMessageProps) {
   const isUser = message.role === 'user'
   const hasContent = !!message.content?.trim()
   const hasError = !!message.error
@@ -103,7 +112,10 @@ const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProp
   if (!isUser && !hasContent && !hasError && !hasToolCalls) return null
 
   return (
-    <div className={`dc:flex dc:mb-3 ${isUser ? 'dc:justify-end' : 'dc:justify-start'}`}>
+    <div
+      className={`dc:flex dc:mb-3 ${isUser ? 'dc:justify-end' : 'dc:justify-start'}`}
+      style={MSG_FADE_IN}
+    >
       <div
         className={`dc:max-w-[85%] dc:rounded-lg dc:px-3 dc:py-2 dc:text-sm ${
           isUser
@@ -132,7 +144,7 @@ const ChatMessage = React.memo(function ChatMessage({ message }: ChatMessageProp
         {hasToolCalls && (
           <div className={hasContent || hasError ? 'dc:mt-1 dc:border-t dc:border-current dc:border-opacity-10 dc:pt-1' : ''}>
             {message.toolCalls!.map((tc, i) => (
-              <ToolCallIndicator key={tc.id || i} toolCall={tc} />
+              <ToolCallIndicator key={tc.id || i} toolCall={tc} loadingComponent={loadingComponent} />
             ))}
           </div>
         )}

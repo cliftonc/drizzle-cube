@@ -38,7 +38,7 @@ interface ToolDefinition {
 const AGENT_ALLOWED_CHART_TYPES = [
   'bar', 'line', 'area', 'pie', 'scatter', 'radar', 'bubble', 'table',
   'kpiNumber', 'kpiDelta', 'funnel', 'heatmap', 'sankey', 'sunburst',
-  'retentionHeatmap', 'retentionCombined', 'boxPlot'
+  'retentionHeatmap', 'retentionCombined', 'boxPlot', 'markdown'
 ]
 
 /**
@@ -259,6 +259,97 @@ export function getToolDefinitions(): ToolDefinition[] {
         },
         required: ['content']
       }
+    },
+
+    // Tool 6: save_as_dashboard
+    {
+      name: 'save_as_dashboard',
+      description:
+        'Convert the current notebook analysis into a persistent dashboard. '
+        + 'Constructs a professional DashboardConfig with proper grid layout, section headers (markdown portlets), '
+        + 'and dashboard-level filters. Call this when the user asks to save/export the notebook as a dashboard.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Dashboard title' },
+          description: { type: 'string', description: 'Optional dashboard description' },
+          portlets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'Unique portlet ID' },
+                title: { type: 'string', description: 'Portlet title' },
+                chartType: {
+                  type: 'string',
+                  enum: AGENT_ALLOWED_CHART_TYPES,
+                  description: 'Chart type. Use "markdown" for section headers.'
+                },
+                query: {
+                  type: 'string',
+                  description: 'JSON string of the query. Omit or leave empty for markdown portlets.'
+                },
+                chartConfig: {
+                  type: 'object',
+                  properties: {
+                    xAxis: { type: 'array', items: { type: 'string' } },
+                    yAxis: { type: 'array', items: { type: 'string' } },
+                    series: { type: 'array', items: { type: 'string' } },
+                    sizeField: { type: 'string' },
+                    colorField: { type: 'string' }
+                  },
+                  description: 'Chart axis configuration'
+                },
+                displayConfig: {
+                  type: 'object',
+                  description: 'Chart display configuration (for markdown: { content, hideHeader, transparentBackground, autoHeight })'
+                },
+                dashboardFilterMapping: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Array of dashboard filter IDs that apply to this portlet'
+                },
+                analysisType: {
+                  type: 'string',
+                  enum: ['query', 'funnel', 'flow', 'retention'],
+                  description: 'Analysis type (default: "query")'
+                },
+                w: { type: 'number', description: 'Grid width (1-12)' },
+                h: { type: 'number', description: 'Grid height in row units' },
+                x: { type: 'number', description: 'Grid x position (0-11)' },
+                y: { type: 'number', description: 'Grid y position' }
+              },
+              required: ['id', 'title', 'chartType', 'w', 'h', 'x', 'y']
+            },
+            description: 'Array of portlet configurations for the dashboard'
+          },
+          filters: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'Unique filter ID' },
+                label: { type: 'string', description: 'Display label for the filter' },
+                filter: {
+                  type: 'object',
+                  properties: {
+                    member: { type: 'string' },
+                    operator: { type: 'string' },
+                    values: { type: 'array', items: {} }
+                  },
+                  required: ['member', 'operator'],
+                  description: 'The filter definition'
+                },
+                isUniversalTime: { type: 'boolean', description: 'When true, applies to all time dimensions in portlets' }
+              },
+              required: ['id', 'label', 'filter']
+            },
+            description: 'Dashboard-level filters'
+          },
+          colorPalette: { type: 'string', description: 'Color palette name' }
+        },
+        required: ['title', 'portlets']
+      }
     }
   ]
 }
@@ -404,6 +495,121 @@ export function createToolExecutor(options: {
     return {
       result: `Markdown block added to notebook (id: ${id}). [Reminder: in your next response, start with a brief sentence about what you will do next BEFORE making any tool calls.]`,
       sideEffect: { type: 'add_markdown' as const, data: markdownData }
+    }
+  })
+
+  // save_as_dashboard
+  executors.set('save_as_dashboard', async (input) => {
+    try {
+      const portlets = input.portlets as Array<Record<string, unknown>>
+      if (!portlets || portlets.length === 0) {
+        return { result: 'Dashboard must contain at least one portlet.', isError: true }
+      }
+
+      // Validate each portlet's query (skip markdown portlets)
+      const errors: string[] = []
+      for (const portlet of portlets) {
+        const chartType = portlet.chartType as string
+        if (chartType === 'markdown') continue
+
+        const queryStr = portlet.query as string | undefined
+        if (!queryStr) {
+          errors.push(`Portlet "${portlet.title}": missing query`)
+          continue
+        }
+
+        let parsedQuery: Record<string, unknown>
+        try {
+          parsedQuery = JSON.parse(queryStr)
+        } catch {
+          errors.push(`Portlet "${portlet.title}": invalid JSON query`)
+          continue
+        }
+
+        const validation = semanticLayer.validateQuery(parsedQuery as any)
+        if (!validation.isValid) {
+          errors.push(`Portlet "${portlet.title}": ${validation.errors.join(', ')}`)
+        }
+      }
+
+      if (errors.length > 0) {
+        return {
+          result: `Dashboard has invalid portlets — fix these errors and retry:\n${errors.join('\n')}`,
+          isError: true
+        }
+      }
+
+      // Build DashboardConfig with proper analysisConfig for each portlet
+      const dashboardConfig = {
+        portlets: portlets.map((p) => {
+          const chartType = p.chartType as string
+          const isMarkdown = chartType === 'markdown'
+
+          // Build analysisConfig in the canonical format (avoids legacy migration path)
+          const analysisType = isMarkdown ? 'query'
+            : (p.analysisType as string) || 'query'
+          const modeKey = analysisType === 'funnel' ? 'funnel'
+            : analysisType === 'flow' ? 'flow'
+            : analysisType === 'retention' ? 'retention'
+            : 'query'
+
+          const queryStr = (p.query as string) || '{}'
+          let parsedQuery: Record<string, unknown>
+          try {
+            parsedQuery = JSON.parse(queryStr)
+          } catch {
+            parsedQuery = {}
+          }
+
+          const analysisConfig = {
+            version: 1 as const,
+            analysisType: modeKey,
+            activeView: 'chart' as const,
+            charts: {
+              [modeKey]: {
+                chartType,
+                chartConfig: (p.chartConfig as Record<string, unknown>) || {},
+                displayConfig: (p.displayConfig as Record<string, unknown>) || {},
+              },
+            },
+            query: isMarkdown ? {} : parsedQuery,
+          }
+
+          return {
+            id: p.id as string,
+            title: p.title as string,
+            analysisConfig,
+            dashboardFilterMapping: p.dashboardFilterMapping as string[] | undefined,
+            w: p.w as number,
+            h: p.h as number,
+            x: p.x as number,
+            y: p.y as number,
+          }
+        }),
+        filters: input.filters as Array<Record<string, unknown>> | undefined,
+        colorPalette: input.colorPalette as string | undefined,
+      }
+
+      const title = input.title as string
+      const portletCount = dashboardConfig.portlets.length
+      const filterCount = dashboardConfig.filters?.length || 0
+
+      return {
+        result: `Dashboard "${title}" created with ${portletCount} portlets and ${filterCount} filters.`,
+        sideEffect: {
+          type: 'dashboard_saved' as const,
+          data: {
+            title,
+            description: input.description as string | undefined,
+            dashboardConfig: dashboardConfig as any,
+          }
+        }
+      }
+    } catch (error) {
+      return {
+        result: `Failed to save dashboard: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        isError: true
+      }
     }
   })
 

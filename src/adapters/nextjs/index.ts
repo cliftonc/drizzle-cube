@@ -1081,7 +1081,7 @@ export function createAgentChatHandler(
       const { handleAgentChat } = await import('../../server/agent/handler')
 
       const body = await request.json()
-      const { message, sessionId } = body as { message: string; sessionId?: string }
+      const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
 
       if (!message || typeof message !== 'string') {
         return NextResponse.json(
@@ -1117,6 +1117,7 @@ export function createAgentChatHandler(
             const events = handleAgentChat({
               message,
               sessionId,
+              history,
               semanticLayer,
               securityContext,
               agentConfig,
