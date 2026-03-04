@@ -77,16 +77,16 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_BODY: ${{ github.event.release.body }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          NAME="${{ github.event.release.name }}"
-          URL="${{ github.event.release.html_url }}"
-          BODY="${{ github.event.release.body }}"
-
-          DISCUSSION_BODY="${BODY}
+          VERSION="${RELEASE_TAG#v}"
+          DISCUSSION_BODY="${RELEASE_BODY}
 
           ---
-          [View full release on GitHub](${URL}) | [NPM package](https://www.npmjs.com/package/drizzle-cube/v/${TAG#v})"
+          [View full release on GitHub](${RELEASE_URL}) | [NPM package](https://www.npmjs.com/package/drizzle-cube/v/${VERSION})"
 
           gh api graphql -f query='
             mutation($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
@@ -96,7 +96,7 @@ jobs:
             }' \
             -f repoId="R_kgDOPfOdig" \
             -f categoryId="DIC_kwDOPfOdis4Cuiyt" \
-            -f title="$NAME" \
+            -f title="$RELEASE_NAME" \
             -f body="$DISCUSSION_BODY"
 
       - name: Post to Discord
