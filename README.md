@@ -8,6 +8,7 @@ Build a semantic layer on top of your Drizzle schema. Define cubes with measures
 
 - **[Documentation](https://www.drizzle-cube.dev/)**
 - **[Try the Sandbox](https://try.drizzle-cube.dev/)**
+- **[Ask for help in Discord](https://discord.gg/kFvT97hZsv)**
 - **[Contribute to the Roadmap](https://github.com/users/cliftonc/projects/2)**
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
