@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
-import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
 import { getIcon, highlightCodeBlocks } from '@drizzle-cube/client'
+import { useCreateNotebook } from '../hooks/useNotebooks'
 
 const ChartBarIcon = getIcon('chartBar')
 const MagnifyingGlassIcon = getIcon('search')
@@ -9,6 +10,12 @@ const CodeBracketIcon = getIcon('codeBracket')
 const SparklesIcon = getIcon('sparkles')
 
 export default function HomePage() {
+  const navigate = useNavigate()
+  const createNotebook = useCreateNotebook()
+  const [prompt, setPrompt] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
   // Apply syntax highlighting after component mounts
   useEffect(() => {
     setTimeout(() => {
@@ -17,6 +24,24 @@ export default function HomePage() {
       })
     }, 0)
   }, [])
+
+  const handlePromptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = prompt.trim()
+    if (!trimmed || isSubmitting) return
+
+    setIsSubmitting(true)
+    try {
+      const notebook = await createNotebook.mutateAsync({
+        name: trimmed.slice(0, 60) + (trimmed.length > 60 ? '…' : ''),
+      })
+      navigate(`/notebooks/${notebook.id}`, { state: { initialPrompt: trimmed } })
+    } catch (err) {
+      console.error('Failed to create notebook:', err)
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <>
       {/* Override Prism.js background styling */}
@@ -37,6 +62,31 @@ export default function HomePage() {
           <p className="text-base sm:text-lg text-dc-text-secondary max-w-3xl mx-auto leading-relaxed px-2">
             Use this site to test any changes to the React components and server.
           </p>
+
+          <form onSubmit={handlePromptSubmit} className="mt-8 max-w-2xl mx-auto">
+            <div className="relative">
+              <SparklesIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Ask a question about your data..."
+                disabled={isSubmitting}
+                className="w-full pl-12 pr-24 py-3.5 rounded-xl border border-dc-border bg-dc-surface text-dc-text placeholder:text-dc-text-muted focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base shadow-sm disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={!prompt.trim() || isSubmitting}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Creating…' : 'Ask AI'}
+              </button>
+            </div>
+            <p className="text-xs text-dc-text-muted mt-2">
+              Creates a new AI notebook and starts analysing your data
+            </p>
+          </form>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">

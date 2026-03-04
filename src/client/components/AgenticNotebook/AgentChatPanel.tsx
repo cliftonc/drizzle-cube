@@ -164,12 +164,16 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   }, [addMessage, setInputValue, setIsStreaming, sendMessage])
 
   // Auto-send initial prompt on mount (doSend is stable so this won't re-trigger)
+  // Reset ref on cleanup so React StrictMode's double-mount doesn't block the real mount
   useEffect(() => {
     if (initialPrompt && !initialPromptSentRef.current && messages.length === 0) {
       initialPromptSentRef.current = true
       // Small delay to ensure chat hook is fully initialized
       const timer = setTimeout(() => doSend(initialPrompt), 100)
-      return () => clearTimeout(timer)
+      return () => {
+        clearTimeout(timer)
+        initialPromptSentRef.current = false
+      }
     }
   }, [initialPrompt, messages.length, doSend])
 

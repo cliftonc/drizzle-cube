@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCallback, useState, useRef } from 'react'
 import { AgenticNotebook } from '@drizzle-cube/client'
 import type { NotebookConfig } from '@drizzle-cube/client'
@@ -31,6 +31,8 @@ const API_KEY_STORAGE_KEY = 'dc-notebook-api-key'
 export default function NotebookViewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const initialPrompt = (location.state as { initialPrompt?: string } | null)?.initialPrompt
   const { data: notebook, isLoading, error } = useNotebook(id!)
   const updateNotebook = useUpdateNotebook()
   const createDashboard = useCreateAnalyticsPage()
@@ -176,6 +178,7 @@ export default function NotebookViewPage() {
           agentApiKey={apiKey || undefined}
           onDashboardSaved={handleDashboardSaved}
           loadingComponent={<DrizzleCubeLoader />}
+          initialPrompt={initialPrompt}
         />
       </div>
     </div>
