@@ -9,6 +9,7 @@ import { useAgentChat } from '../../hooks/useAgentChat'
 import type { PortletBlock, MarkdownBlock, ChatMessage as ChatMessageType } from '../../stores/notebookStore'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
+import LoadingIndicator from '../LoadingIndicator'
 import { getIcon } from '../../icons'
 
 const ThumbUpIcon = getIcon('thumbUp')
@@ -17,6 +18,9 @@ const ThumbDownIcon = getIcon('thumbDown')
 interface AgentChatPanelProps {
   agentEndpoint?: string
   agentApiKey?: string
+  agentProvider?: string
+  agentModel?: string
+  agentProviderEndpoint?: string
   onClear?: () => void
   /** Called when the agent saves a dashboard. Presence enables the "Save as Dashboard" button. */
   onDashboardSaved?: (data: { title: string; description?: string; dashboardConfig: any }) => void
@@ -31,6 +35,9 @@ interface AgentChatPanelProps {
 const AgentChatPanel = React.memo(function AgentChatPanel({
   agentEndpoint,
   agentApiKey,
+  agentProvider,
+  agentModel,
+  agentProviderEndpoint,
   onClear,
   onDashboardSaved,
   onScore,
@@ -41,6 +48,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   const initialPromptSentRef = useRef(false)
   const [lastTraceId, setLastTraceId] = useState<string | null>(null)
   const [scoredTraceIds, setScoredTraceIds] = useState<Set<string>>(new Set())
+  const [isThinking, setIsThinking] = useState(false)
 
   // Track whether the next content should start a new assistant message
   // (set after turn_complete, cleared when first content of new turn arrives)
@@ -86,7 +94,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     }
   }, [addMessage])
 
-  // Auto-scroll only when NEW messages arrive (not on initial load)
+  // Auto-scroll only when NEW messages arrive or thinking starts (not on initial load)
   const prevMsgCountRef = useRef(messages.length)
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current) {
@@ -95,15 +103,26 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     prevMsgCountRef.current = messages.length
   }, [messages])
 
+  useEffect(() => {
+    if (isThinking) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [isThinking])
+
   // Agent chat hook
   const { sendMessage, abort } = useAgentChat({
     agentEndpoint,
     agentApiKey,
+    agentProvider,
+    agentModel,
+    agentProviderEndpoint,
     onTextDelta: useCallback((text: string) => {
+      setIsThinking(false)
       ensureNewMessage()
       appendToLastAssistantMessage(text)
     }, [ensureNewMessage, appendToLastAssistantMessage]),
     onToolStart: useCallback((id: string, name: string, input?: unknown) => {
+      setIsThinking(false)
       ensureNewMessage()
       addToolCallToLastAssistant({ id, name, input, status: 'running' })
     }, [ensureNewMessage, addToolCallToLastAssistant]),
@@ -121,14 +140,17 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
       // Don't create a new message yet — just flag that the next turn
       // should start a new bubble (created lazily by ensureNewMessage)
       needsNewMessageRef.current = true
+      setIsThinking(true)
     }, []),
     onDone: useCallback((sid: string, traceId?: string) => {
       needsNewMessageRef.current = false
       setSessionId(sid)
       setIsStreaming(false)
+      setIsThinking(false)
       if (traceId) setLastTraceId(traceId)
     }, [setSessionId, setIsStreaming]),
     onError: useCallback((message: string) => {
+      setIsThinking(false)
       ensureNewMessage()
       setLastAssistantError(message)
       setIsStreaming(false)
@@ -168,6 +190,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
 
     setInputValue('')
     setIsStreaming(true)
+    setIsThinking(true)
 
     // Send to agent with conversation history for session continuity
     sendMessage(content, sessionIdRef.current, history)
@@ -207,6 +230,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   const handleClear = useCallback(() => {
     abort()
     setIsStreaming(false)
+    setIsThinking(false)
     reset()
     setLastTraceId(null)
     setScoredTraceIds(new Set())
@@ -270,6 +294,9 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
             />
           ))
         )}
+        {/* Thinking indicator (between turns or waiting for first response) */}
+        {isThinking && <ThinkingBubble loadingComponent={loadingComponent} />}
+
         {/* Feedback (thumbs up/down) */}
         {(showFeedback || lastScored) && (
           <div className="dc:flex dc:items-center dc:justify-center dc:gap-3 dc:py-4 dc:mt-2">
@@ -314,6 +341,22 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     </div>
   )
 })
+
+function ThinkingBubble({ loadingComponent }: { loadingComponent?: React.ReactNode }) {
+  return (
+    <div
+      className="dc:flex dc:mb-3 dc:justify-start"
+      style={{ animation: 'dc-msg-in 100ms ease-out' }}
+    >
+      <div className="dc:rounded-lg dc:px-3 dc:py-2 dc:text-sm bg-dc-surface-secondary text-dc-text-secondary dc:rounded-bl-sm dc:flex dc:items-center dc:gap-2">
+        {loadingComponent
+          ? <span className="dc:inline-flex dc:items-center dc:justify-center dc:h-4 dc:w-4">{loadingComponent}</span>
+          : <LoadingIndicator size="xs" />}
+        <span>Thinking...</span>
+      </div>
+    </div>
+  )
+}
 
 function EmptyState() {
   return (

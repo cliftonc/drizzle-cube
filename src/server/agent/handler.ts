@@ -1,22 +1,32 @@
 /**
  * Agent Chat Handler
- * Core streaming handler using the Anthropic Messages API with a manual agentic loop.
+ * Core streaming handler using the LLM provider abstraction with a manual agentic loop.
  * Makes direct HTTP API calls — no subprocess spawning, fully edge-runtime compatible.
+ * Supports Anthropic, OpenAI, Google Gemini, and OpenAI-compatible providers.
  */
 
 import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentConfig, AgentSSEEvent, AgentHistoryMessage } from './types'
+import type { ContentBlock, InternalMessage, NormalizedEvent, ToolResult } from './providers/types'
 import { buildAgentSystemPrompt } from './system-prompt'
 import { getToolDefinitions, createToolExecutor } from './tools'
+import { createProvider } from './providers/factory'
+import type { ProviderName } from './providers/factory'
+
+/** Default models per provider */
+const DEFAULT_MODELS: Record<string, string> = {
+  anthropic: 'claude-sonnet-4-6',
+  openai: 'gpt-4.1-mini',
+  google: 'gemini-3-flash-preview',
+}
 
 /**
  * Handle an agent chat request, yielding SSE events as the agent works.
  *
- * Uses the Anthropic Messages API (`@anthropic-ai/sdk`) with `stream: true`
- * (raw async iterable) for Cloudflare Workers / edge-runtime compatibility.
+ * Uses the configured LLM provider with streaming for edge-runtime compatibility.
  * Implements a manual agentic loop: send messages → stream response → execute
- * tool calls → append results → repeat until stop_reason !== 'tool_use'.
+ * tool calls → append results → repeat until the model stops requesting tools.
  */
 export async function* handleAgentChat(options: {
   message: string
@@ -28,6 +38,10 @@ export async function* handleAgentChat(options: {
   apiKey: string
   /** Per-request context appended to the system prompt (e.g. user info, tenant context) */
   systemContext?: string
+  /** Per-request overrides from client headers (take precedence over agentConfig) */
+  providerOverride?: string
+  modelOverride?: string
+  baseURLOverride?: string
 }): AsyncGenerator<AgentSSEEvent> {
   const { message, history, semanticLayer, securityContext, agentConfig, apiKey } = options
   const sessionId = options.sessionId || crypto.randomUUID()
@@ -35,23 +49,27 @@ export async function* handleAgentChat(options: {
   const traceId = crypto.randomUUID()
   const chatStartTime = Date.now()
 
-  // Dynamically import the Anthropic SDK (optional peer dependency)
-  let Anthropic: any
+  // Resolve provider and model — per-request overrides take precedence
+  const providerName: ProviderName = (options.providerOverride as ProviderName) || agentConfig.provider || 'anthropic'
+  const model = options.modelOverride || agentConfig.model || DEFAULT_MODELS[providerName] || 'claude-sonnet-4-6'
+  const baseURL = options.baseURLOverride || agentConfig.baseURL
+  const maxTurns = agentConfig.maxTurns || 25
+  const maxTokens = agentConfig.maxTokens || 4096
+
+  // Create the LLM provider
+  let provider
   try {
-    const sdk = await import(/* webpackIgnore: true */ '@anthropic-ai/sdk')
-    Anthropic = sdk.default || sdk.Anthropic || sdk
-  } catch {
+    provider = await createProvider(providerName, apiKey, { baseURL })
+  } catch (error) {
+    console.error(`[agent] Failed to create ${providerName} provider:`, error)
     yield {
       type: 'error',
       data: {
-        message: '@anthropic-ai/sdk is required. Install it with: npm install @anthropic-ai/sdk'
+        message: error instanceof Error ? error.message : 'Failed to initialize LLM provider'
       }
     }
     return
   }
-
-  // Create the Anthropic client
-  const client = new Anthropic({ apiKey })
 
   // Build tool definitions and executor
   const tools = getToolDefinitions()
@@ -63,11 +81,6 @@ export async function* handleAgentChat(options: {
   if (options.systemContext) {
     systemPrompt += `\n\n## User Context\n\n${options.systemContext}`
   }
-
-  // Configure
-  const model = agentConfig.model || 'claude-sonnet-4-6'
-  const maxTurns = agentConfig.maxTurns || 25
-  const maxTokens = agentConfig.maxTokens || 4096
 
   // Notify observability that chat has started
   try {
@@ -81,15 +94,15 @@ export async function* handleAgentChat(options: {
   } catch { /* observability must never break the agent */ }
 
   // Conversation messages — rebuild from history if provided (e.g. after notebook reload)
-  const messages: Array<{ role: string; content: unknown }> = []
+  const messages: InternalMessage[] = []
 
   if (history && history.length > 0) {
     for (const msg of history) {
       if (msg.role === 'user') {
         messages.push({ role: 'user', content: msg.content })
       } else if (msg.role === 'assistant') {
-        // Build Anthropic content blocks from the stored message
-        const contentBlocks: Array<{ type: string; [key: string]: unknown }> = []
+        // Build content blocks from the stored message
+        const contentBlocks: ContentBlock[] = []
         if (msg.content) {
           contentBlocks.push({ type: 'text', text: msg.content })
         }
@@ -99,21 +112,28 @@ export async function* handleAgentChat(options: {
               type: 'tool_use',
               id: tc.id,
               name: tc.name,
-              input: tc.input || {},
+              input: (tc.input || {}) as Record<string, unknown>,
             })
           }
           // Push assistant message
           messages.push({ role: 'assistant', content: contentBlocks })
-          // Push tool results as the following user message
-          messages.push({
-            role: 'user',
-            content: msg.toolCalls.map((tc) => ({
-              type: 'tool_result',
-              tool_use_id: tc.id,
-              content: typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result ?? ''),
-              ...(tc.status === 'error' ? { is_error: true } : {}),
-            })),
-          })
+          // Push tool results as a tool_result message
+          const toolResults: ToolResult[] = msg.toolCalls.map((tc) => ({
+            toolUseId: tc.id,
+            toolName: tc.name,
+            content: typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result ?? ''),
+            isError: tc.status === 'error',
+          }))
+          const formattedResults = provider.formatToolResults(toolResults)
+          // Push the formatted results directly as an internal message
+          if (Array.isArray(formattedResults)) {
+            // OpenAI returns an array of messages
+            for (const r of formattedResults) {
+              messages.push(r as InternalMessage)
+            }
+          } else {
+            messages.push(formattedResults as InternalMessage)
+          }
         } else if (contentBlocks.length > 0) {
           messages.push({ role: 'assistant', content: msg.content })
         }
@@ -128,89 +148,92 @@ export async function* handleAgentChat(options: {
   try {
     for (let turn = 0; turn < maxTurns; turn++) {
       lastTurn = turn + 1
-      // Call Messages API with streaming (raw async iterable — CF Workers safe)
-      const stream = await client.messages.create({
+
+      // Call the LLM with streaming
+      const stream = await provider.createStream({
         model,
-        max_tokens: maxTokens,
+        maxTokens,
         system: systemPrompt,
         tools,
         messages,
-        stream: true
       })
 
-      // Accumulate the assistant's response
-      const contentBlocks: Array<{ type: string; [key: string]: unknown }> = []
-      let currentBlockIndex = -1
+      // Process normalized stream events and accumulate the assistant's response
+      const contentBlocks: ContentBlock[] = []
       let currentToolInputJson = ''
       let stopReason = ''
       let inputTokens: number | undefined
       let outputTokens: number | undefined
       const generationStart = Date.now()
 
-      for await (const event of stream) {
-        switch (event.type) {
-          case 'content_block_start': {
-            currentBlockIndex++
-            const block = event.content_block as { type: string; id?: string; name?: string; text?: string }
-            if (block.type === 'tool_use') {
-              contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} })
-              currentToolInputJson = ''
-              yield {
-                type: 'tool_use_start',
-                data: { id: block.id!, name: block.name!, input: undefined }
+      // Track current block state
+      let currentBlockIsToolUse = false
+
+      for await (const event of provider.parseStreamEvents(stream)) {
+        const e = event as NormalizedEvent
+
+        switch (e.type) {
+          case 'text_delta': {
+            // Append text to current text block or create one
+            const lastBlock = contentBlocks[contentBlocks.length - 1]
+            if (lastBlock && lastBlock.type === 'text') {
+              lastBlock.text = (lastBlock.text || '') + e.text
+            } else {
+              contentBlocks.push({ type: 'text', text: e.text })
+            }
+            yield { type: 'text_delta', data: e.text }
+            break
+          }
+
+          case 'tool_use_start': {
+            // Finalize previous tool's input before starting a new one
+            // (OpenAI can return multiple tool calls; the handler tracks a single accumulator)
+            if (currentBlockIsToolUse && currentToolInputJson) {
+              const prevBlock = contentBlocks[contentBlocks.length - 1]
+              if (prevBlock?.type === 'tool_use') {
+                try { prevBlock.input = JSON.parse(currentToolInputJson) } catch { /* keep {} */ }
               }
-            } else if (block.type === 'text') {
-              contentBlocks.push({ type: 'text', text: '' })
+            }
+            contentBlocks.push({ type: 'tool_use', id: e.id, name: e.name, input: {}, ...(e.metadata ? { metadata: e.metadata } : {}) })
+            currentToolInputJson = ''
+            currentBlockIsToolUse = true
+            yield {
+              type: 'tool_use_start',
+              data: { id: e.id, name: e.name, input: undefined }
             }
             break
           }
 
-          case 'content_block_delta': {
-            const delta = event.delta as { type: string; text?: string; partial_json?: string }
-            if (delta.type === 'text_delta' && delta.text) {
-              // Append text to current block
-              const textBlock = contentBlocks[currentBlockIndex]
-              if (textBlock) {
-                textBlock.text = (textBlock.text as string || '') + delta.text
+          case 'tool_input_delta': {
+            currentToolInputJson += e.json
+            break
+          }
+
+          case 'tool_use_end': {
+            // Provider-supplied parsed input (OpenAI includes it) — find block by ID
+            if (e.id && e.input) {
+              const block = contentBlocks.find(b => b.type === 'tool_use' && b.id === e.id)
+              if (block) block.input = e.input
+            } else if (currentBlockIsToolUse) {
+              // Fallback: parse accumulated JSON for the current (last) tool_use block
+              const block = contentBlocks[contentBlocks.length - 1]
+              if (block?.type === 'tool_use' && currentToolInputJson) {
+                try {
+                  block.input = JSON.parse(currentToolInputJson)
+                } catch {
+                  block.input = {}
+                }
+                currentToolInputJson = ''
               }
-              yield { type: 'text_delta', data: delta.text }
-            } else if (delta.type === 'input_json_delta' && delta.partial_json) {
-              currentToolInputJson += delta.partial_json
+              currentBlockIsToolUse = false
             }
             break
           }
 
-          case 'content_block_stop': {
-            // If the current block is a tool_use, parse accumulated JSON
-            const block = contentBlocks[currentBlockIndex]
-            if (block?.type === 'tool_use' && currentToolInputJson) {
-              try {
-                block.input = JSON.parse(currentToolInputJson)
-              } catch {
-                block.input = {}
-              }
-              currentToolInputJson = ''
-            }
-            break
-          }
-
-          case 'message_start': {
-            const msg = (event as any).message
-            if (msg?.usage?.input_tokens != null) {
-              inputTokens = msg.usage.input_tokens
-            }
-            break
-          }
-
-          case 'message_delta': {
-            const messageDelta = event.delta as { stop_reason?: string }
-            const deltaUsage = (event as any).usage
-            if (deltaUsage?.output_tokens != null) {
-              outputTokens = deltaUsage.output_tokens
-            }
-            if (messageDelta.stop_reason) {
-              stopReason = messageDelta.stop_reason
-            }
+          case 'message_meta': {
+            if (e.inputTokens != null) inputTokens = e.inputTokens
+            if (e.outputTokens != null) outputTokens = e.outputTokens
+            if (e.stopReason) stopReason = e.stopReason
             break
           }
         }
@@ -226,6 +249,8 @@ export async function* handleAgentChat(options: {
           inputTokens,
           outputTokens,
           durationMs: Date.now() - generationStart,
+          input: messages,
+          output: contentBlocks,
         })
       } catch { /* observability must never break the agent */ }
 
@@ -233,27 +258,27 @@ export async function* handleAgentChat(options: {
       messages.push({ role: 'assistant', content: contentBlocks })
 
       // If the model didn't request tool use, we're done
-      if (stopReason !== 'tool_use') {
+      if (!provider.shouldContinue(stopReason)) {
         break
       }
 
       // Execute all tool calls and collect results
-      const toolResults: Array<{ type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean }> = []
+      const toolResults: ToolResult[] = []
 
       for (const block of contentBlocks) {
         if (block.type !== 'tool_use') continue
 
-        const toolName = block.name as string
+        const toolName = block.name!
         const toolInput = (block.input || {}) as Record<string, unknown>
-        const toolUseId = block.id as string
+        const toolUseId = block.id!
 
         const executorFn = executor.get(toolName)
         if (!executorFn) {
           toolResults.push({
-            type: 'tool_result',
-            tool_use_id: toolUseId,
+            toolUseId,
+            toolName,
             content: `Unknown tool: ${toolName}`,
-            is_error: true
+            isError: true
           })
           yield {
             type: 'tool_use_result',
@@ -272,10 +297,10 @@ export async function* handleAgentChat(options: {
           }
 
           toolResults.push({
-            type: 'tool_result',
-            tool_use_id: toolUseId,
+            toolUseId,
+            toolName,
             content: execResult.result,
-            ...(execResult.isError ? { is_error: true } : {})
+            ...(execResult.isError ? { isError: true } : {})
           })
 
           yield {
@@ -293,10 +318,10 @@ export async function* handleAgentChat(options: {
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Tool execution failed'
           toolResults.push({
-            type: 'tool_result',
-            tool_use_id: toolUseId,
+            toolUseId,
+            toolName,
             content: errorMsg,
-            is_error: true
+            isError: true
           })
           yield {
             type: 'tool_use_result',
@@ -316,8 +341,17 @@ export async function* handleAgentChat(options: {
       // Signal end of this turn before starting the next
       yield { type: 'turn_complete', data: {} as Record<string, never> }
 
-      // Push tool results as a user message for the next turn
-      messages.push({ role: 'user', content: toolResults })
+      // Push tool results for the next turn (provider formats them)
+      const formattedResults = provider.formatToolResults(toolResults)
+      if (Array.isArray(formattedResults)) {
+        // OpenAI returns an array of messages (one per tool result)
+        for (const r of formattedResults) {
+          messages.push(r as InternalMessage)
+        }
+      } else {
+        // Anthropic/Google return a single user message
+        messages.push(formattedResults as InternalMessage)
+      }
     }
 
     try {
@@ -344,57 +378,12 @@ export async function* handleAgentChat(options: {
       })
     } catch { /* observability must never break the agent */ }
 
+    console.error(`[agent] Chat error (provider=${providerName}, model=${model}):`, error)
     yield {
       type: 'error',
       data: {
-        message: formatAgentError(error)
+        message: provider.formatError(error)
       }
     }
   }
-}
-
-/**
- * Format agent errors into user-friendly messages.
- * Anthropic SDK errors contain raw JSON that shouldn't leak to users.
- */
-function formatAgentError(error: unknown): string {
-  if (!error || !(error instanceof Error)) {
-    return 'Something went wrong. Please try again.'
-  }
-
-  const msg = error.message || ''
-
-  // Anthropic API errors — extract the type and return a friendly message
-  const ANTHROPIC_ERROR_MESSAGES: Record<string, string> = {
-    overloaded_error: 'The AI service is temporarily overloaded. Please try again in a moment.',
-    rate_limit_error: 'Too many requests. Please wait a moment and try again.',
-    api_error: 'The AI service encountered an error. Please try again.',
-    authentication_error: 'Authentication failed. Please check your API key configuration.',
-    invalid_request_error: 'There was a problem with the request. Please try again.',
-  }
-
-  // Check for Anthropic SDK error with status/type
-  const anyError = error as any
-  if (anyError.status || anyError.type) {
-    const errorType = anyError.error?.type || anyError.type || ''
-    if (ANTHROPIC_ERROR_MESSAGES[errorType]) {
-      return ANTHROPIC_ERROR_MESSAGES[errorType]
-    }
-  }
-
-  // Check if the message looks like raw JSON
-  if (msg.startsWith('{') || msg.startsWith('Error: {')) {
-    try {
-      const parsed = JSON.parse(msg.replace(/^Error:\s*/, ''))
-      const errorType = parsed.error?.type || parsed.type || ''
-      if (ANTHROPIC_ERROR_MESSAGES[errorType]) {
-        return ANTHROPIC_ERROR_MESSAGES[errorType]
-      }
-    } catch {
-      // Not JSON, fall through
-    }
-    return 'The AI service encountered an error. Please try again.'
-  }
-
-  return msg
 }

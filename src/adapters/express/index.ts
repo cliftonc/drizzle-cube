@@ -556,6 +556,11 @@ export function createCubeRouter(
           })
         }
 
+        // Per-request provider overrides from client headers
+        const providerOverride = agentConfig.allowClientApiKey ? req.headers['x-agent-provider'] as string | undefined : undefined
+        const modelOverride = agentConfig.allowClientApiKey ? req.headers['x-agent-model'] as string | undefined : undefined
+        const baseURLOverride = agentConfig.allowClientApiKey ? req.headers['x-agent-provider-endpoint'] as string | undefined : undefined
+
         // Extract security context (required for all queries)
         const securityContext = await extractSecurityContext(req, res)
 
@@ -579,6 +584,9 @@ export function createCubeRouter(
             agentConfig,
             apiKey,
             systemContext,
+            providerOverride,
+            modelOverride,
+            baseURLOverride,
           })
 
           for await (const event of events) {

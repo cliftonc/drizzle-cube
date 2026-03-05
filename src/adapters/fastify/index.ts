@@ -625,6 +625,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
           })
         }
 
+        // Per-request provider overrides from client headers
+        const providerOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-provider'] as string | undefined : undefined
+        const modelOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-model'] as string | undefined : undefined
+        const baseURLOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-provider-endpoint'] as string | undefined : undefined
+
         // Extract security context (required for all queries)
         const securityContext = await extractSecurityContext(request)
 
@@ -648,6 +653,9 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
             agentConfig,
             apiKey,
             systemContext,
+            providerOverride,
+            modelOverride,
+            baseURLOverride,
           })
 
           for await (const event of events) {

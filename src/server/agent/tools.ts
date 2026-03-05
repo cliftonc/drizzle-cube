@@ -1,11 +1,13 @@
 /**
  * Agent Tool Definitions + Executor
- * JSON schema tool definitions and execution map for the Anthropic Messages API
+ * JSON schema tool definitions and execution map for the agentic notebook.
+ * Tool definitions are provider-agnostic — each provider wraps them in its own format.
  */
 
 import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentSSEEvent } from './types'
+import type { ToolDefinition } from './providers/types'
 import { handleDiscover, handleLoad } from '../../adapters/utils'
 import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation'
 
@@ -19,19 +21,6 @@ export interface ToolExecutionResult {
   isError?: boolean
   /** Optional SSE event to emit as a side effect (add_portlet, add_markdown) */
   sideEffect?: AgentSSEEvent
-}
-
-/**
- * Anthropic API tool definition (JSON schema format)
- */
-interface ToolDefinition {
-  name: string
-  description: string
-  input_schema: {
-    type: 'object'
-    properties: Record<string, unknown>
-    required?: string[]
-  }
 }
 
 /** Chart types available to the agent */
@@ -52,7 +41,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       name: 'discover_cubes',
       description:
         'Search for available data cubes by topic or intent. Call this FIRST to understand what data is available. Returns cube names, measures, dimensions, and relationships.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           topic: { type: 'string', description: 'Keyword to search (e.g., "sales", "employees")' },
@@ -68,7 +57,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       name: 'get_cube_metadata',
       description:
         'Get full metadata for all registered cubes including all measures, dimensions, types, and relationships. Use this for detailed schema information.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {}
       }
@@ -79,7 +68,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       name: 'execute_query',
       description:
         'Execute a semantic query and return data results. Supports standard queries (measures/dimensions) and analysis modes (funnel/flow/retention). Only provide ONE mode per call.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           measures: {
@@ -120,7 +109,7 @@ export function getToolDefinitions(): ToolDefinition[] {
           },
           order: {
             type: 'object',
-            description: 'Sort order (e.g., {"Employees.count": "desc"})'
+            description: 'Sort order. Keys MUST be a measure or dimension from this query in "CubeName.fieldName" format, values are "asc" or "desc". Example: {"Teams.count": "desc"}. WRONG: {"Teams_count": "desc"}'
           },
           limit: {
             type: 'number',
@@ -206,7 +195,7 @@ export function getToolDefinitions(): ToolDefinition[] {
         'Add a chart visualization to the notebook.\n'
         + buildChartRequirementsDescription(AGENT_ALLOWED_CHART_TYPES)
         + '\nThe query is validated before adding. The portlet fetches its own data.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Title for the visualization' },
@@ -251,7 +240,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       name: 'add_markdown',
       description:
         'Add an explanation or analysis text block to the notebook. Use markdown formatting. Use this to explain findings, methodology, and insights alongside visualizations.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Optional title for the text block' },
@@ -268,7 +257,7 @@ export function getToolDefinitions(): ToolDefinition[] {
         'Convert the current notebook analysis into a persistent dashboard. '
         + 'Constructs a professional DashboardConfig with proper grid layout, section headers (markdown portlets), '
         + 'and dashboard-level filters. Call this when the user asks to save/export the notebook as a dashboard.',
-      input_schema: {
+      parameters: {
         type: 'object',
         properties: {
           title: { type: 'string', description: 'Dashboard title' },
@@ -374,13 +363,40 @@ export function createToolExecutor(options: {
       limit: input.limit as number | undefined,
       minScore: input.minScore as number | undefined
     })
-    return { result: JSON.stringify(result, null, 2) }
+
+    // Trim verbose fields that are already in the system prompt or redundant for the agent
+    const trimmed = {
+      cubes: result.cubes.map(cube => ({
+        cube: cube.cube,
+        title: cube.title,
+        description: cube.description,
+        relevanceScore: cube.relevanceScore,
+        suggestedMeasures: cube.suggestedMeasures,
+        suggestedDimensions: cube.suggestedDimensions,
+        capabilities: cube.capabilities,
+        // Only include analysisConfig if advanced modes are available, and only the essentials
+        ...(cube.capabilities.funnel || cube.capabilities.flow || cube.capabilities.retention
+          ? {
+            analysisConfig: {
+              candidateBindingKeys: cube.analysisConfig?.candidateBindingKeys?.map(k => k.dimension) ?? [],
+              candidateTimeDimensions: cube.analysisConfig?.candidateTimeDimensions?.map(k => k.dimension) ?? [],
+              ...(cube.analysisConfig?.candidateEventDimensions?.length
+                ? { candidateEventDimensions: cube.analysisConfig.candidateEventDimensions.map(k => k.dimension) }
+                : {}),
+            }
+          }
+          : {}),
+        // querySchemas and hints are omitted — already in the system prompt
+      }))
+    }
+
+    return { result: JSON.stringify(trimmed) + '\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls.]' }
   })
 
   // get_cube_metadata
   executors.set('get_cube_metadata', async () => {
     const metadata = semanticLayer.getMetadata()
-    return { result: JSON.stringify(metadata, null, 2) }
+    return { result: JSON.stringify(metadata) }
   })
 
   // Build a metadata lookup for field validation
@@ -472,11 +488,67 @@ export function createToolExecutor(options: {
         }
       }
 
+      // Normalize order: OpenAI sometimes sends [{key: dir}] instead of {key: dir}
+      if (Array.isArray(input.order)) {
+        const merged: Record<string, unknown> = {}
+        for (const entry of input.order) {
+          if (entry && typeof entry === 'object') {
+            Object.assign(merged, entry)
+          }
+        }
+        input.order = merged
+      }
+
       if (input.order && typeof input.order === 'object' && !Array.isArray(input.order)) {
+        // Collect valid fields from the query for matching
+        const queryFields = new Set([
+          ...(Array.isArray(input.measures) ? input.measures as string[] : []),
+          ...(Array.isArray(input.dimensions) ? input.dimensions as string[] : []),
+        ])
+
         const fixedOrder: Record<string, unknown> = {}
         for (const [key, val] of Object.entries(input.order as Record<string, unknown>)) {
-          fixedOrder[fixDoublePrefixed(key)] = val
+          const dpFixed = fixDoublePrefixed(key)
+          if (queryFields.has(dpFixed)) {
+            fixedOrder[dpFixed] = val
+            continue
+          }
+
+          // Try normalizing underscores → dots (e.g. "Teams_Teams_count" → "Teams.Teams.count" → "Teams.count")
+          if (!key.includes('.') && key.includes('_')) {
+            const withDots = key.replace(/_/g, '.')
+            const normalized = fixDoublePrefixed(withDots)
+            if (queryFields.has(normalized)) {
+              fixedOrder[normalized] = val
+              continue
+            }
+            // Try matching by field suffix (e.g. key ends with "_count" → match "Teams.count")
+            const match = [...queryFields].find(f => {
+              const fieldName = f.split('.')[1]
+              return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
+            })
+            if (match) {
+              fixedOrder[match] = val
+              continue
+            }
+          }
+
+          // Drop order keys that aren't in the query's measures/dimensions — fall through to default
+          if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
+            continue // silently drop invalid order key
+          }
+
+          fixedOrder[dpFixed] = val
         }
+
+        // If all order keys were dropped, default to first measure desc
+        if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
+          const firstMeasure = Array.isArray(input.measures) ? (input.measures as string[])[0] : undefined
+          if (firstMeasure) {
+            fixedOrder[firstMeasure] = 'desc'
+          }
+        }
+
         input.order = fixedOrder
       }
 
@@ -505,7 +577,7 @@ export function createToolExecutor(options: {
           rowCount: result.data.length,
           data: result.data,
           annotation: result.annotation
-        }, null, 2)
+        }) + '\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls. Now call add_markdown and add_portlet to visualize these results.]'
       }
     } catch (error) {
       // Include the attempted query in the error so the agent (and developer) can debug
@@ -592,10 +664,12 @@ export function createToolExecutor(options: {
   // add_markdown
   executors.set('add_markdown', async (input) => {
     const id = `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    // Normalize: some models send `text` or `markdown` instead of `content`
+    const content = (input.content || input.text || input.markdown || '') as string
     const markdownData = {
       id,
       title: input.title as string | undefined,
-      content: input.content as string
+      content,
     }
 
     return {

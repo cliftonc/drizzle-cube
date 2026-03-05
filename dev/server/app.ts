@@ -233,7 +233,7 @@ const cubeApp = createCubeApp({
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Agent-Api-Key'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Agent-Api-Key', 'X-Agent-Provider', 'X-Agent-Model', 'X-Agent-Provider-Endpoint'],
     credentials: true
   },
   cache: {
@@ -245,14 +245,37 @@ const cubeApp = createCubeApp({
       console.log(`${icon} Cache ${event.type}: ${event.key.substring(0, 50)}... (${event.durationMs}ms)`)
     }
   },
-  // Agent configuration for AI notebooks
-  agent: {
-    apiKey: getEnvVar('ANTHROPIC_API_KEY'),
-    allowClientApiKey: true, // Allow X-Agent-Api-Key header for dev
-    model: 'claude-haiku-4-5',
-    maxTurns: 25,
-    ...(langfuseTracer && { observability: createLangfuseObservability(langfuseTracer) }),
-  }
+  // Agent configuration for AI notebooks — multi-provider support
+  agent: (() => {
+    const provider = (getEnvVar('AGENT_PROVIDER', 'anthropic')) as 'anthropic' | 'openai' | 'google'
+
+    // Resolve API key based on selected provider
+    const apiKeyMap: Record<string, string> = {
+      anthropic: getEnvVar('ANTHROPIC_API_KEY'),
+      openai: getEnvVar('OPENAI_API_KEY'),
+      google: getEnvVar('GOOGLE_API_KEY'),
+    }
+    const apiKey = apiKeyMap[provider] || ''
+
+    const model = getEnvVar('AGENT_MODEL') || undefined // undefined → provider default
+    const baseURL = getEnvVar('AGENT_BASE_URL') || undefined
+
+    if (apiKey) {
+      console.log(`🤖 Agent notebook: provider=${provider}, model=${model || '(default)'} ${baseURL ? `baseURL=${baseURL}` : ''}`)
+    } else {
+      console.log(`🤖 Agent notebook: provider=${provider} (no server API key — client key required via X-Agent-Api-Key)`)
+    }
+
+    return {
+      provider,
+      apiKey,
+      allowClientApiKey: true, // Allow X-Agent-Api-Key header for dev
+      model,
+      baseURL,
+      maxTurns: 25,
+      ...(langfuseTracer && { observability: createLangfuseObservability(langfuseTracer, provider) }),
+    }
+  })()
 })
 
 // Mount cube routes under the main app

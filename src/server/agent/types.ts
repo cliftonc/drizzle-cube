@@ -51,7 +51,7 @@ export interface AgentObservabilityHooks {
     historyLength: number
   }) => void
 
-  /** Called after each Anthropic API call completes */
+  /** Called after each LLM API call completes */
   onGenerationEnd?: (event: {
     traceId: string
     turn: number
@@ -60,6 +60,10 @@ export interface AgentObservabilityHooks {
     inputTokens?: number
     outputTokens?: number
     durationMs: number
+    /** Messages array sent to the API */
+    input?: unknown
+    /** Assistant content blocks from the response */
+    output?: unknown
   }) => void
 
   /** Called after each tool execution */
@@ -84,13 +88,28 @@ export interface AgentObservabilityHooks {
 
 /**
  * Agent configuration options (provided in adapter options).
- * Uses `@anthropic-ai/sdk` (the standard Anthropic API client) for direct
- * HTTP API calls — no subprocess spawning, fully edge-runtime compatible.
+ * Supports multiple LLM providers — defaults to Anthropic for backward compatibility.
+ * All providers use direct HTTP API calls — no subprocess spawning, fully edge-runtime compatible.
  */
 export interface AgentConfig {
-  /** Server-side Anthropic API key */
+  /**
+   * LLM provider to use (default: 'anthropic').
+   * - 'anthropic': Claude models via @anthropic-ai/sdk
+   * - 'openai': OpenAI models via openai SDK (also supports Groq, Together, Mistral, Ollama via baseURL)
+   * - 'google': Gemini models via @google/generative-ai
+   */
+  provider?: 'anthropic' | 'openai' | 'google'
+  /**
+   * Base URL for OpenAI-compatible providers.
+   * Only used when provider is 'openai'. Examples:
+   * - Groq: 'https://api.groq.com/openai/v1'
+   * - Together: 'https://api.together.xyz/v1'
+   * - Ollama: 'http://localhost:11434/v1'
+   */
+  baseURL?: string
+  /** Server-side API key for the selected provider */
   apiKey?: string
-  /** Model to use (default: 'claude-sonnet-4-6') */
+  /** Model to use (default depends on provider: 'claude-sonnet-4-6' for Anthropic, 'gpt-4.1-mini' for OpenAI, 'gemini-3-flash-preview' for Google) */
   model?: string
   /** Maximum agentic turns per request (default: 25) */
   maxTurns?: number

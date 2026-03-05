@@ -212,7 +212,7 @@ export class LangfuseTracer {
 // Factory: create observability hooks wired to a LangfuseTracer
 // ---------------------------------------------------------------------------
 
-export function createLangfuseObservability(tracer: LangfuseTracer): AgentObservabilityHooks {
+export function createLangfuseObservability(tracer: LangfuseTracer, providerName: string = 'anthropic'): AgentObservabilityHooks {
   return {
     onChatStart(event) {
       tracer.createTrace({
@@ -234,7 +234,9 @@ export function createLangfuseObservability(tracer: LangfuseTracer): AgentObserv
         traceId: event.traceId,
         name: `notebook-turn-${event.turn}`,
         model: event.model,
-        provider: 'anthropic',
+        provider: providerName,
+        input: event.input,
+        output: event.output,
         usage: {
           promptTokens: event.inputTokens ?? 0,
           completionTokens: event.outputTokens ?? 0,

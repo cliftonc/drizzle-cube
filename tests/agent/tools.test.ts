@@ -50,34 +50,34 @@ describe('getToolDefinitions', () => {
     ])
   })
 
-  it('should have valid Anthropic schema structure on each tool', () => {
+  it('should have valid JSON schema structure on each tool', () => {
     const tools = getToolDefinitions()
     for (const tool of tools) {
       expect(tool).toHaveProperty('name')
       expect(tool).toHaveProperty('description')
       expect(tool.description).toBeTruthy()
-      expect(tool).toHaveProperty('input_schema')
-      expect(tool.input_schema.type).toBe('object')
-      expect(tool.input_schema).toHaveProperty('properties')
+      expect(tool).toHaveProperty('parameters')
+      expect(tool.parameters.type).toBe('object')
+      expect(tool.parameters).toHaveProperty('properties')
     }
   })
 
   it('should require [title, query, chartType] for add_portlet', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!
-    expect(addPortlet.input_schema.required).toEqual(['title', 'query', 'chartType'])
+    expect(addPortlet.parameters.required).toEqual(['title', 'query', 'chartType'])
   })
 
   it('should require [content] for add_markdown', () => {
     const tools = getToolDefinitions()
     const addMarkdown = tools.find((t) => t.name === 'add_markdown')!
-    expect(addMarkdown.input_schema.required).toEqual(['content'])
+    expect(addMarkdown.parameters.required).toEqual(['content'])
   })
 
   it('should include all supported chart types in add_portlet chartType enum', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!
-    const chartTypeProp = addPortlet.input_schema.properties.chartType as {
+    const chartTypeProp = addPortlet.parameters.properties.chartType as {
       enum: string[]
     }
     expect(chartTypeProp.enum).toContain('bar')
@@ -96,7 +96,7 @@ describe('getToolDefinitions', () => {
   it('should require [member, operator] on execute_query filter items', () => {
     const tools = getToolDefinitions()
     const executeQuery = tools.find((t) => t.name === 'execute_query')!
-    const filtersProp = executeQuery.input_schema.properties.filters as {
+    const filtersProp = executeQuery.parameters.properties.filters as {
       items: { required: string[] }
     }
     expect(filtersProp.items.required).toEqual(['member', 'operator'])
@@ -105,7 +105,7 @@ describe('getToolDefinitions', () => {
   it('should include funnel property on execute_query with required fields', () => {
     const tools = getToolDefinitions()
     const executeQuery = tools.find((t) => t.name === 'execute_query')!
-    const funnelProp = executeQuery.input_schema.properties.funnel as {
+    const funnelProp = executeQuery.parameters.properties.funnel as {
       type: string
       required: string[]
       properties: Record<string, unknown>
@@ -119,7 +119,7 @@ describe('getToolDefinitions', () => {
   it('should include flow property on execute_query with required fields', () => {
     const tools = getToolDefinitions()
     const executeQuery = tools.find((t) => t.name === 'execute_query')!
-    const flowProp = executeQuery.input_schema.properties.flow as {
+    const flowProp = executeQuery.parameters.properties.flow as {
       type: string
       required: string[]
       properties: Record<string, unknown>
@@ -133,7 +133,7 @@ describe('getToolDefinitions', () => {
   it('should include retention property on execute_query with required fields', () => {
     const tools = getToolDefinitions()
     const executeQuery = tools.find((t) => t.name === 'execute_query')!
-    const retentionProp = executeQuery.input_schema.properties.retention as {
+    const retentionProp = executeQuery.parameters.properties.retention as {
       type: string
       required: string[]
       properties: Record<string, unknown>
@@ -147,7 +147,7 @@ describe('getToolDefinitions', () => {
   it('should mention funnel/flow/retention formats in add_portlet query description', () => {
     const tools = getToolDefinitions()
     const addPortlet = tools.find((t) => t.name === 'add_portlet')!
-    const queryProp = addPortlet.input_schema.properties.query as { description: string }
+    const queryProp = addPortlet.parameters.properties.query as { description: string }
     expect(queryProp.description).toContain('Funnel')
     expect(queryProp.description).toContain('Flow')
     expect(queryProp.description).toContain('Retention')
@@ -185,7 +185,17 @@ describe('createToolExecutor', () => {
   // --------------------------------------------------------------------------
   describe('discover_cubes', () => {
     it('should call handleDiscover with topic/intent/limit/minScore', async () => {
-      const mockResult = { cubes: [{ name: 'Employees' }] }
+      const mockResult = {
+        cubes: [{
+          cube: 'Employees',
+          title: 'Employee Analytics',
+          description: 'Employee data',
+          relevanceScore: 1,
+          suggestedMeasures: ['Employees.count'],
+          suggestedDimensions: ['Employees.name'],
+          capabilities: { query: true, funnel: false, flow: false, retention: false },
+        }]
+      }
       mockHandleDiscover.mockResolvedValue(mockResult as any)
 
       const executor = createToolExecutor({
@@ -206,7 +216,10 @@ describe('createToolExecutor', () => {
         limit: 5,
         minScore: 0.5,
       })
-      expect(result.result).toBe(JSON.stringify(mockResult, null, 2))
+      // Result is trimmed (no querySchemas/hints) and compact JSON with a reminder suffix
+      expect(result.result).toContain('"cube":"Employees"')
+      expect(result.result).toContain('"suggestedMeasures"')
+      expect(result.result).not.toContain('querySchemas')
       expect(result.isError).toBeUndefined()
     })
   })
@@ -227,7 +240,7 @@ describe('createToolExecutor', () => {
       const result = await fn({})
 
       expect(semanticLayer.getMetadata).toHaveBeenCalled()
-      expect(result.result).toBe(JSON.stringify(metadata, null, 2))
+      expect(result.result).toBe(JSON.stringify(metadata))
     })
   })
 
@@ -265,9 +278,9 @@ describe('createToolExecutor', () => {
         }
       )
 
-      const parsed = JSON.parse(result.result)
-      expect(parsed.rowCount).toBe(1)
-      expect(parsed.data).toEqual(mockData.data)
+      // Result contains JSON followed by a reminder suffix for the agent
+      expect(result.result).toContain('"rowCount":1')
+      expect(result.result).toContain('"data"')
       expect(result.isError).toBeUndefined()
     })
 
@@ -308,8 +321,7 @@ describe('createToolExecutor', () => {
         { query: { funnel: funnelConfig } }
       )
       expect(result.isError).toBeUndefined()
-      const parsed = JSON.parse(result.result)
-      expect(parsed.rowCount).toBe(1)
+      expect(result.result).toContain('"rowCount":1')
     })
 
     it('should pass flow config directly to handleLoad', async () => {

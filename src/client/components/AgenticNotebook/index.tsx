@@ -29,6 +29,12 @@ export interface AgenticNotebookProps {
   agentEndpoint?: string
   /** Client-side API key (for demo/try-site use) */
   agentApiKey?: string
+  /** Override LLM provider (anthropic | openai | google) */
+  agentProvider?: string
+  /** Override LLM model (e.g. 'gpt-4o', 'gemini-2.0-flash') */
+  agentModel?: string
+  /** Override provider endpoint URL (for OpenAI-compatible services) */
+  agentProviderEndpoint?: string
   /** Callback when notebook state changes (for persistence) */
   onSave?: (config: NotebookConfig) => void | Promise<void>
   /** Callback when dirty state changes */
@@ -53,6 +59,9 @@ export interface AgenticNotebookProps {
 function AgenticNotebookInner({
   agentEndpoint,
   agentApiKey,
+  agentProvider,
+  agentModel,
+  agentProviderEndpoint,
   onSave,
   onDirtyStateChange,
   onDashboardSaved,
@@ -182,6 +191,9 @@ function AgenticNotebookInner({
         <AgentChatPanel
           agentEndpoint={agentEndpoint}
           agentApiKey={agentApiKey}
+          agentProvider={agentProvider}
+          agentModel={agentModel}
+          agentProviderEndpoint={agentProviderEndpoint}
           onClear={handleClear}
           onDashboardSaved={onDashboardSaved}
           onScore={onScore}

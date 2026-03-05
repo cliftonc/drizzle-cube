@@ -45,6 +45,12 @@ export interface UseAgentChatOptions {
   agentEndpoint?: string
   /** Client-side API key for demo/try-site use */
   agentApiKey?: string
+  /** Override LLM provider (anthropic | openai | google) */
+  agentProvider?: string
+  /** Override LLM model (e.g. 'gpt-4o', 'gemini-2.0-flash') */
+  agentModel?: string
+  /** Override provider endpoint URL (for OpenAI-compatible services) */
+  agentProviderEndpoint?: string
   /** Called when agent adds a portlet to the notebook */
   onAddPortlet: (data: PortletBlock) => void
   /** Called when agent adds a markdown block to the notebook */
@@ -92,7 +98,7 @@ export interface UseAgentChatResult {
  * Uses fetch() with ReadableStream to consume SSE events.
  */
 export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
-  const { agentEndpoint, agentApiKey } = options
+  const { agentEndpoint, agentApiKey, agentProvider, agentModel, agentProviderEndpoint } = options
 
   const { cubeApi } = useCubeApi()
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -166,6 +172,15 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
       // Add agent API key if provided
       if (agentApiKey) {
         headers['X-Agent-Api-Key'] = agentApiKey
+      }
+      if (agentProvider) {
+        headers['X-Agent-Provider'] = agentProvider
+      }
+      if (agentModel) {
+        headers['X-Agent-Model'] = agentModel
+      }
+      if (agentProviderEndpoint) {
+        headers['X-Agent-Provider-Endpoint'] = agentProviderEndpoint
       }
 
       const response = await fetch(endpoint, {
@@ -242,7 +257,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [cubeApi, agentEndpoint, agentApiKey])
+  }, [cubeApi, agentEndpoint, agentApiKey, agentProvider, agentModel, agentProviderEndpoint])
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {

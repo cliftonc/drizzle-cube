@@ -1106,6 +1106,11 @@ export function createAgentChatHandler(
         )
       }
 
+      // Per-request provider overrides from client headers
+      const providerOverride = agentConfig.allowClientApiKey ? request.headers.get('x-agent-provider') || undefined : undefined
+      const modelOverride = agentConfig.allowClientApiKey ? request.headers.get('x-agent-model') || undefined : undefined
+      const baseURLOverride = agentConfig.allowClientApiKey ? request.headers.get('x-agent-provider-endpoint') || undefined : undefined
+
       // Extract security context (required for all queries)
       const securityContext = await extractSecurityContext(request, context)
 
@@ -1126,6 +1131,9 @@ export function createAgentChatHandler(
               agentConfig,
               apiKey,
               systemContext,
+              providerOverride,
+              modelOverride,
+              baseURLOverride,
             })
 
             for await (const event of events) {
