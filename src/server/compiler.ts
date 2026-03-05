@@ -529,6 +529,14 @@ export class SemanticLayerCompiler {
   }
 
   /**
+   * Unregister a cube by name.
+   * Returns true if the cube existed and was removed, false if not found.
+   */
+  unregisterCube(name: string): boolean {
+    return this.removeCube(name)
+  }
+
+  /**
    * Remove a cube
    */
   removeCube(name: string): boolean {

@@ -46,38 +46,45 @@ import {
 
 export interface HonoAdapterOptions {
   /**
-   * Array of cube definitions to register
+   * Array of cube definitions to register.
+   * Optional when `semanticLayer` is provided (caller manages registration).
    */
-  cubes: Cube[]
-  
+  cubes?: Cube[]
+
   /**
-   * Drizzle database instance (REQUIRED)
-   * This is the core of drizzle-cube - Drizzle ORM integration
-   * Accepts PostgreSQL, MySQL, or SQLite database instances
+   * Pre-configured SemanticLayerCompiler instance.
+   * When provided, skips creating a new compiler and cube registration (caller manages it).
    */
-  drizzle: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
-  
+  semanticLayer?: SemanticLayerCompiler
+
+  /**
+   * Drizzle database instance.
+   * Required unless `semanticLayer` is provided.
+   * Accepts PostgreSQL, MySQL, or SQLite database instances.
+   */
+  drizzle?: PostgresJsDatabase<any> | MySql2Database<any> | BetterSQLite3Database<any> | DrizzleDatabase
+
   /**
    * Database schema for type inference (RECOMMENDED)
    * Provides full type safety for cube definitions
    */
   schema?: any
-  
+
   /**
    * Extract security context from incoming HTTP request.
    * Called for EVERY API request to determine user permissions and multi-tenant isolation.
-   * 
+   *
    * This is your security boundary - ensure proper authentication and authorization here.
-   * 
+   *
    * @param c - Hono context containing the incoming HTTP request
    * @returns Security context with organisationId, userId, roles, etc.
-   * 
+   *
    * @example
    * extractSecurityContext: async (c) => {
    *   // Extract JWT from Authorization header
    *   const token = c.req.header('Authorization')?.replace('Bearer ', '')
    *   const decoded = await verifyJWT(token)
-   *   
+   *
    *   // Return context that will be available in all cube SQL functions
    *   return {
    *     organisationId: decoded.orgId,
@@ -148,9 +155,9 @@ export function createCubeRoutes(
     agent: agentConfig
   } = options
 
-  // Validate required options
-  if (!cubes || cubes.length === 0) {
-    throw new Error('At least one cube must be provided in the cubes array')
+  // Validate: need either semanticLayer or (cubes + drizzle)
+  if (!options.semanticLayer && (!cubes || cubes.length === 0)) {
+    throw new Error('Either semanticLayer or a non-empty cubes array must be provided')
   }
 
   const app = new Hono()
@@ -160,18 +167,20 @@ export function createCubeRoutes(
     app.use('/*', cors(corsConfig as any))
   }
 
-  // Create semantic layer and register all cubes
-  const semanticLayer = new SemanticLayerCompiler({
+  // Use provided semantic layer or create a new one
+  const semanticLayer = options.semanticLayer ?? new SemanticLayerCompiler({
     drizzle,
     schema,
     engineType,
     cache
   })
 
-  // Register all provided cubes
-  cubes.forEach(cube => {
-    semanticLayer.registerCube(cube)
-  })
+  // Register cubes only when we created the compiler (not caller-managed)
+  if (!options.semanticLayer && cubes) {
+    cubes.forEach(cube => {
+      semanticLayer.registerCube(cube)
+    })
+  }
 
   /**
    * POST /cubejs-api/v1/load - Execute queries
