@@ -27,6 +27,15 @@ interface NotebookMarkdownBlockProps {
   isLast: boolean
 }
 
+/** Scrollable table wrapper so wide tables don't overflow the block */
+function ScrollableTable({ children, ...props }: React.HTMLAttributes<HTMLTableElement>) {
+  return (
+    <div className="dc:overflow-x-auto dc:my-2">
+      <table {...props}>{children}</table>
+    </div>
+  )
+}
+
 /** markdown-to-jsx options with dc: themed overrides */
 const markdownOptions = {
   overrides: {
@@ -43,7 +52,7 @@ const markdownOptions = {
     li: { props: { className: 'dc:text-sm text-dc-text' } },
     hr: { props: { className: 'dc:my-3 border-dc-border' } },
     blockquote: { props: { className: 'dc:border-l-4 border-dc-accent dc:pl-3 dc:my-2 dc:italic text-dc-text-secondary dc:text-sm' } },
-    table: { props: { className: 'dc:w-full dc:border-collapse dc:my-2 dc:text-sm' } },
+    table: { component: ScrollableTable, props: { className: 'dc:w-full dc:border-collapse dc:text-sm' } },
     thead: { props: { className: 'bg-dc-surface-secondary' } },
     th: { props: { className: 'dc:px-3 dc:py-2 dc:text-left dc:font-semibold dc:text-xs text-dc-text-secondary dc:uppercase dc:tracking-wider border-dc-border dc:border-b' } },
     td: { props: { className: 'dc:px-3 dc:py-2 dc:text-sm text-dc-text border-dc-border dc:border-b' } },
@@ -99,7 +108,7 @@ const NotebookMarkdownBlock = React.memo(function NotebookMarkdownBlock({
       </div>
 
       {/* Markdown content */}
-      <div className="dc:p-4">
+      <div className="dc:p-4 dc:min-w-0 dc:overflow-hidden">
         <Markdown options={markdownOptions}>
           {block.content}
         </Markdown>

@@ -5,6 +5,10 @@
  * The AI agent discovers available data, executes queries, creates visualizations,
  * and explains findings within a single conversational flow.
  *
+ * Responsive behavior:
+ * - Wide (>= 768px): Drag-resizable two-column layout
+ * - Narrow (< 768px): Toggle between collapsed icon strip + expanded panel
+ *
  * Requires:
  * - CubeProvider wrapping this component
  * - Server configured with `agent` option in HonoAdapterOptions
@@ -15,10 +19,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   NotebookStoreProvider,
   useNotebookStore,
+  type NotebookBlock,
   type NotebookConfig,
 } from '../../stores/notebookStore'
 import NotebookCanvas from './NotebookCanvas'
 import AgentChatPanel from './AgentChatPanel'
+import { useNotebookLayout } from '../../hooks/useNotebookLayout'
+import { getChartTypeIcon, getIcon } from '../../icons/registry'
 import type { ColorPalette } from '../../types'
 import type { ReactNode } from 'react'
 
@@ -54,6 +61,101 @@ export interface AgenticNotebookProps {
 }
 
 /**
+ * Collapsed strip showing notebook block icons (shown in narrow mode when chat is expanded)
+ */
+function CollapsedNotebookStrip({
+  blocks,
+  pulsingBlockId,
+  nudge,
+  onExpand,
+}: {
+  blocks: NotebookBlock[]
+  pulsingBlockId: string | null
+  nudge: boolean
+  onExpand: () => void
+}) {
+  const BookOpenIcon = getIcon('bookOpen')
+  const DocumentIcon = getIcon('documentText')
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="dc:h-full dc:flex-shrink-0 dc:flex dc:flex-col dc:items-center dc:pt-3 dc:gap-2 bg-dc-surface border-dc-border dc:border-r dc:cursor-pointer dc:hover:bg-dc-surface-hover dc:transition-colors"
+      style={
+        nudge
+          ? { animation: 'dc-strip-nudge 0.8s ease-in-out 2', width: 48 }
+          : { width: 48 }
+      }
+      title="Expand notebook"
+    >
+      <BookOpenIcon className="dc:w-5 dc:h-5 text-dc-text-muted" />
+      <div
+        className="dc:flex dc:flex-col dc:items-center dc:gap-1.5 dc:flex-1 dc:overflow-y-auto dc:py-1"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {blocks.length === 0 ? (
+          <span
+            className="dc:text-[9px] text-dc-text-disabled dc:writing-vertical-lr dc:mt-2"
+            style={{ writingMode: 'vertical-lr' }}
+          >
+            No blocks
+          </span>
+        ) : (
+          blocks.map((block) => {
+            const isPulsing = block.id === pulsingBlockId
+            let Icon: React.ComponentType<{ className?: string }>
+            if (block.type === 'portlet') {
+              Icon = getChartTypeIcon(block.chartType)
+            } else {
+              Icon = DocumentIcon
+            }
+            return (
+              <div
+                key={block.id}
+                className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded"
+                style={
+                  isPulsing
+                    ? { animation: 'dc-icon-pulse 0.6s ease-in-out 3' }
+                    : undefined
+                }
+                title={block.type === 'portlet' ? block.title : (block.title || 'Markdown')}
+              >
+                <Icon className="dc:w-4 dc:h-4 text-dc-text-muted" />
+              </div>
+            )
+          })
+        )}
+      </div>
+    </button>
+  )
+}
+
+/**
+ * Collapsed strip showing AI chat icon (shown in narrow mode when notebook is expanded)
+ */
+function CollapsedChatStrip({ onExpand }: { onExpand: () => void }) {
+  const SparklesIcon = getIcon('sparkles')
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className="dc:w-12 dc:h-full dc:flex-shrink-0 dc:flex dc:flex-col dc:items-center dc:pt-3 dc:gap-2 bg-dc-surface border-dc-border dc:border-l dc:cursor-pointer dc:hover:bg-dc-surface-hover dc:transition-colors"
+      title="Expand AI chat"
+    >
+      <SparklesIcon className="dc:w-5 dc:h-5 text-dc-accent" />
+      <span
+        className="dc:text-[10px] dc:font-medium text-dc-text-muted"
+        style={{ writingMode: 'vertical-lr' }}
+      >
+        AI Chat
+      </span>
+    </button>
+  )
+}
+
+/**
  * Inner component that uses the notebook store (must be inside provider)
  */
 function AgenticNotebookInner({
@@ -71,13 +173,75 @@ function AgenticNotebookInner({
   initialPrompt,
 }: Omit<AgenticNotebookProps, 'config' | 'colorPalette'>) {
   const [dividerPosition, setDividerPosition] = useState(60) // 60% left, 40% right
-  const containerRef = useRef<HTMLDivElement>(null)
+  const dividerContainerRef = useRef<HTMLDivElement | null>(null)
   const isDraggingRef = useRef(false)
 
-  const blockCount = useNotebookStore((s) => s.blocks.length)
+  // Responsive layout
+  const { containerRef: layoutRef, layoutMode } = useNotebookLayout()
+  const [expandedPanel, setExpandedPanel] = useState<'chat' | 'notebook'>('chat')
+  const [pulsingBlockId, setPulsingBlockId] = useState<string | null>(null)
+  const [nudgeStrip, setNudgeStrip] = useState(false)
+  const prevLayoutModeRef = useRef(layoutMode)
+
+  const blocks = useNotebookStore((s) => s.blocks)
+  const blockCount = blocks.length
   const messageCount = useNotebookStore((s) => s.messages.length)
   const isStreaming = useNotebookStore((s) => s.isStreaming)
   const save = useNotebookStore((s) => s.save)
+
+  // Reset to chat when crossing from narrow → wide
+  useEffect(() => {
+    if (prevLayoutModeRef.current === 'narrow' && layoutMode === 'wide') {
+      setExpandedPanel('chat')
+    }
+    prevLayoutModeRef.current = layoutMode
+  }, [layoutMode])
+
+  // Detect new blocks added while notebook is collapsed → pulse the icon
+  const prevBlockCountRef = useRef(blockCount)
+  useEffect(() => {
+    if (
+      layoutMode === 'narrow' &&
+      expandedPanel === 'chat' &&
+      blockCount > prevBlockCountRef.current
+    ) {
+      // Find the newest block (last in the array)
+      const newestBlock = blocks[blocks.length - 1]
+      if (newestBlock) {
+        setPulsingBlockId(newestBlock.id)
+        const timer = setTimeout(() => setPulsingBlockId(null), 2000)
+        return () => clearTimeout(timer)
+      }
+    }
+    prevBlockCountRef.current = blockCount
+  }, [blockCount, blocks, layoutMode, expandedPanel])
+
+  // Nudge the notebook strip when streaming ends while collapsed and there are blocks
+  const wasStreamingRef = useRef(false)
+  useEffect(() => {
+    if (isStreaming) {
+      wasStreamingRef.current = true
+    } else if (
+      wasStreamingRef.current &&
+      layoutMode === 'narrow' &&
+      expandedPanel === 'chat' &&
+      blockCount > 0
+    ) {
+      wasStreamingRef.current = false
+      setNudgeStrip(true)
+      const timer = setTimeout(() => setNudgeStrip(false), 1700)
+      return () => clearTimeout(timer)
+    }
+  }, [isStreaming, layoutMode, expandedPanel, blockCount])
+
+  // Merge refs: layoutRef (RefCallback) + dividerContainerRef (for drag calculations)
+  const mergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      layoutRef(node)
+      dividerContainerRef.current = node
+    },
+    [layoutRef],
+  )
 
   // Track dirty state
   const initialRef = useRef({ blockCount, msgCount: messageCount })
@@ -148,8 +312,8 @@ function AgenticNotebookInner({
     isDraggingRef.current = true
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!isDraggingRef.current || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
+      if (!isDraggingRef.current || !dividerContainerRef.current) return
+      const rect = dividerContainerRef.current.getBoundingClientRect()
       const newPos = ((moveEvent.clientX - rect.left) / rect.width) * 100
       setDividerPosition(Math.min(Math.max(newPos, 30), 80))
     }
@@ -164,9 +328,56 @@ function AgenticNotebookInner({
     document.addEventListener('mouseup', handleMouseUp)
   }, [])
 
+  const chatPanel = (
+    <AgentChatPanel
+      agentEndpoint={agentEndpoint}
+      agentApiKey={agentApiKey}
+      agentProvider={agentProvider}
+      agentModel={agentModel}
+      agentProviderEndpoint={agentProviderEndpoint}
+      onClear={handleClear}
+      onDashboardSaved={onDashboardSaved}
+      onScore={onScore}
+      loadingComponent={loadingComponent}
+      initialPrompt={initialPrompt}
+    />
+  )
+
+  // --- Narrow mode: collapsed strip + expanded panel ---
+  if (layoutMode === 'narrow') {
+    return (
+      <div
+        ref={mergedRef}
+        className={`dc:flex dc:h-full dc:w-full dc:overflow-hidden bg-dc-surface-secondary ${className || ''}`}
+      >
+        {expandedPanel === 'chat' ? (
+          <>
+            <CollapsedNotebookStrip
+              blocks={blocks}
+              pulsingBlockId={pulsingBlockId}
+              nudge={nudgeStrip}
+              onExpand={() => setExpandedPanel('notebook')}
+            />
+            <div className="dc:h-full dc:overflow-hidden dc:flex-1">
+              {chatPanel}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="dc:h-full dc:overflow-hidden dc:flex-1">
+              <NotebookCanvas />
+            </div>
+            <CollapsedChatStrip onExpand={() => setExpandedPanel('chat')} />
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // --- Wide mode: existing drag-resizable two-column layout ---
   return (
     <div
-      ref={containerRef}
+      ref={mergedRef}
       className={`dc:flex dc:h-full dc:w-full dc:overflow-hidden bg-dc-surface-secondary ${className || ''}`}
     >
       {/* Left: Notebook Canvas */}
@@ -188,18 +399,7 @@ function AgenticNotebookInner({
         className="dc:h-full dc:overflow-hidden"
         style={{ width: `${100 - dividerPosition}%` }}
       >
-        <AgentChatPanel
-          agentEndpoint={agentEndpoint}
-          agentApiKey={agentApiKey}
-          agentProvider={agentProvider}
-          agentModel={agentModel}
-          agentProviderEndpoint={agentProviderEndpoint}
-          onClear={handleClear}
-          onDashboardSaved={onDashboardSaved}
-          onScore={onScore}
-          loadingComponent={loadingComponent}
-          initialPrompt={initialPrompt}
-        />
+        {chatPanel}
       </div>
     </div>
   )

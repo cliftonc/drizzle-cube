@@ -52,6 +52,8 @@ export type { UseDirtyStateTrackingOptions, UseDirtyStateTrackingResult } from '
 export { useFilterValues } from './hooks/useFilterValues'
 export { useResponsiveDashboard } from './hooks/useResponsiveDashboard'
 export type { DashboardDisplayMode, UseResponsiveDashboardResult } from './hooks/useResponsiveDashboard'
+export { useNotebookLayout } from './hooks/useNotebookLayout'
+export type { NotebookLayoutMode, UseNotebookLayoutResult } from './hooks/useNotebookLayout'
 
 // Hook-related types
 export type {
