@@ -475,6 +475,6 @@ describe('Hono Adapter', () => {
         drizzle: drizzleDb,
         extractSecurityContext: mockGetSecurityContext
       })
-    }).toThrow('At least one cube must be provided')
+    }).toThrow('Either semanticLayer or a non-empty cubes array must be provided')
   })
 })
