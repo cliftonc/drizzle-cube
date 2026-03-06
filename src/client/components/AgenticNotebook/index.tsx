@@ -168,10 +168,11 @@ function AgenticNotebookInner({
   onDirtyStateChange,
   onDashboardSaved,
   onScore,
+  colorPalette,
   loadingComponent,
   className,
   initialPrompt,
-}: Omit<AgenticNotebookProps, 'config' | 'colorPalette'>) {
+}: Omit<AgenticNotebookProps, 'config'>) {
   const [dividerPosition, setDividerPosition] = useState(60) // 60% left, 40% right
   const dividerContainerRef = useRef<HTMLDivElement | null>(null)
   const isDraggingRef = useRef(false)
@@ -365,7 +366,7 @@ function AgenticNotebookInner({
         ) : (
           <>
             <div className="dc:h-full dc:overflow-hidden dc:flex-1">
-              <NotebookCanvas />
+              <NotebookCanvas colorPalette={colorPalette} />
             </div>
             <CollapsedChatStrip onExpand={() => setExpandedPanel('chat')} />
           </>
@@ -385,7 +386,7 @@ function AgenticNotebookInner({
         className="dc:h-full dc:overflow-hidden"
         style={{ width: `${dividerPosition}%` }}
       >
-        <NotebookCanvas />
+        <NotebookCanvas colorPalette={colorPalette} />
       </div>
 
       {/* Resizable Divider */}
@@ -420,11 +421,12 @@ function AgenticNotebookInner({
  */
 const AgenticNotebook = React.memo(function AgenticNotebook({
   config,
+  colorPalette,
   ...props
 }: AgenticNotebookProps) {
   return (
     <NotebookStoreProvider initialConfig={config}>
-      <AgenticNotebookInner {...props} />
+      <AgenticNotebookInner {...props} colorPalette={colorPalette} />
     </NotebookStoreProvider>
   )
 })

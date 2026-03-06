@@ -7,12 +7,15 @@ import { useShallow } from 'zustand/react/shallow'
 import { useNotebookStore, selectBlocks, selectBlockActions } from '../../stores/notebookStore'
 import type { PortletBlock } from '../../stores/notebookStore'
 import type { PortletConfig } from '../../types'
+import type { ColorPalette } from '../../utils/colorPalettes'
+import { getColorPalette } from '../../utils/colorPalettes'
 import { ensureAnalysisConfig } from '../../utils/configMigration'
 import NotebookPortletBlock from './NotebookPortletBlock'
 import NotebookMarkdownBlock from './NotebookMarkdownBlock'
 import PortletAnalysisModal from '../PortletAnalysisModal'
 
-const NotebookCanvas = React.memo(function NotebookCanvas() {
+const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { colorPalette?: ColorPalette }) {
+  const resolvedPalette = colorPalette ?? getColorPalette()
   const blocks = useNotebookStore(selectBlocks)
   const { removeBlock, moveBlock, updateBlock } = useNotebookStore(useShallow(selectBlockActions))
   const endRef = useRef<HTMLDivElement>(null)
@@ -82,6 +85,7 @@ const NotebookCanvas = React.memo(function NotebookCanvas() {
             <NotebookPortletBlock
               key={block.id}
               block={block}
+              colorPalette={resolvedPalette}
               onRemove={handleRemove}
               onMoveUp={handleMoveUp}
               onMoveDown={handleMoveDown}
@@ -115,6 +119,7 @@ const NotebookCanvas = React.memo(function NotebookCanvas() {
         isOpen={!!editingBlock}
         onClose={() => setEditingBlock(null)}
         onSave={handleEditSave}
+        colorPalette={resolvedPalette}
         portlet={editingBlock ? {
           id: editingBlock.id,
           title: editingBlock.title,

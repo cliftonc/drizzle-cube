@@ -10,6 +10,7 @@ import React, { useState, useCallback } from 'react'
 import type { CSSProperties } from 'react'
 import type { PortletBlock } from '../../stores/notebookStore'
 import type { ChartAxisConfig, ChartDisplayConfig, ChartType } from '../../types'
+import type { ColorPalette } from '../../utils/colorPalettes'
 import type { FlowChartData } from '../../types/flow'
 import type { RetentionChartData } from '../../types/retention'
 import { getIcon } from '../../icons/registry'
@@ -30,6 +31,7 @@ interface DebugData {
 
 interface NotebookPortletBlockProps {
   block: PortletBlock
+  colorPalette?: ColorPalette
   onRemove: (id: string) => void
   onMoveUp: (id: string) => void
   onMoveDown: (id: string) => void
@@ -45,6 +47,7 @@ const DeleteIcon = getIcon('delete')
 
 const NotebookPortletBlock = React.memo(function NotebookPortletBlock({
   block,
+  colorPalette,
   onRemove,
   onMoveUp,
   onMoveDown,
@@ -120,6 +123,7 @@ const NotebookPortletBlock = React.memo(function NotebookPortletBlock({
           chartType={block.chartType}
           chartConfig={block.chartConfig}
           displayConfig={block.displayConfig}
+          colorPalette={colorPalette}
           height={400}
           eagerLoad={true}
           onDebugDataReady={handleDebugDataReady}
