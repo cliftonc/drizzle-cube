@@ -579,6 +579,8 @@ export interface CreateStoreOptions {
   }
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
+  /** Custom localStorage key (for scoping persistence per connection/context) */
+  storageKey?: string
   /** Initial analysis type (query or funnel) */
   initialAnalysisType?: AnalysisType
   /** Initial funnel state (when analysisType === 'funnel') */
@@ -1023,7 +1025,7 @@ export function createAnalysisBuilderStore(options: CreateStoreOptions = {}) {
     devtools(
       subscribeWithSelector(
         persist(storeCreator, {
-          name: STORAGE_KEY,
+          name: options.storageKey || STORAGE_KEY,
           // Use workspace format to preserve ALL modes' state
           partialize: (state) => state.saveWorkspace(),
           merge: (persisted, current) => {
@@ -1106,6 +1108,8 @@ export interface AnalysisBuilderStoreProviderProps {
   }
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
+  /** Custom localStorage key (for scoping persistence per connection/context) */
+  storageKey?: string
   /** Initial analysis type (query or funnel) */
   initialAnalysisType?: AnalysisType
   /** Initial funnel state (when analysisType === 'funnel') */
@@ -1126,6 +1130,7 @@ export function AnalysisBuilderStoreProvider({
   initialQuery,
   initialChartConfig,
   disableLocalStorage,
+  storageKey,
   initialAnalysisType,
   initialFunnelState,
   initialFlowState,
@@ -1140,6 +1145,7 @@ export function AnalysisBuilderStoreProvider({
       initialQuery,
       initialChartConfig,
       disableLocalStorage,
+      storageKey,
       initialAnalysisType,
       initialFunnelState,
       initialFlowState,

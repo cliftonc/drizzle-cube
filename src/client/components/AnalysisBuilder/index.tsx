@@ -493,6 +493,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
       initialFlowState,
       initialRetentionState,
       disableLocalStorage = false,
+      storageKey,
       ...innerProps
     } = props
 
@@ -618,6 +619,7 @@ const AnalysisBuilder = forwardRef<AnalysisBuilderRef, AnalysisBuilderProps>(
         initialRetentionState={initialRetentionState || initialRetentionStateFromShare}
         initialActiveView={initialActiveViewFromShare}
         disableLocalStorage={disableLocalStorage || !!initialQuery || !!initialFunnelState || !!initialFlowState || !!initialRetentionState || !!shareHash}
+        storageKey={storageKey}
       >
         <AnalysisBuilderInner ref={ref} {...innerProps} hideShare={hideShare} />
       </AnalysisBuilderStoreProvider>

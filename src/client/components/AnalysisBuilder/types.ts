@@ -828,6 +828,8 @@ export interface AnalysisBuilderProps {
   colorPalette?: ColorPalette
   /** Disable localStorage persistence */
   disableLocalStorage?: boolean
+  /** Custom localStorage key (for scoping persistence per connection/context) */
+  storageKey?: string
   /** Hide settings button */
   hideSettings?: boolean
   /** Callback when query changes (for modal integration) */
