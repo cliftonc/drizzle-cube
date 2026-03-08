@@ -13,7 +13,8 @@ import type {
   DrizzleDatabase,
   Cube,
   CacheConfig,
-  ExplainOptions
+  ExplainOptions,
+  RLSSetupFn
 } from '../../server'
 import type { AgentConfig } from '../../server/agent/types'
 import { SemanticLayerCompiler } from '../../server/compiler'
@@ -128,6 +129,13 @@ export interface ExpressAdapterOptions {
    * Requires `@anthropic-ai/sdk` as a peer dependency.
    */
   agent?: AgentConfig
+
+  /**
+   * Row-Level Security setup function.
+   * When provided, every query execution opens a transaction, calls this function
+   * to configure RLS (e.g., set JWT claims and switch Postgres roles), then runs the query.
+   */
+  rlsSetup?: RLSSetupFn
 }
 
 /**
@@ -173,14 +181,15 @@ export function createCubeRouter(
     drizzle,
     schema,
     engineType,
-    cache
+    cache,
+    rlsSetup: options.rlsSetup
   })
 
   // Register all provided cubes
   cubes.forEach(cube => {
     semanticLayer.registerCube(cube)
   })
-  
+
   /**
    * POST /cubejs-api/v1/load - Execute queries
    */

@@ -19,7 +19,8 @@ import type {
   ExplainOptions,
   ExplainResult,
   ExecutionOptions,
-  TimeGranularity
+  TimeGranularity,
+  RLSSetupFn
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
@@ -32,6 +33,7 @@ export class SemanticLayerCompiler {
   private dbExecutor?: DatabaseExecutor
   private metadataCache?: CubeMetadata[]
   private cacheConfig?: CacheConfig
+  private rlsSetup?: RLSSetupFn
 
   constructor(options?: {
     drizzle?: DatabaseExecutor['db']
@@ -40,6 +42,13 @@ export class SemanticLayerCompiler {
     engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
     /** Cache configuration for query result caching */
     cache?: CacheConfig
+    /**
+     * Row-Level Security setup function.
+     * When provided, every query execution opens a transaction, calls this function
+     * to configure RLS (e.g., set JWT claims and switch roles), then runs the query.
+     * Dry-run/SQL generation is NOT wrapped in a transaction.
+     */
+    rlsSetup?: RLSSetupFn
   }) {
     if (options?.databaseExecutor) {
       this.dbExecutor = options.databaseExecutor
@@ -52,6 +61,7 @@ export class SemanticLayerCompiler {
       )
     }
     this.cacheConfig = options?.cache
+    this.rlsSetup = options?.rlsSetup
   }
 
   /**
@@ -97,7 +107,7 @@ export class SemanticLayerCompiler {
    */
   private createQueryExecutor(withCache: boolean = false): QueryExecutor {
     const dbExecutor = this.requireExecutor()
-    return new QueryExecutor(dbExecutor, withCache ? this.cacheConfig : undefined)
+    return new QueryExecutor(dbExecutor, withCache ? this.cacheConfig : undefined, this.rlsSetup)
   }
 
   /**

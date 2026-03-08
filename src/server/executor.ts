@@ -21,7 +21,8 @@ import type {
   ExplainOptions,
   ExplainResult,
   ExecutionOptions,
-  QueryAnalysis
+  QueryAnalysis,
+  RLSSetupFn
 } from './types'
 
 import { resolveSqlExpression } from './cube-utils'
@@ -63,7 +64,9 @@ export class QueryExecutor {
   private logicalPlanBuilder: LogicalPlanBuilder
   private planOptimiser: PlanOptimiser
 
-  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
+  private rlsSetup?: RLSSetupFn
+
+  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig, rlsSetup?: RLSSetupFn) {
     // Get the database adapter from the executor
     this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
@@ -80,6 +83,43 @@ export class QueryExecutor {
     this.logicalPlanBuilder = new LogicalPlanBuilder(queryPlanner)
     this.planOptimiser = new IdentityOptimiser()
     this.cacheConfig = cacheConfig
+    this.rlsSetup = rlsSetup
+  }
+
+  /**
+   * Execute a function within a RLS-configured transaction context.
+   * If no rlsSetup function is configured, the function is called directly.
+   * Otherwise, opens a transaction, calls rlsSetup to configure RLS, then
+   * temporarily swaps the executor's db reference to the transaction and runs fn.
+   */
+  private async withRLSContext<T>(
+    securityContext: SecurityContext,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    if (!this.rlsSetup) {
+      return fn()
+    }
+
+    const db = this.dbExecutor.db
+    if (!db.transaction) {
+      throw new Error('rlsSetup requires a database driver that supports transactions (db.transaction)')
+    }
+
+    const rlsSetup = this.rlsSetup
+    const dbExecutor = this.dbExecutor
+
+    return db.transaction(async (tx: any) => {
+      await rlsSetup(tx, securityContext)
+
+      // Temporarily swap the executor's db to the transaction
+      const originalDb = dbExecutor.db
+      dbExecutor.db = tx
+      try {
+        return await fn()
+      } finally {
+        dbExecutor.db = originalDb
+      }
+    })
   }
 
   /**
@@ -151,7 +191,9 @@ export class QueryExecutor {
         }
       }
 
-      return await this.executeQueryByModeWithCache(mode, cubes, query, securityContext, cacheKey)
+      return await this.withRLSContext(securityContext, () =>
+        this.executeQueryByModeWithCache(mode, cubes, query, securityContext, cacheKey)
+      )
     } catch (error) {
       // Extract the actual database error from the cause chain
       // Drizzle ORM wraps database errors, but the real error is in the cause
@@ -874,11 +916,13 @@ export class QueryExecutor {
   ): Promise<ExplainResult> {
     const sqlResult = await this.dryRunSQL(cubes, query, securityContext)
 
-    // Execute EXPLAIN using the database executor
-    return this.dbExecutor.explainQuery(
-      sqlResult.sql,
-      sqlResult.params || [],
-      options
+    // Execute EXPLAIN using the database executor (within RLS context if configured)
+    return this.withRLSContext(securityContext, () =>
+      this.dbExecutor.explainQuery(
+        sqlResult.sql,
+        sqlResult.params || [],
+        options
+      )
     )
   }
 
