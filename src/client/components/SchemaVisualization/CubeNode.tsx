@@ -1,5 +1,5 @@
-import { Handle, Position } from '@xyflow/react'
 import type { CubeMetaCube } from '../../types'
+import { useXyflow } from './xyflowContext'
 
 interface CubeNodeData {
   cube: CubeMetaCube
@@ -15,6 +15,7 @@ interface CubeNodeProps {
 }
 
 export function CubeNode({ data }: CubeNodeProps) {
+  const { Handle, Position } = useXyflow()
   const { cube, onFieldClick, isHighlighted, highlightedFields, searchTerm } = data
 
   const handleFieldClick = (fieldName: string, fieldType: 'measure' | 'dimension') => {

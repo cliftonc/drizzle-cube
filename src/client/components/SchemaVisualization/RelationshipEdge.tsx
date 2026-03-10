@@ -1,10 +1,6 @@
-import {
-  getBezierPath,
-  EdgeLabelRenderer,
-  BaseEdge,
-} from '@xyflow/react'
 import type { Edge, EdgeProps } from '@xyflow/react'
 import type { CubeMetaRelationship } from '../../types'
+import { useXyflow } from './xyflowContext'
 
 interface RelationshipEdgeData {
   relationship: CubeMetaRelationship
@@ -28,6 +24,7 @@ export function RelationshipEdge({
   data,
   markerEnd,
 }: EdgeProps<RelationshipEdgeType>) {
+  const { getBezierPath, BaseEdge, EdgeLabelRenderer } = useXyflow()
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,

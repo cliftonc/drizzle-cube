@@ -1,10 +1,16 @@
 /**
  * Lazy-loaded SchemaVisualization with graceful fallback
  * when @xyflow/react is not installed.
+ *
+ * All @xyflow/react imports are dynamic here so the built chunk
+ * has NO static imports from @xyflow/react. This prevents consuming
+ * projects from failing at build time when xyflow is not installed.
  */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import type { SchemaVisualizationProps } from './index'
+import { XyflowProvider } from './xyflowContext'
+import type { XyflowModule } from './xyflowContext'
 
 let loadFailed = false
 
@@ -39,24 +45,44 @@ function LoadingFallback() {
 }
 
 const LazySchemaVisualization = lazy(async () => {
-  try {
-    const mod = await import('./index')
-    return { default: mod.SchemaVisualization }
-  } catch {
-    loadFailed = true
-    return { default: MissingDependencyFallback }
-  }
+  const mod = await import('./index')
+  return { default: mod.SchemaVisualization }
 })
 
 export function SchemaVisualizationLazy(props: SchemaVisualizationProps) {
-  if (loadFailed) {
+  const [xyflow, setXyflow] = useState<XyflowModule | null>(null)
+  const [failed, setFailed] = useState(loadFailed)
+
+  useEffect(() => {
+    if (loadFailed) return
+    let cancelled = false
+
+    import('@xyflow/react')
+      .then((mod) => {
+        if (!cancelled) setXyflow(mod)
+      })
+      .catch(() => {
+        loadFailed = true
+        if (!cancelled) setFailed(true)
+      })
+
+    return () => { cancelled = true }
+  }, [])
+
+  if (failed) {
     return <MissingDependencyFallback {...props} />
   }
 
+  if (!xyflow) {
+    return <LoadingFallback />
+  }
+
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <LazySchemaVisualization {...props} />
-    </Suspense>
+    <XyflowProvider value={xyflow}>
+      <Suspense fallback={<LoadingFallback />}>
+        <LazySchemaVisualization {...props} />
+      </Suspense>
+    </XyflowProvider>
   )
 }
 

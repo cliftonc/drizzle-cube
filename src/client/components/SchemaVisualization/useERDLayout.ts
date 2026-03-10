@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Position, type Node, type Edge } from '@xyflow/react'
+import type { Node, Edge, Position } from '@xyflow/react'
 
 export interface LayoutOptions {
   direction: 'TB' | 'LR'
@@ -25,17 +25,17 @@ export type LayoutPhase = 'waiting' | 'computing' | 'ready'
 
 function getTargetPosition(direction: string): Position {
   switch (direction) {
-    case 'TB': return Position.Top
-    case 'LR': return Position.Left
-    default: return Position.Top
+    case 'TB': return 'top' as Position
+    case 'LR': return 'left' as Position
+    default: return 'top' as Position
   }
 }
 
 function getSourcePosition(direction: string): Position {
   switch (direction) {
-    case 'TB': return Position.Bottom
-    case 'LR': return Position.Right
-    default: return Position.Bottom
+    case 'TB': return 'bottom' as Position
+    case 'LR': return 'right' as Position
+    default: return 'bottom' as Position
   }
 }
 

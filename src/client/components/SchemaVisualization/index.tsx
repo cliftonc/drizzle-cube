@@ -1,20 +1,6 @@
 import { useCallback, useMemo, useEffect, useState, useRef } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import {
-  ReactFlow,
-  Controls,
-  MiniMap,
-  Background,
-  BackgroundVariant,
-  ConnectionMode,
-  applyNodeChanges,
-  useNodesInitialized,
-  useReactFlow,
-  type Node,
-  type Edge,
-  type NodeChange,
-  type EdgeChange,
-} from '@xyflow/react'
+import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { useCubeContext } from '../../providers/CubeProvider'
@@ -22,6 +8,7 @@ import { CubeNode } from './CubeNode'
 import { RelationshipEdge } from './RelationshipEdge'
 import { useERDLayout } from './useERDLayout'
 import { getIcon } from '../../icons'
+import { useXyflow } from './xyflowContext'
 
 const nodeTypes = { cubeNode: CubeNode }
 const edgeTypes = { relationshipEdge: RelationshipEdge }
@@ -31,6 +18,7 @@ const edgeTypes = { relationshipEdge: RelationshipEdge }
  * Calls fitView exactly once per fitViewToken change, after all nodes are measured.
  */
 function FitViewOnReady({ token }: { token: number }) {
+  const { useNodesInitialized, useReactFlow } = useXyflow()
   const nodesInitialized = useNodesInitialized()
   const { fitView } = useReactFlow()
   const appliedTokenRef = useRef(0)
@@ -75,6 +63,13 @@ export function SchemaVisualization({
   searchTerm,
   height = '100%',
 }: SchemaVisualizationProps) {
+  const {
+    ReactFlow: ReactFlowComponent,
+    Controls,
+    MiniMap,
+    Background,
+    applyNodeChanges,
+  } = useXyflow()
   const { meta, metaLoading, metaError } = useCubeContext()
 
   // Stabilize array props to avoid re-creating references every render
@@ -240,6 +235,7 @@ export function SchemaVisualization({
         return currentNodes
       })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleEdgesChange = useCallback((_changes: EdgeChange[]) => {}, [])
@@ -331,14 +327,14 @@ export function SchemaVisualization({
 
       <div className="dc:relative dc:flex-1 dc:min-h-0">
         <div style={{ position: 'absolute', inset: 0 }}>
-          <ReactFlow
+          <ReactFlowComponent
             nodes={rfNodes}
             edges={rfEdges}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            connectionMode={ConnectionMode.Loose}
+            connectionMode={'loose' as never}
             minZoom={0.1}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
@@ -350,9 +346,9 @@ export function SchemaVisualization({
               nodeColor={(node) => stableHighlightedCubes.includes(node.id) ? '#8b5cf6' : '#e5e7eb'}
               maskColor="rgb(240, 242, 246, 0.7)"
             />
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+            <Background variant={'dots' as never} gap={12} size={1} />
             <FitViewOnReady token={fitViewToken} />
-          </ReactFlow>
+          </ReactFlowComponent>
         </div>
       </div>
 
