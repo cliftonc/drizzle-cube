@@ -1,6 +1,6 @@
 {
   "name": "drizzle-cube",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
@@ -291,7 +291,6 @@
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
-    "elkjs": "^0.11.1",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.1.0",
