@@ -118,6 +118,7 @@ export type ChartType =
   | 'candlestick'
   | 'measureProfile'
   | 'gauge'
+  | 'donut'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {

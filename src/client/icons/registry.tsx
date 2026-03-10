@@ -183,7 +183,8 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
     funnel: 'chartFunnel',
     sankey: 'chartSankey',
     sunburst: 'chartSunburst',
-    heatmap: 'chartHeatmap'
+    heatmap: 'chartHeatmap',
+    donut: 'chartDonut'
   }
 
   const iconName = typeMap[chartType] || 'chartBar'

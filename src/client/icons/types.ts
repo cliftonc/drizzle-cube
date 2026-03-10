@@ -101,6 +101,7 @@ export interface IconRegistry {
   chartMarkdown: IconDefinition
   chartFunnel: IconDefinition
   chartSankey: IconDefinition
+  chartDonut: IconDefinition
   chartSunburst: IconDefinition
   chartHeatmap: IconDefinition
   chartRetention: IconDefinition
