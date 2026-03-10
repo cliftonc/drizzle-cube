@@ -54,6 +54,8 @@ const FloatingGitHubButton = memo(function FloatingGitHubButton() {
       return `${basePath}/pages/NotebookViewPage.tsx`
     } else if (pathname === '/notebooks') {
       return `${basePath}/pages/NotebooksListPage.tsx`
+    } else if (pathname === '/schema') {
+      return `${basePath}/pages/SchemaPage.tsx`
     }
 
     return `${basePath}/App.tsx`
@@ -153,6 +155,16 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Notebooks
                 </Link>
+                <Link
+                  to="/schema"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
+                    isActive('/schema')
+                      ? 'border-dc-primary text-dc-text'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                  }`}
+                >
+                  Schema
+                </Link>
               </div>
             </div>
             
@@ -245,6 +257,17 @@ export default function Layout({ children }: LayoutProps) {
                 }`}
               >
                 Notebooks
+              </Link>
+              <Link
+                to="/schema"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  isActive('/schema')
+                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
+                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
+                }`}
+              >
+                Schema
               </Link>
 
               {/* Mobile external links */}

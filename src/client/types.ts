@@ -584,7 +584,7 @@ export interface ThumbnailFeatureConfig {
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
   aiEndpoint?: string // Custom AI endpoint (default: '/api/ai/generate')
-  showSchemaDiagram?: boolean // Deprecated - schema diagram feature has been removed
+  showSchemaDiagram?: boolean // Show schema visualization button in AnalysisBuilder results panel (requires @xyflow/react and @dagrejs/dagre)
   useAnalysisBuilder?: boolean // Deprecated - AnalysisBuilder modal is now always used (PortletEditModal was removed)
   editToolbar?: 'floating' | 'top' | 'both' // Which edit toolbar(s) to show: 'floating' only, 'top' only, or 'both' (default: 'both')
   floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')

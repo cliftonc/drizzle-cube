@@ -17,6 +17,8 @@ import { useExplainAI } from '../../hooks/queries/useExplainAI'
 import type { CubeQuery } from '../../types'
 import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
+import { SchemaVisualizationLazy } from '../SchemaVisualization/SchemaVisualizationLazy'
 
 /**
  * Generate markdown representation of query execution plan
@@ -235,7 +237,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   retentionChartData,
   retentionValidation,
   // Query warnings from server
-  warnings
+  warnings,
+  // Schema visualization interaction
+  highlightedFields,
+  onSchemaFieldClick
 }: AnalysisResultsPanelProps) {
   // Determine funnel mode from analysisType (preferred) or legacy prop
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
@@ -243,8 +248,12 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const isFlowMode = analysisType === 'flow'
   // Determine retention mode from analysisType
   const isRetentionMode = analysisType === 'retention'
+  // Features config
+  const { features } = useCubeFeatures()
   // Debug view toggle state
   const [showDebug, setShowDebug] = useState(false)
+  // Schema visualization toggle state
+  const [showSchema, setShowSchema] = useState(false)
   // Active debug query tab (independent of main query tabs)
   const [activeDebugIndex, setActiveDebugIndex] = useState(0)
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false)
@@ -436,6 +445,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   const TrashIcon = getIcon('delete')
   const SparklesIcon = getIcon('sparkles')
   const RefreshIcon = getIcon('arrowPath')
+  const SchemaGraphIcon = getIcon('schemaGraph')
 
   // Loading state - initial load
   const renderLoading = () => (
@@ -460,7 +470,11 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     <div className="dc:h-full dc:flex dc:flex-col">
       {renderHeader()}
       <div className="dc:flex-1 dc:flex dc:items-center dc:justify-center dc:p-4">
-        {showDebug ? (
+        {showSchema ? (
+          <div className="dc:w-full dc:h-full">
+            <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+          </div>
+        ) : showDebug ? (
           <div className="dc:w-full dc:h-full dc:overflow-auto">
             {renderDebug()}
           </div>
@@ -1561,9 +1575,30 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               </button>
             )}
 
+            {/* Schema Visualization Toggle Button */}
+            {features.showSchemaDiagram && (
+              <button
+                onClick={() => {
+                  setShowSchema(!showSchema)
+                  if (!showSchema) setShowDebug(false)
+                }}
+                className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
+                  showSchema
+                    ? 'bg-dc-primary text-white'
+                    : 'text-dc-text-secondary hover:text-dc-text hover:bg-dc-surface-hover'
+                }`}
+                title={showSchema ? 'Hide schema diagram' : 'Show schema diagram'}
+              >
+                <SchemaGraphIcon className="dc:w-4 dc:h-4" />
+              </button>
+            )}
+
             {/* Debug Toggle Button */}
             <button
-              onClick={() => setShowDebug(!showDebug)}
+              onClick={() => {
+                setShowDebug(!showDebug)
+                if (!showDebug) setShowSchema(false)
+              }}
               className={`dc:p-1.5 dc:rounded dc:transition-colors dc:relative ${
                 showDebug
                   ? 'bg-dc-primary text-white'
@@ -1661,7 +1696,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:h-full dc:flex dc:flex-col">
           {renderHeader()}
           <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
-            {showDebug ? renderDebug() : renderNoData()}
+            {showSchema ? (
+              <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+            ) : showDebug ? renderDebug() : renderNoData()}
           </div>
         </div>
       )
@@ -1675,7 +1712,9 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
         {/* Results Content */}
         <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
-          {showDebug ? (
+          {showSchema ? (
+            <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+          ) : showDebug ? (
             renderDebug()
           ) : activeView === 'chart' ? (
             <div className="dc:p-4 dc:h-full">{renderChart()}</div>
@@ -1689,7 +1728,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         </div>
 
         {/* View Toggle - Below content, centered */}
-        {!showDebug && (
+        {!showDebug && !showSchema && (
           <div className="dc:px-4 dc:py-3 dc:border-t border-dc-border bg-dc-surface dc:flex dc:justify-center dc:flex-shrink-0">
             <div className="dc:flex dc:items-center bg-dc-surface-secondary dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
               {/* Chart button - always enabled for flow/funnel/retention modes which don't need traditional metrics */}

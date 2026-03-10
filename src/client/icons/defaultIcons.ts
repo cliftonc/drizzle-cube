@@ -82,6 +82,7 @@ import fileText from '@iconify-icons/tabler/file-text'
 import infoCircle from '@iconify-icons/tabler/info-circle'
 import selector from '@iconify-icons/tabler/selector'
 import chartGridDots from '@iconify-icons/tabler/chart-grid-dots'
+import map from '@iconify-icons/heroicons-outline/map'
 
 import type { IconRegistry } from './types'
 
@@ -122,6 +123,7 @@ export const DEFAULT_ICONS: IconRegistry = {
   camera: { icon: camera, category: 'action' },
   thumbUp: { icon: handThumbUp, category: 'action' },
   thumbDown: { icon: handThumbDown, category: 'action' },
+  schemaGraph: { icon: map, category: 'action' },
 
   // Field type icons (solid for visual distinction)
   measure: { icon: chartBarSolid, category: 'field' },

@@ -104,7 +104,10 @@ export default defineConfig({
         'react-resizable',
         'recharts',
         '@nivo/heatmap',
-        'd3'
+        'd3',
+        '@xyflow/react',
+        'elkjs',
+        'elkjs/lib/elk.bundled.js'
       ],
       output: {
         entryFileNames: '[name].js',
@@ -136,6 +139,10 @@ export default defineConfig({
 
           if (normalizedId.endsWith('/src/client/charts/ChartLoader.tsx')) {
             return 'charts-loader'
+          }
+
+          if (normalizedId.includes('/src/client/components/SchemaVisualization/')) {
+            return 'schema-visualization'
           }
 
           if (normalizedId.endsWith('/src/client/components/charts/MissingDependencyFallback.tsx')) {

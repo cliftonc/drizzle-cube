@@ -327,6 +327,22 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               retentionChartData={analysis.retentionChartData}
               retentionValidation={analysis.retentionValidation}
               warnings={analysis.warnings}
+              // Schema visualization interaction
+              highlightedFields={[
+                ...analysis.queryState.metrics.map((m) => m.field),
+                ...analysis.effectiveBreakdowns.map((b) => b.field),
+              ]}
+              onSchemaFieldClick={(cubeName, fieldName, fieldType) => {
+                const fullName = `${cubeName}.${fieldName}`
+                if (fieldType === 'measure') {
+                  analysis.actions.toggleMetric(fullName)
+                } else {
+                  // Look up whether it's a time dimension from schema
+                  const cube = (meta as MetaResponse | null)?.cubes?.find(c => c.name === cubeName)
+                  const dim = cube?.dimensions?.find(d => d.name === fullName)
+                  analysis.actions.toggleBreakdown(fullName, dim?.type === 'time')
+                }
+              }}
             />
           </div>
         </div>
