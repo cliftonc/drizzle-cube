@@ -394,9 +394,18 @@ async function waitForChartRender(page: Page) {
 }
 
 async function clickTab(page: Page, tabName: string) {
-  // The tabs are buttons inside the query panel
-  const tab = page.locator('button').filter({ hasText: new RegExp(`^${tabName}$`, 'i') }).first()
-  await tab.click()
+  // Use title attributes to target right-panel tabs specifically,
+  // avoiding the Chart/Table toggle at the bottom of the results panel.
+  const titleMap: Record<string, string> = {
+    Chart: 'Chart configuration',
+    Display: 'Display options',
+  }
+  const title = titleMap[tabName]
+  if (title) {
+    await page.locator(`button[title="${title}"]`).click()
+  } else {
+    await page.locator('button').filter({ hasText: new RegExp(`^${tabName}$`, 'i') }).first().click()
+  }
   await page.waitForTimeout(300)
 }
 
