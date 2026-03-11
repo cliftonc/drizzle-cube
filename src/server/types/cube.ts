@@ -323,8 +323,8 @@ export type CubeRelationship = 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMa
  * Type-safe cube join definition with lazy loading support
  */
 export interface CubeJoin {
-  /** Target cube reference - lazy loaded to avoid circular dependencies */
-  targetCube: Cube | (() => Cube)
+  /** Target cube reference - lazy loaded to avoid circular dependencies, or string name resolved from registry */
+  targetCube: Cube | (() => Cube) | string
 
   /** Semantic relationship - determines join behavior */
   relationship: CubeRelationship

@@ -324,7 +324,7 @@ export class LogicalPlanner {
     for (const cubeName of cubesWithMeasures) {
       if (cubeName === primaryCube.name) continue
       // Check if this cube has hasMany relationship from primary
-      const hasManyJoin = this.findHasManyJoinDef(primaryCube, cubeName)
+      const hasManyJoin = this.findHasManyJoinDef(primaryCube, cubeName, cubes)
       if (hasManyJoin) {
         willBeCTEd.add(cubeName)
       }
@@ -639,7 +639,8 @@ export class LogicalPlanner {
       if (cube.name === targetCubeName) continue
       if (cube.joins) {
         for (const [, joinDef] of Object.entries(cube.joins)) {
-          const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+          const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
+          if (!resolvedTarget) continue
           if (resolvedTarget.name === targetCubeName) {
             return { sourceCube: cube, joinDef: joinDef as CubeJoin }
           }
@@ -874,7 +875,8 @@ export class LogicalPlanner {
     // First check primary cube for a direct join to the target
     if (primaryCube.joins) {
       for (const [, joinDef] of Object.entries(primaryCube.joins)) {
-        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
+        if (!resolvedTarget) continue
         if (resolvedTarget.name === targetCubeName) {
           return { sourceCube: primaryCube, joinDef: joinDef as CubeJoin }
         }
@@ -890,7 +892,8 @@ export class LogicalPlanner {
     const targetCube = cubes.get(targetCubeName)
     if (targetCube?.joins) {
       for (const [, joinDef] of Object.entries(targetCube.joins)) {
-        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
+        if (!resolvedTarget) continue
         if (resolvedTarget.name === primaryCube.name) {
           // Found: target cube has a join back to primary cube
           // Mark as reversed so the caller can swap source/target columns
@@ -904,7 +907,8 @@ export class LogicalPlanner {
       if (cube.name === primaryCube.name || cube.name === targetCubeName) continue
       if (cube.joins) {
         for (const [, joinDef] of Object.entries(cube.joins)) {
-          const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+          const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
+          if (!resolvedTarget) continue
           if (resolvedTarget.name === targetCubeName) {
             return { sourceCube: cube, joinDef: joinDef as CubeJoin }
           }
@@ -966,7 +970,8 @@ export class LogicalPlanner {
     // For each dimension cube, check if it's directly joinable from the CTE cube
     if (cteCube.joins) {
       for (const [, joinDef] of Object.entries(cteCube.joins)) {
-        const targetCube = resolveCubeReference(joinDef.targetCube)
+        const targetCube = resolveCubeReference(joinDef.targetCube, _allCubes)
+        if (!targetCube) continue
         const targetCubeName = targetCube.name
 
         // Check if this target cube has dimensions in the query
@@ -1069,7 +1074,8 @@ export class LogicalPlanner {
    */
   private findHasManyJoinDef(
     primaryCube: Cube,
-    targetCubeName: string
+    targetCubeName: string,
+    cubes?: Map<string, Cube>
   ): CubeJoin | null {
     if (!primaryCube.joins) {
       return null
@@ -1077,7 +1083,8 @@ export class LogicalPlanner {
 
     // Look through all joins from primary cube
     for (const [, joinDef] of Object.entries(primaryCube.joins)) {
-      const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+      const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, cubes)
+      if (!resolvedTargetCube) continue
       if (resolvedTargetCube.name === targetCubeName && joinDef.relationship === 'hasMany') {
         return joinDef as CubeJoin
       }
@@ -1127,7 +1134,8 @@ export class LogicalPlanner {
 
       // Check if filterCube has hasMany -> cteCube
       for (const [, joinDef] of Object.entries(filterCube.joins)) {
-        const targetCube = resolveCubeReference(joinDef.targetCube)
+        const targetCube = resolveCubeReference(joinDef.targetCube, allCubes)
+        if (!targetCube) continue
         if (targetCube.name === cteCube.name && joinDef.relationship === 'hasMany') {
           // Found: filterCube hasMany -> cteCube
           // Extract the filters for this cube
