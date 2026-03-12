@@ -92,10 +92,6 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
     packageName: 'd3-shape',
     installCommand: 'npm install d3-shape'
   },
-  donut: {
-    packageName: 'recharts',
-    installCommand: 'npm install recharts'
-  },
   // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
 }
 
@@ -127,7 +123,6 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   candlestick: () => import('../components/charts/CandlestickChart'),
   measureProfile: () => import('../components/charts/MeasureProfileChart'),
   gauge: () => import('../components/charts/GaugeChart'),
-  donut: () => import('../components/charts/DonutChart'),
 }
 
 /**

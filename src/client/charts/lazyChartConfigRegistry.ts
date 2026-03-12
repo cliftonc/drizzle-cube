@@ -38,7 +38,6 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   candlestick: () => import('../components/charts/CandlestickChart.config'),
   measureProfile: () => import('../components/charts/MeasureProfileChart.config'),
   gauge: () => import('../components/charts/GaugeChart.config'),
-  donut: () => import('../components/charts/DonutChart.config'),
 }
 
 // Map from chart type to expected export name
@@ -69,7 +68,6 @@ const configExportNames: Record<ChartType, string> = {
   candlestick: 'candlestickChartConfig',
   measureProfile: 'measureProfileChartConfig',
   gauge: 'gaugeChartConfig',
-  donut: 'donutChartConfig',
 }
 
 // Cache for loaded configs

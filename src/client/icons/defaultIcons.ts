@@ -73,7 +73,6 @@ import chartTreemap from '@iconify-icons/tabler/chart-treemap'
 // Custom icons - better represents flow/funnel/retention visualizations
 import { flowIcon, funnelIcon, retentionIcon } from './customIcons'
 import chartDonut4 from '@iconify-icons/tabler/chart-donut-4'
-import chartDonut from '@iconify-icons/tabler/chart-donut'
 import table from '@iconify-icons/tabler/table'
 import calendarStats from '@iconify-icons/tabler/calendar-stats'
 import number from '@iconify-icons/tabler/number'
@@ -150,7 +149,6 @@ export const DEFAULT_ICONS: IconRegistry = {
   chartMarkdown: { icon: fileText, category: 'chart' },
   chartFunnel: { icon: funnelIcon, category: 'chart' },
   chartSankey: { icon: flowIcon, category: 'chart' },
-  chartDonut: { icon: chartDonut, category: 'chart' },
   chartSunburst: { icon: chartDonut4, category: 'chart' },
   chartHeatmap: { icon: chartGridDots, category: 'chart' },
   chartRetention: { icon: retentionIcon, category: 'chart' },

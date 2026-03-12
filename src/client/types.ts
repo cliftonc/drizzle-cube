@@ -118,7 +118,6 @@ export type ChartType =
   | 'candlestick'
   | 'measureProfile'
   | 'gauge'
-  | 'donut'
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
@@ -170,6 +169,9 @@ export interface ChartDisplayConfig {
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
   hideHeader?: boolean // Hide portlet header in non-edit mode
   
+  // Pie chart specific display options
+  innerRadius?: string // Inner radius for donut variant (e.g., '0%', '20%', '40%', '60%', '80%')
+
   // Bubble chart specific display options
   minBubbleSize?: number
   maxBubbleSize?: number

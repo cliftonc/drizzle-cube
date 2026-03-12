@@ -108,8 +108,8 @@ const GAUGE_DATA = [
   { 'Trades.margin': '0.73', 'Trades.revenue': '185000' },
 ]
 
-// Donut: category breakdown (same shape as pie)
-const DONUT_DATA = [
+// Pie Donut variant: category breakdown (pie chart with innerRadius)
+const PIE_DONUT_DATA = [
   { 'Trades.symbol': 'AAPL', 'Trades.count': '42' },
   { 'Trades.symbol': 'MSFT', 'Trades.count': '18' },
   { 'Trades.symbol': 'GOOG', 'Trades.count': '12' },
@@ -175,7 +175,7 @@ const GAUGE_ANNOTATION = {
   dimensions: {},
 }
 
-const DONUT_ANNOTATION = {
+const PIE_DONUT_ANNOTATION = {
   measures: {
     'Trades.count': { title: 'Count', shortTitle: 'Count', type: 'number' },
   },
@@ -295,10 +295,10 @@ const CHART_CONFIGS = {
       showPercentage: true,
     },
   }),
-  donut: makeWorkspaceStorage({
+  pieDonut: makeWorkspaceStorage({
     measures: ['Trades.count'],
     dimensions: ['Trades.symbol'],
-    chartType: 'donut',
+    chartType: 'pie',
     chartConfig: {
       xAxis: ['Trades.symbol'],
       yAxis: ['Trades.count'],
@@ -306,6 +306,7 @@ const CHART_CONFIGS = {
     displayConfig: {
       showLegend: true,
       showTooltip: true,
+      innerRadius: '40%',
     },
   }),
 }
@@ -317,7 +318,7 @@ const MOCK_DATA_MAP: Record<string, { data: Record<string, unknown>[]; annotatio
   candlestick: { data: CANDLESTICK_DATA, annotation: CANDLESTICK_ANNOTATION },
   measureProfile: { data: MEASURE_PROFILE_DATA, annotation: MEASURE_PROFILE_ANNOTATION },
   gauge: { data: GAUGE_DATA, annotation: GAUGE_ANNOTATION },
-  donut: { data: DONUT_DATA, annotation: DONUT_ANNOTATION },
+  pieDonut: { data: PIE_DONUT_DATA, annotation: PIE_DONUT_ANNOTATION },
 }
 
 // ── Helpers ──
@@ -411,7 +412,7 @@ async function clickTab(page: Page, tabName: string) {
 
 // ── Test Suite ──
 
-const CHART_TYPES = ['boxPlot', 'waterfall', 'candlestick', 'measureProfile', 'gauge', 'donut'] as const
+const CHART_TYPES = ['boxPlot', 'waterfall', 'candlestick', 'measureProfile', 'gauge', 'pieDonut'] as const
 
 const CHART_LABELS: Record<string, string> = {
   boxPlot: 'Box Plot',
@@ -419,7 +420,7 @@ const CHART_LABELS: Record<string, string> = {
   candlestick: 'Candlestick Chart',
   measureProfile: 'Measure Profile',
   gauge: 'Gauge Chart',
-  donut: 'Donut Chart',
+  pieDonut: 'Pie Chart (Donut)',
 }
 
 test.describe('Chart Type Screenshots', () => {
