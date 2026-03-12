@@ -1,6 +1,6 @@
 {
   "name": "drizzle-cube",
-  "version": "0.4.27",
+  "version": "0.4.29",
   "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
@@ -164,7 +164,7 @@
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.30.0",
-    "elkjs": "^0.9.0",
+    "elkjs": "^0.9.0 || ^0.11.1",
     "@google/generative-ai": ">=0.21.0",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",

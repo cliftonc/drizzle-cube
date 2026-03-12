@@ -15,11 +15,32 @@ import type {
 } from './types'
 
 /**
- * Resolve cube reference (handles both direct and lazy references)
+ * Resolve cube reference (handles direct, lazy, and string name references)
+ *
+ * String references are resolved from the optional `cubes` registry map.
+ * Returns `null` when a string ref cannot be resolved (logs a warning).
  */
 export function resolveCubeReference(
-  ref: Cube | (() => Cube)
-): Cube {
+  ref: Cube | (() => Cube) | string,
+  cubes?: Map<string, Cube>
+): Cube | null {
+  if (typeof ref === 'string') {
+    if (!cubes) {
+      console.warn(
+        `[drizzle-cube] Cannot resolve string cube reference '${ref}': no cube registry provided. Join will be skipped.`
+      )
+      return null
+    }
+    const cube = cubes.get(ref)
+    if (!cube) {
+      console.warn(
+        `[drizzle-cube] Cannot resolve cube reference '${ref}': no cube with that name is registered. ` +
+        `Registered cubes: ${Array.from(cubes.keys()).join(', ') || '(none)'}. Join will be skipped.`
+      )
+      return null
+    }
+    return cube
+  }
   return typeof ref === 'function' ? ref() : ref
 }
 

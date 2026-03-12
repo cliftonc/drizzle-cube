@@ -6,6 +6,8 @@ import '@xyflow/react/dist/style.css'
 import { useCubeContext } from '../../providers/CubeProvider'
 import { CubeNode } from './CubeNode'
 import { RelationshipEdge } from './RelationshipEdge'
+import { FieldDetailPanel } from './FieldDetailPanel'
+import type { FieldSelection } from './FieldDetailPanel'
 import { useERDLayout } from './useERDLayout'
 import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
@@ -79,6 +81,12 @@ export function SchemaVisualization({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
   const [searchInput, setSearchInput] = useState(searchTerm || '')
   const [autoLayoutCounter, setAutoLayoutCounter] = useState(0)
+  const [selectedField, setSelectedField] = useState<FieldSelection | null>(null)
+  const [detailPosition, setDetailPosition] = useState<{ x: number; y: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // In standalone mode (no onFieldClick), clicking fields shows the detail panel
+  const isStandaloneMode = !onFieldClick
   const [savedPositions, setSavedPositions] = useState<Record<string, { x: number; y: number }>>({})
   const [positionsLoaded, setPositionsLoaded] = useState(false)
 
@@ -143,13 +151,56 @@ export function SchemaVisualization({
 
   // --- Build display data: merge layout positions + presentation data ---
 
+  // Convert client coords to container-relative, clamped to keep panel in view
+  const toContainerPos = useCallback((clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return { x: clientX, y: clientY }
+    const panelW = 300, panelH = 200 // approximate panel size for clamping
+    let x = clientX - rect.left + 12 // offset slightly right of cursor
+    let y = clientY - rect.top + 12  // offset slightly below cursor
+    // Clamp so panel doesn't overflow right/bottom
+    if (x + panelW > rect.width) x = clientX - rect.left - panelW - 12
+    if (y + panelH > rect.height) y = rect.height - panelH - 8
+    if (x < 0) x = 8
+    if (y < 0) y = 8
+    return { x, y }
+  }, [])
+
+  // Internal field click handler for standalone mode
+  const handleInternalFieldClick = useCallback((cubeName: string, fieldName: string, fieldType: 'measure' | 'dimension', pos?: { x: number; y: number }) => {
+    setSelectedField(prev => {
+      if (prev && prev.cubeName === cubeName && prev.fieldName === fieldName) {
+        setDetailPosition(null)
+        return null
+      }
+      if (pos) setDetailPosition(toContainerPos(pos.x, pos.y))
+      return { cubeName, fieldName, fieldType }
+    })
+  }, [toContainerPos])
+
+  const handleInternalCubeClick = useCallback((cubeName: string, pos?: { x: number; y: number }) => {
+    setSelectedField(prev => {
+      if (prev && prev.cubeName === cubeName && prev.fieldName === null) {
+        setDetailPosition(null)
+        return null
+      }
+      if (pos) setDetailPosition(toContainerPos(pos.x, pos.y))
+      return { cubeName, fieldName: null, fieldType: 'cube' }
+    })
+  }, [toContainerPos])
+
+  const effectiveFieldClick = isStandaloneMode ? handleInternalFieldClick : onFieldClick
+  const effectiveCubeClick = isStandaloneMode ? handleInternalCubeClick : undefined
+
   const buildNodeData = useCallback((cube: unknown) => ({
     cube,
-    onFieldClick,
+    onFieldClick: effectiveFieldClick,
+    onCubeClick: effectiveCubeClick,
     isHighlighted: stableHighlightedCubes.includes((cube as { name: string }).name),
     highlightedFields: stableHighlightedFields,
     searchTerm: effectiveSearchTerm,
-  }), [onFieldClick, stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm])
+    selectedField: isStandaloneMode ? selectedField : null,
+  }), [effectiveFieldClick, effectiveCubeClick, stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm, isStandaloneMode, selectedField])
 
   // Determine if layout is resolved (ready to render ReactFlow)
   const layoutReady = !needsAutoLayout || layoutPhase === 'ready'
@@ -206,7 +257,8 @@ export function SchemaVisualization({
   // Update presentation data (highlights, search) without resetting positions
   const prevPresentationRef = useRef('')
   useEffect(() => {
-    const presentationKey = `${stableHighlightedCubes.join(',')}|${stableHighlightedFields.join(',')}|${effectiveSearchTerm}|${String(onFieldClick)}`
+    const selectedKey = selectedField ? `${selectedField.cubeName}.${selectedField.fieldName}` : ''
+    const presentationKey = `${stableHighlightedCubes.join(',')}|${stableHighlightedFields.join(',')}|${effectiveSearchTerm}|${String(onFieldClick)}|${selectedKey}`
     if (presentationKey === prevPresentationRef.current) return
     prevPresentationRef.current = presentationKey
 
@@ -216,7 +268,7 @@ export function SchemaVisualization({
       if (!cube) return node
       return { ...node, data: buildNodeData(cube) }
     }))
-  }, [stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm, onFieldClick, rfNodes.length, meta, buildNodeData])
+  }, [stableHighlightedCubes, stableHighlightedFields, effectiveSearchTerm, onFieldClick, selectedField, rfNodes.length, meta, buildNodeData])
 
   // Handle node changes (dragging)
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
@@ -248,7 +300,8 @@ export function SchemaVisualization({
 
   const handleClick = useCallback(() => {
     if (contextMenu) setContextMenu(null)
-  }, [contextMenu])
+    if (selectedField) { setSelectedField(null); setDetailPosition(null) }
+  }, [contextMenu, selectedField])
 
   const handleAutoLayout = useCallback(() => {
     setSavedPositions({})
@@ -325,7 +378,7 @@ export function SchemaVisualization({
         </div>
       )}
 
-      <div className="dc:relative dc:flex-1 dc:min-h-0">
+      <div ref={containerRef} className="dc:relative dc:flex-1 dc:min-h-0">
         <div style={{ position: 'absolute', inset: 0 }}>
           <ReactFlowComponent
             nodes={rfNodes}
@@ -350,6 +403,20 @@ export function SchemaVisualization({
             <FitViewOnReady token={fitViewToken} />
           </ReactFlowComponent>
         </div>
+
+        {/* Field detail panel for standalone browse mode */}
+        {isStandaloneMode && selectedField && detailPosition && meta && (
+          <div
+            className="dc:absolute dc:z-20"
+            style={{ left: detailPosition.x, top: detailPosition.y }}
+          >
+            <FieldDetailPanel
+              selection={selectedField}
+              meta={meta}
+              onClose={() => { setSelectedField(null); setDetailPosition(null) }}
+            />
+          </div>
+        )}
       </div>
 
       {contextMenu && (

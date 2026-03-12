@@ -18,6 +18,7 @@ import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis'
 import type { SemanticQuery } from '../types/query'
 import type { LogicalPlanner } from './logical-planner'
 import { MeasureBuilder } from '../builders/measure-builder'
+import { resolveCubeReference } from '../cube-utils'
 import type {
   LogicalNode,
   QueryNode,
@@ -383,7 +384,7 @@ export class LogicalPlanBuilder {
 
     const measureCubeNames = Array.from(measureCubes)
     const hasDirectSharedJoin = measureCubeNames.every(cubeName =>
-      this.hasDirectJoinToSharedDimension(cubes.get(cubeName), sharedDimensionCubeName)
+      this.hasDirectJoinToSharedDimension(cubes.get(cubeName), sharedDimensionCubeName, cubes)
     )
     if (!hasDirectSharedJoin) {
       return null
@@ -433,15 +434,15 @@ export class LogicalPlanBuilder {
 
   private hasDirectJoinToSharedDimension(
     cube: Cube | undefined,
-    sharedDimensionCubeName: string
+    sharedDimensionCubeName: string,
+    cubes: Map<string, Cube>
   ): boolean {
     if (!cube?.joins) {
       return false
     }
 
     for (const [, joinDef] of Object.entries(cube.joins)) {
-      const target = joinDef.targetCube
-      const targetCube = typeof target === 'function' ? target() : target
+      const targetCube = resolveCubeReference(joinDef.targetCube, cubes)
       if (!targetCube || targetCube.name !== sharedDimensionCubeName) {
         continue
       }

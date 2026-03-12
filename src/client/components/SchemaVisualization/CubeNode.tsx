@@ -1,12 +1,16 @@
+import type { MouseEvent } from 'react'
 import type { CubeMetaCube } from '../../types'
+import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
 
 interface CubeNodeData {
   cube: CubeMetaCube
-  onFieldClick?: (cubeName: string, fieldName: string, fieldType: 'measure' | 'dimension') => void
+  onFieldClick?: (cubeName: string, fieldName: string, fieldType: 'measure' | 'dimension', pos?: { x: number; y: number }) => void
+  onCubeClick?: (cubeName: string, pos?: { x: number; y: number }) => void
   isHighlighted: boolean
   highlightedFields: string[]
   searchTerm?: string
+  selectedField?: { cubeName: string; fieldName: string | null } | null
   [key: string]: unknown
 }
 
@@ -16,13 +20,29 @@ interface CubeNodeProps {
 
 export function CubeNode({ data }: CubeNodeProps) {
   const { Handle, Position } = useXyflow()
-  const { cube, onFieldClick, isHighlighted, highlightedFields, searchTerm } = data
+  const { cube, onFieldClick, onCubeClick, isHighlighted, highlightedFields, searchTerm, selectedField } = data
 
-  const handleFieldClick = (fieldName: string, fieldType: 'measure' | 'dimension') => {
+  const handleFieldClick = (e: MouseEvent, fieldName: string, fieldType: 'measure' | 'dimension') => {
     if (onFieldClick) {
-      onFieldClick(cube.name, fieldName, fieldType)
+      onFieldClick(cube.name, fieldName, fieldType, { x: e.clientX, y: e.clientY })
     }
   }
+
+  const InfoIcon = getIcon('info')
+
+  const handleCubeInfoClick = (e: MouseEvent) => {
+    e.stopPropagation() // don't start drag
+    if (onCubeClick) {
+      onCubeClick(cube.name, { x: e.clientX, y: e.clientY })
+    }
+  }
+
+  const isFieldSelected = (fieldName: string) => {
+    if (!selectedField) return false
+    return selectedField.cubeName === cube.name && selectedField.fieldName === fieldName
+  }
+
+  const isCubeSelected = selectedField?.cubeName === cube.name && selectedField?.fieldName === null
 
   const isFieldHighlighted = (fullFieldName: string) => {
     return highlightedFields.includes(fullFieldName)
@@ -50,7 +70,13 @@ export function CubeNode({ data }: CubeNodeProps) {
     highlighted: boolean,
     _fieldType: 'measure' | 'dimension'
   ) => {
+    const fieldName = field.name.split('.')[1] || field.name
+    const selected = isFieldSelected(fieldName)
     const base = 'dc:px-4 dc:py-2 dc:text-xs dc:cursor-pointer dc:transition-all dc:border-b border-dc-border last:dc:border-b-0 nodrag nopan'
+
+    if (selected) {
+      return `${base} bg-dc-accent-bg text-dc-accent dc:font-semibold dc:ring-1 dc:ring-inset ring-dc-accent`
+    }
 
     if (!hasCubeMatches && searchTerm?.trim()) {
       if (highlighted) return `${base} bg-dc-accent-bg text-dc-accent dc:font-semibold`
@@ -86,7 +112,7 @@ export function CubeNode({ data }: CubeNodeProps) {
     >
       {/* Cube Header */}
       <div className={`dc:px-4 dc:py-3 dc:transition-colors ${
-        isHighlighted ? 'bg-dc-accent-bg' : 'bg-dc-surface-secondary dc:hover:bg-dc-surface-hover'
+        isHighlighted ? 'bg-dc-accent-bg' : 'bg-dc-surface-secondary'
       }`}>
         <div className="dc:flex dc:items-center dc:justify-between">
           <div>
@@ -97,10 +123,25 @@ export function CubeNode({ data }: CubeNodeProps) {
               <p className="dc:text-xs text-dc-text-muted dc:mt-1 dc:line-clamp-2">{cube.description}</p>
             )}
           </div>
-          <div className="dc:text-xs text-dc-text-muted dc:ml-2">
-            <div>{cube.measures.length}M</div>
-            <div>{cube.dimensions.length}D</div>
-          </div>
+          {onCubeClick && (
+            <button
+              className={`dc:ml-2 dc:p-1 dc:rounded dc:transition-colors nodrag nopan ${
+                isCubeSelected
+                  ? 'bg-dc-accent-bg text-dc-accent'
+                  : 'text-dc-text-muted dc:hover:text-dc-text dc:hover:bg-dc-surface-hover'
+              }`}
+              onClick={handleCubeInfoClick}
+              title="Cube info"
+            >
+              <InfoIcon className="dc:w-5 dc:h-5" />
+            </button>
+          )}
+          {!onCubeClick && (
+            <div className="dc:text-xs text-dc-text-muted dc:ml-2">
+              <div>{cube.measures.length}M</div>
+              <div>{cube.dimensions.length}D</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -121,7 +162,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                 <div
                   key={measure.name}
                   className={getFieldClasses(measure, highlighted, 'measure')}
-                  onClick={() => handleFieldClick(fieldName, 'measure')}
+                  onClick={(e) => handleFieldClick(e, fieldName, 'measure')}
                   title={measure.title}
                 >
                   <div className="dc:flex dc:items-center dc:justify-between">
@@ -156,7 +197,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                 <div
                   key={dimension.name}
                   className={getFieldClasses(dimension, highlighted, 'dimension')}
-                  onClick={() => handleFieldClick(fieldName, 'dimension')}
+                  onClick={(e) => handleFieldClick(e, fieldName, 'dimension')}
                   title={dimension.title}
                 >
                   <div className="dc:flex dc:items-center dc:justify-between">
@@ -191,7 +232,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                 <div
                   key={dimension.name}
                   className={getFieldClasses(dimension, highlighted, 'dimension')}
-                  onClick={() => handleFieldClick(fieldName, 'dimension')}
+                  onClick={(e) => handleFieldClick(e, fieldName, 'dimension')}
                   title={dimension.title}
                 >
                   <div className="dc:flex dc:items-center dc:justify-between">
