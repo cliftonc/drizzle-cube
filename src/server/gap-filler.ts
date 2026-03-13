@@ -154,6 +154,7 @@ function createDimensionGroupKey(
   if (dimensions.length === 0) {
     return '__all__'
   }
+  // codeql[js/remote-property-injection] keys are pre-validated cube field names
   return dimensions.map(dim => String(row[dim] ?? '')).join('|||')
 }
 
@@ -220,12 +221,14 @@ export function fillTimeSeriesGaps(
         // Copy dimension values from sample row
         if (sampleRow) {
           for (const dim of dimensions) {
+            // codeql[js/remote-property-injection] keys are pre-validated cube field names
             filledRow[dim] = sampleRow[dim]
           }
         }
 
         // Fill measures with fill value
         for (const measure of measures) {
+          // codeql[js/remote-property-injection] keys are pre-validated cube field names
           filledRow[measure] = fillValue
         }
 

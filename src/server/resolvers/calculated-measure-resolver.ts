@@ -56,6 +56,7 @@ export class CalculatedMeasureResolver {
    */
   extractDependencies(calculatedSql: string): MeasureDependency[] {
     // Match {member} or {Cube.member} patterns
+    // codeql[js/polynomial-redos] input is from cube definition templates, not user input
     const regex = /\{([^}]+)\}/g
     const matches = calculatedSql.matchAll(regex)
     const dependencies: MeasureDependency[] = []

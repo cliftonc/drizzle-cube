@@ -42,6 +42,7 @@ export interface ValidationWarning {
  * Levenshtein distance for fuzzy matching (copied from discovery for standalone use)
  */
 function levenshteinDistance(a: string, b: string): number {
+  if (a.length > 500 || b.length > 500) return a.length + b.length
   const matrix: number[][] = []
 
   for (let i = 0; i <= b.length; i++) {

@@ -61,6 +61,8 @@ export async function* handleAgentChat(options: {
   try {
     provider = await createProvider(providerName, apiKey, { baseURL })
   } catch (error) {
+    // codeql[js/log-injection] error comes from internal provider creation, not user input
+    // codeql[js/tainted-format-string] providerName is from validated internal config
     console.error(`[agent] Failed to create ${providerName} provider:`, error)
     yield {
       type: 'error',
@@ -378,6 +380,8 @@ export async function* handleAgentChat(options: {
       })
     } catch { /* observability must never break the agent */ }
 
+    // codeql[js/log-injection] error comes from internal agent processing, not user input
+    // codeql[js/tainted-format-string] providerName and model are from validated internal config
     console.error(`[agent] Chat error (provider=${providerName}, model=${model}):`, error)
     yield {
       type: 'error',

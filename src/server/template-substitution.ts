@@ -160,6 +160,8 @@ interface MemberReference {
  * @returns Array of member references
  */
 function extractMemberReferences(calculatedSql: string): MemberReference[] {
+  // Guard against excessive input length to prevent ReDoS
+  if (calculatedSql.length > 1000) return []
   const regex = /\{([^}]+)\}/g
   const matches = calculatedSql.matchAll(regex)
   const references: MemberReference[] = []

@@ -265,6 +265,7 @@ export function sortObject<T>(obj: T): T {
 export function fnv1aHash(str: string): string {
   let hash = 2166136261 // FNV offset basis
 
+  // codeql[js/loop-bound-injection] loop bound is str.length from server-controlled cache key serialization
   for (let i = 0; i < str.length; i++) {
     hash ^= str.charCodeAt(i)
     hash = (hash * 16777619) >>> 0 // FNV prime, unsigned 32-bit

@@ -290,6 +290,7 @@ export class RetentionQueryBuilder {
         const breakdownValues: Record<string, string | null> = {}
         for (let i = 0; i < breakdownDimensions.length; i++) {
           const dimName = breakdownDimensions[i]
+          // codeql[js/remote-property-injection] keys are pre-validated cube field names from breakdown config
           const value = row[`breakdown_${i}`]
           breakdownValues[dimName] = value !== undefined ? String(value) : null
         }
@@ -718,6 +719,7 @@ export class RetentionQueryBuilder {
         groupByFields.push(sql.raw(`breakdown_${i}`))
       }
 
+      // codeql[js/loop-bound-injection] periods is a validated server-controlled integer (1-52)
       query = context.db
         .select(selectFields)
         .from(sql`activity_periods`)

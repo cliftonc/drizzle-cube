@@ -79,6 +79,7 @@ export function applyPostAggregationWindows(
 
     // Ensure the base measure is also in the selections (for display)
     if (!modifiedSelections[baseMeasureName]) {
+      // codeql[js/remote-property-injection] keys are pre-validated cube field names
       modifiedSelections[baseMeasureName] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
     }
 

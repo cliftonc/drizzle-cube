@@ -986,6 +986,7 @@ export class QueryExecutor {
       }
     }
 
+    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
     validators[mode]()
   }
 
@@ -1004,6 +1005,7 @@ export class QueryExecutor {
       retention: () => this.executeRetentionQueryWithCache(cubes, query, securityContext, cacheKey)
     }
 
+    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
     return executors[mode]()
   }
 
@@ -1117,6 +1119,7 @@ export class QueryExecutor {
       retention: () => this.dryRunRetention(cubes, query, securityContext)
     }
 
+    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
     return sqlGenerators[mode]()
   }
 

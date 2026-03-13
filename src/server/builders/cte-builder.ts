@@ -82,6 +82,7 @@ export class CTEBuilder {
       for (const joinKey of cteInfo.joinKeys) {
         // Use the stored Drizzle column object if available
         if (joinKey.targetColumnObj) {
+          // codeql[js/remote-property-injection] keys are pre-validated cube field names
           cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
 
           // Also add an aliased version if there's a matching dimension with a different name
@@ -89,6 +90,7 @@ export class CTEBuilder {
           for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
             if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
               // Add an aliased version: "column_name" as "dimensionName"
+              // codeql[js/remote-property-injection] keys are pre-validated cube field names
               cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
             }
           }

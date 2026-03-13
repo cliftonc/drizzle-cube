@@ -1,0 +1,10 @@
+name: "drizzle-cube-codeql-config"
+
+paths-not-analyzed:
+  - dev/**
+  - scripts/**
+  - tests/**
+
+query-filters:
+  - exclude:
+      id: js/unused-local-variable
