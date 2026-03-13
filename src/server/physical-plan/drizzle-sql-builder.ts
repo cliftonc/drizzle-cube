@@ -84,7 +84,6 @@ export class DrizzleSqlBuilder {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, context)
           // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
-          if (['__proto__', 'constructor', 'prototype'].includes(dimensionName)) throw new Error(`Unsafe property key: ${dimensionName}`)
           selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
       }
@@ -104,7 +103,6 @@ export class DrizzleSqlBuilder {
         if (measureBuilder && typeof measureBuilder === 'function') {
           const measureExpr = measureBuilder()
 
-          if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
           selections[measureName] = sql`${measureExpr}`.as(measureName) as unknown as SQL
         }
       }
@@ -123,7 +121,6 @@ export class DrizzleSqlBuilder {
             context
           )
           // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
-          if (['__proto__', 'constructor', 'prototype'].includes(timeDim.dimension)) throw new Error(`Unsafe property key: ${timeDim.dimension}`)
           selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
       }

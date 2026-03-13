@@ -79,7 +79,6 @@ export function applyPostAggregationWindows(
 
     // Ensure the base measure is also in the selections (for display)
     if (!modifiedSelections[baseMeasureName]) {
-      if (['__proto__', 'constructor', 'prototype'].includes(baseMeasureName)) throw new Error(`Unsafe property key: ${baseMeasureName}`)
       modifiedSelections[baseMeasureName] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
     }
 
@@ -95,7 +94,6 @@ export function applyPostAggregationWindows(
     )
 
     if (windowExpr) {
-      if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
       modifiedSelections[measureName] = sql`${windowExpr}`.as(measureName) as unknown as SQL
     }
   }

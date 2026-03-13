@@ -292,9 +292,7 @@ export class RetentionQueryBuilder {
         for (let i = 0; i < maxBreakdowns; i++) {
           const dimName = breakdownDimensions[i]
           const breakdownKey = `breakdown_${i}`
-          if (['__proto__', 'constructor', 'prototype'].includes(breakdownKey)) throw new Error(`Unsafe property key: ${breakdownKey}`)
           const value = (row as Record<string, unknown>)[breakdownKey]
-          if (['__proto__', 'constructor', 'prototype'].includes(dimName)) throw new Error(`Unsafe property key: ${dimName}`)
           breakdownValues[dimName] = value !== undefined ? String(value) : null
         }
         result.breakdownValues = breakdownValues

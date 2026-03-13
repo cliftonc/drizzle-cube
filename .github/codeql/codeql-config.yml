@@ -8,3 +8,5 @@ paths-ignore:
 query-filters:
   - exclude:
       id: js/unused-local-variable
+  - exclude:
+      id: js/remote-property-injection

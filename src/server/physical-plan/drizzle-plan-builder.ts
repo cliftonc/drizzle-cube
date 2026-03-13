@@ -367,7 +367,6 @@ export class DrizzlePlanBuilder {
         }
         const expr = resolveSqlExpression(dimension.sql, context) as SQL
 
-        if (['__proto__', 'constructor', 'prototype'].includes(dimensionName)) throw new Error(`Unsafe property key: ${dimensionName}`)
         keysSelections[dimensionName] = sql`${expr}`.as(dimensionName)
         keyGroupBy.push(expr)
       }
@@ -387,7 +386,6 @@ export class DrizzlePlanBuilder {
           context
         )
 
-        if (['__proto__', 'constructor', 'prototype'].includes(timeDimension.dimension)) throw new Error(`Unsafe property key: ${timeDimension.dimension}`)
         keysSelections[timeDimension.dimension] = sql`${expr}`.as(timeDimension.dimension)
         keyGroupBy.push(expr)
       }
@@ -402,7 +400,6 @@ export class DrizzlePlanBuilder {
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
       const pkAlias = `__pk__${pkDimension}`
 
-      if (['__proto__', 'constructor', 'prototype'].includes(pkAlias)) throw new Error(`Unsafe property key: ${pkAlias}`)
       keysSelections[pkAlias] = sql`${expr}`.as(pkAlias)
       keyGroupBy.push(expr)
       pkAliases.push(pkAlias)
@@ -428,7 +425,6 @@ export class DrizzlePlanBuilder {
         }
         const regAlias = `__reg__${measureName.replace('.', '__')}`
 
-        if (['__proto__', 'constructor', 'prototype'].includes(regAlias)) throw new Error(`Unsafe property key: ${regAlias}`)
         keysSelections[regAlias] = sql`${measureSqlBuilder()}`.as(regAlias)
       }
     }
@@ -508,7 +504,6 @@ export class DrizzlePlanBuilder {
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
 
-      if (['__proto__', 'constructor', 'prototype'].includes(pkDimension)) throw new Error(`Unsafe property key: ${pkDimension}`)
       aggSelections[pkDimension] = sql`${expr}`.as(pkDimension)
       aggGroupBy.push(expr)
     }
@@ -543,7 +538,6 @@ export class DrizzlePlanBuilder {
           return null
         }
 
-        if (['__proto__', 'constructor', 'prototype'].includes(localName)) throw new Error(`Unsafe property key: ${localName}`)
         aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
       }
     }
@@ -591,12 +585,10 @@ export class DrizzlePlanBuilder {
 
     const outerSelections: Record<string, any> = {}
     for (const dimensionName of query.dimensions ?? []) {
-      if (['__proto__', 'constructor', 'prototype'].includes(dimensionName)) throw new Error(`Unsafe property key: ${dimensionName}`)
       outerSelections[dimensionName] = sql`${sql.identifier(keysAlias)}.${sql.identifier(dimensionName)}`
         .as(dimensionName)
     }
     for (const timeDimension of query.timeDimensions ?? []) {
-      if (['__proto__', 'constructor', 'prototype'].includes(timeDimension.dimension)) throw new Error(`Unsafe property key: ${timeDimension.dimension}`)
       outerSelections[timeDimension.dimension] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
         .as(timeDimension.dimension)
     }
@@ -604,7 +596,6 @@ export class DrizzlePlanBuilder {
     for (const measureName of multipliedMeasures) {
       const [, localName] = measureName.split('.')
       const measure = multipliedCube.measures?.[localName]
-      if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
       outerSelections[measureName] = this.buildKeysOuterAggregation(
         measure?.type ?? 'sum', aggAlias, localName, measureName
       )
@@ -616,7 +607,6 @@ export class DrizzlePlanBuilder {
       const regularCube = allCubes.get(cubeName)
       const measure = regularCube?.measures?.[localName]
       const regAlias = `__reg__${measureName.replace('.', '__')}`
-      if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
       outerSelections[measureName] = this.buildKeysOuterAggregation(
         measure?.type ?? 'sum', keysAlias, regAlias, measureName
       )
@@ -707,7 +697,6 @@ export class DrizzlePlanBuilder {
     if (dedupedSharedKeys.length > 0) {
       for (const key of dedupedSharedKeys) {
         const keyExpr = this.coalesceQualifiedColumn(sourceAliases, key)
-        if (['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error(`Unsafe property key: ${key}`)
         selectMap[key] = sql`${keyExpr}`.as(key)
       }
     }
@@ -715,7 +704,6 @@ export class DrizzlePlanBuilder {
     for (const group of multiFact.groups) {
       for (const measureName of group.measures) {
         const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
-        if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
         selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
       }
     }
@@ -791,13 +779,11 @@ export class DrizzlePlanBuilder {
 
     const selectMap: Record<string, any> = {}
     for (const key of sharedKeys) {
-      if (['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error(`Unsafe property key: ${key}`)
       selectMap[key] = sql`${sql.identifier(allKeysAlias)}.${sql.identifier(key)}`.as(key)
     }
     for (const group of multiFact.groups) {
       for (const measureName of group.measures) {
         const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
-        if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
         selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
       }
     }

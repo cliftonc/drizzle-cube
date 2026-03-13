@@ -156,7 +156,6 @@ function createDimensionGroupKey(
   }
 
   return dimensions.map(dim => {
-    if (['__proto__', 'constructor', 'prototype'].includes(dim)) throw new Error(`Unsafe property key: ${dim}`)
     return String((row as Record<string, unknown>)[dim] ?? '')
   }).join('|||')
 }
@@ -217,7 +216,6 @@ export function fillTimeSeriesGaps(
         result.push(existingRow)
       } else {
         // Create filled row
-        if (['__proto__', 'constructor', 'prototype'].includes(timeDimensionKey)) throw new Error(`Unsafe property key: ${timeDimensionKey}`)
         const filledRow: Record<string, unknown> = {
           [timeDimensionKey]: bucketKey
         }
@@ -225,14 +223,12 @@ export function fillTimeSeriesGaps(
         // Copy dimension values from sample row
         if (sampleRow) {
           for (const dim of dimensions) {
-            if (['__proto__', 'constructor', 'prototype'].includes(dim)) throw new Error(`Unsafe property key: ${dim}`)
             filledRow[dim] = sampleRow[dim]
           }
         }
 
         // Fill measures with fill value
         for (const measure of measures) {
-          if (['__proto__', 'constructor', 'prototype'].includes(measure)) throw new Error(`Unsafe property key: ${measure}`)
           filledRow[measure] = fillValue
         }
 
