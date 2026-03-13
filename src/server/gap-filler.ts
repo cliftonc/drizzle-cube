@@ -6,7 +6,6 @@
 
 import type { SemanticQuery } from './types/query'
 import type { TimeGranularity } from './types/core'
-import { safeKey } from './cube-utils'
 
 export interface GapFillerConfig {
   /** The time dimension key (e.g., 'Sales.date') */
@@ -156,7 +155,10 @@ function createDimensionGroupKey(
     return '__all__'
   }
 
-  return dimensions.map(dim => String((row as Record<string, unknown>)[safeKey(dim)] ?? '')).join('|||')
+  return dimensions.map(dim => {
+    if (['__proto__', 'constructor', 'prototype'].includes(dim)) throw new Error(`Unsafe property key: ${dim}`)
+    return String((row as Record<string, unknown>)[dim] ?? '')
+  }).join('|||')
 }
 
 /**
@@ -215,20 +217,23 @@ export function fillTimeSeriesGaps(
         result.push(existingRow)
       } else {
         // Create filled row
+        if (['__proto__', 'constructor', 'prototype'].includes(timeDimensionKey)) throw new Error(`Unsafe property key: ${timeDimensionKey}`)
         const filledRow: Record<string, unknown> = {
-          [safeKey(timeDimensionKey)]: bucketKey
+          [timeDimensionKey]: bucketKey
         }
 
         // Copy dimension values from sample row
         if (sampleRow) {
           for (const dim of dimensions) {
-            filledRow[safeKey(dim)] = sampleRow[dim]
+            if (['__proto__', 'constructor', 'prototype'].includes(dim)) throw new Error(`Unsafe property key: ${dim}`)
+            filledRow[dim] = sampleRow[dim]
           }
         }
 
         // Fill measures with fill value
         for (const measure of measures) {
-          filledRow[safeKey(measure)] = fillValue
+          if (['__proto__', 'constructor', 'prototype'].includes(measure)) throw new Error(`Unsafe property key: ${measure}`)
+          filledRow[measure] = fillValue
         }
 
         result.push(filledRow)

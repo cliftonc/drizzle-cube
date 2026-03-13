@@ -30,7 +30,7 @@ import type {
   FilterCondition,
   LogicalFilter
 } from '../types'
-import { resolveSqlExpression, safeKey } from '../cube-utils'
+import { resolveSqlExpression } from '../cube-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -291,8 +291,11 @@ export class RetentionQueryBuilder {
         const breakdownValues: Record<string, string | null> = {}
         for (let i = 0; i < maxBreakdowns; i++) {
           const dimName = breakdownDimensions[i]
-          const value = (row as Record<string, unknown>)[safeKey(`breakdown_${i}`)]
-          breakdownValues[safeKey(dimName)] = value !== undefined ? String(value) : null
+          const breakdownKey = `breakdown_${i}`
+          if (['__proto__', 'constructor', 'prototype'].includes(breakdownKey)) throw new Error(`Unsafe property key: ${breakdownKey}`)
+          const value = (row as Record<string, unknown>)[breakdownKey]
+          if (['__proto__', 'constructor', 'prototype'].includes(dimName)) throw new Error(`Unsafe property key: ${dimName}`)
+          breakdownValues[dimName] = value !== undefined ? String(value) : null
         }
         result.breakdownValues = breakdownValues
       }

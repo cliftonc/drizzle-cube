@@ -18,7 +18,7 @@ import type {
   PropagatingFilter
 } from '../types'
 
-import { resolveSqlExpression, safeKey } from '../cube-utils'
+import { resolveSqlExpression } from '../cube-utils'
 import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
 
 /**
@@ -83,14 +83,16 @@ export class CTEBuilder {
         // Use the stored Drizzle column object if available
         if (joinKey.targetColumnObj) {
 
-          cteSelections[safeKey(joinKey.targetColumn)] = joinKey.targetColumnObj
+          if (['__proto__', 'constructor', 'prototype'].includes(joinKey.targetColumn)) throw new Error(`Unsafe property key: ${joinKey.targetColumn}`)
+          cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
 
           // Also add an aliased version if there's a matching dimension with a different name
           // This allows the main query to reference it by dimension name
           for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
             if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
               // Add an aliased version: "column_name" as "dimensionName"
-              cteSelections[safeKey(dimName)] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
+              if (['__proto__', 'constructor', 'prototype'].includes(dimName)) throw new Error(`Unsafe property key: ${dimName}`)
+              cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
             }
           }
         }
@@ -140,7 +142,8 @@ export class CTEBuilder {
         if (dimCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const dimensionExpr = this.queryBuilder.buildMeasureExpression({ sql: dimension.sql, type: 'number' }, context)
-          cteSelections[safeKey(fieldName)] = sql`${dimensionExpr}`.as(fieldName)
+          if (['__proto__', 'constructor', 'prototype'].includes(fieldName)) throw new Error(`Unsafe property key: ${fieldName}`)
+          cteSelections[fieldName] = sql`${dimensionExpr}`.as(fieldName)
         }
       }
     }
@@ -152,7 +155,8 @@ export class CTEBuilder {
         if (timeCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const timeExpr = this.queryBuilder.buildTimeDimensionExpression(dimension.sql, timeDim.granularity, context)
-          cteSelections[safeKey(fieldName)] = sql`${timeExpr}`.as(fieldName)
+          if (['__proto__', 'constructor', 'prototype'].includes(fieldName)) throw new Error(`Unsafe property key: ${fieldName}`)
+          cteSelections[fieldName] = sql`${timeExpr}`.as(fieldName)
         }
       }
     }

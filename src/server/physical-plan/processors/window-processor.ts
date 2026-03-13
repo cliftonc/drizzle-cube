@@ -1,6 +1,6 @@
 import { sql, SQL } from 'drizzle-orm'
 
-import { resolveSqlExpression, safeKey } from '../../cube-utils'
+import { resolveSqlExpression } from '../../cube-utils'
 import { MeasureBuilder } from '../../builders/measure-builder'
 import type {
   Cube,
@@ -79,7 +79,8 @@ export function applyPostAggregationWindows(
 
     // Ensure the base measure is also in the selections (for display)
     if (!modifiedSelections[baseMeasureName]) {
-      modifiedSelections[safeKey(baseMeasureName)] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
+      if (['__proto__', 'constructor', 'prototype'].includes(baseMeasureName)) throw new Error(`Unsafe property key: ${baseMeasureName}`)
+      modifiedSelections[baseMeasureName] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
     }
 
     // Build the window function expression
@@ -94,7 +95,8 @@ export function applyPostAggregationWindows(
     )
 
     if (windowExpr) {
-      modifiedSelections[safeKey(measureName)] = sql`${windowExpr}`.as(measureName) as unknown as SQL
+      if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
+      modifiedSelections[measureName] = sql`${windowExpr}`.as(measureName) as unknown as SQL
     }
   }
 }

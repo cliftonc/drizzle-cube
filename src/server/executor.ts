@@ -1164,7 +1164,8 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.measures[fieldName]) {
           const measure = cube.measures[fieldName]
-          measures[safeKey(measureName)] = {
+          if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
+          measures[measureName] = {
             title: measure.title || fieldName,
             shortTitle: measure.title || fieldName,
             type: measure.type
@@ -1180,7 +1181,8 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
-          dimensions[safeKey(dimensionName)] = {
+          if (['__proto__', 'constructor', 'prototype'].includes(dimensionName)) throw new Error(`Unsafe property key: ${dimensionName}`)
+          dimensions[dimensionName] = {
             title: dimension.title || fieldName,
             shortTitle: dimension.title || fieldName,
             type: dimension.type
@@ -1196,7 +1198,8 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
-          timeDimensions[safeKey(timeDim.dimension)] = {
+          if (['__proto__', 'constructor', 'prototype'].includes(timeDim.dimension)) throw new Error(`Unsafe property key: ${timeDim.dimension}`)
+          timeDimensions[timeDim.dimension] = {
             title: dimension.title || fieldName,
             shortTitle: dimension.title || fieldName,
             type: dimension.type,

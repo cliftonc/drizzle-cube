@@ -25,7 +25,7 @@ import type {
   PhysicalQueryPlan
 } from '../types'
 
-import { resolveSqlExpression, safeKey } from '../cube-utils'
+import { resolveSqlExpression } from '../cube-utils'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache'
 import { DateTimeBuilder } from '../builders/date-time-builder'
@@ -84,7 +84,8 @@ export class DrizzleSqlBuilder {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, context)
           // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
-          selections[safeKey(dimensionName)] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
+          if (['__proto__', 'constructor', 'prototype'].includes(dimensionName)) throw new Error(`Unsafe property key: ${dimensionName}`)
+          selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
       }
     }
@@ -103,7 +104,8 @@ export class DrizzleSqlBuilder {
         if (measureBuilder && typeof measureBuilder === 'function') {
           const measureExpr = measureBuilder()
 
-          selections[safeKey(measureName)] = sql`${measureExpr}`.as(measureName) as unknown as SQL
+          if (['__proto__', 'constructor', 'prototype'].includes(measureName)) throw new Error(`Unsafe property key: ${measureName}`)
+          selections[measureName] = sql`${measureExpr}`.as(measureName) as unknown as SQL
         }
       }
     }
@@ -121,7 +123,8 @@ export class DrizzleSqlBuilder {
             context
           )
           // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
-          selections[safeKey(timeDim.dimension)] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
+          if (['__proto__', 'constructor', 'prototype'].includes(timeDim.dimension)) throw new Error(`Unsafe property key: ${timeDim.dimension}`)
+          selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
       }
     }
