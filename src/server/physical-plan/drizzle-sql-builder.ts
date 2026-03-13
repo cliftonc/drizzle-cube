@@ -25,7 +25,7 @@ import type {
   PhysicalQueryPlan
 } from '../types'
 
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveSqlExpression, safeKey } from '../cube-utils'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import { getFilterKey, getTimeDimensionFilterKey } from '../filter-cache'
 import { DateTimeBuilder } from '../builders/date-time-builder'
@@ -84,9 +84,7 @@ export class DrizzleSqlBuilder {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, context)
           // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
-
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names
-          selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
+          selections[safeKey(dimensionName)] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
       }
     }
@@ -105,8 +103,7 @@ export class DrizzleSqlBuilder {
         if (measureBuilder) {
           const measureExpr = measureBuilder()
 
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names
-          selections[measureName] = sql`${measureExpr}`.as(measureName) as unknown as SQL
+          selections[safeKey(measureName)] = sql`${measureExpr}`.as(measureName) as unknown as SQL
         }
       }
     }
@@ -124,9 +121,7 @@ export class DrizzleSqlBuilder {
             context
           )
           // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
-
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names
-          selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
+          selections[safeKey(timeDim.dimension)] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
       }
     }
@@ -569,8 +564,8 @@ export class DrizzleSqlBuilder {
         throw new Error('Limit must be non-negative')
       }
 
-      // codeql[js/unvalidated-dynamic-method-call] limit() is a standard Drizzle query builder method
-      result = (result as any).limit(effectiveLimit)
+      const limitQuery = result as { limit: (n: number) => typeof result }
+      result = limitQuery.limit(effectiveLimit)
     }
 
     if (semanticQuery.offset !== undefined) {
@@ -578,8 +573,8 @@ export class DrizzleSqlBuilder {
         throw new Error('Offset must be non-negative')
       }
 
-      // codeql[js/unvalidated-dynamic-method-call] offset() is a standard Drizzle query builder method
-      result = (result as any).offset(semanticQuery.offset)
+      const offsetQuery = result as { offset: (n: number) => typeof result }
+      result = offsetQuery.offset(semanticQuery.offset)
     }
 
     return result

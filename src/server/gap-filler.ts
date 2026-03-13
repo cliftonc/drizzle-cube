@@ -6,6 +6,7 @@
 
 import type { SemanticQuery } from './types/query'
 import type { TimeGranularity } from './types/core'
+import { safeKey } from './cube-utils'
 
 export interface GapFillerConfig {
   /** The time dimension key (e.g., 'Sales.date') */
@@ -155,8 +156,7 @@ function createDimensionGroupKey(
     return '__all__'
   }
 
-  // codeql[js/remote-property-injection] keys are pre-validated cube field names
-  return dimensions.map(dim => String(row[dim] ?? '')).join('|||')
+  return dimensions.map(dim => String((row as Record<string, unknown>)[safeKey(dim)] ?? '')).join('|||')
 }
 
 /**
@@ -222,17 +222,13 @@ export function fillTimeSeriesGaps(
         // Copy dimension values from sample row
         if (sampleRow) {
           for (const dim of dimensions) {
-
-            // codeql[js/remote-property-injection] keys are pre-validated cube field names
-            filledRow[dim] = sampleRow[dim]
+            filledRow[safeKey(dim)] = sampleRow[dim]
           }
         }
 
         // Fill measures with fill value
         for (const measure of measures) {
-
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names
-          filledRow[measure] = fillValue
+          filledRow[safeKey(measure)] = fillValue
         }
 
         result.push(filledRow)

@@ -111,7 +111,7 @@ export const createFlowSlice: StateCreator<
   [],
   [],
   FlowSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...createInitialFlowState(),
 
   setFlowCube: (cube) =>

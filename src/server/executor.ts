@@ -24,7 +24,7 @@ import type {
   QueryAnalysis
 } from './types'
 
-import { resolveSqlExpression } from './cube-utils'
+import { resolveSqlExpression, safeKey } from './cube-utils'
 import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
 import { generateCacheKey } from './cache-utils'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
@@ -986,8 +986,7 @@ export class QueryExecutor {
       }
     }
 
-    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
-    validators[mode]()
+    validators[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async executeQueryByModeWithCache(
@@ -1005,8 +1004,7 @@ export class QueryExecutor {
       retention: () => this.executeRetentionQueryWithCache(cubes, query, securityContext, cacheKey)
     }
 
-    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
-    return executors[mode]()
+    return executors[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async executeRegularQueryWithCache(
@@ -1119,8 +1117,7 @@ export class QueryExecutor {
       retention: () => this.dryRunRetention(cubes, query, securityContext)
     }
 
-    // codeql[js/remote-property-injection] mode is from a validated finite set of query execution modes
-    return sqlGenerators[mode]()
+    return sqlGenerators[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async generateComparisonSQL(
@@ -1167,7 +1164,7 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.measures[fieldName]) {
           const measure = cube.measures[fieldName]
-          measures[measureName] = {
+          measures[safeKey(measureName)] = {
             title: measure.title || fieldName,
             shortTitle: measure.title || fieldName,
             type: measure.type
@@ -1183,7 +1180,7 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
-          dimensions[dimensionName] = {
+          dimensions[safeKey(dimensionName)] = {
             title: dimension.title || fieldName,
             shortTitle: dimension.title || fieldName,
             type: dimension.type
@@ -1199,7 +1196,7 @@ export class QueryExecutor {
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.dimensions?.[fieldName]) {
           const dimension = cube.dimensions[fieldName]
-          timeDimensions[timeDim.dimension] = {
+          timeDimensions[safeKey(timeDim.dimension)] = {
             title: dimension.title || fieldName,
             shortTitle: dimension.title || fieldName,
             type: dimension.type,

@@ -170,9 +170,7 @@ function collectDryRunAnalysis(
     return semanticLayer.analyzeQuery(query, securityContext)
   } catch (analysisError) {
     // Analysis is optional - don't fail the dry-run if it fails
-
-    // codeql[js/log-injection] error source is internal, not user-controlled
-    console.warn('Query analysis failed:', analysisError)
+    console.warn('Query analysis failed:', String(analysisError).replace(/\n|\r/g, ''))
     return undefined
   }
 }

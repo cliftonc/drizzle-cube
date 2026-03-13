@@ -102,7 +102,7 @@ export const createRetentionSlice: StateCreator<
   [],
   [],
   RetentionSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...createInitialRetentionState(),
 
   setRetentionCube: (cube) =>

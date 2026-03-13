@@ -30,7 +30,7 @@ import type {
   FilterCondition,
   LogicalFilter
 } from '../types'
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveSqlExpression, safeKey } from '../cube-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -290,10 +290,8 @@ export class RetentionQueryBuilder {
         const breakdownValues: Record<string, string | null> = {}
         for (let i = 0; i < breakdownDimensions.length; i++) {
           const dimName = breakdownDimensions[i]
-
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names from breakdown config
-          const value = row[`breakdown_${i}`]
-          breakdownValues[dimName] = value !== undefined ? String(value) : null
+          const value = (row as Record<string, unknown>)[safeKey(`breakdown_${i}`)]
+          breakdownValues[safeKey(dimName)] = value !== undefined ? String(value) : null
         }
         result.breakdownValues = breakdownValues
       }
@@ -720,11 +718,11 @@ export class RetentionQueryBuilder {
         groupByFields.push(sql.raw(`breakdown_${i}`))
       }
 
-      // codeql[js/loop-bound-injection] periods is a validated server-controlled integer (1-52)
+      const maxPeriods = Math.min(config.periods, 52)
       query = context.db
         .select(selectFields)
         .from(sql`activity_periods`)
-        .where(sql`period_number >= 0 AND period_number <= ${config.periods}`)
+        .where(sql`period_number >= 0 AND period_number <= ${maxPeriods}`)
         .groupBy(...groupByFields)
     }
 

@@ -1,6 +1,6 @@
 import { sql, SQL } from 'drizzle-orm'
 
-import { resolveSqlExpression } from '../../cube-utils'
+import { resolveSqlExpression, safeKey } from '../../cube-utils'
 import { MeasureBuilder } from '../../builders/measure-builder'
 import type {
   Cube,
@@ -79,9 +79,7 @@ export function applyPostAggregationWindows(
 
     // Ensure the base measure is also in the selections (for display)
     if (!modifiedSelections[baseMeasureName]) {
-
-      // codeql[js/remote-property-injection] keys are pre-validated cube field names
-      modifiedSelections[baseMeasureName] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
+      modifiedSelections[safeKey(baseMeasureName)] = sql`${baseMeasureExpr}`.as(baseMeasureName) as unknown as SQL
     }
 
     // Build the window function expression
@@ -96,7 +94,7 @@ export function applyPostAggregationWindows(
     )
 
     if (windowExpr) {
-      modifiedSelections[measureName] = sql`${windowExpr}`.as(measureName) as unknown as SQL
+      modifiedSelections[safeKey(measureName)] = sql`${windowExpr}`.as(measureName) as unknown as SQL
     }
   }
 }

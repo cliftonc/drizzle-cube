@@ -221,8 +221,7 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
 
       {/* Filter Edit Modal */}
 
-      {/* codeql[js/trivial-conditional] editable is always true here due to early return above, but kept explicit for clarity */}
-      {editable && showFilterBuilder && editingFilter && (
+      {showFilterBuilder && editingFilter && (
         <FilterEditModal
           filter={editingFilter}
           schema={schema}

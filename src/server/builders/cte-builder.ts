@@ -18,7 +18,7 @@ import type {
   PropagatingFilter
 } from '../types'
 
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveSqlExpression, safeKey } from '../cube-utils'
 import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
 
 /**
@@ -83,17 +83,14 @@ export class CTEBuilder {
         // Use the stored Drizzle column object if available
         if (joinKey.targetColumnObj) {
 
-          // codeql[js/remote-property-injection] keys are pre-validated cube field names
-          cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
+          cteSelections[safeKey(joinKey.targetColumn)] = joinKey.targetColumnObj
 
           // Also add an aliased version if there's a matching dimension with a different name
           // This allows the main query to reference it by dimension name
           for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
             if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
               // Add an aliased version: "column_name" as "dimensionName"
-
-              // codeql[js/remote-property-injection] keys are pre-validated cube field names
-              cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
+              cteSelections[safeKey(dimName)] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
             }
           }
         }

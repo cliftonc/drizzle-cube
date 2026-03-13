@@ -596,10 +596,8 @@ export class FunnelQueryBuilder {
       const joinPath = resolver.findPath(baseCube.name, filterCubeName)
       if (!joinPath || joinPath.length === 0) {
         // No join path exists - cannot filter on this cube
-
-        // codeql[js/log-injection] error source is internal validation, not user input
         console.warn(
-          `Funnel filter: Cannot filter by '${filterCubeName}.${dimName}' in step using '${baseCube.name}'. ` +
+          `Funnel filter: Cannot filter by '${String(filterCubeName).replace(/\n|\r/g, '')}.${String(dimName).replace(/\n|\r/g, '')}' in step using '${String(baseCube.name).replace(/\n|\r/g, '')}'. ` +
           `No join path found. Filter will be skipped.`
         )
         return null

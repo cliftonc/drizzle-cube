@@ -69,21 +69,21 @@ export interface UseExplainQueryResult {
  * Check if query is a funnel query
  */
 function isFunnelQuery(query: unknown): query is { funnel: unknown } {
-  return typeof query === 'object' && query !== null && 'funnel' in query
+  return typeof query === 'object' && query !== null && 'funnel' in (query as object)
 }
 
 /**
  * Check if query is a flow query
  */
 function isFlowQuery(query: unknown): query is { flow: unknown } {
-  return typeof query === 'object' && query !== null && 'flow' in query
+  return typeof query === 'object' && query !== null && 'flow' in (query as object)
 }
 
 /**
  * Check if query is a retention query
  */
 function isRetentionQuery(query: unknown): query is { retention: unknown } {
-  return typeof query === 'object' && query !== null && 'retention' in query
+  return typeof query === 'object' && query !== null && 'retention' in (query as object)
 }
 
 /**

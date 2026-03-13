@@ -22,7 +22,7 @@ import type {
   KeysDeduplication,
   MultiFactMerge
 } from '../logical-plan'
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveSqlExpression, safeKey } from '../cube-utils'
 import {
   buildCTEState,
   buildModifiedSelections,
@@ -367,8 +367,7 @@ export class DrizzlePlanBuilder {
         }
         const expr = resolveSqlExpression(dimension.sql, context) as SQL
 
-        // codeql[js/remote-property-injection] keys are pre-validated cube field names
-        keysSelections[dimensionName] = sql`${expr}`.as(dimensionName)
+        keysSelections[safeKey(dimensionName)] = sql`${expr}`.as(dimensionName)
         keyGroupBy.push(expr)
       }
     }
@@ -387,8 +386,7 @@ export class DrizzlePlanBuilder {
           context
         )
 
-        // codeql[js/remote-property-injection] keys are pre-validated cube field names
-        keysSelections[timeDimension.dimension] = sql`${expr}`.as(timeDimension.dimension)
+        keysSelections[safeKey(timeDimension.dimension)] = sql`${expr}`.as(timeDimension.dimension)
         keyGroupBy.push(expr)
       }
     }
@@ -402,8 +400,7 @@ export class DrizzlePlanBuilder {
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
       const pkAlias = `__pk__${pkDimension}`
 
-      // codeql[js/remote-property-injection] keys are pre-validated cube field names
-      keysSelections[pkAlias] = sql`${expr}`.as(pkAlias)
+      keysSelections[safeKey(pkAlias)] = sql`${expr}`.as(pkAlias)
       keyGroupBy.push(expr)
       pkAliases.push(pkAlias)
     }
@@ -428,8 +425,7 @@ export class DrizzlePlanBuilder {
         }
         const regAlias = `__reg__${measureName.replace('.', '__')}`
 
-        // codeql[js/remote-property-injection] keys are pre-validated cube field names
-        keysSelections[regAlias] = sql`${measureSqlBuilder()}`.as(regAlias)
+        keysSelections[safeKey(regAlias)] = sql`${measureSqlBuilder()}`.as(regAlias)
       }
     }
 
@@ -508,8 +504,7 @@ export class DrizzlePlanBuilder {
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
 
-      // codeql[js/remote-property-injection] keys are pre-validated cube field names
-      aggSelections[pkDimension] = sql`${expr}`.as(pkDimension)
+      aggSelections[safeKey(pkDimension)] = sql`${expr}`.as(pkDimension)
       aggGroupBy.push(expr)
     }
 
@@ -543,8 +538,7 @@ export class DrizzlePlanBuilder {
           return null
         }
 
-        // codeql[js/remote-property-injection] keys are pre-validated cube field names
-        aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
+        aggSelections[safeKey(localName)] = sql`${measureSqlBuilder()}`.as(localName)
       }
     }
 
@@ -591,15 +585,11 @@ export class DrizzlePlanBuilder {
 
     const outerSelections: Record<string, any> = {}
     for (const dimensionName of query.dimensions ?? []) {
-
-      // codeql[js/remote-property-injection] keys are pre-validated cube field names
-      outerSelections[dimensionName] = sql`${sql.identifier(keysAlias)}.${sql.identifier(dimensionName)}`
+      outerSelections[safeKey(dimensionName)] = sql`${sql.identifier(keysAlias)}.${sql.identifier(dimensionName)}`
         .as(dimensionName)
     }
     for (const timeDimension of query.timeDimensions ?? []) {
-
-      // codeql[js/remote-property-injection] keys are pre-validated cube field names
-      outerSelections[timeDimension.dimension] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
+      outerSelections[safeKey(timeDimension.dimension)] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
         .as(timeDimension.dimension)
     }
     // Multiplied measures: re-aggregate from agg CTE with type-specific logic
@@ -707,14 +697,14 @@ export class DrizzlePlanBuilder {
     if (dedupedSharedKeys.length > 0) {
       for (const key of dedupedSharedKeys) {
         const keyExpr = this.coalesceQualifiedColumn(sourceAliases, key)
-        selectMap[key] = sql`${keyExpr}`.as(key)
+        selectMap[safeKey(key)] = sql`${keyExpr}`.as(key)
       }
     }
 
     for (const group of multiFact.groups) {
       for (const measureName of group.measures) {
         const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
-        selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
+        selectMap[safeKey(measureName)] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
       }
     }
 

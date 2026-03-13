@@ -116,7 +116,7 @@ export const createQuerySlice: StateCreator<
   [],
   [],
   QuerySlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...createInitialQueryState(),
 
   // ==========================================================================

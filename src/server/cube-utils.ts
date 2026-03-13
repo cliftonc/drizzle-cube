@@ -146,6 +146,18 @@ export function isolateSqlExpression(expr: AnyColumn | SQL): SQL {
 }
 
 /**
+ * Sanitize a property key to prevent prototype pollution.
+ * Keys in this codebase come from validated cube field names (e.g., "Cube.measure")
+ * but CodeQL cannot trace that validation across module boundaries.
+ */
+export function safeKey(key: string): string {
+  if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+    throw new Error(`Unsafe property key: ${key}`)
+  }
+  return key
+}
+
+/**
  * Helper to resolve SQL expressions with mutation protection
  *
  * Evaluates function-based SQL expressions and applies isolation to prevent

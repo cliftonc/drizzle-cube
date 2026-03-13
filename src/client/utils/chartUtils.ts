@@ -244,8 +244,7 @@ export function transformSeriesKeysWithLabels(seriesKeys: string[], labelMap: Fi
 // Utility function to format time values for better display using known granularity
 export function formatTimeValue(value: any, granularity?: string): string {
 
-  // codeql[js/trivial-conditional] value is falsy here so 'Unknown' is always the fallback, but kept explicit for clarity
-  if (!value) return String(value || 'Unknown')
+  if (!value) return 'Unknown'
   
   const str = String(value)
   
@@ -389,9 +388,8 @@ export function transformChartData(
 
     yAxisFields.forEach(field => {
       const displayName = getFieldLabelFn(field)
+      if (displayName === '__proto__' || displayName === 'constructor' || displayName === 'prototype') return
       // Preserve null values instead of converting to 0
-
-      // codeql[js/prototype-polluting-assignment] local object scope, not prototype
       transformed[displayName] = parseNumericValue(row[field])
     })
 
@@ -445,20 +443,18 @@ export function transformChartDataWithSeries(
       // Add measures - preserve nulls for individual measures
       yAxisMeasures.forEach(measure => {
         const displayName = getFieldLabelFn(measure)
+        if (displayName === '__proto__' || displayName === 'constructor' || displayName === 'prototype') return
         const measureValue = parseNumericValue(row[measure])
 
         // For aggregation: sum non-null values, preserve null if all are null
         if (measureValue !== null) {
           const currentValue = groupedData[xValue][displayName]
 
-          // codeql[js/prototype-polluting-assignment] local object scope, not prototype
           groupedData[xValue][displayName] = (currentValue === null || currentValue === undefined)
             ? measureValue
             : currentValue + measureValue
         } else if (!(displayName in groupedData[xValue])) {
           // Only set to null if no value exists yet
-
-          // codeql[js/prototype-polluting-assignment] local object scope, not prototype
           groupedData[xValue][displayName] = null
         }
       })
@@ -474,20 +470,18 @@ export function transformChartDataWithSeries(
           ) || queryMeasures[0]
 
           if (measureToAggregate) {
+            if (seriesName === '__proto__' || seriesName === 'constructor' || seriesName === 'prototype') return
             const measureValue = parseNumericValue(row[measureToAggregate])
 
             // For dimension series: sum non-null values, preserve null if all are null
             if (measureValue !== null) {
               const currentValue = groupedData[xValue][seriesName]
 
-              // codeql[js/prototype-polluting-assignment] local object scope, not prototype
               groupedData[xValue][seriesName] = (currentValue === null || currentValue === undefined)
                 ? measureValue
                 : currentValue + measureValue
             } else if (!(seriesName in groupedData[xValue])) {
               // Only set to null if no value exists yet
-
-              // codeql[js/prototype-polluting-assignment] local object scope, not prototype
               groupedData[xValue][seriesName] = null
             }
           }

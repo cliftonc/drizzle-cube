@@ -380,7 +380,7 @@ export function createCubeRouter(
       res.json(formatSqlResponse(query, sqlResult))
       
     } catch (error) {
-      console.error('SQL generation error:', error)
+      console.error('SQL generation error:', String(error).replace(/\n|\r/g, ''))
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'SQL generation failed',
         500
@@ -430,7 +430,7 @@ export function createCubeRouter(
       res.json(formatSqlResponse(query, sqlResult))
       
     } catch (error) {
-      console.error('SQL generation error:', error)
+      console.error('SQL generation error:', String(error).replace(/\n|\r/g, ''))
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'SQL generation failed',
         500
@@ -707,11 +707,11 @@ export function createCubeRouter(
       } catch (error) {
         // Log notification errors before returning 202 (P3 fix)
         if (isNotification(rpcRequest)) {
-          console.error('MCP notification processing error:', error)
+          console.error('MCP notification processing error:', String(error).replace(/\n|\r/g, ''))
           return res.status(202).end()
         }
 
-        console.error('MCP RPC error:', error)
+        console.error('MCP RPC error:', String(error).replace(/\n|\r/g, ''))
         const code = (error as any)?.code ?? -32603
         const data = (error as any)?.data
         const message = (error as Error).message || 'MCP request failed'
