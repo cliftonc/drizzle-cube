@@ -108,6 +108,16 @@ const GAUGE_DATA = [
   { 'Trades.margin': '0.73', 'Trades.revenue': '185000' },
 ]
 
+// Pie Donut variant: category breakdown (pie chart with innerRadius)
+const PIE_DONUT_DATA = [
+  { 'Trades.symbol': 'AAPL', 'Trades.count': '42' },
+  { 'Trades.symbol': 'MSFT', 'Trades.count': '18' },
+  { 'Trades.symbol': 'GOOG', 'Trades.count': '12' },
+  { 'Trades.symbol': 'AMZN', 'Trades.count': '9' },
+  { 'Trades.symbol': 'TSLA', 'Trades.count': '15' },
+  { 'Trades.symbol': 'META', 'Trades.count': '8' },
+]
+
 // ── Mock annotations for each chart type ──
 
 const BOX_PLOT_ANNOTATION = {
@@ -163,6 +173,15 @@ const GAUGE_ANNOTATION = {
     'Trades.revenue': { title: 'Revenue', shortTitle: 'Revenue', type: 'number' },
   },
   dimensions: {},
+}
+
+const PIE_DONUT_ANNOTATION = {
+  measures: {
+    'Trades.count': { title: 'Count', shortTitle: 'Count', type: 'number' },
+  },
+  dimensions: {
+    'Trades.symbol': { title: 'Symbol', shortTitle: 'Symbol', type: 'string' },
+  },
 }
 
 // ── localStorage state factories ──
@@ -276,6 +295,20 @@ const CHART_CONFIGS = {
       showPercentage: true,
     },
   }),
+  pieDonut: makeWorkspaceStorage({
+    measures: ['Trades.count'],
+    dimensions: ['Trades.symbol'],
+    chartType: 'pie',
+    chartConfig: {
+      xAxis: ['Trades.symbol'],
+      yAxis: ['Trades.count'],
+    },
+    displayConfig: {
+      showLegend: true,
+      showTooltip: true,
+      innerRadius: '40%',
+    },
+  }),
 }
 
 // Map chart type → mock data + annotation
@@ -285,6 +318,7 @@ const MOCK_DATA_MAP: Record<string, { data: Record<string, unknown>[]; annotatio
   candlestick: { data: CANDLESTICK_DATA, annotation: CANDLESTICK_ANNOTATION },
   measureProfile: { data: MEASURE_PROFILE_DATA, annotation: MEASURE_PROFILE_ANNOTATION },
   gauge: { data: GAUGE_DATA, annotation: GAUGE_ANNOTATION },
+  pieDonut: { data: PIE_DONUT_DATA, annotation: PIE_DONUT_ANNOTATION },
 }
 
 // ── Helpers ──
@@ -361,15 +395,24 @@ async function waitForChartRender(page: Page) {
 }
 
 async function clickTab(page: Page, tabName: string) {
-  // The tabs are buttons inside the query panel
-  const tab = page.locator('button').filter({ hasText: new RegExp(`^${tabName}$`, 'i') }).first()
-  await tab.click()
+  // Use title attributes to target right-panel tabs specifically,
+  // avoiding the Chart/Table toggle at the bottom of the results panel.
+  const titleMap: Record<string, string> = {
+    Chart: 'Chart configuration',
+    Display: 'Display options',
+  }
+  const title = titleMap[tabName]
+  if (title) {
+    await page.locator(`button[title="${title}"]`).click()
+  } else {
+    await page.locator('button').filter({ hasText: new RegExp(`^${tabName}$`, 'i') }).first().click()
+  }
   await page.waitForTimeout(300)
 }
 
 // ── Test Suite ──
 
-const CHART_TYPES = ['boxPlot', 'waterfall', 'candlestick', 'measureProfile', 'gauge'] as const
+const CHART_TYPES = ['boxPlot', 'waterfall', 'candlestick', 'measureProfile', 'gauge', 'pieDonut'] as const
 
 const CHART_LABELS: Record<string, string> = {
   boxPlot: 'Box Plot',
@@ -377,6 +420,7 @@ const CHART_LABELS: Record<string, string> = {
   candlestick: 'Candlestick Chart',
   measureProfile: 'Measure Profile',
   gauge: 'Gauge Chart',
+  pieDonut: 'Pie Chart (Donut)',
 }
 
 test.describe('Chart Type Screenshots', () => {

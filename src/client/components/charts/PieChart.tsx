@@ -25,7 +25,8 @@ const PieChart = React.memo(function PieChart({
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
       showTooltip: displayConfig?.showTooltip ?? true,
-      leftYAxisFormat: displayConfig?.leftYAxisFormat
+      leftYAxisFormat: displayConfig?.leftYAxisFormat,
+      innerRadius: displayConfig?.innerRadius || '0%'
     }
 
     if (!data || data.length === 0) {
@@ -153,6 +154,7 @@ const PieChart = React.memo(function PieChart({
             data={pieData}
             cx="50%"
             cy="50%"
+            innerRadius={safeDisplayConfig.innerRadius !== '0%' ? safeDisplayConfig.innerRadius : undefined}
             outerRadius="70%"
             dataKey="value"
             label={!safeDisplayConfig.showLegend ? ({ name, percent }) =>

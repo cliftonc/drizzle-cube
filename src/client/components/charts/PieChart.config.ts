@@ -31,6 +31,20 @@ export const pieChartConfig: ChartTypeConfig = {
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
+      key: 'innerRadius',
+      label: 'Inner Radius',
+      type: 'select',
+      description: 'Hollow center size (0% = solid pie, higher = donut style)',
+      defaultValue: '0%',
+      options: [
+        { value: '0%', label: 'None (Pie)' },
+        { value: '20%', label: '20%' },
+        { value: '40%', label: '40%' },
+        { value: '60%', label: '60%' },
+        { value: '80%', label: '80%' },
+      ]
+    },
+    {
       key: 'leftYAxisFormat',
       label: 'Value Format',
       type: 'axisFormat',
