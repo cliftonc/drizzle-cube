@@ -534,7 +534,7 @@ export class DrizzlePlanBuilder {
       for (const measureName of nonAvgMultiplied) {
         const [, localName] = measureName.split('.')
         const measureSqlBuilder = measureMap.get(measureName)
-        if (!measureSqlBuilder) {
+        if (!measureSqlBuilder || typeof measureSqlBuilder !== 'function') {
           return null
         }
 
@@ -596,7 +596,7 @@ export class DrizzlePlanBuilder {
     for (const measureName of multipliedMeasures) {
       const [, localName] = measureName.split('.')
       const measure = multipliedCube.measures?.[localName]
-      outerSelections[measureName] = this.buildKeysOuterAggregation(
+      outerSelections[safeKey(measureName)] = this.buildKeysOuterAggregation(
         measure?.type ?? 'sum', aggAlias, localName, measureName
       )
     }
@@ -607,7 +607,7 @@ export class DrizzlePlanBuilder {
       const regularCube = allCubes.get(cubeName)
       const measure = regularCube?.measures?.[localName]
       const regAlias = `__reg__${measureName.replace('.', '__')}`
-      outerSelections[measureName] = this.buildKeysOuterAggregation(
+      outerSelections[safeKey(measureName)] = this.buildKeysOuterAggregation(
         measure?.type ?? 'sum', keysAlias, regAlias, measureName
       )
     }
@@ -779,12 +779,12 @@ export class DrizzlePlanBuilder {
 
     const selectMap: Record<string, any> = {}
     for (const key of sharedKeys) {
-      selectMap[key] = sql`${sql.identifier(allKeysAlias)}.${sql.identifier(key)}`.as(key)
+      selectMap[safeKey(key)] = sql`${sql.identifier(allKeysAlias)}.${sql.identifier(key)}`.as(key)
     }
     for (const group of multiFact.groups) {
       for (const measureName of group.measures) {
         const measureExpr = sql`${sql.identifier(group.alias)}.${sql.identifier(measureName)}`
-        selectMap[measureName] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
+        selectMap[safeKey(measureName)] = sql`coalesce(${measureExpr}, 0)`.as(measureName)
       }
     }
 

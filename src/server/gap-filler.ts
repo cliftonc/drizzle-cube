@@ -216,7 +216,7 @@ export function fillTimeSeriesGaps(
       } else {
         // Create filled row
         const filledRow: Record<string, unknown> = {
-          [timeDimensionKey]: bucketKey
+          [safeKey(timeDimensionKey)]: bucketKey
         }
 
         // Copy dimension values from sample row

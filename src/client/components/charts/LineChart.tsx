@@ -159,7 +159,8 @@ const LineChart = React.memo(function LineChart({
       // For comparison data, strip the period suffix and any dimension prefix
       // Series keys look like: "Label (Current)", "Label (Prior)", or "DimValue - Label (Current)"
 
-      // codeql[js/polynomial-redos] input is from validated chart data, not user input
+      // Guard against excessive input length to prevent ReDoS
+      if (seriesKey.length > 1000) return undefined
       const withoutSuffix = seriesKey.replace(/\s*\((Current|Prior)\)$/, '')
       // Check if it has a dimension prefix (contains " - ")
       const parts = withoutSuffix.split(' - ')

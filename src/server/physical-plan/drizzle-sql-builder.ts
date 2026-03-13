@@ -100,7 +100,7 @@ export class DrizzleSqlBuilder {
       // Add user-requested measures to selections
       for (const measureName of query.measures) {
         const measureBuilder = resolvedMeasures.get(measureName)
-        if (measureBuilder) {
+        if (measureBuilder && typeof measureBuilder === 'function') {
           const measureExpr = measureBuilder()
 
           selections[safeKey(measureName)] = sql`${measureExpr}`.as(measureName) as unknown as SQL

@@ -140,7 +140,7 @@ export class CTEBuilder {
         if (dimCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const dimensionExpr = this.queryBuilder.buildMeasureExpression({ sql: dimension.sql, type: 'number' }, context)
-          cteSelections[fieldName] = sql`${dimensionExpr}`.as(fieldName)
+          cteSelections[safeKey(fieldName)] = sql`${dimensionExpr}`.as(fieldName)
         }
       }
     }
@@ -152,7 +152,7 @@ export class CTEBuilder {
         if (timeCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
           const dimension = cube.dimensions[fieldName]
           const timeExpr = this.queryBuilder.buildTimeDimensionExpression(dimension.sql, timeDim.granularity, context)
-          cteSelections[fieldName] = sql`${timeExpr}`.as(fieldName)
+          cteSelections[safeKey(fieldName)] = sql`${timeExpr}`.as(fieldName)
         }
       }
     }

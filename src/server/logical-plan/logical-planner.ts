@@ -1053,7 +1053,9 @@ export class LogicalPlanner {
    */
   private extractDependenciesFromTemplate(calculatedSql: string, cubeName: string): string[] {
 
-    // codeql[js/polynomial-redos] input is from validated cube definition templates, not user input
+    // Guard against excessive input length to prevent ReDoS
+    if (calculatedSql.length > 1000) return []
+
     const regex = /\{([^}]+)\}/g
     const matches = calculatedSql.matchAll(regex)
     const deps: string[] = []

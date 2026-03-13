@@ -276,7 +276,8 @@ export class RetentionQueryBuilder {
     config: RetentionQueryConfig
   ): RetentionResultRow[] {
     const breakdownDimensions = config.breakdownDimensions || []
-    const hasBreakdowns = breakdownDimensions.length > 0
+    const maxBreakdowns = Math.min(breakdownDimensions.length, 100)
+    const hasBreakdowns = maxBreakdowns > 0
 
     return (rawResult as any[]).map(row => {
       const result: RetentionResultRow = {
@@ -288,7 +289,7 @@ export class RetentionQueryBuilder {
 
       if (hasBreakdowns) {
         const breakdownValues: Record<string, string | null> = {}
-        for (let i = 0; i < breakdownDimensions.length; i++) {
+        for (let i = 0; i < maxBreakdowns; i++) {
           const dimName = breakdownDimensions[i]
           const value = (row as Record<string, unknown>)[safeKey(`breakdown_${i}`)]
           breakdownValues[safeKey(dimName)] = value !== undefined ? String(value) : null

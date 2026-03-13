@@ -436,6 +436,7 @@ export function transformChartDataWithSeries(
     data.forEach((row: any) => {
       const granularity = getFieldGranularity(queryObject, xAxisField)
       const xValue = formatTimeValue(row[xAxisField], granularity) || row[xAxisField] || 'Unknown'
+      if (xValue === '__proto__' || xValue === 'constructor' || xValue === 'prototype') return
       if (!groupedData[xValue]) {
         groupedData[xValue] = { name: String(xValue) }
       }
