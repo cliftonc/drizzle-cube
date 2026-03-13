@@ -2,6 +2,15 @@ import React, { useMemo } from 'react'
 import Markdown from 'markdown-to-jsx'
 import type { ChartProps } from '../../types'
 
+// Header size classes per fontSize setting (stable constants, outside component)
+const headerSizes: Record<string, Record<number, string>> = {
+  small: { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' },
+  medium: { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' },
+  large: { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }
+}
+
+const headerMargins: Record<number, string> = { 1: 'dc:mb-4', 2: 'dc:mb-3', 3: 'dc:mb-2' }
+
 const MarkdownChart = React.memo(function MarkdownChart({
   displayConfig = {},
   height = "100%",
@@ -35,15 +44,6 @@ const MarkdownChart = React.memo(function MarkdownChart({
     center: 'dc:text-center',
     right: 'dc:text-right'
   }
-
-  // Header size classes per fontSize setting
-  const headerSizes: Record<string, Record<number, string>> = {
-    small: { 1: 'dc:text-lg', 2: 'dc:text-base', 3: 'dc:text-sm' },
-    medium: { 1: 'dc:text-3xl', 2: 'dc:text-2xl', 3: 'dc:text-xl' },
-    large: { 1: 'dc:text-5xl', 2: 'dc:text-4xl', 3: 'dc:text-3xl' }
-  }
-
-  const headerMargins: Record<number, string> = { 1: 'dc:mb-4', 2: 'dc:mb-3', 3: 'dc:mb-2' }
 
   // Build markdown-to-jsx options with dynamic accent color
   const markdownOptions = useMemo(() => ({
