@@ -1052,6 +1052,7 @@ export class LogicalPlanner {
    * Extract measure references from calculatedSql template
    */
   private extractDependenciesFromTemplate(calculatedSql: string, cubeName: string): string[] {
+
     // codeql[js/polynomial-redos] input is from validated cube definition templates, not user input
     const regex = /\{([^}]+)\}/g
     const matches = calculatedSql.matchAll(regex)

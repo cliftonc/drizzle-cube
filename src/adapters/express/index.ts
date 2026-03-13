@@ -211,6 +211,7 @@ export function createCubeRouter(
       res.json(formatCubeResponse(query, result, semanticLayer))
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Query execution error:', error)
       res.status(500).json(formatErrorResponse(
@@ -265,6 +266,7 @@ export function createCubeRouter(
       res.json(formatCubeResponse(query, result, semanticLayer))
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Query execution error:', error)
       res.status(500).json(formatErrorResponse(
@@ -308,6 +310,7 @@ export function createCubeRouter(
       res.json(batchResult)
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Batch execution error:', error)
       res.status(500).json(formatErrorResponse(
@@ -332,6 +335,7 @@ export function createCubeRouter(
       res.json(formatMetaResponse(metadata))
       
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Metadata error:', error)
       res.status(500).json(formatErrorResponse(

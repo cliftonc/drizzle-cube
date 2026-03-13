@@ -366,6 +366,7 @@ export class DrizzlePlanBuilder {
           return null
         }
         const expr = resolveSqlExpression(dimension.sql, context) as SQL
+
         // codeql[js/remote-property-injection] keys are pre-validated cube field names
         keysSelections[dimensionName] = sql`${expr}`.as(dimensionName)
         keyGroupBy.push(expr)
@@ -385,6 +386,7 @@ export class DrizzlePlanBuilder {
           timeDimension.granularity,
           context
         )
+
         // codeql[js/remote-property-injection] keys are pre-validated cube field names
         keysSelections[timeDimension.dimension] = sql`${expr}`.as(timeDimension.dimension)
         keyGroupBy.push(expr)
@@ -399,6 +401,7 @@ export class DrizzlePlanBuilder {
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
       const pkAlias = `__pk__${pkDimension}`
+
       // codeql[js/remote-property-injection] keys are pre-validated cube field names
       keysSelections[pkAlias] = sql`${expr}`.as(pkAlias)
       keyGroupBy.push(expr)
@@ -424,6 +427,7 @@ export class DrizzlePlanBuilder {
           return null
         }
         const regAlias = `__reg__${measureName.replace('.', '__')}`
+
         // codeql[js/remote-property-injection] keys are pre-validated cube field names
         keysSelections[regAlias] = sql`${measureSqlBuilder()}`.as(regAlias)
       }
@@ -503,6 +507,7 @@ export class DrizzlePlanBuilder {
         return null
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
+
       // codeql[js/remote-property-injection] keys are pre-validated cube field names
       aggSelections[pkDimension] = sql`${expr}`.as(pkDimension)
       aggGroupBy.push(expr)
@@ -537,6 +542,7 @@ export class DrizzlePlanBuilder {
         if (!measureSqlBuilder) {
           return null
         }
+
         // codeql[js/remote-property-injection] keys are pre-validated cube field names
         aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
       }
@@ -585,11 +591,13 @@ export class DrizzlePlanBuilder {
 
     const outerSelections: Record<string, any> = {}
     for (const dimensionName of query.dimensions ?? []) {
+
       // codeql[js/remote-property-injection] keys are pre-validated cube field names
       outerSelections[dimensionName] = sql`${sql.identifier(keysAlias)}.${sql.identifier(dimensionName)}`
         .as(dimensionName)
     }
     for (const timeDimension of query.timeDimensions ?? []) {
+
       // codeql[js/remote-property-injection] keys are pre-validated cube field names
       outerSelections[timeDimension.dimension] = sql`${sql.identifier(keysAlias)}.${sql.identifier(timeDimension.dimension)}`
         .as(timeDimension.dimension)

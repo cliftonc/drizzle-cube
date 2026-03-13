@@ -170,6 +170,7 @@ function collectDryRunAnalysis(
     return semanticLayer.analyzeQuery(query, securityContext)
   } catch (analysisError) {
     // Analysis is optional - don't fail the dry-run if it fails
+
     // codeql[js/log-injection] error source is internal, not user-controlled
     console.warn('Query analysis failed:', analysisError)
     return undefined
@@ -486,6 +487,7 @@ export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mys
     })
   } catch (error) {
     // If formatting fails, return original SQL
+
     // codeql[js/log-injection] error source is internal, not user-controlled
     console.warn('SQL formatting failed:', error)
     return sqlString

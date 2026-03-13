@@ -84,6 +84,7 @@ export class DrizzleSqlBuilder {
           const dimension = cube.dimensions[fieldName]
           const sqlExpr = resolveSqlExpression(dimension.sql, context)
           // Use explicit alias for dimension expressions so they can be referenced in ORDER BY
+
           // codeql[js/remote-property-injection] keys are pre-validated cube field names
           selections[dimensionName] = sql`${sqlExpr}`.as(dimensionName) as unknown as SQL
         }
@@ -103,6 +104,7 @@ export class DrizzleSqlBuilder {
         const measureBuilder = resolvedMeasures.get(measureName)
         if (measureBuilder) {
           const measureExpr = measureBuilder()
+
           // codeql[js/remote-property-injection] keys are pre-validated cube field names
           selections[measureName] = sql`${measureExpr}`.as(measureName) as unknown as SQL
         }
@@ -122,6 +124,7 @@ export class DrizzleSqlBuilder {
             context
           )
           // Use explicit alias for time dimension expressions so they can be referenced in ORDER BY
+
           // codeql[js/remote-property-injection] keys are pre-validated cube field names
           selections[timeDim.dimension] = sql`${timeExpr}`.as(timeDim.dimension) as unknown as SQL
         }
@@ -565,6 +568,7 @@ export class DrizzleSqlBuilder {
       if (effectiveLimit < 0) {
         throw new Error('Limit must be non-negative')
       }
+
       // codeql[js/unvalidated-dynamic-method-call] limit() is a standard Drizzle query builder method
       result = (result as any).limit(effectiveLimit)
     }
@@ -573,6 +577,7 @@ export class DrizzleSqlBuilder {
       if (semanticQuery.offset < 0) {
         throw new Error('Offset must be non-negative')
       }
+
       // codeql[js/unvalidated-dynamic-method-call] offset() is a standard Drizzle query builder method
       result = (result as any).offset(semanticQuery.offset)
     }

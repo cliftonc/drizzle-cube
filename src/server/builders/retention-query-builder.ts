@@ -290,6 +290,7 @@ export class RetentionQueryBuilder {
         const breakdownValues: Record<string, string | null> = {}
         for (let i = 0; i < breakdownDimensions.length; i++) {
           const dimName = breakdownDimensions[i]
+
           // codeql[js/remote-property-injection] keys are pre-validated cube field names from breakdown config
           const value = row[`breakdown_${i}`]
           breakdownValues[dimName] = value !== undefined ? String(value) : null

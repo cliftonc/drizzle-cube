@@ -61,6 +61,7 @@ export async function* handleAgentChat(options: {
   try {
     provider = await createProvider(providerName, apiKey, { baseURL })
   } catch (error) {
+
     // codeql[js/log-injection] error comes from internal provider creation, not user input
     // codeql[js/tainted-format-string] providerName is from validated internal config
     console.error(`[agent] Failed to create ${providerName} provider:`, error)

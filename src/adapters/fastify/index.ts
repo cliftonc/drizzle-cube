@@ -219,6 +219,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       return formatCubeResponse(query, result, semanticLayer)
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       request.log.error(error, 'Query execution error')
       return reply.status(500).send(formatErrorResponse(
@@ -277,6 +278,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       return formatCubeResponse(query, result, semanticLayer)
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       request.log.error(error, 'Query execution error')
       return reply.status(500).send(formatErrorResponse(
@@ -334,6 +336,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       return batchResult
 
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       request.log.error(error, 'Batch execution error')
       return reply.status(500).send(formatErrorResponse(
@@ -358,6 +361,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       return formatMetaResponse(metadata)
       
     } catch (error) {
+
       // codeql[js/log-injection] error source is internal, not user-controlled
       request.log.error(error, 'Metadata error')
       return reply.status(500).send(formatErrorResponse(

@@ -1,9 +1,9 @@
 name: "drizzle-cube-codeql-config"
 
-paths-not-analyzed:
-  - dev/**
-  - scripts/**
-  - tests/**
+paths-ignore:
+  - dev
+  - scripts
+  - tests
 
 query-filters:
   - exclude:
