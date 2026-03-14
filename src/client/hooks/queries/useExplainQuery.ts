@@ -69,7 +69,7 @@ export interface UseExplainQueryResult {
  * Check if query is a funnel query
  */
 function isFunnelQuery(query: unknown): query is { funnel: unknown } {
-  if (typeof query !== 'object' || query === null) return false
+  if (!query || typeof query !== 'object') return false
   return Object.prototype.hasOwnProperty.call(query, 'funnel')
 }
 
@@ -77,7 +77,7 @@ function isFunnelQuery(query: unknown): query is { funnel: unknown } {
  * Check if query is a flow query
  */
 function isFlowQuery(query: unknown): query is { flow: unknown } {
-  if (typeof query !== 'object' || query === null) return false
+  if (!query || typeof query !== 'object') return false
   return Object.prototype.hasOwnProperty.call(query, 'flow')
 }
 
@@ -85,7 +85,7 @@ function isFlowQuery(query: unknown): query is { flow: unknown } {
  * Check if query is a retention query
  */
 function isRetentionQuery(query: unknown): query is { retention: unknown } {
-  if (typeof query !== 'object' || query === null) return false
+  if (!query || typeof query !== 'object') return false
   return Object.prototype.hasOwnProperty.call(query, 'retention')
 }
 
