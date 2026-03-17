@@ -11,6 +11,7 @@ import { setupPostgresDatabase } from './databases/postgres/setup'
 import { setupMySQLDatabase } from './databases/mysql/setup'
 import { setupSQLiteDatabase } from './databases/sqlite/setup'
 import { setupDuckDBDatabase } from './databases/duckdb/setup'
+import { setupDatabendDatabase } from './databases/databend/setup'
 
 
 // Remove static schema exports - use dynamic functions instead
@@ -123,6 +124,39 @@ export async function getTestSchema() {
       dbFalse: false,
       dbDate: (date: Date) => date
     }
+  } else if (dbType === 'databend') {
+    const {
+      databendTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory
+    } = await import('./databases/databend/schema')
+
+    return {
+      schema: databendTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory,
+      type: 'DatabendTestSchema' as const,
+      // Database-specific value helpers for Databend (similar to PostgreSQL)
+      dbTrue: true,
+      dbFalse: false,
+      dbDate: (date: Date) => date
+    }
   } else {
     const {
       testSchema,
@@ -162,7 +196,7 @@ export async function getTestSchema() {
 /**
  * Database type for testing - can be set via environment variable
  */
-export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'both'
+export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'both'
 
 /**
  * Get the database type to use for testing
@@ -173,6 +207,7 @@ export function getTestDatabaseType(): TestDatabaseType {
   if (dbType === 'mysql') return 'mysql'
   if (dbType === 'sqlite') return 'sqlite'
   if (dbType === 'duckdb') return 'duckdb'
+  if (dbType === 'databend') return 'databend'
   if (dbType === 'both') return 'both'
   return 'postgres' // Default to postgres
 }
@@ -186,9 +221,17 @@ export function skipIfDuckDB(): boolean {
 }
 
 /**
+ * Helper for skipping tests that don't work with Databend
+ * Use with it.skipIf(skipIfDatabend())
+ */
+export function skipIfDatabend(): boolean {
+  return getTestDatabaseType() === 'databend'
+}
+
+/**
  * Get database setup function for a specific database type
  */
-export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb') {
+export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend') {
   switch (type) {
     case 'postgres':
       return setupPostgresDatabase
@@ -198,6 +241,8 @@ export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb
       return setupSQLiteDatabase
     case 'duckdb':
       return setupDuckDBDatabase
+    case 'databend':
+      return setupDatabendDatabase
     default:
       throw new Error(`Unsupported database type: ${type}`)
   }
@@ -288,6 +333,17 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
     schema = duckdbTestSchema
     executor = createDuckDBExecutor(db, schema)
 
+  } else if (dbType === 'databend') {
+    const { createDatabendConnection } = await import('./databases/databend/setup')
+    const connection = await createDatabendConnection()
+    db = connection.db
+    close = connection.close
+
+    const { createDatabendExecutor } = await import('../../src/server')
+    const { databendTestSchema } = await import('./databases/databend/schema')
+    schema = databendTestSchema
+    executor = createDatabendExecutor(db, schema)
+
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -340,6 +396,12 @@ export async function createTestSemanticLayer(): Promise<{
     // No table creation or data seeding needed - handled by global setup
     const { duckdbTestSchema } = await import('./databases/duckdb/schema')
     schema = duckdbTestSchema
+  } else if (dbType === 'databend') {
+    const { createDatabendConnection } = await import('./databases/databend/setup')
+    const connection = await createDatabendConnection()
+    db = connection.db
+    const { databendTestSchema } = await import('./databases/databend/schema')
+    schema = databendTestSchema
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -347,7 +409,7 @@ export async function createTestSemanticLayer(): Promise<{
   const semanticLayer = new SemanticLayerCompiler({
     drizzle: db,
     schema,
-    engineType: dbType as 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
+    engineType: dbType as 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend'
   })
 
   return { semanticLayer, db, close }
@@ -366,7 +428,7 @@ export async function setupTestDatabase(): Promise<void> {
 /**
  * Database configuration helpers
  */
-export const DATABASE_CONFIGS: Record<'postgres' | 'mysql' | 'duckdb', DatabaseConfig> = {
+export const DATABASE_CONFIGS: Record<'postgres' | 'mysql' | 'duckdb' | 'databend', DatabaseConfig> = {
   postgres: {
     type: 'postgres',
     connectionString: process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:54333/drizzle_cube_test',
@@ -381,5 +443,10 @@ export const DATABASE_CONFIGS: Record<'postgres' | 'mysql' | 'duckdb', DatabaseC
     type: 'duckdb',
     connectionString: process.env.DUCKDB_TEST_DATABASE_PATH || ':memory:',
     migrationPath: './tests/helpers/databases/duckdb/migrations'
+  },
+  databend: {
+    type: 'databend',
+    connectionString: process.env.DATABEND_DSN || 'databend://databend:databend@localhost:8000/default?sslmode=disable',
+    migrationPath: './tests/helpers/databases/databend/migrations'
   }
 }

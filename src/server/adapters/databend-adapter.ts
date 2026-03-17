@@ -1,22 +1,21 @@
 /**
- * DuckDB Database Adapter
- * Implements DuckDB-specific SQL generation for time dimensions, string matching, and type casting
- * DuckDB is largely PostgreSQL-compatible but has some differences in funnel functions and advanced features
+ * Databend Database Adapter
+ * Implements Databend-specific SQL generation for time dimensions, string matching, and type casting
+ * Databend uses pgcore (extends PgDialect) so is largely PostgreSQL-compatible
+ * Key differences: no ILIKE, uses CASE WHEN for conditional aggregation, TIMESTAMPDIFF for time diffs
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
 import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
 
-export class DuckDBAdapter extends BaseDatabaseAdapter {
-  getEngineType(): 'duckdb' {
-    return 'duckdb'
+export class DatabendAdapter extends BaseDatabaseAdapter {
+  getEngineType(): 'databend' {
+    return 'databend'
   }
 
   /**
-   * DuckDB does not support non-constant LIMIT in correlated subqueries,
-   * which is required for the LATERAL join strategy in flow queries.
-   * Use window function strategy instead.
+   * Databend does not support LATERAL joins
    */
   supportsLateralJoins(): boolean {
     return false
@@ -27,35 +26,41 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * Build DuckDB INTERVAL from ISO 8601 duration
-   * DuckDB supports PostgreSQL-style INTERVAL literal syntax: INTERVAL '7 days'
+   * Build Databend INTERVAL from ISO 8601 duration
+   * Databend supports INTERVAL n UNIT syntax (e.g., INTERVAL 7 DAY)
    */
   buildIntervalFromISO(duration: string): SQL {
     const parsed = this.parseISODuration(duration)
     const parts: string[] = []
 
-    if (parsed.years) parts.push(`${parsed.years} years`)
-    if (parsed.months) parts.push(`${parsed.months} months`)
-    if (parsed.days) parts.push(`${parsed.days} days`)
-    if (parsed.hours) parts.push(`${parsed.hours} hours`)
-    if (parsed.minutes) parts.push(`${parsed.minutes} minutes`)
-    if (parsed.seconds) parts.push(`${parsed.seconds} seconds`)
+    if (parsed.years) parts.push(`${parsed.years} YEAR`)
+    if (parsed.months) parts.push(`${parsed.months} MONTH`)
+    if (parsed.days) parts.push(`${parsed.days} DAY`)
+    if (parsed.hours) parts.push(`${parsed.hours} HOUR`)
+    if (parsed.minutes) parts.push(`${parsed.minutes} MINUTE`)
+    if (parsed.seconds) parts.push(`${parsed.seconds} SECOND`)
 
-    const intervalStr = parts.join(' ') || '0 seconds'
-    return sql`INTERVAL '${sql.raw(intervalStr)}'`
+    // Databend INTERVAL syntax: INTERVAL n UNIT
+    // For multiple parts, chain additions
+    if (parts.length === 0) return sql`INTERVAL 0 SECOND`
+    if (parts.length === 1) return sql`INTERVAL ${sql.raw(parts[0])}`
+
+    // For multiple parts, use addition
+    const intervals = parts.map(p => `INTERVAL ${p}`)
+    return sql`(${sql.raw(intervals.join(' + '))})`
   }
 
   /**
-   * Build DuckDB time difference in seconds using EPOCH() function
-   * DuckDB uses EPOCH(timestamp) instead of EXTRACT(EPOCH FROM timestamp)
-   * Returns (end - start) as seconds
+   * Build Databend time difference in seconds
+   * Uses TIMESTAMPDIFF(SECOND, start, end)
    */
   buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
-    return sql`(EPOCH(${end}) - EPOCH(${start}))`
+    return sql`EXTRACT(EPOCH FROM TIMESTAMP_DIFF(${end}, ${start}))`
   }
 
   /**
-   * Build DuckDB timestamp + interval expression
+   * Build Databend timestamp + interval expression
+   * Uses timestamp + INTERVAL n UNIT syntax (Databend doesn't support DATE_ADD function)
    */
   buildDateAddInterval(timestamp: SQL, duration: string): SQL {
     const interval = this.buildIntervalFromISO(duration)
@@ -63,9 +68,8 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB conditional aggregation using CASE WHEN
-   * DuckDB supports FILTER clause, but CASE WHEN provides broader compatibility
-   * Using FILTER clause as DuckDB does support it
+   * Build Databend conditional aggregation using CASE WHEN
+   * FILTER clause support is uncertain in Databend, so use CASE WHEN for safety
    */
   buildConditionalAggregation(
     aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
@@ -74,110 +78,108 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   ): SQL {
     const fnName = aggFn.toUpperCase()
     if (aggFn === 'count' && !expr) {
-      return sql`COUNT(*) FILTER (WHERE ${condition})`
+      return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN 1 END)`
     }
-    return sql`${sql.raw(fnName)}(${expr}) FILTER (WHERE ${condition})`
+    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
   }
 
   /**
-   * Build DuckDB date difference in periods using DATE_DIFF
-   * DuckDB has native DATE_DIFF function with unit support
+   * Build Databend date difference in periods using DATE_DIFF
    */
   buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
-    // DuckDB uses DATE_DIFF(part, start, end)
-    return sql`DATE_DIFF('${sql.raw(unit)}', ${startDate}::timestamp, ${endDate}::timestamp)`
+    return sql`DATE_DIFF('${sql.raw(unit)}', ${startDate}::TIMESTAMP, ${endDate}::TIMESTAMP)`
   }
 
   /**
-   * Build DuckDB period series using UNNEST(generate_series(...))
-   * DuckDB's generate_series returns an array, so we need to UNNEST it to get a table
+   * Build Databend period series using generate_series via numbers table
+   * Databend has a numbers() table function that can be used similarly
    */
   buildPeriodSeriesSubquery(maxPeriod: number): SQL {
-    return sql`(SELECT UNNEST(generate_series(0, ${maxPeriod})) as period_number) p`
+    return sql`(SELECT number as period_number FROM numbers(${maxPeriod + 1})) p`
   }
 
   /**
-   * Build DuckDB time dimension using DATE_TRUNC function
-   * DuckDB uses DATE_TRUNC like PostgreSQL
+   * Build Databend time dimension using DATE_TRUNC function
+   * Databend supports DATE_TRUNC with quoted granularity like PostgreSQL
    */
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL {
     switch (granularity) {
       case 'year':
-        return sql`DATE_TRUNC('year', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(YEAR, ${fieldExpr}::TIMESTAMP)`
       case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(QUARTER, ${fieldExpr}::TIMESTAMP)`
       case 'month':
-        return sql`DATE_TRUNC('month', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(MONTH, ${fieldExpr}::TIMESTAMP)`
       case 'week':
-        return sql`DATE_TRUNC('week', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(WEEK, ${fieldExpr}::TIMESTAMP)`
       case 'day':
-        return sql`DATE_TRUNC('day', ${fieldExpr}::timestamp)::timestamp`
+        return sql`DATE_TRUNC(DAY, ${fieldExpr}::TIMESTAMP)::TIMESTAMP`
       case 'hour':
-        return sql`DATE_TRUNC('hour', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(HOUR, ${fieldExpr}::TIMESTAMP)`
       case 'minute':
-        return sql`DATE_TRUNC('minute', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(MINUTE, ${fieldExpr}::TIMESTAMP)`
       case 'second':
-        return sql`DATE_TRUNC('second', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC(SECOND, ${fieldExpr}::TIMESTAMP)`
       default:
         return fieldExpr as SQL
     }
   }
 
   /**
-   * Build DuckDB string matching conditions using ILIKE (case-insensitive)
-   * DuckDB supports ILIKE like PostgreSQL
+   * Build Databend string matching conditions using LOWER+LIKE fallback
+   * Databend does not support ILIKE
    */
   buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
     switch (operator) {
       case 'contains':
-        return sql`${fieldExpr} ILIKE ${`%${value}%`}`
+        return sql`LOWER(${fieldExpr}) LIKE LOWER(${`%${value}%`})`
       case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${`%${value}%`}`
+        return sql`LOWER(${fieldExpr}) NOT LIKE LOWER(${`%${value}%`})`
       case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${`${value}%`}`
+        return sql`LOWER(${fieldExpr}) LIKE LOWER(${`${value}%`})`
       case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${`%${value}`}`
+        return sql`LOWER(${fieldExpr}) LIKE LOWER(${`%${value}`})`
       case 'like':
         return sql`${fieldExpr} LIKE ${value}`
       case 'notLike':
         return sql`${fieldExpr} NOT LIKE ${value}`
       case 'ilike':
-        return sql`${fieldExpr} ILIKE ${value}`
+        return sql`LOWER(${fieldExpr}) LIKE LOWER(${value})`
       case 'regex':
-        return sql`regexp_matches(${fieldExpr}, ${value})`
+        return sql`${fieldExpr} REGEXP ${value}`
       case 'notRegex':
-        return sql`NOT regexp_matches(${fieldExpr}, ${value})`
+        return sql`NOT (${fieldExpr} REGEXP ${value})`
       default:
         throw new Error(`Unsupported string operator: ${operator}`)
     }
   }
 
   /**
-   * Build DuckDB type casting
-   * DuckDB supports both :: syntax and CAST() function
+   * Build Databend type casting
+   * Databend supports both :: syntax and CAST() function
    */
   castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
     switch (targetType) {
       case 'timestamp':
-        return sql`${fieldExpr}::timestamp`
+        return sql`${fieldExpr}::TIMESTAMP`
       case 'decimal':
-        return sql`${fieldExpr}::decimal`
+        return sql`${fieldExpr}::DECIMAL`
       case 'integer':
-        return sql`${fieldExpr}::integer`
+        return sql`${fieldExpr}::INTEGER`
       default:
         throw new Error(`Unsupported cast type: ${targetType}`)
     }
   }
 
   /**
-   * Build DuckDB AVG aggregation with COALESCE for NULL handling
+   * Build Databend AVG aggregation with COALESCE for NULL handling
    */
   buildAvg(fieldExpr: AnyColumn | SQL): SQL {
     return sql`COALESCE(AVG(${fieldExpr}), 0)`
   }
 
   /**
-   * Build DuckDB CASE WHEN conditional expression
+   * Build Databend CASE WHEN conditional expression
    */
   buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
     const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
@@ -189,37 +191,37 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB boolean literal
-   * DuckDB uses TRUE/FALSE keywords
+   * Build Databend boolean literal
+   * Databend uses TRUE/FALSE keywords
    */
   buildBooleanLiteral(value: boolean): SQL {
     return value ? sql`TRUE` : sql`FALSE`
   }
 
   /**
-   * Convert filter values - DuckDB uses native types
+   * Convert filter values - Databend uses native types
    */
   convertFilterValue(value: any): any {
     return value
   }
 
   /**
-   * Prepare date value for DuckDB
-   * DuckDB accepts Date objects directly
+   * Prepare date value for Databend
+   * Databend accepts Date objects directly
    */
   prepareDateValue(date: Date): any {
     return date
   }
 
   /**
-   * DuckDB stores timestamps as native timestamp types
+   * Databend stores timestamps as native timestamp types
    */
   isTimestampInteger(): boolean {
     return false
   }
 
   /**
-   * DuckDB time dimensions already return proper values
+   * Databend time dimensions already return proper values
    */
   convertTimeDimensionResult(value: any): any {
     return value
@@ -230,28 +232,23 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * DuckDB has full support for statistical and window functions
-   * Note: supportsPercentileSubqueries is false because DuckDB's QUANTILE_CONT
-   * doesn't work well in scalar subqueries against CTEs in funnel queries
-   * Note: supportsLateralJoins is false because DuckDB doesn't support non-constant
-   * LIMIT in correlated subqueries, which is required for flow query LATERAL joins
+   * Databend capabilities - start conservative
    */
   getCapabilities(): DatabaseCapabilities {
     return {
       supportsStddev: true,
       supportsVariance: true,
-      supportsPercentile: true,
+      supportsPercentile: false,
       supportsWindowFunctions: true,
       supportsFrameClause: true,
       supportsLateralJoins: false,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: true
+      supportsDerivedTablesInCTE: false // Databend doesn't support derived tables (subqueries) in FROM inside CTEs
     }
   }
 
   /**
-   * Build DuckDB STDDEV aggregation
-   * Uses STDDEV_POP for population, STDDEV_SAMP for sample
+   * Build Databend STDDEV aggregation
    */
   buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
     const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
@@ -259,26 +256,26 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB VARIANCE aggregation
-   * Uses VAR_POP for population, VAR_SAMP for sample
+   * Build Databend VARIANCE aggregation
+   * Databend doesn't have VAR_POP/VAR_SAMP, but COVAR_POP(x,x) = VAR_POP(x)
+   * and COVAR_SAMP(x,x) = VAR_SAMP(x) mathematically
    */
   buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
-    const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
-    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
+    const fn = useSample ? 'COVAR_SAMP' : 'COVAR_POP'
+    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}, ${fieldExpr}), 0)`
   }
 
   /**
-   * Build DuckDB PERCENTILE aggregation
-   * DuckDB uses QUANTILE_CONT instead of PERCENTILE_CONT
+   * Build Databend PERCENTILE aggregation
+   * Databend may support QUANTILE or PERCENTILE_CONT - start with unsupported
    */
-  buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL {
-    const pct = percentile / 100
-    return sql`QUANTILE_CONT(${fieldExpr}, ${pct})`
+  buildPercentile(_fieldExpr: AnyColumn | SQL, _percentile: number): SQL {
+    throw new Error('Percentile functions are not yet supported for Databend')
   }
 
   /**
-   * Build DuckDB window function expression
-   * DuckDB has full window function support
+   * Build Databend window function expression
+   * Databend has full window function support
    */
   buildWindowFunction(
     type: WindowFunctionType,

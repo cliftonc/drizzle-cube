@@ -776,11 +776,11 @@ export class RetentionQueryBuilder {
       groupByFields.push(sql.raw(`ump.breakdown_${i}`))
     }
 
-    // Cross join and count
+    // Cross join and count (using innerJoin ON TRUE for cross-driver compatibility)
     return context.db
       .select(selectFields)
       .from(sql`${userMaxPeriods} ump`)
-      .crossJoin(periodSeriesSubquery)
+      .innerJoin(periodSeriesSubquery, sql`TRUE`)
       .groupBy(...groupByFields)
   }
 

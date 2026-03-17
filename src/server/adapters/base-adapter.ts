@@ -26,6 +26,8 @@ export interface DatabaseCapabilities {
   supportsLateralJoins: boolean
   /** Whether percentile functions work in subqueries against CTEs (false for DuckDB) */
   supportsPercentileSubqueries: boolean
+  /** Whether derived tables (subqueries) work in FROM clauses inside CTEs (false for Databend) */
+  supportsDerivedTablesInCTE: boolean
 }
 
 /**
@@ -65,7 +67,7 @@ export interface DatabaseAdapter {
   /**
    * Get the database engine type this adapter supports
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend'
 
   /**
    * Check if the database supports LATERAL joins
@@ -276,7 +278,7 @@ export interface DatabaseAdapter {
  * Provides common functionality that can be shared across database implementations
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
-  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+  abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend'
   abstract supportsLateralJoins(): boolean
 
   // Funnel analysis methods

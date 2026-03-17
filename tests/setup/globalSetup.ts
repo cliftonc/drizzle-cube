@@ -8,6 +8,7 @@ import { setupPostgresDatabase } from '../helpers/databases/postgres/setup'
 import { setupMySQLDatabase } from '../helpers/databases/mysql/setup'
 import { setupSQLiteDatabase } from '../helpers/databases/sqlite/setup'
 import { setupDuckDBDatabase } from '../helpers/databases/duckdb/setup'
+import { setupDatabendDatabase } from '../helpers/databases/databend/setup'
 
 export default async function globalSetup() {  
   const dbType = getTestDatabaseType()
@@ -37,6 +38,12 @@ export default async function globalSetup() {
       const { close } = await setupDuckDBDatabase()
       cleanupFunctions.push(close)
       console.log('DuckDB test database setup complete')
+
+    } else if (dbType === 'databend') {
+      console.log('Setting up Databend test database...')
+      const { close } = await setupDatabendDatabase()
+      cleanupFunctions.push(close)
+      console.log('Databend test database setup complete')
 
     }
     

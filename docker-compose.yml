@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:18
@@ -19,4 +17,26 @@ services:
       MYSQL_PASSWORD: test
     ports:
       - "33077:3306"  # Use 33077 to avoid conflicts with other projects
-    
+
+  databend:
+    image: datafuselabs/databend
+    environment:
+      QUERY_DEFAULT_USER: databend
+      QUERY_DEFAULT_PASSWORD: databend
+    ports:
+      - "18000:8000"  # Use 18000 to avoid conflicts with other tools
+    volumes:
+      - databend-meta:/var/lib/databend/meta
+      - databend-query:/var/lib/databend/query
+      - databend-logs:/var/log/databend
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8000'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  databend-meta:
+  databend-query:
+  databend-logs:

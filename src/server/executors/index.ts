@@ -9,6 +9,7 @@ export { MySQLExecutor, createMySQLExecutor } from './mysql-executor'
 export { SQLiteExecutor, createSQLiteExecutor } from './sqlite-executor'
 export { SingleStoreExecutor, createSingleStoreExecutor } from './singlestore-executor'
 export { DuckDBExecutor, createDuckDBExecutor } from './duckdb-executor'
+export { DatabendExecutor, createDatabendExecutor } from './databend-executor'
 
 // Re-export factory function for auto-detection
 import type { DrizzleDatabase, DatabaseExecutor } from '../types'
@@ -17,6 +18,7 @@ import { createMySQLExecutor } from './mysql-executor'
 import { createSQLiteExecutor } from './sqlite-executor'
 import { createSingleStoreExecutor } from './singlestore-executor'
 import { createDuckDBExecutor } from './duckdb-executor'
+import { createDatabendExecutor } from './databend-executor'
 
 /**
  * Auto-detect database type and create appropriate executor
@@ -28,7 +30,7 @@ import { createDuckDBExecutor } from './duckdb-executor'
 export function createDatabaseExecutor(
   db: DrizzleDatabase,
   schema?: any,
-  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend'
 ): DatabaseExecutor {
   // If engine type is explicitly provided, use it
   if (engineType) {
@@ -43,6 +45,8 @@ export function createDatabaseExecutor(
         return createSingleStoreExecutor(db, schema)
       case 'duckdb':
         return createDuckDBExecutor(db, schema)
+      case 'databend':
+        return createDatabendExecutor(db, schema)
     }
   }
 

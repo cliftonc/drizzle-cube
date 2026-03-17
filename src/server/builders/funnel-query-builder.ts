@@ -864,20 +864,9 @@ export class FunnelQueryBuilder {
 
     const joinQuery = sql`SELECT ${sql.join(selectParts, sql`, `)} FROM ${joinClause}`
 
-    // Build explicit column references for the CTE select
-    // This fixes DuckDB compatibility - using SELECT * loses column aliases in DuckDB
-    const cteSelectFields: Record<string, any> = {
-      binding_key: sql`binding_key`.as('binding_key'),
-      step_0_time: sql`step_0_time`.as('step_0_time')
-    }
-    for (let i = 1; i < steps.length; i++) {
-      cteSelectFields[`step_${i}_time`] = sql`${sql.identifier(`step_${i}_time`)}`.as(`step_${i}_time`)
-    }
-
-    // Wrap in Drizzle CTE with explicit column selection
-    return context.db.$with('funnel_joined').as(
-      context.db.select(cteSelectFields).from(sql`(${joinQuery}) as _inner`)
-    )
+    // Use the join query directly as the CTE body via sql.raw-style wrapping
+    // This avoids a derived table (subquery in FROM) which Databend doesn't support
+    return context.db.$with('funnel_joined').as(joinQuery)
   }
 
   /**
@@ -941,18 +930,19 @@ export class FunnelQueryBuilder {
           .buildConditionalAggregation('max', timeDiff, condition)
           .as(`step_${i}_max_seconds`)
 
-        // Median (if supported) - keep subquery since PERCENTILE_CONT with FILTER is non-standard
-        // Skip percentile subqueries for databases that don't support them (e.g., DuckDB)
+        // Median/P90 (if supported) - keep subquery since PERCENTILE_CONT with FILTER is non-standard
+        // Skip for databases that don't support percentile subqueries (e.g., DuckDB, Databend)
         const capabilities = this.databaseAdapter.getCapabilities()
-        const medianExpr = this.databaseAdapter.buildPercentile(timeDiff, 50)
-        if (medianExpr && capabilities.supportsPercentileSubqueries) {
-          selectFields[`step_${i}_median_seconds`] = sql`(SELECT ${medianExpr} FROM ${sql.identifier('funnel_joined')} WHERE ${currentStepTime} IS NOT NULL)`.as(`step_${i}_median_seconds`)
-        }
+        if (capabilities.supportsPercentileSubqueries) {
+          const medianExpr = this.databaseAdapter.buildPercentile(timeDiff, 50)
+          if (medianExpr) {
+            selectFields[`step_${i}_median_seconds`] = sql`(SELECT ${medianExpr} FROM ${sql.identifier('funnel_joined')} WHERE ${currentStepTime} IS NOT NULL)`.as(`step_${i}_median_seconds`)
+          }
 
-        // P90 (if supported) - keep subquery since PERCENTILE_CONT with FILTER is non-standard
-        const p90Expr = this.databaseAdapter.buildPercentile(timeDiff, 90)
-        if (p90Expr && capabilities.supportsPercentileSubqueries) {
-          selectFields[`step_${i}_p90_seconds`] = sql`(SELECT ${p90Expr} FROM ${sql.identifier('funnel_joined')} WHERE ${currentStepTime} IS NOT NULL)`.as(`step_${i}_p90_seconds`)
+          const p90Expr = this.databaseAdapter.buildPercentile(timeDiff, 90)
+          if (p90Expr) {
+            selectFields[`step_${i}_p90_seconds`] = sql`(SELECT ${p90Expr} FROM ${sql.identifier('funnel_joined')} WHERE ${currentStepTime} IS NOT NULL)`.as(`step_${i}_p90_seconds`)
+          }
         }
       }
     }
