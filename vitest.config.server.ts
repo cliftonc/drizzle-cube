@@ -5,7 +5,8 @@ import { defineConfig } from 'vitest/config'
 // - Databend (single-node Docker) gets overwhelmed by parallel fork connections
 const isDuckDB = process.env.TEST_DB_TYPE === 'duckdb'
 const isDatabend = process.env.TEST_DB_TYPE === 'databend'
-const useSingleThreadPool = isDuckDB || isDatabend
+const isSnowflake = process.env.TEST_DB_TYPE === 'snowflake'
+const useSingleThreadPool = isDuckDB || isDatabend || isSnowflake
 
 /**
  * Server-only test configuration
@@ -23,6 +24,7 @@ export default defineConfig({
     // Databend single-node is memory-hungry and crashes under concurrent load
     // Limit to 1 worker to serialize test file execution
     ...(isDatabend ? { maxThreads: 1, minThreads: 1 } : {}),
+    ...(isSnowflake ? { maxThreads: 1, minThreads: 1 } : {}),
     // Retry failed tests for DuckDB only (handles intermittent prepared statement errors)
     retry: isDuckDB ? 2 : 0,
     env: {

@@ -90,7 +90,7 @@ export interface FastifyAdapterOptions {
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
-  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
   
   /**
    * CORS configuration (optional)

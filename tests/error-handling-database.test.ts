@@ -85,7 +85,8 @@ describe('Database Error Handling', () => {
           error.message.includes('column') ||
           error.message.includes('42') || // PostgreSQL error codes start with 42 for syntax/schema errors
           error.message.includes('nonexistent') ||
-          error.message.includes('does not exist')
+          error.message.includes('does not exist') ||
+          error.message.includes('invalid identifier') // Snowflake error format
 
         expect(hasDetails).toBe(true)
       }

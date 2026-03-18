@@ -12,6 +12,7 @@ import { setupMySQLDatabase } from './databases/mysql/setup'
 import { setupSQLiteDatabase } from './databases/sqlite/setup'
 import { setupDuckDBDatabase } from './databases/duckdb/setup'
 import { setupDatabendDatabase } from './databases/databend/setup'
+import { setupSnowflakeDatabase } from './databases/snowflake/setup'
 
 
 // Remove static schema exports - use dynamic functions instead
@@ -157,6 +158,39 @@ export async function getTestSchema() {
       dbFalse: false,
       dbDate: (date: Date) => date
     }
+  } else if (dbType === 'snowflake') {
+    const {
+      snowflakeTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory
+    } = await import('./databases/snowflake/schema')
+
+    return {
+      schema: snowflakeTestSchema,
+      employees,
+      departments,
+      productivity,
+      timeEntries,
+      analyticsPages,
+      teams,
+      employeeTeams,
+      products,
+      sales,
+      inventory,
+      type: 'SnowflakeTestSchema' as const,
+      // Database-specific value helpers for Snowflake (similar to PostgreSQL)
+      dbTrue: true,
+      dbFalse: false,
+      dbDate: (date: Date) => date
+    }
   } else {
     const {
       testSchema,
@@ -196,7 +230,7 @@ export async function getTestSchema() {
 /**
  * Database type for testing - can be set via environment variable
  */
-export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'both'
+export type TestDatabaseType = 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'snowflake' | 'both'
 
 /**
  * Get the database type to use for testing
@@ -208,6 +242,7 @@ export function getTestDatabaseType(): TestDatabaseType {
   if (dbType === 'sqlite') return 'sqlite'
   if (dbType === 'duckdb') return 'duckdb'
   if (dbType === 'databend') return 'databend'
+  if (dbType === 'snowflake') return 'snowflake'
   if (dbType === 'both') return 'both'
   return 'postgres' // Default to postgres
 }
@@ -229,9 +264,17 @@ export function skipIfDatabend(): boolean {
 }
 
 /**
+ * Helper for skipping tests that don't work with Snowflake
+ * Use with it.skipIf(skipIfSnowflake())
+ */
+export function skipIfSnowflake(): boolean {
+  return getTestDatabaseType() === 'snowflake'
+}
+
+/**
  * Get database setup function for a specific database type
  */
-export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend') {
+export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'snowflake') {
   switch (type) {
     case 'postgres':
       return setupPostgresDatabase
@@ -243,6 +286,8 @@ export function getDatabaseSetup(type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb
       return setupDuckDBDatabase
     case 'databend':
       return setupDatabendDatabase
+    case 'snowflake':
+      return setupSnowflakeDatabase
     default:
       throw new Error(`Unsupported database type: ${type}`)
   }
@@ -344,6 +389,17 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
     schema = databendTestSchema
     executor = createDatabendExecutor(db, schema)
 
+  } else if (dbType === 'snowflake') {
+    const { createSnowflakeConnection } = await import('./databases/snowflake/setup')
+    const connection = await createSnowflakeConnection()
+    db = connection.db
+    close = connection.close
+
+    const { createSnowflakeExecutor } = await import('../../src/server')
+    const { snowflakeTestSchema } = await import('./databases/snowflake/schema')
+    schema = snowflakeTestSchema
+    executor = createSnowflakeExecutor(db, schema)
+
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -402,6 +458,12 @@ export async function createTestSemanticLayer(): Promise<{
     db = connection.db
     const { databendTestSchema } = await import('./databases/databend/schema')
     schema = databendTestSchema
+  } else if (dbType === 'snowflake') {
+    const { createSnowflakeConnection } = await import('./databases/snowflake/setup')
+    const connection = await createSnowflakeConnection()
+    db = connection.db
+    const { snowflakeTestSchema } = await import('./databases/snowflake/schema')
+    schema = snowflakeTestSchema
   } else {
     throw new Error(`Unsupported database type: ${dbType}`)
   }
@@ -409,7 +471,7 @@ export async function createTestSemanticLayer(): Promise<{
   const semanticLayer = new SemanticLayerCompiler({
     drizzle: db,
     schema,
-    engineType: dbType as 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend'
+    engineType: dbType as 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'snowflake'
   })
 
   return { semanticLayer, db, close }

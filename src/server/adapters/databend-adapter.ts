@@ -243,7 +243,8 @@ export class DatabendAdapter extends BaseDatabaseAdapter {
       supportsFrameClause: true,
       supportsLateralJoins: false,
       supportsPercentileSubqueries: false,
-      supportsDerivedTablesInCTE: false // Databend doesn't support derived tables (subqueries) in FROM inside CTEs
+      supportsDerivedTablesInCTE: false, // Databend doesn't support derived tables (subqueries) in FROM inside CTEs
+      supportsLateralSubqueriesInCTE: false // Databend doesn't support LATERAL
     }
   }
 

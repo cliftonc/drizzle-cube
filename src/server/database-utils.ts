@@ -11,13 +11,14 @@ import { SQLiteAdapter } from './adapters/sqlite-adapter'
 import { SingleStoreAdapter } from './adapters/singlestore-adapter'
 import { DuckDBAdapter } from './adapters/duckdb-adapter'
 import { DatabendAdapter } from './adapters/databend-adapter'
+import { SnowflakeAdapter } from './adapters/snowflake-adapter'
 
 /**
  * Create a database adapter for the specified engine type
  * @param engineType - The database engine type
  * @returns Database adapter instance
  */
-export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend'): DatabaseAdapter {
+export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'): DatabaseAdapter {
   switch (engineType) {
     case 'postgres':
       return new PostgresAdapter()
@@ -31,6 +32,8 @@ export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite
       return new DuckDBAdapter()
     case 'databend':
       return new DatabendAdapter()
+    case 'snowflake':
+      return new SnowflakeAdapter()
     default:
       throw new Error(`Unsupported database engine: ${engineType}`)
   }
@@ -40,8 +43,8 @@ export function createDatabaseAdapter(engineType: 'postgres' | 'mysql' | 'sqlite
  * Get available database adapters
  * @returns Array of supported engine types
  */
-export function getSupportedEngines(): ('postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend')[] {
-  return ['postgres', 'mysql', 'sqlite', 'singlestore', 'duckdb', 'databend']
+export function getSupportedEngines(): ('postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake')[] {
+  return ['postgres', 'mysql', 'sqlite', 'singlestore', 'duckdb', 'databend', 'snowflake']
 }
 
 /**
@@ -49,6 +52,6 @@ export function getSupportedEngines(): ('postgres' | 'mysql' | 'sqlite' | 'singl
  * @param engineType - Engine type to check
  * @returns True if supported, false otherwise
  */
-export function isEngineSupported(engineType: string): engineType is 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' {
-  return ['postgres', 'mysql', 'sqlite', 'singlestore', 'duckdb', 'databend'].includes(engineType)
+export function isEngineSupported(engineType: string): engineType is 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake' {
+  return ['postgres', 'mysql', 'sqlite', 'singlestore', 'duckdb', 'databend', 'snowflake'].includes(engineType)
 }

@@ -1,25 +1,26 @@
 /**
- * DuckDB Database Adapter
- * Implements DuckDB-specific SQL generation for time dimensions, string matching, and type casting
- * DuckDB is largely PostgreSQL-compatible but has some differences in funnel functions and advanced features
+ * Snowflake Database Adapter
+ * Implements Snowflake-specific SQL generation for time dimensions, string matching, and type casting
+ * Snowflake is more SQL-capable than Databend: supports LATERAL joins, native ILIKE,
+ * VAR_POP/VAR_SAMP, PERCENTILE_CONT, and window functions.
+ * Key difference: uses DATEADD(unit, amount, ts) instead of INTERVAL arithmetic,
+ * and TABLE(GENERATOR(ROWCOUNT => n)) instead of generate_series()
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
 import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
 
-export class DuckDBAdapter extends BaseDatabaseAdapter {
-  getEngineType(): 'duckdb' {
-    return 'duckdb'
+export class SnowflakeAdapter extends BaseDatabaseAdapter {
+  getEngineType(): 'snowflake' {
+    return 'snowflake'
   }
 
   /**
-   * DuckDB does not support non-constant LIMIT in correlated subqueries,
-   * which is required for the LATERAL join strategy in flow queries.
-   * Use window function strategy instead.
+   * Snowflake supports LATERAL joins
    */
   supportsLateralJoins(): boolean {
-    return false
+    return true
   }
 
   // ============================================
@@ -27,45 +28,50 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * Build DuckDB INTERVAL from ISO 8601 duration
-   * DuckDB supports PostgreSQL-style INTERVAL literal syntax: INTERVAL '7 days'
+   * Build Snowflake INTERVAL from ISO 8601 duration
+   * Snowflake doesn't support INTERVAL literal syntax directly in all contexts,
+   * so we chain DATEADD calls. For standalone interval expressions, we return
+   * a DATEADD chain applied to TIMESTAMP '1970-01-01' and subtract it back.
+   * However, buildIntervalFromISO is typically used with buildDateAddInterval,
+   * so we return a structured representation.
    */
   buildIntervalFromISO(duration: string): SQL {
-    const parsed = this.parseISODuration(duration)
-    const parts: string[] = []
-
-    if (parsed.years) parts.push(`${parsed.years} years`)
-    if (parsed.months) parts.push(`${parsed.months} months`)
-    if (parsed.days) parts.push(`${parsed.days} days`)
-    if (parsed.hours) parts.push(`${parsed.hours} hours`)
-    if (parsed.minutes) parts.push(`${parsed.minutes} minutes`)
-    if (parsed.seconds) parts.push(`${parsed.seconds} seconds`)
-
-    const intervalStr = parts.join(' ') || '0 seconds'
-    return sql`INTERVAL '${sql.raw(intervalStr)}'`
+    // Snowflake doesn't have a standalone INTERVAL type like PostgreSQL.
+    // We convert to total seconds for use in DATEADD.
+    const totalSeconds = this.durationToSeconds(duration)
+    // Return as a seconds value - callers should use buildDateAddInterval instead
+    return sql`${totalSeconds}`
   }
 
   /**
-   * Build DuckDB time difference in seconds using EPOCH() function
-   * DuckDB uses EPOCH(timestamp) instead of EXTRACT(EPOCH FROM timestamp)
-   * Returns (end - start) as seconds
+   * Build Snowflake time difference in seconds
+   * Uses DATEDIFF('SECOND', start, end)
    */
   buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL {
-    return sql`(EPOCH(${end}) - EPOCH(${start}))`
+    return sql`DATEDIFF('SECOND', ${start}, ${end})`
   }
 
   /**
-   * Build DuckDB timestamp + interval expression
+   * Build Snowflake timestamp + interval expression
+   * Uses chained DATEADD(unit, amount, timestamp) calls
    */
   buildDateAddInterval(timestamp: SQL, duration: string): SQL {
-    const interval = this.buildIntervalFromISO(duration)
-    return sql`(${timestamp} + ${interval})`
+    const parsed = this.parseISODuration(duration)
+    let result = timestamp
+
+    if (parsed.years) result = sql`DATEADD('YEAR', ${parsed.years}, ${result})`
+    if (parsed.months) result = sql`DATEADD('MONTH', ${parsed.months}, ${result})`
+    if (parsed.days) result = sql`DATEADD('DAY', ${parsed.days}, ${result})`
+    if (parsed.hours) result = sql`DATEADD('HOUR', ${parsed.hours}, ${result})`
+    if (parsed.minutes) result = sql`DATEADD('MINUTE', ${parsed.minutes}, ${result})`
+    if (parsed.seconds) result = sql`DATEADD('SECOND', ${parsed.seconds}, ${result})`
+
+    return result
   }
 
   /**
-   * Build DuckDB conditional aggregation using CASE WHEN
-   * DuckDB supports FILTER clause, but CASE WHEN provides broader compatibility
-   * Using FILTER clause as DuckDB does support it
+   * Build Snowflake conditional aggregation using CASE WHEN
+   * Snowflake supports FILTER clause but CASE WHEN is more portable
    */
   buildConditionalAggregation(
     aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
@@ -74,58 +80,56 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   ): SQL {
     const fnName = aggFn.toUpperCase()
     if (aggFn === 'count' && !expr) {
-      return sql`COUNT(*) FILTER (WHERE ${condition})`
+      return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN 1 END)`
     }
-    return sql`${sql.raw(fnName)}(${expr}) FILTER (WHERE ${condition})`
+    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
   }
 
   /**
-   * Build DuckDB date difference in periods using DATE_DIFF
-   * DuckDB has native DATE_DIFF function with unit support
+   * Build Snowflake date difference in periods using DATEDIFF
    */
   buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL {
-    // DuckDB uses DATE_DIFF(part, start, end)
-    return sql`DATE_DIFF('${sql.raw(unit)}', ${startDate}::timestamp, ${endDate}::timestamp)`
+    const snowflakeUnit = unit.toUpperCase()
+    return sql`DATEDIFF('${sql.raw(snowflakeUnit)}', ${startDate}::TIMESTAMP, ${endDate}::TIMESTAMP)`
   }
 
   /**
-   * Build DuckDB period series using UNNEST(generate_series(...))
-   * DuckDB's generate_series returns an array, so we need to UNNEST it to get a table
+   * Build Snowflake period series using TABLE(GENERATOR(ROWCOUNT => n)) + ROW_NUMBER()
    */
   buildPeriodSeriesSubquery(maxPeriod: number): SQL {
-    return sql`(SELECT UNNEST(generate_series(0, ${maxPeriod})) as period_number) p`
+    return sql`(SELECT ROW_NUMBER() OVER (ORDER BY 1) - 1 AS period_number FROM TABLE(GENERATOR(ROWCOUNT => ${maxPeriod + 1}))) p`
   }
 
   /**
-   * Build DuckDB time dimension using DATE_TRUNC function
-   * DuckDB uses DATE_TRUNC like PostgreSQL
+   * Build Snowflake time dimension using DATE_TRUNC function
+   * Snowflake supports DATE_TRUNC with quoted granularity like PostgreSQL
    */
   buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL {
     switch (granularity) {
       case 'year':
-        return sql`DATE_TRUNC('year', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('YEAR', ${fieldExpr}::TIMESTAMP)`
       case 'quarter':
-        return sql`DATE_TRUNC('quarter', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('QUARTER', ${fieldExpr}::TIMESTAMP)`
       case 'month':
-        return sql`DATE_TRUNC('month', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('MONTH', ${fieldExpr}::TIMESTAMP)`
       case 'week':
-        return sql`DATE_TRUNC('week', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('WEEK', ${fieldExpr}::TIMESTAMP)`
       case 'day':
-        return sql`DATE_TRUNC('day', ${fieldExpr}::timestamp)::timestamp`
+        return sql`DATE_TRUNC('DAY', ${fieldExpr}::TIMESTAMP)::TIMESTAMP`
       case 'hour':
-        return sql`DATE_TRUNC('hour', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('HOUR', ${fieldExpr}::TIMESTAMP)`
       case 'minute':
-        return sql`DATE_TRUNC('minute', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('MINUTE', ${fieldExpr}::TIMESTAMP)`
       case 'second':
-        return sql`DATE_TRUNC('second', ${fieldExpr}::timestamp)`
+        return sql`DATE_TRUNC('SECOND', ${fieldExpr}::TIMESTAMP)`
       default:
         return fieldExpr as SQL
     }
   }
 
   /**
-   * Build DuckDB string matching conditions using ILIKE (case-insensitive)
-   * DuckDB supports ILIKE like PostgreSQL
+   * Build Snowflake string matching conditions using native ILIKE
+   * Snowflake supports ILIKE natively
    */
   buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
     switch (operator) {
@@ -144,40 +148,40 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
       case 'ilike':
         return sql`${fieldExpr} ILIKE ${value}`
       case 'regex':
-        return sql`regexp_matches(${fieldExpr}, ${value})`
+        return sql`REGEXP_LIKE(${fieldExpr}, ${value})`
       case 'notRegex':
-        return sql`NOT regexp_matches(${fieldExpr}, ${value})`
+        return sql`NOT REGEXP_LIKE(${fieldExpr}, ${value})`
       default:
         throw new Error(`Unsupported string operator: ${operator}`)
     }
   }
 
   /**
-   * Build DuckDB type casting
-   * DuckDB supports both :: syntax and CAST() function
+   * Build Snowflake type casting using :: syntax
+   * Snowflake supports both :: syntax and CAST() function
    */
   castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL {
     switch (targetType) {
       case 'timestamp':
-        return sql`${fieldExpr}::timestamp`
+        return sql`${fieldExpr}::TIMESTAMP`
       case 'decimal':
-        return sql`${fieldExpr}::decimal`
+        return sql`${fieldExpr}::DECIMAL`
       case 'integer':
-        return sql`${fieldExpr}::integer`
+        return sql`${fieldExpr}::INTEGER`
       default:
         throw new Error(`Unsupported cast type: ${targetType}`)
     }
   }
 
   /**
-   * Build DuckDB AVG aggregation with COALESCE for NULL handling
+   * Build Snowflake AVG aggregation with COALESCE for NULL handling
    */
   buildAvg(fieldExpr: AnyColumn | SQL): SQL {
     return sql`COALESCE(AVG(${fieldExpr}), 0)`
   }
 
   /**
-   * Build DuckDB CASE WHEN conditional expression
+   * Build Snowflake CASE WHEN conditional expression
    */
   buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
     const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
@@ -189,37 +193,37 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB boolean literal
-   * DuckDB uses TRUE/FALSE keywords
+   * Build Snowflake boolean literal
+   * Snowflake uses TRUE/FALSE keywords
    */
   buildBooleanLiteral(value: boolean): SQL {
     return value ? sql`TRUE` : sql`FALSE`
   }
 
   /**
-   * Convert filter values - DuckDB uses native types
+   * Convert filter values - Snowflake uses native types
    */
   convertFilterValue(value: any): any {
     return value
   }
 
   /**
-   * Prepare date value for DuckDB
-   * DuckDB accepts Date objects directly
+   * Prepare date value for Snowflake
+   * Snowflake accepts Date objects directly
    */
   prepareDateValue(date: Date): any {
     return date
   }
 
   /**
-   * DuckDB stores timestamps as native timestamp types
+   * Snowflake stores timestamps as native timestamp types
    */
   isTimestampInteger(): boolean {
     return false
   }
 
   /**
-   * DuckDB time dimensions already return proper values
+   * Snowflake time dimensions already return proper values
    */
   convertTimeDimensionResult(value: any): any {
     return value
@@ -230,11 +234,7 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   // ============================================
 
   /**
-   * DuckDB has full support for statistical and window functions
-   * Note: supportsPercentileSubqueries is false because DuckDB's QUANTILE_CONT
-   * doesn't work well in scalar subqueries against CTEs in funnel queries
-   * Note: supportsLateralJoins is false because DuckDB doesn't support non-constant
-   * LIMIT in correlated subqueries, which is required for flow query LATERAL joins
+   * Snowflake capabilities - full SQL support
    */
   getCapabilities(): DatabaseCapabilities {
     return {
@@ -243,16 +243,15 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
       supportsPercentile: true,
       supportsWindowFunctions: true,
       supportsFrameClause: true,
-      supportsLateralJoins: false,
-      supportsPercentileSubqueries: false,
+      supportsLateralJoins: true,
+      supportsPercentileSubqueries: true,
       supportsDerivedTablesInCTE: true,
-      supportsLateralSubqueriesInCTE: false // DuckDB doesn't support LATERAL
+      supportsLateralSubqueriesInCTE: false // Snowflake can't correlate LATERAL subqueries with CTE references
     }
   }
 
   /**
-   * Build DuckDB STDDEV aggregation
-   * Uses STDDEV_POP for population, STDDEV_SAMP for sample
+   * Build Snowflake STDDEV aggregation
    */
   buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
     const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
@@ -260,8 +259,8 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB VARIANCE aggregation
-   * Uses VAR_POP for population, VAR_SAMP for sample
+   * Build Snowflake VARIANCE aggregation
+   * Snowflake supports native VAR_POP/VAR_SAMP
    */
   buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
     const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
@@ -269,17 +268,18 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB PERCENTILE aggregation
-   * DuckDB uses QUANTILE_CONT instead of PERCENTILE_CONT
+   * Build Snowflake PERCENTILE_CONT aggregation
+   * Uses ordered-set aggregate function
    */
   buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL {
-    const pct = percentile / 100
-    return sql`QUANTILE_CONT(${fieldExpr}, ${pct})`
+    // Snowflake requires PERCENTILE_CONT argument to be a constant literal, not a bind variable
+    const pct = (percentile / 100).toString()
+    return sql`PERCENTILE_CONT(${sql.raw(pct)}) WITHIN GROUP (ORDER BY ${fieldExpr})`
   }
 
   /**
-   * Build DuckDB window function expression
-   * DuckDB has full window function support
+   * Build Snowflake window function expression
+   * Snowflake has full window function support
    */
   buildWindowFunction(
     type: WindowFunctionType,

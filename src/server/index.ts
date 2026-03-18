@@ -52,12 +52,14 @@ export {
   createMySQLExecutor,
   createDuckDBExecutor,
   createDatabendExecutor,
+  createSnowflakeExecutor,
   BaseDatabaseExecutor,
   PostgresExecutor,
   SQLiteExecutor,
   MySQLExecutor,
   DuckDBExecutor,
-  DatabendExecutor
+  DatabendExecutor,
+  SnowflakeExecutor
 } from './executors'
 
 // Export cube utilities

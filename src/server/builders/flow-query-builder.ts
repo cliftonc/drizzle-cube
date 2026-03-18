@@ -83,7 +83,10 @@ export class FlowQueryBuilder {
     const errors: string[] = []
     const warnings: string[] = []
     const engine = this.databaseAdapter.getEngineType()
-    const supportsLateral = this.databaseAdapter.supportsLateralJoins()
+    const capabilities = this.databaseAdapter.getCapabilities()
+    // Flow queries use LATERAL joins inside CTEs referencing other CTEs,
+    // which requires supportsLateralSubqueriesInCTE (not just supportsLateralJoins)
+    const supportsLateral = capabilities.supportsLateralSubqueriesInCTE
 
     if (engine === 'sqlite') {
       errors.push(
@@ -227,13 +230,16 @@ export class FlowQueryBuilder {
         'Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.'
       )
     }
-    const supportsLateral = this.databaseAdapter.supportsLateralJoins()
+    const capabilities = this.databaseAdapter.getCapabilities()
+    // Flow CTEs use correlated LATERAL subqueries that reference other CTEs,
+    // so we need the stricter supportsLateralSubqueriesInCTE capability
+    const supportsLateral = capabilities.supportsLateralSubqueriesInCTE
     const joinStrategy = config.joinStrategy ?? 'auto'
     const useLateral =
       joinStrategy === 'lateral' || (joinStrategy === 'auto' && supportsLateral)
 
     if (joinStrategy === 'lateral' && !supportsLateral) {
-      throw new Error('Lateral joins are not supported on this database')
+      throw new Error('Lateral joins with CTE references are not supported on this database')
     }
 
     // Normalize config for execution

@@ -282,7 +282,8 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
       supportsFrameClause: true,
       supportsLateralJoins: true, // MySQL 8.0.14+
       supportsPercentileSubqueries: false, // No percentile support anyway
-      supportsDerivedTablesInCTE: true
+      supportsDerivedTablesInCTE: true,
+      supportsLateralSubqueriesInCTE: true
     }
   }
 

@@ -104,6 +104,7 @@
     "test:coverage:sqlite": "TEST_DB_TYPE=sqlite COVERAGE_DIR=./coverage/sqlite vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:duckdb": "TEST_DB_TYPE=duckdb COVERAGE_DIR=./coverage/duckdb vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:databend": "TEST_DB_TYPE=databend COVERAGE_DIR=./coverage/databend vitest run --coverage --config vitest.config.server.ts",
+    "test:coverage:snowflake": "TEST_DB_TYPE=snowflake COVERAGE_DIR=./coverage/snowflake vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:all": "npm run test:coverage:postgres && npm run test:coverage:mysql && npm run test:coverage:sqlite && npm run test:coverage:duckdb && npm run test:coverage:databend && npm run coverage:index",
     "test:coverage:complete": "npm run test:coverage:all && npm run test:client:coverage && npm run coverage:index",
     "test:client": "vitest run --config vitest.config.client.ts",
@@ -121,6 +122,7 @@
     "test:sqlite": "TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
     "test:duckdb": "TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",
     "test:databend": "TEST_DB_TYPE=databend vitest run --config vitest.config.server.ts",
+    "test:snowflake": "TEST_DB_TYPE=snowflake vitest run --config vitest.config.server.ts",
     "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts && TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts && TEST_DB_TYPE=databend vitest run --config vitest.config.server.ts",
     "test:setup": "docker-compose up -d",
     "test:teardown": "docker-compose down",
@@ -237,6 +239,12 @@
     "drizzle-databend": {
       "optional": true
     },
+    "snowflake-sdk": {
+      "optional": true
+    },
+    "drizzle-snowflake": {
+      "optional": true
+    },
     "@anthropic-ai/sdk": {
       "optional": true
     },
@@ -300,6 +308,7 @@
     "drizzle-databend": "^0.1.12",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
+    "drizzle-snowflake": "^0.1.12",
     "elkjs": "^0.11.1",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -323,6 +332,7 @@
     "react-resizable": "^3.0.5",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^7.0.0",
+    "snowflake-sdk": "^2.3.4",
     "sql-formatter": "^15.6.6",
     "supertest": "^7.0.0",
     "tailwindcss": "^4.1.12",

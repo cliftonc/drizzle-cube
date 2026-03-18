@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createTestDatabaseExecutor, skipIfDuckDB, skipIfDatabend } from './helpers/test-database'
+import { createTestDatabaseExecutor, skipIfDuckDB, skipIfDatabend, skipIfSnowflake } from './helpers/test-database'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type { Cube } from '../src/server/types'
@@ -25,7 +25,7 @@ import { getTestCubes } from './helpers/test-cubes'
 // Databend: Skip entire concurrency test suite.
 // Databend's remote query handling has similar concurrency limitations.
 // For concurrent workloads, use PostgreSQL or MySQL.
-describe.skipIf(skipIfDuckDB() || skipIfDatabend())('Concurrency Tests', () => {
+describe.skipIf(skipIfDuckDB() || skipIfDatabend() || skipIfSnowflake())('Concurrency Tests', () => {
   let testExecutor: TestExecutor
   let cubes: Map<string, Cube>
   let close: () => void

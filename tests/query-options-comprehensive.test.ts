@@ -7,7 +7,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   createTestDatabaseExecutor,
   skipIfDuckDB,
-  skipIfDatabend
+  skipIfDatabend,
+  skipIfSnowflake
 } from './helpers/test-database'
 
 import { testSecurityContexts } from './helpers/enhanced-test-data'
@@ -500,7 +501,8 @@ describe('Comprehensive Query Options', () => {
 
     // DuckDB: Number.MAX_SAFE_INTEGER causes integer overflow in LIMIT/OFFSET
     // Databend: Number.MAX_SAFE_INTEGER causes integer overflow in LIMIT/OFFSET
-    it.skipIf(skipIfDuckDB() || skipIfDatabend())('should handle very large limit and offset values', async () => {
+    // Snowflake: Number.MAX_SAFE_INTEGER causes integer overflow in LIMIT/OFFSET
+    it.skipIf(skipIfDuckDB() || skipIfDatabend() || skipIfSnowflake())('should handle very large limit and offset values', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count'])
         .limit(Number.MAX_SAFE_INTEGER)

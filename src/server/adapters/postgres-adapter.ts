@@ -258,7 +258,8 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
       supportsFrameClause: true,
       supportsLateralJoins: true,
       supportsPercentileSubqueries: true,
-      supportsDerivedTablesInCTE: true
+      supportsDerivedTablesInCTE: true,
+      supportsLateralSubqueriesInCTE: true
     }
   }
 

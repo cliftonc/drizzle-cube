@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createTestDatabaseExecutor, skipIfDatabend } from './helpers/test-database'
+import { createTestDatabaseExecutor, skipIfDatabend, skipIfSnowflake } from './helpers/test-database'
 import { TestQueryBuilder, TestExecutor, PerformanceMeasurer } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
 import { testSecurityContexts } from './helpers/enhanced-test-data'
@@ -34,7 +34,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       performanceMeasurer = new PerformanceMeasurer() // Fresh measurer for each test
     })
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should complete complex productivity aggregations within performance threshold', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should complete complex productivity aggregations within performance threshold', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.avgLinesOfCode'])
         .dimensions(['Productivity.employeeId'])
@@ -60,7 +60,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle multiple complex measures efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle multiple complex measures efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Productivity.totalLinesOfCode',
@@ -98,7 +98,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should perform aggregations with time dimensions efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should perform aggregations with time dimensions efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.recordCount'])
         .timeDimensions([{
@@ -133,7 +133,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       performanceMeasurer = new PerformanceMeasurer() // Fresh measurer for each test
     })
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle multi-cube aggregations within performance threshold', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle multi-cube aggregations within performance threshold', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Employees.count',
@@ -171,7 +171,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle complex multi-cube queries with joins efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle complex multi-cube queries with joins efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Employees.count',
@@ -211,7 +211,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle multi-cube queries with filters efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle multi-cube queries with filters efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Employees.count',
@@ -262,7 +262,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       performanceMeasurer = new PerformanceMeasurer() // Fresh measurer for each test
     })
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle multiple dimensions grouping efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle multiple dimensions grouping efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Productivity.avgLinesOfCode',
@@ -296,7 +296,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle time dimension grouping with measures efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle time dimension grouping with measures efficiently', async () => {
       const query = TestQueryBuilder.create()
         .measures([
           'Productivity.totalLinesOfCode',
@@ -339,7 +339,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle large time range queries efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle large time range queries efficiently', async () => {
       // Query all productivity data for the entire year by day (365+ rows expected)
       const query = TestQueryBuilder.create()
         .measures(['Productivity.totalLinesOfCode', 'Productivity.avgPullRequests'])
@@ -369,7 +369,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle TimeEntries fan-out scenarios with large datasets efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle TimeEntries fan-out scenarios with large datasets efficiently', async () => {
       // Query that tests fan-out with TimeEntries (multiple entries per employee per day)
       const query = TestQueryBuilder.create()
         .measures([
@@ -423,7 +423,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should handle detailed employee productivity analysis efficiently', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should handle detailed employee productivity analysis efficiently', async () => {
       // Detailed analysis: productivity metrics per employee per month
       const query = TestQueryBuilder.create()
         .measures([
@@ -483,7 +483,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       performanceMeasurer = new PerformanceMeasurer() // Fresh measurer for each test
     })
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should measure and report query performance characteristics', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should measure and report query performance characteristics', async () => {
       const queries = [
         {
           name: 'Simple count',
@@ -567,7 +567,7 @@ describe('Performance-Focused Aggregation Testing', () => {
     })
 
     // Databend: remote query latency exceeds local performance thresholds
-    it.skipIf(skipIfDatabend())('should maintain consistent performance across repeated executions', async () => {
+    it.skipIf(skipIfDatabend() || skipIfSnowflake())('should maintain consistent performance across repeated executions', async () => {
       const query = TestQueryBuilder.create()
         .measures(['Employees.count', 'Employees.avgSalary'])
         .dimensions(['Departments.name'])
