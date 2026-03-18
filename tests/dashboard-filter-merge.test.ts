@@ -67,7 +67,7 @@ describe('Dashboard Filter Merging with Cross-Cube Filters', () => {
 
     // This should NOT throw an error
     // The QueryPlanner should detect Employees.name in filters and auto-include Employees cube
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
 
     // Verify the query executed successfully
     expect(result).toBeDefined()
@@ -94,7 +94,7 @@ describe('Dashboard Filter Merging with Cross-Cube Filters', () => {
       ]
     }
 
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
 
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()
@@ -123,7 +123,7 @@ describe('Dashboard Filter Merging with Cross-Cube Filters', () => {
       ]
     }
 
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
 
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()
@@ -160,7 +160,7 @@ describe('Dashboard Filter Merging with Cross-Cube Filters', () => {
       ]
     }
 
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
 
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()
@@ -203,7 +203,7 @@ describe('Dashboard Filter Merging with Cross-Cube Filters', () => {
       ]
     }
 
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
 
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()

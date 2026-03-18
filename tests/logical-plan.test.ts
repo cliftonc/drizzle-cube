@@ -39,7 +39,8 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
 
   beforeAll(async () => {
     const testCubes = await createTestCubesForCurrentDatabase()
-    dbExecutor = await createTestDatabaseExecutor()
+    const { executor: rawExecutor } = await createTestDatabaseExecutor()
+    dbExecutor = rawExecutor
 
     cubes = new Map<string, Cube>()
     cubes.set('Employees', testCubes.testEmployeesCube)
@@ -51,8 +52,8 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
 
     securityContext = { organisationId: 1 }
     ctx = {
-      db: dbExecutor.db,
-      schema: dbExecutor.schema,
+      db: (dbExecutor as any).db,
+      schema: (dbExecutor as any).schema,
       securityContext
     }
   })
@@ -198,7 +199,7 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
 
       const plan = logicalPlanBuilder.plan(cubes, query, ctx)
       const optimiser = new IdentityOptimiser()
-      const optimised = optimiser.optimise(plan, { engineType: 'postgres' })
+      const optimised = optimiser.optimise(plan)
 
       // Should be the exact same reference
       expect(optimised).toBe(plan)

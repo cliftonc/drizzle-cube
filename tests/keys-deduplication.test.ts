@@ -50,7 +50,7 @@ describe(`Keys Deduplication (${dbType})`, () => {
     )
     expect(strategyStep?.details?.strategy).toBe('keysDeduplication')
 
-    const dryRun = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+    const dryRun = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
     expect(dryRun.analysis?.querySummary?.measureStrategy).toBe('keysDeduplication')
   })
 
@@ -291,7 +291,7 @@ describe(`Keys Deduplication (${dbType})`, () => {
       filters: [{ member: 'Employees.id', operator: 'gt', values: [0] }]
     }
 
-    const dryRun = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+    const dryRun = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
     // dryRun.sql.sql is an array (parameterized format); extract the SQL string
     const generatedSql = Array.isArray(dryRun.sql?.sql)
       ? dryRun.sql.sql[0]
@@ -308,7 +308,7 @@ describe(`Keys Deduplication (${dbType})`, () => {
       filters: [{ member: 'Employees.id', operator: 'gt', values: [0] }]
     }
 
-    const dryRun = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+    const dryRun = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
     const generatedSql = Array.isArray(dryRun.sql?.sql)
       ? dryRun.sql.sql[0]
       : (dryRun.sql?.sql ?? '')

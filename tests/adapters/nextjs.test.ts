@@ -63,11 +63,11 @@ function createMockNextRequest(method: string, body?: any, searchParams?: Record
   })
 
   const nextRequest = request as any as NextRequest
-  nextRequest.nextUrl = {
+  ;(nextRequest as any).nextUrl = {
     ...mockNextUrl,
     searchParams: new URLSearchParams(searchParams || {})
   }
-  nextRequest.json = async () => body || {}
+  ;(nextRequest as any).json = async () => body || {}
 
   return nextRequest
 }
@@ -76,7 +76,7 @@ describe('Next.js Adapter', () => {
   let semanticLayer: any
   let drizzleDb: any
   let closeFn: (() => void) | null = null
-  let adapterOptions: NextAdapterOptions<any>
+  let adapterOptions: NextAdapterOptions
   let currentSchema: any
 
   beforeAll(async () => {
@@ -162,7 +162,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('queryType', 'regularQuery')
       expect(data).toHaveProperty('results')
       expect(Array.isArray(data.results)).toBe(true)
@@ -182,7 +182,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('queryType', 'regularQuery')
     })
 
@@ -200,7 +200,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('queryType', 'regularQuery')
     })
 
@@ -211,7 +211,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Query parameter is required')
     })
 
@@ -224,7 +224,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Invalid JSON in query parameter')
     })
 
@@ -235,7 +235,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(405)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Method not allowed')
     })
 
@@ -263,7 +263,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('cubes')
       expect(Array.isArray(data.cubes)).toBe(true)
     })
@@ -290,7 +290,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('sql')
       expect(data).toHaveProperty('query')
       expect(typeof data.sql).toBe('string')
@@ -310,7 +310,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('sql')
       expect(typeof data.sql).toBe('string')
     })
@@ -324,7 +324,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.error).toContain('Query validation failed')
     })
 
@@ -335,7 +335,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(405)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Method not allowed')
     })
   })
@@ -353,7 +353,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('valid', true)
       expect(data).toHaveProperty('queryType', 'regularQuery')
       expect(data).toHaveProperty('sql')
@@ -373,7 +373,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(200)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('valid', true)
     })
 
@@ -388,7 +388,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('valid', false)
       expect(data).toHaveProperty('error')
     })
@@ -400,7 +400,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Query parameter is required')
       expect(data).toHaveProperty('valid', false)
     })
@@ -470,7 +470,7 @@ describe('Next.js Adapter', () => {
     it('should pass security context to semantic layer', async () => {
       let capturedContext: any = null
       
-      const customOptions: NextAdapterOptions<typeof currentSchema> = {
+      const customOptions: NextAdapterOptions = {
         ...adapterOptions,
         extractSecurityContext: async () => {
           capturedContext = { organisationId: 1 }
@@ -493,9 +493,9 @@ describe('Next.js Adapter', () => {
     it('should pass route context to extractSecurityContext', async () => {
       let capturedRouteContext: any = null
       
-      const customOptions: NextAdapterOptions<typeof currentSchema> = {
+      const customOptions: NextAdapterOptions = {
         ...adapterOptions,
-        extractSecurityContext: async (request, context) => {
+        extractSecurityContext: async (request: any, context: any) => {
           capturedRouteContext = context
           return { organisationId: 1 }
         }
@@ -516,7 +516,7 @@ describe('Next.js Adapter', () => {
 
   describe('Error Handling', () => {
     it('should handle semantic layer errors gracefully', async () => {
-      const errorOptions: NextAdapterOptions<typeof currentSchema> = {
+      const errorOptions: NextAdapterOptions = {
         ...adapterOptions,
         extractSecurityContext: async () => {
           throw new Error('Authentication failed')
@@ -533,7 +533,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(500)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error', 'Authentication failed')
     })
 
@@ -548,7 +548,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.status).toBe(400)
       
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data).toHaveProperty('error')
       expect(data.error).toContain('Query validation failed')
     })
@@ -556,7 +556,7 @@ describe('Next.js Adapter', () => {
 
   describe('Runtime Configuration', () => {
     it('should accept runtime configuration', () => {
-      const edgeOptions: NextAdapterOptions<typeof currentSchema> = {
+      const edgeOptions: NextAdapterOptions = {
         ...adapterOptions,
         runtime: 'edge'
       }
@@ -598,7 +598,7 @@ describe('Next.js Adapter', () => {
 
       expect(response.status).toBe(200)
 
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.results).toBeDefined()
       expect(Array.isArray(data.results)).toBe(true)
       expect(data.results.length).toBe(2)
@@ -620,7 +620,7 @@ describe('Next.js Adapter', () => {
 
       expect(response.status).toBe(200)
 
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.results).toBeDefined()
       expect(data.results.length).toBe(2)
       expect(data.results[0].success).toBe(true)
@@ -635,7 +635,7 @@ describe('Next.js Adapter', () => {
 
       expect(response.status).toBe(405)
 
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.error).toContain('Method not allowed')
     })
 
@@ -646,7 +646,7 @@ describe('Next.js Adapter', () => {
 
       expect(response.status).toBe(400)
 
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.error).toContain('queries')
     })
 
@@ -657,7 +657,7 @@ describe('Next.js Adapter', () => {
 
       expect(response.status).toBe(400)
 
-      const data = await response.json()
+      const data = await response.json() as any
       expect(data.error).toContain('empty')
     })
   })

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { createTestDatabaseExecutor, skipIfDatabend, skipIfSnowflake } from './helpers/test-database'
 import { TestQueryBuilder, TestExecutor, PerformanceMeasurer } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'

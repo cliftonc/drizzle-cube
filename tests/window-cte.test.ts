@@ -127,7 +127,7 @@ describe('Post-Aggregation Window Function Utilities', () => {
 
       const mockCube: Cube = {
         name: 'Analytics',
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: productivity,
           where: eq(productivity.organisationId, ctx.securityContext.organisationId)
         }),
@@ -180,7 +180,7 @@ describe('Post-Aggregation Window Function Utilities', () => {
 
       const cubeWithPostAgg: Cube = {
         name: 'Analytics',
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: productivity,
           where: eq(productivity.organisationId, ctx.securityContext.organisationId)
         }),
@@ -224,7 +224,7 @@ describe('Post-Aggregation Window Functions Query Execution', () => {
     // Create a cube with post-aggregation window functions
     const analyticsCube = defineCube('Analytics', {
       title: 'Analytics with Post-Aggregation Windows',
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: productivity,
         where: eq(productivity.organisationId, ctx.securityContext.organisationId)
       }),
@@ -519,7 +519,7 @@ describe('Post-Aggregation Window Functions with HasMany (CTE)', () => {
     // Create a Productivity cube with post-aggregation window functions
     productivityCube = defineCube('Productivity', {
       title: 'Productivity with Windows',
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: productivity,
         where: eq(productivity.organisationId, ctx.securityContext.organisationId)
       }),
@@ -591,7 +591,7 @@ describe('Post-Aggregation Window Functions with HasMany (CTE)', () => {
     // Create an Employees cube with hasMany relationship to Productivity
     employeesCube = defineCube('Employees', {
       title: 'Employees',
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: employees,
         where: eq(employees.organisationId, ctx.securityContext.organisationId)
       }),

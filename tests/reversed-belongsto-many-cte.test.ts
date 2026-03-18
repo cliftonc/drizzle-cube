@@ -42,14 +42,14 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
     const { productivity, teams, employeeTeams } = await getTestSchema()
 
     // Declare cube variables for forward references
-    let revTeamsCube: Cube<any>
-    let revTeamMembersCube: Cube<any>
-    let revProductivityCube: Cube<any>
+    let revTeamsCube: Cube
+    let revTeamMembersCube: Cube
+    let revProductivityCube: Cube
 
     // Primary cube: Teams with belongsToMany → Productivity (the REVERSED direction)
     // Also has hasMany → TeamMembers which triggers fanOutPrevention for Productivity
     revTeamsCube = defineCube('RevTeams', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: teams,
         where: eq(teams.organisationId, ctx.securityContext.organisationId)
       }),
@@ -82,6 +82,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: teams.id
         }
@@ -89,6 +90,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
 
       dimensions: {
         name: {
+          name: 'name',
           type: 'string',
           sql: teams.name
         }
@@ -98,7 +100,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
     // TeamMembers cube wrapping employeeTeams junction table
     // belongsTo → RevTeams triggers hasMany detection from the other side
     revTeamMembersCube = defineCube('RevTeamMembers', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: employeeTeams,
         where: eq(employeeTeams.organisationId, ctx.securityContext.organisationId)
       }),
@@ -115,6 +117,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: employeeTeams.id
         }
@@ -122,6 +125,7 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
 
       dimensions: {
         role: {
+          name: 'role',
           type: 'string',
           sql: employeeTeams.role
         }
@@ -131,17 +135,19 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
     // Productivity cube: becomes CTE via fanOutPrevention
     // (RevTeams hasMany → RevTeamMembers causes fan-out risk for this cube's measures)
     revProductivityCube = defineCube('RevProductivity', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: productivity,
         where: eq(productivity.organisationId, ctx.securityContext.organisationId)
       }),
 
       measures: {
         totalLinesOfCode: {
+          name: 'totalLinesOfCode',
           type: 'sum',
           sql: productivity.linesOfCode
         },
         recordCount: {
+          name: 'recordCount',
           type: 'count',
           sql: productivity.id
         }
@@ -149,17 +155,19 @@ describe('reversed belongsToMany + CTE join key resolution', () => {
 
       dimensions: {
         employeeId: {
+          name: 'employeeId',
           type: 'number',
           sql: productivity.employeeId
         },
         date: {
+          name: 'date',
           type: 'time',
           sql: productivity.date
         }
       }
     })
 
-    const cubes = new Map<string, Cube<any>>([
+    const cubes = new Map<string, Cube>([
       ['RevTeams', revTeamsCube],
       ['RevTeamMembers', revTeamMembersCube],
       ['RevProductivity', revProductivityCube]

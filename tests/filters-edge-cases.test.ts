@@ -64,7 +64,7 @@ describe('Filter Edge Cases', () => {
       } catch (error) {
         // If 'in' operator not implemented, should get meaningful error
         expect(error).toBeInstanceOf(Error)
-        expect(error.message).toMatch(/operator|in|not supported|invalid/i)
+        expect((error as any).message).toMatch(/operator|in|not supported|invalid/i)
       }
     })
 
@@ -215,9 +215,9 @@ describe('Filter Edge Cases', () => {
           expect(error).toBeInstanceOf(Error)
           // The key test: if the error message contains the SQL injection attempt as a parameter value,
           // it means the system is treating it as data, not executing it as SQL (which is correct)
-          if (error.message.includes('params:')) {
+          if ((error as any).message.includes('params:')) {
             // Good: SQL injection attempt is being treated as parameter data, not executed
-            expect(error.message).toMatch(/params:.*\d+.*,.*[^;]+/)
+            expect((error as any).message).toMatch(/params:.*\d+.*,.*[^;]+/)
           }
         }
       }
@@ -390,7 +390,7 @@ describe('Filter Edge Cases', () => {
           // Type validation errors are acceptable
           expect(error).toBeInstanceOf(Error)
           // Error message should not contain actual SQL injection commands being executed
-          expect(error.message).not.toMatch(/DROP\s+TABLE|INSERT\s+INTO|DELETE\s+FROM/i)
+          expect((error as any).message).not.toMatch(/DROP\s+TABLE|INSERT\s+INTO|DELETE\s+FROM/i)
         }
       }
     })
@@ -470,7 +470,7 @@ describe('Filter Edge Cases', () => {
         } catch (error) {
           // If error is thrown, it should be a validation error, not a crash
           expect(error).toBeInstanceOf(Error)
-          expect(error.message).toMatch(/date|invalid|format/i)
+          expect((error as any).message).toMatch(/date|invalid|format/i)
         }
       }
     })
@@ -543,7 +543,7 @@ describe('Filter Edge Cases', () => {
         expect(result.data).toBeDefined()
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
-        expect(error.message).toMatch(/operator|unsupported|invalid/i)
+        expect((error as any).message).toMatch(/operator|unsupported|invalid/i)
       }
     })
 

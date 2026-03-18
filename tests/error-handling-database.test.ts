@@ -47,7 +47,7 @@ describe('Database Error Handling', () => {
     it('should surface actual database error messages for invalid column references', async () => {
       // Create a cube that references a non-existent column
       const badColumnCube = defineCube('BadColumnCube', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: tables.employees,
           where: eq(tables.employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -98,7 +98,7 @@ describe('Database Error Handling', () => {
       // Create a cube similar to the user's DiscoveryFlow cube
       // Using type: 'number' with a raw SQL aggregate
       const numberTypeCube = defineCube('NumberTypeCube', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: tables.employees,
           where: eq(tables.employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -133,7 +133,7 @@ describe('Database Error Handling', () => {
       }
 
       // Execute the query - it should succeed (not throw GROUP BY error)
-      const result = await executor.execute(cubes, query, securityContext)
+      const result = await executor.execute(cubes, query as any, securityContext)
 
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
@@ -148,7 +148,7 @@ describe('Database Error Handling', () => {
     it('should work with multiple type: number measures using raw SQL aggregations', async () => {
       // Create a cube with multiple number-type measures
       const multiMeasureCube = defineCube('MultiMeasureCube', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: tables.employees,
           where: eq(tables.employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -193,7 +193,7 @@ describe('Database Error Handling', () => {
       }
 
       // Execute - should succeed with GROUP BY
-      const result = await executor.execute(cubes, query, securityContext)
+      const result = await executor.execute(cubes, query as any, securityContext)
 
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)

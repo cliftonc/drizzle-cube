@@ -38,58 +38,71 @@ function createTestCube(): Cube {
     }),
     measures: {
       count: {
+        name: 'count',
         type: 'count',
         sql: () => mockTable.id
       },
       totalSalary: {
+        name: 'totalSalary',
         type: 'sum',
         sql: () => mockTable.salary
       },
       avgSalary: {
+        name: 'avgSalary',
         type: 'avg',
         sql: () => mockTable.salary
       },
       minSalary: {
+        name: 'minSalary',
         type: 'min',
         sql: () => mockTable.salary
       },
       maxSalary: {
+        name: 'maxSalary',
         type: 'max',
         sql: () => mockTable.salary
       },
       activeCount: {
+        name: 'activeCount',
         type: 'count',
         sql: () => mockTable.id,
-        filters: [{ member: 'TestCube.isActive', operator: 'equals', values: [true] }]
+        filters: [{ member: 'TestCube.isActive', operator: 'equals', values: [true] } as any]
       },
       avgSalaryPerEmployee: {
+        name: 'avgSalaryPerEmployee',
         type: 'calculated',
         calculatedSql: '{totalSalary} / NULLIF({count}, 0)'
       },
       salaryRatio: {
+        name: 'salaryRatio',
         type: 'calculated',
         calculatedSql: '1.0 * {avgSalary} / NULLIF({maxSalary}, 0)'
       }
     },
     dimensions: {
       id: {
+        name: 'id',
         type: 'number',
         sql: () => mockTable.id,
         primaryKey: true
       },
       name: {
+        name: 'name',
         type: 'string',
         sql: () => mockTable.name
       },
       createdAt: {
+        name: 'createdAt',
         type: 'time',
         sql: () => mockTable.createdAt
       },
       isActive: {
+        name: 'isActive',
         type: 'boolean',
         sql: () => mockTable.isActive
       },
       salary: {
+        name: 'salary',
         type: 'number',
         sql: () => mockTable.salary
       }

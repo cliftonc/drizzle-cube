@@ -96,7 +96,8 @@ describe('AI Validation - Flow Queries', () => {
         timeDimension: 'PREvents.timestamp',
         eventDimension: 'PREvents.eventType',
         stepsBefore: 2,
-        stepsAfter: 2
+        stepsAfter: 2,
+        startingStep: { name: 'Start' }
       }
     }
 
@@ -124,7 +125,7 @@ describe('AI Validation - Flow Queries', () => {
         bindingKey: 'PREvents.prNumber',
         timeDimension: 'PREvents.timestamp',
         eventDimension: 'PREvents.eventType'
-      }
+      } as any
     }
 
     const result = validateQuery(query, mockMetadata)
@@ -140,7 +141,7 @@ describe('AI Validation - Retention Queries', () => {
         timeDimension: 'PREvents.timestamp',
         granularity: 'week',
         periods: 8
-      }
+      } as any
     }
 
     const result = validateQuery(query, mockMetadata)
@@ -165,7 +166,7 @@ describe('AI Validation - Retention Queries', () => {
       retention: {
         bindingKey: 'PREvents.prNumber',
         timeDimension: 'PREvents.timestamp'
-      }
+      } as any
     }
 
     const result = validateQuery(query, mockMetadata)

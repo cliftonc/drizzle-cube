@@ -152,7 +152,7 @@ export async function setupPostgresTestData(db: ReturnType<typeof drizzle>) {
     }
   ]
   
-  await db.insert(analyticsPages).values(analyticsData)
+  await db.insert(analyticsPages).values(analyticsData as any)
 
   // Insert star schema test data
   console.log('Inserting star schema test data...')

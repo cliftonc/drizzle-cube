@@ -14,7 +14,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -197,7 +197,7 @@ describe('Comprehensive Query Options', () => {
         const current = result.data[i]['Employees.name']
         
         if (prev && current) {
-          expect(prev.localeCompare(current)).toBeLessThanOrEqual(0)
+          expect((prev as any).localeCompare(current)).toBeLessThanOrEqual(0)
         }
       }
     })
@@ -219,7 +219,7 @@ describe('Comprehensive Query Options', () => {
         const current = result.data[i]['Employees.salary']
         
         if (prev !== null && current !== null) {
-          expect(prev).toBeGreaterThanOrEqual(current)
+          expect(prev as number).toBeGreaterThanOrEqual(current as number)
         }
       }
     })
@@ -241,7 +241,7 @@ describe('Comprehensive Query Options', () => {
 
       // Validate primary sort (department)
       let lastDept: number | null = null
-      for (const row of result.data) {
+      for (const row of result.data as any[]) {
         const currentDept = row['Employees.departmentId']
         if (lastDept !== null && currentDept !== null) {
           expect(lastDept).toBeLessThanOrEqual(currentDept)
@@ -269,11 +269,11 @@ describe('Comprehensive Query Options', () => {
         // Handle null values in ordering - null should be considered smaller than any number
         if (prev === null && current === null) continue
         if (prev === null) {
-          expect(current).toBeGreaterThanOrEqual(0) // null < number
+          expect(current as number).toBeGreaterThanOrEqual(0) // null < number
         } else if (current === null) {
-          expect(prev).toBeGreaterThanOrEqual(0) // number > null 
+          expect(prev as number).toBeGreaterThanOrEqual(0) // number > null
         } else {
-          expect(prev).toBeGreaterThanOrEqual(current)
+          expect(prev as number).toBeGreaterThanOrEqual(current as number)
         }
       }
     })
@@ -297,7 +297,7 @@ describe('Comprehensive Query Options', () => {
       // Validate ascending time order
       let lastDate: Date | null = null
       for (const row of result.data) {
-        const currentDate = new Date(row['Productivity.date'])
+        const currentDate = new Date(row['Productivity.date'] as any)
         if (lastDate) {
           expect(currentDate.getTime()).toBeGreaterThanOrEqual(lastDate.getTime())
         }
@@ -346,7 +346,7 @@ describe('Comprehensive Query Options', () => {
       let currentDept: string | null = null
       let lastLinesOfCode: number | null = null
 
-      for (const row of result.data) {
+      for (const row of result.data as any[]) {
         const dept = row['Employees.departmentId']
         const linesOfCode = row['Productivity.totalLinesOfCode']
 
@@ -383,7 +383,7 @@ describe('Comprehensive Query Options', () => {
       for (let i = 1; i < result.data.length; i++) {
         const prev = result.data[i - 1]['Productivity.avgHappinessIndex']
         const current = result.data[i]['Productivity.avgHappinessIndex']
-        expect(prev).toBeGreaterThanOrEqual(current)
+        expect(prev as number).toBeGreaterThanOrEqual(current as number)
       }
     })
 
@@ -434,7 +434,7 @@ describe('Comprehensive Query Options', () => {
       // Validate descending time order
       let lastDate: Date | null = null
       for (const row of result.data) {
-        const currentDate = new Date(row['Productivity.date'])
+        const currentDate = new Date(row['Productivity.date'] as any)
         if (lastDate) {
           expect(lastDate.getTime()).toBeGreaterThanOrEqual(currentDate.getTime())
         }
@@ -466,11 +466,11 @@ describe('Comprehensive Query Options', () => {
         // Handle null values in ordering - null should be considered smaller than any number
         if (prevSalary === null && currentSalary === null) continue
         if (prevSalary === null) {
-          expect(currentSalary).toBeGreaterThanOrEqual(0) // null < number
+          expect(currentSalary as number).toBeGreaterThanOrEqual(0) // null < number
         } else if (currentSalary === null) {
-          expect(prevSalary).toBeGreaterThanOrEqual(0) // number > null 
+          expect(prevSalary as number).toBeGreaterThanOrEqual(0) // number > null
         } else {
-          expect(prevSalary).toBeGreaterThanOrEqual(currentSalary)
+          expect(prevSalary as number).toBeGreaterThanOrEqual(currentSalary as number)
         }
       }
     })
@@ -523,7 +523,7 @@ describe('Comprehensive Query Options', () => {
 
       // Should throw an error for non-existent field
       await expect(async () => {
-        await testExecutor.executeQuery(query)
+        await testExecutor.executeQuery(query as any)
       }).rejects.toThrow()
     })
 
@@ -553,8 +553,8 @@ describe('Comprehensive Query Options', () => {
 
       // Check if ordering is case-sensitive or case-insensitive
       const names = result.data.map(row => row['Employees.name']).filter(name => name)
-      const hasLowerCase = names.some(name => name !== name.toUpperCase())
-      const hasUpperCase = names.some(name => name !== name.toLowerCase())
+      const hasLowerCase = names.some(name => (name as string) !== (name as string).toUpperCase())
+      const hasUpperCase = names.some(name => (name as string) !== (name as string).toLowerCase())
 
       if (hasLowerCase && hasUpperCase) {
         console.log('Ordering handles mixed case names')
@@ -674,7 +674,7 @@ describe('Comprehensive Query Options', () => {
       for (let i = 1; i < result.data.length; i++) {
         const prev = result.data[i - 1]['Productivity.totalLinesOfCode']
         const current = result.data[i]['Productivity.totalLinesOfCode']
-        expect(prev).toBeGreaterThanOrEqual(current)
+        expect(prev as number).toBeGreaterThanOrEqual(current as number)
       }
     })
   })

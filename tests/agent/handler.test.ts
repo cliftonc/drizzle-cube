@@ -18,7 +18,7 @@ vi.mock('@anthropic-ai/sdk', () => {
         // no-op
       }
       messages = {
-        create: (...args: unknown[]) => mockMessagesCreate(...args),
+        create: (...args: unknown[]) => (mockMessagesCreate as any)(...args),
       }
     },
   }

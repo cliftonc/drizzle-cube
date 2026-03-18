@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "jsx": "preserve",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "tests/client/**/*.ts",
+    "tests/client/**/*.tsx",
+    "tests/client-setup/**/*.ts",
+    "tests/client-setup/**/*.tsx"
+  ]
+}

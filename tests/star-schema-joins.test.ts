@@ -470,7 +470,7 @@ async function createStarSchemaCubes(): Promise<Map<string, Cube>> {
     title: 'Products',
     description: 'Product catalog dimension',
 
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: products,
       where: eq(products.organisationId, ctx.securityContext.organisationId)
     }),
@@ -537,7 +537,7 @@ async function createStarSchemaCubes(): Promise<Map<string, Cube>> {
     title: 'Sales',
     description: 'Sales transactions fact table',
 
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: sales,
       where: eq(sales.organisationId, ctx.securityContext.organisationId)
     }),
@@ -613,7 +613,7 @@ async function createStarSchemaCubes(): Promise<Map<string, Cube>> {
     title: 'Inventory',
     description: 'Inventory levels fact table',
 
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: inventory,
       where: eq(inventory.organisationId, ctx.securityContext.organisationId)
     }),

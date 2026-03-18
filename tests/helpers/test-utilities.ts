@@ -33,12 +33,15 @@ export class TestQueryBuilder {
     dimension: string
     granularity?: TimeGranularity
     dateRange?: string | string[]
+    fillMissingDates?: boolean
+    compareDateRange?: (string | [string, string])[]
+    [key: string]: any
   }>): TestQueryBuilder {
     this.query.timeDimensions = timeDims
     return this
   }
 
-  filters(filters: Array<{ member: string; operator: FilterOperator; values: any[] }>): TestQueryBuilder {
+  filters(filters: any[]): TestQueryBuilder {
     this.query.filters = filters
     return this
   }
@@ -136,7 +139,7 @@ export class PerformanceMeasurer {
     avgDuration: number
     minDuration: number
     maxDuration: number
-    measurements: typeof this.measurements
+    measurements: Array<{ name: string; duration: number; timestamp: number; metadata?: any }>
   } {
     const filtered = namePattern 
       ? this.measurements.filter(m => m.name.includes(namePattern))
@@ -266,13 +269,13 @@ export class QueryValidator {
           isValidType = actualType === 'string'
           break
         case 'number':
-          isValidType = actualType === 'number' && !isNaN(actualValue)
+          isValidType = actualType === 'number' && !isNaN(actualValue as number)
           break
         case 'boolean':
           isValidType = actualType === 'boolean'
           break
         case 'date':
-          isValidType = actualValue instanceof Date || (typeof actualValue === 'string' && !isNaN(Date.parse(actualValue)))
+          isValidType = actualValue instanceof Date || (typeof actualValue === 'string' && !isNaN(Date.parse(actualValue as string)))
           break
         case 'null':
           isValidType = actualValue === null
@@ -281,7 +284,7 @@ export class QueryValidator {
           isValidType = actualType === 'string' || actualValue === null
           break
         case 'number|null':
-          isValidType = (actualType === 'number' && !isNaN(actualValue)) || actualValue === null
+          isValidType = (actualType === 'number' && !isNaN(actualValue as number)) || actualValue === null
           break
         default:
           isValidType = true // Unknown expected type, skip validation

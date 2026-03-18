@@ -56,7 +56,7 @@ export function cleanupSQLiteTestDatabase() {
 /**
  * Run SQLite migrations using Drizzle
  */
-export async function runSQLiteMigrations(db: ReturnType<typeof drizzle>, _client: Database) {
+export async function runSQLiteMigrations(db: ReturnType<typeof drizzle>, _client: InstanceType<typeof Database>) {
   console.log('Running SQLite migrations...')
   
   try {
@@ -174,7 +174,7 @@ export async function setupSQLiteTestData(db: ReturnType<typeof drizzle>) {
     }
   ]
 
-  await db.insert(analyticsPages).values(analyticsData)
+  await db.insert(analyticsPages).values(analyticsData as any)
 
   // Insert star schema test data
   console.log('Inserting star schema test data...')

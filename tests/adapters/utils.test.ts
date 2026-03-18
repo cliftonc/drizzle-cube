@@ -99,7 +99,7 @@ describe('Adapter Utils', () => {
         filters: [{ member: 'Cube.name', operator: 'equals', values: ['test'] }]
       }
 
-      const result = buildTransformedQuery(query)
+      const result = buildTransformedQuery(query as any)
 
       expect(result.sortedDimensions).toEqual(['Cube.name'])
       expect(result.sortedTimeDimensions).toEqual([{ dimension: 'Cube.date', granularity: 'day' }])
@@ -331,7 +331,7 @@ describe('Adapter Utils', () => {
         ]
       }
 
-      const result = buildTransformedQuery(query)
+      const result = buildTransformedQuery(query as any)
 
       expect(result.sortedTimeDimensions).toEqual(query.timeDimensions)
       expect(result.timeDimensions).toEqual(query.timeDimensions)
@@ -382,7 +382,7 @@ describe('Adapter Utils', () => {
           { member: 'A.y', operator: 'equals', values: ['z'] }
         ]
       }
-      expect(calculateQueryComplexity(query)).toBe('medium')
+      expect(calculateQueryComplexity(query as any)).toBe('medium')
     })
 
     it('should handle query at boundary between medium and high (15 points)', () => {
@@ -396,7 +396,7 @@ describe('Adapter Utils', () => {
         ],
         timeDimensions: [{ dimension: 'A.date', granularity: 'day' }]
       }
-      expect(calculateQueryComplexity(query)).toBe('high')
+      expect(calculateQueryComplexity(query as any)).toBe('high')
     })
 
     it('should handle query with undefined arrays', () => {
@@ -453,7 +453,7 @@ describe('Adapter Utils', () => {
           dimensions: ['Employees.name']
         }
 
-        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+        const result = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
 
         expect(result.valid).toBe(true)
         expect(result.queryType).toBe('regularQuery')
@@ -478,7 +478,7 @@ describe('Adapter Utils', () => {
           ]
         }
 
-        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+        const result = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
 
         expect(result.valid).toBe(true)
         expect(result.mode).toBe('comparison')

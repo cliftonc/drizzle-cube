@@ -17,7 +17,7 @@ import { TestExecutor } from './helpers/test-utilities'
 
 describe('Error Handling - Database Failures', () => {
   let testExecutor: TestExecutor
-  let employeesCube: Cube<any>
+  let employeesCube: Cube
 
   beforeAll(async () => {
     const { testEmployeesCube } = await createTestCubesForCurrentDatabase()

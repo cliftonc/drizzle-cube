@@ -9,15 +9,15 @@ import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 import { SemanticLayerCompiler } from '../src/server'
 import type { Cube, SecurityContext } from '../src/server/types'
 
-let employeesCube: Cube<any>
-let departmentsCube: Cube<any>
-let productivityCube: Cube<any>
+let employeesCube: Cube
+let departmentsCube: Cube
+let productivityCube: Cube
 let executor: any
 
 const securityContext: SecurityContext = { organisationId: 1 }
 
 describe('Cube Lifecycle', () => {
-  let compiler: SemanticLayerCompiler<any>
+  let compiler: SemanticLayerCompiler
 
   beforeAll(async () => {
     const result = await createTestDatabaseExecutor()
@@ -222,15 +222,15 @@ describe('Cube Lifecycle', () => {
       compiler.registerCube(departmentsCube)
 
       const meta1 = compiler.getMetadata()
-      expect(meta1.map(m => m.name)).toEqual(['Employees', 'Departments'])
+      expect(meta1.map((m: any) => m.name)).toEqual(['Employees', 'Departments'])
 
       compiler.unregisterCube('Employees')
       const meta2 = compiler.getMetadata()
-      expect(meta2.map(m => m.name)).toEqual(['Departments'])
+      expect(meta2.map((m: any) => m.name)).toEqual(['Departments'])
 
       compiler.registerCube(productivityCube)
       const meta3 = compiler.getMetadata()
-      expect(meta3.map(m => m.name)).toEqual(['Departments', 'Productivity'])
+      expect(meta3.map((m: any) => m.name)).toEqual(['Departments', 'Productivity'])
 
       compiler.clearCubes()
       const meta4 = compiler.getMetadata()
@@ -238,7 +238,7 @@ describe('Cube Lifecycle', () => {
 
       compiler.registerCube(employeesCube)
       const meta5 = compiler.getMetadata()
-      expect(meta5.map(m => m.name)).toEqual(['Employees'])
+      expect(meta5.map((m: any) => m.name)).toEqual(['Employees'])
     })
   })
 })

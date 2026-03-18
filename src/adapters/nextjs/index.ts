@@ -673,7 +673,7 @@ export function createDiscoverHandler(
         )
       }
 
-      const body: DiscoverRequest = await request.json()
+      const body = await request.json() as DiscoverRequest
       const result = await handleDiscover(semanticLayer, body)
 
       return NextResponse.json(result, {
@@ -715,7 +715,7 @@ export function createSuggestHandler(
         )
       }
 
-      const body: SuggestRequest = await request.json()
+      const body = await request.json() as SuggestRequest
       if (!body.naturalLanguage) {
         return NextResponse.json(
           formatErrorResponse('naturalLanguage field is required', 400),
@@ -764,7 +764,7 @@ export function createValidateHandler(
         )
       }
 
-      const body: ValidateRequest = await request.json()
+      const body = await request.json() as ValidateRequest
       if (!body.query) {
         return NextResponse.json(
           formatErrorResponse('query field is required', 400),
@@ -814,7 +814,7 @@ export function createMcpLoadHandler(
         )
       }
 
-      const body: LoadRequest = await request.json()
+      const body = await request.json() as LoadRequest
       if (!body.query) {
         return NextResponse.json(
           formatErrorResponse('query field is required', 400),

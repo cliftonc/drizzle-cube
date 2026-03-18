@@ -67,7 +67,7 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(analyticsPages)
   
   // Insert departments first (dependencies)
-  await db.insert(departments).values(enhancedDepartments)
+  await db.insert(departments).values(enhancedDepartments as any)
   
   // Fetch the inserted departments to get their actual IDs
   const insertedDepartments = await db.select({
@@ -83,7 +83,7 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   }))
   
   // Insert employees
-  await db.insert(employees).values(updatedEmployees)
+  await db.insert(employees).values(updatedEmployees as any)
 
   // For MySQL, we need to fetch the inserted employees to get their IDs
   const insertedEmployees = await db.select({ 
@@ -174,7 +174,7 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   await db.delete(products)
 
   // Insert products (dimension) first
-  await db.insert(products).values(enhancedProducts)
+  await db.insert(products).values(enhancedProducts as any)
 
   // Fetch inserted products to get their actual IDs
   const insertedProducts = await db.select({
@@ -190,7 +190,7 @@ export async function setupMySQLTestData(db: ReturnType<typeof drizzle>) {
   }))
 
   // Insert sales (fact table #1)
-  await db.insert(sales).values(updatedSales)
+  await db.insert(sales).values(updatedSales as any)
 
   // Update inventory with actual product IDs
   const updatedInventory = enhancedInventory.map(inv => ({
@@ -211,8 +211,8 @@ export async function setupMySQLDatabase() {
   const { db, close } = await createMySQLConnection()
   
   try {
-    await runMySQLMigrations(db)
-    await setupMySQLTestData(db)
+    await runMySQLMigrations(db as any)
+    await setupMySQLTestData(db as any)
     return { db, close }
   } catch (error) {
     await close()

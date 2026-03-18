@@ -316,12 +316,12 @@ export async function createTestDatabaseWithData(): Promise<{ db: any, close: ()
  * Create database executor using the configured database type
  * Each test gets its own fresh database connection for proper isolation
  */
-export async function createTestDatabaseExecutor(): Promise<{ executor: DatabaseExecutor<any>, close: () => void }> {
+export async function createTestDatabaseExecutor(): Promise<{ executor: DatabaseExecutor, close: () => void }> {
   const dbType = getTestDatabaseType()
-  
+
   let db: any
   let close: () => void
-  let executor: DatabaseExecutor<any>
+  let executor: DatabaseExecutor
   let schema: any
   
   if (dbType === 'postgres') {
@@ -415,7 +415,7 @@ export async function createTestDatabaseExecutor(): Promise<{ executor: Database
  * Uses existing database connection without re-setting up data
  */
 export async function createTestSemanticLayer(): Promise<{
-  semanticLayer: SemanticLayerCompiler<any>
+  semanticLayer: SemanticLayerCompiler
   db: any
   close: () => void
 }> {

@@ -126,7 +126,7 @@
     "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts && TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts && TEST_DB_TYPE=databend vitest run --config vitest.config.server.ts",
     "test:setup": "docker-compose up -d",
     "test:teardown": "docker-compose down",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' --fix",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run build",

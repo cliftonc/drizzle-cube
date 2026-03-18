@@ -37,7 +37,7 @@ describe('Server-Side Flow Queries', () => {
   let eventsCube: Cube
 
   beforeAll(async () => {
-    const { executor: dbExecutor, close: cleanup, db: database } = await createTestDatabaseExecutor()
+    const { executor: dbExecutor, close: cleanup, db: database } = await createTestDatabaseExecutor() as any
     executor = new QueryExecutor(dbExecutor)
     close = cleanup
     _db = database
@@ -67,10 +67,12 @@ describe('Server-Side Flow Queries', () => {
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: productivity.id
         },
         uniqueUsers: {
+          name: 'uniqueUsers',
           type: 'countDistinct',
           sql: productivity.employeeId
         }
@@ -78,20 +80,24 @@ describe('Server-Side Flow Queries', () => {
 
       dimensions: {
         id: {
+          name: 'id',
           type: 'number',
           sql: productivity.id,
           primaryKey: true
         },
         userId: {
+          name: 'userId',
           type: 'number',
           sql: productivity.employeeId
         },
         timestamp: {
+          name: 'timestamp',
           type: 'time',
           sql: productivity.date
         },
         // Computed event type based on happinessIndex ranges
         eventType: {
+          name: 'eventType',
           type: 'string',
           sql: sql`CASE
             WHEN ${productivity.happinessIndex} <= 3 THEN 'low'
@@ -101,18 +107,22 @@ describe('Server-Side Flow Queries', () => {
           END`
         },
         linesOfCode: {
+          name: 'linesOfCode',
           type: 'number',
           sql: productivity.linesOfCode
         },
         pullRequests: {
+          name: 'pullRequests',
           type: 'number',
           sql: productivity.pullRequests
         },
         happinessIndex: {
+          name: 'happinessIndex',
           type: 'number',
           sql: productivity.happinessIndex
         },
         isHighProductivity: {
+          name: 'isHighProductivity',
           type: 'boolean',
           sql: sql`${productivity.linesOfCode} > 100`
         }
@@ -142,7 +152,7 @@ describe('Server-Side Flow Queries', () => {
           stepsBefore: 2,
           stepsAfter: 2,
           startingStep: { name: 'Start', filter: { member: 'Events.eventType', operator: 'equals', values: ['high'] } }
-        }
+        } as any
       })).toBe(false)
 
       // Query with flow but missing startingStep
@@ -153,7 +163,7 @@ describe('Server-Side Flow Queries', () => {
           eventDimension: 'Events.eventType',
           stepsBefore: 2,
           stepsAfter: 2
-        }
+        } as any
       })).toBe(false)
 
       // Valid flow query
@@ -809,7 +819,7 @@ describe('Server-Side Flow Queries', () => {
         flow: {
           bindingKey: 'Events.userId'
           // Missing other required fields
-        }
+        } as any
       })).toBe(false)
     })
   })
@@ -1023,7 +1033,7 @@ describe('Database Adapter Flow Support', () => {
         }
       })
 
-      const config = {
+      const config: any = {
         bindingKey: 'Events.userId',
         timeDimension: 'Events.timestamp',
         eventDimension: 'Events.eventType',

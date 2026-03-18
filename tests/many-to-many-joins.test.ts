@@ -107,7 +107,7 @@ describe('Many-to-Many Joins (belongsToMany)', () => {
         .dimensions(['Departments.name'])
         .build()
 
-      const org1Result = await testExecutor.executeQuery(query, testSecurityContexts.org1)
+      const org1Result = await testExecutor.executeQuery(query)
 
       expect(org1Result.data).toBeDefined()
       expect(org1Result.data.length).toBeGreaterThan(0)

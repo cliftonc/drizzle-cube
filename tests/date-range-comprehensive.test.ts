@@ -14,7 +14,7 @@ import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type {
   Cube
-} from '../../src/server/types'
+} from '../src/server/types'
 
 import { 
   TestQueryBuilder, 

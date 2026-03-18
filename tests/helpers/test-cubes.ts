@@ -27,7 +27,7 @@ import { getTestSchema } from './test-database'
  * Compatibility layer - creates static-like cube map using dynamic cubes
  * This allows existing tests to work while we transition to fully dynamic approach
  */
-export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cube<any>>> {
+export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cube>> {
   const {
     testEmployeesCube,
     testDepartmentsCube,
@@ -50,7 +50,7 @@ export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cu
     return allCubes
   }
   
-  const filteredCubes = new Map<string, Cube<any>>()
+  const filteredCubes = new Map<string, Cube>()
   for (const name of cubeNames) {
     const cube = allCubes.get(name)
     if (cube) {
@@ -65,29 +65,29 @@ export async function getTestCubes(cubeNames?: string[]): Promise<Map<string, Cu
  * This ensures that cubes use the correct schema tables (MySQL vs PostgreSQL vs SQLite)
  */
 export async function createTestCubesForCurrentDatabase(): Promise<{
-  testEmployeesCube: Cube<any>
-  testDepartmentsCube: Cube<any>
-  testProductivityCube: Cube<any>
-  testTimeEntriesCube: Cube<any>
-  testTeamsCube: Cube<any>
-  testEmployeeTeamsCube: Cube<any>
+  testEmployeesCube: Cube
+  testDepartmentsCube: Cube
+  testProductivityCube: Cube
+  testTimeEntriesCube: Cube
+  testTeamsCube: Cube
+  testEmployeeTeamsCube: Cube
 }> {
   const { employees, departments, productivity, timeEntries, teams, employeeTeams, dbTrue, dbFalse } = await getTestSchema()
 
   // Declare cube variables first to handle forward references
-  let testEmployeesCube: Cube<any>
-  let testDepartmentsCube: Cube<any>
-  let testProductivityCube: Cube<any>
-  let testTimeEntriesCube: Cube<any>
-  let testTeamsCube: Cube<any>
-  let testEmployeeTeamsCube: Cube<any>
+  let testEmployeesCube: Cube
+  let testDepartmentsCube: Cube
+  let testProductivityCube: Cube
+  let testTimeEntriesCube: Cube
+  let testTeamsCube: Cube
+  let testEmployeeTeamsCube: Cube
   
   // Create employees cube with correct schema
   testEmployeesCube = defineCube('Employees', {
     title: 'Employees Analytics',
     description: 'Comprehensive employee data with department information and all field types',
     
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: employees,    
       where: eq(employees.organisationId, ctx.securityContext.organisationId)
     }),
@@ -272,7 +272,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     title: 'Departments Analytics',
     description: 'Department information and metrics',
     
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: departments,
       where: eq(departments.organisationId, ctx.securityContext.organisationId)
     }),
@@ -332,7 +332,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     title: 'Productivity Analytics',
     description: 'Daily productivity metrics including code output, deployments, and happiness tracking',
     
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: productivity,
       where: eq(productivity.organisationId, ctx.securityContext.organisationId)
     }),
@@ -549,7 +549,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
           () => and(
             eq(productivity.daysOff, dbFalse),
             sql`${productivity.happinessIndex} >= 7`
-          )
+          ) as any
         ]
       },
       
@@ -569,7 +569,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     title: 'Time Entries Analytics', 
     description: 'Employee time tracking with allocation types, departments, and billable hours',
     
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: timeEntries,    
       where: eq(timeEntries.organisationId, ctx.securityContext.organisationId)
     }),
@@ -697,7 +697,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'sum',
         sql: timeEntries.hours,
         filters: [
-          { member: timeEntries.allocationType, operator: 'equals', values: ['development'] }
+          { member: timeEntries.allocationType, operator: 'equals', values: ['development'] } as any
         ],
         description: 'Total hours spent on development tasks'
       },
@@ -707,7 +707,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'sum',
         sql: timeEntries.hours,
         filters: [
-          { member: timeEntries.allocationType, operator: 'equals', values: ['meetings'] }
+          { member: timeEntries.allocationType, operator: 'equals', values: ['meetings'] } as any
         ],
         description: 'Total hours spent in meetings'
       },
@@ -717,7 +717,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'sum',
         sql: timeEntries.hours,
         filters: [
-          { member: timeEntries.allocationType, operator: 'equals', values: ['maintenance'] }
+          { member: timeEntries.allocationType, operator: 'equals', values: ['maintenance'] } as any
         ]
       },
       
@@ -763,7 +763,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
         type: 'countDistinct',
         sql: timeEntries.date,
         filters: [
-          { member: timeEntries.hours, operator: 'gt', values: [6] }
+          { member: timeEntries.hours, operator: 'gt', values: [6] } as any
         ],
         description: 'Days with more than 6 hours logged'
       },
@@ -791,7 +791,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     title: 'Teams Analytics',
     description: 'Team information and metrics',
 
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: teams,
       where: eq(teams.organisationId, ctx.securityContext.organisationId)
     }),
@@ -850,7 +850,7 @@ export async function createTestCubesForCurrentDatabase(): Promise<{
     title: 'Employee Team Membership Analytics',
     description: 'Junction table between employees and teams',
 
-    sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+    sql: (ctx: QueryContext): BaseQueryDefinition => ({
       from: employeeTeams,
       where: eq(employeeTeams.organisationId, ctx.securityContext.organisationId)
     }),

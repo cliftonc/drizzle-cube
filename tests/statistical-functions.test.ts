@@ -44,7 +44,7 @@ describe('Statistical Functions', () => {
       title: 'Statistical Analytics',
       description: 'Cube with statistical measure types for testing',
 
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: employees,
         where: eq(employees.organisationId, ctx.securityContext.organisationId)
       }),
@@ -191,7 +191,7 @@ describe('Statistical Functions', () => {
       expect(popStddev).toBeDefined()
       expect(sampStddev).toBeDefined()
       // For n > 1, sample stddev >= population stddev
-      expect(sampStddev).toBeGreaterThanOrEqual(popStddev)
+      expect(sampStddev as number).toBeGreaterThanOrEqual(popStddev as number)
     })
   })
 
@@ -242,8 +242,8 @@ describe('Statistical Functions', () => {
       const result = await testExecutor.executeQuery(query)
 
       expect(result.data).toHaveLength(1)
-      const stddev = result.data[0]['Statistics.stddevSalary']
-      const variance = result.data[0]['Statistics.varianceSalary']
+      const stddev = result.data[0]['Statistics.stddevSalary'] as number
+      const variance = result.data[0]['Statistics.varianceSalary'] as number
 
       // Variance = stddev^2 (with some floating point tolerance)
       expect(variance).toBeCloseTo(stddev * stddev, 2)
@@ -333,8 +333,8 @@ describe('Statistical Functions', () => {
       const p99 = result.data[0]['Statistics.p99Salary']
 
       // Percentiles should be ordered
-      expect(p95).toBeGreaterThanOrEqual(median)
-      expect(p99).toBeGreaterThanOrEqual(p95)
+      expect(p95 as number).toBeGreaterThanOrEqual(median as number)
+      expect(p99 as number).toBeGreaterThanOrEqual(p95 as number)
     })
   })
 

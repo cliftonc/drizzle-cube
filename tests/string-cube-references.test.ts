@@ -37,7 +37,7 @@ describe('String Cube References', () => {
   describe('basic resolution', () => {
     it('should resolve string refs in multi-cube queries', async () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -49,23 +49,23 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => employees.name }
+          name: { name: 'name', type: 'string', sql: () => employees.name }
         }
       })
 
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => departments.name }
+          name: { name: 'name', type: 'string', sql: () => departments.name }
         }
       })
 
@@ -84,7 +84,7 @@ describe('String Cube References', () => {
 
     it('should resolve bidirectional string refs (A→B, B→A)', async () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -96,15 +96,15 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => employees.name }
+          name: { name: 'name', type: 'string', sql: () => employees.name }
         }
       })
 
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
@@ -116,10 +116,10 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => departments.name }
+          name: { name: 'name', type: 'string', sql: () => departments.name }
         }
       })
 
@@ -138,20 +138,20 @@ describe('String Cube References', () => {
 
     it('should work with mixed refs (string + function) in same schema', async () => {
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => departments.name }
+          name: { name: 'name', type: 'string', sql: () => departments.name }
         }
       })
 
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -168,15 +168,15 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => employees.name }
+          name: { name: 'name', type: 'string', sql: () => employees.name }
         }
       })
 
       const prodCube = defineCube('Productivity', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: productivity,
           where: eq(productivity.organisationId, ctx.securityContext.organisationId)
         }),
@@ -188,7 +188,7 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          totalLines: { type: 'sum', sql: () => productivity.linesOfCode }
+          totalLines: { name: 'totalLines', type: 'sum', sql: () => productivity.linesOfCode }
         },
         dimensions: {}
       })
@@ -210,7 +210,7 @@ describe('String Cube References', () => {
   describe('security context propagation', () => {
     it('should propagate security context with string refs', async () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -222,13 +222,13 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {}
       })
 
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
@@ -240,10 +240,10 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => departments.name }
+          name: { name: 'name', type: 'string', sql: () => departments.name }
         }
       })
 
@@ -276,7 +276,7 @@ describe('String Cube References', () => {
   describe('metadata generation', () => {
     it('should resolve string refs in metadata', () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -288,21 +288,21 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {}
       })
 
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => departments.name }
+          name: { name: 'name', type: 'string', sql: () => departments.name }
         }
       })
 
@@ -326,7 +326,7 @@ describe('String Cube References', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -338,10 +338,10 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {
-          name: { type: 'string', sql: () => employees.name }
+          name: { name: 'name', type: 'string', sql: () => employees.name }
         }
       })
 
@@ -360,7 +360,7 @@ describe('String Cube References', () => {
 
     it('should throw from validateCubeReferences for unregistered refs', () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -372,7 +372,7 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {}
       })
@@ -386,7 +386,7 @@ describe('String Cube References', () => {
 
     it('should pass validateCubeReferences when all string refs resolve', () => {
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -398,18 +398,18 @@ describe('String Cube References', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: () => employees.id }
+          count: { name: 'count', type: 'count', sql: () => employees.id }
         },
         dimensions: {}
       })
 
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: () => departments.id }
+          count: { name: 'count', type: 'count', sql: () => departments.id }
         },
         dimensions: {}
       })
@@ -423,16 +423,16 @@ describe('String Cube References', () => {
 
     it('should not throw for function refs in validateCubeReferences', () => {
       const deptCube = defineCube('Departments', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: departments,
           where: eq(departments.organisationId, ctx.securityContext.organisationId)
         }),
-        measures: { count: { type: 'count', sql: () => departments.id } },
+        measures: { count: { name: 'count', type: 'count', sql: () => departments.id } },
         dimensions: {}
       })
 
       const empCube = defineCube('Employees', {
-        sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+        sql: (ctx: QueryContext): BaseQueryDefinition => ({
           from: employees,
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
@@ -443,7 +443,7 @@ describe('String Cube References', () => {
             on: [{ source: employees.departmentId, target: departments.id }]
           }
         },
-        measures: { count: { type: 'count', sql: () => employees.id } },
+        measures: { count: { name: 'count', type: 'count', sql: () => employees.id } },
         dimensions: {}
       })
 

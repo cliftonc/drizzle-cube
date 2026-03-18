@@ -11,7 +11,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import {
   TestQueryBuilder,
@@ -153,13 +153,13 @@ describe('Comprehensive Aggregations', () => {
       const result = await testExecutor.executeQuery(query)
 
       expect(result.data).toHaveLength(1)
-      const row = result.data[0]
-      
+      const row = result.data[0] as any
+
       // Active + Inactive should equal total count
       expect(row['Employees.activeCount'] + row['Employees.inactiveCount']).toBe(row['Employees.count'])
       
       // Active count should be greater than inactive count (based on test data)
-      expect(row['Employees.activeCount']).toBeGreaterThan(row['Employees.inactiveCount'])
+      expect(row['Employees.activeCount'] as number).toBeGreaterThan(row['Employees.inactiveCount'] as number)
     })
 
     it('should handle complex filtered measures', async () => {
@@ -170,13 +170,13 @@ describe('Comprehensive Aggregations', () => {
       const result = await testExecutor.executeQuery(query)
 
       expect(result.data).toHaveLength(1)
-      const row = result.data[0]
-      
+      const row = result.data[0] as any
+
       // Working days + days off should equal total records
       expect(row['Productivity.workingDaysCount'] + row['Productivity.daysOffCount']).toBe(row['Productivity.recordCount'])
       
       // Working days should be much greater than days off
-      expect(row['Productivity.workingDaysCount']).toBeGreaterThan(row['Productivity.daysOffCount'])
+      expect(row['Productivity.workingDaysCount'] as number).toBeGreaterThan(row['Productivity.daysOffCount'] as number)
     })
 
     it('should handle multiple complex filter conditions', async () => {
@@ -190,8 +190,8 @@ describe('Comprehensive Aggregations', () => {
       const row = result.data[0]
       
       // High productivity and happy work days should be subsets of total working days
-      expect(row['Productivity.highProductivityDays']).toBeLessThanOrEqual(row['Productivity.workingDaysCount'])
-      expect(row['Productivity.happyWorkDays']).toBeLessThanOrEqual(row['Productivity.workingDaysCount'])
+      expect(row['Productivity.highProductivityDays'] as number).toBeLessThanOrEqual(row['Productivity.workingDaysCount'] as number)
+      expect(row['Productivity.happyWorkDays'] as number).toBeLessThanOrEqual(row['Productivity.workingDaysCount'] as number)
     })
   })
 
@@ -265,13 +265,13 @@ describe('Comprehensive Aggregations', () => {
       const row = result.data[0]
 
       // Validate mathematical relationships
-      expect(row['Employees.avgSalary']).toBeGreaterThanOrEqual(row['Employees.minSalary'])
-      expect(row['Employees.avgSalary']).toBeLessThanOrEqual(row['Employees.maxSalary'])
-      expect(row['Employees.minSalary']).toBeLessThanOrEqual(row['Employees.maxSalary'])
-      
+      expect(row['Employees.avgSalary'] as number).toBeGreaterThanOrEqual(row['Employees.minSalary'] as number)
+      expect(row['Employees.avgSalary'] as number).toBeLessThanOrEqual(row['Employees.maxSalary'] as number)
+      expect(row['Employees.minSalary'] as number).toBeLessThanOrEqual(row['Employees.maxSalary'] as number)
+
       // Count distinct departments should be reasonable
-      expect(row['Employees.countDistinctDepartments']).toBeLessThanOrEqual(row['Employees.count'])
-      expect(row['Employees.countDistinctDepartments']).toBeGreaterThan(0)
+      expect(row['Employees.countDistinctDepartments'] as number).toBeLessThanOrEqual(row['Employees.count'] as number)
+      expect(row['Employees.countDistinctDepartments'] as number).toBeGreaterThan(0)
     })
   })
 
@@ -337,15 +337,15 @@ describe('Comprehensive Aggregations', () => {
       // Validate time ordering and aggregation values
       let previousDate: Date | null = null
       for (const row of result.data) {
-        const currentDate = new Date(row['Productivity.date'])
+        const currentDate = new Date(row['Productivity.date'] as any)
         if (previousDate) {
           expect(currentDate.getTime()).toBeGreaterThanOrEqual(previousDate.getTime())
         }
         previousDate = currentDate
-        
-        expect(row['Productivity.totalLinesOfCode']).toBeGreaterThanOrEqual(0)
-        expect(row['Productivity.avgHappinessIndex']).toBeGreaterThanOrEqual(1)
-        expect(row['Productivity.avgHappinessIndex']).toBeLessThanOrEqual(10)
+
+        expect(row['Productivity.totalLinesOfCode'] as number).toBeGreaterThanOrEqual(0)
+        expect(row['Productivity.avgHappinessIndex'] as number).toBeGreaterThanOrEqual(1)
+        expect(row['Productivity.avgHappinessIndex'] as number).toBeLessThanOrEqual(10)
       }
     })
   })
@@ -411,7 +411,7 @@ describe('Comprehensive Aggregations', () => {
       expect(result.data).toHaveLength(1)
       expect(result.data[0]['Employees.minSalary']).toBeGreaterThan(0)
       expect(result.data[0]['Employees.maxSalary']).toBeGreaterThan(0)
-      expect(result.data[0]['Employees.minSalary']).toBeLessThanOrEqual(result.data[0]['Employees.maxSalary'])
+      expect(result.data[0]['Employees.minSalary'] as number).toBeLessThanOrEqual(result.data[0]['Employees.maxSalary'] as number)
     })
 
     it('should handle COUNT DISTINCT with NULL values correctly', async () => {
@@ -555,8 +555,8 @@ describe('Comprehensive Aggregations', () => {
 
       // Validate logical relationships between filtered measures
       for (const row of result.data) {
-        expect(row['Productivity.workingDaysCount']).toBeGreaterThanOrEqual(row['Productivity.highProductivityDays'])
-        expect(row['Productivity.workingDaysCount']).toBeGreaterThanOrEqual(row['Productivity.happyWorkDays'])
+        expect(row['Productivity.workingDaysCount'] as number).toBeGreaterThanOrEqual(row['Productivity.highProductivityDays'] as number)
+        expect(row['Productivity.workingDaysCount'] as number).toBeGreaterThanOrEqual(row['Productivity.happyWorkDays'] as number)
       }
 
       // Performance should be reasonable

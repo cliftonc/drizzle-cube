@@ -16,12 +16,12 @@ import type {
 } from '../src/server/types'
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 
-let employeesCube: Cube<any>
-let departmentsCube: Cube<any>
-let productivityCube: Cube<any>
+let employeesCube: Cube
+let departmentsCube: Cube
+let productivityCube: Cube
 
 describe('Error Handling - Invalid Query Structures', () => {
-  let compiler: SemanticLayerCompiler<any>
+  let compiler: SemanticLayerCompiler
 
   beforeAll(async () => {
     const { executor } = await createTestDatabaseExecutor()
@@ -221,8 +221,8 @@ describe('Error Handling - Invalid Query Structures', () => {
       const result = compiler.validateQuery(query)
       expect(result.isValid).toBe(false)
       // Should contain errors for both non-existent field and non-existent cube
-      expect(result.errors.some(error => error.includes('nonExistentField'))).toBe(true)
-      expect(result.errors.some(error => error.includes('NonExistentCube'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('nonExistentField'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('NonExistentCube'))).toBe(true)
     })
   })
 
@@ -280,7 +280,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       expect(result.errors).toContain("Invalid measure format: InvalidFormat. Expected format: 'CubeName.fieldName'")
       expect(result.errors).toContain("Invalid measure format: . Expected format: 'CubeName.fieldName'")
       // TooManyDots.Field.Extra will be parsed as cube='TooManyDots', field='Field.Extra' and likely fail cube lookup
-      expect(result.errors.some(error => error.includes('TooManyDots'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('TooManyDots'))).toBe(true)
     })
 
     it('should reject dimensions without proper cube.field format', () => {
@@ -291,9 +291,9 @@ describe('Error Handling - Invalid Query Structures', () => {
       const result = compiler.validateQuery(query)
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Invalid dimension format: NoDotsAtAll. Expected format: 'CubeName.fieldName'")
-      expect(result.errors.some(error => error.includes('Too.Many.Dots.Here'))).toBe(true)
-      expect(result.errors.some(error => error.includes('.StartsWithDot'))).toBe(true)
-      expect(result.errors.some(error => error.includes('EndsWithDot.'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('Too.Many.Dots.Here'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('.StartsWithDot'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('EndsWithDot.'))).toBe(true)
     })
 
     it('should reject filter members without proper cube.field format', () => {
@@ -322,7 +322,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       
       const result = compiler.validateQuery(query)
       expect(result.isValid).toBe(false)
-      expect(result.errors.some(error => error.includes('InvalidTimeDimensionFormat'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('InvalidTimeDimensionFormat'))).toBe(true)
     })
   })
 
@@ -473,7 +473,7 @@ describe('Error Handling - Invalid Query Structures', () => {
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain("Filter field 'nonExistentField' not found on cube 'Employees' (must be a dimension or measure)")
       // Should also contain errors for nested fields
-      expect(result.errors.some(error => error.includes('nested'))).toBe(true)
+      expect(result.errors.some((error: any) => error.includes('nested'))).toBe(true)
     })
   })
 

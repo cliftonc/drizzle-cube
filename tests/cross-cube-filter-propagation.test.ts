@@ -273,7 +273,7 @@ describe('Cross-Cube Filter Propagation', () => {
       const org1Result = await testExecutor.executeQuery(query)
 
       // Execute with org-2 security context
-      const org2Executor = new TestExecutor(testExecutor.executor, cubes, testSecurityContexts.org2)
+      const org2Executor = new TestExecutor((testExecutor as any).executor, cubes, testSecurityContexts.org2)
       const org2Result = await org2Executor.executeQuery(query)
 
       // Results should be different (security isolation working)
