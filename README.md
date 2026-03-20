@@ -132,7 +132,7 @@ Build ad-hoc queries with measures, dimensions, filters, and time ranges. Search
 
 ![Analysis Builder](https://try.drizzle-cube.dev/dashboard_light.png)
 
-**[Try the Analysis Builder →](https://try.drizzle-cube.dev/analysis)**
+**[Try the Analysis Builder →](https://try.drizzle-cube.dev/analysis-builder)**
 
 ### Funnel Analysis
 Track conversion through multi-step processes. Define funnel steps, measure drop-off rates, and analyze time-to-convert metrics (average, median, p90).
