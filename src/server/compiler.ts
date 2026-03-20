@@ -27,6 +27,7 @@ import { QueryExecutor } from './executor'
 import { formatSqlString } from '../adapters/utils'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
+import { resolveCubeReference } from './cube-utils'
 
 export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
@@ -39,7 +40,7 @@ export class SemanticLayerCompiler {
     drizzle?: DatabaseExecutor['db']
     schema?: any
     databaseExecutor?: DatabaseExecutor
-    engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+    engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
     /** Cache configuration for query result caching */
     cache?: CacheConfig
     /**
@@ -74,14 +75,14 @@ export class SemanticLayerCompiler {
   /**
    * Get the database engine type for SQL formatting
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | undefined {
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake' | undefined {
     return this.dbExecutor?.getEngineType()
   }
 
   /**
    * Set Drizzle instance and schema directly
    */
-  setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'): void {
+  setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'): void {
     this.dbExecutor = createDatabaseExecutor(db, schema, engineType)
   }
 
@@ -138,6 +139,26 @@ export class SemanticLayerCompiler {
 
     // Invalidate metadata cache when cubes change
     this.invalidateMetadataCache()
+  }
+
+  /**
+   * Validate that all string-based cube references in joins resolve to registered cubes.
+   * Call after all cubes are registered for strict startup validation.
+   * Throws an error listing all unresolved references.
+   */
+  validateCubeReferences(): void {
+    const errors: string[] = []
+    for (const [cubeName, cube] of this.cubes) {
+      if (!cube.joins) continue
+      for (const [joinName, joinDef] of Object.entries(cube.joins)) {
+        if (typeof joinDef.targetCube === 'string' && !this.cubes.has(joinDef.targetCube)) {
+          errors.push(`${cubeName}.joins.${joinName}: target cube '${joinDef.targetCube}' is not registered`)
+        }
+      }
+    }
+    if (errors.length > 0) {
+      throw new Error(`Unresolved cube references:\n${errors.map(e => `  - ${e}`).join('\n')}`)
+    }
   }
 
   /**
@@ -394,7 +415,8 @@ export class SemanticLayerCompiler {
     const relationships: CubeRelationshipMetadata[] = []
     if (cube.joins) {
       for (const [, join] of Object.entries(cube.joins)) {
-        const targetCube = typeof join.targetCube === 'function' ? join.targetCube() : join.targetCube
+        const targetCube = resolveCubeReference(join.targetCube, this.cubes)
+        if (!targetCube) continue
 
         relationships.push({
           targetCube: targetCube.name,

@@ -179,7 +179,7 @@ export const createCoreSlice: StateCreator<
   [],
   [],
   CoreSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...createInitialCoreState(),
 
   setAnalysisType: (type) => {

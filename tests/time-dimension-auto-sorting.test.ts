@@ -11,7 +11,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import { TestExecutor } from './helpers/test-utilities'
 import { getTestCubes } from './helpers/test-cubes'
@@ -52,8 +52,8 @@ describe('Time Dimension Auto-Sorting', () => {
     
     // Check that results are sorted by time dimension in ascending order (earliest to latest)
     for (let i = 1; i < result.data.length; i++) {
-      const currentDate = new Date(result.data[i]['Productivity.date'])
-      const previousDate = new Date(result.data[i-1]['Productivity.date'])
+      const currentDate = new Date(result.data[i]['Productivity.date'] as any)
+      const previousDate = new Date(result.data[i-1]['Productivity.date'] as any)
       
       expect(currentDate.getTime()).toBeGreaterThanOrEqual(previousDate.getTime())
     }
@@ -75,8 +75,8 @@ describe('Time Dimension Auto-Sorting', () => {
     
     // Check that results are sorted in descending order (latest to earliest)
     for (let i = 1; i < result.data.length; i++) {
-      const currentDate = new Date(result.data[i]['Productivity.date'])
-      const previousDate = new Date(result.data[i-1]['Productivity.date'])
+      const currentDate = new Date(result.data[i]['Productivity.date'] as any)
+      const previousDate = new Date(result.data[i-1]['Productivity.date'] as any)
       
       expect(currentDate.getTime()).toBeLessThanOrEqual(previousDate.getTime())
     }
@@ -115,8 +115,8 @@ describe('Time Dimension Auto-Sorting', () => {
     // Check that results are sorted chronologically for week granularity
     if (result.data.length > 1) {
       for (let i = 1; i < result.data.length; i++) {
-        const currentDate = new Date(result.data[i]['Productivity.date'])
-        const previousDate = new Date(result.data[i-1]['Productivity.date'])
+        const currentDate = new Date(result.data[i]['Productivity.date'] as any)
+        const previousDate = new Date(result.data[i-1]['Productivity.date'] as any)
         
         expect(currentDate.getTime()).toBeGreaterThanOrEqual(previousDate.getTime())
       }
@@ -141,7 +141,7 @@ describe('Time Dimension Auto-Sorting', () => {
     
     // Time dimension should still be auto-sorted in ascending order
     // while the regular dimension follows explicit desc order
-    const timeData = result.data.map(row => new Date(row['Productivity.date']).getTime())
+    const timeData = result.data.map(row => new Date(row['Productivity.date'] as any).getTime())
 
     // Check that time dimension is sorted ascending (auto-sort)
     if (timeData.length > 1) {

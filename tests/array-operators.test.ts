@@ -315,7 +315,7 @@ describe('Array Operators (PostgreSQL-only)', () => {
       const org2Count = org2Result.data[0]?.['Employees.count'] || 0
 
       // Org 1 has more senior employees than Org 2
-      expect(org1Count).toBeGreaterThan(org2Count)
+      expect(org1Count as number).toBeGreaterThan(org2Count as number)
     })
   })
 

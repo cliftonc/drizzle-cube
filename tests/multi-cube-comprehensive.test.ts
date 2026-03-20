@@ -11,7 +11,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import {
   TestQueryBuilder,
@@ -67,7 +67,7 @@ describe('Comprehensive Multi-Cube Queries', () => {
       // TODO: This reveals a JOIN issue - both counts are 6954 when they should be different
       // Productivity records (8784) should be much more than employees (24)
       // For now, just verify they are equal until we fix the JOIN logic
-      expect(row['Productivity.recordCount']).toBeGreaterThanOrEqual(row['Employees.count'])
+      expect(row['Productivity.recordCount'] as number).toBeGreaterThanOrEqual(row['Employees.count'] as number)
     })
 
     it('should handle dimensions from multiple cubes', async () => {
@@ -149,11 +149,11 @@ describe('Comprehensive Multi-Cube Queries', () => {
         limit: 10
       }
 
-      const result = await testExecutor.executeQuery(query)
-      
+      const result = await testExecutor.executeQuery(query as any)
+
       expect(result.data.length).toBeGreaterThanOrEqual(0)
       expect(result.data.length).toBeLessThanOrEqual(10)
-      
+
       for (const row of result.data) {
         expect(row['Productivity.recordCount']).toBeGreaterThan(0)
         expect(typeof row['Productivity.employeeId']).toBe('number')
@@ -227,10 +227,11 @@ describe('Comprehensive Multi-Cube Queries', () => {
       
       expect(result.data.length).toBeGreaterThanOrEqual(0)
       
-      for (const row of result.data) {
+      for (const rowRaw of result.data) {
+        const row = rowRaw as any
         expect(row['Employees.count']).toBeGreaterThanOrEqual(0)
         expect(Number(row['Departments.totalBudget']) || 0).toBeGreaterThanOrEqual(0)
-        
+
 
         if (row['Employees.count'] > 0) {
           expect(row['Employees.avgSalary']).toBeGreaterThanOrEqual(0)
@@ -253,8 +254,8 @@ describe('Comprehensive Multi-Cube Queries', () => {
         limit: 10
       }
 
-      const result = await testExecutor.executeQuery(query)
-      
+      const result = await testExecutor.executeQuery(query as any)
+
       expect(result.data.length).toBeGreaterThanOrEqual(0)
       expect(result.data.length).toBeLessThanOrEqual(10)
       
@@ -280,10 +281,10 @@ describe('Comprehensive Multi-Cube Queries', () => {
         order: { 'Productivity.date': 'asc' }
       }
 
-      const result = await testExecutor.executeQuery(query)
-      
+      const result = await testExecutor.executeQuery(query as any)
+
       expect(result.data.length).toBeGreaterThanOrEqual(0)
-      
+
       // Should be grouped by department and week
       for (const row of result.data) {
         expect(row['Productivity.totalLinesOfCode']).toBeGreaterThanOrEqual(0)
@@ -316,8 +317,8 @@ describe('Comprehensive Multi-Cube Queries', () => {
       const org1Counts = result1.data[0]
       const org2Counts = result2.data[0]
       
-      expect(org1Counts['Employees.count']).toBeGreaterThan(org2Counts['Employees.count'])
-      expect(org1Counts['Productivity.recordCount']).toBeGreaterThan(org2Counts['Productivity.recordCount'])
+      expect(org1Counts['Employees.count'] as number).toBeGreaterThan(org2Counts['Employees.count'] as number)
+      expect(org1Counts['Productivity.recordCount'] as number).toBeGreaterThan(org2Counts['Productivity.recordCount'] as number)
       
       org2Close()
     })
@@ -398,7 +399,7 @@ describe('Comprehensive Multi-Cube Queries', () => {
 
       const result = await performanceMeasurer.measure(
         'multi-cube-time-dimensions',
-        () => testExecutor.executeQuery(query)
+        () => testExecutor.executeQuery(query as any)
       )
 
       expect(result.data.length).toBeGreaterThanOrEqual(0)

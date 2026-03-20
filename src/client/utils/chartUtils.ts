@@ -243,7 +243,8 @@ export function transformSeriesKeysWithLabels(seriesKeys: string[], labelMap: Fi
 
 // Utility function to format time values for better display using known granularity
 export function formatTimeValue(value: any, granularity?: string): string {
-  if (!value) return String(value || 'Unknown')
+
+  if (!value) return 'Unknown'
   
   const str = String(value)
   
@@ -387,6 +388,7 @@ export function transformChartData(
 
     yAxisFields.forEach(field => {
       const displayName = getFieldLabelFn(field)
+      if (displayName === '__proto__' || displayName === 'constructor' || displayName === 'prototype') return
       // Preserve null values instead of converting to 0
       transformed[displayName] = parseNumericValue(row[field])
     })
@@ -434,6 +436,7 @@ export function transformChartDataWithSeries(
     data.forEach((row: any) => {
       const granularity = getFieldGranularity(queryObject, xAxisField)
       const xValue = formatTimeValue(row[xAxisField], granularity) || row[xAxisField] || 'Unknown'
+      if (xValue === '__proto__' || xValue === 'constructor' || xValue === 'prototype') return
       if (!groupedData[xValue]) {
         groupedData[xValue] = { name: String(xValue) }
       }
@@ -441,11 +444,13 @@ export function transformChartDataWithSeries(
       // Add measures - preserve nulls for individual measures
       yAxisMeasures.forEach(measure => {
         const displayName = getFieldLabelFn(measure)
+        if (displayName === '__proto__' || displayName === 'constructor' || displayName === 'prototype') return
         const measureValue = parseNumericValue(row[measure])
 
         // For aggregation: sum non-null values, preserve null if all are null
         if (measureValue !== null) {
           const currentValue = groupedData[xValue][displayName]
+
           groupedData[xValue][displayName] = (currentValue === null || currentValue === undefined)
             ? measureValue
             : currentValue + measureValue
@@ -466,11 +471,13 @@ export function transformChartDataWithSeries(
           ) || queryMeasures[0]
 
           if (measureToAggregate) {
+            if (seriesName === '__proto__' || seriesName === 'constructor' || seriesName === 'prototype') return
             const measureValue = parseNumericValue(row[measureToAggregate])
 
             // For dimension series: sum non-null values, preserve null if all are null
             if (measureValue !== null) {
               const currentValue = groupedData[xValue][seriesName]
+
               groupedData[xValue][seriesName] = (currentValue === null || currentValue === undefined)
                 ? measureValue
                 : currentValue + measureValue

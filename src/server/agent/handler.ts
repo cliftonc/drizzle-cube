@@ -61,7 +61,7 @@ export async function* handleAgentChat(options: {
   try {
     provider = await createProvider(providerName, apiKey, { baseURL })
   } catch (error) {
-    console.error(`[agent] Failed to create ${providerName} provider:`, error)
+    console.error('[agent] Failed to create %s provider: %s', String(providerName).replace(/\n|\r/g, ''), String(error instanceof Error ? error.message : error).replace(/\n|\r/g, ''))
     yield {
       type: 'error',
       data: {
@@ -378,7 +378,7 @@ export async function* handleAgentChat(options: {
       })
     } catch { /* observability must never break the agent */ }
 
-    console.error(`[agent] Chat error (provider=${providerName}, model=${model}):`, error)
+    console.error('[agent] Chat error (provider=%s, model=%s): %s', String(providerName).replace(/\n|\r/g, ''), String(model).replace(/\n|\r/g, ''), String(error instanceof Error ? error.message : error).replace(/\n|\r/g, ''))
     yield {
       type: 'error',
       data: {

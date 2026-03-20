@@ -11,7 +11,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -148,7 +148,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       // Validate all dates are within range
       for (const row of result.data) {
-        const dateValue = new Date(row['Productivity.date'])
+        const dateValue = new Date(row['Productivity.date'] as any)
         expect(dateValue.getFullYear()).toBe(2024)
         expect(dateValue.getMonth()).toBe(0) // January is 0
       }
@@ -168,7 +168,7 @@ describe('Comprehensive Time Dimensions', () => {
 
 
       if (result.data.length > 0) {
-        const dateValue = new Date(result.data[0]['Productivity.date'])
+        const dateValue = new Date(result.data[0]['Productivity.date'] as any)
         expect(dateValue.toISOString().split('T')[0]).toBe('2024-01-15')
       }
     })
@@ -271,7 +271,7 @@ describe('Comprehensive Time Dimensions', () => {
       // Validate time ordering
       let previousDate: Date | null = null
       for (const row of result.data) {
-        const currentDate = new Date(row['Productivity.date'])
+        const currentDate = new Date(row['Productivity.date'] as any)
         if (previousDate) {
           expect(currentDate.getTime()).toBeGreaterThanOrEqual(previousDate.getTime())
         }
@@ -298,7 +298,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       // Working days count should be less than or equal to total record count
       for (const row of result.data) {
-        expect(row['Productivity.workingDaysCount']).toBeLessThanOrEqual(row['Productivity.recordCount'])
+        expect(row['Productivity.workingDaysCount'] as number).toBeLessThanOrEqual(row['Productivity.recordCount'] as number)
       }
     })
 
@@ -314,8 +314,8 @@ describe('Comprehensive Time Dimensions', () => {
       }
 
       try {
-        const result = await testExecutor.executeQuery(query)
-        
+        const result = await testExecutor.executeQuery(query as any)
+
         // If multi-cube queries are supported, validate structure
         expect(result.data).toBeDefined()
         expect(Array.isArray(result.data)).toBe(true)
@@ -348,7 +348,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       // All dates should be within the specified day
       for (const row of result.data) {
-        const dateValue = new Date(row['Productivity.date'])
+        const dateValue = new Date(row['Productivity.date'] as any)
         expect(dateValue.getUTCFullYear()).toBe(2024)
         expect(dateValue.getUTCMonth()).toBe(0) // January
         expect(dateValue.getUTCDate()).toBe(1)
@@ -404,7 +404,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       // Should include Feb 29 for leap year 2024
       if (result.data.length > 0) {
-        const dates = result.data.map(row => new Date(row['Productivity.date']).getDate())
+        const dates = result.data.map(row => new Date(row['Productivity.date'] as any).getDate())
         expect(dates).toContain(29) // February 29th should be included
       }
     })
@@ -424,7 +424,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       if (result.data.length > 0) {
         // Should span across January and February
-        const dates = result.data.map(row => new Date(row['Productivity.date']))
+        const dates = result.data.map(row => new Date(row['Productivity.date'] as any))
         const months = [...new Set(dates.map(d => d.getMonth()))]
         expect(months.length).toBeGreaterThanOrEqual(1)
       }
@@ -445,7 +445,7 @@ describe('Comprehensive Time Dimensions', () => {
 
       if (result.data.length > 0) {
         // Should span across 2023 and 2024
-        const dates = result.data.map(row => new Date(row['Productivity.date']))
+        const dates = result.data.map(row => new Date(row['Productivity.date'] as any))
         const years = [...new Set(dates.map(d => d.getFullYear()))]
         expect(years.length).toBeGreaterThanOrEqual(1)
       }

@@ -154,7 +154,10 @@ function createDimensionGroupKey(
   if (dimensions.length === 0) {
     return '__all__'
   }
-  return dimensions.map(dim => String(row[dim] ?? '')).join('|||')
+
+  return dimensions.map(dim => {
+    return String((row as Record<string, unknown>)[dim] ?? '')
+  }).join('|||')
 }
 
 /**

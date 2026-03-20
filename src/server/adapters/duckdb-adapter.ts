@@ -244,7 +244,9 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
       supportsWindowFunctions: true,
       supportsFrameClause: true,
       supportsLateralJoins: false,
-      supportsPercentileSubqueries: false
+      supportsPercentileSubqueries: false,
+      supportsDerivedTablesInCTE: true,
+      supportsLateralSubqueriesInCTE: false // DuckDB doesn't support LATERAL
     }
   }
 

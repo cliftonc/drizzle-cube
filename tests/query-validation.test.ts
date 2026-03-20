@@ -16,16 +16,16 @@ import {
 import type { 
   Cube, 
   SemanticQuery
-} from '../../src/server/types'
+} from '../src/server/types'
 
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 
 // Cubes will be created using the standard test helper
-let employeesCube: Cube<any>
-let departmentsCube: Cube<any>
+let employeesCube: Cube
+let departmentsCube: Cube
 
 describe('Query Validation', () => {
-  let compiler: SemanticLayerCompiler<any>
+  let compiler: SemanticLayerCompiler
 
   beforeAll(async () => {
     // Create database and executor using the unified database utilities

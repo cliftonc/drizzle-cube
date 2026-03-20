@@ -13,7 +13,7 @@ import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
 import { getTestCubes } from './helpers/test-cubes'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 describe('Time Dimension Filters', () => {
   let executor: QueryExecutor
@@ -62,7 +62,7 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      const result = await executor.execute(cubes, query, testSecurityContexts.org1)
+      const result = await executor.execute(cubes, query as any, testSecurityContexts.org1)
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -104,7 +104,7 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      const result = await executor.execute(cubes, query, testSecurityContexts.org1)
+      const result = await executor.execute(cubes, query as any, testSecurityContexts.org1)
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -133,7 +133,7 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      const result = await executor.execute(cubes, query, testSecurityContexts.org1)
+      const result = await executor.execute(cubes, query as any, testSecurityContexts.org1)
 
       // Verify the query executed successfully
       expect(result.data).toBeDefined()
@@ -183,8 +183,8 @@ describe('Time Dimension Filters', () => {
       }
 
       
-      const result1 = await executor.execute(cubes, query1, testSecurityContexts.org1)
-      const result2 = await executor.execute(cubes, query2, testSecurityContexts.org1)
+      const result1 = await executor.execute(cubes, query1 as any, testSecurityContexts.org1)
+      const result2 = await executor.execute(cubes, query2 as any, testSecurityContexts.org1)
 
 
       // Both methods should produce similar filtering results
@@ -194,8 +194,8 @@ describe('Time Dimension Filters', () => {
       // If both have data, the filtered results should be comparable
       if (result1.data.length > 0 && result2.data.length > 0) {
         // Total record count should be similar for same date range
-        const total1 = result1.data.reduce((sum, row) => sum + (row['Productivity.recordCount'] || 0), 0)
-        const total2 = result2.data.reduce((sum, row) => sum + (row['Productivity.recordCount'] || 0), 0)
+        const total1 = result1.data.reduce((sum, row: any) => sum + (row['Productivity.recordCount'] || 0), 0)
+        const total2 = result2.data.reduce((sum, row: any) => sum + (row['Productivity.recordCount'] || 0), 0)
         
         
         // They should be equal if both filters are working correctly
@@ -261,10 +261,10 @@ describe('Time Dimension Filters', () => {
         ]
       }
 
-      const nameFilterResult = await executor.execute(cubes, nameOnlyQuery, testSecurityContexts.org1)
+      const nameFilterResult = await executor.execute(cubes, nameOnlyQuery as any, testSecurityContexts.org1)
 
       // Finally, test with both filters
-      const result = await executor.execute(cubes, query, testSecurityContexts.org1)
+      const result = await executor.execute(cubes, query as any, testSecurityContexts.org1)
 
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)

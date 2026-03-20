@@ -53,14 +53,16 @@ describe('Database Utils', () => {
   })
 
   describe('getSupportedEngines', () => {
-    it('should return all 5 supported engine types', () => {
+    it('should return all 7 supported engine types', () => {
       const engines = getSupportedEngines()
-      expect(engines).toHaveLength(5)
+      expect(engines).toHaveLength(7)
       expect(engines).toContain('postgres')
       expect(engines).toContain('mysql')
       expect(engines).toContain('sqlite')
       expect(engines).toContain('singlestore')
       expect(engines).toContain('duckdb')
+      expect(engines).toContain('databend')
+      expect(engines).toContain('snowflake')
     })
 
     it('should return an array', () => {

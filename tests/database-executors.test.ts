@@ -23,7 +23,7 @@ import type { DatabaseExecutor } from '../src/server/types'
 const dbType = getTestDatabaseType()
 
 describe('Database Executors Integration', () => {
-  let executor: DatabaseExecutor<any>
+  let executor: DatabaseExecutor
   let close: () => void
   let db: any
   let schema: any
@@ -81,7 +81,7 @@ describe('Database Executors Integration', () => {
 
     describe('Database-specific factory functions', () => {
       it('should create executor using database-specific factory', () => {
-        let testExecutor: DatabaseExecutor<any>
+        let testExecutor: DatabaseExecutor
 
         if (dbType === 'postgres') {
           testExecutor = createPostgresExecutor(db, schema)

@@ -418,7 +418,7 @@ describe('Gap Filling', () => {
         fillMissingDatesValue: null
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
 
       // Should have 3 days
       expect(result.data).toHaveLength(3)

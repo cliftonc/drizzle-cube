@@ -17,7 +17,7 @@ export interface TestDatabaseConnection {
  * Database executor with cleanup
  */
 export interface TestDatabaseExecutor {
-  executor: DatabaseExecutor<TestSchema>
+  executor: DatabaseExecutor
   close: () => void
 }
 
@@ -48,14 +48,14 @@ export interface DatabaseTestUtilities {
   /**
    * Get the engine type for this database
    */
-  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
+  getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'snowflake'
 }
 
 /**
  * Database configuration for testing
  */
 export interface DatabaseConfig {
-  type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
+  type: 'postgres' | 'mysql' | 'sqlite' | 'duckdb' | 'databend' | 'snowflake'
   connectionString: string
   migrationPath: string
 }

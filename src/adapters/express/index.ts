@@ -93,7 +93,7 @@ export interface ExpressAdapterOptions {
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
-  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
   
   /**
    * CORS configuration (optional)
@@ -220,6 +220,8 @@ export function createCubeRouter(
       res.json(formatCubeResponse(query, result, semanticLayer))
 
     } catch (error) {
+
+      // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Query execution error:', error)
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'Query execution failed',
@@ -273,6 +275,8 @@ export function createCubeRouter(
       res.json(formatCubeResponse(query, result, semanticLayer))
 
     } catch (error) {
+
+      // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Query execution error:', error)
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'Query execution failed',
@@ -315,6 +319,8 @@ export function createCubeRouter(
       res.json(batchResult)
 
     } catch (error) {
+
+      // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Batch execution error:', error)
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'Batch execution failed',
@@ -338,6 +344,8 @@ export function createCubeRouter(
       res.json(formatMetaResponse(metadata))
       
     } catch (error) {
+
+      // codeql[js/log-injection] error source is internal, not user-controlled
       console.error('Metadata error:', error)
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'Failed to fetch metadata',
@@ -381,7 +389,7 @@ export function createCubeRouter(
       res.json(formatSqlResponse(query, sqlResult))
       
     } catch (error) {
-      console.error('SQL generation error:', error)
+      console.error('SQL generation error:', String(error).replace(/\n|\r/g, ''))
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'SQL generation failed',
         500
@@ -431,7 +439,7 @@ export function createCubeRouter(
       res.json(formatSqlResponse(query, sqlResult))
       
     } catch (error) {
-      console.error('SQL generation error:', error)
+      console.error('SQL generation error:', String(error).replace(/\n|\r/g, ''))
       res.status(500).json(formatErrorResponse(
         error instanceof Error ? error.message : 'SQL generation failed',
         500
@@ -708,11 +716,11 @@ export function createCubeRouter(
       } catch (error) {
         // Log notification errors before returning 202 (P3 fix)
         if (isNotification(rpcRequest)) {
-          console.error('MCP notification processing error:', error)
+          console.error('MCP notification processing error:', String(error).replace(/\n|\r/g, ''))
           return res.status(202).end()
         }
 
-        console.error('MCP RPC error:', error)
+        console.error('MCP RPC error:', String(error).replace(/\n|\r/g, ''))
         const code = (error as any)?.code ?? -32603
         const data = (error as any)?.data
         const message = (error as Error).message || 'MCP request failed'

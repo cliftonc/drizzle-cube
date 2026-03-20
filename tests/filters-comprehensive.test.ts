@@ -13,7 +13,7 @@ import { testSecurityContexts } from './helpers/enhanced-test-data'
 import { QueryExecutor } from '../src/server/executor'
 import type {
   Cube
-} from '../../src/server/types'
+} from '../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -410,7 +410,7 @@ describe('Comprehensive Filter Operations', () => {
       }
 
       const { result, validation } = await testExecutor.validateQuery(
-        query,
+        query as any,
         ['Productivity.recordCount', 'Employees.name', 'Productivity.happinessIndex', 'Productivity.date'],
         { 
           'Productivity.recordCount': 'number', 
@@ -466,8 +466,8 @@ describe('Comprehensive Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
-      
+      const result = await testExecutor.executeQuery(query as any)
+
       expect(result.data.length).toBeGreaterThanOrEqual(0)
       // Validate complex logical conditions are properly applied
     })
@@ -527,7 +527,7 @@ describe('Comprehensive Filter Operations', () => {
 
       // This should either throw an error or handle gracefully
       await expect(async () => {
-        await testExecutor.executeQuery(query)
+        await testExecutor.executeQuery(query as any)
       }).rejects.toThrow()
     })
 
@@ -566,7 +566,7 @@ describe('Comprehensive Filter Operations', () => {
         const result = await testExecutor.executeQuery(query)
         
         // Validate that injection was prevented
-        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result, query)
+        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
         expect(securityValidation.isValid).toBe(true)
         expect(securityValidation.errors).toEqual([])
         
@@ -585,7 +585,7 @@ describe('Comprehensive Filter Operations', () => {
       const result = await testExecutor.executeQuery(query)
       
       // Should handle gracefully and not execute malicious SQL
-      const securityValidation = SecurityTestUtils.validateNoSQLInjection(result, query)
+      const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
       expect(securityValidation.isValid).toBe(true)
     })
   })
@@ -628,7 +628,7 @@ describe('Comprehensive Filter Operations', () => {
 
       const result = await performanceMeasurer.measure(
         'complex-filter',
-        () => testExecutor.executeQuery(query)
+        () => testExecutor.executeQuery(query as any)
       )
       
       expect(result.data).toBeDefined()

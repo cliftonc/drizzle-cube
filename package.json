@@ -1,6 +1,6 @@
 {
   "name": "drizzle-cube",
-  "version": "0.4.25",
+  "version": "0.4.34",
   "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
@@ -104,7 +104,9 @@
     "test:coverage:mysql": "TEST_DB_TYPE=mysql COVERAGE_DIR=./coverage/mysql vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:sqlite": "TEST_DB_TYPE=sqlite COVERAGE_DIR=./coverage/sqlite vitest run --coverage --config vitest.config.server.ts",
     "test:coverage:duckdb": "TEST_DB_TYPE=duckdb COVERAGE_DIR=./coverage/duckdb vitest run --coverage --config vitest.config.server.ts",
-    "test:coverage:all": "npm run test:coverage:postgres && npm run test:coverage:mysql && npm run test:coverage:sqlite && npm run test:coverage:duckdb && npm run coverage:index",
+    "test:coverage:databend": "TEST_DB_TYPE=databend COVERAGE_DIR=./coverage/databend vitest run --coverage --config vitest.config.server.ts",
+    "test:coverage:snowflake": "TEST_DB_TYPE=snowflake COVERAGE_DIR=./coverage/snowflake vitest run --coverage --config vitest.config.server.ts",
+    "test:coverage:all": "npm run test:coverage:postgres && npm run test:coverage:mysql && npm run test:coverage:sqlite && npm run test:coverage:duckdb && npm run test:coverage:databend && npm run coverage:index",
     "test:coverage:complete": "npm run test:coverage:all && npm run test:client:coverage && npm run coverage:index",
     "test:client": "vitest run --config vitest.config.client.ts",
     "test:client:watch": "vitest --watch --config vitest.config.client.ts",
@@ -120,10 +122,12 @@
     "test:mysql": "TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts",
     "test:sqlite": "TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts",
     "test:duckdb": "TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",
-    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts && TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts",
+    "test:databend": "TEST_DB_TYPE=databend vitest run --config vitest.config.server.ts",
+    "test:snowflake": "TEST_DB_TYPE=snowflake vitest run --config vitest.config.server.ts",
+    "test:all": "vitest run && TEST_DB_TYPE=mysql vitest run --config vitest.config.server.ts && TEST_DB_TYPE=sqlite vitest run --config vitest.config.server.ts && TEST_DB_TYPE=duckdb vitest run --config vitest.config.server.ts && TEST_DB_TYPE=databend vitest run --config vitest.config.server.ts",
     "test:setup": "docker-compose up -d",
     "test:teardown": "docker-compose down",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json",
     "lint": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.{ts,tsx}' 'tests/**/*.ts' --fix",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run build",
@@ -168,9 +172,11 @@
     "@google/generative-ai": ">=0.21.0",
     "@neondatabase/serverless": "^1.0.1",
     "@nivo/heatmap": "^0.99.0",
+    "@xyflow/react": "^12.0.0",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
     "drizzle-orm": "^0.45.0",
+    "elkjs": "^0.9.0 || ^0.11.1",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
     "hono": "^4.0.0",
@@ -228,6 +234,18 @@
     "@leonardovida-md/drizzle-neo-duckdb": {
       "optional": true
     },
+    "databend-driver": {
+      "optional": true
+    },
+    "drizzle-databend": {
+      "optional": true
+    },
+    "snowflake-sdk": {
+      "optional": true
+    },
+    "drizzle-snowflake": {
+      "optional": true
+    },
     "@anthropic-ai/sdk": {
       "optional": true
     },
@@ -236,6 +254,12 @@
     },
     "@google/generative-ai": {
       "optional": true
+    },
+    "@xyflow/react": {
+      "optional": true
+    },
+    "elkjs": {
+      "optional": true
     }
   },
   "optionalDependencies": {
@@ -243,7 +267,7 @@
     "@leonardovida-md/drizzle-neo-duckdb": "^1.2.2"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
+    "@anthropic-ai/sdk": "^0.80.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^10.0.0",
     "@fastify/cors": "^11.1.0",
@@ -272,16 +296,21 @@
     "@types/supertest": "^7.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "^4.0.0",
     "@vitest/ui": "^4.0.0",
+    "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.0.0",
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
+    "databend-driver": "^0.33.6",
     "dotenv": "^17.2.3",
+    "drizzle-databend": "^0.1.12",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
+    "drizzle-snowflake": "^0.1.13",
+    "elkjs": "^0.11.1",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.1.0",
@@ -289,7 +318,7 @@
     "globals": "^17.0.0",
     "hono": "^4.0.0",
     "html2canvas": "^1.4.1",
-    "jsdom": "^28.0.0",
+    "jsdom": "^29.0.0",
     "modern-screenshot": "^4.6.7",
     "msw": "^2.12.7",
     "mysql2": "^3.14.3",
@@ -304,12 +333,13 @@
     "react-resizable": "^3.0.5",
     "recharts": "^3.5.1",
     "rollup-plugin-visualizer": "^7.0.0",
+    "snowflake-sdk": "^2.3.4",
     "sql-formatter": "^15.6.6",
     "supertest": "^7.0.0",
     "tailwindcss": "^4.1.12",
     "tsx": "^4.20.5",
     "typescript": "^5.0.0",
-    "vite": "^7.0.0",
+    "vite": "^8.0.0",
     "vite-plugin-dts": "^4.0.0",
     "vitest": "^4.0.0",
     "zod": "^4.0.0"

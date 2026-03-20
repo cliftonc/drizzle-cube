@@ -54,7 +54,7 @@ describe('LogicalPlanBuilder (unit)', () => {
 
     expect(plan.type).toBe('query')
     expect(plan.source.type).toBe('simpleSource')
-    expect(plan.source.primaryCube.name).toBe('Employees')
+    expect((plan.source as any).primaryCube.name).toBe('Employees')
     expect(plan.measures.map(m => m.name)).toEqual(['Employees.count'])
 
     expect((plannerStub as any).analyzeCubeUsage).toHaveBeenCalledTimes(1)
@@ -113,8 +113,8 @@ describe('LogicalPlanBuilder (unit)', () => {
     const plan = builder.plan(cubes, query, createContext())
 
     expect(plan.source.type).toBe('simpleSource')
-    expect(plan.source.joins).toHaveLength(1)
-    expect(plan.source.joins[0].target.name).toBe('Departments')
+    expect((plan.source as any).joins).toHaveLength(1)
+    expect((plan.source as any).joins[0].target.name).toBe('Departments')
     expect((plannerStub as any).buildJoinPlanForPrimary).toHaveBeenCalledTimes(1)
     expect((plannerStub as any).buildPreAggregationCTEs).toHaveBeenCalledTimes(1)
     expect((plannerStub as any).analyzeJoinPathForTarget).toHaveBeenCalledTimes(1)

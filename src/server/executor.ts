@@ -25,7 +25,7 @@ import type {
   RLSSetupFn
 } from './types'
 
-import { resolveSqlExpression } from './cube-utils'
+import { resolveSqlExpression, safeKey } from './cube-utils'
 import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
 import { generateCacheKey } from './cache-utils'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
@@ -44,6 +44,22 @@ import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
 
 type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+
+/** Log SQL when DC_DEBUG=true or DC_DEBUG=sql */
+function debugSql(label: string, query: { toSQL(): { sql: string; params: unknown[] } }) {
+  if (!process.env.DC_DEBUG) return
+  try {
+    const { sql: sqlStr, params } = query.toSQL()
+    console.log(`\n[DC_DEBUG] ${label}`)
+    console.log(sqlStr)
+    if (params.length > 0) {
+      console.log('params:', params)
+    }
+    console.log()
+  } catch {
+    // toSQL() not available on this query object
+  }
+}
 
 interface ComparisonExecutionPlan {
   timeDimension: TimeDimension
@@ -391,6 +407,8 @@ export class QueryExecutor {
     // The refactored buildFunnelQuery returns a query builder with .toSQL() support
     const funnelQuery = this.funnelQueryBuilder.buildFunnelQuery(config, cubes, context)
 
+    debugSql('funnel query', funnelQuery)
+
     // Execute the query builder directly
     const rawResult = await funnelQuery as unknown as Record<string, unknown>[]
 
@@ -471,6 +489,8 @@ export class QueryExecutor {
     // Build flow query using Drizzle query builder
     const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
 
+    debugSql('flow query', flowQuery)
+
     // Execute the query
     const rawResult = await flowQuery as unknown as Record<string, unknown>[]
 
@@ -549,6 +569,8 @@ export class QueryExecutor {
     // Build retention query using Drizzle query builder
     const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
 
+    debugSql('retention query', retentionQuery)
+
     // Execute the query
     const rawResult = await retentionQuery as unknown as Record<string, unknown>[]
 
@@ -602,6 +624,8 @@ export class QueryExecutor {
 
     // Build the query using unified approach
     const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+
+    debugSql('query', builtQuery)
 
     // Execute query - pass numeric field names for selective conversion
     const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
@@ -1030,7 +1054,7 @@ export class QueryExecutor {
       }
     }
 
-    validators[mode]()
+    validators[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async executeQueryByModeWithCache(
@@ -1048,7 +1072,7 @@ export class QueryExecutor {
       retention: () => this.executeRetentionQueryWithCache(cubes, query, securityContext, cacheKey)
     }
 
-    return executors[mode]()
+    return executors[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async executeRegularQueryWithCache(
@@ -1075,6 +1099,8 @@ export class QueryExecutor {
 
     // Build the query using unified approach
     const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+
+    debugSql('query', builtQuery)
 
     // Execute query - pass numeric field names for selective conversion
     const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
@@ -1161,7 +1187,7 @@ export class QueryExecutor {
       retention: () => this.dryRunRetention(cubes, query, securityContext)
     }
 
-    return sqlGenerators[mode]()
+    return sqlGenerators[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async generateComparisonSQL(

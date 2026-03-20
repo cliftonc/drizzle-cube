@@ -99,7 +99,7 @@ export interface HonoAdapterOptions {
   /**
    * Database engine type (optional - auto-detected if not provided)
    */
-  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'
+  engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
   
   /**
    * CORS configuration (optional)

@@ -36,13 +36,13 @@ describe('belongsToMany + CTE join key regression', () => {
     const { employees, productivity, teams, employeeTeams } = await getTestSchema()
 
     // Declare cube variables for forward references
-    let cteEmployeesCube: Cube<any>
-    let cteProductivityCube: Cube<any>
-    let cteTeamsCube: Cube<any>
+    let cteEmployeesCube: Cube
+    let cteProductivityCube: Cube
+    let cteTeamsCube: Cube
 
     // Primary cube: Employees with hasMany → Productivity
     cteEmployeesCube = defineCube('CteEmployees', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: employees,
         where: eq(employees.organisationId, ctx.securityContext.organisationId)
       }),
@@ -59,6 +59,7 @@ describe('belongsToMany + CTE join key regression', () => {
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: employees.id
         }
@@ -66,6 +67,7 @@ describe('belongsToMany + CTE join key regression', () => {
 
       dimensions: {
         name: {
+          name: 'name',
           type: 'string',
           sql: employees.name
         }
@@ -76,7 +78,7 @@ describe('belongsToMany + CTE join key regression', () => {
     // The hasMany from CteEmployees forces this into a CTE.
     // The belongsToMany needs employeeId in the CTE's SELECT for the junction join.
     cteProductivityCube = defineCube('CteProductivity', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: productivity,
         where: eq(productivity.organisationId, ctx.securityContext.organisationId)
       }),
@@ -102,10 +104,12 @@ describe('belongsToMany + CTE join key regression', () => {
 
       measures: {
         totalLinesOfCode: {
+          name: 'totalLinesOfCode',
           type: 'sum',
           sql: productivity.linesOfCode
         },
         recordCount: {
+          name: 'recordCount',
           type: 'count',
           sql: productivity.id
         }
@@ -113,10 +117,12 @@ describe('belongsToMany + CTE join key regression', () => {
 
       dimensions: {
         employeeId: {
+          name: 'employeeId',
           type: 'number',
           sql: productivity.employeeId
         },
         date: {
+          name: 'date',
           type: 'time',
           sql: productivity.date
         }
@@ -125,13 +131,14 @@ describe('belongsToMany + CTE join key regression', () => {
 
     // Dimension cube: Teams
     cteTeamsCube = defineCube('CteTeams', {
-      sql: (ctx: QueryContext<any>): BaseQueryDefinition => ({
+      sql: (ctx: QueryContext): BaseQueryDefinition => ({
         from: teams,
         where: eq(teams.organisationId, ctx.securityContext.organisationId)
       }),
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: teams.id
         }
@@ -139,13 +146,14 @@ describe('belongsToMany + CTE join key regression', () => {
 
       dimensions: {
         name: {
+          name: 'name',
           type: 'string',
           sql: teams.name
         }
       }
     })
 
-    const cubes = new Map<string, Cube<any>>([
+    const cubes = new Map<string, Cube>([
       ['CteEmployees', cteEmployeesCube],
       ['CteProductivity', cteProductivityCube],
       ['CteTeams', cteTeamsCube]

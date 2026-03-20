@@ -196,6 +196,74 @@ jobs:
   #       env:
   #         TEST_DB_TYPE: duckdb
 
+  test-databend:
+    runs-on: ubuntu-latest
+
+    services:
+      databend:
+        image: datafuselabs/databend
+        env:
+          QUERY_DEFAULT_USER: databend
+          QUERY_DEFAULT_PASSWORD: databend
+        ports:
+          - 18000:8000
+        # Match docker-compose.yml health check
+        options: >-
+          --health-cmd="bash -c 'echo > /dev/tcp/localhost/8000'"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for Databend
+        run: timeout 60 bash -c 'until bash -c "echo > /dev/tcp/localhost/18000" 2>/dev/null; do echo "Waiting for Databend..."; sleep 2; done'
+
+      - name: Run tests (Databend)
+        run: npm run test:server
+        env:
+          TEST_DB_TYPE: databend
+          DATABEND_DSN: databend://databend:databend@localhost:18000/default?sslmode=disable
+
+  test-snowflake:
+    runs-on: ubuntu-latest
+    # Only run if Snowflake secrets are configured
+    if: ${{ vars.HAS_SNOWFLAKE_SECRETS == 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (Snowflake)
+        run: npm run test:server
+        env:
+          TEST_DB_TYPE: snowflake
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_DATABASE: DRIZZLE_CUBE_TEST
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE || 'COMPUTE_WH' }}
+
   test-client:
     runs-on: ubuntu-latest
 

@@ -377,6 +377,47 @@ describe('PieChart', () => {
     })
   })
 
+  describe('inner radius (donut variant)', () => {
+    it('should render as donut when innerRadius is set', () => {
+      const { container } = render(
+        <PieChart
+          data={mockPieData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ innerRadius: '40%' }}
+        />
+      )
+
+      const svg = container.querySelector('svg')
+      expect(svg).toBeInTheDocument()
+    })
+
+    it('should render as solid pie when innerRadius is 0%', () => {
+      const { container } = render(
+        <PieChart
+          data={mockPieData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ innerRadius: '0%' }}
+        />
+      )
+
+      const svg = container.querySelector('svg')
+      expect(svg).toBeInTheDocument()
+    })
+
+    it('should render with large innerRadius', () => {
+      const { container } = render(
+        <PieChart
+          data={mockPieData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ innerRadius: '80%' }}
+        />
+      )
+
+      const svg = container.querySelector('svg')
+      expect(svg).toBeInTheDocument()
+    })
+  })
+
   describe('value formatting', () => {
     it('should apply leftYAxisFormat for tooltip values', () => {
       const { container } = render(

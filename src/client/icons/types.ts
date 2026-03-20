@@ -75,6 +75,7 @@ export interface IconRegistry {
   camera: IconDefinition
   thumbUp: IconDefinition
   thumbDown: IconDefinition
+  schemaGraph: IconDefinition
 
   // Field type icons
   measure: IconDefinition

@@ -143,10 +143,10 @@ describe('Measure Aggregation Filters', () => {
 
     // This should NOT throw a SQL error about unknown column in HAVING clause
     // The HAVING clause should reference the CTE alias, not the original table
-    const result = await testExecutor.executeQuery(query)
+    const result = await testExecutor.executeQuery(query as any)
     expect(result).toBeDefined()
     expect(result.data).toBeDefined()
-    
+
     // The query should execute successfully and return results
     expect(Array.isArray(result.data)).toBe(true)
   })

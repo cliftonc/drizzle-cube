@@ -220,7 +220,8 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
       )}
 
       {/* Filter Edit Modal */}
-      {editable && showFilterBuilder && editingFilter && (
+
+      {showFilterBuilder && editingFilter && (
         <FilterEditModal
           filter={editingFilter}
           schema={schema}

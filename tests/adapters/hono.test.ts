@@ -13,10 +13,10 @@ import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 describe('Hono Adapter', () => {
   let app: Hono
   let closeFn: (() => void) | null = null
-  let semanticLayerFn
-  let drizzleDb
-  let dynamicEmployeesCube
-  let currentSchema
+  let semanticLayerFn: any
+  let drizzleDb: any
+  let dynamicEmployeesCube: any
+  let currentSchema: any
 
   // Mock security context extractor
   const mockGetSecurityContext = async (_c: any) => testSecurityContexts.org1
@@ -73,7 +73,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(Array.isArray(data.results[0].data)).toBe(true)
@@ -87,7 +87,7 @@ describe('Hono Adapter', () => {
     
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.cubes).toBeDefined()
     expect(Array.isArray(data.cubes)).toBe(true)
     expect(data.cubes[0].name).toBe('Employees')
@@ -106,7 +106,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.sql).toBeDefined()
     expect(typeof data.sql).toBe('string')
     expect(data.params).toBeDefined()
@@ -123,7 +123,7 @@ describe('Hono Adapter', () => {
     
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(Array.isArray(data.results[0].data)).toBe(true)
@@ -141,7 +141,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(400)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toContain('not found')
   })
 
@@ -155,7 +155,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(400)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toContain('Query must reference at least one cube')
   })
 
@@ -186,7 +186,7 @@ describe('Hono Adapter', () => {
     
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.sql).toBeDefined()
     expect(typeof data.sql).toBe('string')
     expect(data.params).toBeDefined()
@@ -198,7 +198,7 @@ describe('Hono Adapter', () => {
     
     expect(res.status).toBe(400)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toBeDefined()
   })
 
@@ -215,11 +215,11 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(data.results[0].data.length).toBeGreaterThan(0)
-    
+
     // Check that we get actual employee names
     const firstRow = data.results[0].data[0]
     expect(firstRow['Employees.name']).toBeDefined()
@@ -246,11 +246,11 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
     
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(data.results[0].data.length).toBeGreaterThan(0) // Multiple employees with 'e' in name in Org 1
-    expect(data.results[0].data.every(row => row['Employees.name'].toLowerCase().includes('e'))).toBe(true)
+    expect(data.results[0].data.every((row: any) => row['Employees.name'].toLowerCase().includes('e'))).toBe(true)
   })
 
   it('should handle aggregation measures', async () => {
@@ -265,7 +265,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(data.results[0].data.length).toBe(1)
@@ -291,7 +291,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.valid).toBe(true)
     expect(data.sql).toBeDefined()
     expect(data.sql.sql).toBeDefined()
@@ -312,7 +312,7 @@ describe('Hono Adapter', () => {
 
     expect(res.status).toBe(200)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.valid).toBe(true)
     expect(data.sql).toBeDefined()
     expect(data.sql.sql).toBeDefined()
@@ -328,7 +328,7 @@ describe('Hono Adapter', () => {
 
     expect(res.status).toBe(400)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toBe('Query parameter is required')
     expect(data.valid).toBe(false)
   })
@@ -345,7 +345,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(400)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.valid).toBe(false)
     expect(data.error).toBeDefined()
   })
@@ -366,7 +366,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(Array.isArray(data.results)).toBe(true)
     expect(data.results.length).toBe(2)
@@ -389,7 +389,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(200)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.results).toBeDefined()
     expect(Array.isArray(data.results)).toBe(true)
     expect(data.results.length).toBe(2)
@@ -408,7 +408,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(400)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toContain('queries')
   })
 
@@ -422,7 +422,7 @@ describe('Hono Adapter', () => {
     const res = await app.request(req)
     expect(res.status).toBe(400)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toContain('empty')
   })
 
@@ -433,7 +433,7 @@ describe('Hono Adapter', () => {
 
     expect(res.status).toBe(400)
 
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.error).toBe('Query parameter is required')
   })
 
@@ -451,7 +451,7 @@ describe('Hono Adapter', () => {
     // Test cube routes work
     const metaRes = await mountedApp.request(new Request('http://localhost/cubejs-api/v1/meta'))
     expect(metaRes.status).toBe(200)
-    const data = await metaRes.json()
+    const data = await metaRes.json() as any
     expect(data.cubes).toBeDefined()
   })
 
@@ -462,7 +462,7 @@ describe('Hono Adapter', () => {
     const res = await standaloneApp.request(req)
 
     expect(res.status).toBe(200)
-    const data = await res.json()
+    const data = await res.json() as any
     expect(data.cubes).toBeDefined()
     expect(Array.isArray(data.cubes)).toBe(true)
   })

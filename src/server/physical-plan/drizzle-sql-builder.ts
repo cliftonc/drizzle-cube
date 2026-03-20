@@ -100,8 +100,9 @@ export class DrizzleSqlBuilder {
       // Add user-requested measures to selections
       for (const measureName of query.measures) {
         const measureBuilder = resolvedMeasures.get(measureName)
-        if (measureBuilder) {
+        if (measureBuilder && typeof measureBuilder === 'function') {
           const measureExpr = measureBuilder()
+
           selections[measureName] = sql`${measureExpr}`.as(measureName) as unknown as SQL
         }
       }
@@ -562,14 +563,18 @@ export class DrizzleSqlBuilder {
       if (effectiveLimit < 0) {
         throw new Error('Limit must be non-negative')
       }
-      result = (result as any).limit(effectiveLimit)
+
+      const limitQuery = result as { limit: (n: number) => typeof result }
+      result = limitQuery.limit(effectiveLimit)
     }
-    
+
     if (semanticQuery.offset !== undefined) {
       if (semanticQuery.offset < 0) {
         throw new Error('Offset must be non-negative')
       }
-      result = (result as any).offset(semanticQuery.offset)
+
+      const offsetQuery = result as { offset: (n: number) => typeof result }
+      result = offsetQuery.offset(semanticQuery.offset)
     }
 
     return result

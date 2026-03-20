@@ -366,6 +366,7 @@ export class DrizzlePlanBuilder {
           return null
         }
         const expr = resolveSqlExpression(dimension.sql, context) as SQL
+
         keysSelections[dimensionName] = sql`${expr}`.as(dimensionName)
         keyGroupBy.push(expr)
       }
@@ -384,6 +385,7 @@ export class DrizzlePlanBuilder {
           timeDimension.granularity,
           context
         )
+
         keysSelections[timeDimension.dimension] = sql`${expr}`.as(timeDimension.dimension)
         keyGroupBy.push(expr)
       }
@@ -397,6 +399,7 @@ export class DrizzlePlanBuilder {
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
       const pkAlias = `__pk__${pkDimension}`
+
       keysSelections[pkAlias] = sql`${expr}`.as(pkAlias)
       keyGroupBy.push(expr)
       pkAliases.push(pkAlias)
@@ -421,6 +424,7 @@ export class DrizzlePlanBuilder {
           return null
         }
         const regAlias = `__reg__${measureName.replace('.', '__')}`
+
         keysSelections[regAlias] = sql`${measureSqlBuilder()}`.as(regAlias)
       }
     }
@@ -499,6 +503,7 @@ export class DrizzlePlanBuilder {
         return null
       }
       const expr = resolveSqlExpression(dimension.sql, context) as SQL
+
       aggSelections[pkDimension] = sql`${expr}`.as(pkDimension)
       aggGroupBy.push(expr)
     }
@@ -529,9 +534,10 @@ export class DrizzlePlanBuilder {
       for (const measureName of nonAvgMultiplied) {
         const [, localName] = measureName.split('.')
         const measureSqlBuilder = measureMap.get(measureName)
-        if (!measureSqlBuilder) {
+        if (!measureSqlBuilder || typeof measureSqlBuilder !== 'function') {
           return null
         }
+
         aggSelections[localName] = sql`${measureSqlBuilder()}`.as(localName)
       }
     }

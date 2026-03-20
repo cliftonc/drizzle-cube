@@ -193,7 +193,7 @@ describe('LogicalPlanner - New Join System', () => {
       expect(condition.queryChunks).toBeDefined()
 
       // Convert to SQL to verify proper aliasing
-      const sqlString = condition.toSQL ? condition.toSQL().sql : condition.toString()
+      const sqlString = (condition as any).toSQL ? (condition as any).toSQL().sql : condition.toString()
 
       // Should contain aliased column references
       expect(typeof sqlString).toBe('string')
@@ -249,8 +249,8 @@ describe('LogicalPlanner - New Join System', () => {
         order: { 'Employees.name': 'asc' }
       }
 
-      const plan1 = logicalPlanBuilder.plan(cubes, query1, context)
-      const plan2 = logicalPlanBuilder.plan(cubes, query2, context)
+      const plan1 = logicalPlanBuilder.plan(cubes, query1 as any, context)
+      const plan2 = logicalPlanBuilder.plan(cubes, query2 as any, context)
       const source1 = plan1.source.type === 'simpleSource' ? plan1.source : null
       const source2 = plan2.source.type === 'simpleSource' ? plan2.source : null
 
@@ -683,10 +683,10 @@ describe('LogicalPlanner - New Join System', () => {
       }
 
       const testCubesMap = new Map<string, Cube>()
-      testCubesMap.set('CubeA', cubeA as Cube)
-      testCubesMap.set('CubeB', cubeB as Cube)
-      testCubesMap.set('CubeC', cubeC as Cube)
-      testCubesMap.set('CubeD', cubeD as Cube)
+      testCubesMap.set('CubeA', cubeA as unknown as Cube)
+      testCubesMap.set('CubeB', cubeB as unknown as Cube)
+      testCubesMap.set('CubeC', cubeC as unknown as Cube)
+      testCubesMap.set('CubeD', cubeD as unknown as Cube)
 
       const testResolver = new JoinPathResolver(testCubesMap)
 
@@ -718,7 +718,7 @@ describe('LogicalPlanner - New Join System', () => {
 
       const testCubesMap = new Map<string, Cube>()
       testCubesMap.set('Employees', testCubes.testEmployeesCube)
-      testCubesMap.set('IsolatedCube', isolatedCube as Cube)
+      testCubesMap.set('IsolatedCube', isolatedCube as unknown as Cube)
 
       const testResolver = new JoinPathResolver(testCubesMap)
 
@@ -806,9 +806,9 @@ describe('LogicalPlanner - New Join System', () => {
       }
 
       const testCubesMap = new Map<string, Cube>()
-      testCubesMap.set('PrimaryCube', primaryCube as Cube)
-      testCubesMap.set('IntermediateCube', intermediateCube as Cube)
-      testCubesMap.set('TargetCube', targetCube as Cube)
+      testCubesMap.set('PrimaryCube', primaryCube as unknown as Cube)
+      testCubesMap.set('IntermediateCube', intermediateCube as unknown as Cube)
+      testCubesMap.set('TargetCube', targetCube as unknown as Cube)
 
       const testResolver = new JoinPathResolver(testCubesMap)
 
@@ -886,9 +886,9 @@ describe('LogicalPlanner - New Join System', () => {
       }
 
       const testCubesMap = new Map<string, Cube>()
-      testCubesMap.set('PrimaryCube', primaryCube as Cube)
-      testCubesMap.set('JunctionCube', junctionCube as Cube)
-      testCubesMap.set('TargetCube', targetCube as Cube)
+      testCubesMap.set('PrimaryCube', primaryCube as unknown as Cube)
+      testCubesMap.set('JunctionCube', junctionCube as unknown as Cube)
+      testCubesMap.set('TargetCube', targetCube as unknown as Cube)
 
       const testResolver = new JoinPathResolver(testCubesMap)
 

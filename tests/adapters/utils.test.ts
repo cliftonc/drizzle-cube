@@ -83,13 +83,10 @@ describe('Adapter Utils', () => {
       expect(id1).not.toBe(id2)
     })
 
-    it('should follow timestamp-random format', () => {
+    it('should follow UUID format', () => {
       const id = generateRequestId()
-      const parts = id.split('-')
-
-      expect(parts.length).toBeGreaterThanOrEqual(2)
-      // First part should be a timestamp (all digits)
-      expect(/^\d+$/.test(parts[0])).toBe(true)
+      // crypto.randomUUID() returns format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
     })
   })
 
@@ -102,7 +99,7 @@ describe('Adapter Utils', () => {
         filters: [{ member: 'Cube.name', operator: 'equals', values: ['test'] }]
       }
 
-      const result = buildTransformedQuery(query)
+      const result = buildTransformedQuery(query as any)
 
       expect(result.sortedDimensions).toEqual(['Cube.name'])
       expect(result.sortedTimeDimensions).toEqual([{ dimension: 'Cube.date', granularity: 'day' }])
@@ -334,7 +331,7 @@ describe('Adapter Utils', () => {
         ]
       }
 
-      const result = buildTransformedQuery(query)
+      const result = buildTransformedQuery(query as any)
 
       expect(result.sortedTimeDimensions).toEqual(query.timeDimensions)
       expect(result.timeDimensions).toEqual(query.timeDimensions)
@@ -385,7 +382,7 @@ describe('Adapter Utils', () => {
           { member: 'A.y', operator: 'equals', values: ['z'] }
         ]
       }
-      expect(calculateQueryComplexity(query)).toBe('medium')
+      expect(calculateQueryComplexity(query as any)).toBe('medium')
     })
 
     it('should handle query at boundary between medium and high (15 points)', () => {
@@ -399,7 +396,7 @@ describe('Adapter Utils', () => {
         ],
         timeDimensions: [{ dimension: 'A.date', granularity: 'day' }]
       }
-      expect(calculateQueryComplexity(query)).toBe('high')
+      expect(calculateQueryComplexity(query as any)).toBe('high')
     })
 
     it('should handle query with undefined arrays', () => {
@@ -422,13 +419,10 @@ describe('Adapter Utils', () => {
       expect(ids.size).toBe(100)
     })
 
-    it('should contain timestamp in first part', () => {
+    it('should generate valid UUIDs', () => {
       const id = generateRequestId()
-      const timestamp = parseInt(id.split('-')[0], 10)
-      const now = Date.now()
-
-      // Should be within 1 second of now
-      expect(Math.abs(now - timestamp)).toBeLessThan(1000)
+      // crypto.randomUUID() returns format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
     })
   })
 
@@ -459,7 +453,7 @@ describe('Adapter Utils', () => {
           dimensions: ['Employees.name']
         }
 
-        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+        const result = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
 
         expect(result.valid).toBe(true)
         expect(result.queryType).toBe('regularQuery')
@@ -484,7 +478,7 @@ describe('Adapter Utils', () => {
           ]
         }
 
-        const result = await handleDryRun(query, testSecurityContexts.org1, semanticLayer)
+        const result = await handleDryRun(query as any, testSecurityContexts.org1, semanticLayer)
 
         expect(result.valid).toBe(true)
         expect(result.mode).toBe('comparison')

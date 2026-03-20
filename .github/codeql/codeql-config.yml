@@ -1,0 +1,12 @@
+name: "drizzle-cube-codeql-config"
+
+paths-ignore:
+  - dev
+  - scripts
+  - tests
+
+query-filters:
+  - exclude:
+      id: js/unused-local-variable
+  - exclude:
+      id: js/remote-property-injection

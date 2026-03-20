@@ -24,7 +24,6 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
-  errorInfo: string | null
 }
 
 /**
@@ -38,7 +37,6 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null,
     }
   }
 
@@ -46,15 +44,11 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
     }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.setState({
-      error,
-      errorInfo: errorInfo.componentStack || null,
-    })
+    this.setState({ error })
 
     console.error(
       `[AnalysisModeErrorBoundary] Error in ${this.props.analysisType} mode:`,
@@ -67,7 +61,6 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null,
     })
   }
 

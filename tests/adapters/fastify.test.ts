@@ -13,10 +13,10 @@ import { createTestCubesForCurrentDatabase } from '../helpers/test-cubes'
 describe('Fastify Adapter', () => {
   let app: FastifyInstance
   let closeFn: (() => void) | null = null
-  let semanticLayerFn
-  let drizzleDb
-  let dynamicEmployeesCube
-  let currentSchema
+  let semanticLayerFn: any
+  let drizzleDb: any
+  let dynamicEmployeesCube: any
+  let currentSchema: any
 
   // Mock security context extractor
   const mockGetSecurityContext = async () => testSecurityContexts.org1
@@ -249,7 +249,7 @@ describe('Fastify Adapter', () => {
     expect(data.results).toBeDefined()
     expect(data.results[0].data).toBeDefined()
     expect(data.results[0].data.length).toBeGreaterThan(0) // Multiple employees with 'e' in name in Org 1
-    expect(data.results[0].data.every(row => row['Employees.name'].toLowerCase().includes('e'))).toBe(true)
+    expect(data.results[0].data.every((row: any) => row['Employees.name'].toLowerCase().includes('e'))).toBe(true)
   })
 
   it('should handle aggregation measures', async () => {
@@ -403,11 +403,11 @@ describe('Fastify Adapter', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/cubejs-api/v1/load',
-      payload: null // Invalid payload
+      payload: null as any // Invalid payload
     })
     
     // Fastify might return 500 for null payload, that's acceptable
-    expect([400, 500]).toContain(response.statusCode)
+    expect([400, 500]).toContain((response as any).statusCode)
   })
 
   it('should handle nested query format', async () => {

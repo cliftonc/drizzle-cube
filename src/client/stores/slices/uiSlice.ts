@@ -106,7 +106,7 @@ export const createUISlice: StateCreator<
   [],
   [],
   UISlice
-> = (set, _get) => ({
+> = (set, _get, _store) => ({
   ...createInitialUIState(),
 
   // ==========================================================================

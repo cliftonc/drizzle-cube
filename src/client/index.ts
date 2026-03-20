@@ -61,6 +61,10 @@ export type { AnalysisBuilderRef } from './components/AnalysisBuilder/types'
 export { ExecutionPlanPanel } from './components/AnalysisBuilder/ExecutionPlanPanel'
 export { ExplainAIPanel } from './components/AnalysisBuilder/ExplainAIPanel'
 
+// Schema Visualization (requires @xyflow/react and elkjs)
+export { SchemaVisualizationLazy as SchemaVisualization } from './components/SchemaVisualization/SchemaVisualizationLazy'
+export type { SchemaVisualizationProps } from './components/SchemaVisualization/index'
+
 // Data provider and hooks
 export {
   CubeProvider,

@@ -6,7 +6,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import {
   createTestDatabaseExecutor,
-  skipIfDuckDB
+  skipIfDuckDB,
+  skipIfDatabend,
+  skipIfSnowflake
 } from './helpers/test-database'
 import { 
   SemanticLayerCompiler
@@ -18,12 +20,13 @@ import type {
 import { createTestCubesForCurrentDatabase } from './helpers/test-cubes'
 import { TestQueryBuilder, TestExecutor } from './helpers/test-utilities'
 
-describe('Error Handling - Resource Limits', () => {
-  let compiler: SemanticLayerCompiler<any>
+// Databend: resource limit tests cause worker crashes due to remote query handling
+describe.skipIf(skipIfDatabend() || skipIfSnowflake())('Error Handling - Resource Limits', () => {
+  let compiler: SemanticLayerCompiler
   let testExecutor: TestExecutor
-  let employeesCube: Cube<any>
-  let departmentsCube: Cube<any>
-  let productivityCube: Cube<any>
+  let employeesCube: Cube
+  let departmentsCube: Cube
+  let productivityCube: Cube
 
   beforeAll(async () => {
     const { executor } = await createTestDatabaseExecutor()

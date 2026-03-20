@@ -9,6 +9,7 @@ import DashboardViewPage from './pages/DashboardViewPage'
 import AnalysisBuilderPage from './pages/AnalysisBuilderPage'
 import NotebooksListPage from './pages/NotebooksListPage'
 import NotebookViewPage from './pages/NotebookViewPage'
+import SchemaPage from './pages/SchemaPage'
 
 // Create a client
 const queryClient = new QueryClient()
@@ -19,6 +20,7 @@ const features = {
   enableAI: true,
   aiEndpoint: '/api/ai/generate',
   useAnalysisBuilder: true,
+  showSchemaDiagram: true,
   editToolbar: 'both' as const,  // 'floating' | 'top' | 'both'
   floatingToolbarPosition: 'right' as const,
   // Manual refresh mode - shows "needs refresh" banner when query config changes
@@ -47,6 +49,7 @@ function App() {
             <Route path="/analysis-builder" element={<AnalysisBuilderPage />} />
             <Route path="/notebooks" element={<NotebooksListPage />} />
             <Route path="/notebooks/:id" element={<NotebookViewPage />} />
+            <Route path="/schema" element={<SchemaPage />} />
           </Routes>
         </Layout>
       </CubeProvider>

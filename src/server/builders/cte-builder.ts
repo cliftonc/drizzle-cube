@@ -82,6 +82,7 @@ export class CTEBuilder {
       for (const joinKey of cteInfo.joinKeys) {
         // Use the stored Drizzle column object if available
         if (joinKey.targetColumnObj) {
+
           cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
 
           // Also add an aliased version if there's a matching dimension with a different name

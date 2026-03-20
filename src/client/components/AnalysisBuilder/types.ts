@@ -609,6 +609,12 @@ export interface AnalysisResultsPanelProps {
    * Displayed as a banner above results.
    */
   warnings?: import('../../shared/types').QueryWarning[]
+
+  // Schema visualization interaction
+  /** Fields currently selected in the query (for highlighting in schema diagram) */
+  highlightedFields?: string[]
+  /** Callback when a field is clicked in the schema diagram */
+  onSchemaFieldClick?: (cubeName: string, fieldName: string, fieldType: 'measure' | 'dimension') => void
 }
 
 // ============================================================================

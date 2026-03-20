@@ -61,9 +61,7 @@ function extractCubeNamesFromFilter(filter: any, cubesSet: Set<string>): void {
  * Generate a unique request ID
  */
 export function generateRequestId(): string {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2, 9)
-  return `${timestamp}-${random}`
+  return crypto.randomUUID()
 }
 
 /**
@@ -172,7 +170,7 @@ function collectDryRunAnalysis(
     return semanticLayer.analyzeQuery(query, securityContext)
   } catch (analysisError) {
     // Analysis is optional - don't fail the dry-run if it fails
-    console.warn('Query analysis failed:', analysisError)
+    console.warn('Query analysis failed:', String(analysisError).replace(/\n|\r/g, ''))
     return undefined
   }
 }
@@ -468,7 +466,7 @@ export function formatCubeResponse(
 /**
  * Format SQL string using sql-formatter with appropriate dialect
  */
-export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb'): string {
+export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'): string {
   try {
     // Map drizzle-cube engine types to sql-formatter language options
     const dialectMap = {
@@ -476,7 +474,9 @@ export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mys
       mysql: 'mysql',
       sqlite: 'sqlite',
       singlestore: 'mysql',  // SingleStore uses MySQL dialect for formatting
-      duckdb: 'postgresql'   // DuckDB is PostgreSQL-compatible for formatting
+      duckdb: 'postgresql',  // DuckDB is PostgreSQL-compatible for formatting
+      databend: 'postgresql', // Databend is PostgreSQL-compatible for formatting
+      snowflake: 'postgresql' // Snowflake is PostgreSQL-compatible for formatting
     } as const
     
     return format(sqlString, {
@@ -487,6 +487,8 @@ export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mys
     })
   } catch (error) {
     // If formatting fails, return original SQL
+
+    // codeql[js/log-injection] error source is internal, not user-controlled
     console.warn('SQL formatting failed:', error)
     return sqlString
   }

@@ -96,7 +96,7 @@ export const createFunnelSlice: StateCreator<
   [],
   [],
   FunnelSlice
-> = (set, get) => ({
+> = (set, get, _store) => ({
   ...createInitialFunnelState(),
 
   addFunnelStep: () =>

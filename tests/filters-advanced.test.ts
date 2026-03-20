@@ -12,7 +12,7 @@ import {
 import { testSecurityContexts } from './helpers/enhanced-test-data'
 
 import { QueryExecutor } from '../src/server/executor'
-import type { Cube } from '../../src/server/types'
+import type { Cube } from '../src/server/types'
 
 import { 
   TestQueryBuilder, 
@@ -57,7 +57,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -72,7 +72,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -88,7 +88,7 @@ describe('Advanced Filter Operations', () => {
         .build()
 
       // Should not throw error, filter should be ignored
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
     })
   })
@@ -103,8 +103,8 @@ describe('Advanced Filter Operations', () => {
       
       const deptResult = await testExecutor.executeQuery(deptQuery)
       const departmentIds = deptResult.data
-        .filter(row => row['Employees.departmentId'] !== null && row['Employees.count'] > 0)
-        .map(row => row['Employees.departmentId'])
+        .filter((row: any) => row['Employees.departmentId'] !== null && row['Employees.count'] > 0)
+        .map((row: any) => row['Employees.departmentId'])
         .slice(0, 2) // Take first 2 department IDs
       
       expect(departmentIds.length).toBeGreaterThanOrEqual(2) // Ensure we have test data
@@ -118,7 +118,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThan(0) // Should actually match employees
     })
@@ -152,11 +152,11 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       // Should be less than total but greater than 0
-      expect(result.data[0]['Employees.count']).toBeGreaterThan(0)
-      expect(result.data[0]['Employees.count']).toBeLessThan(totalEmployees)
+      expect(result.data[0]['Employees.count'] as number).toBeGreaterThan(0)
+      expect(result.data[0]['Employees.count'] as number).toBeLessThan(totalEmployees as number)
     })
 
     it('should handle in operator with single value', async () => {
@@ -167,8 +167,8 @@ describe('Advanced Filter Operations', () => {
         .build()
       const deptResult = await testExecutor.executeQuery(deptQuery)
       const biggestDept = deptResult.data
-        .filter(row => row['Employees.departmentId'] !== null)
-        .sort((a, b) => b['Employees.count'] - a['Employees.count'])[0]
+        .filter((row: any) => row['Employees.departmentId'] !== null)
+        .sort((a: any, b: any) => b['Employees.count'] - a['Employees.count'])[0] as any
       
       expect(biggestDept).toBeDefined() // Ensure we have test data
       
@@ -181,7 +181,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toEqual(biggestDept['Employees.count']) // Should match exactly
     })
@@ -197,7 +197,7 @@ describe('Advanced Filter Operations', () => {
         .build()
 
       // Should not throw error, filter should be ignored (returns all employees)
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       
       // Compare to unfiltered query to ensure empty array is ignored
@@ -223,7 +223,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThan(0) // Should match Alex Chen and Alice Research
     })
@@ -246,10 +246,10 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
-      expect(result.data[0]['Employees.count']).toBeGreaterThan(0) // Should have employees not starting with A
-      expect(result.data[0]['Employees.count']).toBeLessThan(totalEmployees) // Should be less than total
+      expect(result.data[0]['Employees.count'] as number).toBeGreaterThan(0) // Should have employees not starting with A
+      expect(result.data[0]['Employees.count'] as number).toBeLessThan(totalEmployees as number) // Should be less than total
     })
 
     it('should handle ilike operator (case-insensitive)', async () => {
@@ -263,7 +263,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThan(0) // Should match 'Alex Chen'
     })
@@ -280,7 +280,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -295,7 +295,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -312,7 +312,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -327,7 +327,7 @@ describe('Advanced Filter Operations', () => {
         }])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -381,7 +381,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
       
@@ -423,7 +423,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
     })
@@ -469,7 +469,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
     })
@@ -504,7 +504,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
     })
@@ -541,7 +541,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
     })
@@ -600,7 +600,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
     })
@@ -620,7 +620,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data).toHaveLength(1)
       expect(result.data[0]['Employees.count']).toBe(0) // Should return 0 results due to contradictions
@@ -644,11 +644,11 @@ describe('Advanced Filter Operations', () => {
 
       // Should either handle gracefully or throw a clear validation error
       try {
-        const result = await testExecutor.executeQuery(query)
+        const result = await testExecutor.executeQuery(query as any)
         expect(result.data).toBeDefined()
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
-        expect(error.message).toContain('filter') // Should be a meaningful error message
+        expect((error as any).message).toContain('filter') // Should be a meaningful error message
       }
     })
 
@@ -674,7 +674,7 @@ describe('Advanced Filter Operations', () => {
         ])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
     })
@@ -689,8 +689,8 @@ describe('Advanced Filter Operations', () => {
         .build()
       const deptResult = await testExecutor.executeQuery(deptQuery)
       const departmentIds = deptResult.data
-        .filter(row => row['Employees.departmentId'] !== null && row['Employees.count'] > 0)
-        .map(row => row['Employees.departmentId'])
+        .filter((row: any) => row['Employees.departmentId'] !== null && row['Employees.count'] > 0)
+        .map((row: any) => row['Employees.departmentId'])
         .slice(0, 3)
         
       const query = TestQueryBuilder.create()
@@ -704,7 +704,7 @@ describe('Advanced Filter Operations', () => {
         ])
         .build()
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]).toHaveProperty('Employees.count')
       expect(result.data[0]).toHaveProperty('Departments.count')
@@ -751,7 +751,7 @@ describe('Advanced Filter Operations', () => {
 
       const result = await performanceMeasurer.measure(
         'complex-nested-advanced-filters',
-        () => testExecutor.executeQuery(complexNestedQuery)
+        () => testExecutor.executeQuery(complexNestedQuery as any)
       )
       
       expect(result.data).toBeDefined()
@@ -798,7 +798,7 @@ describe('Advanced Filter Operations', () => {
 
       const result = await performanceMeasurer.measure(
         'multi-cube-nested-filters',
-        () => testExecutor.executeQuery(multiCubeNestedQuery)
+        () => testExecutor.executeQuery(multiCubeNestedQuery as any)
       )
       
       expect(result.data).toBeDefined()
@@ -830,7 +830,7 @@ describe('Advanced Filter Operations', () => {
 
       const result = await performanceMeasurer.measure(
         'wide-complex-filters',
-        () => testExecutor.executeQuery(wideComplexQuery)
+        () => testExecutor.executeQuery(wideComplexQuery as any)
       )
       
       expect(result.data).toBeDefined()
@@ -873,7 +873,7 @@ describe('Advanced Filter Operations', () => {
           ]
         }
 
-        const result = await testExecutor.executeQuery(query)
+        const result = await testExecutor.executeQuery(query as any)
         
         // Should execute safely and return structured results
         expect(result.data).toBeDefined()
@@ -882,7 +882,7 @@ describe('Advanced Filter Operations', () => {
         expect(result.data[0]['Employees.count']).toBe(0) // No matches for malicious input
         
         // Validate no SQL injection occurred
-        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result, query)
+        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
         expect(securityValidation.isValid).toBe(true)
       }
     })
@@ -912,13 +912,13 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       
       // Should handle malicious regex/ilike patterns safely
       expect(result.data).toBeDefined()
       expect(Array.isArray(result.data)).toBe(true)
       
-      const securityValidation = SecurityTestUtils.validateNoSQLInjection(result, query)
+      const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
       expect(securityValidation.isValid).toBe(true)
     })
 
@@ -954,12 +954,12 @@ describe('Advanced Filter Operations', () => {
           ]
         }
 
-        const result = await testExecutor.executeQuery(complexQuery)
-        
+        const result = await testExecutor.executeQuery(complexQuery as any)
+
         expect(result.data).toBeDefined()
         expect(Array.isArray(result.data)).toBe(true)
-        
-        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result, complexQuery)
+
+        const securityValidation = SecurityTestUtils.validateNoSQLInjection(result)
         expect(securityValidation.isValid).toBe(true)
       }
     })
@@ -990,7 +990,7 @@ describe('Advanced Filter Operations', () => {
       }
 
       // Should handle apostrophes and hyphens without SQL errors
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
     })
 
@@ -1013,7 +1013,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
     })
 
@@ -1036,7 +1036,7 @@ describe('Advanced Filter Operations', () => {
         ]
       }
 
-      const result = await testExecutor.executeQuery(query)
+      const result = await testExecutor.executeQuery(query as any)
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBe(0) // No matches expected for very long values
     })
@@ -1062,9 +1062,9 @@ describe('Advanced Filter Operations', () => {
 
       const result = await performanceMeasurer.measure(
         'large-nested-arrays',
-        () => testExecutor.executeQuery(query)
+        () => testExecutor.executeQuery(query as any)
       )
-      
+
       expect(result.data).toBeDefined()
       expect(result.data[0]['Employees.count']).toBeGreaterThanOrEqual(0)
       
@@ -1087,12 +1087,12 @@ describe('Advanced Filter Operations', () => {
 
       // Should either handle gracefully (ignore invalid filters) or throw clear validation error
       try {
-        const result = await testExecutor.executeQuery(query)
+        const result = await testExecutor.executeQuery(query as any)
         expect(result.data).toBeDefined()
       } catch (error) {
         expect(error).toBeInstanceOf(Error)
         // Should provide meaningful error about query execution failure
-        expect(error.message).toMatch(/Query execution failed|Failed query|not-a-number/)
+        expect((error as any).message).toMatch(/Query execution failed|Failed query|not-a-number/)
       }
     })
 
@@ -1123,7 +1123,7 @@ describe('Advanced Filter Operations', () => {
 
       // Should throw error due to non-existent field
       await expect(async () => {
-        await testExecutor.executeQuery(query)
+        await testExecutor.executeQuery(query as any)
       }).rejects.toThrow()
     })
   })

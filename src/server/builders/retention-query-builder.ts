@@ -276,7 +276,8 @@ export class RetentionQueryBuilder {
     config: RetentionQueryConfig
   ): RetentionResultRow[] {
     const breakdownDimensions = config.breakdownDimensions || []
-    const hasBreakdowns = breakdownDimensions.length > 0
+    const maxBreakdowns = Math.min(breakdownDimensions.length, 100)
+    const hasBreakdowns = maxBreakdowns > 0
 
     return (rawResult as any[]).map(row => {
       const result: RetentionResultRow = {
@@ -288,9 +289,10 @@ export class RetentionQueryBuilder {
 
       if (hasBreakdowns) {
         const breakdownValues: Record<string, string | null> = {}
-        for (let i = 0; i < breakdownDimensions.length; i++) {
+        for (let i = 0; i < maxBreakdowns; i++) {
           const dimName = breakdownDimensions[i]
-          const value = row[`breakdown_${i}`]
+          const breakdownKey = `breakdown_${i}`
+          const value = (row as Record<string, unknown>)[breakdownKey]
           breakdownValues[dimName] = value !== undefined ? String(value) : null
         }
         result.breakdownValues = breakdownValues
@@ -718,10 +720,11 @@ export class RetentionQueryBuilder {
         groupByFields.push(sql.raw(`breakdown_${i}`))
       }
 
+      const maxPeriods = Math.min(config.periods, 52)
       query = context.db
         .select(selectFields)
         .from(sql`activity_periods`)
-        .where(sql`period_number >= 0 AND period_number <= ${config.periods}`)
+        .where(sql`period_number >= 0 AND period_number <= ${maxPeriods}`)
         .groupBy(...groupByFields)
     }
 
@@ -773,11 +776,11 @@ export class RetentionQueryBuilder {
       groupByFields.push(sql.raw(`ump.breakdown_${i}`))
     }
 
-    // Cross join and count
+    // Cross join and count (using innerJoin ON TRUE for cross-driver compatibility)
     return context.db
       .select(selectFields)
       .from(sql`${userMaxPeriods} ump`)
-      .crossJoin(periodSeriesSubquery)
+      .innerJoin(periodSeriesSubquery, sql`TRUE`)
       .groupBy(...groupByFields)
   }
 

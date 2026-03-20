@@ -112,23 +112,34 @@ Run the following script from the root folder to build the project:
 ```bash
 npm install && npm run build
 ```
-To setup postgres and seed with sample data:
 
-```
-npm run dev:setup
-```
+### Setting up for development
 
-Then for development
+The dev environment uses its own PostgreSQL instance (separate from test databases):
 
 ```bash
-npm run dev
+npm run dev:setup  # Starts dev PostgreSQL (port 54821), runs migrations, seeds sample data
+npm run dev        # Starts concurrent dev servers (server + client with HMR)
 ```
 
-Then to run the tests (default uses Postgres):
+To tear down the dev database:
 
 ```bash
-npm t
+npm run dev:db:down
 ```
+
+### Setting up for testing
+
+Tests require Docker for PostgreSQL and MySQL. SQLite and DuckDB use in-memory databases and don't need Docker.
+
+```bash
+npm run test:setup    # Starts test PostgreSQL (port 54333) and MySQL (port 33077) via Docker
+npm test              # Run all tests (default: PostgreSQL)
+npm run test:teardown # Stop and remove test database containers
+```
+
+> [!TIP]
+> The dev server and test databases use completely separate Docker containers and ports, so you can run `npm run dev` and `npm test` at the same time. This is useful for observing your changes in the browser while verifying they pass tests.
 
 ## <a name="commit-message-guidelines"></a> Commit message guidelines
 
@@ -174,26 +185,20 @@ for more flexible analytics queries
 
 ### <a name="running-tests-core"></a> Running tests
 
-All tests for Drizzle Cube are integration tests that simulate real databases with different queries and responses. Each test file covers different scenarios for different dialects and drivers. Tests create Docker containers with the needed databases and run test cases there. After every test is run, the Docker container is deleted.
+Drizzle Cube has integration tests that run against real databases with different queries and responses. Tests use Docker containers for PostgreSQL and MySQL, and in-memory databases for SQLite and DuckDB.
 
 If you have added additional logic to the core library, make sure that all tests complete without any failures.
 
 > [!NOTE]
 > If you have added data types, query features, or new functionality, you need to create additional test cases using the new API to ensure it works properly.
 
-**Setup test databases via docker:**
+**Setup test databases via Docker:**
 
 ```bash
-npm run test:setup
+npm run test:setup    # Starts PostgreSQL (port 54333) and MySQL (port 33077)
 ```
 
-**Run default postgres tests:**
-
-```bash
-npm test
-```
-
-**Run database-specific tests:**
+**Run server tests (semantic layer, executors, query planning):**
 
 ```bash
 # PostgreSQL (default)
@@ -202,24 +207,61 @@ npm run test:postgres
 # MySQL
 npm run test:mysql
 
-# SQLite
+# SQLite (no Docker needed)
 npm run test:sqlite
 
-# All databases
+# DuckDB (no Docker needed)
+npm run test:duckdb
+
+# All databases sequentially
 npm run test:all
 ```
 
-**Run tests in watch mode:**
+**Run client tests (React components, hooks, stores):**
 
 ```bash
-npm run test:watch
+npm run test:client
+```
+
+**Run all tests (server + client):**
+
+```bash
+npm test
+```
+
+**Watch mode:**
+
+```bash
+npm run test:watch          # All tests
+npm run test:server:watch   # Server tests only
+npm run test:client:watch   # Client tests only
+```
+
+**Coverage reports:**
+
+```bash
+npm run test:coverage           # Server coverage (default DB)
+npm run test:client:coverage    # Client coverage
+npm run test:coverage:all       # Server coverage across all databases
+npm run test:coverage:complete  # Full coverage (all server DBs + client)
 ```
 
 **Teardown test databases:**
 
 ```bash
-npm run test:teardown
+npm run test:teardown  # Stop and remove Docker containers
 ```
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TEST_DB_TYPE` | `postgres` | Database to test against (`postgres`, `mysql`, `sqlite`, `duckdb`) |
+| `TEST_DATABASE_URL` | `postgresql://test:test@localhost:54333/drizzle_cube_test` | PostgreSQL connection URL |
+| `MYSQL_TEST_DATABASE_URL` | `mysql://test:test@localhost:33077/drizzle_cube_test` | MySQL connection URL |
+
+> [!WARNING]
+> All test database URLs **must contain "test"** as a safety check to prevent accidental use against production databases.
 
 ### <a name="pr-guidelines-core"></a> PR guidelines
 
@@ -273,16 +315,22 @@ When contributing to examples:
 3. **Set up development environment:**
    ```bash
    npm install
-   npm run dev:setup  # Sets up dev database
+   npm run build
+   npm run test:setup   # Start test database containers (PostgreSQL + MySQL)
+   npm run dev:setup    # Start dev database, run migrations, seed sample data
    ```
-4. **Make your changes** with appropriate tests
-5. **Run the test suite:**
+4. **Start development servers:**
+   ```bash
+   npm run dev          # Server + client with HMR
+   ```
+5. **Make your changes** with appropriate tests
+6. **Run the test suite:**
    ```bash
    npm run typecheck
    npm run lint
-   npm run test:all
+   npm test             # Server + client tests
    ```
-6. **Create a pull request** with a clear description
+7. **Create a pull request** with a clear description
 
 ## Architecture Guidelines
 
@@ -297,6 +345,8 @@ When contributing to examples:
 - Leverage Drizzle's type safety
 - Include security context in all cube definitions
 - Test multi-tenant isolation
+
+**Adding a New Chart Type**: Chart types are used inside the AnalysisBuilder component. When adding a new chart type, verify it works end-to-end within the AnalysisBuilder — select it from the chart type picker, configure axes via the chart config panel, and confirm it renders correctly with real query results. See `src/client/CLAUDE.md` for the full registration steps (chart config, lazy loading, ChartLoader).
 
 ## Getting Help
 

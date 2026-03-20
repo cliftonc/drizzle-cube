@@ -56,6 +56,9 @@ export class CalculatedMeasureResolver {
    */
   extractDependencies(calculatedSql: string): MeasureDependency[] {
     // Match {member} or {Cube.member} patterns
+    // Guard against excessive input length to prevent ReDoS
+    if (calculatedSql.length > 1000) return []
+
     const regex = /\{([^}]+)\}/g
     const matches = calculatedSql.matchAll(regex)
     const dependencies: MeasureDependency[] = []

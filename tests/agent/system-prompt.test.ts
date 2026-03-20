@@ -15,16 +15,18 @@ import type { CubeMetadata } from '../../src/server/types'
 const singleCubeMetadata: CubeMetadata[] = [
   {
     name: 'Employees',
+    title: 'Employees',
+    segments: [],
     measures: [
-      { name: 'count', type: 'count' },
-      { name: 'avgSalary', type: 'avg' },
+      { name: 'count', type: 'count' } as any,
+      { name: 'avgSalary', type: 'avg' } as any,
     ],
     dimensions: [
-      { name: 'name', type: 'string' },
-      { name: 'createdAt', type: 'time' },
+      { name: 'name', type: 'string' } as any,
+      { name: 'createdAt', type: 'time' } as any,
     ],
     relationships: [
-      { targetCube: 'Departments', relationship: 'belongsTo' },
+      { targetCube: 'Departments', relationship: 'belongsTo', joinFields: [] },
     ],
   },
 ]
@@ -32,9 +34,11 @@ const singleCubeMetadata: CubeMetadata[] = [
 const cubeWithDescription: CubeMetadata[] = [
   {
     name: 'Sales',
+    title: 'Sales',
+    segments: [],
     description: 'Revenue and order data',
-    measures: [{ name: 'totalRevenue', type: 'sum' }],
-    dimensions: [{ name: 'region', type: 'string' }],
+    measures: [{ name: 'totalRevenue', type: 'sum' } as any],
+    dimensions: [{ name: 'region', type: 'string' } as any],
     relationships: [],
   },
 ]
@@ -42,18 +46,22 @@ const cubeWithDescription: CubeMetadata[] = [
 const multipleCubesMetadata: CubeMetadata[] = [
   {
     name: 'Employees',
-    measures: [{ name: 'count', type: 'count' }],
-    dimensions: [{ name: 'name', type: 'string' }],
+    title: 'Employees',
+    segments: [],
+    measures: [{ name: 'count', type: 'count' } as any],
+    dimensions: [{ name: 'name', type: 'string' } as any],
     relationships: [
-      { targetCube: 'Productivity', relationship: 'hasMany' },
+      { targetCube: 'Productivity', relationship: 'hasMany', joinFields: [] },
     ],
   },
   {
     name: 'Productivity',
-    measures: [{ name: 'totalLines', type: 'sum' }],
-    dimensions: [{ name: 'date', type: 'time' }],
+    title: 'Productivity',
+    segments: [],
+    measures: [{ name: 'totalLines', type: 'sum' } as any],
+    dimensions: [{ name: 'date', type: 'time' } as any],
     relationships: [
-      { targetCube: 'Employees', relationship: 'belongsTo' },
+      { targetCube: 'Employees', relationship: 'belongsTo', joinFields: [] },
     ],
   },
 ]
@@ -61,12 +69,14 @@ const multipleCubesMetadata: CubeMetadata[] = [
 const eventStreamCubeMetadata: CubeMetadata[] = [
   {
     name: 'UserEvents',
+    title: 'UserEvents',
+    segments: [],
     description: 'User interaction events',
-    measures: [{ name: 'count', type: 'count' }],
+    measures: [{ name: 'count', type: 'count' } as any],
     dimensions: [
-      { name: 'userId', type: 'number' },
-      { name: 'eventName', type: 'string' },
-      { name: 'timestamp', type: 'time' },
+      { name: 'userId', type: 'number' } as any,
+      { name: 'eventName', type: 'string' } as any,
+      { name: 'timestamp', type: 'time' } as any,
     ],
     relationships: [],
     meta: {
@@ -81,8 +91,10 @@ const eventStreamCubeMetadata: CubeMetadata[] = [
 const eventStreamNoKeysMetadata: CubeMetadata[] = [
   {
     name: 'PageViews',
-    measures: [{ name: 'count', type: 'count' }],
-    dimensions: [{ name: 'url', type: 'string' }],
+    title: 'PageViews',
+    segments: [],
+    measures: [{ name: 'count', type: 'count' } as any],
+    dimensions: [{ name: 'url', type: 'string' } as any],
     relationships: [],
     meta: {
       eventStream: {},

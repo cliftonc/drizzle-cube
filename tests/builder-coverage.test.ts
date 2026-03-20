@@ -31,14 +31,18 @@ import type { TimeGranularity, QueryContext, Cube, PhysicalQueryPlan } from '../
  * Create a mock PostgreSQL adapter with full support for all features
  */
 function createMockPostgresAdapter(): DatabaseAdapter {
-  return {
+  return ({
     getEngineType: () => 'postgres',
     getCapabilities: () => ({
       supportsStddev: true,
       supportsVariance: true,
       supportsPercentile: true,
       supportsWindowFunctions: true,
-      supportsFrameClause: true
+      supportsFrameClause: true,
+      supportsLateralJoins: true,
+      supportsPercentileSubqueries: true,
+      supportsDerivedTablesInCTE: true,
+      supportsLateralSubqueriesInCTE: true
     }),
     buildTimeDimension: (granularity: TimeGranularity, fieldExpr: AnyColumn | SQL) => {
       return sql`DATE_TRUNC('${sql.raw(granularity)}', ${fieldExpr}::timestamp)`
@@ -146,7 +150,7 @@ function createMockPostgresAdapter(): DatabaseAdapter {
           return null
       }
     }
-  }
+  }) as unknown as DatabaseAdapter
 }
 
 /**
@@ -162,7 +166,11 @@ function createMockSQLiteAdapter(): DatabaseAdapter {
       supportsVariance: false,
       supportsPercentile: false,
       supportsWindowFunctions: true,
-      supportsFrameClause: true
+      supportsFrameClause: true,
+      supportsLateralJoins: false,
+      supportsPercentileSubqueries: false,
+      supportsDerivedTablesInCTE: false,
+      supportsLateralSubqueriesInCTE: false
     }),
     buildBooleanLiteral: (value: boolean) => value ? sql`1` : sql`0`,
     isTimestampInteger: () => true,
@@ -190,7 +198,11 @@ function createMockMySQLAdapter(): DatabaseAdapter {
       supportsVariance: true,
       supportsPercentile: false, // MySQL 8.0+ has limited percentile support
       supportsWindowFunctions: true,
-      supportsFrameClause: true
+      supportsFrameClause: true,
+      supportsLateralJoins: true,
+      supportsPercentileSubqueries: false,
+      supportsDerivedTablesInCTE: true,
+      supportsLateralSubqueriesInCTE: true
     }),
     buildAvg: (fieldExpr: AnyColumn | SQL) => sql`IFNULL(AVG(${fieldExpr}), 0)`,
     buildPercentile: () => null // MySQL doesn't have PERCENTILE_CONT
@@ -1016,7 +1028,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const result = measureBuilder.buildResolvedMeasures(
@@ -1047,7 +1059,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const result = measureBuilder.buildResolvedMeasures(
@@ -1070,7 +1082,7 @@ describe('MeasureBuilder', () => {
           count: { type: 'count', sql: () => createMockColumn() }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const result = measureBuilder.buildResolvedMeasures(
@@ -1107,7 +1119,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const result = measureBuilder.buildResolvedMeasures(
@@ -1144,7 +1156,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       // Request only calc2, should pull in calc1, base1, base2
@@ -1175,7 +1187,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const cteInfo = {
@@ -1213,7 +1225,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const cteInfo = {
@@ -1245,7 +1257,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       const cteInfo = {
@@ -1318,7 +1330,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const queryPlan = {
         primaryCube: cube,
@@ -1347,7 +1359,7 @@ describe('MeasureBuilder', () => {
         sql: () => sql`TRUE`,
         measures: { count: { type: 'count', sql: () => createMockColumn() } },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const joinedCube: Cube = {
         name: 'JoinedCube',
@@ -1360,7 +1372,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const queryPlan = {
         primaryCube: mainCube,
@@ -1394,7 +1406,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const queryPlan = {
         primaryCube: { name: 'OtherCube', measures: {} } as Cube,
@@ -1429,7 +1441,7 @@ describe('MeasureBuilder', () => {
           number: { type: 'number', sql: () => createMockColumn() }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const queryPlan = {
         primaryCube: cube,
@@ -1462,7 +1474,7 @@ describe('MeasureBuilder', () => {
           unknown: { type: 'unknownType', sql: () => createMockColumn() }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
 
       const queryPlan = {
         primaryCube: cube,
@@ -1500,7 +1512,7 @@ describe('MeasureBuilder', () => {
           }
         },
         dimensions: {}
-      } as Cube
+      } as unknown as Cube
       const cubeMap = new Map([['TestCube', cube]])
 
       // First build the resolved measures

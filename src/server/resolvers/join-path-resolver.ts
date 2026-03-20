@@ -105,7 +105,8 @@ export class JoinPathResolver {
         // and already handled by the forward 2-hop path
         if (joinDef.relationship === 'belongsToMany') continue
 
-        const resolvedTarget = resolveCubeReference(joinDef.targetCube)
+        const resolvedTarget = resolveCubeReference(joinDef.targetCube, this.cubes)
+        if (!resolvedTarget) continue
         const targetName = resolvedTarget.name
 
         let entries = index.get(targetName)
@@ -158,7 +159,8 @@ export class JoinPathResolver {
       const cubeDefinition = this.cubes.get(currentCube)
       if (cubeDefinition?.joins) {
         for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
+          if (!resolvedTargetCube) continue
           const actualTargetName = resolvedTargetCube.name
 
           if (visited.has(actualTargetName)) {
@@ -396,7 +398,8 @@ export class JoinPathResolver {
       const cubeDefinition = this.cubes.get(currentCube)
       if (cubeDefinition?.joins) {
         for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
+          if (!resolvedTargetCube) continue
           const actualTargetName = resolvedTargetCube.name
 
           if (visited.has(actualTargetName)) {
@@ -499,7 +502,8 @@ export class JoinPathResolver {
       if (!cubeDefinition?.joins) continue
 
       for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
+        if (!resolvedTargetCube) continue
         const actualTargetName = resolvedTargetCube.name
 
         if (visited.has(actualTargetName)) continue
@@ -573,7 +577,8 @@ export class JoinPathResolver {
       const cubeDefinition = this.cubes.get(currentCube)
       if (cubeDefinition?.joins) {
         for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube)
+          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
+          if (!resolvedTargetCube) continue
           const targetName = resolvedTargetCube.name
 
           if (!reachable.has(targetName)) {

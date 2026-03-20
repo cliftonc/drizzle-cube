@@ -490,7 +490,8 @@ describe('Calculated Measures - Comprehensive Tests', () => {
       expect(result.data.length).toBeGreaterThan(0)
 
       // Verify that all rows have the calculated percentage
-      for (const row of result.data) {
+      for (const rowRaw of result.data) {
+        const row = rowRaw as any
         expect(row).toHaveProperty('Employees.activePercentage')
         expect(row).toHaveProperty('Employees.activeCount')
         expect(row).toHaveProperty('Employees.count')

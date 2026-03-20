@@ -30,7 +30,7 @@ describe('Server-Side Funnel Queries', () => {
   let eventsCube: Cube
 
   beforeAll(async () => {
-    const { executor: dbExecutor, close: cleanup, db: database } = await createTestDatabaseExecutor()
+    const { executor: dbExecutor, close: cleanup, db: database } = await createTestDatabaseExecutor() as any
     executor = new QueryExecutor(dbExecutor)
     close = cleanup
     _db = database
@@ -60,10 +60,12 @@ describe('Server-Side Funnel Queries', () => {
 
       measures: {
         count: {
+          name: 'count',
           type: 'count',
           sql: productivity.id
         },
         uniqueUsers: {
+          name: 'uniqueUsers',
           type: 'countDistinct',
           sql: productivity.employeeId
         }
@@ -71,31 +73,38 @@ describe('Server-Side Funnel Queries', () => {
 
       dimensions: {
         id: {
+          name: 'id',
           type: 'number',
           sql: productivity.id,
           primaryKey: true
         },
         userId: {
+          name: 'userId',
           type: 'number',
           sql: productivity.employeeId
         },
         timestamp: {
+          name: 'timestamp',
           type: 'time',
           sql: productivity.date
         },
         linesOfCode: {
+          name: 'linesOfCode',
           type: 'number',
           sql: productivity.linesOfCode
         },
         pullRequests: {
+          name: 'pullRequests',
           type: 'number',
           sql: productivity.pullRequests
         },
         happinessIndex: {
+          name: 'happinessIndex',
           type: 'number',
           sql: productivity.happinessIndex
         },
         isHighProductivity: {
+          name: 'isHighProductivity',
           type: 'boolean',
           sql: sql`${productivity.linesOfCode} > 100`
         }
@@ -563,11 +572,11 @@ describe('Server-Side Funnel Queries', () => {
         }),
         // No joins defined
         measures: {
-          count: { type: 'count', sql: productivity.id }
+          count: { name: 'count', type: 'count', sql: productivity.id }
         },
         dimensions: {
-          userId: { type: 'number', sql: productivity.employeeId },
-          timestamp: { type: 'time', sql: productivity.date }
+          userId: { name: 'userId', type: 'number', sql: productivity.employeeId },
+          timestamp: { name: 'timestamp', type: 'time', sql: productivity.date }
         }
       })
 
@@ -577,12 +586,12 @@ describe('Server-Side Funnel Queries', () => {
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: employees.id }
+          count: { name: 'count', type: 'count', sql: employees.id }
         },
         dimensions: {
-          id: { type: 'number', sql: employees.id },
-          name: { type: 'string', sql: employees.name },
-          active: { type: 'boolean', sql: employees.active }
+          id: { name: 'id', type: 'number', sql: employees.id },
+          name: { name: 'name', type: 'string', sql: employees.name },
+          active: { name: 'active', type: 'boolean', sql: employees.active }
         }
       })
 
@@ -633,12 +642,12 @@ describe('Server-Side Funnel Queries', () => {
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: employees.id }
+          count: { name: 'count', type: 'count', sql: employees.id }
         },
         dimensions: {
-          id: { type: 'number', sql: employees.id, primaryKey: true },
-          name: { type: 'string', sql: employees.name },
-          active: { type: 'boolean', sql: employees.active }
+          id: { name: 'id', type: 'number', sql: employees.id, primaryKey: true },
+          name: { name: 'name', type: 'string', sql: employees.name },
+          active: { name: 'active', type: 'boolean', sql: employees.active }
         }
       })
 
@@ -658,11 +667,11 @@ describe('Server-Side Funnel Queries', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: productivity.id }
+          count: { name: 'count', type: 'count', sql: productivity.id }
         },
         dimensions: {
-          userId: { type: 'number', sql: productivity.employeeId },
-          timestamp: { type: 'time', sql: productivity.date }
+          userId: { name: 'userId', type: 'number', sql: productivity.employeeId },
+          timestamp: { name: 'timestamp', type: 'time', sql: productivity.date }
         }
       })
 
@@ -703,12 +712,12 @@ describe('Server-Side Funnel Queries', () => {
           where: eq(employees.organisationId, ctx.securityContext.organisationId)
         }),
         measures: {
-          count: { type: 'count', sql: employees.id }
+          count: { name: 'count', type: 'count', sql: employees.id }
         },
         dimensions: {
-          id: { type: 'number', sql: employees.id, primaryKey: true },
-          name: { type: 'string', sql: employees.name },
-          active: { type: 'boolean', sql: employees.active }
+          id: { name: 'id', type: 'number', sql: employees.id, primaryKey: true },
+          name: { name: 'name', type: 'string', sql: employees.name },
+          active: { name: 'active', type: 'boolean', sql: employees.active }
         }
       })
 
@@ -728,12 +737,12 @@ describe('Server-Side Funnel Queries', () => {
           }
         },
         measures: {
-          count: { type: 'count', sql: productivity.id }
+          count: { name: 'count', type: 'count', sql: productivity.id }
         },
         dimensions: {
-          userId: { type: 'number', sql: productivity.employeeId },
-          timestamp: { type: 'time', sql: productivity.date },
-          linesOfCode: { type: 'number', sql: productivity.linesOfCode }
+          userId: { name: 'userId', type: 'number', sql: productivity.employeeId },
+          timestamp: { name: 'timestamp', type: 'time', sql: productivity.date },
+          linesOfCode: { name: 'linesOfCode', type: 'number', sql: productivity.linesOfCode }
         }
       })
 
