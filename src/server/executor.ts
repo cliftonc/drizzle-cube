@@ -47,7 +47,7 @@ type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retent
 
 /** Log SQL when DC_DEBUG=true or DC_DEBUG=sql */
 function debugSql(label: string, query: { toSQL(): { sql: string; params: unknown[] } }) {
-  if (!process.env.DC_DEBUG) return
+  if (typeof process === 'undefined' || !process.env?.DC_DEBUG) return
   try {
     const { sql: sqlStr, params } = query.toSQL()
     console.log(`\n[DC_DEBUG] ${label}`)

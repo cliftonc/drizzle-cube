@@ -129,7 +129,7 @@ export function warnIfScreenshotLibMissing(thumbnailConfig: ThumbnailFeatureConf
   if (window.__drizzle_cube_thumbnail_warning__) return
 
   getScreenshotModule().then((mod) => {
-    if (!mod && process.env.NODE_ENV === 'development') {
+    if (!mod && typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
       console.warn(
         '[drizzle-cube] Thumbnail feature enabled but modern-screenshot not installed. ' +
         'Run: npm install modern-screenshot'
