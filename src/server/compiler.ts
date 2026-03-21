@@ -1,7 +1,7 @@
 /**
  * Semantic Layer Compiler
  * Drizzle ORM-first cube compilation and registration with type safety
- */ 
+ */
 
 import type {
   SemanticQuery,
@@ -31,10 +31,16 @@ import { resolveCubeReference } from './cube-utils'
 
 export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
-  private dbExecutor?: DatabaseExecutor
   private metadataCache?: CubeMetadata[]
   private cacheConfig?: CacheConfig
   private rlsSetup?: RLSSetupFn
+
+  // Database ingredients — stored so we can create a fresh executor per request.
+  // This avoids sharing mutable state between concurrent requests, which is
+  // critical for RLS transaction safety.
+  private db?: DatabaseExecutor['db']
+  private schema?: any
+  private engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
 
   constructor(options?: {
     drizzle?: DatabaseExecutor['db']
@@ -52,62 +58,68 @@ export class SemanticLayerCompiler {
     rlsSetup?: RLSSetupFn
   }) {
     if (options?.databaseExecutor) {
-      this.dbExecutor = options.databaseExecutor
+      // Extract ingredients from pre-built executor
+      this.db = options.databaseExecutor.db
+      this.schema = options.databaseExecutor.schema
+      this.engineType = options.databaseExecutor.getEngineType()
     } else if (options?.drizzle) {
-      // Create database executor from Drizzle instance using the factory
-      this.dbExecutor = createDatabaseExecutor(
-        options.drizzle,
-        options.schema,
-        options.engineType
-      )
+      this.db = options.drizzle
+      this.schema = options.schema
+      this.engineType = options.engineType
     }
     this.cacheConfig = options?.cache
     this.rlsSetup = options?.rlsSetup
   }
 
   /**
-   * Set or update the database executor
+   * Set or update the database connection
    */
   setDatabaseExecutor(executor: DatabaseExecutor): void {
-    this.dbExecutor = executor
+    this.db = executor.db
+    this.schema = executor.schema
+    this.engineType = executor.getEngineType()
   }
 
   /**
    * Get the database engine type for SQL formatting
    */
   getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake' | undefined {
-    return this.dbExecutor?.getEngineType()
+    return this.engineType
   }
 
   /**
    * Set Drizzle instance and schema directly
    */
   setDrizzle(db: DatabaseExecutor['db'], schema?: any, engineType?: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'): void {
-    this.dbExecutor = createDatabaseExecutor(db, schema, engineType)
+    this.db = db
+    this.schema = schema
+    this.engineType = engineType
   }
 
   /**
    * Check if database executor is configured
    */
   hasExecutor(): boolean {
-    return !!this.dbExecutor
+    return !!this.db
   }
 
   /**
-   * Get configured executor or throw.
+   * Create a fresh DatabaseExecutor from stored ingredients, or throw.
    */
-  private requireExecutor(): DatabaseExecutor {
-    if (!this.dbExecutor) {
+  private createDbExecutor(): DatabaseExecutor {
+    if (!this.db) {
       throw new Error('Database executor not configured')
     }
-    return this.dbExecutor
+    return createDatabaseExecutor(this.db, this.schema, this.engineType)
   }
 
   /**
    * Create a query executor with optional cache integration.
+   * Each call creates a fresh DatabaseExecutor so concurrent requests
+   * never share mutable state.
    */
   private createQueryExecutor(withCache: boolean = false): QueryExecutor {
-    const dbExecutor = this.requireExecutor()
+    const dbExecutor = this.createDbExecutor()
     return new QueryExecutor(dbExecutor, withCache ? this.cacheConfig : undefined, this.rlsSetup)
   }
 
@@ -115,7 +127,7 @@ export class SemanticLayerCompiler {
    * Format SQL result using current engine dialect.
    */
   private formatSqlResult(result: { sql: string; params?: any[] }): { sql: string; params?: any[] } {
-    const engineType = this.requireExecutor().getEngineType()
+    const engineType = this.getEngineType() ?? 'postgres'
     return {
       sql: formatSqlString(result.sql, engineType),
       params: result.params
