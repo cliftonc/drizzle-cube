@@ -115,7 +115,25 @@ export interface DrizzleDatabase {
   $with: (alias: string) => { as: (query: any) => any }
   with: (...args: any[]) => any
   schema?: unknown
+  transaction?: <T>(fn: (tx: any) => Promise<T>, ...args: any[]) => Promise<T>
 }
+
+/**
+ * Transaction-scoped database instance passed to RLS setup.
+ * Structurally identical to DrizzleDatabase — the alias communicates
+ * that the value lives inside a transaction, not the root connection.
+ */
+export type DrizzleTransaction = DrizzleDatabase
+
+/**
+ * Row-Level Security setup function.
+ * Called inside a transaction before query execution to configure
+ * database-level RLS (e.g., setting JWT claims and switching roles in Postgres).
+ *
+ * @param tx - The transaction-scoped Drizzle database instance
+ * @param securityContext - The security context extracted from the request
+ */
+export type RLSSetupFn = (tx: DrizzleTransaction, securityContext: SecurityContext) => Promise<void>
 
 /**
  * Type helpers for specific database types

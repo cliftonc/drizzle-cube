@@ -100,14 +100,7 @@ export function buildTransformedQuery(query: SemanticQuery): any {
  * Get database type from semantic layer
  */
 export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
-  // Extract from the semantic layer's database executor
-  if (semanticLayer.hasExecutor()) {
-    const executor = (semanticLayer as any).databaseExecutor
-    if (executor?.engineType) {
-      return executor.engineType
-    }
-  }
-  return 'postgres' // default fallback
+  return semanticLayer.getEngineType() ?? 'postgres'
 }
 
 type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'

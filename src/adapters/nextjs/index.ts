@@ -11,7 +11,8 @@ import type {
   DrizzleDatabase,
   Cube,
   CacheConfig,
-  ExplainOptions
+  ExplainOptions,
+  RLSSetupFn
 } from '../../server'
 import type { AgentConfig } from '../../server/agent/types'
 import { SemanticLayerCompiler } from '../../server/compiler'
@@ -152,6 +153,13 @@ export interface NextAdapterOptions {
    * Requires `@anthropic-ai/sdk` as a peer dependency.
    */
   agent?: AgentConfig
+
+  /**
+   * Row-Level Security setup function.
+   * When provided, every query execution opens a transaction, calls this function
+   * to configure RLS (e.g., set JWT claims and switch Postgres roles), then runs the query.
+   */
+  rlsSetup?: RLSSetupFn
 }
 
 export interface RouteContext {
@@ -180,7 +188,7 @@ export interface CubeHandlers {
 function createSemanticLayer(
   options: NextAdapterOptions
 ): SemanticLayerCompiler {
-  const { cubes, drizzle, schema, engineType, cache } = options
+  const { cubes, drizzle, schema, engineType, cache, rlsSetup } = options
 
   // Validate required options
   if (!cubes || cubes.length === 0) {
@@ -192,7 +200,8 @@ function createSemanticLayer(
     drizzle,
     schema,
     engineType,
-    cache
+    cache,
+    rlsSetup
   })
 
   // Register all provided cubes

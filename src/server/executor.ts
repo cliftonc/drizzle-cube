@@ -21,7 +21,8 @@ import type {
   ExplainOptions,
   ExplainResult,
   ExecutionOptions,
-  QueryAnalysis
+  QueryAnalysis,
+  RLSSetupFn
 } from './types'
 
 import { resolveSqlExpression, safeKey } from './cube-utils'
@@ -79,7 +80,9 @@ export class QueryExecutor {
   private logicalPlanBuilder: LogicalPlanBuilder
   private planOptimiser: PlanOptimiser
 
-  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig) {
+  private rlsSetup?: RLSSetupFn
+
+  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig, rlsSetup?: RLSSetupFn) {
     // Get the database adapter from the executor
     this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
@@ -96,6 +99,44 @@ export class QueryExecutor {
     this.logicalPlanBuilder = new LogicalPlanBuilder(queryPlanner)
     this.planOptimiser = new IdentityOptimiser()
     this.cacheConfig = cacheConfig
+    this.rlsSetup = rlsSetup
+  }
+
+  /**
+   * Execute a function within a RLS-configured transaction context.
+   * If no rlsSetup function is configured, the function is called directly.
+   * Otherwise, opens a transaction, calls rlsSetup to configure RLS, then
+   * runs fn with this.dbExecutor replaced by a transaction-scoped executor.
+   *
+   * Concurrency-safe: the dbExecutor is per-request (created fresh by
+   * SemanticLayerCompiler.createQueryExecutor), so reassigning this.dbExecutor
+   * only affects this request.
+   */
+  private async withRLSContext<T>(
+    securityContext: SecurityContext,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    if (!this.rlsSetup) {
+      return fn()
+    }
+
+    const db = this.dbExecutor.db
+    if (!db.transaction) {
+      throw new Error('rlsSetup requires a database driver that supports transactions (db.transaction)')
+    }
+
+    const rlsSetup = this.rlsSetup
+
+    return db.transaction(async (tx: any) => {
+      await rlsSetup(tx, securityContext)
+
+      // Create a transaction-scoped executor: inherits all methods from the
+      // original but routes queries through the transaction connection.
+      const txExecutor = Object.create(this.dbExecutor) as DatabaseExecutor
+      txExecutor.db = tx
+      this.dbExecutor = txExecutor
+      return fn()
+    })
   }
 
   /**
@@ -167,7 +208,13 @@ export class QueryExecutor {
         }
       }
 
-      return await this.executeQueryByModeWithCache(mode, cubes, query, securityContext, cacheKey)
+      // Execute inside RLS transaction context if configured.
+      // Cache writes happen inside the transaction for simplicity; they are
+      // fire-and-forget with swallowed errors so won't block the transaction
+      // meaningfully. A future optimisation could split them out.
+      return await this.withRLSContext(securityContext, () =>
+        this.executeQueryByModeWithCache(mode, cubes, query, securityContext, cacheKey)
+      )
     } catch (error) {
       // Extract the actual database error from the cause chain
       // Drizzle ORM wraps database errors, but the real error is in the cause
@@ -718,6 +765,12 @@ export class QueryExecutor {
         // Skip warning for cubes explicitly marked as public
         if (cube.public) continue
 
+        // Skip warning when rlsSetup is configured — security is enforced at
+        // the database level via transaction-scoped commands (e.g. SET LOCAL
+        // and SET ROLE in PostgreSQL). The rlsSetup hook runs session-level
+        // commands before each query; not all databases support this pattern.
+        if (this.rlsSetup) continue
+
         const securityResult = cube.sql(context)
 
         // A properly secured cube should have a 'where' clause that filters by security context
@@ -726,7 +779,9 @@ export class QueryExecutor {
           console.warn(
             `[drizzle-cube] WARNING: Cube '${cube.name}' has no security filtering. ` +
             `If this cube contains public data, add 'public: true' to suppress this warning. ` +
-            `Otherwise, ensure sql() returns: { from: table, where: eq(table.orgId, ctx.securityContext.orgId) }`
+            `Otherwise, ensure sql() returns: { from: table, where: eq(table.orgId, ctx.securityContext.orgId) }. ` +
+            `For databases that support Row Level Security (e.g. PostgreSQL), you can ` +
+            `configure rlsSetup to run session-level commands (SET LOCAL, SET ROLE) instead.`
           )
         }
       } catch {
@@ -898,11 +953,13 @@ export class QueryExecutor {
   ): Promise<ExplainResult> {
     const sqlResult = await this.dryRunSQL(cubes, query, securityContext)
 
-    // Execute EXPLAIN using the database executor
-    return this.dbExecutor.explainQuery(
-      sqlResult.sql,
-      sqlResult.params || [],
-      options
+    // Execute EXPLAIN using the database executor (within RLS context if configured)
+    return this.withRLSContext(securityContext, () =>
+      this.dbExecutor.explainQuery(
+        sqlResult.sql,
+        sqlResult.params || [],
+        options
+      )
     )
   }
 
