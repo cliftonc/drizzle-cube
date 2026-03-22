@@ -18,17 +18,19 @@ import {
 export async function sendGeminiMessage(
   apiKey: string,
   userPrompt: string,
-  endpoint: string = '/api/ai/generate'
+  endpoint: string = '/api/ai/generate',
+  providerHeaders?: Record<string, string>
 ): Promise<AIQueryResponse> {
   const requestBody: AIQueryRequest = {
     text: userPrompt // Send only the user's prompt, server handles system prompt
   }
 
-  // Only add API key header if provided (allow empty string for server key)
+  // Merge provider headers, then add API key if provided
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    ...providerHeaders,
   }
-  
+
   if (apiKey && apiKey.trim()) {
     headers['X-API-Key'] = apiKey
   }

@@ -13,6 +13,7 @@ import { BatchCoordinator } from '../client/BatchCoordinator'
 interface CubeApiContextValue {
   cubeApi: CubeClient
   options?: CubeQueryOptions
+  apiOptions: CubeApiOptions
   updateApiConfig: (apiOptions: CubeApiOptions, token?: string) => void
   batchCoordinator: BatchCoordinator | null
   enableBatching: boolean
@@ -73,10 +74,11 @@ export function CubeApiProvider({
   const value = useMemo(() => ({
     cubeApi,
     options,
+    apiOptions: config.apiOptions,
     updateApiConfig,
     batchCoordinator,
     enableBatching
-  }), [cubeApi, options, updateApiConfig, batchCoordinator, enableBatching])
+  }), [cubeApi, options, config.apiOptions, updateApiConfig, batchCoordinator, enableBatching])
 
   return (
     <CubeApiContext.Provider value={value}>

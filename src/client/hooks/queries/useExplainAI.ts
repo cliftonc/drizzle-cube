@@ -21,6 +21,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import type { ExplainResult, AIExplainAnalysis } from '../../types'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
+import { useCubeApi } from '../../providers/CubeApiProvider'
 
 export interface UseExplainAIOptions {
   /**
@@ -87,6 +88,7 @@ export const EXPLAIN_AI_QUERY_KEY = ['cube', 'explain', 'ai'] as const
  */
 export function useExplainAI(options: UseExplainAIOptions = {}): UseExplainAIResult {
   const { features } = useCubeFeatures()
+  const { apiOptions } = useCubeApi()
   const enableAI = features.enableAI ?? true
   const queryClient = useQueryClient()
 
@@ -106,6 +108,7 @@ export function useExplainAI(options: UseExplainAIOptions = {}): UseExplainAIRes
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...apiOptions?.headers,
         },
         credentials: 'include',
         body: JSON.stringify({

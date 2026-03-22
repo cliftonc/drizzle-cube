@@ -14,6 +14,7 @@ import type { ServerFunnelQuery } from '../types/funnel'
 import type { AnalysisType, AnalysisConfig } from '../types/analysisConfig'
 import { sendGeminiMessage, extractTextFromResponse } from '../components/AIAssistant/utils'
 import { generateId, generateMetricLabel } from '../components/AnalysisBuilder/utils'
+import { useCubeApi } from '../providers/CubeApiProvider'
 
 /**
  * Check if a query object is a ServerFunnelQuery
@@ -97,6 +98,9 @@ export function useAnalysisAI({
   getFullConfig,
   loadFullConfig
 }: UseAnalysisAIOptions): UseAnalysisAIResult {
+  // Provider headers for AI fetch calls
+  const { apiOptions } = useCubeApi()
+
   // AI state
   const [aiState, setAIState] = useState<AIState>({
     isOpen: false,
@@ -166,7 +170,8 @@ export function useAnalysisAI({
       const response = await sendGeminiMessage(
         '', // API key not needed for server-side AI
         aiState.userPrompt,
-        aiEndpoint
+        aiEndpoint,
+        apiOptions?.headers
       )
 
       const responseText = extractTextFromResponse(response)
@@ -270,7 +275,7 @@ export function useAnalysisAI({
         error: error instanceof Error ? error.message : 'Failed to generate query'
       }))
     }
-  }, [aiState.userPrompt, aiEndpoint, setState, setChartType, setUserManuallySelectedChart, setChartConfig, setActiveView, analysisType, setAnalysisType, loadFunnelFromServerQuery])
+  }, [aiState.userPrompt, aiEndpoint, apiOptions?.headers, setState, setChartType, setUserManuallySelectedChart, setChartConfig, setActiveView, analysisType, setAnalysisType, loadFunnelFromServerQuery])
 
   /**
    * Accept the AI-generated query (keep changes, close panel)

@@ -3,9 +3,9 @@
  * Covers state management, actions, and localStorage persistence of column widths
  */
 
+import React from 'react'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import React from 'react'
 import { DataBrowserStoreProvider, useDataBrowserStore } from '../../../../src/client/stores/dataBrowserStore'
 
 function createWrapper(props: { defaultPageSize?: number; defaultCube?: string } = {}) {

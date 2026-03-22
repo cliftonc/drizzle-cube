@@ -31,7 +31,7 @@ export interface DataBrowserProps {
   /** Max height for the component (default: '100vh') */
   maxHeight?: string
   /** Custom loading indicator (defaults to LoadingIndicator) */
-  loadingComponent?: React.ReactNode
+  loadingComponent?: import('react').ReactNode
 }
 
 /**
