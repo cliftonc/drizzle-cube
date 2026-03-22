@@ -96,7 +96,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
     } = useAnalysisAI({
       state: analysis.queryState,
       setState: (updater) => {
-        // AI hook needs to update metrics, breakdowns, and filters all at once
+        // AI hook needs to update metrics, breakdowns, filters, order, and limit all at once
         // Use the store's updateQueryState to apply the full state update
         const state = storeApi.getState()
         state.updateQueryState(analysis.activeQueryIndex, (prev) => {
@@ -106,6 +106,8 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             metrics: newState.metrics,
             breakdowns: newState.breakdowns,
             filters: newState.filters,
+            order: newState.order,
+            limit: newState.limit,
           }
         })
       },
@@ -372,6 +374,8 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
             onDropFieldToFilter={analysis.actions.dropFieldToFilter}
             order={analysis.queryState.order}
             onOrderChange={analysis.actions.setOrder}
+            limit={analysis.queryState.limit}
+            onLimitChange={analysis.actions.setLimit}
             chartType={analysis.chartType}
             chartConfig={analysis.chartConfig}
             displayConfig={analysis.displayConfig}

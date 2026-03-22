@@ -248,6 +248,7 @@ export interface UseAnalysisBuilderResult {
     setFilters: (filters: Filter[]) => void
     dropFieldToFilter: (field: string) => void
     setOrder: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+    setLimit: (limit: number | undefined) => void
     addQuery: () => void
     removeQuery: (index: number) => void
     setFunnelBindingKey: (bindingKey: FunnelBindingKey | null) => void
@@ -572,6 +573,7 @@ export function useAnalysisBuilder(
   const setFilters = useAnalysisBuilderStore((state) => state.setFilters)
   const dropFieldToFilter = useAnalysisBuilderStore((state) => state.dropFieldToFilter)
   const setOrder = useAnalysisBuilderStore((state) => state.setOrder)
+  const setLimit = useAnalysisBuilderStore((state) => state.setLimit)
 
   // Utility actions
   const clearQuery = useAnalysisBuilderStore((state) => state.clearQuery)
@@ -953,6 +955,7 @@ export function useAnalysisBuilder(
       setFilters,
       dropFieldToFilter,
       setOrder,
+      setLimit,
 
       // Multi-query (from queryBuilder)
       addQuery: queryBuilder.addQuery,

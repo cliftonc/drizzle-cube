@@ -67,7 +67,7 @@ export function useAnalysisQueryBuilder(): UseAnalysisQueryBuilderResult {
   // Build current query from active state
   const currentQuery = useMemo(() => {
     const current = queryStates[activeQueryIndex] || queryState
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order)
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit)
   }, [queryStates, activeQueryIndex, queryState])
 
   // Build all queries (respect merge mode for shared breakdowns)
@@ -75,7 +75,7 @@ export function useAnalysisQueryBuilder(): UseAnalysisQueryBuilderResult {
     const q1Breakdowns = queryStates[0]?.breakdowns || []
     return queryStates.map((qs, index) => {
       const breakdowns = mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit)
     })
   }, [queryStates, mergeStrategy])
 

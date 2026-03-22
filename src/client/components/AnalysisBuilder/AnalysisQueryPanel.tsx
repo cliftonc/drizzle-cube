@@ -14,6 +14,7 @@ import MetricsSection from './MetricsSection'
 import BreakdownSection from './BreakdownSection'
 import BreakdownItemCard from './BreakdownItemCard'
 import AnalysisFilterSection from './AnalysisFilterSection'
+import LimitSection from './LimitSection'
 import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import FunnelBindingKeySelector from './FunnelBindingKeySelector'
@@ -56,6 +57,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   // Sorting
   order,
   onOrderChange,
+  // Limit
+  limit,
+  onLimitChange,
   // Chart configuration
   chartType,
   chartConfig,
@@ -552,6 +556,14 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
               onFiltersChange={onFiltersChange}
               onFieldDropped={onDropFieldToFilter}
             />
+
+            {/* Limit Section */}
+            {onLimitChange && (
+              <LimitSection
+                limit={limit}
+                onLimitChange={onLimitChange}
+              />
+            )}
           </div>
         ) : activeTab === 'chart' ? (
           /* Chart Tab Content - use combined metrics/breakdowns in multi-query mode */

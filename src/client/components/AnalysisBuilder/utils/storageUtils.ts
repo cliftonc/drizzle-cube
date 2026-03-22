@@ -26,6 +26,7 @@ export function createInitialState(): AnalysisBuilderState {
     breakdowns: [],
     filters: [],
     order: undefined,
+    limit: undefined,
     validationStatus: 'idle',
     validationError: null,
   }

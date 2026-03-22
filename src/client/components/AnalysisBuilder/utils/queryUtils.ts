@@ -18,7 +18,8 @@ export function buildCubeQuery(
   breakdowns: BreakdownItem[],
   filters: Filter[],
   order?: Record<string, 'asc' | 'desc'>,
-  preserveComparisonFilters: boolean = false
+  preserveComparisonFilters: boolean = false,
+  limit?: number
 ): CubeQuery {
   // Find time dimensions with comparison enabled
   const comparisonFields = breakdowns
@@ -64,7 +65,8 @@ export function buildCubeQuery(
         return td
       }),
     filters: filteredFilters.length > 0 ? filteredFilters : undefined,
-    order: order && Object.keys(order).length > 0 ? order : undefined
+    order: order && Object.keys(order).length > 0 ? order : undefined,
+    limit: limit ?? undefined
   }
 
   // Clean up empty arrays

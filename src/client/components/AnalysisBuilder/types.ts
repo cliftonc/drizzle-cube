@@ -88,6 +88,8 @@ export interface AnalysisBuilderState {
   filters: Filter[]
   /** Sort order for this query (field name -> 'asc' | 'desc') */
   order?: Record<string, 'asc' | 'desc'>
+  /** Row limit for the query (sent to server) */
+  limit?: number
 
   // Validation state (client-side query validation)
   validationStatus: ValidationStatus
@@ -258,6 +260,12 @@ export interface AnalysisQueryPanelProps {
   order?: Record<string, 'asc' | 'desc'>
   /** Callback when sort order changes */
   onOrderChange: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+
+  // Limit
+  /** Row limit for the query (sent to server) */
+  limit?: number
+  /** Callback when limit changes */
+  onLimitChange?: (limit: number | undefined) => void
 
   // Chart configuration
   chartType: ChartType
@@ -900,6 +908,7 @@ export interface AnalysisBuilderStorageState {
   breakdowns: BreakdownItem[]
   filters: Filter[]
   order?: Record<string, 'asc' | 'desc'>
+  limit?: number
   chartType: ChartType
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig

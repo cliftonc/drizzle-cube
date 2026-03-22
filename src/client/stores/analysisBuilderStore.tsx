@@ -287,6 +287,8 @@ export interface AnalysisBuilderStoreActions {
   dropFieldToFilter: (field: string) => void
   /** Set sort order for a field */
   setOrder: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+  /** Set row limit for the query (sent to server) */
+  setLimit: (limit: number | undefined) => void
 
   // =========================================================================
   // Multi-Query Actions

@@ -241,7 +241,9 @@ export function useAnalysisAI({
             isTimeDimension: true
           }))
         ],
-        filters: cubeQuery.filters || []
+        filters: cubeQuery.filters || [],
+        order: cubeQuery.order || undefined,
+        limit: cubeQuery.limit ?? undefined
       }))
 
       // If we were in funnel mode, switch back to query mode

@@ -81,6 +81,7 @@ export interface QuerySliceActions {
   setFilters: (filters: Filter[]) => void
   dropFieldToFilter: (field: string) => void
   setOrder: (fieldName: string, direction: 'asc' | 'desc' | null) => void
+  setLimit: (limit: number | undefined) => void
 
   // Utility actions
   getCurrentState: () => AnalysisBuilderState
@@ -528,6 +529,17 @@ export const createQuerySlice: StateCreator<
       return { queryStates: newStates }
     }),
 
+  setLimit: (limit) =>
+    set((state) => {
+      const index = state.activeQueryIndex
+      const newStates = [...state.queryStates]
+      newStates[index] = {
+        ...newStates[index],
+        limit,
+      }
+      return { queryStates: newStates }
+    }),
+
   // ==========================================================================
   // Utility Actions
   // ==========================================================================
@@ -559,7 +571,7 @@ export const createQuerySlice: StateCreator<
   buildCurrentQuery: () => {
     const state = get()
     const current = state.queryStates[state.activeQueryIndex] || createInitialState()
-    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order)
+    return buildCubeQuery(current.metrics, current.breakdowns, current.filters, current.order, false, current.limit)
   },
 
   buildAllQueries: () => {
@@ -571,7 +583,7 @@ export const createQuerySlice: StateCreator<
       const breakdowns =
         state.mergeStrategy === 'merge' && index > 0 ? q1Breakdowns : qs.breakdowns
 
-      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order)
+      return buildCubeQuery(qs.metrics, breakdowns, qs.filters, qs.order, false, qs.limit)
     })
   },
 

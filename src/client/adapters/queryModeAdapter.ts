@@ -56,6 +56,7 @@ function createEmptyQueryState(): AnalysisBuilderState {
     breakdowns: [],
     filters: [],
     order: undefined,
+    limit: undefined,
     validationStatus: 'idle',
     validationError: null,
   }
@@ -136,6 +137,10 @@ function stateToCubeQuery(state: AnalysisBuilderState): CubeQuery {
     query.order = state.order
   }
 
+  if (state.limit != null) {
+    query.limit = state.limit
+  }
+
   return query
 }
 
@@ -198,6 +203,7 @@ function cubeQueryToState(query: CubeQuery): AnalysisBuilderState {
     breakdowns: queryToBreakdowns(query),
     filters: (query.filters as Filter[]) || [],
     order: query.order,
+    limit: query.limit,
     validationStatus: 'idle',
     validationError: null,
   }

@@ -59,9 +59,9 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
 // Step 1: Shape analysis (fast/cheap recommended)
 // Step 2: Query generation (more capable model recommended)
 const DEFAULT_GEMINI_MODELS = {
-  step0: 'gemini-2.0-flash-lite',      // Fast validation
-  step1: 'gemini-2.0-flash-lite',      // Fast shape analysis
-  step2: 'gemini-2.5-flash-preview-05-20'  // Full query generation
+  step0: 'gemini-3.1-flash-lite-preview',   // Fast validation
+  step1: 'gemini-3.1-flash-lite-preview',   // Fast shape analysis
+  step2: 'gemini-3.1-flash-lite-preview'    // Full query generation
 }
 
 /**
