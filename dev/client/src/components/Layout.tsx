@@ -165,6 +165,16 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Schema
                 </Link>
+                <Link
+                  to="/data-browser"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
+                    isActive('/data-browser')
+                      ? 'border-dc-primary text-dc-text'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                  }`}
+                >
+                  Data Browser
+                </Link>
               </div>
             </div>
             
@@ -268,6 +278,17 @@ export default function Layout({ children }: LayoutProps) {
                 }`}
               >
                 Schema
+              </Link>
+              <Link
+                to="/data-browser"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  isActive('/data-browser')
+                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
+                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
+                }`}
+              >
+                Data Browser
               </Link>
 
               {/* Mobile external links */}

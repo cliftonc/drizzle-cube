@@ -450,6 +450,8 @@ export interface CubeQuery {
   limit?: number
   offset?: number
   segments?: string[]
+  /** When true, returns raw row-level data without GROUP BY or aggregation */
+  ungrouped?: boolean
 }
 
 /**

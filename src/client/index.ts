@@ -28,6 +28,10 @@ export { default as ChartErrorBoundary } from './components/ChartErrorBoundary'
 export { default as LoadingIndicator } from './components/LoadingIndicator'
 export type { LoadingIndicatorProps } from './components/LoadingIndicator'
 
+// Data browser component
+export { default as DataBrowser } from './components/DataBrowser'
+export type { DataBrowserProps } from './components/DataBrowser'
+
 // Lazy chart loading (for code splitting)
 // For static chart imports, use 'drizzle-cube/client/charts' instead
 export {
@@ -121,6 +125,9 @@ export type {
   UseAnalysisBuilderOptions,
   UseAnalysisBuilderResult,
 } from './hooks/useAnalysisBuilderHook'
+
+// Master coordination hook for DataBrowser
+export { useDataBrowser } from './hooks/useDataBrowser'
 
 // Master coordination hook for Dashboard
 export { useDashboard } from './hooks/useDashboardHook'

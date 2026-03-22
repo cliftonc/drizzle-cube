@@ -9,6 +9,7 @@ const BookOpenIcon = getIcon('bookOpen')
 const CodeBracketIcon = getIcon('codeBracket')
 const SparklesIcon = getIcon('sparkles')
 const SchemaGraphIcon = getIcon('schemaGraph')
+const TableIcon = getIcon('dimension')
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -90,7 +91,7 @@ export default function HomePage() {
           </form>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-12 sm:mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6 mb-12 sm:mb-16">
           <Link
             to="/dashboards"
             className="group bg-dc-surface hover:bg-dc-surface-hover border border-dc-border hover:border-dc-border-hover rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
@@ -148,6 +149,19 @@ export default function HomePage() {
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-dc-text mb-1 sm:mb-2">Schema</h3>
               <p className="text-sm text-dc-text-muted">Browse cube relationships</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/data-browser"
+            className="group bg-dc-surface hover:bg-dc-surface-hover border border-dc-border hover:border-dc-border-hover rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-2xs hover:shadow-md touch-manipulation"
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 rounded-lg flex items-center justify-center mb-3 sm:mb-4 transition-colors">
+                <TableIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold text-dc-text mb-1 sm:mb-2">Data Browser</h3>
+              <p className="text-sm text-dc-text-muted">Browse raw cube data</p>
             </div>
           </Link>
 

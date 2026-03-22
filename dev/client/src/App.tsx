@@ -10,6 +10,7 @@ import AnalysisBuilderPage from './pages/AnalysisBuilderPage'
 import NotebooksListPage from './pages/NotebooksListPage'
 import NotebookViewPage from './pages/NotebookViewPage'
 import SchemaPage from './pages/SchemaPage'
+import DataBrowserPage from './pages/DataBrowserPage'
 
 // Create a client
 const queryClient = new QueryClient()
@@ -50,6 +51,7 @@ function App() {
             <Route path="/notebooks" element={<NotebooksListPage />} />
             <Route path="/notebooks/:id" element={<NotebookViewPage />} />
             <Route path="/schema" element={<SchemaPage />} />
+            <Route path="/data-browser" element={<DataBrowserPage />} />
           </Routes>
         </Layout>
       </CubeProvider>

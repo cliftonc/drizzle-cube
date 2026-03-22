@@ -76,6 +76,7 @@ export interface IconRegistry {
   thumbUp: IconDefinition
   thumbDown: IconDefinition
   schemaGraph: IconDefinition
+  cube: IconDefinition
 
   // Field type icons
   measure: IconDefinition
