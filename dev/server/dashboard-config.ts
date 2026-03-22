@@ -215,20 +215,20 @@ export const productivityDashboardConfig = {
       },
       {
         id: 'happiness-by-department',
-        title: 'Happiness by Department',
+        title: 'Happiness by Department (Custom Chart Plugin)',
         query: JSON.stringify({
           measures: ['Productivity.avgHappinessIndex'],
           dimensions: ['Departments.name'],
           cubes: ['Productivity', 'Employees', 'Departments']
         }, null, 2),
-        chartType: 'bar' as const,
+        chartType: 'horizontalBar' as const,
         chartConfig: {
           xAxis: ['Departments.name'],
           yAxis: ['Productivity.avgHappinessIndex'],
-          series: []
         },
         displayConfig: {
-          showLegend: false
+          showValues: true,
+          showGrid: true,
         },
         w: 6,
         h: 6,

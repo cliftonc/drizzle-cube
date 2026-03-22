@@ -242,6 +242,7 @@ export { useDrillInteraction } from './hooks/useDrillInteraction'
 export type {
   PortletConfig,
   ChartType,
+  BuiltInChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
   CubeQuery,
@@ -308,6 +309,10 @@ export type {
   DisplayOptionConfig,
   AxisDropZoneConfig
 } from './charts/chartConfigs'
+
+// Chart plugin system
+export type { ChartDefinition } from './charts/chartPlugin'
+export { chartPluginRegistry } from './charts/chartPlugin'
 
 // Utilities
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'

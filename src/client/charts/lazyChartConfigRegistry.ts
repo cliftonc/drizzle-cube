@@ -6,12 +6,12 @@
  */
 
 import { useState, useEffect } from 'react'
-import type { ChartType } from '../types'
+import type { BuiltInChartType, ChartType } from '../types'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs'
 import { defaultChartConfig } from './chartConfigs'
 
-// Config import map - lazy imports for each chart config
-const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTypeConfig }>> = {
+// Config import map - lazy imports for built-in chart configs
+const configImportMap: Record<BuiltInChartType, () => Promise<{ [key: string]: ChartTypeConfig }>> = {
   bar: () => import('../components/charts/BarChart.config'),
   line: () => import('../components/charts/LineChart.config'),
   area: () => import('../components/charts/AreaChart.config'),
@@ -40,8 +40,8 @@ const configImportMap: Record<ChartType, () => Promise<{ [key: string]: ChartTyp
   gauge: () => import('../components/charts/GaugeChart.config'),
 }
 
-// Map from chart type to expected export name
-const configExportNames: Record<ChartType, string> = {
+// Map from built-in chart type to expected export name
+const configExportNames: Record<BuiltInChartType, string> = {
   bar: 'barChartConfig',
   line: 'lineChartConfig',
   area: 'areaChartConfig',
@@ -91,14 +91,14 @@ export async function getChartConfigAsync(chartType: ChartType): Promise<ChartTy
     return configCache.get(chartType)!
   }
 
-  const importFn = configImportMap[chartType]
+  const importFn = configImportMap[chartType as BuiltInChartType]
   if (!importFn) {
     return null
   }
 
   try {
     const module = await importFn()
-    const exportName = configExportNames[chartType]
+    const exportName = configExportNames[chartType as BuiltInChartType]
     const config = module[exportName]
 
     if (config) {
@@ -253,4 +253,20 @@ export async function loadAllChartConfigs(): Promise<ChartConfigRegistry> {
  */
 export function clearChartConfigCache(): void {
   configCache.clear()
+}
+
+/**
+ * Register a custom chart config directly into the cache.
+ * Used by the chart plugin system.
+ */
+export function registerConfigToCache(type: string, config: ChartTypeConfig): void {
+  configCache.set(type as ChartType, config)
+}
+
+/**
+ * Remove a custom chart config from the cache.
+ * Used by the chart plugin system.
+ */
+export function unregisterConfigFromCache(type: string): void {
+  configCache.delete(type as ChartType)
 }

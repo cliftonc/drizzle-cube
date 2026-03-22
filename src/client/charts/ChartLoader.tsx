@@ -9,7 +9,7 @@
  */
 
 import { lazy, Suspense, ComponentType, ReactNode, LazyExoticComponent } from 'react'
-import type { ChartType, ChartProps } from '../types'
+import type { BuiltInChartType, ChartType, ChartProps } from '../types'
 import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback'
 
 // Type for lazy-loaded chart components
@@ -25,7 +25,7 @@ const failedChartTypes = new Set<ChartType>()
  * Maps chart types to their optional peer dependencies.
  * Charts not listed here have no external dependencies (table, KPIs, markdown).
  */
-const chartDependencyMap: Partial<Record<ChartType, { packageName: string; installCommand: string }>> = {
+const chartDependencyMap: Partial<Record<BuiltInChartType, { packageName: string; installCommand: string }>> = {
   // Recharts-based charts
   bar: {
     packageName: 'recharts',
@@ -95,8 +95,8 @@ const chartDependencyMap: Partial<Record<ChartType, { packageName: string; insta
   // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
 }
 
-// Dynamic import functions for each chart type
-const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartComponent }>> = {
+// Dynamic import functions for built-in chart types
+const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChartComponent }>> = {
   bar: () => import('../components/charts/BarChart'),
   line: () => import('../components/charts/LineChart'),
   area: () => import('../components/charts/AreaChart'),
@@ -125,11 +125,31 @@ const chartImportMap: Record<ChartType, () => Promise<{ default: LazyChartCompon
   gauge: () => import('../components/charts/GaugeChart'),
 }
 
+// Registry for custom (plugin) chart components
+const customChartMap = new Map<string, LazyExoticComponent<LazyChartComponent>>()
+
+/**
+ * Creates a fallback component for an unknown/unregistered chart type.
+ */
+function createUnknownChartFallback(chartType: string): LazyChartComponent {
+  const Fallback: LazyChartComponent = ({ height }) => (
+    <div
+      className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:gap-2"
+      style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
+    >
+      <div className="dc:text-sm dc:font-semibold text-dc-text-muted">Unknown chart type</div>
+      <div className="dc:text-xs text-dc-text-muted">&ldquo;{chartType}&rdquo; is not registered</div>
+    </div>
+  )
+  Fallback.displayName = `UnknownChart_${chartType}`
+  return Fallback
+}
+
 /**
  * Creates a fallback component for a chart type with missing dependencies.
  */
 function createFallbackComponent(chartType: ChartType): LazyChartComponent {
-  const depInfo = chartDependencyMap[chartType]
+  const depInfo = chartDependencyMap[chartType as BuiltInChartType]
 
   const FallbackComponent: LazyChartComponent = ({ height }) => (
     <MissingDependencyFallback
@@ -173,26 +193,38 @@ function createSafeImport(
 
 /**
  * Get or create a lazy component for a chart type.
- * Handles import failures gracefully by returning a fallback component.
+ * Checks custom (plugin) charts first, then built-in charts.
+ * Returns an unknown chart fallback for unregistered types instead of throwing.
  */
 function getLazyChart(chartType: ChartType): LazyExoticComponent<LazyChartComponent> {
-  if (!chartLoaderCache.has(chartType)) {
-    const importFn = chartImportMap[chartType]
-    if (!importFn) {
-      throw new Error(`Unknown chart type: ${chartType}`)
-    }
-    // Wrap the import with error handling for graceful degradation
+  // 1. Check custom charts first (allows overriding built-ins)
+  const customChart = customChartMap.get(chartType)
+  if (customChart) {
+    return customChart
+  }
+
+  // 2. Check built-in cache
+  if (chartLoaderCache.has(chartType)) {
+    return chartLoaderCache.get(chartType)!
+  }
+
+  // 3. Check built-in import map
+  const importFn = chartImportMap[chartType as BuiltInChartType]
+  if (importFn) {
     const safeImport = createSafeImport(chartType, importFn)
     chartLoaderCache.set(chartType, lazy(safeImport))
+    return chartLoaderCache.get(chartType)!
   }
-  return chartLoaderCache.get(chartType)!
+
+  // 4. Unknown chart type — return graceful fallback
+  return lazy(() => Promise.resolve({ default: createUnknownChartFallback(chartType) }))
 }
 
 /**
- * Check if a chart type is supported
+ * Check if a chart type is supported (built-in or custom plugin)
  */
 export function isValidChartType(chartType: string): chartType is ChartType {
-  return chartType in chartImportMap
+  return chartType in chartImportMap || customChartMap.has(chartType)
 }
 
 // Props for the LazyChart wrapper
@@ -259,7 +291,7 @@ export function LazyChart({
  * ```
  */
 export function preloadChart(chartType: ChartType): void {
-  const importFn = chartImportMap[chartType]
+  const importFn = chartImportMap[chartType as BuiltInChartType]
   if (importFn) {
     importFn()
   }
@@ -281,10 +313,13 @@ export function preloadCharts(chartTypes: ChartType[]): void {
 }
 
 /**
- * Get all available chart types
+ * Get all available chart types (built-in + custom plugins)
  */
 export function getAvailableChartTypes(): ChartType[] {
-  return Object.keys(chartImportMap) as ChartType[]
+  const builtIn = Object.keys(chartImportMap) as ChartType[]
+  const custom = Array.from(customChartMap.keys())
+  // Deduplicate in case a custom chart overrides a built-in
+  return [...new Set([...builtIn, ...custom])]
 }
 
 /**
@@ -303,4 +338,41 @@ export function isChartTypeAvailable(chartType: ChartType): boolean {
  */
 export function getUnavailableChartTypes(): ChartType[] {
   return Array.from(failedChartTypes)
+}
+
+/**
+ * Register a custom chart component.
+ * Used by the chart plugin system.
+ */
+export function registerChartComponent(
+  type: string,
+  component?: ComponentType<ChartProps>,
+  lazyComponent?: () => Promise<{ default: ComponentType<ChartProps> }>,
+  dependencies?: { packageName: string; installCommand: string }
+): void {
+  // Clear any existing built-in cache entry so the custom chart takes priority
+  chartLoaderCache.delete(type as ChartType)
+  failedChartTypes.delete(type as ChartType)
+
+  if (lazyComponent) {
+    // Lazy import factory — wrap with safe import for graceful degradation
+    const safeImport = dependencies
+      ? createSafeImport(type as ChartType, lazyComponent)
+      : lazyComponent
+    customChartMap.set(type, lazy(safeImport))
+  } else if (component) {
+    // Eager component — wrap in a resolved lazy for consistent Suspense handling
+    const comp = component
+    customChartMap.set(type, lazy(() => Promise.resolve({ default: comp as LazyChartComponent })))
+  }
+}
+
+/**
+ * Unregister a custom chart component.
+ * Used by the chart plugin system.
+ */
+export function unregisterChartComponent(type: string): void {
+  customChartMap.delete(type)
+  chartLoaderCache.delete(type as ChartType)
+  failedChartTypes.delete(type as ChartType)
 }

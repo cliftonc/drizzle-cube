@@ -5,6 +5,9 @@
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
   "type": "module",
+  "bin": {
+    "drizzle-cube": "./dist/cli/index.cjs"
+  },
   "sideEffects": [
     "*.css",
     "./dist/client/styles.css"
@@ -87,11 +90,12 @@
     "dev:build": "concurrently \"npm run dev:build-server\" \"npm run dev:build-client\"",
     "dev:build-server": "vite build src/server --watch --mode development",
     "dev:build-client": "vite build src/client --watch --mode development",
-    "build": "npm run build:server && npm run build:client && npm run build:adapters",
+    "build": "npm run build:server && npm run build:client && npm run build:adapters && npm run build:cli",
     "build:server": "vite build --config vite.config.server.ts",
     "build:client": "vite build --config vite.config.client.ts",
     "analyze:client": "vite build --config vite.config.client.ts && open dist/client-bundle-stats.html",
     "build:adapters": "vite build --config vite.config.adapters.ts",
+    "build:cli": "vite build --config vite.config.cli.ts",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "test:server": "vitest run --config vitest.config.server.ts",

@@ -24,7 +24,7 @@ import { waterfallChartConfig } from '../components/charts/WaterfallChart.config
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config'
-import type { ChartConfigRegistry } from './chartConfigs'
+import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs'
 
 /**
  * Registry of all chart type configurations
@@ -56,4 +56,20 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   candlestick: candlestickChartConfig,
   measureProfile: measureProfileChartConfig,
   gauge: gaugeChartConfig,
+}
+
+/**
+ * Register a custom chart config into the registry.
+ * Used by the chart plugin system.
+ */
+export function registerChartConfig(type: string, config: ChartTypeConfig): void {
+  chartConfigRegistry[type] = config
+}
+
+/**
+ * Unregister a chart config from the registry.
+ * Used by the chart plugin system.
+ */
+export function unregisterChartConfig(type: string): void {
+  delete chartConfigRegistry[type]
 }

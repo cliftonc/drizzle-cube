@@ -12,6 +12,20 @@ import type { IconRegistry, IconName, IconDefinition, IconCategory, IconProps, P
 // Internal mutable registry - starts with defaults
 let _registry: IconRegistry = { ...DEFAULT_ICONS }
 
+// Custom icon resolver for chart plugins (set by chartPlugin.ts to avoid circular imports)
+let _customIconResolver: ((chartType: string) => ComponentType<IconProps> | undefined) | null = null
+
+/**
+ * Set a custom icon resolver for chart plugin types.
+ * Called by chartPlugin.ts during initialization.
+ * @internal
+ */
+export function setCustomChartIconResolver(
+  resolver: (chartType: string) => ComponentType<IconProps> | undefined
+): void {
+  _customIconResolver = resolver
+}
+
 // Cache for icon components to avoid recreating on every getIcon() call
 // This prevents React from unmounting/remounting icons on each render
 const _iconComponentCache = new Map<IconName, ComponentType<IconProps>>()
@@ -186,8 +200,18 @@ export function getChartTypeIcon(chartType: string): ComponentType<IconProps> {
     heatmap: 'chartHeatmap'
   }
 
-  const iconName = typeMap[chartType] || 'chartBar'
-  return getIcon(iconName)
+  const iconName = typeMap[chartType]
+  if (iconName) {
+    return getIcon(iconName)
+  }
+
+  // Check custom chart plugin icon resolver (set by chartPlugin.ts to avoid circular imports)
+  if (_customIconResolver) {
+    const customIcon = _customIconResolver(chartType)
+    if (customIcon) return customIcon
+  }
+
+  return getIcon('chartBar')
 }
 
 /**

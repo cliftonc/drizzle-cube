@@ -7,6 +7,7 @@
 
 import type { ChartType, ChartAxisConfig } from '../types'
 import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
+import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 
 // ============================================================================
 // Types
@@ -223,24 +224,8 @@ export function getAllChartAvailability(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[]
 ): ChartAvailabilityMap {
-  // Chart types in alphabetical order (matching ChartTypeSelector display)
-  const chartTypes: ChartType[] = [
-    'activityGrid',
-    'area',
-    'bar',
-    'bubble',
-    'kpiDelta',
-    'kpiNumber',
-    'kpiText',
-    'line',
-    'markdown',
-    'pie',
-    'radar',
-    'radialBar',
-    'scatter',
-    'table',
-    'treemap'
-  ]
+  // Derive chart types dynamically from the registry (includes custom plugins)
+  const chartTypes = Object.keys(chartConfigRegistry) as ChartType[]
 
   const availability: Partial<ChartAvailabilityMap> = {}
   for (const chartType of chartTypes) {

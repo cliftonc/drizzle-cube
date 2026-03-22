@@ -11,7 +11,7 @@
  * AnalysisBuilder and other components that use TanStack Query hooks.
  */
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeApiProvider, useCubeApi } from './CubeApiProvider'
 import { CubeMetaProvider } from './CubeMetaProvider'
@@ -20,6 +20,8 @@ import { CubeFeaturesProvider, useCubeFeatures } from './CubeFeaturesProvider'
 import type { CubeQueryOptions, CubeApiOptions, FeaturesConfig, DashboardLayoutMode, CubeMeta, FieldLabelMap } from '../types'
 import type { CubeClient } from '../client/CubeClient'
 import type { BatchCoordinator } from '../client/BatchCoordinator'
+import type { ChartDefinition } from '../charts/chartPlugin'
+import { chartPluginRegistry } from '../charts/chartPlugin'
 
 const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
 
@@ -68,6 +70,8 @@ interface CubeProviderProps {
   enableBatching?: boolean
   batchDelayMs?: number  // Delay in ms to collect queries before batching (default: 100)
   queryClient?: QueryClient
+  /** Custom chart definitions to register. Overrides built-in charts when `type` matches. */
+  customCharts?: ChartDefinition[]
   children: ReactNode
 }
 
@@ -89,10 +93,45 @@ export function CubeProvider({
   enableBatching,
   batchDelayMs,
   queryClient: providedQueryClient,
+  customCharts,
   children
 }: CubeProviderProps) {
   const [internalQueryClient] = useState(() => createCubeQueryClient())
   const queryClient = providedQueryClient ?? internalQueryClient
+
+  // Register/unregister custom charts
+  const registeredTypesRef = useRef<string[]>([])
+  useEffect(() => {
+    if (!customCharts || customCharts.length === 0) {
+      // Unregister any previously registered charts
+      for (const type of registeredTypesRef.current) {
+        chartPluginRegistry.unregister(type)
+      }
+      registeredTypesRef.current = []
+      return
+    }
+
+    // Unregister old charts that are no longer in the list
+    const newTypes = new Set(customCharts.map(c => c.type))
+    for (const type of registeredTypesRef.current) {
+      if (!newTypes.has(type)) {
+        chartPluginRegistry.unregister(type)
+      }
+    }
+
+    // Register all current charts
+    for (const chart of customCharts) {
+      chartPluginRegistry.register(chart)
+    }
+    registeredTypesRef.current = customCharts.map(c => c.type)
+
+    return () => {
+      for (const type of registeredTypesRef.current) {
+        chartPluginRegistry.unregister(type)
+      }
+      registeredTypesRef.current = []
+    }
+  }, [customCharts])
 
   return (
     <QueryClientProvider client={queryClient}>

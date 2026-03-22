@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import type { ChartType } from '../types'
 import type { ChartAvailabilityMap } from '../shared/chartDefaults'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import { chartPluginRegistry } from '../charts/chartPlugin'
 import { getChartTypeIcon } from '../icons'
 
 interface ChartTypeSelectorProps {
@@ -31,12 +32,19 @@ export default function ChartTypeSelector({
 }: ChartTypeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
 
+  // Re-render when custom charts are registered/unregistered
+  const registryVersion = useSyncExternalStore(
+    chartPluginRegistry.subscribe,
+    chartPluginRegistry.getSnapshot
+  )
+
   // Derive chart types from the registry, filter excluded ones, and sort alphabetically by label
   const chartTypes = useMemo(() =>
     (Object.keys(chartConfigRegistry) as ChartType[])
       .filter((type) => !excludeTypes.includes(type))
       .sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
-  , [excludeTypes])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  , [excludeTypes, registryVersion])
 
   const SelectedIcon = getChartTypeIcon(selectedType)
   const selectedLabel = getLabel(selectedType)

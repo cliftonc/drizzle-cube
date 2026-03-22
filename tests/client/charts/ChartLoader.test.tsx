@@ -183,22 +183,21 @@ describe('ChartLoader', () => {
     })
 
     describe('error handling', () => {
-      it('should throw error for unknown chart type', () => {
-        // Suppress console.error for expected React error boundary noise
-        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      it('should render graceful fallback for unknown chart type', async () => {
+        // Unknown chart types now render a fallback instead of throwing
+        const { container } = renderWithProviders(
+          <LazyChart
+            chartType={'unknownChart' as ChartType}
+            data={mockData}
+            chartConfig={basicChartConfig}
+          />
+        )
 
-        // Unknown chart types should throw
-        expect(() => {
-          renderWithProviders(
-            <LazyChart
-              chartType={'unknownChart' as ChartType}
-              data={mockData}
-              chartConfig={basicChartConfig}
-            />
-          )
-        }).toThrow('Unknown chart type: unknownChart')
-
-        consoleError.mockRestore()
+        await waitFor(() => {
+          const text = container.textContent
+          expect(text).toContain('Unknown chart type')
+          expect(text).toContain('unknownChart')
+        })
       })
     })
 

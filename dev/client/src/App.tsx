@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '@drizzle-cube/client'
 import '@drizzle-cube/client/styles.css'
+import { customCharts } from './charts'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import DashboardListPage from './pages/DashboardListPage'
@@ -41,6 +42,7 @@ function App() {
       <CubeProvider
         apiOptions={apiOptions}
         features={features}
+        customCharts={customCharts}
       >
         <Layout>
           <Routes>

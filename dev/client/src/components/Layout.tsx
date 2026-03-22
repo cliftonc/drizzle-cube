@@ -290,7 +290,6 @@ export default function Layout({ children }: LayoutProps) {
               >
                 Data Browser
               </Link>
-
               {/* Mobile external links */}
               <div className="border-t border-dc-border pt-4 pb-3">
                 <div className="space-y-1">

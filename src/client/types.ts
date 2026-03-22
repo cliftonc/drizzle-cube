@@ -90,8 +90,8 @@ export type FieldLabelMap = Record<string, string>
 // Re-export color palette types
 export type { ColorPalette } from './utils/colorPalettes'
 
-// Chart types
-export type ChartType =
+// Built-in chart types shipped with drizzle-cube
+export type BuiltInChartType =
   | 'line'
   | 'bar'
   | 'pie'
@@ -118,6 +118,10 @@ export type ChartType =
   | 'candlestick'
   | 'measureProfile'
   | 'gauge'
+
+// Chart type identifier — includes all built-in types plus any string for custom chart plugins.
+// Use BuiltInChartType when you need to narrow to built-ins only.
+export type ChartType = BuiltInChartType | (string & {})
 
 // Axis formatting configuration
 export interface AxisFormatConfig {
