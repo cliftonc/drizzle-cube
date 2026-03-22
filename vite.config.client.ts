@@ -105,9 +105,8 @@ export default defineConfig({
         'recharts',
         '@nivo/heatmap',
         'd3',
-        '@xyflow/react'
-        // elkjs is loaded via dynamic specifier in useERDLayout.ts - not listed here
-        // so the import stays opaque to consuming bundlers (webpack/Next.js)
+        // @xyflow/react and elkjs are loaded via dynamic specifiers so they stay
+        // opaque to consuming bundlers (webpack/Next.js) - not listed here
       ],
       output: {
         entryFileNames: '[name].js',

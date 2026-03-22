@@ -57,9 +57,11 @@ export function SchemaVisualizationLazy(props: SchemaVisualizationProps) {
     if (loadFailed) return
     let cancelled = false
 
-    import('@xyflow/react')
+    // Dynamic specifier so webpack/Next.js won't try to resolve this optional dependency at build time
+    const specifier = ['@xyflow', 'react'].join('/')
+    import(/* @vite-ignore */ specifier)
       .then((mod) => {
-        if (!cancelled) setXyflow(mod)
+        if (!cancelled) setXyflow(mod as XyflowModule)
       })
       .catch(() => {
         loadFailed = true
