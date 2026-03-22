@@ -18,7 +18,9 @@ import type { CubeQuery } from '../../types'
 import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { SchemaVisualizationLazy } from '../SchemaVisualization/SchemaVisualizationLazy'
+const SchemaVisualizationLazy = React.lazy(() =>
+  import('../SchemaVisualization/SchemaVisualizationLazy').then(m => ({ default: m.SchemaVisualizationLazy }))
+)
 
 /**
  * Generate markdown representation of query execution plan
@@ -472,7 +474,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       <div className="dc:flex-1 dc:flex dc:items-center dc:justify-center dc:p-4">
         {showSchema ? (
           <div className="dc:w-full dc:h-full">
-            <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+            <React.Suspense fallback={null}><SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} /></React.Suspense>
           </div>
         ) : showDebug ? (
           <div className="dc:w-full dc:h-full dc:overflow-auto">
@@ -1697,7 +1699,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           {renderHeader()}
           <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
             {showSchema ? (
-              <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+              <React.Suspense fallback={null}><SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} /></React.Suspense>
             ) : showDebug ? renderDebug() : renderNoData()}
           </div>
         </div>
@@ -1713,7 +1715,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Results Content */}
         <div className="dc:flex-1 dc:min-h-0 dc:relative dc:overflow-auto">
           {showSchema ? (
-            <SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} />
+            <React.Suspense fallback={null}><SchemaVisualizationLazy height="100%" highlightedFields={highlightedFields} onFieldClick={onSchemaFieldClick} /></React.Suspense>
           ) : showDebug ? (
             renderDebug()
           ) : activeView === 'chart' ? (

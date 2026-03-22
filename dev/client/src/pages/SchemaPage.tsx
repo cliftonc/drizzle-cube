@@ -1,4 +1,4 @@
-import { SchemaVisualization } from '@drizzle-cube/client'
+import { SchemaVisualization } from '@drizzle-cube/client/schema'
 
 export default function SchemaPage() {
   return (

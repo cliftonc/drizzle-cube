@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@drizzle-cube/server": resolve(__dirname, "../../src/server"),
+      "@drizzle-cube/client/schema": resolve(__dirname, "../../src/client/schema.ts"),
       "@drizzle-cube/client": resolve(__dirname, "../../src/client"),
       "@drizzle-cube/adapters": resolve(__dirname, "../../src/adapters"),
     },

@@ -65,8 +65,9 @@ export type { AnalysisBuilderRef } from './components/AnalysisBuilder/types'
 export { ExecutionPlanPanel } from './components/AnalysisBuilder/ExecutionPlanPanel'
 export { ExplainAIPanel } from './components/AnalysisBuilder/ExplainAIPanel'
 
-// Schema Visualization (requires @xyflow/react and elkjs)
-export { SchemaVisualizationLazy as SchemaVisualization } from './components/SchemaVisualization/SchemaVisualizationLazy'
+// Schema Visualization is exported separately via 'drizzle-cube/client/schema'
+// to avoid pulling @xyflow/react and elkjs into the main bundle.
+// Import: import { SchemaVisualization } from 'drizzle-cube/client/schema'
 export type { SchemaVisualizationProps } from './components/SchemaVisualization/index'
 
 // Data provider and hooks

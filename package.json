@@ -46,6 +46,10 @@
       "types": "./dist/client/icons.d.ts",
       "import": "./dist/client/icons.js"
     },
+    "./client/schema": {
+      "types": "./dist/client/schema.d.ts",
+      "import": "./dist/client/schema.js"
+    },
     "./client/styles.css": "./dist/client/styles.css",
     "./adapters/hono": {
       "types": "./dist/adapters/hono/index.d.ts",

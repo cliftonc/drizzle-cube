@@ -79,10 +79,8 @@ let elkLoadPromise: Promise<ELKInstance | null> | null = null
 
 function loadElk(): Promise<ELKInstance | null> {
   if (elkLoadPromise) return elkLoadPromise
-  // Use dynamic specifier so no bundler (Rollup, webpack) can statically resolve this.
   // elkjs is an optional peer dependency - if not installed, the catch() handles it.
-  const specifier = ['elkjs', 'lib', 'elk.bundled.js'].join('/')
-  elkLoadPromise = import(/* @vite-ignore */ specifier)
+  elkLoadPromise = import('elkjs/lib/elk.bundled.js')
     .then((mod) => {
       const ELK = (mod as unknown as { default?: new () => ELKInstance }).default || mod
       elkInstance = new (ELK as unknown as new () => ELKInstance)()

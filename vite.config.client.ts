@@ -83,7 +83,8 @@ export default defineConfig({
         providers: resolve(__dirname, 'src/client/providers.ts'),
         components: resolve(__dirname, 'src/client/components.ts'),
         utils: resolve(__dirname, 'src/client/utils.ts'),
-        icons: resolve(__dirname, 'src/client/icons/index.ts')
+        icons: resolve(__dirname, 'src/client/icons/index.ts'),
+        schema: resolve(__dirname, 'src/client/schema.ts')
       },
       formats: ['es']
     },
@@ -105,8 +106,9 @@ export default defineConfig({
         'recharts',
         '@nivo/heatmap',
         'd3',
-        // @xyflow/react and elkjs are loaded via dynamic specifiers so they stay
-        // opaque to consuming bundlers (webpack/Next.js) - not listed here
+        '@xyflow/react',
+        'elkjs',
+        'elkjs/lib/elk.bundled.js',
       ],
       output: {
         entryFileNames: '[name].js',
