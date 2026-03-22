@@ -65,6 +65,11 @@ export class GroupByBuilder {
     context: QueryContext,
     queryPlan?: PhysicalQueryPlan
   ): (SQL | AnyColumn)[] {
+    // Ungrouped queries skip GROUP BY entirely — return raw rows
+    if (query.ungrouped) {
+      return []
+    }
+
     const groupFields: (SQL | AnyColumn)[] = []
 
     // Convert single cube to map for consistent handling

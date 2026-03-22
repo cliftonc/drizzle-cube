@@ -89,6 +89,11 @@ export class TestQueryBuilder {
     return this
   }
 
+  ungrouped(value: boolean = true): TestQueryBuilder {
+    this.query.ungrouped = value
+    return this
+  }
+
   build(): SemanticQuery {
     return { ...this.query }
   }

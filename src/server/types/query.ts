@@ -27,6 +27,20 @@ export interface SemanticQuery {
   fillMissingDatesValue?: number | null
 
   /**
+   * When true, returns raw row-level data without GROUP BY or aggregation.
+   * Measures are rendered as raw column expressions (no aggregation wrappers).
+   * Security context and joins still apply normally.
+   *
+   * Constraints:
+   * - Requires at least one dimension
+   * - Only compatible with sum, avg, min, max, and number measure types
+   * - Incompatible with count, countDistinct, calculated, and window function measures
+   * - Incompatible with measure filters, hasMany joins, funnel/flow/retention modes
+   * - Incompatible with compareDateRange and fillMissingDates
+   */
+  ungrouped?: boolean
+
+  /**
    * Funnel analysis configuration for query-time funnel definition.
    * When specified, the query executes as a funnel analysis instead of
    * standard measures/dimensions aggregation.

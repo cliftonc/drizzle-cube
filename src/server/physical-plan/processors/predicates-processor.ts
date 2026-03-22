@@ -105,19 +105,22 @@ export function applyPredicatesAndFinalize(
   }
 
   // Add HAVING conditions using DrizzleSqlBuilder (after GROUP BY)
-  const havingConditions = deps.queryBuilder.buildHavingConditions(
-    queryPlan.joinCubes.length > 0
-      ? allCubes // Multi-cube
-      : queryPlan.primaryCube, // Single cube
-    query,
-    context,
-    queryPlan // Pass the queryPlan to handle CTE scenarios
-  )
-  if (havingConditions.length > 0) {
-    const combinedHaving = havingConditions.length === 1
-      ? havingConditions[0]
-      : and(...havingConditions) as SQL
-    drizzleQuery = drizzleQuery.having(combinedHaving)
+  // Skip HAVING for ungrouped queries — HAVING operates on aggregated results
+  if (!query.ungrouped) {
+    const havingConditions = deps.queryBuilder.buildHavingConditions(
+      queryPlan.joinCubes.length > 0
+        ? allCubes // Multi-cube
+        : queryPlan.primaryCube, // Single cube
+      query,
+      context,
+      queryPlan // Pass the queryPlan to handle CTE scenarios
+    )
+    if (havingConditions.length > 0) {
+      const combinedHaving = havingConditions.length === 1
+        ? havingConditions[0]
+        : and(...havingConditions) as SQL
+      drizzleQuery = drizzleQuery.having(combinedHaving)
+    }
   }
 
   // Add ORDER BY using DrizzleSqlBuilder

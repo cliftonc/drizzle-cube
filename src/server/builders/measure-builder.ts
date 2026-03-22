@@ -409,6 +409,11 @@ export class MeasureBuilder {
     // This protects against Drizzle SQL object mutation during reuse
     let baseExpr = resolveSqlExpression(measure.sql, context)
 
+    // Ungrouped queries return raw column expressions without aggregation wrappers
+    if (context.ungrouped) {
+      return baseExpr as SQL
+    }
+
     // Apply measure filters if they exist
     if (measure.filters && measure.filters.length > 0) {
       const filterConditions = measure.filters.map((filter: (ctx: QueryContext) => SQL) => {

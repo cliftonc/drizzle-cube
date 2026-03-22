@@ -92,7 +92,8 @@ export function buildTransformedQuery(query: SemanticQuery): any {
     ownedTimeDimensionsWithRollupGranularity: [],
     ownedTimeDimensionsAsIs: [],
     allBackAliasMembers: {},
-    hasMultiStage: false
+    hasMultiStage: false,
+    ungrouped: query.ungrouped || false
   }
 }
 

@@ -250,7 +250,7 @@ export class QueryExecutor {
     securityContext: SecurityContext
   ): import('./logical-plan').QueryNode {
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache)
+    const context = this.createQueryContext(securityContext, filterCache, query)
     this.preloadFilterCache(query, filterCache, cubes, context)
     return this.buildRegularQueryArtifacts(cubes, query, context).optimisedPlan
   }
@@ -265,7 +265,7 @@ export class QueryExecutor {
     securityContext: SecurityContext
   ): QueryAnalysis {
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache)
+    const context = this.createQueryContext(securityContext, filterCache, query)
     this.preloadFilterCache(query, filterCache, cubes, context)
     return this.buildRegularQueryArtifacts(cubes, query, context).analysis
   }
@@ -618,7 +618,7 @@ export class QueryExecutor {
     const filterCache = new FilterCacheManager()
 
     // Create query context with filter cache
-    const context = this.createQueryContext(securityContext, filterCache)
+    const context = this.createQueryContext(securityContext, filterCache, query)
 
     // Pre-build filter SQL for reuse across CTEs and main query
     this.preloadFilterCache(query, filterCache, cubes, context)
@@ -680,13 +680,15 @@ export class QueryExecutor {
    */
   private createQueryContext(
     securityContext: SecurityContext,
-    filterCache?: FilterCacheManager
+    filterCache?: FilterCacheManager,
+    query?: SemanticQuery
   ): QueryContext {
     return {
       db: this.dbExecutor.db,
       schema: this.dbExecutor.schema,
       securityContext,
-      filterCache
+      filterCache,
+      ungrouped: query?.ungrouped
     }
   }
 
@@ -986,7 +988,7 @@ export class QueryExecutor {
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache)
+    const context = this.createQueryContext(securityContext, filterCache, query)
     this.preloadFilterCache(query, filterCache, cubes, context)
 
     // Create unified query plan from shared logical planning pipeline
@@ -1098,7 +1100,7 @@ export class QueryExecutor {
     const filterCache = new FilterCacheManager()
 
     // Create query context with filter cache
-    const context = this.createQueryContext(securityContext, filterCache)
+    const context = this.createQueryContext(securityContext, filterCache, query)
 
     // Pre-build filter SQL for reuse across CTEs and main query
     this.preloadFilterCache(query, filterCache, cubes, context)

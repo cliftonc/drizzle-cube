@@ -853,6 +853,91 @@ export function validateQueryAgainstCubes(
     errors.push('Query must reference at least one cube through measures, dimensions, or filters')
   }
 
+  // Validate ungrouped query constraints
+  if (query.ungrouped) {
+    const hasDimensions = (query.dimensions && query.dimensions.length > 0) ||
+                          (query.timeDimensions && query.timeDimensions.length > 0)
+    if (!hasDimensions) {
+      errors.push('Ungrouped queries require at least one dimension or time dimension')
+    }
+
+    // Reject incompatible query modes
+    if (query.funnel) {
+      errors.push('Ungrouped queries are incompatible with funnel analysis')
+    }
+    if (query.flow) {
+      errors.push('Ungrouped queries are incompatible with flow analysis')
+    }
+    if (query.retention) {
+      errors.push('Ungrouped queries are incompatible with retention analysis')
+    }
+
+    // Reject compareDateRange
+    if (query.timeDimensions?.some(td => td.compareDateRange && td.compareDateRange.length > 0)) {
+      errors.push('Ungrouped queries are incompatible with compareDateRange')
+    }
+
+    // Reject fillMissingDates
+    if (query.timeDimensions?.some(td => td.fillMissingDates === true)) {
+      errors.push('Ungrouped queries are incompatible with fillMissingDates')
+    }
+
+    // Validate measure types — only raw-column-compatible types allowed
+    const allowedUngroupedTypes = new Set(['sum', 'avg', 'min', 'max', 'number'])
+    const incompatibleTypes = new Set([
+      'count', 'countDistinct', 'countDistinctApprox',
+      'calculated',
+      'stddev', 'stddevSamp', 'variance', 'varianceSamp',
+      'median', 'p95', 'p99', 'percentile',
+      'lag', 'lead', 'rank', 'denseRank', 'rowNumber',
+      'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum'
+    ])
+
+    if (query.measures) {
+      for (const measureName of query.measures) {
+        const [cubeName, fieldName] = measureName.split('.')
+        const cube = cubes.get(cubeName)
+        if (cube && cube.measures[fieldName]) {
+          const measure = cube.measures[fieldName]
+
+          if (incompatibleTypes.has(measure.type)) {
+            errors.push(
+              `Measure '${measureName}' has type '${measure.type}' which is incompatible with ungrouped queries. ` +
+              `Only ${[...allowedUngroupedTypes].join(', ')} types are allowed.`
+            )
+          }
+
+          // Reject measures with filters (require CASE WHEN + aggregate)
+          if (measure.filters && measure.filters.length > 0) {
+            errors.push(
+              `Measure '${measureName}' has filters which are incompatible with ungrouped queries ` +
+              `(measure filters require aggregation)`
+            )
+          }
+        }
+      }
+    }
+
+    // Reject hasMany joins between referenced cubes
+    for (const cubeName of referencedCubes) {
+      const cube = cubes.get(cubeName)
+      if (cube && cube.joins) {
+        for (const [joinName, joinDef] of Object.entries(cube.joins)) {
+          if (joinDef.relationship === 'hasMany') {
+            // Check if the target cube is also referenced in this query
+            const targetCube = resolveCubeReference(joinDef.targetCube, cubes)
+            if (targetCube && referencedCubes.has(targetCube.name)) {
+              errors.push(
+                `Ungrouped queries are incompatible with hasMany relationships ` +
+                `(${cubeName} → ${joinName} is hasMany)`
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors

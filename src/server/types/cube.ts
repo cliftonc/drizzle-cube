@@ -58,6 +58,11 @@ export interface QueryContext {
    * Created at query start and used throughout query building
    */
   filterCache?: FilterCacheManager
+  /**
+   * When true, measures should be rendered as raw column expressions
+   * without aggregation wrappers. Set from SemanticQuery.ungrouped.
+   */
+  ungrouped?: boolean
 }
 
 /**
