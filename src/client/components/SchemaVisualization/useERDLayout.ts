@@ -75,17 +75,25 @@ interface ELKInstance {
 }
 
 let elkInstance: ELKInstance | null = null
+let elkLoadPromise: Promise<ELKInstance | null> | null = null
 
-const elkLoadPromise: Promise<ELKInstance | null> = import('elkjs/lib/elk.bundled.js')
-  .then((mod) => {
-    const ELK = (mod as unknown as { default?: new () => ELKInstance }).default || mod
-    elkInstance = new (ELK as unknown as new () => ELKInstance)()
-    return elkInstance
-  })
-  .catch(() => null)
+function loadElk(): Promise<ELKInstance | null> {
+  if (elkLoadPromise) return elkLoadPromise
+  // Use dynamic specifier so no bundler (Rollup, webpack) can statically resolve this.
+  // elkjs is an optional peer dependency - if not installed, the catch() handles it.
+  const specifier = ['elkjs', 'lib', 'elk.bundled.js'].join('/')
+  elkLoadPromise = import(/* @vite-ignore */ specifier)
+    .then((mod) => {
+      const ELK = (mod as unknown as { default?: new () => ELKInstance }).default || mod
+      elkInstance = new (ELK as unknown as new () => ELKInstance)()
+      return elkInstance
+    })
+    .catch(() => null)
+  return elkLoadPromise
+}
 
 // Force-export to prevent tree shaking of the side-effectful import
-export { elkLoadPromise as _elkLoadPromise }
+export { loadElk as _elkLoadPromise }
 
 // --- ELK layout computation (pure async function, no hooks) ---
 
@@ -124,8 +132,8 @@ async function computeElkLayout(
   edges: Edge[],
   opts: LayoutOptions,
 ): Promise<ElkLayoutResult> {
-  // Ensure ELK is loaded (await the singleton promise)
-  await elkLoadPromise
+  // Ensure ELK is loaded (lazy, webpack-safe)
+  await loadElk()
   if (!elkInstance) {
     // ELK failed to load — return grid fallback
     return { nodes: layoutWithGrid(nodes, opts), edges }
