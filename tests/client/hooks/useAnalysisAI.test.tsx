@@ -2,6 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../client-setup/msw-server'
+
+// Mock CubeApiProvider before importing useAnalysisAI (which calls useCubeApi)
+vi.mock('../../../src/client/providers/CubeApiProvider', () => ({
+  useCubeApi: vi.fn(() => ({
+    cubeApi: {},
+    apiOptions: { headers: {} },
+    updateApiConfig: vi.fn(),
+    batchCoordinator: null,
+    enableBatching: false,
+  })),
+}))
+
 import { useAnalysisAI } from '../../../src/client/hooks/useAnalysisAI'
 import type { AnalysisBuilderState } from '../../../src/client/components/AnalysisBuilder/types'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig, CubeQuery } from '../../../src/client/types'
