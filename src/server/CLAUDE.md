@@ -1,675 +1,151 @@
 # Server Architecture
 
-This document describes the core server architecture of drizzle-cube, focusing on patterns and conventions that should be maintained for consistency.
+The server core implements drizzle-cube's semantic layer: a Drizzle-first query engine that compiles semantic queries into type-safe, security-scoped SQL across seven database engines.
 
-## Overview
-
-The server core is the heart of drizzle-cube's semantic layer, built around a **Drizzle-first** architecture that ensures type safety, security, and performance. All SQL generation flows through Drizzle ORM's query builder to maintain security and type safety.
-
-## Core Architecture Flow
+## Query Pipeline
 
 ```
-SemanticQuery → Compiler → LogicalPlanBuilder (+ LogicalPlanner phases) → Optimiser
-                    ↓                                              ↓
-               Cube Registry ← Security Context          DrizzlePlanBuilder + DrizzleSqlBuilder
-                                                                  ↓
-                                                         Database Executor → SQL Result
+SemanticQuery
+  → SemanticLayerCompiler        (cube registry, validation, metadata cache)
+  → QueryExecutor                (mode routing: regular | comparison | funnel | flow | retention)
+  → LogicalPlanBuilder           (cube usage, primary-cube selection, joins, CTE decisions)
+  → LogicalPlanner               (planning phases)
+  → OptimiserPipeline            (optional plan transformations)
+  → DrizzlePlanBuilder           (logical → physical plan conversion)
+  → DrizzleSqlBuilder            (SQL clause assembly)
+  → DatabaseExecutor             (engine-specific execution via adapter)
+  → SQL Result
+```
+
+Comparison/funnel/flow/retention queries use dedicated builders that bypass the logical plan and go directly through their own SQL generation.
+
+## Directory Layout
+
+```
+src/server/
+├── compiler.ts              SemanticLayerCompiler, validateQueryAgainstCubes
+├── executor.ts              QueryExecutor — unified query orchestrator
+├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression
+├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
+├── cache-utils.ts           generateCacheKey, normalizeQuery, fnv1aHash
+├── filter-cache.ts          FilterCacheManager, flattenFilters
+├── gap-filler.ts            generateTimeBuckets, fillTimeSeriesGaps, applyGapFilling
+├── template-substitution.ts substituteTemplate, validateTemplateSyntax
+├── index.ts                 Public API re-exports
+│
+├── types/                   Modular type system (12 files)
+│   ├── core.ts              SecurityContext, QueryResult, QueryContext
+│   ├── cube.ts              Cube definition types
+│   ├── query.ts             SemanticQuery, Filter, TimeDimension
+│   ├── executor.ts          DatabaseExecutor interface
+│   ├── metadata.ts          CubeMetadata, MeasureAnnotation, DimensionAnnotation
+│   ├── flow.ts              Flow analysis types
+│   ├── funnel.ts            Funnel analysis types
+│   ├── retention.ts         Retention analysis types
+│   ├── analysis.ts          Analysis mode types
+│   ├── cache.ts             CacheConfig, CacheProvider
+│   ├── utils.ts             Utility types
+│   └── index.ts             Barrel re-exports
+│
+├── adapters/                Database-specific SQL generation (see adapters/CLAUDE.md)
+├── executors/               Database-specific query execution (see adapters/CLAUDE.md)
+│
+├── logical-plan/            Semantic → logical plan
+│   ├── logical-planner.ts   LogicalPlanner — planning phases
+│   ├── logical-plan-builder.ts  LogicalPlanBuilder — plan composition + analysis
+│   ├── optimiser.ts         PlanOptimiser, OptimiserPipeline, IdentityOptimiser
+│   └── types.ts             LogicalNode variants (QueryNode, SimpleSource, CTEPreAggregate, etc.)
+│
+├── physical-plan/           Logical → Drizzle SQL
+│   ├── drizzle-plan-builder.ts  DrizzlePlanBuilder — physical plan from logical plan
+│   ├── drizzle-sql-builder.ts   DrizzleSqlBuilder — SQL clause construction
+│   └── processors/          Modular physical-plan processors
+│       ├── cte-processor.ts      buildCTEState
+│       ├── joins-processor.ts    applyJoins
+│       ├── predicates-processor.ts  applyPredicatesAndFinalize
+│       ├── selection-processor.ts   buildModifiedSelections
+│       ├── window-processor.ts      applyPostAggregationWindows
+│       └── shared.ts               PhysicalBuildDependencies, getCubesFromPlan
+│
+├── builders/                Dedicated query builders
+│   ├── cte-builder.ts       CTEBuilder
+│   ├── comparison-query-builder.ts  ComparisonQueryBuilder
+│   ├── funnel-query-builder.ts      FunnelQueryBuilder
+│   ├── flow-query-builder.ts        FlowQueryBuilder
+│   ├── retention-query-builder.ts   RetentionQueryBuilder
+│   ├── filter-builder.ts            FilterBuilder
+│   ├── measure-builder.ts           MeasureBuilder
+│   ├── group-by-builder.ts          GroupByBuilder
+│   └── date-time-builder.ts         DateTimeBuilder
+│
+├── resolvers/               Cross-cube resolution
+│   ├── join-path-resolver.ts          JoinPathResolver
+│   ├── calculated-measure-resolver.ts CalculatedMeasureResolver
+│   └── index.ts
+│
+├── cache-providers/         Cache backend implementations
+│   └── memory.ts            MemoryCacheProvider
+│
+├── explain/                 EXPLAIN plan parsers per engine
+│   ├── postgres-parser.ts, mysql-parser.ts, sqlite-parser.ts
+│   ├── duckdb-parser.ts, databend-parser.ts, snowflake-parser.ts
+│   └── index.ts
+│
+├── prompts/                 AI prompt templates for natural-language query building
+│   ├── step0-validation-prompt.ts, step1-shape-prompt.ts, step2-complete-prompt.ts
+│   ├── single-step-prompt.ts, explain-analysis-prompt.ts
+│   └── types.ts
+│
+├── agent/                   Agent tool definitions and chat handler
+│   └── index.ts             handleAgentChat, getToolDefinitions, createToolExecutor
+│
+└── ai/                      AI discovery and validation
+    ├── discovery.ts, suggestion.ts, validation.ts
+    ├── mcp-prompts.ts, schemas.ts
+    └── index.ts
 ```
 
 ## Key Components
 
-### 1. SemanticLayerCompiler (`compiler.ts`)
-
-**Purpose**: Central registry and orchestrator for semantic cubes
-**Key responsibilities**:
-- Cube registration and management
-- Query validation and metadata caching
-- Database executor integration
-
-**Core Pattern**:
-```typescript
-const compiler = new SemanticLayerCompiler({
-  drizzle: db,
-  schema: schema,
-  engineType: 'postgres' // or auto-detected
-})
-
-// Register cubes with security context requirement
-compiler.registerCube(defineCube({
-  name: 'Employees',
-  sql: (securityContext) => eq(employees.organisationId, securityContext.organisationId),
-  measures: { /* ... */ },
-  dimensions: { /* ... */ }
-}))
-```
-
-### 2. Database Executors (`executors/`)
-
-**Purpose**: Database-specific query execution with auto-detection
-**Structure**:
-- `BaseDatabaseExecutor` - Common functionality
-- `PostgresExecutor` - PostgreSQL-specific implementation
-- `MySQLExecutor` - MySQL-specific implementation  
-- `SQLiteExecutor` - SQLite-specific implementation
-
-**Auto-detection Pattern**:
-```typescript
-// Automatically detects database type from Drizzle instance
-const executor = createDatabaseExecutor(drizzleDb, schema)
-
-// Or explicit type specification
-const executor = createDatabaseExecutor(drizzleDb, schema, 'postgres')
-```
-
-**Key Pattern**: Each executor contains a database adapter for SQL generation differences.
-
-### 3. Logical + Physical Planning (`logical-plan/`, `physical-plan/`)
-
-**Purpose**: Multi-stage planning from semantic query to executable Drizzle query
-**Key features**:
-- Logical planning phases (cube usage, primary cube selection, joins, CTE decisions)
-- Optional optimizer stage before SQL generation
-- Physical plan build with consistent SQL clause generation and CTE handling
-- Security context propagation across all tables
-
-**Core Pattern**:
-```typescript
-const logicalPlanner = new LogicalPlanner()
-const logicalBuilder = new LogicalPlanBuilder(logicalPlanner)
-const { plan, analysis } = logicalBuilder.planWithAnalysis(cubesMap, semanticQuery, context)
-
-const sqlBuilder = new DrizzleSqlBuilder(databaseAdapter)
-const cteBuilder = new CTEBuilder(sqlBuilder)
-const physicalBuilder = new DrizzlePlanBuilder(sqlBuilder, cteBuilder, databaseAdapter)
-const physicalPlan = physicalBuilder.derivePhysicalPlanContext(plan)
-const drizzleQuery = physicalBuilder.build(physicalPlan, semanticQuery, context)
-```
-
-### 4. Query Execution (`executor.ts`)
-
-**Purpose**: Execute planned queries with proper SQL generation
-**Pattern**:
-- Regular/comparison queries run through Logical -> Physical pipeline
-- Funnel/Flow/Retention keep dedicated builders (intentional)
-- Execution delegates to database-specific adapters for SQL differences while maintaining business logic separation.
-
-### 5. Type System (`types/`)
-
-**Modular Type Architecture**:
-- `core.ts` - Fundamental interfaces (SecurityContext, QueryResult, etc.)
-- `cube.ts` - Cube definition types
-- `query.ts` - Query structure types  
-- `executor.ts` - Database executor interfaces
-- `metadata.ts` - Metadata and annotation types
-
-## Security Architecture
-
-### Mandatory Security Context
-
-**Rule**: Every cube MUST implement security filtering through the `sql` function:
-
-```typescript
-defineCube({
-  name: 'SensitiveData',
-  sql: (securityContext) => {
-    // REQUIRED: Filter by organization/tenant
-    return eq(table.organisationId, securityContext.organisationId)
-  },
-  measures: { /* ... */ }
-})
-```
-
-**Why**: 
-- Prevents data leakage between tenants
-- Enforced at the query planning level
-- Cannot be bypassed in multi-cube queries
-
-### SQL Injection Prevention
-
-**Patterns to ALWAYS follow**:
-```typescript
-// ✅ CORRECT - Use Drizzle query builder
-const query = db.select().from(table).where(eq(table.id, userId))
-
-// ✅ CORRECT - Use parameterized sql template - ONLY WHEN LAST RESORT
-const customFilter = sql`${table.status} IN ${[status1, status2]}`
-
-// ❌ WRONG - Never construct SQL strings
-const badQuery = sql.raw(`SELECT * FROM ${tableName} WHERE id = ${userId}`)
-```
-
-## Database Adapter Integration
-
-### Purpose
-Handle SQL generation differences between PostgreSQL, MySQL, SQLite, SingleStore, and DuckDB while keeping business logic database-agnostic.
-
-### Pattern
-```typescript
-// In query executor
-const timeSql = this.databaseAdapter.buildTimeDimension(column, 'day')
-const avgSql = this.databaseAdapter.buildAvg(column, 'metric')
-```
-
-### What Goes in Adapters
-- Time dimension truncation (DATE_TRUNC vs DATE_FORMAT vs date functions)
-- String operations (ILIKE vs LOWER+LIKE)
-- Type casting (:: vs CAST AS)
-- Null handling (COALESCE vs IFNULL)
-
-### What Stays in Core Code
-- Basic aggregations (`count()`, `sum()`, `min()`, `max()`)
-- Standard WHERE conditions (`eq()`, `gt()`, `lt()`)
-- JOINs and basic SQL structure
-
-## Multi-Cube Query Handling
-
-### Join Detection
-The system automatically detects when multiple cubes need JOINs and when to use CTEs:
-
-```typescript
-// Single cube - direct query
-{ measures: ['Employees.count'] }
-
-// Multi-cube with relationship - JOIN
-{ measures: ['Employees.count'], dimensions: ['Departments.name'] }
-
-// Multi-cube hasMany - CTE required
-{ measures: ['Employees.count', 'Productivity.totalLines'] }
-```
-
-### Security Context Propagation
-Security filtering is applied to ALL tables in multi-cube queries, preventing data leakage through JOINs.
-
-## Query Validation
-
-### Validation Levels
-1. **Structure Validation** - Query format and required fields
-2. **Field Existence** - All referenced measures/dimensions exist
-3. **Security Context** - Required for all cubes
-4. **Type Safety** - Drizzle schema compatibility
-
-## Performance Patterns
-
-### Metadata Caching
-```typescript
-// Cached for 5 minutes to reduce compilation overhead
-private metadataCache?: CubeMetadata[]
-private metadataCacheTimestamp?: number
-```
-
-### Prepared Statements
-All queries use Drizzle's prepared statement system automatically.
-
-### Connection Pooling
-Leverages underlying Drizzle database driver pooling.
-
-## Development Patterns
-
-### Adding New Features
-
-1. **Extend Types** - Add interfaces to appropriate `types/*.ts` file
-2. **Update Executors** - Implement in base class, override in database-specific classes if needed
-3. **Update Compiler** - Add registration/validation logic
-4. **Database Adapters** - Only if SQL generation differs between databases
-5. **Tests** - Add multi-database test coverage
-
-### Cube Definition Pattern
-```typescript
-export const employeesCube = defineCube({
-  name: 'Employees',
-  sql: (securityContext) => eq(employees.organisationId, securityContext.organisationId),
-  
-  measures: {
-    count: {
-      type: 'count',
-      sql: () => employees.id
-    },
-    averageSalary: {
-      type: 'avg', 
-      sql: () => employees.salary
-    }
-  },
-  
-  dimensions: {
-    name: {
-      type: 'string',
-      sql: () => employees.name
-    },
-    createdAt: {
-      type: 'time',
-      sql: () => employees.createdAt
-    }
-  }
-})
-```
-
-### Cube Joins and Relationships
-
-Cubes can define relationships to other cubes using the `joins` property. Four relationship types are supported:
-
-**Relationship Types:**
-- `belongsTo` - Many-to-one (INNER JOIN)
-- `hasOne` - One-to-one (LEFT JOIN)
-- `hasMany` - One-to-many with pre-aggregation (LEFT JOIN)
-- `belongsToMany` - Many-to-many through junction table (LEFT JOIN)
-
-**Basic Join Example:**
-```typescript
-export const employeesCube = defineCube({
-  name: 'Employees',
-  sql: (ctx) => ({
-    from: employees,
-    where: eq(employees.organisationId, ctx.securityContext.organisationId)
-  }),
-
-  joins: {
-    Departments: {
-      targetCube: () => departmentsCube,
-      relationship: 'belongsTo',
-      on: [
-        { source: employees.departmentId, target: departments.id }
-      ]
-    }
-  },
-
-  measures: { /* ... */ },
-  dimensions: { /* ... */ }
-})
-```
-
-**Many-to-Many (belongsToMany) Example:**
-
-Use `belongsToMany` when cubes have a many-to-many relationship through a junction table.
-
-**When to Use belongsToMany vs hasMany:**
-- Use `belongsToMany` when a record in cube A can relate to multiple records in cube B, AND a record in cube B can relate to multiple records in cube A (many-to-many)
-- Use `hasMany` when a record in cube A can relate to multiple records in cube B, but each record in cube B relates to only one record in cube A (one-to-many)
-- Example: An employee can work in multiple departments (via time entries), and each department has multiple employees = `belongsToMany`
-- Counter-example: A department has many employees, but each employee belongs to one primary department = `hasMany` from Department, `belongsTo` from Employee
-
-**Implementation:**
-
-```typescript
-export const employeesCube = defineCube({
-  name: 'Employees',
-  sql: (ctx) => ({
-    from: employees,
-    where: eq(employees.organisationId, ctx.securityContext.organisationId)
-  }),
-
-  joins: {
-    // Many-to-many relationship through timeEntries junction table
-    DepartmentsViaTimeEntries: {
-      targetCube: () => departmentsCube,
-      relationship: 'belongsToMany',
-      on: [], // Not used for belongsToMany
-      through: {
-        table: timeEntries, // Junction table
-        sourceKey: [
-          { source: employees.id, target: timeEntries.employeeId }
-        ],
-        targetKey: [
-          { source: timeEntries.departmentId, target: departments.id }
-        ],
-        // Optional: Security context for junction table
-        securitySql: (securityContext) =>
-          eq(timeEntries.organisationId, securityContext.organisationId)
-      }
-    }
-  },
-
-  measures: { /* ... */ },
-  dimensions: { /* ... */ }
-})
-
-// Query across many-to-many relationship
-const result = await semanticLayer.execute({
-  measures: ['Employees.count'],
-  dimensions: ['Departments.name'] // Uses the many-to-many join automatically
-}, securityContext)
-```
-
-**Key Features:**
-- **Automatic Security**: Security context is automatically applied to junction tables when specified
-- **Transparent Querying**: Query dimensions from the target cube normally - the system handles the junction table
-- **Multi-Column Joins**: Both `sourceKey` and `targetKey` support multiple columns for composite keys
-- **Custom Comparators**: Use the `as` property for non-equality joins
-
-**Performance Considerations:**
-- Junction tables add an additional JOIN to the query, which may impact performance on large datasets
-- Ensure junction tables have proper indexes on both foreign key columns
-- Consider adding indexes on frequently filtered columns in the junction table
-- Security filtering on junction tables is applied efficiently using parameterized queries
-- For optimal performance, ensure the junction table has a composite index on (sourceKey, targetKey)
-
-**Reference Implementation:**
-- See @tests/many-to-many-joins.test.ts for comprehensive test examples
-- Tests cover security isolation, multi-database compatibility, and edge cases
-
-### Query Execution Pattern
-```typescript
-// Create semantic layer with database
-const semanticLayer = new SemanticLayerCompiler({ drizzle: db, schema })
-
-// Register cubes
-semanticLayer.registerCube(employeesCube)
-
-// Execute queries with security context
-const result = await semanticLayer.execute({
-  measures: ['Employees.count'],
-  dimensions: ['Employees.name']
-}, securityContext)
-```
-
-### Star Schema Pattern (Fact-Dimension-Fact Joins)
-
-**Pattern**: Multiple fact cubes joining through a shared dimension cube
-
-This is a fundamental analytics pattern where two or more fact tables share a common dimension:
-
-```
-Sales (fact) ──belongsTo──→ Products (dimension) ←──belongsTo── Inventory (fact)
-```
-
-**⚠️ IMPORTANT**: For this pattern to work, the dimension cube **MUST** define `hasMany` relationships back to BOTH fact cubes.
-
-**Example Implementation:**
-
-```typescript
-// Dimension Cube - MUST define hasMany back to both facts
-export const productsCube = defineCube({
-  name: 'Products',
-  sql: (ctx) => ({
-    from: products,
-    where: eq(products.organisationId, ctx.securityContext.organisationId)
-  }),
-
-  // Critical: Define reverse relationships to enable fact-to-fact joins
-  joins: {
-    Sales: {
-      targetCube: () => salesCube,
-      relationship: 'hasMany',
-      on: [
-        { source: products.id, target: sales.productId }
-      ]
-    },
-    Inventory: {
-      targetCube: () => inventoryCube,
-      relationship: 'hasMany',
-      on: [
-        { source: products.id, target: inventory.productId }
-      ]
-    }
-  },
-
-  measures: {
-    count: { type: 'count', sql: products.id }
-  },
-  dimensions: {
-    name: { type: 'string', sql: products.name },
-    category: { type: 'string', sql: products.category }
-  }
-})
-
-// Fact Cube #1
-export const salesCube = defineCube({
-  name: 'Sales',
-  sql: (ctx) => ({
-    from: sales,
-    where: eq(sales.organisationId, ctx.securityContext.organisationId)
-  }),
-
-  joins: {
-    Products: {
-      targetCube: () => productsCube,
-      relationship: 'belongsTo',
-      on: [{ source: sales.productId, target: products.id }]
-    }
-  },
-
-  measures: {
-    totalRevenue: { type: 'sum', sql: sales.revenue },
-    avgOrderValue: { type: 'avg', sql: sales.revenue }
-  }
-})
-
-// Fact Cube #2
-export const inventoryCube = defineCube({
-  name: 'Inventory',
-  sql: (ctx) => ({
-    from: inventory,
-    where: eq(inventory.organisationId, ctx.securityContext.organisationId)
-  }),
-
-  joins: {
-    Products: {
-      targetCube: () => productsCube,
-      relationship: 'belongsTo',
-      on: [{ source: inventory.productId, target: products.id }]
-    }
-  },
-
-  measures: {
-    totalStock: { type: 'sum', sql: inventory.stockLevel },
-    avgStockLevel: { type: 'avg', sql: inventory.stockLevel }
-  }
-})
-```
-
-**Querying Across Multiple Facts:**
-
-```typescript
-// Query combining measures from both fact cubes
-const result = await semanticLayer.execute({
-  measures: ['Sales.totalRevenue', 'Inventory.totalStock'],
-  dimensions: ['Products.name', 'Products.category']
-}, securityContext)
-
-// The system automatically:
-// 1. Detects Sales and Inventory need to be joined
-// 2. Finds join path: Sales → Products → Inventory
-// 3. Includes Products in the join plan
-// 4. Applies security context to ALL three cubes
-```
-
-**How Join Path Detection Works:**
-
-1. Query planner identifies all cubes needed (Sales, Inventory, Products)
-2. Chooses primary cube (typically the one with most dimensions)
-3. Uses join-path resolution with query-aware scoring from primary to all other cubes:
-   - Preferred first-hop joins via `preferredFor`
-   - Query-member cube hints to keep grain semantics
-   - Shortest-path fallback when no preferred route exists
-4. Builds join plan including all cubes in the path
-5. Applies security context to every cube in the final query
-
-Join-path decisions and scoring candidates are exposed in analysis/dry-run metadata and shown in the Analysis Builder Debug panel (`Path scoring`).
-
-**Why hasMany is Required:**
-
-The join path algorithm traverses relationships **forward only**. Without `hasMany` from the dimension:
-
-```typescript
-// ❌ WRONG - Missing hasMany from Products
-// This will FAIL with "No join path found from Inventory to Sales"
-
-productsCube = defineCube({
-  name: 'Products',
-  // NO joins defined - cannot traverse back to facts!
-  measures: { /* ... */ }
-})
-
-// Query will fail:
-{
-  measures: ['Sales.totalRevenue', 'Inventory.totalStock']
-  // Error: No join path found from 'Inventory' to 'Sales'
-}
-```
-
-**Best Practices:**
-
-1. **Always define bidirectional relationships** in star schemas
-2. **Include all fact cubes** in dimension's `hasMany` joins
-3. **Test cross-fact queries** to verify join paths exist
-4. **Use descriptive join names** (e.g., `SalesByProduct`, `InventoryByProduct`)
-5. **Document the star schema** structure in comments
-
-**Performance Considerations:**
-
-- Join path includes ALL cubes in the path (Sales + Products + Inventory)
-- Security context applied to all cubes prevents data leakage
-- Use appropriate indexes on foreign key columns (productId)
-- Consider materialized views for frequently queried fact combinations
-
-**Common Pitfalls:**
-
-- **Forgetting reverse joins**: Dimension must have `hasMany` to facts
-- **One-way relationships**: Only defining `belongsTo` from facts isn't enough
-- **Missing security filters**: All cubes in path must filter by security context
-- **Circular dependencies**: Avoid cycles in join definitions
-
-**Reference Implementation:**
-
-- See @tests/star-schema-joins.test.ts for comprehensive examples
-- Tests cover multiple fact cubes, filters across cubes, and security isolation
-- All patterns tested against PostgreSQL, MySQL, and SQLite
-
-## Error Handling
-
-### Common Error Categories
-- **Validation Errors** - Invalid query structure or missing fields
-- **Security Errors** - Missing or invalid security context
-- **SQL Errors** - Database-specific execution errors
-- **Type Errors** - Schema mismatches
-
-### Error Context
-All errors include:
-- Query context information
-- Security context status
-- Database engine type
-- Affected cubes
-
-## SQL Object Isolation Pattern
-
-### The Problem: Drizzle SQL Object Mutation
-
-Drizzle ORM's SQL objects are **internally mutable** - their `queryChunks` array can be modified during query construction. When column objects (like `employees.id`) are reused across multiple parts of a query (SELECT, WHERE, GROUP BY), this mutation can cause:
-- Duplicate SQL fragments in generated queries
-- Incorrect parameter binding order
-- Query execution failures
-
-### Evidence from Drizzle Source Code
-
-Investigation of Drizzle ORM revealed:
-- SQL objects have a mutable `queryChunks` array (drizzle-orm/src/sql/sql.ts:133)
-- The `append()` method directly mutates this array
-- No public `clone()` method exists (only internal `SQL.Aliased.clone()`)
-- The `sql` template function creates NEW arrays but chunks are pushed by reference
-
-### The Solution: `isolateSqlExpression()` Helper
-
-**Location**: `@src/server/cube-utils.ts`
-
-The `isolateSqlExpression()` function uses **double wrapping** to create complete isolation:
-
-```typescript
-export function isolateSqlExpression(expr: AnyColumn | SQL): SQL {
-  if (expr && typeof expr === 'object') {
-    return sql`${sql`${expr}`}`  // Double wrap
-  }
-  return expr as SQL
-}
-```
-
-**Why Double Wrapping?**
-
-- **Single wrap** (`sql`${expr}``): Creates new SQL object but queryChunks contains references to original
-- **Double wrap** (`sql`${sql`${expr}`}``): Creates two layers of isolation, completely separating from original object's mutable state
-
-### Usage Guidelines
-
-**ALWAYS use `isolateSqlExpression()` when:**
-- SQL expressions may be reused across query contexts
-- Column objects are referenced multiple times
-- Working with cube SQL definitions
-
-**Example:**
-```typescript
-export function resolveSqlExpression(
-  expr: AnyColumn | SQL | ((ctx: QueryContext) => AnyColumn | SQL),
-  ctx: QueryContext
-): AnyColumn | SQL {
-  const result = typeof expr === 'function' ? expr(ctx) : expr
-  return isolateSqlExpression(result)  // Apply isolation
-}
-```
-
-**Single wrap is OK when:**
-- Creating fresh SQL for the first time (e.g., new aggregations)
-- Wrapping for grouping/parentheses: `sql`(${filterResult})``
-- SQL builder functions already return isolated SQL
-
-### Alternatives Investigated
-
-All alternatives were found to be impractical:
-
-❌ **Use Drizzle's clone()** - Doesn't exist publicly
-❌ **Store SQL factory functions** - Still returns same column objects
-❌ **Create fresh column references** - Impossible, columns are singletons
-❌ **Avoid SQL reuse** - Unavoidable (same dimension in SELECT, WHERE, GROUP BY)
-
-### Performance Impact
-
-- **Memory**: ~200 bytes per wrap (negligible)
-- **CPU**: Two function calls during query building (microseconds)
-- **No runtime query performance impact** - wrapping happens during build phase
-
-### Testing
-
-Comprehensive tests in `@tests/sql-wrapping.test.ts` verify that:
-- Queries with reused dimensions execute correctly
-- No SQL corruption occurs across SELECT, WHERE, GROUP BY, ORDER BY
-- Complex multi-cube queries handle dimension reuse properly
-- Security context isolation works with reused SQL objects
-
-### Future Considerations
-
-If Drizzle ORM adds:
-- Immutable SQL objects
-- Public `clone()` method
-- Different SQL object handling
-
-This pattern may be simplified. Monitor: https://github.com/drizzle-team/drizzle-orm/issues
-
-## Key Files Reference
-
-- @src/server/compiler.ts:76 - Cube registration with validation
-- @src/server/executor.ts:45 - Multi-cube query coordination
-- @src/server/logical-plan/logical-planner.ts - Logical planning phases and join/CTE decisions
-- @src/server/logical-plan/logical-plan-builder.ts - Logical plan composition and planning trace
-- @src/server/physical-plan/drizzle-plan-builder.ts - Logical to physical conversion
-- @src/server/physical-plan/drizzle-sql-builder.ts - Physical SQL clause builder
-- @src/server/executors/base-executor.ts:34 - Common executor functionality
-- @src/server/types/core.ts:15 - SecurityContext interface
-- @src/server/cube-utils.ts:41 - `isolateSqlExpression()` - SQL object isolation pattern
-- @src/server/cube-utils.ts:121 - `resolveSqlExpression()` - SQL expression resolver with isolation
-- @tests/sql-wrapping.test.ts - Comprehensive tests for SQL object isolation
-
-## Integration Points
-
-### With Adapters
-Server provides `SemanticLayerCompiler` instances to framework adapters via their constructors.
-
-### With Client
-Server generates metadata that client components use for query building and visualization.
-
-### With Database
-All database operations flow through Drizzle ORM instances with proper schema typing.
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `SemanticLayerCompiler` | `compiler.ts` | Cube registry, query validation, metadata caching, executor integration |
+| `QueryExecutor` | `executor.ts` | Unified query orchestrator — routes to regular/comparison/funnel/flow/retention paths |
+| `LogicalPlanBuilder` | `logical-plan/logical-plan-builder.ts` | Builds logical plan with analysis trace |
+| `LogicalPlanner` | `logical-plan/logical-planner.ts` | Planning phases: cube usage, primary cube, joins, CTE decisions |
+| `DrizzlePlanBuilder` | `physical-plan/drizzle-plan-builder.ts` | Converts logical plan to physical Drizzle query |
+| `DrizzleSqlBuilder` | `physical-plan/drizzle-sql-builder.ts` | Assembles SQL clauses (SELECT, WHERE, GROUP BY, ORDER BY) |
+| `JoinPathResolver` | `resolvers/join-path-resolver.ts` | Multi-cube join path discovery with query-aware scoring |
+| `CalculatedMeasureResolver` | `resolvers/calculated-measure-resolver.ts` | Resolves template-based calculated measures |
+| `defineCube` | `cube-utils.ts` | Cube definition helper |
+| `isolateSqlExpression` | `cube-utils.ts` | SQL object isolation (prevents Drizzle mutation bugs) |
+| `createDatabaseAdapter` | `database-utils.ts` | Adapter factory for all 7 engines |
+| `createDatabaseExecutor` | `executors/index.ts` | Executor factory with auto-detection |
+| `FilterCacheManager` | `filter-cache.ts` | Caches resolved filter SQL expressions |
+| `generateCacheKey` / `fnv1aHash` | `cache-utils.ts` | Query result cache key generation |
 
 ## Guard Rails
 
-1. **Never bypass Drizzle** - All SQL must go through Drizzle query builder
-2. **Security context is mandatory** - Cannot execute queries without it
-3. **Type safety required** - All cube definitions must match schema types  
-4. **Multi-database support** - New features must work across PostgreSQL, MySQL, SQLite
-5. **Performance first** - Consider query planning impact for new features
+1. **Drizzle-only SQL** — all SQL goes through Drizzle's query builder; no raw string construction
+2. **Mandatory security context** — every cube defines `sql: (securityContext) => ...` row-level filter; enforced at plan time; propagated to all joined tables
+3. **Type safety** — cube definitions are validated against Drizzle schema types
+4. **Multi-database** — features must work across all 7 engines: postgres, mysql, sqlite, singlestore, duckdb, databend, snowflake
+5. **SQL object isolation** — reused column/SQL expressions are double-wrapped via `isolateSqlExpression` to prevent Drizzle's mutable `queryChunks` from causing corruption across SELECT/WHERE/GROUP BY
+
+## SQL Object Isolation
+
+Drizzle SQL objects have a mutable `queryChunks` array. When the same column is reused across query clauses, mutation can corrupt the generated SQL. The `isolateSqlExpression` function in `cube-utils.ts` applies double wrapping (`sql\`${sql\`${expr}\`}\``) to create full isolation. Always use it when SQL expressions are reused across contexts. See tests in `tests/sql-wrapping.test.ts`.
+
+## Multi-Cube Joins
+
+The `JoinPathResolver` traverses cube join definitions to find paths between cubes. Key behaviors:
+- Star schema (fact → dimension → fact) requires `hasMany` back-references on dimension cubes
+- `belongsToMany` uses junction tables with optional security filtering
+- Join-path scoring uses `preferredFor` hints and query-member cube hints
+- Path decisions are surfaced in dry-run analysis metadata
+
+## Supported Engines
+
+postgres · mysql · sqlite · singlestore · duckdb · databend · snowflake
+
+All adapter and executor implementations live under `adapters/` and `executors/` respectively. See `adapters/CLAUDE.md` for details.
