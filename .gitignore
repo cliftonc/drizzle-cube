@@ -9,3 +9,24 @@ coverage/
 *.log
 playwright-report/
 test-results/
+
+# ── GSD baseline (auto-generated) ──
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env.*
+!.env.example
+.next/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+.cache/
+tmp/
