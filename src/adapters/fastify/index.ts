@@ -362,7 +362,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   fastify.get(`${basePath}/meta`, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Extract security context (some apps may want to filter cubes by context)
-      // await getSecurityContext(request) // Available if needed for filtering
+      // await extractSecurityContext(request) // Available if needed for filtering
       
       // Get cached metadata (fast path)
       const metadata = semanticLayer.getMetadata()

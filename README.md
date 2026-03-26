@@ -94,7 +94,7 @@ const app = createCubeApp({
   cubes: [employeesCube, departmentsCube],
   drizzle: db,
   schema,
-  getSecurityContext: async (req) => ({
+  extractSecurityContext: async (req) => ({
     organisationId: req.user.orgId  // Multi-tenant isolation
   })
 })

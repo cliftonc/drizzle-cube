@@ -336,7 +336,7 @@ export function createCubeRouter(
   router.get(`${basePath}/meta`, (_req: Request, res: Response) => {
     try {
       // Extract security context (some apps may want to filter cubes by context)
-      // await getSecurityContext(req, res) // Available if needed for filtering
+      // await extractSecurityContext(req, res) // Available if needed for filtering
       
       // Get cached metadata (fast path)
       const metadata = semanticLayer.getMetadata()

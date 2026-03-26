@@ -355,7 +355,7 @@ export function createMetaHandler(
   return async function metaHandler(request: NextRequest, _context?: RouteContext) {
     try {
       // Extract security context (some apps may want to filter cubes by context)
-      // const securityContext = await getSecurityContext(request, context) // Available if needed for filtering
+      // const securityContext = await extractSecurityContext(request, context) // Available if needed for filtering
       
       // Get cached metadata (fast path)
       const metadata = semanticLayer.getMetadata()

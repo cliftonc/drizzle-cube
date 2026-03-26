@@ -226,17 +226,17 @@ app.listen(3000)
 | `schema` | `TSchema` | ⚠️ | - | Database schema for type inference (recommended) |
 | `extractSecurityContext` | `Function` | ✅ | - | Extract security context from HTTP requests (called for every request) |
 | `engineType` | `'postgres'\|'mysql'\|'sqlite'` | ❌ | auto-detected | Database engine type |
-| `getSecurityContext` | `Function` | ✅ | - | Function to extract security context from request |
+| `extractSecurityContext` | `Function` | ✅ | - | Function to extract security context from request |
 | `cors` | `CorsOptions` | ❌ | - | CORS configuration |
 | `basePath` | `string` | ❌ | `/cubejs-api/v1` | API base path |
 | `jsonLimit` | `string` | ❌ | `'10mb'` | JSON body parser limit |
 
 ### Security Context Function
 
-The `getSecurityContext` function receives the Express request and should return a `SecurityContext`:
+The `extractSecurityContext` function receives the Express request and should return a `SecurityContext`:
 
 ```typescript
-const getSecurityContext = async (req: Request): Promise<SecurityContext> => {
+const extractSecurityContext = async (req: Request): Promise<SecurityContext> => {
   // Extract from headers
   const orgId = req.headers['x-organization-id']
   
@@ -265,7 +265,7 @@ const app = createCubeApp({
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (req) => {
+  extractSecurityContext: async (req) => {
     const user = req.user as any
     return {
       organisationId: user.orgId,
@@ -320,7 +320,7 @@ const cubeRouter = createCubeRouter({
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (req) => ({
+  extractSecurityContext: async (req) => ({
     organisationId: req.user.organisationId,
     userId: req.user.id
   })
@@ -357,7 +357,7 @@ const cubeApp = createCubeApp({
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext,
+  extractSecurityContext,
   jsonLimit: '15mb'
 })
 
@@ -455,7 +455,7 @@ const options: ExpressAdapterOptions<typeof schema> = {
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (req: Request) => ({
+  extractSecurityContext: async (req: Request) => ({
     organisationId: req.user?.organisationId
   })
 }
@@ -488,7 +488,7 @@ const cubeRouter = createCubeRouter({
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (req) => ({
+  extractSecurityContext: async (req) => ({
     organisationId: req.user.organisationId,
     userId: req.user.id
   })
@@ -517,7 +517,7 @@ const cubeRouter = createCubeRouter({
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (req) => ({
+  extractSecurityContext: async (req) => ({
     organisationId: req.session.user?.organisationId,
     userId: req.session.user?.id
   })
@@ -546,7 +546,7 @@ describe('Cube API', () => {
     semanticLayer,
     drizzle: db,
     schema,
-    getSecurityContext: async () => ({ organisationId: 'test-org' })
+    extractSecurityContext: async () => ({ organisationId: 'test-org' })
   })
 
   it('should return metadata', async () => {

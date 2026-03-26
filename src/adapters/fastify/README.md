@@ -230,10 +230,10 @@ await server.listen({ port: 3000 })
 
 ### Security Context Function
 
-The `getSecurityContext` function receives the Fastify request and should return a `SecurityContext`:
+The `extractSecurityContext` function receives the Fastify request and should return a `SecurityContext`:
 
 ```typescript
-const getSecurityContext = async (request: FastifyRequest): Promise<SecurityContext> => {
+const extractSecurityContext = async (request: FastifyRequest): Promise<SecurityContext> => {
   // Extract from headers
   const orgId = request.headers['x-organization-id']
   
@@ -277,7 +277,7 @@ await server.register(cubePlugin, {
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (request) => {
+  extractSecurityContext: async (request) => {
     const user = request.user as any
     return {
       organisationId: user.orgId,
@@ -303,7 +303,7 @@ await server.register(cubePlugin, {
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext,
+  extractSecurityContext,
   basePath: '/api/analytics' // Custom API path
 })
 ```
@@ -326,7 +326,7 @@ await server.register(cubePlugin, {
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext,
+  extractSecurityContext,
   bodyLimit: 15 * 1024 * 1024
 })
 ```
@@ -441,7 +441,7 @@ const options: FastifyAdapterOptions<typeof schema> = {
   semanticLayer,
   drizzle: db,
   schema,
-  getSecurityContext: async (request) => ({
+  extractSecurityContext: async (request) => ({
     organisationId: request.user?.organisationId
   })
 }
