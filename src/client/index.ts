@@ -250,6 +250,10 @@ export type {
   CubeQueryOptions,
   CubeApiOptions,
   DashboardConfig,
+  // Feature config types
+  FeaturesConfig,
+  XlsExportFeatureConfig,
+  ThumbnailFeatureConfig,
   // Multi-query types
   MultiQueryConfig,
   QueryMergeStrategy,
@@ -319,6 +323,7 @@ export { chartPluginRegistry } from './charts/chartPlugin'
 export { createDashboardLayout, formatChartData, highlightCodeBlocks } from './utils/index'
 export { migrateConfig, migrateLegacyPortlet } from './utils/configMigration'
 export { captureThumbnail, isThumbnailCaptureAvailable, warnIfScreenshotLibMissing } from './utils/thumbnail'
+export { exportPortletToXlsx, isExportAvailable, warnIfExcelJsMissing } from './utils/exportXlsx'
 export { compressAndEncode, decodeAndDecompress, generateShareUrl, parseShareUrl, isShareableSize } from './utils/shareUtils'
 
 // Multi-query utilities

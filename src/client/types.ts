@@ -589,6 +589,13 @@ export interface ThumbnailFeatureConfig {
   quality?: number // 0-1, mainly for jpeg (PNG ignores this)
 }
 
+// XLS export feature configuration (requires exceljs peer dependency)
+export interface XlsExportFeatureConfig {
+  enabled: boolean
+  /** Optional prefix for exported filenames (default: portlet title) */
+  filenamePrefix?: string
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -599,6 +606,7 @@ export interface FeaturesConfig {
   floatingToolbarPosition?: 'left' | 'right' // Position of floating toolbar when enabled (default: 'right')
   thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
+  xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
 }
 
 // Grid layout types (simplified)

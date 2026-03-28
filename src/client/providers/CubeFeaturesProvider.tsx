@@ -9,6 +9,7 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect, type ReactNode } from 'react'
 import type { FeaturesConfig, DashboardLayoutMode } from '../types'
 import { warnIfScreenshotLibMissing } from '../utils/thumbnail'
+import { warnIfExcelJsMissing } from '../utils/exportXlsx'
 
 interface CubeFeaturesContextValue {
   features: FeaturesConfig
@@ -48,6 +49,11 @@ export function CubeFeaturesProvider({
   useEffect(() => {
     warnIfScreenshotLibMissing(features.thumbnail)
   }, [features.thumbnail])
+
+  // Warn in development if xlsExport feature is enabled but exceljs is not installed
+  useEffect(() => {
+    warnIfExcelJsMissing(features.xlsExport)
+  }, [features.xlsExport])
 
   const updateFeatures = useCallback((newFeatures: Partial<FeaturesConfig>) => {
     setFeatures(prev => ({ ...prev, ...newFeatures }))

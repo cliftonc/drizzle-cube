@@ -33,7 +33,9 @@ const features = {
     enabled: true,
     // Using defaults (1600x1200) for crisp thumbnails
     format: 'png' as const
-  }
+  },
+  // XLSX data export from portlets (requires exceljs)
+  xlsExport: { enabled: true }
 }
 
 function App() {

@@ -184,6 +184,7 @@
     "d3": "^7.9.0",
     "drizzle-orm": "^0.45.0",
     "elkjs": "^0.9.0 || ^0.11.1",
+    "exceljs": ">=4.0.0",
     "express": "^5.0.0",
     "fastify": "^5.0.0",
     "hono": "^4.0.0",
@@ -267,6 +268,9 @@
     },
     "elkjs": {
       "optional": true
+    },
+    "exceljs": {
+      "optional": true
     }
   },
   "optionalDependencies": {
@@ -320,6 +324,7 @@
     "elkjs": "^0.11.1",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "fastify": "^5.6.2",
     "globals": "^17.0.0",

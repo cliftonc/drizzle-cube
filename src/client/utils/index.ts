@@ -16,6 +16,9 @@ export * from './comparisonUtils'
 // Thumbnail utilities (requires html2canvas peer dependency)
 export { captureThumbnail, isThumbnailCaptureAvailable } from './thumbnail'
 
+// XLSX export utilities (requires exceljs peer dependency)
+export { exportPortletToXlsx, isExportAvailable } from './exportXlsx'
+
 /**
  * Create a dashboard layout from portlet configurations
  */

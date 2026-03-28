@@ -8,6 +8,7 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import { useCubeFeatures } from '../providers/CubeFeaturesProvider'
 import { getIcon } from '../icons/registry'
 import { isPortletCopyAvailable, copyPortletToClipboard } from '../utils/thumbnail'
+import { isExportAvailable, exportPortletToXlsx } from '../utils/exportXlsx'
 
 // Constant style object to prevent re-renders from inline object recreation
 const ICON_STYLE: CSSProperties = { width: '16px', height: '16px', color: 'currentColor' }
@@ -221,14 +222,19 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   // Get features for copy-to-clipboard functionality
   const { features } = useCubeFeatures()
 
-  // Icons for copy-to-clipboard button
+  // Icons for copy-to-clipboard and export buttons
   const CameraIcon = getIcon('camera')
   const CheckIcon = getIcon('check')
+  const DownloadIcon = getIcon('download')
 
   // State and ref for copy-to-clipboard functionality
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyAvailable, setCopyAvailable] = useState(false)
   const chartContainerRef = useRef<HTMLDivElement | null>(null)
+
+  // State for XLSX export
+  const [xlsExportAvailable, setXlsExportAvailable] = useState(false)
+  const [exportInProgress, setExportInProgress] = useState(false)
 
   // Track shift key + hover state for cache bust visual feedback on refresh button
   const [isShiftHeld, setIsShiftHeld] = useState(false)
@@ -261,6 +267,27 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       setCopyAvailable(false)
     }
   }, [features.thumbnail?.enabled])
+
+  // Check if XLSX export is available on mount
+  useEffect(() => {
+    if (features.xlsExport?.enabled) {
+      isExportAvailable().then(setXlsExportAvailable)
+    } else {
+      setXlsExportAvailable(false)
+    }
+  }, [features.xlsExport?.enabled])
+
+  // Handler for XLSX export
+  const handleExportXlsx = useCallback(async (event: React.MouseEvent | React.TouchEvent) => {
+    event.stopPropagation()
+    if (!debugData || exportInProgress) return
+    setExportInProgress(true)
+    try {
+      await exportPortletToXlsx(portlet.title || 'export', debugData)
+    } finally {
+      setExportInProgress(false)
+    }
+  }, [debugData, exportInProgress, portlet.title])
 
   // Handler for copy-to-clipboard
   const handleCopyToClipboard = useCallback(async (event: React.MouseEvent | React.TouchEvent) => {
@@ -470,6 +497,26 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
                 ) : (
                   <CameraIcon style={ICON_STYLE} />
                 )}
+              </button>
+            )}
+
+            {/* XLSX export button - visible when xlsExport feature is enabled, exceljs is installed, and portlet has data */}
+            {xlsExportAvailable && !isInSelectionMode && debugData && (
+              <button
+                onClick={handleExportXlsx}
+                onTouchEnd={(event) => {
+                  event.preventDefault()
+                  handleExportXlsx(event)
+                }}
+                disabled={exportInProgress}
+                className={`dc:p-1 bg-transparent dc:border-none dc:rounded-sm dc:transition-colors ${
+                  exportInProgress
+                    ? 'dc:opacity-50 dc:cursor-wait text-dc-text-secondary'
+                    : 'text-dc-text-secondary dc:cursor-pointer dc:hover:bg-dc-surface-hover'
+                }`}
+                title={exportInProgress ? 'Exporting...' : 'Download data as XLSX'}
+              >
+                <DownloadIcon style={ICON_STYLE} />
               </button>
             )}
 

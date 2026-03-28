@@ -11,6 +11,7 @@ playwright-report/
 test-results/
 
 # ── GSD baseline (auto-generated) ──
+.gsd
 Thumbs.db
 *.swp
 *.swo
