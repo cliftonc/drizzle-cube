@@ -383,7 +383,7 @@ export function primeEventId(): string {
 }
 
 export function buildToolList(options?: { appEnabled?: boolean }) {
-  const tools = [
+  const tools: Array<{ name: string; description: string; inputSchema: Record<string, unknown>; _meta?: unknown }> = [
     {
       name: 'discover',
       description: `Find relevant cubes based on topic or intent. Call this FIRST to understand available data.
@@ -442,9 +442,7 @@ Key rules:
 - Time series: use timeDimensions WITH granularity
 - Top N pattern: filters + order + limit
 
-CHART HINTS: Include a "chart" object to control the MCP App UI visualization.
-Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, heatmap, funnel, sankey, sunburst, retentionHeatmap
-Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot`,
+Use "load" for data retrieval. Use "chart" to visualise results with an interactive chart.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -453,10 +451,35 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
             type: 'object',
             description: 'Semantic query object. Regular: { measures, dimensions, filters, timeDimensions, order, limit }. Funnel: { funnel: {...} }. Flow: { flow: {...} }. Retention: { retention: {...} }.',
             properties: QUERY_PARAMS_SCHEMA
+          }
+        }
+      }
+    }
+  ]
+
+  // When MCP App is enabled, add the "chart" tool with UI visualization
+  if (options?.appEnabled) {
+    tools.push({
+      name: 'chart',
+      description: `Execute a semantic query and render an interactive chart visualization.
+
+Same query format as "load", but renders results in the MCP App chart UI.
+Include a "chart" object to control the visualization.
+
+Chart types: bar, line, area, pie, scatter, bubble, radar, treemap, kpiNumber, kpiDelta, table, heatmap, funnel, sankey, sunburst, waterfall, activityGrid, boxPlot
+Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, part-of-whole -> pie, correlation -> scatter/bubble, distribution -> boxPlot`,
+      inputSchema: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: {
+            type: 'object',
+            description: 'Semantic query object. Same format as the load tool.',
+            properties: QUERY_PARAMS_SCHEMA
           },
           chart: {
             type: 'object',
-            description: 'Optional chart configuration for the MCP App UI. Uses the same chartConfig/displayConfig as the agent portlet system. If omitted, chart type is auto-detected.',
+            description: 'Chart configuration for the visualization. If omitted, chart type is auto-detected from query shape.',
             properties: {
               type: {
                 type: 'string',
@@ -506,14 +529,12 @@ Guidelines: single number -> kpiNumber, trend -> line/area, categories -> bar, p
           }
         }
       }
-    }
-  ]
+    })
 
-  // When MCP App is enabled, add _meta.ui to the load tool
-  if (options?.appEnabled) {
-    const loadTool = tools.find(t => t.name === 'load')
-    if (loadTool) {
-      ;(loadTool as any)._meta = {
+    // Attach MCP App UI to the chart tool only
+    const chartTool = tools.find(t => t.name === 'chart')
+    if (chartTool) {
+      ;(chartTool as any)._meta = {
         ui: { resourceUri: MCP_APP_RESOURCE_URI }
       }
     }
@@ -539,6 +560,13 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
         return wrapContent(await handleValidate(semanticLayer, body))
       }
       case 'load': {
+        const body = (args || {}) as LoadRequest
+        if (!body.query) throw jsonRpcError(-32602, 'query is required')
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleLoad(semanticLayer, securityContext, body))
+      }
+      case 'chart': {
+        // Same as load but rendered in the MCP App UI (has _meta.ui attached)
         const body = (args || {}) as LoadRequest
         if (!body.query) throw jsonRpcError(-32602, 'query is required')
         const securityContext = await extractSecurityContext(rawRequest, rawResponse)
@@ -610,13 +638,13 @@ const RESOURCES = [
       'Tools:',
       '- discover: { topic?, intent?, limit?, minScore? } -> cubes list',
       '- validate: { query } -> corrected query + issues',
-      '- load: { query } -> data + annotation',
+      '- load: { query } -> data + annotation (text only)',
+      '- chart: { query, chart? } -> data + interactive chart visualization',
       '',
       'Recommended flow:',
-      '1) tools/list',
-      '2) tools/call name=discover intent="<goal>"',
-      '3) tools/call name=validate query=<draft> (optional)',
-      '4) tools/call name=load query=<validated>',
+      '1) tools/call name=discover intent="<goal>"',
+      '2) tools/call name=validate query=<draft> (optional)',
+      '3) tools/call name=load query=<validated> (data only) OR name=chart query=<validated> chart={type, ...} (with visualization)',
       '',
       'Query shapes supported:',
       '- regular: { measures, dimensions, filters, timeDimensions, order, limit, offset, ungrouped }',

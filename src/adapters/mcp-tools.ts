@@ -217,7 +217,7 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     semanticLayer,
     getSecurityContext,
     toolPrefix = 'drizzle_cube_',
-    tools: enabledTools = ['discover', 'validate', 'load'],
+    tools: enabledTools = ['discover', 'validate', 'load', 'chart'],
     prompts = getDefaultPrompts(),
     resources: customResources,
     app: appEnabled = false
@@ -282,6 +282,16 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
         }
 
         case 'load': {
+          const body = (args || {}) as LoadRequest
+          if (!body.query) {
+            return wrapError('query is required')
+          }
+          const securityContext = await getSecurityContext(meta)
+          return wrapContent(await handleLoad(semanticLayer, securityContext, body))
+        }
+
+        case 'chart': {
+          // Same as load but rendered in the MCP App UI (has _meta.ui attached)
           const body = (args || {}) as LoadRequest
           if (!body.query) {
             return wrapError('query is required')
