@@ -111,7 +111,11 @@ export function validateAcceptHeader(accept: string | null | undefined): boolean
   const values = accept.split(',').map(v => v.trim().toLowerCase().split(';')[0])
   const hasJson = values.some(v => v === 'application/json')
   const hasSse = values.some(v => v === 'text/event-stream')
-  return hasJson && hasSse
+  const hasWildcard = values.some(v => v === '*/*')
+  // Accept if both JSON and SSE are present (spec-compliant),
+  // or if JSON alone is present (Claude app initial probe),
+  // or if wildcard is present (generic HTTP clients)
+  return (hasJson && hasSse) || hasJson || hasWildcard
 }
 
 export interface OriginValidationOptions {

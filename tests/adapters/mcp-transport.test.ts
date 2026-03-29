@@ -134,12 +134,16 @@ describe('MCP Transport Layer', () => {
       expect(validateAcceptHeader('text/event-stream, application/json')).toBe(true)
     })
 
-    it('should return false when only JSON is accepted', () => {
-      expect(validateAcceptHeader('application/json')).toBe(false)
+    it('should return true when only JSON is accepted (lenient for Claude app)', () => {
+      expect(validateAcceptHeader('application/json')).toBe(true)
     })
 
     it('should return false when only SSE is accepted', () => {
       expect(validateAcceptHeader('text/event-stream')).toBe(false)
+    })
+
+    it('should return true for wildcard accept', () => {
+      expect(validateAcceptHeader('*/*')).toBe(true)
     })
 
     it('should return false for null/undefined', () => {
