@@ -20,7 +20,8 @@ export default defineConfig({
         'fastify/index': resolve(__dirname, 'src/adapters/fastify/index.ts'),
         'nextjs/index': resolve(__dirname, 'src/adapters/nextjs/index.ts'),
         'utils': resolve(__dirname, 'src/adapters/utils.ts'),
-        'types': resolve(__dirname, 'src/adapters/types.ts')
+        'types': resolve(__dirname, 'src/adapters/types.ts'),
+        'mcp-tools': resolve(__dirname, 'src/adapters/mcp-tools.ts')
       },
       formats: ['es', 'cjs']
     },

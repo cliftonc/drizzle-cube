@@ -80,6 +80,11 @@
       "types": "./dist/adapters/types.d.ts",
       "import": "./dist/adapters/types.js",
       "require": "./dist/adapters/types.cjs"
+    },
+    "./mcp": {
+      "types": "./dist/adapters/mcp-tools.d.ts",
+      "import": "./dist/adapters/mcp-tools.js",
+      "require": "./dist/adapters/mcp-tools.cjs"
     }
   },
   "files": [

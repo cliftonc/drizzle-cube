@@ -361,7 +361,7 @@ export function primeEventId(): string {
   return `evt-${generateRequestId()}`
 }
 
-function buildToolList() {
+export function buildToolList() {
   return [
     {
       name: 'discover',
