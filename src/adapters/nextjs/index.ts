@@ -966,7 +966,8 @@ export function createMcpRpcHandler(
           semanticLayer,
           extractSecurityContext: (req) => extractSecurityContext(req as any),
           rawRequest: request,
-          rawResponse: null
+          rawResponse: null,
+          appEnabled: !!mcp.app
         }
       )
 

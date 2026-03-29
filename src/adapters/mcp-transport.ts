@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import type { SemanticLayerCompiler, SecurityContext } from '../server'
 import { getDefaultMCPPrompts, type MCPPrompt } from '../server/ai/mcp-prompts'
 import {
@@ -12,6 +15,44 @@ import {
 
 // Re-export MCPPrompt for external consumers
 export { type MCPPrompt }
+
+// MCP App visualization constants
+export const MCP_APP_RESOURCE_URI = 'ui://drizzle-cube/visualization.html'
+export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
+
+let _mcpAppHtml: string | null = null
+
+/**
+ * Read the bundled MCP App HTML from dist/mcp-app/mcp-app.html.
+ * Lazy-loaded and cached for performance.
+ *
+ * Searches two paths:
+ * - From dist/adapters/ (production): ../mcp-app/mcp-app.html → dist/mcp-app/mcp-app.html
+ * - From src/adapters/ (dev via tsx): ../../dist/mcp-app/mcp-app.html → dist/mcp-app/mcp-app.html
+ */
+export function getMcpAppHtml(): string | null {
+  // In production, serve cached HTML. In dev, re-read on each request for hot reload.
+  const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+  if (!isDev && _mcpAppHtml !== null) return _mcpAppHtml
+  const __dirname = dirname(fileURLToPath(import.meta.url))
+  const candidates = [
+    join(__dirname, '../mcp-app/mcp-app.html'),       // from dist/adapters/
+    join(__dirname, '../../dist/mcp-app/mcp-app.html') // from src/adapters/ (dev)
+  ]
+  for (const candidate of candidates) {
+    try {
+      const html = readFileSync(candidate, 'utf-8')
+      // Only accept the bundled version (>1KB), not the source template
+      if (html.length > 1000) {
+        _mcpAppHtml = html
+        return _mcpAppHtml
+      }
+    } catch {
+      // Try next candidate
+    }
+  }
+  return null
+}
 
 export type JsonRpcId = string | number | null | undefined
 
@@ -37,6 +78,8 @@ export interface McpDispatchContext {
   negotiatedProtocol?: string | null
   resources?: MCPResource[]
   prompts?: MCPPrompt[]
+  /** Enable MCP App visualization for load tool */
+  appEnabled?: boolean
 }
 
 export interface MCPResource {
@@ -209,9 +252,15 @@ export async function dispatchMcpMethod(
   params: unknown,
   ctx: McpDispatchContext
 ): Promise<unknown> {
-  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse } = ctx
+  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled } = ctx
   const prompts = ctx.prompts ?? PROMPTS
-  const resources = ctx.resources ?? RESOURCES
+  const baseResources = ctx.resources ?? RESOURCES
+
+  // Add MCP App visualization resource when app mode is enabled
+  const resources = appEnabled ? [
+    ...baseResources,
+    ...getMcpAppResource()
+  ] : baseResources
 
   switch (method) {
     case 'initialize': {
@@ -253,7 +302,7 @@ export async function dispatchMcpMethod(
 
     case 'list_tools':
     case 'tools/list':
-      return { tools: buildToolList(), nextCursor: '' }
+      return { tools: buildToolList({ appEnabled }), nextCursor: '' }
 
     case 'call_tool':
     case 'tools/call':
@@ -361,8 +410,8 @@ export function primeEventId(): string {
   return `evt-${generateRequestId()}`
 }
 
-export function buildToolList() {
-  return [
+export function buildToolList(options?: { appEnabled?: boolean }) {
+  const tools = [
     {
       name: 'discover',
       description: `Find relevant cubes based on topic or intent. Call this FIRST to understand available data.
@@ -440,7 +489,19 @@ QUERY CONSTRUCTION RULES:
 
    WARNING: timeDimensions WITHOUT granularity groups by day, returning many rows!
 
-3. TOP N PATTERN: filters + order + limit`,
+3. TOP N PATTERN: filters + order + limit
+
+CHART HINTS: When an MCP App UI is available, include a "chart" object to control the rendered chart.
+Available types: bar, line, area, pie, scatter, kpiNumber, table, treemap
+
+Guidelines for choosing chart type:
+- Single aggregate number → kpiNumber
+- Trend over time → line (or area for cumulative)
+- Category comparison → bar (few categories) or table (many)
+- Part-of-whole / share → pie (≤10 categories)
+- Correlation between 2 measures → scatter (set xAxis/yAxis to measures)
+- Hierarchical breakdown → treemap
+- Raw data / detail → table`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -454,11 +515,47 @@ QUERY CONSTRUCTION RULES:
 - timeDimensions: [{ dimension, granularity, dateRange }] - ONLY for time series
 - order: { "Cube.field": "asc"|"desc" }
 - limit: number`
+          },
+          chart: {
+            type: 'object',
+            description: `Optional chart configuration for the MCP App UI. If omitted, chart type is auto-detected.`,
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap'],
+                description: 'Chart type to render'
+              },
+              xAxis: {
+                type: 'string',
+                description: 'Field for X axis (e.g. "Cube.dimension"). For scatter with 2 measures, set to the first measure.'
+              },
+              yAxis: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Fields for Y axis (measures). For scatter, use a single measure here paired with xAxis as the other measure.'
+              },
+              title: {
+                type: 'string',
+                description: 'Chart title'
+              }
+            }
           }
         }
       }
     }
   ]
+
+  // When MCP App is enabled, add _meta.ui to the load tool
+  if (options?.appEnabled) {
+    const loadTool = tools.find(t => t.name === 'load')
+    if (loadTool) {
+      ;(loadTool as any)._meta = {
+        ui: { resourceUri: MCP_APP_RESOURCE_URI }
+      }
+    }
+  }
+
+  return tools
 }
 
 async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
@@ -497,6 +594,22 @@ function wrapContent(result: unknown) {
     ],
     isError: false
   }
+}
+
+// ---------------------------------------------
+// MCP App visualization resource
+// ---------------------------------------------
+
+function getMcpAppResource(): MCPResource[] {
+  const html = getMcpAppHtml()
+  if (!html) return []
+  return [{
+    uri: MCP_APP_RESOURCE_URI,
+    name: 'Drizzle Cube Visualization',
+    description: 'Interactive chart visualization for query results',
+    mimeType: MCP_APP_MIME_TYPE,
+    text: html
+  }]
 }
 
 // ---------------------------------------------

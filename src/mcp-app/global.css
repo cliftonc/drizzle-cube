@@ -1,0 +1,56 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  background: var(--dc-surface, #ffffff);
+  color: var(--dc-text, #1e293b);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  padding: 12px;
+  min-height: 100vh;
+}
+
+/* Simple table styles for DataTable */
+.dc-mcp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dc-mcp-table th {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--dc-border, #e2e8f0);
+  font-weight: 600;
+  color: var(--dc-text-secondary, #64748b);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.dc-mcp-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--dc-border, #e2e8f0);
+  color: var(--dc-text, #1e293b);
+}
+
+.dc-mcp-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dc-mcp-table tr:hover td {
+  background: var(--dc-surface-secondary, #f8fafc);
+}
+
+.dc-mcp-table td.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

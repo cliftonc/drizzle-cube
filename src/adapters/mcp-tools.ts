@@ -43,7 +43,10 @@ import {
   type MCPResource,
   buildToolList,
   getDefaultResources,
-  getDefaultPrompts
+  getDefaultPrompts,
+  getMcpAppHtml,
+  MCP_APP_RESOURCE_URI,
+  MCP_APP_MIME_TYPE
 } from './mcp-transport'
 
 // Re-export types consumers may need
@@ -109,6 +112,9 @@ export interface GetCubeToolsOptions {
 
   /** Custom MCP resources (defaults to built-in drizzle-cube resources) */
   resources?: MCPResource[]
+
+  /** Enable MCP App visualization for the load tool (default: false) */
+  app?: boolean
 }
 
 /**
@@ -213,11 +219,16 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     toolPrefix = 'drizzle_cube_',
     tools: enabledTools = ['discover', 'validate', 'load'],
     prompts = getDefaultPrompts(),
-    resources = getDefaultResources()
+    resources: customResources,
+    app: appEnabled = false
   } = options
 
+  // Build resources: custom or defaults + optional app resource
+  const baseResources = customResources ?? getDefaultResources()
+  const resources = appEnabled ? [...baseResources, ...getMcpAppResources()] : baseResources
+
   // Get tool schemas from the single source of truth in mcp-transport
-  const allTools = buildToolList()
+  const allTools = buildToolList({ appEnabled })
   const toolsByName = new Map(allTools.map(t => [t.name, t]))
 
   // Build prefixed tool definitions from the canonical schemas
@@ -225,11 +236,15 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     .filter(name => toolsByName.has(name))
     .map(name => {
       const tool = toolsByName.get(name)!
-      return {
+      const def: MCPToolDefinition = {
         name: `${toolPrefix}${name}`,
         description: tool.description,
         inputSchema: tool.inputSchema as MCPToolDefinition['inputSchema']
       }
+      // Pass through _meta (MCP App UI metadata) if present
+      const meta = (tool as any)._meta
+      if (meta) (def as any)._meta = meta
+      return def
     })
 
   const toolNames = definitions.map(d => d.name)
@@ -291,4 +306,16 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     resources,
     toolNames
   }
+}
+
+function getMcpAppResources(): MCPResource[] {
+  const html = getMcpAppHtml()
+  if (!html) return []
+  return [{
+    uri: MCP_APP_RESOURCE_URI,
+    name: 'Drizzle Cube Visualization',
+    description: 'Interactive chart visualization for query results',
+    mimeType: MCP_APP_MIME_TYPE,
+    text: html
+  }]
 }

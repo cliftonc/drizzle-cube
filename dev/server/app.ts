@@ -116,9 +116,9 @@ const app = new Hono<{ Variables: Variables }>()
 // Add middleware
 app.use('*', logger())
 app.use('*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000'], // Add your frontend URLs (5174 is preview)
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081'],
+  allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'Last-Event-Id'],
   credentials: true
 }))
 
@@ -230,10 +230,11 @@ const cubeApp = createCubeApp({
   schema,
   extractSecurityContext,
   engineType: 'postgres',
+  mcp: { enabled: true, app: true },
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000'],
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Agent-Api-Key', 'X-Agent-Provider', 'X-Agent-Model', 'X-Agent-Provider-Endpoint'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081'],
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'X-Agent-Api-Key', 'X-Agent-Provider', 'X-Agent-Model', 'X-Agent-Provider-Endpoint'],
     credentials: true
   },
   cache: {

@@ -758,7 +758,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
             extractSecurityContext,
             rawRequest: request,
             rawResponse: reply,
-            negotiatedProtocol: protocol.negotiated
+            negotiatedProtocol: protocol.negotiated,
+            appEnabled: !!mcp.app
           }
         )
 

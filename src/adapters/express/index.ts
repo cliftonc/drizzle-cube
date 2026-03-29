@@ -683,7 +683,8 @@ export function createCubeRouter(
             extractSecurityContext,
             rawRequest: req,
             rawResponse: res,
-            negotiatedProtocol: protocol.negotiated
+            negotiatedProtocol: protocol.negotiated,
+            appEnabled: !!mcp.app
           }
         )
 

@@ -687,7 +687,8 @@ export function createCubeRoutes(
             rawResponse: null,
             negotiatedProtocol: protocol.negotiated,
             resources: mcpResources,
-            prompts: mcpPrompts
+            prompts: mcpPrompts,
+            appEnabled: !!mcp.app
           }
         )
 

@@ -764,6 +764,8 @@ export interface MCPOptions {
    * Example: ['http://localhost:3000', 'https://myapp.com']
    */
   allowedOrigins?: string[]
+  /** Enable MCP App visualization for load tool results (default: false) */
+  app?: boolean
 }
 
 /**

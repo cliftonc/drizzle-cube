@@ -27,7 +27,7 @@ export default defineConfig({
     },
     outDir: 'dist/adapters',
     rollupOptions: {
-      external: ['hono', 'express', 'fastify', '@fastify/cors', 'cors', 'next', 'next/server', '@anthropic-ai/sdk']
+      external: ['hono', 'express', 'fastify', '@fastify/cors', 'cors', 'next', 'next/server', '@anthropic-ai/sdk', 'fs', 'path', 'url']
     }
   }
 })
