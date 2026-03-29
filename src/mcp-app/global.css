@@ -1,3 +1,9 @@
+/* Import client theme — includes Tailwind v4 setup, dc: prefix, and CSS custom properties */
+@import "../client/theme/variables.css";
+
+/* Additional source scanning for MCP app specific files */
+@source "./**/*.{ts,tsx}";
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

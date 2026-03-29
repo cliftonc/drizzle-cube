@@ -4,11 +4,14 @@
  * Operates on raw load results + query metadata (no CubeProvider context needed).
  */
 
-export type McpChartType = 'bar' | 'line' | 'area' | 'pie' | 'scatter' | 'kpiNumber' | 'table' | 'treemap'
+import type { ChartType } from '../client/types'
+
+/** Chart types available in the MCP App (subset of full ChartType) */
+export type McpChartType = ChartType
 
 export interface ChartSelection {
   chartType: McpChartType
-  xAxis: string | undefined
+  xAxis: string[]
   yAxis: string[]
   series: string[]
 }
@@ -26,9 +29,12 @@ interface LoadQuery {
   limit?: number
 }
 
-/** All supported chart types in the MCP App */
+/** Chart types shown in the MCP App switcher */
 export const SUPPORTED_CHARTS: McpChartType[] = [
-  'bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap'
+  'bar', 'line', 'area', 'pie', 'scatter', 'kpiNumber', 'table', 'treemap',
+  'radar', 'radialBar', 'bubble', 'funnel', 'waterfall', 'gauge',
+  'heatmap', 'sankey', 'sunburst', 'boxPlot', 'activityGrid',
+  'kpiDelta', 'kpiText', 'candlestick', 'measureProfile',
 ]
 
 /**
@@ -44,19 +50,39 @@ export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowC
 
   switch (chartType) {
     case 'table':
+    case 'markdown':
       return true
     case 'kpiNumber':
+    case 'kpiDelta':
+    case 'kpiText':
+    case 'gauge':
+    case 'measureProfile':
       return hasMeasure
     case 'bar':
     case 'line':
     case 'area':
+    case 'waterfall':
+    case 'boxPlot':
+    case 'candlestick':
       return hasMeasure && (hasDimension || hasTimeDim)
     case 'pie':
+    case 'radialBar':
+    case 'sunburst':
       return hasMeasure && hasDimension && rowCount <= 20
     case 'scatter':
+    case 'bubble':
       return hasMeasure && (hasDimension || hasTimeDim)
     case 'treemap':
+    case 'funnel':
       return hasMeasure && hasDimension
+    case 'radar':
+      return hasMeasure && hasDimension
+    case 'heatmap':
+      return hasMeasure && hasDimension
+    case 'sankey':
+      return hasMeasure && dimensions.length >= 2
+    case 'activityGrid':
+      return hasMeasure && hasTimeDim
     default:
       return true
   }
@@ -73,14 +99,14 @@ export function autoSelectChart(query: LoadQuery, data: any[]): ChartSelection {
 
   // Build axis config
   const yAxis = [...measures]
-  let xAxis: string | undefined
+  const xAxis: string[] = []
   const series: string[] = []
 
   // Determine x-axis: prefer time dimension, then first dimension
   if (timeDims.length > 0) {
-    xAxis = timeDims[0].dimension
+    xAxis.push(timeDims[0].dimension)
   } else if (dimensions.length > 0) {
-    xAxis = dimensions[0]
+    xAxis.push(dimensions[0])
     // Extra dimensions become series
     for (let i = 1; i < dimensions.length; i++) {
       series.push(dimensions[i])
