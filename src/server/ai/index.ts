@@ -28,8 +28,14 @@ export {
 } from './schemas'
 
 export {
+  QUERY_PARAMS_SCHEMA,
+  QUERY_LANGUAGE_REFERENCE
+} from './query-schema'
+
+export {
   MCP_PROMPTS,
   MCP_GUIDE_PROMPT,
+  QUERY_LANGUAGE_PROMPT,
   QUERY_RULES_PROMPT,
   QUERY_BUILDING_PROMPT,
   DATE_FILTERING_PROMPT,

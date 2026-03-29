@@ -849,6 +849,124 @@ export async function handleValidate(
 }
 
 /**
+ * Auto-correct double-prefixed field: "CubeName.CubeName.field" -> "CubeName.field"
+ */
+function fixDoublePrefixed(field: string): string {
+  const parts = field.split('.')
+  if (parts.length === 3 && parts[0] === parts[1]) {
+    return `${parts[0]}.${parts[2]}`
+  }
+  return field
+}
+
+/**
+ * Normalize AI-generated query fields before validation/execution.
+ * Fixes common LLM mistakes:
+ * - Double-prefixed fields: "Teams.Teams.name" -> "Teams.name"
+ * - Order as array: [{key: dir}] -> {key: dir}
+ * - Underscore order keys: "Teams_count" -> "Teams.count"
+ * - Invalid order keys dropped (falls back to first measure desc)
+ *
+ * This runs in the shared handleLoad path so both MCP and Agent benefit.
+ */
+export function normalizeQueryFields(query: Record<string, unknown>): Record<string, unknown> {
+  // Fix double-prefixed measures/dimensions
+  const fixStringArray = (arr: unknown): string[] | undefined => {
+    if (!Array.isArray(arr)) return undefined
+    return arr.map((f: unknown) => typeof f === 'string' ? fixDoublePrefixed(f) : f as string)
+  }
+
+  if (Array.isArray(query.measures)) {
+    query.measures = fixStringArray(query.measures)
+  }
+  if (Array.isArray(query.dimensions)) {
+    query.dimensions = fixStringArray(query.dimensions)
+  }
+
+  // Fix double-prefixed filter members and timeDimension names
+  if (Array.isArray(query.filters)) {
+    for (const filter of query.filters as Array<Record<string, unknown>>) {
+      if (typeof filter.member === 'string') {
+        filter.member = fixDoublePrefixed(filter.member)
+      }
+    }
+  }
+  if (Array.isArray(query.timeDimensions)) {
+    for (const td of query.timeDimensions as Array<Record<string, unknown>>) {
+      if (typeof td.dimension === 'string') {
+        td.dimension = fixDoublePrefixed(td.dimension)
+      }
+    }
+  }
+
+  // Normalize order: array [{key: dir}] -> merged object
+  if (Array.isArray(query.order)) {
+    const merged: Record<string, unknown> = {}
+    for (const entry of query.order) {
+      if (entry && typeof entry === 'object') {
+        Object.assign(merged, entry)
+      }
+    }
+    query.order = merged
+  }
+
+  // Fix order keys: double-prefix, underscore->dot, drop invalid
+  if (query.order && typeof query.order === 'object' && !Array.isArray(query.order)) {
+    const queryFields = new Set([
+      ...(Array.isArray(query.measures) ? query.measures as string[] : []),
+      ...(Array.isArray(query.dimensions) ? query.dimensions as string[] : []),
+    ])
+
+    const fixedOrder: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(query.order as Record<string, unknown>)) {
+      const dpFixed = fixDoublePrefixed(key)
+      if (queryFields.has(dpFixed)) {
+        fixedOrder[dpFixed] = val
+        continue
+      }
+
+      // Try underscore -> dot conversion
+      if (!key.includes('.') && key.includes('_')) {
+        const withDots = key.replace(/_/g, '.')
+        const normalized = fixDoublePrefixed(withDots)
+        if (queryFields.has(normalized)) {
+          fixedOrder[normalized] = val
+          continue
+        }
+        // Try matching by field suffix
+        const match = [...queryFields].find(f => {
+          const fieldName = f.split('.')[1]
+          return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
+        })
+        if (match) {
+          fixedOrder[match] = val
+          continue
+        }
+      }
+
+      // Drop order keys not in query measures/dimensions
+      if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
+        continue
+      }
+
+      fixedOrder[dpFixed] = val
+    }
+
+    // Default to first measure desc if all keys were dropped
+    if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
+      const firstMeasure = Array.isArray(query.measures) ? (query.measures as string[])[0] : undefined
+      if (firstMeasure) {
+        fixedOrder[firstMeasure] = 'desc'
+      }
+    }
+
+    query.order = fixedOrder
+  }
+
+  return query
+}
+
+/**
  * Handle /load endpoint - execute a query and return results
  * This completes the AI workflow: discover → suggest → validate → load
  */
@@ -861,7 +979,8 @@ export async function handleLoad(
   annotation: any
   query: SemanticQuery
 }> {
-  const query = body.query
+  // Auto-correct common AI-generated field mistakes before validation
+  const query = normalizeQueryFields(body.query as Record<string, unknown>) as SemanticQuery
 
   // Validate query structure and field existence
   const validation = semanticLayer.validateQuery(query)

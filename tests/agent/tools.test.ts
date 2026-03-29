@@ -7,10 +7,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getToolDefinitions, createToolExecutor } from '../../src/server/agent/tools'
 
 // Mock the adapter utils
-vi.mock('../../src/adapters/utils', () => ({
-  handleDiscover: vi.fn(),
-  handleLoad: vi.fn(),
-}))
+vi.mock('../../src/adapters/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/adapters/utils')>()
+  return {
+    handleDiscover: vi.fn(),
+    handleLoad: vi.fn(),
+    normalizeQueryFields: actual.normalizeQueryFields,
+  }
+})
 
 import { handleDiscover, handleLoad } from '../../src/adapters/utils'
 

@@ -8,8 +8,9 @@ import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentSSEEvent } from './types'
 import type { ToolDefinition } from './providers/types'
-import { handleDiscover, handleLoad } from '../../adapters/utils'
+import { handleDiscover, handleLoad, normalizeQueryFields } from '../../adapters/utils'
 import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation'
+import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema'
 
 /**
  * Result of executing a tool call
@@ -63,128 +64,14 @@ export function getToolDefinitions(): ToolDefinition[] {
       }
     },
 
-    // Tool 3: execute_query
+    // Tool 3: execute_query — uses shared schema from query-schema.ts
     {
       name: 'execute_query',
       description:
         'Execute a semantic query and return data results. Supports standard queries (measures/dimensions) and analysis modes (funnel/flow/retention). Only provide ONE mode per call.',
       parameters: {
         type: 'object',
-        properties: {
-          measures: {
-            type: 'array',
-            items: { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
-            description: 'Aggregation measures — MUST be "CubeName.measureName" format (e.g., ["PullRequests.count", "Issues.openCount"]). NEVER use just the cube name.'
-          },
-          dimensions: {
-            type: 'array',
-            items: { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
-            description: 'Grouping dimensions — MUST be "CubeName.dimensionName" format (e.g., ["Teams.name", "Employees.department"]). NEVER use just the cube name.'
-          },
-          filters: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                member: { type: 'string' },
-                operator: { type: 'string' },
-                values: { type: 'array', items: {} }
-              },
-              required: ['member', 'operator']
-            },
-            description: 'Filter conditions'
-          },
-          timeDimensions: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                dimension: { type: 'string' },
-                granularity: { type: 'string' },
-                dateRange: {}
-              },
-              required: ['dimension']
-            },
-            description: 'Time dimensions with optional granularity'
-          },
-          order: {
-            type: 'object',
-            description: 'Sort order. Keys MUST be a measure or dimension from this query in "CubeName.fieldName" format, values are "asc" or "desc". Example: {"Teams.count": "desc"}. WRONG: {"Teams_count": "desc"}'
-          },
-          limit: {
-            type: 'number',
-            description: 'Row limit'
-          },
-          funnel: {
-            type: 'object',
-            properties: {
-              bindingKey: { type: 'string', description: 'Entity binding key (e.g., "Events.userId")' },
-              timeDimension: { type: 'string', description: 'Time dimension (e.g., "Events.timestamp")' },
-              steps: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    name: { type: 'string' },
-                    filter: {},
-                    timeToConvert: { type: 'string', description: 'ISO 8601 duration (e.g., "P7D")' }
-                  },
-                  required: ['name']
-                },
-                description: 'Funnel steps (min 2)'
-              },
-              includeTimeMetrics: { type: 'boolean' },
-              globalTimeWindow: { type: 'string' }
-            },
-            required: ['bindingKey', 'timeDimension', 'steps'],
-            description: 'Funnel analysis config. When provided, measures/dimensions are ignored.'
-          },
-          flow: {
-            type: 'object',
-            properties: {
-              bindingKey: { type: 'string' },
-              timeDimension: { type: 'string' },
-              eventDimension: { type: 'string', description: 'Dimension whose values become node labels' },
-              startingStep: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  filter: {}
-                },
-                required: ['name']
-              },
-              stepsBefore: { type: 'number', description: 'Steps before starting step (0-5)' },
-              stepsAfter: { type: 'number', description: 'Steps after starting step (0-5)' },
-              entityLimit: { type: 'number' },
-              outputMode: { type: 'string', enum: ['sankey', 'sunburst'] }
-            },
-            required: ['bindingKey', 'timeDimension', 'eventDimension', 'startingStep'],
-            description: 'Flow analysis config. When provided, measures/dimensions are ignored.'
-          },
-          retention: {
-            type: 'object',
-            properties: {
-              timeDimension: { type: 'string' },
-              bindingKey: { type: 'string' },
-              dateRange: {
-                type: 'object',
-                properties: {
-                  start: { type: 'string', description: 'YYYY-MM-DD' },
-                  end: { type: 'string', description: 'YYYY-MM-DD' }
-                },
-                required: ['start', 'end']
-              },
-              granularity: { type: 'string', enum: ['day', 'week', 'month'] },
-              periods: { type: 'number' },
-              retentionType: { type: 'string', enum: ['classic', 'rolling'] },
-              cohortFilters: {},
-              activityFilters: {},
-              breakdownDimensions: { type: 'array', items: { type: 'string' } }
-            },
-            required: ['timeDimension', 'bindingKey', 'dateRange', 'granularity', 'periods'],
-            description: 'Retention analysis config. When provided, measures/dimensions are ignored.'
-          }
-        }
+        properties: QUERY_PARAMS_SCHEMA
       }
     },
 
@@ -215,7 +102,11 @@ export function getToolDefinitions(): ToolDefinition[] {
               yAxis: { type: 'array', items: { type: 'string' } },
               series: { type: 'array', items: { type: 'string' } },
               sizeField: { type: 'string' },
-              colorField: { type: 'string' }
+              colorField: { type: 'string' },
+              yAxisAssignment: {
+                type: 'object',
+                description: 'Dual Y-axis: map measure fields to "left" or "right" axis. Only for bar, line, area charts with 2+ measures of different scales. Example: {"Sales.revenue": "left", "Sales.conversionRate": "right"}'
+              }
             },
             description: 'Chart axis configuration'
           },
@@ -419,139 +310,35 @@ export function createToolExecutor(options: {
   }
 
   // execute_query
+  // Note: Field normalization (double-prefix fix, order normalization, underscore->dot)
+  // is handled by normalizeQueryFields() in the shared handleLoad path.
+  // The agent adds field-level validation with helpful error hints before reaching handleLoad.
   executors.set('execute_query', async (input) => {
     try {
-      // Validate and auto-correct Cube.member format before executing
-      const validateAndFixFields = (fields: unknown, label: string): string[] | undefined => {
-        if (!Array.isArray(fields)) return undefined
+      // Agent-specific: validate field format and provide helpful error hints
+      const validateFieldFormat = (fields: unknown, label: string): void => {
+        if (!Array.isArray(fields)) return
         const errors: string[] = []
-        const fixed: string[] = []
 
         for (const f of fields) {
-          if (typeof f !== 'string') { fixed.push(f as string); continue }
-
+          if (typeof f !== 'string') continue
           const parts = f.split('.')
 
           if (parts.length === 1) {
-            // No dot at all — e.g. "TeamMembers"
             errors.push(`"${f}" is not valid — must be "CubeName.fieldName".${formatAvailable(f, label)}`)
-            continue
-          }
-
-          if (parts.length === 3 && parts[0] === parts[1]) {
-            // CubeName.CubeName.fieldName — e.g. "Teams.Teams.name" → auto-correct to "Teams.name"
-            const corrected = `${parts[0]}.${parts[2]}`
-            fixed.push(corrected)
-            continue
-          }
-
-          if (parts.length === 2 && parts[0] === parts[1]) {
-            // CubeName.CubeName — e.g. "TeamMembers.TeamMembers"
+          } else if (parts.length === 2 && parts[0] === parts[1]) {
             errors.push(`"${f}" is WRONG — "${parts[0]}" is the cube name, not a ${label.replace(/s$/, '')}.${formatAvailable(parts[0], label)}`)
-            continue
           }
-
-          // Normal "CubeName.fieldName" — pass through
-          fixed.push(f)
         }
 
         if (errors.length > 0) {
           throw new Error(`Invalid ${label}:\n${errors.join('\n')}`)
         }
-        return fixed
       }
-      input.measures = validateAndFixFields(input.measures, 'measures') ?? input.measures
-      input.dimensions = validateAndFixFields(input.dimensions, 'dimensions') ?? input.dimensions
+      validateFieldFormat(input.measures, 'measures')
+      validateFieldFormat(input.dimensions, 'dimensions')
 
-      // Auto-fix CubeName.CubeName.field → CubeName.field in filters and timeDimensions
-      const fixDoublePrefixed = (field: string): string => {
-        const parts = field.split('.')
-        if (parts.length === 3 && parts[0] === parts[1]) {
-          return `${parts[0]}.${parts[2]}`
-        }
-        return field
-      }
-
-      if (Array.isArray(input.filters)) {
-        for (const filter of input.filters as Array<Record<string, unknown>>) {
-          if (typeof filter.member === 'string') {
-            filter.member = fixDoublePrefixed(filter.member)
-          }
-        }
-      }
-
-      if (Array.isArray(input.timeDimensions)) {
-        for (const td of input.timeDimensions as Array<Record<string, unknown>>) {
-          if (typeof td.dimension === 'string') {
-            td.dimension = fixDoublePrefixed(td.dimension)
-          }
-        }
-      }
-
-      // Normalize order: OpenAI sometimes sends [{key: dir}] instead of {key: dir}
-      if (Array.isArray(input.order)) {
-        const merged: Record<string, unknown> = {}
-        for (const entry of input.order) {
-          if (entry && typeof entry === 'object') {
-            Object.assign(merged, entry)
-          }
-        }
-        input.order = merged
-      }
-
-      if (input.order && typeof input.order === 'object' && !Array.isArray(input.order)) {
-        // Collect valid fields from the query for matching
-        const queryFields = new Set([
-          ...(Array.isArray(input.measures) ? input.measures as string[] : []),
-          ...(Array.isArray(input.dimensions) ? input.dimensions as string[] : []),
-        ])
-
-        const fixedOrder: Record<string, unknown> = {}
-        for (const [key, val] of Object.entries(input.order as Record<string, unknown>)) {
-          const dpFixed = fixDoublePrefixed(key)
-          if (queryFields.has(dpFixed)) {
-            fixedOrder[dpFixed] = val
-            continue
-          }
-
-          // Try normalizing underscores → dots (e.g. "Teams_Teams_count" → "Teams.Teams.count" → "Teams.count")
-          if (!key.includes('.') && key.includes('_')) {
-            const withDots = key.replace(/_/g, '.')
-            const normalized = fixDoublePrefixed(withDots)
-            if (queryFields.has(normalized)) {
-              fixedOrder[normalized] = val
-              continue
-            }
-            // Try matching by field suffix (e.g. key ends with "_count" → match "Teams.count")
-            const match = [...queryFields].find(f => {
-              const fieldName = f.split('.')[1]
-              return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
-            })
-            if (match) {
-              fixedOrder[match] = val
-              continue
-            }
-          }
-
-          // Drop order keys that aren't in the query's measures/dimensions — fall through to default
-          if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
-            continue // silently drop invalid order key
-          }
-
-          fixedOrder[dpFixed] = val
-        }
-
-        // If all order keys were dropped, default to first measure desc
-        if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
-          const firstMeasure = Array.isArray(input.measures) ? (input.measures as string[])[0] : undefined
-          if (firstMeasure) {
-            fixedOrder[firstMeasure] = 'desc'
-          }
-        }
-
-        input.order = fixedOrder
-      }
-
+      // Assemble the query object — normalization happens in handleLoad
       let query: Record<string, unknown>
 
       if (input.funnel) {
@@ -567,7 +354,9 @@ export function createToolExecutor(options: {
           filters: input.filters as Array<{ member: string; operator: string; values?: unknown[] }> | undefined,
           timeDimensions: input.timeDimensions as Array<{ dimension: string; granularity?: string; dateRange?: unknown }> | undefined,
           order: input.order as Record<string, 'asc' | 'desc'> | undefined,
-          limit: input.limit as number | undefined
+          limit: input.limit as number | undefined,
+          offset: input.offset as number | undefined,
+          ungrouped: input.ungrouped as boolean | undefined,
         }
       }
 
@@ -580,7 +369,6 @@ export function createToolExecutor(options: {
         }) + '\n[IMPORTANT: Your next response MUST start with a brief text message BEFORE any tool calls. Now call add_markdown and add_portlet to visualize these results.]'
       }
     } catch (error) {
-      // Include the attempted query in the error so the agent (and developer) can debug
       const attemptedQuery = {
         measures: input.measures,
         dimensions: input.dimensions,
@@ -618,6 +406,9 @@ export function createToolExecutor(options: {
         isError: true
       }
     }
+
+    // Normalize before validation (fix double-prefixed fields, order keys, etc.)
+    parsedQuery = normalizeQueryFields(parsedQuery)
 
     const validation = semanticLayer.validateQuery(parsedQuery as any)
     if (!validation.isValid) {
@@ -705,6 +496,9 @@ export function createToolExecutor(options: {
           errors.push(`Portlet "${portlet.title}": invalid JSON query`)
           continue
         }
+
+        // Normalize before validation (fix double-prefixed fields, etc.)
+        parsedQuery = normalizeQueryFields(parsedQuery)
 
         const validation = semanticLayer.validateQuery(parsedQuery as any)
         if (!validation.isValid) {
