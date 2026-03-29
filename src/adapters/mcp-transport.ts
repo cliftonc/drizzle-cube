@@ -1,6 +1,3 @@
-import { readFileSync } from 'fs'
-import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
 import type { SemanticLayerCompiler, SecurityContext } from '../server'
 import { getDefaultMCPPrompts, type MCPPrompt } from '../server/ai/mcp-prompts'
 import {
@@ -20,38 +17,12 @@ export { type MCPPrompt }
 export const MCP_APP_RESOURCE_URI = 'ui://drizzle-cube/visualization.html'
 export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 
-let _mcpAppHtml: string | null = null
+// Bundled MCP App HTML — generated at build time by scripts/generate-mcp-app-html.ts
+import { mcpAppHtml } from './mcp-app-html'
 
-/**
- * Read the bundled MCP App HTML from dist/mcp-app/mcp-app.html.
- * Lazy-loaded and cached for performance.
- *
- * Searches two paths:
- * - From dist/adapters/ (production): ../mcp-app/mcp-app.html → dist/mcp-app/mcp-app.html
- * - From src/adapters/ (dev via tsx): ../../dist/mcp-app/mcp-app.html → dist/mcp-app/mcp-app.html
- */
-export function getMcpAppHtml(): string | null {
-  // In production, serve cached HTML. In dev, re-read on each request for hot reload.
-  const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
-  if (!isDev && _mcpAppHtml !== null) return _mcpAppHtml
-  const __dirname = dirname(fileURLToPath(import.meta.url))
-  const candidates = [
-    join(__dirname, '../mcp-app/mcp-app.html'),       // from dist/adapters/
-    join(__dirname, '../../dist/mcp-app/mcp-app.html') // from src/adapters/ (dev)
-  ]
-  for (const candidate of candidates) {
-    try {
-      const html = readFileSync(candidate, 'utf-8')
-      // Only accept the bundled version (>1KB), not the source template
-      if (html.length > 1000) {
-        _mcpAppHtml = html
-        return _mcpAppHtml
-      }
-    } catch {
-      // Try next candidate
-    }
-  }
-  return null
+/** Get the bundled MCP App HTML. */
+export function getMcpAppHtml(): string {
+  return mcpAppHtml
 }
 
 export type JsonRpcId = string | number | null | undefined

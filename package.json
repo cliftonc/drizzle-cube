@@ -101,7 +101,7 @@
     "dev:build-client": "vite build src/client --watch --mode development",
     "dev:mcp-app": "vite build --config vite.config.mcp-app.ts --watch",
     "build": "npm run build:server && npm run build:mcp-app && npm run build:client && npm run build:adapters && npm run build:cli",
-    "build:mcp-app": "vite build --config vite.config.mcp-app.ts",
+    "build:mcp-app": "vite build --config vite.config.mcp-app.ts && tsx scripts/generate-mcp-app-html.ts",
     "build:server": "vite build --config vite.config.server.ts",
     "build:client": "vite build --config vite.config.client.ts",
     "analyze:client": "vite build --config vite.config.client.ts && open dist/client-bundle-stats.html",
