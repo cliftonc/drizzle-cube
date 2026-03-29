@@ -361,4 +361,49 @@ describe('Cross-Cube Filter Propagation', () => {
       expect(result.data.length).toBeGreaterThan(0)
     })
   })
+
+  describe('CTE filter not duplicated in outer WHERE', () => {
+    it('should not reference CTE-d cube original table in outer WHERE clause', async () => {
+      // Regression: when Productivity (hasMany from Employees) becomes a CTE and
+      // Employees.name filter exists, the outer WHERE must NOT reference "employees"
+      // table directly — that table is not in the outer FROM clause (only the CTE alias is).
+      const query = TestQueryBuilder.create()
+        .measures(['Productivity.productivityScore', 'Employees.avgSalary'])
+        .dimensions(['Employees.name', 'Departments.name'])
+        .filters([
+          {
+            member: 'Employees.name',
+            operator: 'equals',
+            values: ['Alice Johnson']
+          }
+        ])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      // The key assertion: the query must not fail with
+      // "missing FROM-clause entry for table employees"
+      expect(result.data).toBeDefined()
+      expect(Array.isArray(result.data)).toBe(true)
+    })
+
+    it('should work with IN filter on CTE-d cube dimension across 3 cubes', async () => {
+      const query = TestQueryBuilder.create()
+        .measures(['Productivity.avgLinesOfCode', 'Productivity.avgHappinessIndex', 'Employees.avgSalary'])
+        .dimensions(['Employees.name', 'Departments.name'])
+        .filters([
+          {
+            member: 'Employees.name',
+            operator: 'in',
+            values: ['Alice Johnson', 'Bob Smith']
+          }
+        ])
+        .build()
+
+      const result = await testExecutor.executeQuery(query)
+
+      expect(result.data).toBeDefined()
+      expect(Array.isArray(result.data)).toBe(true)
+    })
+  })
 })

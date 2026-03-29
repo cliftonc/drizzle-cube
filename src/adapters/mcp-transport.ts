@@ -529,22 +529,36 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
     throw jsonRpcError(-32602, 'name is required for tools/call')
   }
   const args = p.arguments
-  switch (p.name) {
-    case 'discover':
-      return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
-    case 'validate': {
-      const body = (args || {}) as ValidateRequest
-      if (!body.query) throw jsonRpcError(-32602, 'query is required')
-      return wrapContent(await handleValidate(semanticLayer, body))
+  try {
+    switch (p.name) {
+      case 'discover':
+        return wrapContent(await handleDiscover(semanticLayer, (args || {}) as DiscoverRequest))
+      case 'validate': {
+        const body = (args || {}) as ValidateRequest
+        if (!body.query) throw jsonRpcError(-32602, 'query is required')
+        return wrapContent(await handleValidate(semanticLayer, body))
+      }
+      case 'load': {
+        const body = (args || {}) as LoadRequest
+        if (!body.query) throw jsonRpcError(-32602, 'query is required')
+        const securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        return wrapContent(await handleLoad(semanticLayer, securityContext, body))
+      }
+      default:
+        throw jsonRpcError(-32601, `Unknown tool: ${p.name}`)
     }
-    case 'load': {
-      const body = (args || {}) as LoadRequest
-      if (!body.query) throw jsonRpcError(-32602, 'query is required')
-      const securityContext = await extractSecurityContext(rawRequest, rawResponse)
-      return wrapContent(await handleLoad(semanticLayer, securityContext, body))
+  } catch (err) {
+    // Per MCP spec, tool execution errors should be returned as successful
+    // JSON-RPC results with isError: true — not as JSON-RPC protocol errors.
+    // This lets the AI model see and react to the error message.
+    const isProtocolError = (err as any)?.code === -32602 || (err as any)?.code === -32601
+    if (isProtocolError) throw err // Re-throw actual protocol errors (missing params, unknown tool)
+
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify({ error: message }) }],
+      isError: true
     }
-    default:
-      throw jsonRpcError(-32601, `Unknown tool: ${p.name}`)
   }
 }
 

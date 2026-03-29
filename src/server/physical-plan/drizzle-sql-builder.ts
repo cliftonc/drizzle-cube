@@ -230,6 +230,16 @@ export class DrizzleSqlBuilder {
           const [cubeName] = (filter.member as string).split('.')
           const cubeIsInContext = cubeMap.has(cubeName)
 
+          // Skip filters for cubes that are in a pre-aggregation CTE — the filter
+          // is already applied inside the CTE and the original table isn't in the
+          // outer FROM clause.
+          if (queryPlan?.preAggregationCTEs) {
+            const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
+            if (isInCTE) {
+              continue
+            }
+          }
+
           if (cubeIsInContext && preBuiltFilters.has(cubeName) && !cubesWithPreBuiltFiltersAdded.has(cubeName)) {
             // Use the pre-built filter SQL instead of building fresh
             // This deduplicates parameters between CTE subquery and main query
