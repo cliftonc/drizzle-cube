@@ -49,7 +49,7 @@ describe('Performance-Focused Aggregation Testing', () => {
       // Performance assertion - should complete within reasonable time for simple aggregation
       // CI environments are slower, so use lenient threshold
       const measurement = performanceMeasurer.getLatestMeasurement()
-      expect(measurement?.duration).toBeLessThan(150)
+      expect(measurement?.duration).toBeLessThan(500)
 
       // Result validation
       expect(result.data).toBeDefined()

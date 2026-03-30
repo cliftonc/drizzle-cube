@@ -4,8 +4,9 @@
  * Follows Cube.js naming conventions (fillMissingDates) but implements server-side.
  */
 
-import type { SemanticQuery } from './types/query'
+import type { SemanticQuery, Filter, FilterCondition } from './types/query'
 import type { TimeGranularity } from './types/core'
+import { parseRelativeDateRange } from '../shared/date-utils'
 
 export interface GapFillerConfig {
   /** The time dimension key (e.g., 'Sales.date') */
@@ -263,16 +264,19 @@ export function parseDateRange(dateRange: string | string[] | undefined): [Date,
     return [start, end]
   }
 
-  // Handle relative date ranges (e.g., 'last 7 days', 'this week')
-  // For now, just try to parse as a single date string
+  // Try as a relative date range (e.g., 'last 7 days', 'this month', 'this year')
+  const relative = parseRelativeDateRange(dateRange)
+  if (relative) {
+    return [relative.start, relative.end]
+  }
+
+  // Try to parse as a single absolute date string
   const date = new Date(dateRange)
   if (!isNaN(date.getTime())) {
     // Single date - return same day range
     return [date, date]
   }
 
-  // Relative date strings would need more complex parsing
-  // For now, return null to skip gap filling
   return null
 }
 
@@ -299,10 +303,12 @@ export function applyGapFilling(
     // fillMissingDates defaults to true
     const shouldFill = td.fillMissingDates !== false
 
-    // Must have granularity and dateRange to fill gaps
-    const canFill = td.granularity && td.dateRange
+    // Must have granularity to fill gaps
+    // dateRange can come from the timeDimension itself OR from a matching inDateRange filter
+    const hasGranularity = !!td.granularity
+    const hasDateRange = td.dateRange || findDateRangeFilter(td.dimension, query.filters)
 
-    return shouldFill && canFill
+    return shouldFill && hasGranularity && hasDateRange
   })
 
   if (timeDimensionsToFill.length === 0) {
@@ -322,7 +328,9 @@ export function applyGapFilling(
   let result = data
 
   for (const timeDim of timeDimensionsToFill) {
+    // Try dateRange from timeDimension first, then fall back to matching filter
     const dateRange = parseDateRange(timeDim.dateRange)
+      || resolveDateRangeFromFilter(timeDim.dimension, query.filters)
 
     if (!dateRange) {
       continue
@@ -341,4 +349,72 @@ export function applyGapFilling(
   }
 
   return result
+}
+
+/**
+ * Find an inDateRange filter matching a time dimension in the query filters.
+ * Searches through top-level filters and logical groups (and/or).
+ */
+function findDateRangeFilter(
+  dimensionKey: string,
+  filters: Filter[] | undefined
+): FilterCondition | null {
+  if (!filters) return null
+
+  for (const filter of filters) {
+    // Direct filter condition
+    if ('member' in filter && 'operator' in filter) {
+      if (filter.member === dimensionKey && filter.operator === 'inDateRange') {
+        return filter
+      }
+    }
+    // Logical groups
+    if ('and' in filter && filter.and) {
+      const found = findDateRangeFilter(dimensionKey, filter.and)
+      if (found) return found
+    }
+    if ('or' in filter && filter.or) {
+      const found = findDateRangeFilter(dimensionKey, filter.or)
+      if (found) return found
+    }
+  }
+
+  return null
+}
+
+/**
+ * Resolve a date range from a matching inDateRange filter for the given dimension.
+ * Handles both absolute date pairs and relative date strings (e.g., "this month").
+ */
+function resolveDateRangeFromFilter(
+  dimensionKey: string,
+  filters: Filter[] | undefined
+): [Date, Date] | null {
+  const filter = findDateRangeFilter(dimensionKey, filters)
+  if (!filter) return null
+
+  // Check filter.dateRange first (e.g., { dateRange: "this year" })
+  if (filter.dateRange) {
+    const fromDateRange = parseDateRange(filter.dateRange)
+    if (fromDateRange) return fromDateRange
+  }
+
+  // Check filter.values (e.g., values: ["2024-01-01", "2024-03-31"] or values: ["this month"])
+  const values = filter.values
+  if (!values || values.length === 0) return null
+
+  // Single relative string (e.g., ["this month"])
+  if (values.length === 1 && typeof values[0] === 'string') {
+    const relative = parseRelativeDateRange(values[0])
+    if (relative) return [relative.start, relative.end]
+    // Try as absolute date
+    return parseDateRange(values)
+  }
+
+  // Two absolute dates (e.g., ["2024-01-01", "2024-03-31"])
+  if (values.length >= 2) {
+    return parseDateRange(values)
+  }
+
+  return null
 }

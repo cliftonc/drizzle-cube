@@ -322,6 +322,129 @@ describe('Gap Filling', () => {
       expect(result).toHaveLength(1) // Not filled
     })
 
+    it('should fill gaps when dateRange is on an inDateRange filter instead of timeDimension', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 },
+        { 'Sales.date': '2024-01-03T00:00:00.000Z', 'Sales.revenue': 200 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day'
+          // No dateRange on timeDimension — it's on the filter
+        }],
+        filters: [{
+          member: 'Sales.date',
+          operator: 'inDateRange',
+          values: ['2024-01-01', '2024-01-03']
+        }]
+      }, ['Sales.revenue'])
+
+      expect(result).toHaveLength(3)
+      expect(result[0]['Sales.revenue']).toBe(100)
+      expect(result[1]['Sales.revenue']).toBe(0) // Filled gap
+      expect(result[2]['Sales.revenue']).toBe(200)
+    })
+
+    it('should fill gaps when filter uses relative date range string', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      // "this year" should resolve to a full year range
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'month'
+        }],
+        filters: [{
+          member: 'Sales.date',
+          operator: 'inDateRange',
+          values: [],
+          dateRange: 'this year'
+        }]
+      }, ['Sales.revenue'])
+
+      // Should have 12 months for the current year
+      expect(result).toHaveLength(12)
+    })
+
+    it('should fill gaps when filter uses dateRange property', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 },
+        { 'Sales.date': '2024-01-05T00:00:00.000Z', 'Sales.revenue': 200 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day'
+        }],
+        filters: [{
+          member: 'Sales.date',
+          operator: 'inDateRange',
+          values: [],
+          dateRange: ['2024-01-01', '2024-01-05']
+        }]
+      }, ['Sales.revenue'])
+
+      expect(result).toHaveLength(5)
+      expect(result[0]['Sales.revenue']).toBe(100)
+      expect(result[1]['Sales.revenue']).toBe(0)
+      expect(result[4]['Sales.revenue']).toBe(200)
+    })
+
+    it('should find inDateRange filter inside logical AND group', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 },
+        { 'Sales.date': '2024-01-03T00:00:00.000Z', 'Sales.revenue': 200 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day'
+        }],
+        filters: [{
+          and: [{
+            member: 'Sales.date',
+            operator: 'inDateRange',
+            values: ['2024-01-01', '2024-01-03']
+          }]
+        }]
+      }, ['Sales.revenue'])
+
+      expect(result).toHaveLength(3)
+    })
+
+    it('should prefer timeDimension dateRange over filter dateRange', () => {
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }
+      ]
+
+      const result = applyGapFilling(data, {
+        measures: ['Sales.revenue'],
+        timeDimensions: [{
+          dimension: 'Sales.date',
+          granularity: 'day',
+          dateRange: ['2024-01-01', '2024-01-02'] // Narrower range on timeDimension
+        }],
+        filters: [{
+          member: 'Sales.date',
+          operator: 'inDateRange',
+          values: ['2024-01-01', '2024-01-05'] // Wider range on filter
+        }]
+      }, ['Sales.revenue'])
+
+      // Should use timeDimension dateRange (2 days), not filter (5 days)
+      expect(result).toHaveLength(2)
+    })
+
     it('should use custom fill value', () => {
       const data = [
         { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 100 }

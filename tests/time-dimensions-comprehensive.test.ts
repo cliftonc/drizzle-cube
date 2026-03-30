@@ -268,14 +268,18 @@ describe('Comprehensive Time Dimensions', () => {
       const validation = QueryValidator.validateQueryResult(result, expectedFields)
       expect(validation.isValid).toBe(true)
 
-      // Validate time ordering
-      let previousDate: Date | null = null
+      // Validate time ordering within each dimension group
+      // (gap filling produces rows grouped by dimension, each group sorted by time)
+      const groups = new Map<unknown, Date[]>()
       for (const row of result.data) {
-        const currentDate = new Date(row['Productivity.date'] as any)
-        if (previousDate) {
-          expect(currentDate.getTime()).toBeGreaterThanOrEqual(previousDate.getTime())
+        const key = row['Employees.departmentId']
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key)!.push(new Date(row['Productivity.date'] as any))
+      }
+      for (const [, dates] of groups) {
+        for (let i = 1; i < dates.length; i++) {
+          expect(dates[i].getTime()).toBeGreaterThanOrEqual(dates[i - 1].getTime())
         }
-        previousDate = currentDate
       }
     })
 
