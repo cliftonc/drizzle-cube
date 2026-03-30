@@ -379,6 +379,25 @@ describe.skipIf(!isPostgres)('RLS Support - PostgreSQL Row Level Security', () =
     expect(org2Names.size).toBeGreaterThan(0)
   })
 
+  it('should return non-empty explain plan with RLS', async () => {
+    const compiler = new SemanticLayerCompiler({
+      databaseExecutor: dbExecutor,
+      rlsSetup
+    })
+    compiler.registerCube(rlsEmployeesCube)
+
+    const result = await compiler.explainQuery(
+      { measures: ['RLSEmployees.count'] },
+      testSecurityContexts.org1
+    )
+
+    // The explain result should have actual content
+    expect(result.raw).toBeTruthy()
+    expect(result.raw.length).toBeGreaterThan(0)
+    expect(result.operations.length).toBeGreaterThan(0)
+    expect(result.sql.sql).toBeTruthy()
+  })
+
   it('should not produce security warnings for cubes when rlsSetup is configured', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 

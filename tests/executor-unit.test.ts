@@ -67,6 +67,79 @@ describe('PostgresExecutor Unit Tests', () => {
 
       expect(result).toEqual({ affectedRows: 1 })
     })
+
+    it('should extract rows from node-postgres QueryResult format', async () => {
+      // node-postgres returns { rows: [...], rowCount, ... } instead of a direct array
+      const mockDb = {
+        execute: vi.fn().mockResolvedValue({
+          rows: [{ count: 5 }],
+          rowCount: 1,
+          command: 'SELECT'
+        })
+      }
+      const executor = createPostgresExecutor(mockDb as any, undefined)
+
+      const rawSql = { queryChunks: ['SELECT count(*) as count'] }
+      const result = await executor.execute(rawSql, ['count'])
+
+      expect(result).toEqual([{ count: 5 }])
+    })
+  })
+
+  describe('explainQuery', () => {
+    it('should parse EXPLAIN output from postgres-js (array format)', async () => {
+      const mockDb = {
+        execute: vi.fn().mockResolvedValue([
+          { 'QUERY PLAN': 'Seq Scan on customers  (cost=0.00..35.50 rows=2550 width=4)' }
+        ])
+      }
+      const executor = createPostgresExecutor(mockDb as any, undefined)
+
+      const result = await executor.explainQuery(
+        'select count("customers"."id") from "customers"',
+        []
+      )
+
+      expect(result.raw).toBeTruthy()
+      expect(result.raw.length).toBeGreaterThan(0)
+      expect(result.operations.length).toBeGreaterThan(0)
+    })
+
+    it('should parse EXPLAIN output from node-postgres ({ rows } format)', async () => {
+      // node-postgres returns { rows: [...] } instead of a direct array
+      const mockDb = {
+        execute: vi.fn().mockResolvedValue({
+          rows: [
+            { 'QUERY PLAN': 'Seq Scan on customers  (cost=0.00..35.50 rows=2550 width=4)' }
+          ],
+          rowCount: 1,
+          command: 'SELECT'
+        })
+      }
+      const executor = createPostgresExecutor(mockDb as any, undefined)
+
+      const result = await executor.explainQuery(
+        'select count("customers"."id") from "customers"',
+        []
+      )
+
+      expect(result.raw).toBeTruthy()
+      expect(result.raw.length).toBeGreaterThan(0)
+      expect(result.operations.length).toBeGreaterThan(0)
+      expect(result.sql.sql).toBe('select count("customers"."id") from "customers"')
+    })
+
+    it('should return empty result for non-array non-rows result', async () => {
+      const mockDb = {
+        execute: vi.fn().mockResolvedValue({ affectedRows: 0 })
+      }
+      const executor = createPostgresExecutor(mockDb as any, undefined)
+
+      const result = await executor.explainQuery('UPDATE foo SET x = 1', [])
+
+      expect(result.raw).toBe('')
+      expect(result.operations).toEqual([])
+    })
   })
 
   describe('coerceToNumber (via execute)', () => {

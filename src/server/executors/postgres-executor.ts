@@ -1,6 +1,6 @@
 /**
  * PostgreSQL database executor
- * Works with postgres.js and Neon drivers
+ * Works with postgres.js, node-postgres (pg), and Neon drivers
  */
 
 import type { SQL } from 'drizzle-orm'
@@ -8,6 +8,20 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parsePostgresExplain } from '../explain/postgres-parser'
+
+/**
+ * Normalize the result of db.execute() across different PostgreSQL drivers.
+ * - postgres-js returns rows as an array directly
+ * - node-postgres (pg) returns a QueryResult object with a .rows property
+ * - Neon drivers may also return { rows: [...] }
+ */
+function extractRows(result: unknown): any[] {
+  if (Array.isArray(result)) return result
+  if (result && typeof result === 'object' && 'rows' in result && Array.isArray((result as any).rows)) {
+    return (result as any).rows
+  }
+  return []
+}
 
 export class PostgresExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -29,12 +43,15 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
       throw new Error('PostgreSQL database instance must have an execute method')
     }
     const result = await this.db.execute(query)
-    
+
     // Convert numeric strings to numbers for PostgreSQL results
-    if (Array.isArray(result)) {
-      return result.map(row => this.convertNumericFields(row, numericFields)) as T
+    // Handle both postgres-js (array) and node-postgres ({ rows }) formats
+    const rows = extractRows(result)
+    if (rows.length > 0) {
+      return rows.map(row => this.convertNumericFields(row, numericFields)) as T
     }
-    
+
+    // Non-row results (e.g. { affectedRows } from UPDATE/INSERT) pass through as-is
     return result as T
   }
 
@@ -147,18 +164,17 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
     )
 
     // PostgreSQL returns EXPLAIN output as rows with 'QUERY PLAN' column
+    // Use extractRows to handle both postgres-js (array) and node-postgres ({ rows }) formats
     const rawLines: string[] = []
-    if (Array.isArray(result)) {
-      for (const row of result) {
-        if (row && typeof row === 'object') {
-          // Handle different column name cases
-          const planLine =
-            (row as Record<string, unknown>)['QUERY PLAN'] ||
-            (row as Record<string, unknown>)['query plan'] ||
-            (row as Record<string, unknown>)['queryplan']
-          if (typeof planLine === 'string') {
-            rawLines.push(planLine)
-          }
+    for (const row of extractRows(result)) {
+      if (row && typeof row === 'object') {
+        // Handle different column name cases
+        const planLine =
+          (row as Record<string, unknown>)['QUERY PLAN'] ||
+          (row as Record<string, unknown>)['query plan'] ||
+          (row as Record<string, unknown>)['queryplan']
+        if (typeof planLine === 'string') {
+          rawLines.push(planLine)
         }
       }
     }
@@ -202,11 +218,12 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
         ORDER BY t.relname, i.relname
       `)
 
-      if (!Array.isArray(result)) {
+      const rows = extractRows(result)
+      if (rows.length === 0) {
         return []
       }
 
-      return result.map((row: any) => ({
+      return rows.map((row: any) => ({
         table_name: row.table_name,
         index_name: row.index_name,
         columns: row.columns.split(','),
