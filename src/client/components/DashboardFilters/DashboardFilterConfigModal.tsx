@@ -16,6 +16,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
+import { t } from '../../../i18n/runtime'
 import { getIcon } from '../../icons'
 import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types'
 import type { MetaResponse, DateRangeType, MetaField } from '../../shared/types'
@@ -322,13 +323,13 @@ export default function DashboardFilterConfigModal({
   // Handle save
   const handleSave = useCallback(() => {
     if (!localLabel.trim()) {
-      alert('Filter label is required')
+      alert(t('dashboardFilter.filterLabelRequired'))
       return
     }
 
     // Don't require field selection for universal time filters
     if (!initialFilter.isUniversalTime && !localFilter.member) {
-      alert('Please select a field for the filter')
+      alert(t('dashboardFilter.selectFieldRequired'))
       return
     }
 
@@ -361,7 +362,7 @@ export default function DashboardFilterConfigModal({
     if (!operatorMeta?.requiresValues) {
       return (
         <div className="dc:text-sm text-dc-text-muted dc:italic dc:py-2">
-          No value required
+          {t('dashboardFilter.noValueRequired')}
         </div>
       )
     }
@@ -540,7 +541,7 @@ export default function DashboardFilterConfigModal({
                     type="text"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Search..."
+                    placeholder={t('dashboardFilter.search')}
                     className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
                     autoFocus
                   />
@@ -549,11 +550,11 @@ export default function DashboardFilterConfigModal({
                 {/* Values list */}
                 <div className="dc:max-h-40 dc:overflow-y-auto">
                   {valuesLoading ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">Loading...</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('common.loading')}</div>
                   ) : valuesError ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">Error: {valuesError}</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('dashboardFilter.errorPrefix')}{valuesError}</div>
                   ) : distinctValues.length === 0 ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">No values found</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('dashboardFilter.noValuesFound')}</div>
                   ) : (
                     distinctValues.map((value, index) => {
                       const isSelected = localFilter.values?.includes(value)
@@ -607,7 +608,7 @@ export default function DashboardFilterConfigModal({
         >
           {/* Header */}
           <div className="dc:flex dc:items-center dc:justify-between dc:p-4 dc:border-b border-dc-border">
-            <h2 className="dc:text-lg dc:font-semibold text-dc-text">Edit Filter</h2>
+            <h2 className="dc:text-lg dc:font-semibold text-dc-text">{t('dashboardFilter.editFilter')}</h2>
             <button
               onClick={onClose}
               className="dc:p-1 text-dc-text-muted hover:text-dc-text dc:transition-colors"
@@ -620,8 +621,8 @@ export default function DashboardFilterConfigModal({
           <div className="dc:p-4 dc:space-y-4">
             {/* Filter Label */}
             <div>
-              <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                Filter Label
+                <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
+                {t('dashboardFilter.filterLabel')}
               </label>
               <input
                 type="text"
@@ -636,11 +637,10 @@ export default function DashboardFilterConfigModal({
             {initialFilter.isUniversalTime && (
               <div className="dc:p-3 dc:rounded-md bg-dc-info-bg dc:border border-dc-info-border">
                 <div className="dc:text-sm dc:font-medium text-dc-info dc:mb-1">
-                  Universal Time Filter
+                  {t('dashboardFilter.universalTimeFilter')}
                 </div>
                 <div className="dc:text-xs text-dc-text-secondary">
-                  This filter applies to all time dimensions in mapped portlets.
-                  Users can select the date range when viewing the dashboard.
+                  {t('dashboardFilter.universalTimeDescription')}
                 </div>
               </div>
             )}
@@ -650,7 +650,7 @@ export default function DashboardFilterConfigModal({
               <div>
                 <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
                   <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary">
-                    Field
+                    {t('dashboardFilter.field')}
                   </label>
                   <button
                     onClick={() => setShowAllFields(!showAllFields)}
@@ -660,12 +660,12 @@ export default function DashboardFilterConfigModal({
                     {showAllFields ? (
                       <>
                         <EyeOffIcon className="dc:w-3.5 dc:h-3.5" />
-                        <span>Dashboard</span>
+                        <span>{t('dashboardFilter.dashboard')}</span>
                       </>
                     ) : (
                       <>
                         <EyeIcon className="dc:w-3.5 dc:h-3.5" />
-                        <span>All</span>
+                        <span>{t('dashboardFilter.all')}</span>
                       </>
                     )}
                   </button>
@@ -686,7 +686,7 @@ export default function DashboardFilterConfigModal({
                       <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-surface-tertiary text-dc-text-muted">
                         <DimensionIcon className="dc:w-4 dc:h-4" />
                       </span>
-                      <span className="dc:flex-1 dc:text-sm text-dc-text-muted dc:text-left">Click to select a field</span>
+                      <span className="dc:flex-1 dc:text-sm text-dc-text-muted dc:text-left">{t('dashboardFilter.clickToSelectField')}</span>
                     </>
                   )}
                   <EditIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
@@ -698,7 +698,7 @@ export default function DashboardFilterConfigModal({
             {(localFilter.member || initialFilter.isUniversalTime) && !initialFilter.isUniversalTime && (
               <div>
                 <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                  Operator
+                  {t('dashboardFilter.operator')}
                 </label>
                 <div className="dc:relative">
                   <button
@@ -738,7 +738,7 @@ export default function DashboardFilterConfigModal({
             {localFilter.member && !initialFilter.isUniversalTime && (
               <div>
                 <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                  Default Value
+                  {t('dashboardFilter.defaultValue')}
                 </label>
                 {renderValueInput()}
               </div>
@@ -751,20 +751,20 @@ export default function DashboardFilterConfigModal({
               onClick={onDelete}
               className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-danger hover:bg-dc-danger-bg dc:rounded dc:transition-colors"
             >
-              Delete Filter
+              {t('dashboardFilter.deleteFilter')}
             </button>
             <div className="dc:flex dc:items-center dc:gap-2">
               <button
                 onClick={onClose}
                 className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary hover:text-dc-text dc:transition-colors"
               >
-                Cancel
+                {t('common.actions.cancel')}
               </button>
               <button
                 onClick={handleSave}
                 className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded dc:transition-colors"
               >
-                Done
+                {t('common.actions.done')}
               </button>
             </div>
           </div>

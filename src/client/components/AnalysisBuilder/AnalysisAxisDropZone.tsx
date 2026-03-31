@@ -14,6 +14,7 @@
 import { useState, useCallback, useRef, useEffect, DragEvent } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
 import type { AxisDropZoneConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -533,7 +534,7 @@ export default function AnalysisAxisDropZone({
       </div>
 
       {mandatory && fields.length === 0 && (
-        <div className="dc:text-xs text-dc-error dc:mt-1">This field is required</div>
+        <div className="dc:text-xs text-dc-error dc:mt-1">{t('chart.dropZone.required')}</div>
       )}
     </div>
   )

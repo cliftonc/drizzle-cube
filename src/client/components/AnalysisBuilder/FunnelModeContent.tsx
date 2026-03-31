@@ -12,6 +12,7 @@ import type { ColorPalette } from '../../utils/colorPalettes'
 import FunnelConfigPanel from './FunnelConfigPanel'
 import FunnelStepList from './FunnelStepList'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
+import { t } from '../../../i18n/runtime'
 
 export interface FunnelModeContentProps {
   /** Currently selected cube for funnel */
@@ -91,31 +92,33 @@ const FunnelModeContent = memo(function FunnelModeContent({
   return (
     <div className="dc:flex dc:flex-col dc:h-full">
       {/* Tab Bar */}
-      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
-        <button
-          onClick={() => setActiveTab('steps')}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'steps'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-        >
-          Steps
-        </button>
-        <button
-          onClick={() => hasDisplayTab && setActiveTab('display')}
-          disabled={!hasDisplayTab}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'display'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : !hasDisplayTab
-                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+      <div className="dc:border-b border-dc-border dc:flex-shrink-0 dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
+        <div className="dc:flex dc:min-w-max">
+          <button
+            onClick={() => setActiveTab('steps')}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'steps'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                 : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-          title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
-        >
-          Display
-        </button>
+            }`}
+          >
+            {t('funnel.tabs.steps')}
+          </button>
+          <button
+            onClick={() => hasDisplayTab && setActiveTab('display')}
+            disabled={!hasDisplayTab}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'display'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
+                : !hasDisplayTab
+                  ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+                  : 'text-dc-text-secondary hover:text-dc-text'
+            }`}
+            title={!hasDisplayTab ? t('funnel.tabs.displayUnavailable') : t('funnel.tabs.displayTitle')}
+          >
+            {t('funnel.tabs.display')}
+          </button>
+        </div>
       </div>
 
       {/* Tab Content */}

@@ -22,6 +22,7 @@ import {
   countFilters,
   getAllFilterableFields
 } from './utils'
+import { t } from '../../../i18n/runtime'
 
 const AddIcon = getIcon('add')
 const FilterIcon = getIcon('filter')
@@ -128,7 +129,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
           <div className="dc:flex dc:items-center">
             <FilterIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:mr-2" />
             <h4 className="dc:text-sm dc:font-semibold text-dc-text-secondary">
-              Filters ({totalFilterCount})
+              {t('filter.shared.builder.filters', { count: totalFilterCount })}
             </h4>
           </div>
 
@@ -139,7 +140,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
                 onClick={handleClearAllFilters}
                 className="dc:text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden dc:underline"
               >
-                Clear all
+                {t('filter.shared.builder.clearAll')}
               </button>
             )}
 
@@ -154,7 +155,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
               }`}
             >
               <AddIcon className="dc:w-3 dc:h-3" />
-              <span>Add Filter</span>
+              <span>{t('filter.shared.builder.addFilter')}</span>
             </button>
           </div>
         </div>

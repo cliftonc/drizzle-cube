@@ -19,6 +19,7 @@ import type { SemanticQuery } from '../types/query'
 import type { LogicalPlanner } from './logical-planner'
 import { MeasureBuilder } from '../builders/measure-builder'
 import { resolveCubeReference } from '../cube-utils'
+import { t } from '../../i18n/runtime'
 import type {
   LogicalNode,
   QueryNode,
@@ -80,14 +81,14 @@ export class LogicalPlanBuilder {
   ): LogicalPlanWithAnalysis {
     const cubeNames = Array.from(this.queryPlanner.analyzeCubeUsage(query))
     if (cubeNames.length === 0) {
-      throw new Error('No cubes found in query')
+      throw new Error(t('server.errors.noCubesInQuery'))
     }
 
     const primaryCubeSelection = this.queryPlanner.analyzePrimaryCube(cubeNames, query, cubes)
     const primaryCubeName = primaryCubeSelection.selectedCube
     const primaryCube = cubes.get(primaryCubeName)
     if (!primaryCube) {
-      throw new Error(`Primary cube '${primaryCubeName}' not found`)
+      throw new Error(t('server.errors.primaryCubeNotFound', { cubeName: primaryCubeName }))
     }
 
     const cubesToJoin = cubeNames.filter(name => name !== primaryCubeName)
@@ -818,7 +819,7 @@ export class LogicalPlanBuilder {
     return query.measures.map(name => {
       const [cubeName, localName] = name.split('.')
       const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(`Cube '${cubeName}' not found for measure '${name}'`)
+      if (!cube) throw new Error(t('server.errors.cubeNotFoundForMeasure', { cubeName, measure: name }))
       return {
         name,
         cube: this.toCubeRef(cube),
@@ -833,7 +834,7 @@ export class LogicalPlanBuilder {
     return query.dimensions.map(name => {
       const [cubeName, localName] = name.split('.')
       const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(`Cube '${cubeName}' not found for dimension '${name}'`)
+      if (!cube) throw new Error(t('server.errors.cubeNotFoundForDimension', { cubeName, dimension: name }))
       return {
         name,
         cube: this.toCubeRef(cube),
@@ -848,7 +849,7 @@ export class LogicalPlanBuilder {
     return query.timeDimensions.map(td => {
       const [cubeName, localName] = td.dimension.split('.')
       const cube = cubes.get(cubeName)
-      if (!cube) throw new Error(`Cube '${cubeName}' not found for time dimension '${td.dimension}'`)
+      if (!cube) throw new Error(t('server.errors.cubeNotFoundForTimeDimension', { cubeName, timeDimension: td.dimension }))
       return {
         name: td.dimension,
         cube: this.toCubeRef(cube),

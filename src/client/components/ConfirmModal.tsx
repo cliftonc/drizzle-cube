@@ -1,5 +1,6 @@
 import React from 'react'
 import Modal from './Modal'
+import { t } from '../../i18n/runtime'
 
 export interface ConfirmModalProps {
   isOpen: boolean
@@ -33,10 +34,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = 'Confirm',
+  title = t('common.actions.confirm'),
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = t('common.actions.confirm'),
+  cancelText = t('common.actions.cancel'),
   confirmVariant = 'primary',
   isLoading = false,
 }) => {
@@ -89,7 +90,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   <circle className="dc:opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="dc:opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Processing...
+                {t('common.modal.processing')}
               </span>
             ) : (
               confirmText

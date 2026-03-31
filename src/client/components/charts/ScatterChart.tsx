@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { t } from '../../../i18n/runtime'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
@@ -34,8 +35,8 @@ const ScatterChart = React.memo(function ScatterChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-            <div className="dc:text-xs text-dc-text-secondary">No data points to display in scatter chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.scatter')}</div>
           </div>
         </div>
       )
@@ -61,8 +62,8 @@ const ScatterChart = React.memo(function ScatterChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-            <div className="dc:text-xs">Invalid or missing chart axis configuration</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
+            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.axisInvalid')}</div>
           </div>
         </div>
       )
@@ -72,8 +73,8 @@ const ScatterChart = React.memo(function ScatterChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-            <div className="dc:text-xs">Missing required X-axis or Y-axis fields</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
+            <div className="dc:text-xs">{t('chart.runtime.configErrorHint.axisFields')}</div>
           </div>
         </div>
       )
@@ -162,7 +163,7 @@ const ScatterChart = React.memo(function ScatterChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for scatter chart after transformation</div>
           </div>
         </div>
@@ -279,9 +280,9 @@ const ScatterChart = React.memo(function ScatterChart({
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Scatter Chart Error</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Scatter Chart' })}</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
+          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
         </div>
       </div>
     )

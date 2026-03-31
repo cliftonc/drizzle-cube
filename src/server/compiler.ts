@@ -28,6 +28,7 @@ import { formatSqlString } from '../adapters/utils'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
 import { resolveCubeReference } from './cube-utils'
+import { t } from '../i18n/runtime'
 
 export class SemanticLayerCompiler {
   private cubes: Map<string, Cube> = new Map()
@@ -108,7 +109,7 @@ export class SemanticLayerCompiler {
    */
   private createDbExecutor(): DatabaseExecutor {
     if (!this.db) {
-      throw new Error('Database executor not configured')
+      throw new Error(t('server.errors.dbNotConfigured'))
     }
     return createDatabaseExecutor(this.db, this.schema, this.engineType)
   }
@@ -164,12 +165,12 @@ export class SemanticLayerCompiler {
       if (!cube.joins) continue
       for (const [joinName, joinDef] of Object.entries(cube.joins)) {
         if (typeof joinDef.targetCube === 'string' && !this.cubes.has(joinDef.targetCube)) {
-          errors.push(`${cubeName}.joins.${joinName}: target cube '${joinDef.targetCube}' is not registered`)
+          errors.push(t('server.errors.cubeRefUnresolved', { cubeName, joinName, targetCube: joinDef.targetCube }))
         }
       }
     }
     if (errors.length > 0) {
-      throw new Error(`Unresolved cube references:\n${errors.map(e => `  - ${e}`).join('\n')}`)
+      throw new Error(t('server.errors.unresolvedCubeRefs', { details: errors.map(e => `  - ${e}`).join('\n') }))
     }
   }
 
@@ -186,7 +187,7 @@ export class SemanticLayerCompiler {
         // Validate calculatedSql exists
         if (!measure.calculatedSql) {
           errors.push(
-            `Calculated measure '${cube.name}.${fieldName}' must have calculatedSql property`
+            t('server.validation.calculatedMeasure.mustHaveCalculatedSql', { cubeName: cube.name, fieldName })
           )
           continue
         }
@@ -195,7 +196,7 @@ export class SemanticLayerCompiler {
         const syntaxValidation = validateTemplateSyntax(measure.calculatedSql)
         if (!syntaxValidation.isValid) {
           errors.push(
-            `Invalid calculatedSql syntax in '${cube.name}.${fieldName}': ${syntaxValidation.errors.join(', ')}`
+            t('server.validation.calculatedMeasure.invalidSyntax', { cubeName: cube.name, fieldName, errors: syntaxValidation.errors.join(', ') })
           )
           continue
         }
@@ -223,7 +224,7 @@ export class SemanticLayerCompiler {
       const cycle = resolver.detectCycle()
       if (cycle) {
         errors.push(
-          `Circular dependency detected in calculated measures: ${cycle.join(' -> ')}`
+          t('server.validation.calculatedMeasure.circularDependency', { cycle: cycle.join(' -> ') })
         )
       }
     }
@@ -231,7 +232,7 @@ export class SemanticLayerCompiler {
     // Throw if any validation errors
     if (errors.length > 0) {
       throw new Error(
-        `Calculated measure validation failed for cube '${cube.name}':\n${errors.join('\n')}`
+        t('server.errors.calculatedMeasureValidation', { cubeName: cube.name, details: errors.join('\n') })
       )
     }
   }
@@ -293,9 +294,9 @@ export class SemanticLayerCompiler {
     // Validate cube exists
     const cube = this.cubes.get(cubeName)
     if (!cube) {
-      throw new Error(`Cube '${cubeName}' not found`)
+      throw new Error(t('server.errors.cubeNotFound', { cubeName }))
     }
-    
+
     // Use unified execution which will auto-detect single cube and includes validation
     return this.execute(query, securityContext)
   }
@@ -486,7 +487,7 @@ export class SemanticLayerCompiler {
   ): Promise<{ sql: string; params?: any[] }> {
     const cube = this.getCube(cubeName)
     if (!cube) {
-      throw new Error(`Cube '${cubeName}' not found`)
+      throw new Error(t('server.errors.cubeNotFound', { cubeName }))
     }
 
     const executor = this.createQueryExecutor()
@@ -679,7 +680,7 @@ export function validateQueryAgainstCubes(
   const errors: string[] = []
   const activeModes = getActiveValidationModes(query)
   if (activeModes.length > 1) {
-    errors.push(`Query contains multiple query modes: ${activeModes.join(', ')}`)
+    errors.push(t('server.validation.query.multipleQueryModes', { modes: activeModes.join(', ') }))
     return { isValid: false, errors }
   }
 
@@ -691,12 +692,12 @@ export function validateQueryAgainstCubes(
       if (typeof bindingKey === 'string') {
         const [cubeName] = bindingKey.split('.')
         if (cubeName && !cubes.has(cubeName)) {
-          errors.push(`Funnel binding key cube not found: ${cubeName}`)
+          errors.push(t('server.validation.query.funnelBindingKeyCubeNotFound', { cubeName }))
         }
       } else if (Array.isArray(bindingKey)) {
         for (const mapping of bindingKey) {
           if (!cubes.has(mapping.cube)) {
-            errors.push(`Funnel binding key cube not found: ${mapping.cube}`)
+            errors.push(t('server.validation.query.funnelBindingKeyCubeNotFound', { cubeName: mapping.cube }))
           }
         }
       }
@@ -708,7 +709,7 @@ export function validateQueryAgainstCubes(
       if (typeof bindingKey === 'string') {
         const [cubeName] = bindingKey.split('.')
         if (cubeName && !cubes.has(cubeName)) {
-          errors.push(`Flow binding key cube not found: ${cubeName}`)
+          errors.push(t('server.validation.query.flowBindingKeyCubeNotFound', { cubeName }))
         }
       }
     },
@@ -718,7 +719,7 @@ export function validateQueryAgainstCubes(
       // Validate cube from time dimension exists
       const cubeName = extractCubeFromRetentionTimeDimension(retention.timeDimension)
       if (cubeName && !cubes.has(cubeName)) {
-        errors.push(`Retention cube not found: ${cubeName}`)
+        errors.push(t('server.validation.query.retentionCubeNotFound', { cubeName }))
       }
 
       // Validate binding key cube(s) exist
@@ -726,12 +727,12 @@ export function validateQueryAgainstCubes(
       if (typeof bindingKey === 'string') {
         const [bkCubeName] = bindingKey.split('.')
         if (bkCubeName && !cubes.has(bkCubeName)) {
-          errors.push(`Retention binding key cube not found: ${bkCubeName}`)
+          errors.push(t('server.validation.query.retentionBindingKeyCubeNotFound', { cubeName: bkCubeName }))
         }
       } else if (Array.isArray(bindingKey)) {
         for (const mapping of bindingKey) {
           if (!cubes.has(mapping.cube)) {
-            errors.push(`Retention binding key cube not found: ${mapping.cube}`)
+            errors.push(t('server.validation.query.retentionBindingKeyCubeNotFound', { cubeName: mapping.cube }))
           }
         }
       }
@@ -741,7 +742,7 @@ export function validateQueryAgainstCubes(
         for (const dim of retention.breakdownDimensions) {
           const [bdCubeName] = dim.split('.')
           if (bdCubeName && !cubes.has(bdCubeName)) {
-            errors.push(`Retention breakdown cube not found: ${bdCubeName}`)
+            errors.push(t('server.validation.query.retentionBreakdownCubeNotFound', { cubeName: bdCubeName }))
           }
         }
       }
@@ -763,7 +764,7 @@ export function validateQueryAgainstCubes(
       const [cubeName, fieldName] = measure.split('.')
       
       if (!cubeName || !fieldName) {
-        errors.push(`Invalid measure format: ${measure}. Expected format: 'CubeName.fieldName'`)
+        errors.push(t('server.validation.query.invalidMeasureFormat', { measure }))
         continue
       }
 
@@ -772,7 +773,7 @@ export function validateQueryAgainstCubes(
       // Check if cube exists
       const cube = cubes.get(cubeName)
       if (!cube) {
-        errors.push(`Cube '${cubeName}' not found (referenced in measure '${measure}')`)
+        errors.push(t('server.validation.query.cubeNotFoundForMeasure', { cubeName, measure }))
         continue
       }
 
@@ -781,7 +782,7 @@ export function validateQueryAgainstCubes(
         const hint = fieldName === cubeName
           ? `. Did you mean one of: ${Object.keys(cube.measures).slice(0, 5).map(m => `'${cubeName}.${m}'`).join(', ')}?`
           : ''
-        errors.push(`Measure '${fieldName}' not found on cube '${cubeName}'${hint}`)
+        errors.push(t('server.validation.query.measureNotFound', { fieldName, cubeName, hint }))
       }
     }
   }
@@ -792,7 +793,7 @@ export function validateQueryAgainstCubes(
       const [cubeName, fieldName] = dimension.split('.')
       
       if (!cubeName || !fieldName) {
-        errors.push(`Invalid dimension format: ${dimension}. Expected format: 'CubeName.fieldName'`)
+        errors.push(t('server.validation.query.invalidDimensionFormat', { dimension }))
         continue
       }
 
@@ -801,7 +802,7 @@ export function validateQueryAgainstCubes(
       // Check if cube exists
       const cube = cubes.get(cubeName)
       if (!cube) {
-        errors.push(`Cube '${cubeName}' not found (referenced in dimension '${dimension}')`)
+        errors.push(t('server.validation.query.cubeNotFoundForDimension', { cubeName, dimension }))
         continue
       }
 
@@ -810,7 +811,7 @@ export function validateQueryAgainstCubes(
         const hint = fieldName === cubeName
           ? `. Did you mean one of: ${Object.keys(cube.dimensions).slice(0, 5).map(d => `'${cubeName}.${d}'`).join(', ')}?`
           : ''
-        errors.push(`Dimension '${fieldName}' not found on cube '${cubeName}'${hint}`)
+        errors.push(t('server.validation.query.dimensionNotFound', { fieldName, cubeName, hint }))
       }
     }
   }
@@ -821,7 +822,7 @@ export function validateQueryAgainstCubes(
       const [cubeName, fieldName] = timeDimension.dimension.split('.')
       
       if (!cubeName || !fieldName) {
-        errors.push(`Invalid timeDimension format: ${timeDimension.dimension}. Expected format: 'CubeName.fieldName'`)
+        errors.push(t('server.validation.query.invalidTimeDimensionFormat', { dimension: timeDimension.dimension }))
         continue
       }
 
@@ -830,13 +831,13 @@ export function validateQueryAgainstCubes(
       // Check if cube exists
       const cube = cubes.get(cubeName)
       if (!cube) {
-        errors.push(`Cube '${cubeName}' not found (referenced in timeDimension '${timeDimension.dimension}')`)
+        errors.push(t('server.validation.query.cubeNotFoundForTimeDimension', { cubeName, dimension: timeDimension.dimension }))
         continue
       }
 
       // Check if dimension exists on cube (timeDimensions reference dimensions)
       if (!cube.dimensions[fieldName]) {
-        errors.push(`TimeDimension '${fieldName}' not found on cube '${cubeName}' (must be a dimension with time type)`)
+        errors.push(t('server.validation.query.timeDimensionNotFound', { fieldName, cubeName }))
       }
     }
   }
@@ -850,7 +851,7 @@ export function validateQueryAgainstCubes(
 
   // Ensure at least one cube is referenced
   if (referencedCubes.size === 0) {
-    errors.push('Query must reference at least one cube through measures, dimensions, or filters')
+    errors.push(t('server.validation.query.mustReferenceAtLeastOneCube'))
   }
 
   // Validate ungrouped query constraints
@@ -858,28 +859,28 @@ export function validateQueryAgainstCubes(
     const hasDimensions = (query.dimensions && query.dimensions.length > 0) ||
                           (query.timeDimensions && query.timeDimensions.length > 0)
     if (!hasDimensions) {
-      errors.push('Ungrouped queries require at least one dimension or time dimension')
+      errors.push(t('server.validation.query.ungroupedRequiresDimension'))
     }
 
     // Reject incompatible query modes
     if (query.funnel) {
-      errors.push('Ungrouped queries are incompatible with funnel analysis')
+      errors.push(t('server.validation.query.ungroupedIncompatibleFunnel'))
     }
     if (query.flow) {
-      errors.push('Ungrouped queries are incompatible with flow analysis')
+      errors.push(t('server.validation.query.ungroupedIncompatibleFlow'))
     }
     if (query.retention) {
-      errors.push('Ungrouped queries are incompatible with retention analysis')
+      errors.push(t('server.validation.query.ungroupedIncompatibleRetention'))
     }
 
     // Reject compareDateRange
     if (query.timeDimensions?.some(td => td.compareDateRange && td.compareDateRange.length > 0)) {
-      errors.push('Ungrouped queries are incompatible with compareDateRange')
+      errors.push(t('server.validation.query.ungroupedIncompatibleCompareDateRange'))
     }
 
     // Reject fillMissingDates
     if (query.timeDimensions?.some(td => td.fillMissingDates === true)) {
-      errors.push('Ungrouped queries are incompatible with fillMissingDates')
+      errors.push(t('server.validation.query.ungroupedIncompatibleFillMissingDates'))
     }
 
     // Validate measure types — only raw-column-compatible types allowed
@@ -964,14 +965,14 @@ function validateFilter(
 
   // Handle simple filter condition
   if (!('member' in filter)) {
-    errors.push('Filter must have a member field')
+    errors.push(t('server.validation.query.filterMustHaveMember'))
     return
   }
 
   const [cubeName, fieldName] = filter.member.split('.')
   
   if (!cubeName || !fieldName) {
-    errors.push(`Invalid filter member format: ${filter.member}. Expected format: 'CubeName.fieldName'`)
+    errors.push(t('server.validation.query.invalidFilterMemberFormat', { member: filter.member }))
     return
   }
 
@@ -980,7 +981,7 @@ function validateFilter(
   // Check if cube exists
   const cube = cubes.get(cubeName)
   if (!cube) {
-    errors.push(`Cube '${cubeName}' not found (referenced in filter '${filter.member}')`)
+    errors.push(t('server.validation.query.cubeNotFoundForFilter', { cubeName, member: filter.member }))
     return
   }
 
@@ -989,7 +990,7 @@ function validateFilter(
     const hint = fieldName === cubeName
       ? `. Did you mean one of: ${[...Object.keys(cube.dimensions), ...Object.keys(cube.measures)].slice(0, 5).map(f => `'${cubeName}.${f}'`).join(', ')}?`
       : ''
-    errors.push(`Filter field '${fieldName}' not found on cube '${cubeName}' (must be a dimension or measure)${hint}`)
+    errors.push(t('server.validation.query.filterFieldNotFound', { fieldName, cubeName, hint }))
   }
 }
 

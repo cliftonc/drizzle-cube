@@ -16,6 +16,7 @@ import type { MetaResponse } from '../../shared/types'
 import { getIcon } from '../../icons'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import { getRelatedCubesSchema } from './utils/fieldUtils'
+import { t } from '../../../i18n/runtime'
 
 const DragHandleIcon = getIcon('menu')
 const CloseIcon = getIcon('close')
@@ -262,7 +263,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
             <div>
               <label className="dc:flex dc:items-center dc:gap-1.5 dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
                 {TimeDimensionIcon && <TimeDimensionIcon className="dc:w-3.5 dc:h-3.5" />}
-                Time Window
+                {t('funnel.step.timeWindow')}
               </label>
               <div ref={timeDropdownRef} className="dc:relative">
                 <button
@@ -308,7 +309,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
                       </button>
                     ))}
                     <div className="dc:px-3 dc:py-2 dc:border-t border-dc-border dc:text-xs text-dc-text-muted">
-                      Max time from previous step to qualify
+                      {t('funnel.step.timeWindowHelp')}
                     </div>
                   </div>
                 )}

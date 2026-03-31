@@ -1,4 +1,6 @@
 
+import { t } from '../../i18n/runtime'
+
 interface DataHistogramProps {
   /** Array of numeric values to create histogram from */
   values: number[]
@@ -175,7 +177,7 @@ export default function DataHistogram({
 
       {/* Average indicator */}
       <div className="dc:text-center dc:mt-1 dc:text-xs text-dc-text-muted">
-        Average of {values.length} values
+        {t('dataHistogram.average', { count: values.length })}
       </div>
     </div>
   )

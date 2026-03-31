@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo } from 'react'
+import { t } from '../../../i18n/runtime'
 import { useCubeMeta } from '../../providers/CubeProvider'
 import { getMeasureTypeIcon } from '../../icons'
 import {
@@ -53,8 +54,8 @@ const DataTable = React.memo(function DataTable({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.table')}</div>
         </div>
       </div>
     )
@@ -110,8 +111,8 @@ function PivotedTable({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.table')}</div>
         </div>
       </div>
     )
@@ -297,7 +298,7 @@ function FlatTable({
       >
         <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No columns available</div>
-          <div className="dc:text-xs text-dc-text-secondary">Data structure is invalid</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.table.invalidStructure')}</div>
         </div>
       </div>
     )

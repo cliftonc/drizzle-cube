@@ -18,6 +18,7 @@ import type { CubeQuery } from '../../types'
 import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
+import { t } from '../../../i18n/runtime'
 const SchemaVisualizationLazy = React.lazy(() =>
   import('../SchemaVisualization/SchemaVisualizationLazy').then(m => ({ default: m.SchemaVisualizationLazy }))
 )
@@ -458,10 +459,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
         <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
-          Executing Query...
+          {t('results.loading.title')}
         </div>
         <div className="dc:text-xs text-dc-text-muted">
-          Running your query against the cube API
+          {t('results.loading.subtitle')}
         </div>
       </div>
     </div>
@@ -484,10 +485,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <div className="dc:text-center dc:max-w-md">
             <ErrorIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-error dc:mb-4" />
             <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
-              Query Execution Failed
+              {t('results.error.title')}
             </div>
             <div className="dc:text-sm text-dc-text-secondary dc:mb-4">
-              There was an error executing your query. Please check the query and try again.
+              {t('results.error.subtitle')}
             </div>
             {executionError && (
               <div className="bg-dc-danger-bg dc:border border-dc-error dc:rounded-lg dc:p-3 dc:text-left">
@@ -537,10 +538,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
         <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
-          Preparing Query...
+          {t('results.waiting.title')}
         </div>
         <div className="dc:text-xs text-dc-text-muted">
-          Your query will execute shortly
+          {t('results.waiting.subtitle')}
         </div>
       </div>
     </div>
@@ -554,10 +555,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
         <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
-          Ready to Execute
+          {t('results.needsRefresh.title')}
         </div>
         <div className="dc:text-xs text-dc-text-muted dc:mb-4">
-          Click refresh to run your query
+          {t('results.needsRefresh.subtitle')}
         </div>
         {onRefreshClick && (
           <button
@@ -567,7 +568,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <svg className="dc:w-4 dc:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Run Query
+            {t('results.needsRefresh.runButton')}
           </button>
         )}
       </div>
@@ -578,13 +579,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // Shows mode-specific guidance based on analysis type
   const renderEmpty = () => {
     // Mode-specific empty message
-    let emptyMessage = 'Add metrics or breakdowns from the panel on the right to see results'
+    let emptyMessage = t('results.empty.query')
     if (isRetentionMode) {
-      emptyMessage = 'Select a cube and configure retention settings to see results'
+      emptyMessage = t('results.empty.retention')
     } else if (isFunnelMode) {
-      emptyMessage = 'Add funnel steps to see conversion analysis'
+      emptyMessage = t('results.empty.funnel')
     } else if (isFlowMode) {
-      emptyMessage = 'Configure flow analysis to see user journey paths'
+      emptyMessage = t('results.empty.flow')
     }
 
     return (
@@ -592,7 +593,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:text-center dc:mb-16">
           <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-text-muted dc:mb-3" />
           <div className="dc:text-sm dc:font-semibold text-dc-text-secondary dc:mb-1">
-            No Results Yet
+            {t('results.empty.title')}
           </div>
           <div className="dc:text-xs text-dc-text-muted dc:mb-4">
             {emptyMessage}
@@ -604,7 +605,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
               className="dc:inline-flex dc:items-center dc:gap-2 dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-white bg-dc-accent hover:bg-dc-accent dc:rounded-lg dc:transition-colors dc:shadow-sm"
             >
               <SparklesIcon className="dc:w-4 dc:h-4" />
-              Analyse with AI
+              {t('results.ai.button')}
             </button>
           )}
         </div>
@@ -618,10 +619,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       <div className="dc:text-center">
         <SuccessIcon className="dc:w-12 dc:h-12 dc:mx-auto text-dc-success dc:mb-3" />
         <div className="dc:text-sm dc:font-semibold text-dc-text dc:mb-1">
-          Query Successful
+          {t('results.noData.title')}
         </div>
         <div className="dc:text-xs text-dc-text-muted">
-          No data returned from the query
+          {t('results.noData.subtitle')}
         </div>
       </div>
     </div>
@@ -634,8 +635,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="dc:text-center">
             <ChartIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
-            <div className="dc:text-xs">Run a query to see chart visualization</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('results.chart.noData')}</div>
+            <div className="dc:text-xs">{t('results.chart.noDataHint')}</div>
           </div>
         </div>
       )
@@ -652,7 +653,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="dc:text-center">
             <WarningIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('results.chart.unsupported')}</div>
             <div className="dc:text-xs">{effectiveChartType}</div>
           </div>
         </div>
@@ -738,7 +739,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
     return (
       <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
         <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
-          Execution Error
+          {t('results.debug.executionError')}
         </h4>
         <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
       </div>
@@ -751,7 +752,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <CodeBlock
           code={JSON.stringify(chartConfig, null, 2)}
           language="json"
-          title="Chart Config"
+          title={t('results.debug.chartConfig')}
           height="16rem"
         />
       </div>
@@ -759,7 +760,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <CodeBlock
           code={JSON.stringify(displayConfig, null, 2)}
           language="json"
-          title="Display Config"
+          title={t('results.debug.displayConfig')}
           height="16rem"
         />
       </div>
@@ -772,14 +773,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <CodeBlock
           code={JSON.stringify(executionResults, null, 2)}
           language="json"
-          title={title || `Server Response (${executionResults.length} rows)`}
+          title={title || `${t('results.debug.serverResponse')} (${executionResults.length} ${t('results.header.rows')})`}
           maxHeight="24rem"
         />
       ) : (
         <>
-          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.serverResponse')}</h4>
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-            No results yet
+            {t('results.debug.noResults')}
           </div>
         </>
       )}
@@ -816,7 +817,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <span className="dc:text-xs text-dc-text-muted">{config.badgeText}</span>
           )}
           {modeLoading && (
-            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">Loading SQL...</span>
+            <span className="dc:text-xs text-dc-text-muted dc:animate-pulse">{t('results.debug.loadingSql')}</span>
           )}
         </div>
 
@@ -880,7 +881,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       {/* Query tabs for multi-query mode */}
       {debugDataPerQuery.length > 1 && (
         <div className="dc:flex dc:items-center dc:gap-1 dc:mb-4">
-          <span className="dc:text-xs dc:font-medium text-dc-text-muted dc:mr-2">Query:</span>
+          <span className="dc:text-xs dc:font-medium text-dc-text-muted dc:mr-2">{t('results.debug.query')}</span>
           <div className="dc:flex dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
             {debugDataPerQuery.map((data, idx) => (
               <button
@@ -909,7 +910,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       {executionError && (
         <div className="bg-dc-danger-bg dark:bg-dc-danger-bg dc:border border-dc-error dark:border-dc-error dc:rounded dc:p-3">
           <h4 className="dc:text-sm dc:font-semibold text-dc-error dark:text-dc-error dc:mb-1">
-            Execution Error
+            {t('results.debug.executionError')}
           </h4>
           <p className="dc:text-sm text-dc-error dark:text-dc-error">{executionError}</p>
         </div>
@@ -918,27 +919,27 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       {/* Query Analysis - full width (at top for visibility) */}
       <div>
         <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
-          <h4 className="dc:text-sm dc:font-semibold text-dc-text">Query Analysis</h4>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text">{t('results.debug.queryAnalysis')}</h4>
           {debugAnalysis && (
             <button
               onClick={handleCopyMarkdown}
               className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex dc:items-center dc:gap-1"
-              title="Copy query, analysis, and SQL as markdown"
+              title={t('results.debug.copyMarkdownTitle')}
             >
               {copyMarkdownState === 'copied' ? (
                 <>
                   <span className="text-dc-success">✓</span>
-                  Copied!
+                  {t('common.actions.copied')}
                 </>
               ) : (
-                <>📋 Copy as Markdown</>
+                <>{`📋 ${t('results.debug.copyAsMarkdown')}`}</>
               )}
             </button>
           )}
         </div>
         {debugLoading ? (
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-            Loading...
+            {t('common.loading')}
           </div>
         ) : debugAnalysis ? (
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
@@ -946,7 +947,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           </div>
         ) : (
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-            {debugError ? 'Analysis unavailable due to error' : 'Add metrics to see analysis'}
+            {debugError ? t('results.debug.analysisError') : t('results.debug.analysisEmpty')}
           </div>
         )}
       </div>
@@ -958,20 +959,20 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <CodeBlock
               code={JSON.stringify(debugQuery, null, 2)}
               language="json"
-              title={isShowingFunnelQuery ? "Executed Query (with funnel filters)" : "Cube Query"}
+              title={isShowingFunnelQuery ? t('results.debug.cubeQueryExecuted') : t('results.debug.cubeQuery')}
               height="16rem"
             />
             {isShowingFunnelQuery && activeDebugIndex > 0 && (
               <div className="dc:mt-1 dc:text-xs text-dc-text-muted">
-                <span className="text-dc-accent">ℹ</span> This query includes an IN filter with binding key values from the previous step
+                <span className="text-dc-accent">ℹ</span> {t('results.debug.funnelFilterHint')}
               </div>
             )}
           </>
         ) : (
           <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Cube Query</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.cubeQuery')}</h4>
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-              No query
+              {t('results.debug.noQuery')}
             </div>
           </>
         )}
@@ -982,7 +983,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         sql={debugSql}
         sqlLoading={debugLoading}
         sqlError={debugError}
-        sqlPlaceholder="Add metrics to generate SQL"
+        sqlPlaceholder={t('results.debug.standard.sqlPlaceholder')}
         explainResult={explainResult}
         explainLoading={explainLoading}
         explainHasRun={explainHasRun}
@@ -1006,7 +1007,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <CodeBlock
             code={JSON.stringify(chartConfig, null, 2)}
             language="json"
-            title="Chart Config"
+            title={t('results.debug.chartConfig')}
             height="16rem"
           />
         </div>
@@ -1016,7 +1017,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <CodeBlock
             code={JSON.stringify(displayConfig, null, 2)}
             language="json"
-            title="Display Config"
+            title={t('results.debug.displayConfig')}
             height="16rem"
           />
         </div>
@@ -1028,14 +1029,14 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <CodeBlock
             code={JSON.stringify(executionResults, null, 2)}
             language="json"
-            title={`Server Response (${executionResults.length} rows)`}
+            title={`${t('results.debug.serverResponse')} (${executionResults.length} ${t('results.header.rows')})`}
             maxHeight="24rem"
           />
         ) : (
           <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Server Response</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.serverResponse')}</h4>
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm">
-              No results yet
+              {t('results.debug.noResults')}
             </div>
           </>
         )}
@@ -1064,26 +1065,26 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       ) : null
 
       return renderModeDebug({
-        label: 'Funnel Query',
-        badgeText: metadata?.stepCount ? `${metadata.stepCount} steps` : undefined,
+        label: t('results.debug.funnel.label'),
+        badgeText: metadata?.stepCount ? t('results.debug.funnel.steps', { count: metadata.stepCount }) : undefined,
         serverQuery: funnelServerQuery,
-        serverQueryTitle: 'Funnel Server Query',
+        serverQueryTitle: t('results.debug.funnel.serverQuery'),
         serverQueryMissing: (
           <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Funnel Server Query</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.funnel.serverQuery')}</h4>
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-              No funnel query configured
+              {t('results.debug.funnel.noQuery')}
             </div>
           </>
         ),
         debugData: funnelDebugData,
-        sqlPlaceholder: 'Configure funnel binding key to generate SQL',
+        sqlPlaceholder: t('results.debug.funnel.sqlPlaceholder'),
         explainResult: funnelExplainResult,
         explainLoading: funnelExplainLoading,
         explainHasRun: funnelExplainHasRun,
         explainError: funnelExplainError,
         runExplain: runFunnelExplain,
-        metadataTitle: metadataSection ? 'Funnel Steps' : undefined,
+        metadataTitle: metadataSection ? t('results.debug.funnel.stepsTitle') : undefined,
         metadataSection,
         responseSection: renderStandardResponseBlock(),
       })
@@ -1094,19 +1095,19 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       const metadataSection = metadata ? (
         <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
           <div>
-            <span className="text-dc-text-muted">Retention Type:</span>{' '}
+            <span className="text-dc-text-muted">{t('results.debug.retention.retentionType')}</span>{' '}
             <span className="text-dc-text">{metadata.retentionType || 'Classic'}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Periods:</span>{' '}
-            <span className="text-dc-text">{metadata.periods ?? 'Not set'}</span>
+            <span className="text-dc-text-muted">{t('results.debug.retention.periods')}</span>{' '}
+            <span className="text-dc-text">{metadata.periods ?? t('results.debug.flow.notSet')}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Granularity:</span>{' '}
+            <span className="text-dc-text-muted">{t('results.debug.retention.granularity')}</span>{' '}
             <span className="text-dc-text">{metadata.granularity || 'Week'}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Segments:</span>{' '}
+            <span className="text-dc-text-muted">{t('results.debug.retention.segments')}</span>{' '}
             <span className="text-dc-text">{metadata.segmentCount || 1}</span>
           </div>
         </div>
@@ -1114,23 +1115,23 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
 
       const extraSection = retentionChartData?.summary ? (
         <div>
-          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Summary</h4>
+          <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.summaryTitle')}</h4>
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3">
             <div className="dc:grid dc:grid-cols-3 dc:gap-4 dc:text-sm">
               <div>
-                <span className="text-dc-text-muted">Avg Period 1:</span>{' '}
+                <span className="text-dc-text-muted">{t('results.debug.retention.avgPeriod1')}</span>{' '}
                 <span className="text-dc-text dc:font-medium">
                   {(retentionChartData.summary.avgPeriod1Retention * 100).toFixed(1)}%
                 </span>
               </div>
               <div>
-                <span className="text-dc-text-muted">Max Period 1:</span>{' '}
+                <span className="text-dc-text-muted">{t('results.debug.retention.maxPeriod1')}</span>{' '}
                 <span className="text-dc-text dc:font-medium">
                   {(retentionChartData.summary.maxPeriod1Retention * 100).toFixed(1)}%
                 </span>
               </div>
               <div>
-                <span className="text-dc-text-muted">Min Period 1:</span>{' '}
+                <span className="text-dc-text-muted">{t('results.debug.retention.minPeriod1')}</span>{' '}
                 <span className="text-dc-text dc:font-medium">
                   {(retentionChartData.summary.minPeriod1Retention * 100).toFixed(1)}%
                 </span>
@@ -1141,15 +1142,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       ) : null
 
       return renderModeDebug({
-        label: 'Retention Query',
-        badgeText: metadata ? `${metadata.segmentCount || 1} segment(s), ${metadata.totalUsers} users` : undefined,
+        label: t('results.debug.retention.label'),
+        badgeText: metadata ? t('results.debug.retention.badge', { segments: metadata.segmentCount || 1, users: metadata.totalUsers }) : undefined,
         serverQuery: retentionServerQuery,
-        serverQueryTitle: 'Retention Server Query',
+        serverQueryTitle: t('results.debug.retention.serverQuery'),
         serverQueryMissing: (
           <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Retention Server Query</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.retention.serverQuery')}</h4>
             <div className="bg-dc-warning-bg dc:border border-dc-warning dc:rounded dc:p-3 dc:text-sm dc:h-64 dc:overflow-auto">
-              <div className="text-dc-warning dc:font-medium dc:mb-2">Configuration Incomplete</div>
+              <div className="text-dc-warning dc:font-medium dc:mb-2">{t('results.debug.retention.configIncomplete')}</div>
               {retentionValidation && retentionValidation.errors.length > 0 ? (
                 <ul className="list-disc dc:list-inside text-dc-text-secondary dc:space-y-1">
                   {retentionValidation.errors.map((error, i) => (
@@ -1157,19 +1158,19 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   ))}
                 </ul>
               ) : (
-                <p className="text-dc-text-muted">Configure the retention analysis settings to generate a query.</p>
+                <p className="text-dc-text-muted">{t('results.debug.retention.configHint')}</p>
               )}
             </div>
           </>
         ),
         debugData: retentionDebugData,
-        sqlPlaceholder: 'Configure retention to generate SQL',
+        sqlPlaceholder: t('results.debug.retention.sqlPlaceholder'),
         explainResult: retentionExplainResult,
         explainLoading: retentionExplainLoading,
         explainHasRun: retentionExplainHasRun,
         explainError: retentionExplainError,
         runExplain: runRetentionExplain,
-        metadataTitle: metadataSection ? 'Retention Configuration' : undefined,
+        metadataTitle: metadataSection ? t('results.debug.retention.configTitle') : undefined,
         metadataSection,
         extraSection,
         responseSection: renderRetentionResponseBlock(),
@@ -1181,47 +1182,47 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       const metadataSection = metadata ? (
         <div className="dc:grid dc:grid-cols-2 dc:gap-4 dc:text-sm">
           <div>
-            <span className="text-dc-text-muted">Starting Step:</span>{' '}
-            <span className="text-dc-text">{metadata.startingStep?.name || 'Not set'}</span>
+            <span className="text-dc-text-muted">{t('results.debug.flow.startingStep')}</span>{' '}
+            <span className="text-dc-text">{metadata.startingStep?.name || t('results.debug.flow.notSet')}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Event Dimension:</span>{' '}
-            <span className="text-dc-text">{metadata.eventDimension || 'Not set'}</span>
+            <span className="text-dc-text-muted">{t('results.debug.flow.eventDimension')}</span>{' '}
+            <span className="text-dc-text">{metadata.eventDimension || t('results.debug.flow.notSet')}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Steps Before:</span>{' '}
-            <span className="text-dc-text">{metadata.stepsBefore ?? 'Not set'}</span>
+            <span className="text-dc-text-muted">{t('results.debug.flow.stepsBefore')}</span>{' '}
+            <span className="text-dc-text">{metadata.stepsBefore ?? t('results.debug.flow.notSet')}</span>
           </div>
           <div>
-            <span className="text-dc-text-muted">Steps After:</span>{' '}
-            <span className="text-dc-text">{metadata.stepsAfter ?? 'Not set'}</span>
+            <span className="text-dc-text-muted">{t('results.debug.flow.stepsAfter')}</span>{' '}
+            <span className="text-dc-text">{metadata.stepsAfter ?? t('results.debug.flow.notSet')}</span>
           </div>
         </div>
       ) : null
 
       return renderModeDebug({
-        label: 'Flow Query',
+        label: t('results.debug.flow.label'),
         badgeText: metadata ? `${metadata.stepsBefore} before, ${metadata.stepsAfter} after` : undefined,
         serverQuery: flowServerQuery,
-        serverQueryTitle: 'Flow Server Query',
+        serverQueryTitle: t('results.debug.flow.serverQuery'),
         serverQueryMissing: (
           <>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Flow Server Query</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('results.debug.flow.serverQuery')}</h4>
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:h-64 dc:overflow-auto">
-              No flow query configured
+              {t('results.debug.flow.noQuery')}
             </div>
           </>
         ),
         debugData: flowDebugData,
-        sqlPlaceholder: 'Configure flow to generate SQL',
+        sqlPlaceholder: t('results.debug.flow.sqlPlaceholder'),
         explainResult: flowExplainResult,
         explainLoading: flowExplainLoading,
         explainHasRun: flowExplainHasRun,
         explainError: flowExplainError,
         runExplain: runFlowExplain,
-        metadataTitle: metadataSection ? 'Flow Configuration' : undefined,
+        metadataTitle: metadataSection ? t('results.debug.flow.configTitle') : undefined,
         metadataSection,
-        responseSection: renderStandardResponseBlock('Server Response (Sankey Data)'),
+        responseSection: renderStandardResponseBlock(t('results.debug.flow.responseTitle')),
       })
     }
 
@@ -1244,8 +1245,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
-            <div className="dc:text-xs">Configure flow analysis to see results</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('results.flow.noData')}</div>
+            <div className="dc:text-xs">{t('results.flow.noDataHint')}</div>
           </div>
         </div>
       )
@@ -1271,8 +1272,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         <div className="dc:flex dc:items-center dc:justify-center dc:h-full text-dc-text-muted">
           <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data to display</div>
-            <div className="dc:text-xs">Configure flow analysis to see results</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('results.flow.noData')}</div>
+            <div className="dc:text-xs">{t('results.flow.noDataHint')}</div>
           </div>
         </div>
       )
@@ -1283,15 +1284,15 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Nodes Table */}
         <div>
           <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
-            Nodes ({nodes.length})
+            {t('results.flow.nodes', { count: nodes.length })}
           </h3>
           <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Layer</th>
-                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Name</th>
-                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.layer')}</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.name')}</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.count')}</th>
                 </tr>
               </thead>
               <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
@@ -1324,16 +1325,16 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {/* Links Table */}
         <div>
           <h3 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">
-            Transitions ({links.length})
+            {t('results.flow.transitions', { count: links.length })}
           </h3>
           <div className="dc:border border-dc-border dc:rounded dc:overflow-hidden">
             <table className="dc:w-full dc:text-sm">
               <thead className="bg-dc-surface-secondary">
                 <tr>
-                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">From</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.from')}</th>
                   <th className="dc:px-3 dc:py-2 dc:text-center dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">→</th>
-                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">To</th>
-                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">Count</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-left dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.to')}</th>
+                  <th className="dc:px-3 dc:py-2 dc:text-right dc:text-xs dc:font-medium text-dc-text-muted dc:uppercase dc:tracking-wider">{t('results.flow.count')}</th>
                 </tr>
               </thead>
               <tbody className="dc:divide-y divide-dc-border bg-dc-surface">
@@ -1390,7 +1391,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <div className="dc:text-center">
             <TableIcon className="dc:w-12 dc:h-12 dc:mx-auto dc:mb-3 dc:opacity-50" />
             <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
-            <div className="dc:text-xs">Run a query to see table data</div>
+            <div className="dc:text-xs">{t('results.table.noDataHint')}</div>
           </div>
         </div>
       )
@@ -1423,7 +1424,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           className="dc:animate-spin dc:rounded-full dc:h-10 dc:w-10 dc:border-b-2 dc:mx-auto dc:mb-2"
           style={{ borderBottomColor: 'var(--dc-primary)' }}
         />
-        <div className="dc:text-xs text-dc-text-secondary">Refreshing results...</div>
+        <div className="dc:text-xs text-dc-text-secondary">{t('results.refreshing')}</div>
       </div>
     </div>
   )
@@ -1452,20 +1453,20 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
             <span className="dc:text-sm text-dc-text-secondary">
               {hasResults ? (
                 <>
-                  {executionResults.length} row{executionResults.length !== 1 ? 's' : ''}
+                  {executionResults.length} {executionResults.length !== 1 ? t('results.header.rows') : t('results.header.row')}
                   {totalRowCount !== null && totalRowCount > executionResults.length && (
                     <span className="text-dc-text-muted"> of {totalRowCount.toLocaleString()}</span>
                   )}
                   {resultsStale && (
-                    <span className="text-dc-warning dc:ml-2">• Results may be outdated</span>
+                    <span className="text-dc-warning dc:ml-2">• {t('results.header.stale')}</span>
                   )}
                 </>
               ) : executionStatus === 'error' ? (
-                'Query failed'
+                t('results.header.failed')
               ) : executionStatus === 'loading' ? (
-                'Executing...'
+                t('results.header.executing')
               ) : (
-                'No results'
+                t('results.header.noResults')
               )}
             </span>
           </div>
@@ -1479,10 +1480,10 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 onChange={(e) => onDisplayLimitChange(Number(e.target.value))}
                 className="dc:text-xs dc:border border-dc-border dc:rounded dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
               >
-                <option value={50}>50 rows</option>
-                <option value={100}>100 rows</option>
-                <option value={250}>250 rows</option>
-                <option value={500}>500 rows</option>
+                <option value={50}>50 {t('results.header.rows')}</option>
+                <option value={100}>100 {t('results.header.rows')}</option>
+                <option value={250}>250 {t('results.header.rows')}</option>
+                <option value={500}>500 {t('results.header.rows')}</option>
               </select>
             )}
 
@@ -1498,7 +1499,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 title={isAIOpen ? 'Close AI assistant' : 'Analyse with AI'}
               >
                 <SparklesIcon className="dc:w-3 dc:h-3" />
-                <span className="dc:hidden dc:sm:inline">Analyse with AI</span>
+                <span className="dc:hidden dc:sm:inline">{t('results.ai.button')}</span>
               </button>
             )}
 
@@ -1527,18 +1528,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 {shareButtonState === 'idle' ? (
                   <>
                     <ShareIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">Share</span>
+                    <span className="dc:hidden dc:sm:inline">{t('common.actions.share')}</span>
                   </>
                 ) : shareButtonState === 'copied' ? (
                   <>
                     <CheckIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">Copied!</span>
+                    <span className="dc:hidden dc:sm:inline">{t('results.share.copied')}</span>
                   </>
                 ) : (
                   <>
                     <CheckIcon className="dc:w-3 dc:h-3" />
-                    <span className="dc:hidden dc:sm:inline">Copied!</span>
-                    <span className="dc:hidden dc:lg:inline dc:text-[10px] dc:opacity-75">(no chart)</span>
+                    <span className="dc:hidden dc:sm:inline">{t('results.share.copied')}</span>
+                    <span className="dc:hidden dc:lg:inline dc:text-[10px] dc:opacity-75">{t('results.share.noChart')}</span>
                   </>
                 )}
               </button>
@@ -1573,7 +1574,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 title={isFunnelMode ? 'Clear funnel' : 'Clear all query data'}
               >
                 <TrashIcon className="dc:w-3 dc:h-3" />
-                <span className="dc:hidden dc:sm:inline">Clear</span>
+                <span className="dc:hidden dc:sm:inline">{t('common.actions.clear')}</span>
               </button>
             )}
 
@@ -1622,8 +1623,8 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <div className="dc:mt-2 bg-dc-warning-bg dc:border border-dc-warning dc:rounded-lg dc:p-2 dc:flex dc:items-start">
             <WarningIcon className="dc:w-4 dc:h-4 text-dc-warning dc:mr-2 dc:shrink-0 dc:mt-0.5" />
             <div className="dc:text-xs text-dc-warning">
-              <span className="dc:font-semibold">Large dataset:</span> {totalRowCount.toLocaleString()} rows.
-              Consider adding filters to improve performance.
+              <span className="dc:font-semibold">{t('results.warning.largeDataset')}</span> {totalRowCount.toLocaleString()} {t('results.header.rows')}.
+              {t('results.warning.filterHint')}
             </div>
           </div>
         )}
@@ -1641,13 +1642,13 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
           <svg className="dc:w-4 dc:h-4 dc:flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <span className="dc:text-sm dc:font-medium">Query configuration changed. Results may be outdated.</span>
+          <span className="dc:text-sm dc:font-medium">{t('results.warning.configChanged')}</span>
         </div>
         <button
           onClick={() => onRefreshClick()}
           className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning text-white dc:rounded hover:bg-dc-warning/90 dc:transition-colors"
         >
-          Refresh Now
+          {t('results.warning.refreshNow')}
         </button>
       </div>
     )
@@ -1747,7 +1748,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                 title={(hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) ? 'Chart view' : 'Add metrics to enable chart view'}
               >
                 <ChartIcon className="dc:w-4 dc:h-4" />
-                Chart
+                {t('results.view.chart')}
               </button>
 
               {/* Table buttons - show multiple when in multi-query mode */}
@@ -1786,7 +1787,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                     title="Merged table view"
                   >
                     <TableIcon className="dc:w-4 dc:h-4" />
-                    Merged
+                    {t('results.view.merged')}
                   </button>
                 </>
               ) : (
@@ -1800,7 +1801,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
                   title="Table view"
                 >
                   <TableIcon className="dc:w-4 dc:h-4" />
-                  Table
+                  {t('results.view.table')}
                 </button>
               )}
             </div>

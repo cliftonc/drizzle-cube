@@ -1,19 +1,19 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the box plot chart type
  */
 export const boxPlotChartConfig: ChartTypeConfig = {
-  label: 'Box Plot',
-  description: 'Show statistical distribution (median, IQR, whiskers) across categories',
-  useCase:
-    'Best for P&L spread per symbol, trade size distribution, latency distribution across platforms',
+  label: t('chart.boxPlot.label'),
+  description: t('chart.boxPlot.description'),
+  useCase: t('chart.boxPlot.useCase'),
   displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Groups)',
-      description: 'Dimension to group boxes by (e.g. symbol, platform)',
+      label: t('chart.configText.x_axis_groups'),
+      description: t('chart.configText.dimension_to_group_boxes_by_e_g_symbol_platform'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension'],
@@ -21,9 +21,8 @@ export const boxPlotChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Measures)',
-      description:
-        'Drop 1 measure for auto mode, 3 for avg/stddev/median mode, or 5 for min/q1/median/q3/max mode',
+      label: t('chart.configText.y_axis_measures'),
+      description: t('chart.configText.drop_1_measure_for_auto_mode_3_for_avg_stddev_median_mode_or_5_for_min_q'),
       mandatory: true,
       maxItems: 5,
       acceptTypes: ['measure'],
@@ -33,9 +32,9 @@ export const boxPlotChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: t('chart.option.yAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for the value axis',
+      description: t('chart.configText.number_formatting_for_the_value_axis'),
     },
   ],
 }

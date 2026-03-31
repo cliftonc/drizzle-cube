@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react'
+import { t } from '../../../i18n/runtime'
 import SectionHeading from '../AnalysisBuilder/SectionHeading'
 import type { AxisFormatConfig } from '../../types'
 import { formatAxisValue } from '../../utils/chartUtils'
@@ -78,7 +79,7 @@ export function AxisFormatControls({
     { value: 'currency', label: currencySymbol },
     { value: 'percent', label: '%' },
     { value: 'number', label: '#' },
-    { value: 'custom', label: 'Custom' }
+    { value: 'custom', label: t('chart.runtime.axisFormat.custom') }
   ]
 
   return (
@@ -88,19 +89,19 @@ export function AxisFormatControls({
 
       {/* Label Input */}
       <div className="dc:space-y-1">
-        <label className="dc:text-xs text-dc-text-secondary">Label</label>
+        <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.label')}</label>
         <input
           type="text"
           value={config.label || ''}
           onChange={(e) => handleChange({ label: e.target.value || undefined })}
-          placeholder="Auto-generated label"
+          placeholder={t('chart.runtime.axisFormat.autoLabel')}
           className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
         />
       </div>
 
       {/* Unit Type */}
       <div className="dc:space-y-1">
-        <label className="dc:text-xs text-dc-text-secondary">Unit</label>
+        <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.unit')}</label>
         <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
           {unitButtons.map((btn) => (
             <button
@@ -123,22 +124,22 @@ export function AxisFormatControls({
       {config.unit === 'custom' && (
         <div className="dc:flex dc:gap-2">
           <div className="dc:flex-1 dc:space-y-1">
-            <label className="dc:text-xs text-dc-text-secondary">Prefix</label>
+            <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.prefix')}</label>
             <input
               type="text"
               value={config.customPrefix || ''}
               onChange={(e) => handleChange({ customPrefix: e.target.value || undefined })}
-              placeholder="e.g., $"
+              placeholder={t('chart.runtime.axisFormat.prefixExample')}
               className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
           <div className="dc:flex-1 dc:space-y-1">
-            <label className="dc:text-xs text-dc-text-secondary">Suffix</label>
+            <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.suffix')}</label>
             <input
               type="text"
               value={config.customSuffix || ''}
               onChange={(e) => handleChange({ customSuffix: e.target.value || undefined })}
-              placeholder="e.g., units"
+              placeholder={t('chart.runtime.axisFormat.suffixExample')}
               className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
             />
           </div>
@@ -147,7 +148,7 @@ export function AxisFormatControls({
 
       {/* Abbreviation Toggle */}
       <div className="dc:space-y-1">
-        <label className="dc:text-xs text-dc-text-secondary">Abbreviation</label>
+        <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.abbreviation')}</label>
         <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
           <button
             type="button"
@@ -158,7 +159,7 @@ export function AxisFormatControls({
                 : 'bg-dc-surface text-dc-text hover:bg-dc-border'
             }`}
           >
-            Yes
+            {t('chart.runtime.axisFormat.yes')}
           </button>
           <button
             type="button"
@@ -169,14 +170,14 @@ export function AxisFormatControls({
                 : 'bg-dc-surface text-dc-text hover:bg-dc-border'
             }`}
           >
-            No
+            {t('chart.runtime.axisFormat.no')}
           </button>
         </div>
       </div>
 
       {/* Decimals */}
       <div className="dc:space-y-1">
-        <label className="dc:text-xs text-dc-text-secondary">Decimals</label>
+        <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.decimals')}</label>
         <div className="dc:flex dc:gap-2">
           <button
             type="button"
@@ -205,7 +206,7 @@ export function AxisFormatControls({
 
       {/* Preview */}
       <div className="dc:space-y-1">
-        <label className="dc:text-xs text-dc-text-secondary">Preview</label>
+        <label className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.axisFormat.preview')}</label>
         <div className="dc:text-sm dc:font-mono text-dc-text">
           {preview}
         </div>
@@ -245,7 +246,7 @@ export function MultiAxisFormatControls({
     <div className="dc:space-y-4">
       {showAxes.leftYAxis && (
         <AxisFormatControls
-          axisLabel="Left Y-Axis"
+          axisLabel={t('chart.runtime.axisFormat.leftYAxis')}
           value={displayConfig.leftYAxisFormat || {}}
           onChange={(config) =>
             onChange({
@@ -258,7 +259,7 @@ export function MultiAxisFormatControls({
 
       {showAxes.rightYAxis && (
         <AxisFormatControls
-          axisLabel="Right Y-Axis"
+          axisLabel={t('chart.runtime.axisFormat.rightYAxis')}
           value={displayConfig.rightYAxisFormat || {}}
           onChange={(config) =>
             onChange({
@@ -271,7 +272,7 @@ export function MultiAxisFormatControls({
 
       {showAxes.xAxis && (
         <AxisFormatControls
-          axisLabel="X-Axis"
+          axisLabel={t('chart.runtime.axisFormat.xAxis')}
           value={displayConfig.xAxisFormat || {}}
           onChange={(config) =>
             onChange({

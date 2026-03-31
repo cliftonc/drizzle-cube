@@ -32,6 +32,7 @@ import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import BreakdownSection from './BreakdownSection'
 import SectionHeading from './SectionHeading'
+import { t } from '../../../i18n/runtime'
 
 type RetentionPanelTab = 'config' | 'display'
 
@@ -196,31 +197,33 @@ const RetentionModeContent = memo(function RetentionModeContent({
   return (
     <div className="dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:overflow-hidden">
       {/* Tab Bar */}
-      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
-        <button
-          onClick={() => setActiveTab('config')}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'config'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-        >
-          Retention
-        </button>
-        <button
-          onClick={() => hasDisplayTab && setActiveTab('display')}
-          disabled={!hasDisplayTab}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'display'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : !hasDisplayTab
-                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+      <div className="dc:border-b border-dc-border dc:flex-shrink-0 dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
+        <div className="dc:flex dc:min-w-max">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'config'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                 : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-          title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
-        >
-          Display
-        </button>
+            }`}
+          >
+            {t('retention.tabs.retention')}
+          </button>
+          <button
+            onClick={() => hasDisplayTab && setActiveTab('display')}
+            disabled={!hasDisplayTab}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'display'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
+                : !hasDisplayTab
+                  ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+                  : 'text-dc-text-secondary hover:text-dc-text'
+            }`}
+            title={!hasDisplayTab ? t('retention.tabs.displayUnavailable') : t('retention.tabs.displayTitle')}
+          >
+            {t('retention.tabs.display')}
+          </button>
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -242,9 +245,9 @@ const RetentionModeContent = memo(function RetentionModeContent({
           <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4 dc:space-y-6">
             {/* Date Range Selector - at top for visibility */}
             <div>
-              <SectionHeading>Date Range</SectionHeading>
+              <SectionHeading>{t('retention.dateRange.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Select the date range for cohort entry. Users who first appear within this range will be analyzed.
+                {t('retention.dateRange.description')}
               </p>
               <DateRangeSelector
                 dateRange={retentionDateRange}
@@ -254,9 +257,9 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
             {/* Cohort Filter Section */}
             <div>
-              <SectionHeading>Cohort Filter</SectionHeading>
+              <SectionHeading>{t('retention.cohortFilter.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Define who enters the cohort. Users whose first event matches these filters within the date range are included.
+                {t('retention.cohortFilter.description')}
               </p>
               <AnalysisFilterSection
                 filters={retentionCohortFilters}
@@ -268,9 +271,9 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
             {/* Return Filter Section */}
             <div>
-              <SectionHeading>Return Filter</SectionHeading>
+              <SectionHeading>{t('retention.returnFilter.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Define what counts as a return. Events matching these filters in subsequent periods count as retention.
+                {t('retention.returnFilter.description')}
               </p>
               <AnalysisFilterSection
                 filters={retentionActivityFilters}
@@ -282,9 +285,9 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
             {/* Breakdown Section */}
             <div>
-              <SectionHeading>Breakdown</SectionHeading>
+              <SectionHeading>{t('retention.breakdown.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Optionally segment retention by dimensions (e.g., country, plan type).
+                {t('retention.breakdown.description')}
               </p>
               <BreakdownSection
                 breakdowns={breakdownItems}
@@ -297,16 +300,16 @@ const RetentionModeContent = memo(function RetentionModeContent({
 
             {/* Settings Section */}
             <div>
-              <SectionHeading>Settings</SectionHeading>
+              <SectionHeading>{t('retention.settings.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Configure how retention is calculated and displayed.
+                {t('retention.settings.description')}
               </p>
 
               <div className="dc:space-y-4">
                 {/* Granularity */}
                 <div>
                   <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    Period Granularity
+                    {t('retention.settings.granularityLabel')}
                   </label>
                   <div className="dc:flex dc:gap-2">
                     {RETENTION_GRANULARITY_OPTIONS.map((option) => (
@@ -329,7 +332,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
                 {/* Number of Periods */}
                 <div>
                   <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    Number of Periods ({RETENTION_MIN_PERIODS}-{RETENTION_MAX_PERIODS})
+                    {t('retention.settings.periodsLabel', { min: RETENTION_MIN_PERIODS, max: RETENTION_MAX_PERIODS })}
                   </label>
                   <div className="dc:flex dc:items-center dc:gap-4">
                     <input
@@ -346,7 +349,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
                   </div>
                   {retentionPeriods > 26 && (
                     <p className="dc:mt-1 dc:text-xs text-dc-warning">
-                      High period count may impact query performance.
+                      {t('retention.settings.periodsWarning')}
                     </p>
                   )}
                 </div>
@@ -354,7 +357,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
                 {/* Retention Type */}
                 <div>
                   <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    Retention Type
+                    {t('retention.settings.retentionTypeLabel')}
                   </label>
                   <div className="dc:flex dc:gap-2">
                     {RETENTION_TYPE_OPTIONS.map((option) => (

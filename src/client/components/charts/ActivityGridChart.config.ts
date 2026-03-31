@@ -1,17 +1,18 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the activity grid chart type
  */
 export const activityGridChartConfig: ChartTypeConfig = {
-  label: 'Activity Grid',
-  description: 'GitHub-style activity grid showing temporal patterns across different time scales',
-  useCase: 'Best for visualizing activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities',
+  label: t('chart.activityGrid.label'),
+  description: t('chart.activityGrid.description'),
+  useCase: t('chart.activityGrid.useCase'),
   dropZones: [
     {
       key: 'dateField',
-      label: 'Time Dimension',
-      description: 'Time field that determines grid structure (granularity affects layout)',
+      label: t('chart.configText.time_dimension'),
+      description: t('chart.configText.time_field_that_determines_grid_structure_granularity_affects_layout'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['timeDimension'],
@@ -19,8 +20,8 @@ export const activityGridChartConfig: ChartTypeConfig = {
     },
     {
       key: 'valueField',
-      label: 'Activity Measure',
-      description: 'Measure used for activity intensity (color coding)',
+      label: t('chart.configText.activity_measure'),
+      description: t('chart.configText.measure_used_for_activity_intensity_color_coding'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -31,10 +32,10 @@ export const activityGridChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'fitToWidth',
-      label: 'Fit to Width',
+      label: t('chart.option.fitToWidth.label'),
       type: 'boolean',
       defaultValue: false,
-      description: 'Automatically size blocks to fill portlet width and height while maintaining aspect ratio'
+      description: t('chart.option.fitToWidth.description')
     }
   ],
   validate: (config) => {

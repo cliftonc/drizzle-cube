@@ -381,22 +381,19 @@ describe('FieldDetailPanel', () => {
     it('should show keyboard hint for measures', () => {
       render(<FieldDetailPanel field={measureField} />)
 
-      expect(screen.getByText('Enter')).toBeInTheDocument()
-      expect(screen.getByText(/click to add this field/i)).toBeInTheDocument()
+      expect(screen.getByText(/press enter or click to add this field/i)).toBeInTheDocument()
     })
 
     it('should show keyboard hint for dimensions', () => {
       render(<FieldDetailPanel field={stringDimensionField} />)
 
-      expect(screen.getByText('Enter')).toBeInTheDocument()
-      expect(screen.getByText(/click to add this field/i)).toBeInTheDocument()
+      expect(screen.getByText(/press enter or click to add this field/i)).toBeInTheDocument()
     })
 
     it('should show keyboard hint for time dimensions', () => {
       render(<FieldDetailPanel field={timeDimensionField} />)
 
-      expect(screen.getByText('Enter')).toBeInTheDocument()
-      expect(screen.getByText(/click to add this field/i)).toBeInTheDocument()
+      expect(screen.getByText(/press enter or click to add this field/i)).toBeInTheDocument()
     })
   })
 

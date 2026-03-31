@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { FlowChartData } from '../types/flow'
 import type { RetentionChartData } from '../types/retention'
 import { CodeBlock } from '../shared/components/CodeBlock'
+import { t } from '../../i18n/runtime'
 
 interface DebugModalProps {
   chartConfig: any
@@ -75,7 +76,7 @@ export default function DebugModal({
     >
       <div className="dc:p-4 dc:h-full dc:flex dc:flex-col">
         <div className="dc:flex dc:justify-between dc:items-center dc:mb-4 dc:shrink-0">
-          <h2 className="dc:text-lg dc:font-semibold text-dc-text">Chart Debug Information</h2>
+          <h2 className="dc:text-lg dc:font-semibold text-dc-text">{t('debug.title')}</h2>
           <button
             onClick={() => setIsOpen(false)}
             className="dc:p-2 text-dc-text-muted hover:text-dc-text-secondary hover:bg-dc-surface-secondary dc:rounded-sm"
@@ -138,23 +139,23 @@ export default function DebugModal({
           />
 
           <div className="dc:lg:col-span-2">
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Cache Status</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('debug.cacheStatus')}</h4>
             <div className="bg-dc-surface-secondary dc:p-2 dc:rounded-sm dc:text-xs dc:border border-dc-border">
               {cacheInfo ? (
                 <div className="dc:flex dc:items-center dc:gap-4 dc:flex-wrap">
                   <span className="dc:inline-flex dc:items-center dc:px-2 dc:py-0.5 dc:rounded-sm dc:text-xs dc:font-medium bg-dc-success-bg text-dc-success">
-                    Cache Hit
+                    {t('debug.cacheHit')}
                   </span>
-                  <span><strong>Cached At:</strong> {new Date(cacheInfo.cachedAt).toLocaleString()}</span>
-                  <span><strong>TTL:</strong> {Math.round(cacheInfo.ttlMs / 1000)}s</span>
-                  <span><strong>TTL Remaining:</strong> {Math.round(cacheInfo.ttlRemainingMs / 1000)}s</span>
+                  <span><strong>{t('debug.cachedAt')}</strong> {new Date(cacheInfo.cachedAt).toLocaleString()}</span>
+                  <span><strong>{t('debug.ttl')}</strong> {Math.round(cacheInfo.ttlMs / 1000)}s</span>
+                  <span><strong>{t('debug.ttlRemaining')}</strong> {Math.round(cacheInfo.ttlRemainingMs / 1000)}s</span>
                 </div>
               ) : (
                 <div className="dc:flex dc:items-center dc:gap-2">
                   <span className="dc:inline-flex dc:items-center dc:px-2 dc:py-0.5 dc:rounded-sm dc:text-xs dc:font-medium bg-dc-surface text-dc-text-muted dc:border border-dc-border">
-                    Fresh Query
+                    {t('debug.freshQuery')}
                   </span>
-                  <span className="text-dc-text-muted">Result not served from cache</span>
+                  <span className="text-dc-text-muted">{t('debug.notFromCache')}</span>
                 </div>
               )}
             </div>
@@ -162,7 +163,7 @@ export default function DebugModal({
         </div>
 
         <div className="dc:mt-4 dc:pt-2 dc:border-t border-dc-border dc:text-xs text-dc-text-muted dc:shrink-0">
-          Press <kbd className="dc:px-1 dc:py-0.5 bg-dc-surface-secondary dc:rounded-sm dc:text-xs">ESC</kbd> to close
+          {t('debug.escToClose')} <kbd className="dc:px-1 dc:py-0.5 bg-dc-surface-secondary dc:rounded-sm dc:text-xs">{t('debug.escKey')}</kbd> {t('debug.toClose')}
         </div>
       </div>
     </div>

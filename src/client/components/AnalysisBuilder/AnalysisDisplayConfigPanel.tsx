@@ -10,6 +10,7 @@ import SectionHeading from './SectionHeading'
 import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
 import type { ChartType, ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types'
 import { AxisFormatControls } from '../charts/AxisFormatControls'
+import { t } from '../../../i18n/runtime'
 
 interface AnalysisDisplayConfigPanelProps {
   chartType: ChartType
@@ -86,7 +87,7 @@ export default function AnalysisDisplayConfigPanel({
   if (!chartConfigLoaded) {
     return (
       <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
-        Loading display options...
+        {t('display.loading')}
       </div>
     )
   }
@@ -99,7 +100,7 @@ export default function AnalysisDisplayConfigPanel({
   if (!hasDisplayOptions) {
     return (
       <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
-        <p>No display options available for this chart type.</p>
+        <p>{t('display.noOptions')}</p>
       </div>
     )
   }
@@ -107,7 +108,7 @@ export default function AnalysisDisplayConfigPanel({
   return (
     <div className="dc:space-y-6">
       <div>
-        <SectionHeading className="dc:mb-2">Display Options</SectionHeading>
+        <SectionHeading className="dc:mb-2">{t('display.heading')}</SectionHeading>
         <div className="dc:space-y-2">
           {/* Backward compatibility: Simple boolean display options */}
           {chartTypeConfig.displayOptions?.includes('showLegend') && (
@@ -124,7 +125,7 @@ export default function AnalysisDisplayConfigPanel({
                 className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="dc:text-sm text-dc-text">Show Legend</span>
+              <span className="dc:text-sm text-dc-text">{t('display.showLegend')}</span>
             </label>
           )}
 
@@ -142,7 +143,7 @@ export default function AnalysisDisplayConfigPanel({
                 className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="dc:text-sm text-dc-text">Show Grid</span>
+              <span className="dc:text-sm text-dc-text">{t('display.showGrid')}</span>
             </label>
           )}
 
@@ -160,7 +161,7 @@ export default function AnalysisDisplayConfigPanel({
                 className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="dc:text-sm text-dc-text">Show Tooltip</span>
+              <span className="dc:text-sm text-dc-text">{t('display.showTooltip')}</span>
             </label>
           )}
 
@@ -178,7 +179,7 @@ export default function AnalysisDisplayConfigPanel({
                 className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="dc:text-sm text-dc-text">Stacked</span>
+              <span className="dc:text-sm text-dc-text">{t('display.stacked')}</span>
             </label>
           )}
 
@@ -196,7 +197,7 @@ export default function AnalysisDisplayConfigPanel({
                 className="dc:rounded border-dc-border focus:ring-dc-accent"
                 style={{ color: 'var(--dc-primary)' }}
               />
-              <span className="dc:text-sm text-dc-text">Hide Header</span>
+              <span className="dc:text-sm text-dc-text">{t('display.hideHeader')}</span>
             </label>
           )}
 

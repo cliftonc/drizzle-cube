@@ -9,6 +9,7 @@
 import React, { Component, ReactNode } from 'react'
 import { getIcon } from '../../icons'
 import type { AnalysisType } from '../../types'
+import { t } from '../../../i18n/runtime'
 
 const WarningIcon = getIcon('warning')
 const RefreshIcon = getIcon('refresh')
@@ -77,20 +78,19 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
             {WarningIcon && <WarningIcon className="dc:w-10 dc:h-10" />}
           </div>
           <h3 className="dc:text-base dc:font-semibold dc:mb-2 text-dc-text">
-            Mode Error
+            {t('errorBoundary.modeError')}
           </h3>
           <p className="dc:text-sm text-dc-text-secondary dc:mb-3 dc:max-w-sm">
-            There was a problem with the <strong>{this.props.analysisType}</strong> mode.
-            This might be due to invalid configuration data.
+            {t('errorBoundary.modeErrorDescription', { mode: this.props.analysisType })}
           </p>
 
           {/* Error details (collapsible) */}
           <details className="dc:w-full dc:max-w-md dc:mb-4 dc:text-left">
             <summary className="dc:cursor-pointer dc:text-xs text-dc-text-muted hover:text-dc-text">
-              Show error details
+              {t('errorBoundary.showDetails')}
             </summary>
             <div className="dc:mt-2 dc:p-2 bg-dc-surface-secondary dc:rounded dc:text-xs dc:font-mono text-dc-text-secondary dc:overflow-auto dc:max-h-32">
-              {this.state.error?.message || 'Unknown error'}
+              {this.state.error?.message || t('errorBoundary.unknownError')}
             </div>
           </details>
 
@@ -100,14 +100,14 @@ export class AnalysisModeErrorBoundary extends Component<Props, State> {
               className="dc:px-3 dc:py-1.5 dc:border border-dc-border dc:rounded dc:text-sm text-dc-text hover:bg-dc-surface-hover dc:transition-colors dc:flex dc:items-center dc:gap-1"
             >
               {RefreshIcon && <RefreshIcon className="dc:w-4 dc:h-4" />}
-              Try Again
+              {t('errorBoundary.tryAgain')}
             </button>
             {this.props.onSwitchToSafeMode && (
               <button
                 onClick={this.handleSwitchToSafeMode}
                 className="dc:px-3 dc:py-1.5 bg-dc-primary text-white dc:rounded dc:text-sm dc:hover:opacity-90 dc:transition-opacity"
               >
-                Switch to Query Mode
+                {t('errorBoundary.switchToQuery')}
               </button>
             )}
           </div>

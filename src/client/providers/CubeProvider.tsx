@@ -22,6 +22,7 @@ import type { CubeClient } from '../client/CubeClient'
 import type { BatchCoordinator } from '../client/BatchCoordinator'
 import type { ChartDefinition } from '../charts/chartPlugin'
 import { chartPluginRegistry } from '../charts/chartPlugin'
+import { I18nProvider } from './I18nProvider'
 
 const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
 
@@ -72,6 +73,10 @@ interface CubeProviderProps {
   queryClient?: QueryClient
   /** Custom chart definitions to register. Overrides built-in charts when `type` matches. */
   customCharts?: ChartDefinition[]
+  /** Locale code for i18n (default: 'en-GB'). Bundled locales are loaded via dynamic import. */
+  locale?: string
+  /** Optional translation overrides merged on top of the loaded locale. */
+  translations?: Record<string, string>
   children: ReactNode
 }
 
@@ -94,6 +99,8 @@ export function CubeProvider({
   batchDelayMs,
   queryClient: providedQueryClient,
   customCharts,
+  locale,
+  translations,
   children
 }: CubeProviderProps) {
   const [internalQueryClient] = useState(() => createCubeQueryClient())
@@ -134,21 +141,24 @@ export function CubeProvider({
   }, [customCharts])
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <CubeApiProvider
-        apiOptions={apiOptions || DEFAULT_API_OPTIONS}
-        token={token}
-        options={options}
-        enableBatching={enableBatching}
-        batchDelayMs={batchDelayMs}
-      >
-        <CubeMetaProvider>
-          <CubeFeaturesProvider features={features} dashboardModes={dashboardModes}>
-            {children}
-          </CubeFeaturesProvider>
-        </CubeMetaProvider>
-      </CubeApiProvider>
-    </QueryClientProvider>
+    <I18nProvider locale={locale} translations={translations}>
+      <QueryClientProvider client={queryClient}>
+        <CubeApiProvider
+          apiOptions={apiOptions || DEFAULT_API_OPTIONS}
+          token={token}
+          options={options}
+          locale={locale}
+          enableBatching={enableBatching}
+          batchDelayMs={batchDelayMs}
+        >
+          <CubeMetaProvider>
+            <CubeFeaturesProvider features={features} dashboardModes={dashboardModes}>
+              {children}
+            </CubeFeaturesProvider>
+          </CubeMetaProvider>
+        </CubeApiProvider>
+      </QueryClientProvider>
+    </I18nProvider>
   )
 }
 

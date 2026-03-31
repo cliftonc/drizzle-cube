@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { t } from '../../../i18n/runtime'
 import { select, scaleQuantize, max, min, transition as _transition } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition() method
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
@@ -722,8 +723,8 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display in activity grid</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.activityGrid')}</div>
         </div>
       </div>
     )
@@ -738,8 +739,8 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
-          <div className="dc:text-xs text-dc-text-secondary">Activity grid requires a time dimension and a measure</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.activityGridConfigRequired')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.configErrorHint.activityGridRequired')}</div>
         </div>
       </div>
     )
@@ -758,9 +759,9 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Granularity Too High</div>
-          <div className="dc:text-xs text-dc-text-secondary">Activity grids work best with hour, day, week, month, or quarter granularity</div>
-          <div className="dc:text-xs text-dc-text-secondary dc:mt-1">Please choose a lower granularity for your time dimension</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.activityGridGranularityTooHigh')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.activityGridGranularityHint')}</div>
+          <div className="dc:text-xs text-dc-text-secondary dc:mt-1">{t('chart.runtime.activityGridGranularityAction')}</div>
         </div>
       </div>
     )
@@ -772,7 +773,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
         <svg ref={svgRef} className="dc:h-full" />
         {!dimensionsReady && (
           <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center">
-            <div className="text-dc-text-muted dc:text-sm">Measuring chart dimensions...</div>
+            <div className="text-dc-text-muted dc:text-sm">{t('chart.runtime.measuringDimensions')}</div>
           </div>
         )}
       </div>

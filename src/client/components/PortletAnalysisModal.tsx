@@ -8,6 +8,7 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
+import { t } from '../../i18n/runtime'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -292,7 +293,7 @@ export default function PortletAnalysisModal({
         onClick={handleCancel}
         className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface dc:border border-dc-border dc:rounded-md hover:bg-dc-surface-hover dc:transition-colors"
       >
-        Cancel
+        {t('common.actions.cancel')}
       </button>
       <button
         type="button"
@@ -322,7 +323,7 @@ export default function PortletAnalysisModal({
         <div className="dc:shrink-0 dc:px-4 dc:py-3 dc:border-b border-dc-border bg-dc-surface-secondary">
           <div className="dc:flex dc:items-center dc:gap-3">
             <label htmlFor="portlet-title" className="dc:text-sm dc:font-medium text-dc-text-secondary dc:shrink-0">
-              Title
+              {t('common.labels.title')}
             </label>
             <input
               id="portlet-title"

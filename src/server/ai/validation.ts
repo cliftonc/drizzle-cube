@@ -3,6 +3,7 @@
  * Validate queries with helpful corrections and suggestions
  */
 
+import { t } from '../../i18n/runtime'
 import type { CubeMetadata } from '../types/metadata'
 import type { SemanticQuery, Filter } from '../types/query'
 import { findBestFieldMatch } from './discovery'
@@ -103,7 +104,7 @@ function validateMeasure(
   if (parts.length !== 2) {
     errors.push({
       type: 'syntax_error',
-      message: `Invalid measure format: '${measure}'. Expected 'CubeName.measureName'`,
+      message: t('server.validation.ai.invalidMeasureFormat', { measure }),
       field: measure
     })
     return
@@ -120,7 +121,7 @@ function validateMeasure(
     if (closest) {
       errors.push({
         type: 'cube_not_found',
-        message: `Cube '${cubeName}' not found`,
+        message: t('server.validation.ai.cubeNotFoundWithSuggestion', { cubeName }),
         field: measure,
         suggestion: `Did you mean '${closest.field}'?`,
         correctedValue: `${closest.field}.${measureName}`
@@ -129,7 +130,7 @@ function validateMeasure(
     } else {
       errors.push({
         type: 'cube_not_found',
-        message: `Cube '${cubeName}' not found`,
+        message: t('server.validation.ai.cubeNotFoundWithAvailable', { cubeName }),
         field: measure,
         suggestion: `Available cubes: ${cubeNames.join(', ')}`
       })
@@ -144,7 +145,7 @@ function validateMeasure(
     if (match && match.cube === cubeName) {
       errors.push({
         type: 'measure_not_found',
-        message: `Measure '${measureName}' not found on cube '${cubeName}'`,
+        message: t('server.validation.ai.measureNotFoundWithSuggestion', { measureName, cubeName }),
         field: measure,
         suggestion: `Did you mean '${match.field}'?`,
         correctedValue: match.field
@@ -158,7 +159,7 @@ function validateMeasure(
         const correctedField = `${cubeName}.${closest.field}`
         errors.push({
           type: 'measure_not_found',
-          message: `Measure '${measureName}' not found on cube '${cubeName}'`,
+          message: t('server.validation.ai.measureNotFoundWithSuggestion', { measureName, cubeName }),
           field: measure,
           suggestion: `Did you mean '${closest.field}'?`,
           correctedValue: correctedField
@@ -167,7 +168,7 @@ function validateMeasure(
       } else {
         errors.push({
           type: 'measure_not_found',
-          message: `Measure '${measureName}' not found on cube '${cubeName}'`,
+          message: t('server.validation.ai.measureNotFoundWithAvailable', { measureName, cubeName }),
           field: measure,
           suggestion: `Available measures: ${availableMeasures.slice(0, 5).join(', ')}${availableMeasures.length > 5 ? '...' : ''}`
         })
@@ -189,7 +190,7 @@ function validateDimension(
   if (parts.length !== 2) {
     errors.push({
       type: 'syntax_error',
-      message: `Invalid dimension format: '${dimension}'. Expected 'CubeName.dimensionName'`,
+      message: t('server.validation.ai.invalidDimensionFormat', { dimension }),
       field: dimension
     })
     return
@@ -205,7 +206,7 @@ function validateDimension(
     if (closest) {
       errors.push({
         type: 'cube_not_found',
-        message: `Cube '${cubeName}' not found`,
+        message: t('server.validation.ai.cubeNotFoundWithSuggestion', { cubeName }),
         field: dimension,
         suggestion: `Did you mean '${closest.field}'?`,
         correctedValue: `${closest.field}.${dimensionName}`
@@ -214,7 +215,7 @@ function validateDimension(
     } else {
       errors.push({
         type: 'cube_not_found',
-        message: `Cube '${cubeName}' not found`,
+        message: t('server.validation.ai.cubeNotFoundWithAvailable', { cubeName }),
         field: dimension,
         suggestion: `Available cubes: ${cubeNames.join(', ')}`
       })
@@ -228,7 +229,7 @@ function validateDimension(
     if (match && match.cube === cubeName) {
       errors.push({
         type: 'dimension_not_found',
-        message: `Dimension '${dimensionName}' not found on cube '${cubeName}'`,
+        message: t('server.validation.ai.dimensionNotFoundWithSuggestion', { dimensionName, cubeName }),
         field: dimension,
         suggestion: `Did you mean '${match.field}'?`,
         correctedValue: match.field
@@ -242,7 +243,7 @@ function validateDimension(
         const correctedField = `${cubeName}.${closest.field}`
         errors.push({
           type: 'dimension_not_found',
-          message: `Dimension '${dimensionName}' not found on cube '${cubeName}'`,
+          message: t('server.validation.ai.dimensionNotFoundWithSuggestion', { dimensionName, cubeName }),
           field: dimension,
           suggestion: `Did you mean '${closest.field}'?`,
           correctedValue: correctedField
@@ -251,7 +252,7 @@ function validateDimension(
       } else {
         errors.push({
           type: 'dimension_not_found',
-          message: `Dimension '${dimensionName}' not found on cube '${cubeName}'`,
+          message: t('server.validation.ai.dimensionNotFoundWithAvailable', { dimensionName, cubeName }),
           field: dimension,
           suggestion: `Available dimensions: ${availableDimensions.slice(0, 5).join(', ')}${availableDimensions.length > 5 ? '...' : ''}`
         })
@@ -287,7 +288,7 @@ function validateFilters(
       if (parts.length !== 2) {
         errors.push({
           type: 'invalid_filter',
-          message: `Invalid filter member format: '${member}'`,
+          message: t('server.validation.ai.invalidFilterMemberFormat', { member }),
           field: member
         })
         continue
@@ -304,7 +305,7 @@ function validateFilters(
         }
         errors.push({
           type: 'cube_not_found',
-          message: `Cube '${cubeName}' not found in filter`,
+          message: t('server.validation.ai.cubeNotFoundInFilter', { cubeName }),
           field: member,
           suggestion: closest ? `Did you mean '${closest.field}'?` : undefined,
           correctedValue: closest ? `${closest.field}.${fieldName}` : undefined
@@ -328,7 +329,7 @@ function validateFilters(
           corrections.set(member, correctedField)
           errors.push({
             type: 'invalid_filter',
-            message: `Filter field '${fieldName}' not found on cube '${cubeName}'`,
+            message: t('server.validation.ai.filterFieldNotFoundWithSuggestion', { fieldName, cubeName }),
             field: member,
             suggestion: `Did you mean '${closest.field}'?`,
             correctedValue: correctedField
@@ -336,7 +337,7 @@ function validateFilters(
         } else {
           errors.push({
             type: 'invalid_filter',
-            message: `Filter field '${fieldName}' not found on cube '${cubeName}'`,
+            message: t('server.validation.ai.filterFieldNotFound', { fieldName, cubeName }),
             field: member
           })
         }
@@ -362,7 +363,7 @@ function validateFunnelQuery(
   if (!funnel.bindingKey) {
     errors.push({
       type: 'syntax_error',
-      message: 'funnel.bindingKey is required'
+      message: t('server.validation.ai.bindingKeyRequired.funnel')
     })
   } else if (typeof funnel.bindingKey === 'string') {
     validateDimension(funnel.bindingKey, metadata, errors, corrections)
@@ -371,7 +372,7 @@ function validateFunnelQuery(
   if (!funnel.timeDimension) {
     errors.push({
       type: 'syntax_error',
-      message: 'funnel.timeDimension is required'
+      message: t('server.validation.ai.timeDimensionRequired.funnel')
     })
   } else if (typeof funnel.timeDimension === 'string') {
     validateDimension(funnel.timeDimension, metadata, errors, corrections)
@@ -380,12 +381,12 @@ function validateFunnelQuery(
   if (!funnel.steps || !Array.isArray(funnel.steps)) {
     errors.push({
       type: 'syntax_error',
-      message: 'funnel.steps array is required'
+      message: t('server.validation.ai.funnelStepsRequired')
     })
   } else if (funnel.steps.length < 2) {
     errors.push({
       type: 'syntax_error',
-      message: 'funnel requires at least 2 steps'
+      message: t('server.validation.ai.funnelRequiresSteps')
     })
   } else {
     // Validate each step's filter
@@ -394,8 +395,8 @@ function validateFunnelQuery(
       if (!step.name) {
         warnings.push({
           type: 'best_practice',
-          message: `Step ${i + 1} is missing a name`,
-          suggestion: 'Add descriptive names to funnel steps'
+          message: t('server.validation.ai.stepMissingName', { step: i + 1 }),
+          suggestion: t('server.validation.ai.suggestAddStepNames')
         })
       }
       if (step.filter && 'member' in step.filter) {
@@ -421,7 +422,7 @@ function validateFlowQuery(
   if (!flow.bindingKey) {
     errors.push({
       type: 'syntax_error',
-      message: 'flow.bindingKey is required'
+      message: t('server.validation.ai.bindingKeyRequired.flow')
     })
   } else if (typeof flow.bindingKey === 'string') {
     validateDimension(flow.bindingKey, metadata, errors, corrections)
@@ -430,7 +431,7 @@ function validateFlowQuery(
   if (!flow.timeDimension) {
     errors.push({
       type: 'syntax_error',
-      message: 'flow.timeDimension is required'
+      message: t('server.validation.ai.timeDimensionRequired.flow')
     })
   } else if (typeof flow.timeDimension === 'string') {
     validateDimension(flow.timeDimension, metadata, errors, corrections)
@@ -439,7 +440,7 @@ function validateFlowQuery(
   if (!flow.eventDimension) {
     errors.push({
       type: 'syntax_error',
-      message: 'flow.eventDimension is required'
+      message: t('server.validation.ai.eventDimensionRequired')
     })
   } else if (typeof flow.eventDimension === 'string') {
     validateDimension(flow.eventDimension, metadata, errors, corrections)
@@ -448,8 +449,8 @@ function validateFlowQuery(
   if (flow.stepsBefore === undefined && flow.stepsAfter === undefined) {
     warnings.push({
       type: 'best_practice',
-      message: 'Neither stepsBefore nor stepsAfter specified',
-      suggestion: 'Set stepsBefore and/or stepsAfter to see event sequences'
+      message: t('server.validation.ai.stepsBothMissing'),
+      suggestion: t('server.validation.ai.suggestSetSteps')
     })
   }
 }
@@ -470,7 +471,7 @@ function validateRetentionQuery(
   if (!retention.bindingKey) {
     errors.push({
       type: 'syntax_error',
-      message: 'retention.bindingKey is required'
+      message: t('server.validation.ai.bindingKeyRequired.retention')
     })
   } else if (typeof retention.bindingKey === 'string') {
     validateDimension(retention.bindingKey, metadata, errors, corrections)
@@ -479,7 +480,7 @@ function validateRetentionQuery(
   if (!retention.timeDimension) {
     errors.push({
       type: 'syntax_error',
-      message: 'retention.timeDimension is required'
+      message: t('server.validation.ai.retentionTimeDimensionRequired')
     })
   } else if (typeof retention.timeDimension === 'string') {
     validateDimension(retention.timeDimension, metadata, errors, corrections)
@@ -488,16 +489,16 @@ function validateRetentionQuery(
   if (!retention.granularity) {
     warnings.push({
       type: 'best_practice',
-      message: 'retention.granularity not specified',
-      suggestion: 'Specify granularity: "day", "week", or "month"'
+      message: t('server.validation.ai.granularityNotSpecified'),
+      suggestion: t('server.validation.ai.suggestSpecifyGranularity')
     })
   }
 
   if (!retention.periods) {
     warnings.push({
       type: 'best_practice',
-      message: 'retention.periods not specified',
-      suggestion: 'Specify number of periods to analyze'
+      message: t('server.validation.ai.periodsNotSpecified'),
+      suggestion: t('server.validation.ai.suggestSpecifyPeriods')
     })
   }
 }
@@ -572,9 +573,9 @@ export function validateQuery(
         if (dimension && dimension.type !== 'time') {
           warnings.push({
             type: 'best_practice',
-            message: `Dimension '${timeDim.dimension}' is not a time type (it's '${dimension.type}')`,
+            message: t('server.validation.ai.dimensionNotTimeType', { dimension: timeDim.dimension, type: dimension.type }),
             field: timeDim.dimension,
-            suggestion: 'Use a dimension with type "time" for timeDimensions'
+            suggestion: t('server.validation.ai.suggestUseTimeDimension')
           })
         }
       }
@@ -590,7 +591,7 @@ export function validateQuery(
   if (!query.measures?.length && !query.dimensions?.length) {
     errors.push({
       type: 'syntax_error',
-      message: 'Query must have at least one measure or dimension'
+      message: t('server.validation.ai.emptyQuery')
     })
   }
 
@@ -598,16 +599,16 @@ export function validateQuery(
   if (query.measures && query.measures.length > 10) {
     warnings.push({
       type: 'performance',
-      message: `Query has ${query.measures.length} measures, which may impact performance`,
-      suggestion: 'Consider splitting into multiple queries'
+      message: t('server.validation.ai.performanceManyMeasures', { count: query.measures.length }),
+      suggestion: t('server.validation.ai.suggestSplitQueries')
     })
   }
 
   if (query.dimensions && query.dimensions.length > 5) {
     warnings.push({
       type: 'performance',
-      message: `Query has ${query.dimensions.length} dimensions, which may produce many rows`,
-      suggestion: 'Consider adding filters or reducing dimensions'
+      message: t('server.validation.ai.performanceManyDimensions', { count: query.dimensions.length }),
+      suggestion: t('server.validation.ai.suggestAddDimensionFilters')
     })
   }
 

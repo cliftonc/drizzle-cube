@@ -1,26 +1,27 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the bar chart type
  */
 export const barChartConfig: ChartTypeConfig = {
-  label: 'Bar Chart',
-  description: 'Compare values across categories',
-  useCase: 'Best for comparing discrete categories, showing rankings, or displaying changes over time',
+  label: t('chart.bar.label'),
+  description: t('chart.bar.description'),
+  useCase: t('chart.bar.useCase'),
   clickableElements: { bar: true },
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Categories)',
-      description: 'Dimensions and time dimensions for grouping',
+      label: t('chart.dropZone.xAxis.label'),
+      description: t('chart.dropZone.xAxis.description'),
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension'],
       emptyText: 'Drop dimensions & time dimensions here'
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Values)',
-      description: 'Measures for bar heights',
+      label: t('chart.dropZone.yAxis.label'),
+      description: t('chart.configText.measures_for_bar_heights'),
       mandatory: true,
       acceptTypes: ['measure'],
       emptyText: 'Drop measures here',
@@ -28,8 +29,8 @@ export const barChartConfig: ChartTypeConfig = {
     },
     {
       key: 'series',
-      label: 'Series (Split into Multiple Series)',
-      description: 'Dimensions to create separate data series',
+      label: t('chart.dropZone.series.label'),
+      description: t('chart.dropZone.series.description'),
       mandatory: false,
       acceptTypes: ['dimension'],
       emptyText: 'Drop dimensions here to split data into series'
@@ -39,34 +40,34 @@ export const barChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'stackType',
-      label: 'Stacking',
+      label: t('chart.option.stacking.label'),
       type: 'select',
       defaultValue: 'none',
       options: [
-        { value: 'none', label: 'None' },
-        { value: 'normal', label: 'Stacked' },
-        { value: 'percent', label: 'Stacked 100%' }
+        { value: 'none', label: t('chart.option.accentBorder.none') },
+        { value: 'normal', label: t('chart.option.stacking.stacked') },
+        { value: 'percent', label: t('chart.option.stacking.percent') }
       ],
-      description: 'How to stack multiple bar series'
+      description: t('chart.configText.how_to_stack_multiple_bar_series')
     },
     {
       key: 'target',
-      label: 'Target Values',
+      label: t('chart.option.target.label'),
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
-      description: 'Single value or comma-separated values to spread across X-axis'
+      description: t('chart.option.target.description')
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Left Y-Axis Format',
+      label: t('chart.option.leftYAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for left Y-axis'
+      description: t('chart.option.leftYAxisFormat.description')
     },
     {
       key: 'rightYAxisFormat',
-      label: 'Right Y-Axis Format',
+      label: t('chart.option.rightYAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for right Y-axis'
+      description: t('chart.option.rightYAxisFormat.description')
     }
   ]
 }

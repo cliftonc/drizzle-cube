@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the sunburst chart type
@@ -8,15 +9,15 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * radiating outward from the central starting step.
  */
 export const sunburstChartConfig: ChartTypeConfig = {
-  label: 'Sunburst Chart',
-  description: 'Show hierarchical flow as radial rings',
-  useCase: 'Best for visualizing forward paths from a starting event in a compact radial layout',
+  label: t('chart.sunburst.label'),
+  description: t('chart.sunburst.description'),
+  useCase: t('chart.sunburst.useCase'),
   dropZones: [
     // Sunburst charts work with pre-calculated flow data like Sankey
     {
       key: 'xAxis',
-      label: 'Event Type',
-      description: 'Event dimension that categorizes flow nodes',
+      label: t('chart.configText.event_type'),
+      description: t('chart.configText.event_dimension_that_categorizes_flow_nodes'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
@@ -24,8 +25,8 @@ export const sunburstChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'Flow Count',
-      description: 'Count of entities following each path',
+      label: t('chart.configText.flow_count'),
+      description: t('chart.configText.count_of_entities_following_each_path'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -36,20 +37,20 @@ export const sunburstChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'innerRadius',
-      label: 'Inner Radius',
+      label: t('chart.option.innerRadius.label'),
       type: 'number',
       defaultValue: 40,
       min: 0,
       max: 100,
       step: 10,
-      description: 'Size of the center hole (0 for full circle)',
+      description: t('chart.configText.size_of_the_center_hole_0_for_full_circle'),
     },
     {
       key: 'hideSummaryFooter',
-      label: 'Hide Summary Footer',
+      label: t('chart.option.hideSummaryFooter.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Hide the statistics footer below the chart',
+      description: t('chart.configText.hide_the_statistics_footer_below_the_chart'),
     },
   ],
 }

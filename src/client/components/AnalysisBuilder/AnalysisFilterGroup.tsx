@@ -11,6 +11,7 @@ import { getIcon } from '../../icons'
 import type { Filter, SimpleFilter, GroupFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
 import AnalysisFilterItem from './AnalysisFilterItem'
+import { t } from '../../../i18n/runtime'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -135,7 +136,7 @@ export default function AnalysisFilterGroup({
   }
 
   const conditionCount = group.filters.length
-  const conditionLabel = conditionCount === 1 ? 'condition' : 'conditions'
+  const conditionLabel = conditionCount === 1 ? t('filter.group.condition') : t('filter.group.conditions')
 
   return (
     <div className={`dc:border ${getBorderColor()} dc:rounded-lg bg-dc-surface dc:w-full`}>
@@ -178,19 +179,19 @@ export default function AnalysisFilterGroup({
                   onClick={handleAddFilterClick}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
-                  Add Filter
+                  {t('filter.group.addFilter')}
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('and')}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
-                  Add AND Group
+                  {t('filter.group.addAndGroup')}
                 </button>
                 <button
                   onClick={() => handleAddNestedGroup('or')}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-1.5 dc:text-xs text-dc-text hover:bg-dc-surface-hover"
                 >
-                  Add OR Group
+                  {t('filter.group.addOrGroup')}
                 </button>
               </div>
             )}
@@ -201,7 +202,7 @@ export default function AnalysisFilterGroup({
             <button
               onClick={onRemove}
               className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:transition-colors"
-              title="Remove group"
+              title={t('filter.group.removeGroup')}
             >
               <CloseIcon className="dc:w-4 dc:h-4" />
             </button>
@@ -213,12 +214,12 @@ export default function AnalysisFilterGroup({
       <div className="dc:p-1.5 dc:flex dc:flex-wrap dc:gap-2">
         {group.filters.length === 0 ? (
           <div className="dc:text-center dc:py-3">
-            <p className="dc:text-xs text-dc-text-muted dc:mb-1">No conditions in this group</p>
+            <p className="dc:text-xs text-dc-text-muted dc:mb-1">{t('filter.group.empty')}</p>
             <button
               onClick={() => onAddFilter([])}
               className="dc:text-xs text-dc-primary dc:hover:underline"
             >
-              Add a filter
+              {t('filter.group.addFilterLink')}
             </button>
           </div>
         ) : (

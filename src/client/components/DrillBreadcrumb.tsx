@@ -5,6 +5,7 @@
 
 import React from 'react'
 import type { DrillBreadcrumbProps } from '../types/drill'
+import { t } from '../../i18n/runtime'
 
 /**
  * Home icon for the root level
@@ -71,7 +72,7 @@ export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcr
         title="Go back one level"
       >
         <BackIcon className="dc:w-3.5 dc:h-3.5" />
-        <span className="dc:sr-only">Back</span>
+        <span className="dc:sr-only">{t('drill.back')}</span>
       </button>
 
       <span className="text-dc-text-muted">|</span>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { t } from '../../../i18n/runtime'
 import Markdown from 'markdown-to-jsx'
 import type { ChartProps } from '../../types'
 
@@ -108,8 +109,8 @@ const MarkdownChart = React.memo(function MarkdownChart({
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No content</div>
-          <div className="dc:text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.markdown.noContent')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.markdown.addContent')}</div>
         </div>
       </div>
     )

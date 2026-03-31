@@ -11,6 +11,7 @@ import type { FieldSelection } from './FieldDetailPanel'
 import { useERDLayout } from './useERDLayout'
 import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
+import { t } from '../../../i18n/runtime'
 
 const nodeTypes = { cubeNode: CubeNode }
 const edgeTypes = { relationshipEdge: RelationshipEdge }
@@ -318,7 +319,7 @@ export function SchemaVisualization({
       <div className={`dc:flex dc:items-center dc:justify-center dc:h-96 ${className}`}>
         <div className="dc:text-center">
           <div className="dc:animate-spin dc:rounded-full dc:h-8 dc:w-8 dc:border-b-2 border-dc-accent dc:mx-auto dc:mb-2" />
-          <p className="text-dc-text-muted">Loading cube schema...</p>
+          <p className="text-dc-text-muted">{t('schema.loading')}</p>
         </div>
       </div>
     )
@@ -328,7 +329,7 @@ export function SchemaVisualization({
     return (
       <div className={`dc:flex dc:items-center dc:justify-center dc:h-96 ${className}`}>
         <div className="dc:text-center text-dc-error">
-          <p className="dc:font-medium">Failed to load cube schema</p>
+          <p className="dc:font-medium">{t('schema.error')}</p>
           <p className="dc:text-sm dc:mt-1">{metaError}</p>
         </div>
       </div>
@@ -339,8 +340,8 @@ export function SchemaVisualization({
     return (
       <div className={`dc:flex dc:items-center dc:justify-center dc:h-96 ${className}`}>
         <div className="dc:text-center text-dc-text-muted">
-          <p className="dc:font-medium">No cubes found</p>
-          <p className="dc:text-sm dc:mt-1">Register some cubes to see the relationship diagram</p>
+          <p className="dc:font-medium">{t('schema.noCubes')}</p>
+          <p className="dc:text-sm dc:mt-1">{t('schema.noCubesHint')}</p>
         </div>
       </div>
     )
@@ -352,7 +353,7 @@ export function SchemaVisualization({
       <div className={`dc:flex dc:items-center dc:justify-center dc:h-96 ${className}`}>
         <div className="dc:text-center">
           <div className="dc:animate-spin dc:rounded-full dc:h-8 dc:w-8 dc:border-b-2 border-dc-accent dc:mx-auto dc:mb-2" />
-          <p className="text-dc-text-muted">Computing layout...</p>
+          <p className="text-dc-text-muted">{t('schema.computingLayout')}</p>
         </div>
       </div>
     )
@@ -367,7 +368,7 @@ export function SchemaVisualization({
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search cubes and fields..."
+            placeholder={t('schema.searchPlaceholder')}
             className="dc:flex-1 dc:text-sm dc:bg-transparent dc:outline-none text-dc-text dc:placeholder:text-dc-text-muted"
           />
           {searchInput && (
@@ -428,7 +429,7 @@ export function SchemaVisualization({
             onClick={handleAutoLayout}
             className="dc:w-full dc:px-3 dc:py-2 dc:text-sm text-dc-text-secondary dc:hover:bg-dc-surface-hover dc:text-left"
           >
-            Auto Layout
+            {t('schema.autoLayout')}
           </button>
         </div>
       )}

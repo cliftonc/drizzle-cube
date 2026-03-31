@@ -1,25 +1,26 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the radial bar chart type
  */
 export const radialBarChartConfig: ChartTypeConfig = {
-  label: 'Radial Bar Chart',
-  description: 'Circular progress and KPI visualization',
-  useCase: 'Best for showing progress toward goals, KPIs, or comparing percentages in a compact form',
+  label: t('chart.radialBar.label'),
+  description: t('chart.radialBar.description'),
+  useCase: t('chart.radialBar.useCase'),
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Categories',
-      description: 'Dimensions for radial segments',
+      label: t('chart.configText.categories'),
+      description: t('chart.configText.dimensions_for_radial_segments'),
       mandatory: true,
       acceptTypes: ['dimension'],
       emptyText: 'Drop dimensions for categories'
     },
     {
       key: 'yAxis',
-      label: 'Values',
-      description: 'Measures for radial bar lengths',
+      label: t('chart.configText.values'),
+      description: t('chart.configText.measures_for_radial_bar_lengths'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -30,9 +31,9 @@ export const radialBarChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: t('chart.option.valueFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for values'
+      description: t('chart.option.valueFormat.description')
     }
   ]
 }

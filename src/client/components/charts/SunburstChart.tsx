@@ -13,6 +13,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
+import { t } from '../../../i18n/runtime'
 import { SunburstChart as RechartsSunburst, ResponsiveContainer, Tooltip } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -320,9 +321,9 @@ const SunburstChart = React.memo(function SunburstChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.flow.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Configure a flow analysis with a starting step and event dimension
+            {t('chart.runtime.noDataHint.flow')}
           </div>
         </div>
       </div>
@@ -379,7 +380,7 @@ const SunburstChart = React.memo(function SunburstChart({
               <span className="dc:font-medium">{summaryStats.nodeCount}</span> events (after)
             </div>
             <div className="text-dc-text">
-              <span className="text-dc-text-muted">Paths:</span>{' '}
+              <span className="text-dc-text-muted">{t('chart.runtime.flow.paths')}</span>{' '}
               <span className="dc:font-medium">{summaryStats.linkCount}</span>
             </div>
             <div className="text-dc-text-muted">

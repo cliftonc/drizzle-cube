@@ -42,6 +42,7 @@ import { RetentionQueryBuilder } from './builders/retention-query-builder'
 import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan'
 import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
+import { t } from '../i18n/runtime'
 
 type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
@@ -86,7 +87,7 @@ export class QueryExecutor {
     // Get the database adapter from the executor
     this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
-      throw new Error('DatabaseExecutor must have a databaseAdapter property')
+      throw new Error(t('server.errors.dbAdapterRequired'))
     }
     this.queryBuilder = new DrizzleSqlBuilder(this.databaseAdapter)
     const queryPlanner = new LogicalPlanner()
@@ -122,7 +123,7 @@ export class QueryExecutor {
 
     const db = this.dbExecutor.db
     if (!db.transaction) {
-      throw new Error('rlsSetup requires a database driver that supports transactions (db.transaction)')
+      throw new Error(t('server.errors.rlsRequiresTransactions'))
     }
 
     const rlsSetup = this.rlsSetup
@@ -233,10 +234,10 @@ export class QueryExecutor {
         if (pgError.detail) message += ` Detail: ${pgError.detail}`
         if (pgError.hint) message += ` Hint: ${pgError.hint}`
 
-        error.message = `Query execution failed: ${message}`
+        error.message = t('server.errors.queryExecutionFailed', { message })
         throw error
       }
-      throw new Error(`Query execution failed: Unknown error`, { cause: error })
+      throw new Error(t('server.errors.queryExecutionUnknown'), { cause: error })
     }
   }
 
@@ -342,14 +343,14 @@ export class QueryExecutor {
   private buildComparisonExecutionPlan(query: SemanticQuery): ComparisonExecutionPlan {
     const timeDimension = this.comparisonQueryBuilder.getComparisonTimeDimension(query)
     if (!timeDimension || !timeDimension.compareDateRange) {
-      throw new Error('No compareDateRange found in query')
+      throw new Error(t('server.errors.noCompareDateRange'))
     }
 
     const periods = this.comparisonQueryBuilder.normalizePeriods(
       timeDimension.compareDateRange
     )
     if (periods.length < 2) {
-      throw new Error('compareDateRange requires at least 2 periods')
+      throw new Error(t('server.errors.compareDateRangeInvalid'))
     }
 
     const periodQueries = periods.map(period =>
@@ -398,7 +399,7 @@ export class QueryExecutor {
     // Validate funnel configuration
     const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Funnel validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -481,7 +482,7 @@ export class QueryExecutor {
     // Validate flow configuration
     const validation = this.flowQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Flow validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -561,7 +562,7 @@ export class QueryExecutor {
     // Validate retention configuration
     const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Retention validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -828,7 +829,7 @@ export class QueryExecutor {
   ): Promise<{ sql: string; params?: any[] }> {
     // Validate funnel query
     if (!this.funnelQueryBuilder.hasFunnel(query)) {
-      throw new Error('Query does not contain a valid funnel configuration')
+      throw new Error(t('server.errors.invalidFunnelConfig'))
     }
 
     const config = query.funnel!
@@ -836,7 +837,7 @@ export class QueryExecutor {
     // Validate funnel configuration
     const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Funnel validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -871,7 +872,7 @@ export class QueryExecutor {
   ): Promise<{ sql: string; params?: any[] }> {
     // Validate flow query
     if (!this.flowQueryBuilder.hasFlow(query)) {
-      throw new Error('Query does not contain a valid flow configuration')
+      throw new Error(t('server.errors.invalidFlowConfig'))
     }
 
     const config = query.flow!
@@ -879,7 +880,7 @@ export class QueryExecutor {
     // Validate flow configuration
     const validation = this.flowQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Flow validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -912,7 +913,7 @@ export class QueryExecutor {
   ): Promise<{ sql: string; params?: any[] }> {
     // Validate retention query
     if (!this.retentionQueryBuilder.hasRetention(query)) {
-      throw new Error('Query does not contain a valid retention configuration')
+      throw new Error(t('server.errors.invalidRetentionConfig'))
     }
 
     const config = query.retention!
@@ -920,7 +921,7 @@ export class QueryExecutor {
     // Validate retention configuration
     const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
     if (!validation.isValid) {
-      throw new Error(`Retention validation failed: ${validation.errors.join(', ')}`)
+      throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -1028,7 +1029,7 @@ export class QueryExecutor {
     }
 
     if (activeModes.length > 1) {
-      throw new Error(`Query contains multiple query modes: ${activeModes.join(', ')}`)
+      throw new Error(t('server.errors.queryContainsMultipleModes', { modes: activeModes.join(', ') }))
     }
 
     return activeModes[0]
@@ -1042,7 +1043,7 @@ export class QueryExecutor {
     const validateStandard = () => {
       const validation = validateQueryAgainstCubes(cubes, query)
       if (!validation.isValid) {
-        throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+        throw new Error(t('server.errors.queryValidationFailed', { errors: validation.errors.join(', ') }))
       }
     }
 
@@ -1052,19 +1053,19 @@ export class QueryExecutor {
       funnel: () => {
         const validation = this.funnelQueryBuilder.validateConfig(query.funnel!, cubes)
         if (!validation.isValid) {
-          throw new Error(`Funnel validation failed: ${validation.errors.join(', ')}`)
+          throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
         }
       },
       flow: () => {
         const validation = this.flowQueryBuilder.validateConfig(query.flow!, cubes)
         if (!validation.isValid) {
-          throw new Error(`Flow validation failed: ${validation.errors.join(', ')}`)
+          throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
         }
       },
       retention: () => {
         const validation = this.retentionQueryBuilder.validateConfig(query.retention!, cubes)
         if (!validation.isValid) {
-          throw new Error(`Retention validation failed: ${validation.errors.join(', ')}`)
+          throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
         }
       }
     }

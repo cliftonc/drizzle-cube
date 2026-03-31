@@ -50,6 +50,7 @@ import {
   validateOriginHeader,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
 
 export interface NextCorsOptions {
   /**
@@ -212,6 +213,32 @@ function createSemanticLayer(
   return semanticLayer
 }
 
+function getLocaleAwareRequestOptions(options: NextAdapterOptions): {
+  extractSecurityContext: (request: NextRequest, context?: RouteContext) => Promise<SecurityContext>
+  cors?: NextCorsOptions
+} {
+  const extractSecurityContextWithLocale = async (
+    request: NextRequest,
+    context?: RouteContext
+  ): Promise<SecurityContext> => {
+    const securityContext = await options.extractSecurityContext(request, context)
+    const requestLocale = resolveRequestLocale((header) => request.headers.get(header))
+    return withLocaleInSecurityContext(securityContext, requestLocale)
+  }
+
+  const cors = options.cors
+    ? {
+        ...options.cors,
+        allowedHeaders: ensureLocaleHeader(options.cors.allowedHeaders)
+      }
+    : undefined
+
+  return {
+    extractSecurityContext: extractSecurityContextWithLocale,
+    cors
+  }
+}
+
 /**
  * Generate CORS headers for Next.js responses
  */
@@ -257,7 +284,11 @@ function getCorsHeaders(request: NextRequest, corsOptions: NextCorsOptions): Rec
  */
 export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler {
   return async function optionsHandler(request: NextRequest) {
-    const corsHeaders = getCorsHeaders(request, corsOptions)
+    const localeAwareCorsOptions: NextCorsOptions = {
+      ...corsOptions,
+      allowedHeaders: ensureLocaleHeader(corsOptions.allowedHeaders)
+    }
+    const corsHeaders = getCorsHeaders(request, localeAwareCorsOptions)
     return new Response(null, {
       status: 200,
       headers: corsHeaders
@@ -271,7 +302,7 @@ export function createOptionsHandler(corsOptions: NextCorsOptions): RouteHandler
 export function createLoadHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -347,7 +378,7 @@ export function createLoadHandler(
 export function createMetaHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = options
+  const { cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -386,7 +417,7 @@ export function createMetaHandler(
 export function createSqlHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -472,7 +503,7 @@ export function createSqlHandler(
 export function createDryRunHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -539,7 +570,7 @@ export function createDryRunHandler(
 export function createBatchHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -605,7 +636,7 @@ export function createBatchHandler(
 export function createExplainHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -668,7 +699,7 @@ export function createExplainHandler(
 export function createDiscoverHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = options
+  const { cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -710,7 +741,7 @@ export function createDiscoverHandler(
 export function createSuggestHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = options
+  const { cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -759,7 +790,7 @@ export function createSuggestHandler(
 export function createValidateHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { cors } = options
+  const { cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -809,7 +840,7 @@ export function createValidateHandler(
 export function createMcpLoadHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
 
   // Create semantic layer with all cubes registered
   const semanticLayer = createSemanticLayer(options)
@@ -860,7 +891,8 @@ export function createMcpLoadHandler(
 export function createMcpRpcHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors, mcp = { enabled: true } } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
+  const { mcp = { enabled: true } } = options
 
   const semanticLayer = createSemanticLayer(options)
 
@@ -1070,7 +1102,8 @@ export function createMcpRpcHandler(
 export function createAgentChatHandler(
   options: NextAdapterOptions
 ): RouteHandler {
-  const { extractSecurityContext, cors, agent: agentConfig } = options
+  const { extractSecurityContext, cors } = getLocaleAwareRequestOptions(options)
+  const { agent: agentConfig } = options
 
   if (!agentConfig) {
     throw new Error('agent config is required for createAgentChatHandler')

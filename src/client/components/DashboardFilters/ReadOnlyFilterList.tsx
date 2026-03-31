@@ -13,6 +13,7 @@ const ClockIcon = getIcon('timeDimension')
 import DateRangeSelector from '../shared/DateRangeSelector'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
+import { t } from '../../../i18n/runtime'
 
 interface ReadOnlyFilterListProps {
   dashboardFilters: DashboardFilter[]
@@ -124,7 +125,7 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
       <div className="dc:flex dc:items-center dc:gap-2 dc:mb-3">
         <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
         <h3 className="dc:text-sm dc:font-semibold" style={{ color: 'var(--dc-text)' }}>
-          Filters
+          {t('dashboardFilter.readOnly.filters')}
         </h3>
         {dashboardFilters.length > 0 && (
           <span

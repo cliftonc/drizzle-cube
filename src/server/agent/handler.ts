@@ -5,6 +5,7 @@
  * Supports Anthropic, OpenAI, Google Gemini, and OpenAI-compatible providers.
  */
 
+import { t } from '../../i18n/runtime'
 import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentConfig, AgentSSEEvent, AgentHistoryMessage } from './types'
@@ -65,7 +66,7 @@ export async function* handleAgentChat(options: {
     yield {
       type: 'error',
       data: {
-        message: error instanceof Error ? error.message : 'Failed to initialize LLM provider'
+        message: error instanceof Error ? error.message : t('server.errors.llmInitFailed')
       }
     }
     return

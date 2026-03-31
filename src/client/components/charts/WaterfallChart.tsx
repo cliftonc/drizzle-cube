@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { t } from '../../../i18n/runtime'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, LabelList, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -155,8 +156,8 @@ const WaterfallChart = React.memo(function WaterfallChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-            <div className="dc:text-xs text-dc-text-secondary">No data points to display in waterfall chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.waterfall')}</div>
           </div>
         </div>
       )
@@ -166,7 +167,7 @@ const WaterfallChart = React.memo(function WaterfallChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
             <div className="dc:text-xs">{configError}</div>
           </div>
         </div>
@@ -264,9 +265,9 @@ const WaterfallChart = React.memo(function WaterfallChart({
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Waterfall Chart Error</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Waterfall Chart' })}</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
+          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
         </div>
       </div>
     )

@@ -6,9 +6,10 @@
  */
 
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 export const retentionHeatmapConfig: ChartTypeConfig = {
-  label: 'Retention Matrix',
+  label: t('chart.retentionHeatmap.label'),
   // RetentionHeatmap auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to cohort × period matrix
   dropZones: [],
@@ -17,20 +18,20 @@ export const retentionHeatmapConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'showLegend',
-      label: 'Show Legend',
+      label: t('chart.option.showLegend.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Show the color intensity legend',
+      description: t('chart.configText.show_the_color_intensity_legend'),
     },
     {
       key: 'showTooltip',
-      label: 'Show Tooltip',
+      label: t('chart.option.showTooltip.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Show tooltip on hover with detailed stats',
+      description: t('chart.option.showTooltip.description'),
     },
   ],
 
-  description: 'Cohort retention matrix visualization',
-  useCase: 'Visualize user retention over time by cohort',
+  description: t('chart.retentionHeatmap.description'),
+  useCase: t('chart.retentionHeatmap.useCase'),
 }

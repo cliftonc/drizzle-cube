@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { t } from '../../../i18n/runtime'
 import { Icon } from '@iconify/react'
 import infoCircleIcon from '@iconify-icons/tabler/info-circle'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
@@ -235,8 +236,8 @@ const KpiNumber = React.memo(function KpiNumber({
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.kpi')}</div>
         </div>
       </div>
     )
@@ -255,8 +256,8 @@ const KpiNumber = React.memo(function KpiNumber({
         }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">No measure fields configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
+          <div className="dc:text-xs">{t('chart.runtime.configErrorHint.noMeasures')}</div>
         </div>
       </div>
     )

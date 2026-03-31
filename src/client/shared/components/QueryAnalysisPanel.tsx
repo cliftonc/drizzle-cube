@@ -6,6 +6,7 @@
 import React from 'react'
 import { getIcon } from '../../icons'
 import type { QueryAnalysis } from '../types'
+import { t } from '../../../i18n/runtime'
 
 interface QueryAnalysisPanelProps {
   analysis: QueryAnalysis
@@ -50,25 +51,25 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
 
   const summaryCards = [
     {
-      label: 'Type',
+      label: t('queryAnalysis.summary.type'),
       value: formatReason(analysis.querySummary.queryType),
     },
     {
-      label: 'Cubes',
+      label: t('queryAnalysis.summary.cubes'),
       value: String(analysis.cubeCount),
     },
     {
-      label: 'Joins',
+      label: t('queryAnalysis.summary.joins'),
       value: String(analysis.querySummary.joinCount),
     },
     {
-      label: 'CTEs',
+      label: t('queryAnalysis.summary.ctes'),
       value: String(analysis.querySummary.cteCount),
     },
     ...(analysis.querySummary.measureStrategy
       ? [
           {
-            label: 'Strategy',
+            label: t('queryAnalysis.summary.strategy'),
             value: formatReason(analysis.querySummary.measureStrategy),
           },
         ]
@@ -81,7 +82,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       <div className="dc:border-b border-dc-border dc:pb-3">
         <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2 dc:flex dc:items-center">
           <InfoIcon className="dc:w-4 dc:h-4 dc:mr-2" />
-          Query Summary
+          {t('queryAnalysis.summary')}
         </h4>
         <div
           className="dc:grid dc:gap-2 dc:text-xs"
@@ -100,7 +101,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       <div className="dc:border-b border-dc-border dc:pb-3">
         <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2 dc:flex dc:items-center">
           <TableIcon className="dc:w-4 dc:h-4 dc:mr-2" />
-          Primary Cube (FROM table)
+          {t('queryAnalysis.primaryCube')}
         </h4>
         <div className="bg-dc-surface dc:p-3 dc:rounded dc:text-sm">
           <div className="dc:flex dc:items-center dc:gap-2 dc:mb-2 dc:flex-wrap">
@@ -117,7 +118,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
           {analysis.primaryCube.candidates && analysis.primaryCube.candidates.length > 1 && (
             <details className="dc:mt-2">
               <summary className="dc:text-xs text-dc-text-muted dc:cursor-pointer hover:text-dc-text">
-                Show candidates ({analysis.primaryCube.candidates.length})
+                {t('queryAnalysis.primaryCube.showCandidates', { count: analysis.primaryCube.candidates.length })}
               </summary>
               <div className="dc:mt-2 dc:space-y-1 dc:ml-2">
                 {analysis.primaryCube.candidates.map((c, i) => (
@@ -129,16 +130,16 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                       dims: {c.dimensionCount}, joins: {c.joinCount}
                     </span>
                     {c.canReachAll ? (
-                      <span className="text-dc-success dc:flex dc:items-center dc:gap-0.5">
-                        <SuccessIcon className="dc:w-3 dc:h-3" />
-                        reachable
-                      </span>
-                    ) : (
-                      <span className="text-dc-error dc:flex dc:items-center dc:gap-0.5">
-                        <ErrorIcon className="dc:w-3 dc:h-3" />
-                        cannot reach all
-                      </span>
-                    )}
+                        <span className="text-dc-success dc:flex dc:items-center dc:gap-0.5">
+                          <SuccessIcon className="dc:w-3 dc:h-3" />
+                          {t('queryAnalysis.primaryCube.reachable')}
+                        </span>
+                      ) : (
+                        <span className="text-dc-error dc:flex dc:items-center dc:gap-0.5">
+                          <ErrorIcon className="dc:w-3 dc:h-3" />
+                          {t('queryAnalysis.primaryCube.cannotReachAll')}
+                        </span>
+                      )}
                   </div>
                 ))}
               </div>
@@ -152,7 +153,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
         <div className="dc:border-b border-dc-border dc:pb-3">
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2 dc:flex dc:items-center">
             <LinkIcon className="dc:w-4 dc:h-4 dc:mr-2" />
-            Join Paths
+            {t('queryAnalysis.joinPaths')}
           </h4>
           <div className="dc:space-y-2">
             {analysis.joinPaths.map((jp, idx) => (
@@ -192,7 +193,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                 )}
                 {jp.selection && (
                   <div className="dc:mt-2 dc:ml-2 dc:text-xs text-dc-text-muted">
-                    <span className="dc:font-medium text-dc-text">Selection:</span>
+                    <span className="dc:font-medium text-dc-text">{t('queryAnalysis.joinPaths.selection')}</span>
                     <span>{` ${formatReason(jp.selection.strategy)}`}</span>
                     {typeof jp.selection.selectedRank === 'number' && (
                       <span>{`, selected #${jp.selection.selectedRank}`}</span>
@@ -205,7 +206,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                 {jp.selection?.candidates && jp.selection.candidates.length > 0 && (
                   <details className="dc:mt-2">
                     <summary className="dc:text-xs text-dc-text-muted dc:cursor-pointer hover:text-dc-text">
-                      {`Path scoring candidates (${jp.selection.candidates.length})`}
+                      {t('queryAnalysis.joinPaths.pathCandidates', { count: jp.selection.candidates.length })}
                     </summary>
                     <div className="dc:mt-1 dc:ml-2 dc:space-y-1">
                       {jp.selection.preferredCubes && jp.selection.preferredCubes.length > 0 && (
@@ -237,7 +238,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                 {jp.visitedCubes && jp.visitedCubes.length > 0 && !jp.pathFound && (
                   <details className="dc:mt-1">
                     <summary className="dc:text-xs text-dc-text-muted dc:cursor-pointer hover:text-dc-text">
-                      Cubes visited during search ({jp.visitedCubes.length})
+                      {t('queryAnalysis.joinPaths.visitedCubes', { count: jp.visitedCubes.length })}
                     </summary>
                     <div className="dc:mt-1 dc:text-xs text-dc-text-muted dc:ml-2">
                       {jp.visitedCubes.join(' → ')}
@@ -255,7 +256,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
         <div className="dc:border-b border-dc-border dc:pb-3">
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2 dc:flex dc:items-center">
             <TableIcon className="dc:w-4 dc:h-4 dc:mr-2" />
-            Pre-Aggregation CTEs
+            {t('queryAnalysis.preAggregations')}
           </h4>
           <div className="dc:space-y-2">
             {analysis.preAggregations.map((pa, idx) => (
@@ -267,11 +268,11 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
                 </div>
                 <p className="dc:text-xs text-dc-text-secondary">{pa.reason}</p>
                 <div className="dc:mt-1 dc:text-xs text-dc-text-muted">
-                  <span className="dc:font-medium">Measures:</span> {pa.measures.join(', ')}
+                  <span className="dc:font-medium">{t('queryAnalysis.preAggregations.measures')}</span> {pa.measures.join(', ')}
                 </div>
                 {pa.joinKeys.length > 0 && (
                   <div className="dc:mt-1 dc:text-xs text-dc-text-muted">
-                    <span className="dc:font-medium">Join keys:</span> {pa.joinKeys.map(jk => `${jk.sourceColumn}=${jk.targetColumn}`).join(', ')}
+                    <span className="dc:font-medium">{t('queryAnalysis.preAggregations.joinKeys')}</span> {pa.joinKeys.map(jk => `${jk.sourceColumn}=${jk.targetColumn}`).join(', ')}
                   </div>
                 )}
               </div>
@@ -285,7 +286,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
         <div>
           <h4 className="dc:text-sm dc:font-semibold text-dc-warning dc:mb-2 dc:flex dc:items-center">
             <WarningIcon className="dc:w-4 dc:h-4 dc:mr-2" />
-            Warnings
+            {t('queryAnalysis.warnings')}
           </h4>
           <ul className="list-disc dc:list-inside dc:text-xs text-dc-warning dc:space-y-1">
             {analysis.warnings.map((w, i) => (
@@ -298,7 +299,7 @@ const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => 
       {/* Cubes Involved */}
       {analysis.cubesInvolved.length > 0 && (
         <div className="dc:text-xs text-dc-text-muted dc:pt-2 dc:border-t border-dc-border">
-          <span className="dc:font-medium">Cubes involved:</span> {analysis.cubesInvolved.join(', ')}
+          <span className="dc:font-medium">{t('queryAnalysis.cubesInvolved')}</span> {analysis.cubesInvolved.join(', ')}
         </div>
       )}
     </div>

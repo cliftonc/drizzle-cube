@@ -1,3 +1,5 @@
+import { t } from '../../i18n/runtime'
+
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
  */
@@ -128,27 +130,27 @@ export const defaultChartConfig: ChartTypeConfig = {
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Categories)',
-      description: 'Dimensions and time dimensions for grouping',
+      label: t('chart.dropZone.xAxis.label'),
+      description: t('chart.dropZone.xAxis.description'),
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop dimensions & time dimensions here'
+      emptyText: t('chart.dropZone.xAxis.empty')
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Values)',
-      description: 'Measures for values or dimensions for series',
+      label: t('chart.dropZone.yAxis.label'),
+      description: t('chart.dropZone.yAxis.description'),
       mandatory: false,
       acceptTypes: ['measure', 'dimension'],
-      emptyText: 'Drop measures or dimensions here'
+      emptyText: t('chart.dropZone.yAxis.empty')
     },
     {
       key: 'series',
-      label: 'Series (Split into Multiple Series)',
-      description: 'Dimensions to create separate data series',
+      label: t('chart.dropZone.series.label'),
+      description: t('chart.dropZone.series.description'),
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions here to split data into series'
+      emptyText: t('chart.dropZone.series.empty')
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip']

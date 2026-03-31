@@ -1,4 +1,5 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the sankey chart type
@@ -8,17 +9,17 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * nodes and links representing user journeys.
  */
 export const sankeyChartConfig: ChartTypeConfig = {
-  label: 'Sankey Chart',
-  description: 'Show flow between states or steps',
-  useCase: 'Best for visualizing user journey flows, path analysis, or state transitions',
+  label: t('chart.sankey.label'),
+  description: t('chart.sankey.description'),
+  useCase: t('chart.sankey.useCase'),
   dropZones: [
     // Sankey charts don't use traditional drop zones since they work with
     // pre-calculated flow data from flow queries. The nodes and links are
     // generated from the flow configuration.
     {
       key: 'xAxis',
-      label: 'Event Type',
-      description: 'Event dimension that categorizes flow nodes',
+      label: t('chart.configText.event_type'),
+      description: t('chart.configText.event_dimension_that_categorizes_flow_nodes'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
@@ -26,8 +27,8 @@ export const sankeyChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'Flow Count',
-      description: 'Count of entities following each path',
+      label: t('chart.configText.flow_count'),
+      description: t('chart.configText.count_of_entities_following_each_path'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -38,29 +39,29 @@ export const sankeyChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'linkOpacity',
-      label: 'Link Opacity',
+      label: t('chart.option.linkOpacity.label'),
       type: 'buttonGroup',
       defaultValue: '0.5',
       options: [
-        { value: '0.3', label: 'Light' },
-        { value: '0.5', label: 'Medium' },
-        { value: '0.7', label: 'Dark' }
+        { value: '0.3', label: t('chart.option.linkOpacity.light') },
+        { value: '0.5', label: t('chart.option.fontSize.medium') },
+        { value: '0.7', label: t('chart.option.linkOpacity.dark') }
       ],
-      description: 'Opacity of flow links'
+      description: t('chart.configText.opacity_of_flow_links')
     },
     {
       key: 'showNodeLabels',
-      label: 'Show Node Labels',
+      label: t('chart.option.showNodeLabels.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Display labels on flow nodes'
+      description: t('chart.option.showNodeLabels.description')
     },
     {
       key: 'hideSummaryFooter',
-      label: 'Hide Summary Footer',
+      label: t('chart.option.hideSummaryFooter.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Hide the statistics footer below the chart'
+      description: t('chart.configText.hide_the_statistics_footer_below_the_chart')
     }
   ]
 }

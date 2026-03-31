@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatDateForCube, convertDateRangeTypeToValue } from '../shared/utils'
+import { t } from '../../../i18n/runtime'
 
 type TabType = 'fixed' | 'since' | 'last'
 type LastUnit = 'days' | 'weeks' | 'months' | 'quarters' | 'years'
@@ -183,7 +184,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
-                Start Date
+                {t('dashboardFilter.customDate.startDate')}
               </label>
               <input
                 type="date"
@@ -202,7 +203,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
-                End Date
+                {t('dashboardFilter.customDate.endDate')}
               </label>
               <input
                 type="date"
@@ -226,7 +227,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 color: 'white'
               }}
             >
-              Apply
+              {t('common.actions.apply')}
             </button>
           </div>
         )}
@@ -239,7 +240,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                 style={{ color: 'var(--dc-text-secondary)' }}
               >
-                Since Date
+                {t('dashboardFilter.customDate.sinceDate')}
               </label>
               <input
                 type="date"
@@ -257,7 +258,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               className="dc:text-xs"
               style={{ color: 'var(--dc-text-secondary)' }}
             >
-              From selected date to today
+              {t('dashboardFilter.customDate.fromSelectedToToday')}
             </p>
             <button
               type="button"
@@ -269,7 +270,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 color: 'white'
               }}
             >
-              Apply
+              {t('common.actions.apply')}
             </button>
           </div>
         )}
@@ -283,7 +284,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                   className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                   style={{ color: 'var(--dc-text-secondary)' }}
                 >
-                  Number
+                  {t('dashboardFilter.customDate.number')}
                 </label>
                 <input
                   type="number"
@@ -304,7 +305,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                   className="dc:block dc:text-xs dc:font-medium dc:mb-1"
                   style={{ color: 'var(--dc-text-secondary)' }}
                 >
-                  Unit
+                  {t('dashboardFilter.customDate.unit')}
                 </label>
                 <select
                   value={lastUnit}
@@ -328,7 +329,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
               className="dc:text-xs"
               style={{ color: 'var(--dc-text-secondary)' }}
             >
-              Last {lastNumber} {lastNumber === 1 ? lastUnit.slice(0, -1) : lastUnit}
+              {t('dashboardFilter.customDate.lastNPreview', { number: lastNumber, unit: lastNumber === 1 ? lastUnit.slice(0, -1) : lastUnit })}
             </p>
             <button
               type="button"
@@ -340,7 +341,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
                 color: 'white'
               }}
             >
-              Apply
+              {t('common.actions.apply')}
             </button>
           </div>
         )}
@@ -360,7 +361,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
             backgroundColor: 'transparent'
           }}
         >
-          Cancel
+          {t('common.actions.cancel')}
         </button>
       </div>
     </div>

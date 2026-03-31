@@ -75,6 +75,7 @@ const db = createDatabase(getEnvVar('DATABASE_URL', defaultConnectionString))
 // Security context extractor - customize based on your auth system
 // This function is called for EVERY API request to extract user permissions
 async function extractSecurityContext(c: any): Promise<SecurityContext> {
+  const locale = c.req.header('X-DC-Locale') || c.req.header('x-dc-locale') || 'en-GB'
   // Example: Extract from JWT token or session
   const authHeader = c.req.header('Authorization')
   
@@ -84,6 +85,7 @@ async function extractSecurityContext(c: any): Promise<SecurityContext> {
     return {
       organisationId: 1, // Default demo organisation
       userId: 1,         // Default demo user
+      locale,
       // Add other security context fields as needed
     }
   }
@@ -99,13 +101,15 @@ async function extractSecurityContext(c: any): Promise<SecurityContext> {
     return {
       organisationId: 1, // Extract from token
       userId: 1,         // Extract from token
+      locale,
       // Add other security context fields as needed
     }
-  } catch (error) {
+  } catch {
     console.log('⚠️  Invalid authorization token - using default demo user (organisation: 1)')
     return {
       organisationId: 1, // Fallback to demo organisation
       userId: 1,         // Fallback to demo user
+      locale,
     }
   }
 }
@@ -118,7 +122,7 @@ app.use('*', logger())
 app.use('*', cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081'],
   allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'Last-Event-Id'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'Last-Event-Id', 'X-DC-Locale'],
   credentials: true
 }))
 
@@ -234,7 +238,7 @@ const cubeApp = createCubeApp({
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081'],
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'X-Agent-Api-Key', 'X-Agent-Provider', 'X-Agent-Model', 'X-Agent-Provider-Endpoint'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'MCP-Protocol-Version', 'MCP-Session-Id', 'X-Agent-Api-Key', 'X-Agent-Provider', 'X-Agent-Model', 'X-Agent-Provider-Endpoint', 'X-DC-Locale'],
     credentials: true
   },
   cache: {

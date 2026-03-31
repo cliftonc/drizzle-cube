@@ -11,6 +11,7 @@ import type { DashboardFilter, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
 import { FILTER_OPERATORS } from '../../shared/types'
 import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
+import { t } from '../../../i18n/runtime'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -120,7 +121,7 @@ export default function DashboardFilterItem({
           {needsConfiguration ? (
             <>
               <span className="dc:font-medium">{filter.label}</span>
-              <span className="text-dc-text-muted dc:ml-1 dc:italic">Click to configure</span>
+              <span className="text-dc-text-muted dc:ml-1 dc:italic">{t('dashboardFilter.clickToConfigure')}</span>
             </>
           ) : (
             <>

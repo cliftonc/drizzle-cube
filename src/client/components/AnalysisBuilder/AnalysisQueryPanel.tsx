@@ -22,6 +22,7 @@ import AnalysisTypeSelector from './AnalysisTypeSelector'
 import FunnelModeContent from './FunnelModeContent'
 import FlowModeContent from './FlowModeContent'
 import RetentionModeContent from './RetentionModeContent'
+import { t } from '../../../i18n/runtime'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -206,7 +207,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
 
   // Get tab label for query tabs
   const getQueryTabLabel = (index: number) => {
-    if (!isMultiQuery) return 'Query'
+    if (!isMultiQuery) return t('analysis.tabs.query')
     // In funnel mode, show "S1", "S2", etc.
     if (isFunnelMode) return `S${index + 1}`
     return `Q${index + 1}`
@@ -310,17 +311,18 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
       ) : (
         <>
       {/* Tab Bar - only shown when not in new funnel mode */}
-      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
+      <div className="dc:border-b border-dc-border dc:flex-shrink-0 dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
+        <div className="dc:flex dc:min-w-max">
         {/* Query Tabs - show Q1, Q2, etc. when multi-query, or single "Query" tab */}
         {isMultiQuery ? (
-          <div className="dc:flex dc:min-w-0 dc:overflow-x-auto scrollbar-thin">
+          <div className="dc:flex dc:min-w-max">
             {Array.from({ length: queryCount }).map((_, index) => {
               const isActiveQuery = index === activeQueryIndex && activeTab === 'query'
               return (
                 <button
                   key={`q${index}`}
                   onClick={() => handleQueryTabClick(index)}
-                  className={`dc:flex dc:items-center dc:gap-1 dc:px-3 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
+                  className={`dc:flex dc:items-center dc:gap-1 dc:px-3 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
                     isActiveQuery
                       ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                       : 'text-dc-text-secondary hover:text-dc-text'
@@ -333,7 +335,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                     onClick={(e) => handleRemoveQuery(e, index)}
                     onKeyDown={(e) => e.key === 'Enter' && handleRemoveQuery(e as unknown as React.MouseEvent, index)}
                     className="dc:p-0.5 dc:rounded hover:bg-dc-danger-bg hover:text-dc-error dc:transition-colors dc:ml-0.5"
-                    title="Remove query"
+                    title={t('analysis.multiQuery.removeQuery')}
                     aria-label={`Remove ${getQueryTabLabel(index)}`}
                   >
                     <CloseIcon className="dc:w-3 dc:h-3" />
@@ -344,9 +346,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             {/* Add Query Button */}
             <button
               onClick={onAddQuery}
-              className="dc:flex dc:items-center dc:justify-center dc:px-2 dc:py-3 text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex-shrink-0"
-              title="Add query"
-              aria-label="Add new query"
+              className="dc:flex dc:items-center dc:justify-center dc:px-2 dc:py-3 text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap"
+              title={t('analysis.multiQuery.addQuery')}
+              aria-label={t('analysis.multiQuery.addQuery')}
             >
               <AddIcon className="dc:w-4 dc:h-4" />
             </button>
@@ -354,13 +356,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         ) : (
           <button
             onClick={() => onActiveTabChange('query')}
-            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
               activeTab === 'query'
                 ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                 : 'text-dc-text-secondary hover:text-dc-text'
             }`}
           >
-            Query
+            {t('analysis.tabs.query')}
             {/* Add button to convert to multi-query */}
             {onAddQuery && (
               <span
@@ -377,8 +379,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                   }
                 }}
                 className="dc:ml-2 dc:p-0.5 dc:rounded hover:bg-dc-surface-hover dc:transition-colors dc:inline-flex dc:items-center"
-                title="Add another query"
-                aria-label="Add another query"
+                title={t('analysis.multiQuery.addAnother')}
+                aria-label={t('analysis.multiQuery.addAnother')}
               >
                 <AddIcon className="dc:w-3 dc:h-3" />
               </span>
@@ -389,7 +391,7 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('chart')}
           disabled={metrics.length === 0}
-          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
+          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
             isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'chart'
@@ -398,14 +400,14 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                 ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
-          title={metrics.length === 0 ? 'Add metrics to configure chart' : 'Chart configuration'}
+          title={metrics.length === 0 ? t('analysis.tabs.chartDisabled') : t('analysis.tabs.chartTitle')}
         >
-          Chart
+          {t('analysis.tabs.chart')}
         </button>
         <button
           onClick={() => metrics.length > 0 && onActiveTabChange('display')}
           disabled={metrics.length === 0}
-          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 ${
+          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
             isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'display'
@@ -414,10 +416,11 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
                 ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
                 : 'text-dc-text-secondary hover:text-dc-text'
           }`}
-          title={metrics.length === 0 ? 'Add metrics to configure display' : 'Display options'}
+          title={metrics.length === 0 ? t('analysis.tabs.displayDisabled') : t('analysis.tabs.displayTitle')}
         >
-          Display
+          {t('analysis.tabs.display')}
         </button>
+        </div>
       </div>
 
       {/* Merge Strategy Controls (only shown when multiple queries and on query tab) */}
@@ -429,9 +432,9 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             onChange={(e) => onMergeStrategyChange?.(e.target.value as QueryMergeStrategy)}
             className="dc:px-2 dc:py-1 dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
           >
-            <option value="concat">Separate series</option>
-            <option value="merge">Merge by dimension</option>
-            <option value="funnel">Funnel</option>
+            <option value="concat">{t('analysis.mergeStrategy.concat')}</option>
+            <option value="merge">{t('analysis.mergeStrategy.merge')}</option>
+            <option value="funnel">{t('analysis.mergeStrategy.funnel')}</option>
           </select>
 
           {/* Funnel Binding Key Selector (inline, only shown in funnel mode) */}
@@ -501,19 +504,19 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
             {breakdownsLocked ? (
               <div className="dc:mb-4">
                 <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
-                  <h4 className="dc:text-sm dc:font-medium text-dc-text">Dimensions</h4>
+                  <h4 className="dc:text-sm dc:font-medium text-dc-text">{t('analysis.sections.dimensions')}</h4>
                 </div>
                 {/* Explanation with link to switch mode */}
                 <div className="dc:flex dc:items-start dc:gap-2 dc:px-3 dc:py-2 dc:mb-3 bg-dc-surface-secondary dc:rounded dc:border border-dc-border dc:text-xs">
                   {InfoIcon && <InfoIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:flex-shrink-0 dc:mt-0.5" />}
                   <span className="text-dc-text-muted">
-                    In merge mode, dimensions are shared from Q1.
+                    {t('analysis.multiQuery.mergeExplanation')}
                     {onMergeStrategyChange && (
                       <button
                         onClick={() => onMergeStrategyChange('concat')}
                         className="text-dc-primary dc:hover:underline dc:ml-1"
                       >
-                        Switch to separate series
+                        {t('analysis.multiQuery.switchToSeparate')}
                       </button>
                     )}
                   </span>

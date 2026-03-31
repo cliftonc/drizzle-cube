@@ -1,17 +1,18 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the bubble chart type
  */
 export const bubbleChartConfig: ChartTypeConfig = {
-  label: 'Bubble Chart',
-  description: 'Compare three dimensions of data',
-  useCase: 'Best for showing relationships between three variables (X, Y, and size), market analysis',
+  label: t('chart.bubble.label'),
+  description: t('chart.bubble.description'),
+  useCase: t('chart.bubble.useCase'),
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis',
-      description: 'Horizontal axis position',
+      label: t('chart.runtime.axisFormat.xAxis'),
+      description: t('chart.configText.horizontal_axis_position'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension', 'measure'],
@@ -19,8 +20,8 @@ export const bubbleChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis', 
-      description: 'Vertical axis position',
+      label: t('chart.configText.y_axis'), 
+      description: t('chart.configText.vertical_axis_position'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -28,8 +29,8 @@ export const bubbleChartConfig: ChartTypeConfig = {
     },
     {
       key: 'sizeField',
-      label: 'Bubble Radius',
-      description: 'Size of bubbles based on this measure',
+      label: t('chart.configText.bubble_radius'),
+      description: t('chart.configText.size_of_bubbles_based_on_this_measure'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -37,8 +38,8 @@ export const bubbleChartConfig: ChartTypeConfig = {
     },
     {
       key: 'series',
-      label: 'Bubble Labels',
-      description: 'Field to use for bubble labels and identification',
+      label: t('chart.configText.bubble_labels'),
+      description: t('chart.configText.field_to_use_for_bubble_labels_and_identification'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension'],
@@ -46,8 +47,8 @@ export const bubbleChartConfig: ChartTypeConfig = {
     },
     {
       key: 'colorField',
-      label: 'Bubble Colour',
-      description: 'Color bubbles by this field (optional)',
+      label: t('chart.configText.bubble_colour'),
+      description: t('chart.configText.color_bubbles_by_this_field_optional'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension', 'measure'],
@@ -58,15 +59,15 @@ export const bubbleChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'xAxisFormat',
-      label: 'X-Axis Format',
+      label: t('chart.option.xAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for X-axis'
+      description: t('chart.option.xAxisFormat.description')
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: t('chart.option.yAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for Y-axis and values'
+      description: t('chart.configText.number_formatting_for_y_axis_and_values')
     }
   ]
 }

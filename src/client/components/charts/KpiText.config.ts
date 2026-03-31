@@ -1,17 +1,18 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the KPI Text chart type
  */
 export const kpiTextConfig: ChartTypeConfig = {
-  label: 'KPI Text',
-  description: 'Display key performance indicators as customizable text',
-  useCase: 'Perfect for showing metrics with custom formatting, combining multiple values, or displaying contextual KPI information using templates',
+  label: t('chart.kpiText.label'),
+  description: t('chart.kpiText.description'),
+  useCase: t('chart.kpiText.useCase'),
   dropZones: [
     {
       key: 'yAxis',
-      label: 'Value',
-      description: 'Measure to display in the KPI text template',
+      label: t('chart.configText.value'),
+      description: t('chart.configText.measure_to_display_in_the_kpi_text_template'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -21,27 +22,27 @@ export const kpiTextConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'template',
-      label: 'Text Template',
+      label: t('chart.configText.text_template'),
       type: 'string',
       placeholder: 'e.g., Total Revenue: ${value}',
-      description: 'Template for displaying the text. Use ${value} to insert the measure value.'
+      description: t('chart.configText.template_for_displaying_the_text_use_value_to_insert_the_measure_value')
     },
     {
       key: 'decimals',
-      label: 'Decimal Places',
+      label: t('chart.option.decimals.label'),
       type: 'number',
       defaultValue: 0,
       min: 0,
       max: 10,
       step: 1,
-      description: 'Number of decimal places to display for numeric values'
+      description: t('chart.configText.number_of_decimal_places_to_display_for_numeric_values')
     },
     {
       key: 'valueColorIndex',
-      label: 'Value Color',
+      label: t('chart.configText.value_color'),
       type: 'paletteColor',
       defaultValue: 0,
-      description: 'Color from the dashboard palette for the KPI value text'
+      description: t('chart.configText.color_from_the_dashboard_palette_for_the_kpi_value_text')
     }
   ],
   displayOptions: ['hideHeader']

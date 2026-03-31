@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { t } from '../../../i18n/runtime';
 import { Icon } from "@iconify/react";
 import infoCircleIcon from "@iconify-icons/tabler/info-circle";
 import { useCubeFieldLabel } from "../../hooks/useCubeFieldLabel";
@@ -205,7 +206,7 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
             No data points to display
           </div>
@@ -243,8 +244,8 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">No measure field configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
+          <div className="dc:text-xs">{t('chart.runtime.configErrorHint.noMeasure')}</div>
         </div>
       </div>
     );
@@ -303,11 +304,11 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Insufficient Data</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.kpiDelta.insufficientData')}</div>
           <div className="dc:text-xs">
-            Delta calculation requires at least 2 data points
+            {t('chart.runtime.kpiDelta.requiresTwoPoints')}
           </div>
-          <div className="dc:text-xs">Current data points: {values.length}</div>
+          <div className="dc:text-xs">{t('chart.runtime.kpiDelta.currentPoints', { count: values.length })}</div>
         </div>
       </div>
     );

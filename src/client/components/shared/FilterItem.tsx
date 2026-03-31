@@ -12,6 +12,7 @@ import type { FilterItemProps, MetaField, DateRangeType } from './types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { DATE_RANGE_OPTIONS } from './types'
+import { t } from '../../../i18n/runtime'
 
 const CloseIcon = getIcon('close')
 const FilterIcon = getIcon('filter')
@@ -127,7 +128,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
   if (!schema) {
     return (
       <div className="dc:text-sm text-dc-text-muted">
-        Schema not loaded
+        {t('filter.shared.schemaNotLoaded')}
       </div>
     )
   }
@@ -255,7 +256,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
     }
   }
 
-  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
+  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || t('dateRange.custom')
 
   return (
     <div ref={containerRef} className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:p-3">
@@ -276,7 +277,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                 {selectedField ? (
                   <span className="dc:font-medium">{selectedField.name}</span>
                 ) : (
-                  <span className="text-dc-text-muted">Select field...</span>
+                  <span className="text-dc-text-muted">{t('filter.shared.selectField')}</span>
                 )}
               </span>
               <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
@@ -293,7 +294,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search fields..."
+                      placeholder={t('filter.shared.searchFields')}
                       value={fieldSearchTerm}
                       onChange={(e) => setFieldSearchTerm(e.target.value)}
                       className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm dc:border border-dc-border dc:rounded-sm bg-dc-surface text-dc-text dc:focus:ring-1 focus:ring-dc-accent focus:border-dc-accent"
@@ -307,7 +308,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                   {filteredQueryFields.length > 0 && (
                     <div>
                       <div className="dc:px-3 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-muted bg-dc-surface-secondary dc:border-b border-dc-border">
-                        Fields in Query ({filteredQueryFields.length})
+                        {t('filter.shared.fieldsInQuery', { count: filteredQueryFields.length })}
                       </div>
                       {filteredQueryFields.map((field) => (
                         <button
@@ -338,7 +339,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                   <div>
                     {filteredQueryFields.length > 0 && (
                       <div className="dc:px-3 dc:py-1.5 dc:text-xs dc:font-medium text-dc-text-muted bg-dc-surface-secondary dc:border-b border-dc-border">
-                        All Available Fields ({filteredAllFields.length})
+                        {t('filter.shared.allAvailableFields', { count: filteredAllFields.length })}
                       </div>
                     )}
                     {filteredAllFields.map((field) => (

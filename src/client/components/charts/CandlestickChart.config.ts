@@ -1,20 +1,20 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the candlestick chart type
  */
 export const candlestickChartConfig: ChartTypeConfig = {
-  label: 'Candlestick Chart',
-  description: 'Financial candlestick chart showing open/close body and high/low wicks',
-  useCase:
-    'Best for EOD quotes (bid/ask spread per date/symbol), markout distribution bands, or OHLC price data',
+  label: t('chart.candlestick.label'),
+  description: t('chart.candlestick.description'),
+  useCase: t('chart.candlestick.useCase'),
   clickableElements: { bar: true },
   displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Time / Category)',
-      description: 'Time dimension or category for each candle (e.g. date, symbol)',
+      label: t('chart.configText.x_axis_time_category'),
+      description: t('chart.configText.time_dimension_or_category_for_each_candle_e_g_date_symbol'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['timeDimension', 'dimension'],
@@ -22,9 +22,8 @@ export const candlestickChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'OHLC Measures (open, close, high, low)',
-      description:
-        'Drop 2–4 measures in order: open, close, high, low (OHLC mode). For range mode drop 2: high, low.',
+      label: t('chart.configText.ohlc_measures_open_close_high_low'),
+      description: t('chart.configText.drop_2_4_measures_in_order_open_close_high_low_ohlc_mode_for_range_mode_'),
       mandatory: true,
       acceptTypes: ['measure'],
       emptyText: 'Drop 2+ measures here',
@@ -33,41 +32,41 @@ export const candlestickChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'rangeMode',
-      label: 'Chart Mode',
+      label: t('chart.option.rangeMode.label'),
       type: 'select',
       defaultValue: 'ohlc',
       options: [
-        { value: 'ohlc', label: 'OHLC (open, close, high, low)' },
-        { value: 'range', label: 'Range (high, low / bid, ask)' },
+        { value: 'ohlc', label: t('chart.option.rangeMode.ohlc') },
+        { value: 'range', label: t('chart.option.rangeMode.range') },
       ],
-      description: 'OHLC: 4 measures. Range: 2 measures (high + low).',
+      description: t('chart.option.rangeMode.description'),
     },
     {
       key: 'bullColor',
-      label: 'Bullish Colour',
+      label: t('chart.option.bullColor.label'),
       type: 'color',
       defaultValue: '#22c55e',
-      description: 'Candle colour when close ≥ open',
+      description: t('chart.option.bullColor.description'),
     },
     {
       key: 'bearColor',
-      label: 'Bearish Colour',
+      label: t('chart.option.bearColor.label'),
       type: 'color',
       defaultValue: '#ef4444',
-      description: 'Candle colour when close < open',
+      description: t('chart.option.bearColor.description'),
     },
     {
       key: 'showWicks',
-      label: 'Show Wicks',
+      label: t('chart.option.showWicks.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Draw high/low wicks above and below the body',
+      description: t('chart.option.showWicks.description'),
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: t('chart.option.yAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for the price axis',
+      description: t('chart.configText.number_formatting_for_the_price_axis'),
     },
   ],
 }

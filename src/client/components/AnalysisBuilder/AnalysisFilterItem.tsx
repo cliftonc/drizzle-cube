@@ -13,6 +13,7 @@ import type { MetaResponse } from '../../shared/types'
 import { FILTER_OPERATORS } from '../../shared/types'
 import { getFieldTitle, findFieldInSchema } from './utils'
 import FilterConfigModal from './FilterConfigModal'
+import { t } from '../../../i18n/runtime'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -88,7 +89,7 @@ export default function AnalysisFilterItem({
         <button
           onClick={onRemove}
           className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0 dc:mt-0.5"
-          title="Remove filter"
+          title={t('filter.removeButton.title')}
         >
           {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
         </button>
@@ -133,7 +134,7 @@ function formatValueDisplay(filter: SimpleFilter, operatorMeta: any): string {
 
   // No values selected
   if (values.length === 0) {
-    return '(empty)'
+    return t('filter.valueDisplay.empty')
   }
 
   // Single value
@@ -147,5 +148,5 @@ function formatValueDisplay(filter: SimpleFilter, operatorMeta: any): string {
   }
 
   // More than two values - show first two plus count
-  return `${values[0]}, ${values[1]}, +${values.length - 2} more`
+  return `${values[0]}, ${values[1]}, +${values.length - 2} ${t('filter.valueDisplay.more')}`
 }

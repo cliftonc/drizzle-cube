@@ -13,6 +13,7 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import type { PortletConfig, ChartDisplayConfig } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
 import type { ColorPalette } from '../utils/colorPalettes'
+import { t } from '../../i18n/runtime'
 
 const CloseIcon = getIcon('close')
 
@@ -170,7 +171,7 @@ export default function TextPortletModal({
         {/* Header */}
         <div className="dc:flex dc:items-center dc:justify-between dc:px-6 dc:py-4 dc:border-b border-dc-border dc:shrink-0">
           <h2 className="dc:text-lg dc:font-semibold text-dc-text">
-            {portlet ? 'Edit Text' : 'Add Text'}
+            {portlet ? t('textPortlet.editText') : t('textPortlet.addText')}
           </h2>
           <button
             onClick={onClose}
@@ -189,7 +190,7 @@ export default function TextPortletModal({
               {!displayConfig.transparentBackground && (
                 <div>
                   <label className="dc:block dc:text-sm dc:font-medium text-dc-text dc:mb-1.5">
-                    Title
+                    {t('common.labels.title')}
                   </label>
                   <input
                     type="text"
@@ -204,7 +205,7 @@ export default function TextPortletModal({
               {/* Content textarea */}
               <div>
                 <label className="dc:block dc:text-sm dc:font-medium text-dc-text dc:mb-1.5">
-                  Markdown Content
+                  {t('textPortlet.markdownContent')}
                 </label>
                 <textarea
                   value={displayConfig.content || ''}
@@ -215,14 +216,14 @@ export default function TextPortletModal({
                   rows={7}
                 />
                 <p className="dc:mt-1 dc:text-xs text-dc-text-muted">
-                  Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).
+                  {t('textPortlet.markdownHint')}
                 </p>
               </div>
 
               {/* Live preview */}
               <div className="dc:flex-1 dc:min-h-0">
                 <div className="dc:text-xs dc:font-medium dc:uppercase dc:tracking-wider text-dc-text-muted dc:mb-2">
-                  Preview
+                  {t('textPortlet.preview')}
                 </div>
                 <div
                   className="dc:overflow-hidden"
@@ -257,7 +258,7 @@ export default function TextPortletModal({
             onClick={onClose}
             className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-md dc:border border-dc-border text-dc-text-secondary dc:hover:bg-dc-surface-hover dc:transition-colors"
           >
-            Cancel
+            {t('common.actions.cancel')}
           </button>
           <button
             onClick={handleSave}

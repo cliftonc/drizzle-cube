@@ -13,6 +13,7 @@ import CustomDateDropdown from './CustomDateDropdown'
 import XTDDropdown from './XTDDropdown'
 import FilterChip from './FilterChip'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
+import { t } from '../../../i18n/runtime'
 import {
   detectPresetFromDateRange,
   calculateDateRange,
@@ -241,7 +242,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             }}
           >
             <CalendarIcon className="dc:w-3 dc:h-3" />
-            <span>Custom</span>
+            <span>{t('dateRange.custom')}</span>
             <ChevronDownIcon className="dc:w-3 dc:h-3" />
           </button>
 
@@ -378,7 +379,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                 }}
               >
                 <CalendarIcon className="dc:w-3 dc:h-3" />
-                <span>Custom</span>
+                <span>{t('dateRange.custom')}</span>
               </button>
 
               {showCustomDropdown && (

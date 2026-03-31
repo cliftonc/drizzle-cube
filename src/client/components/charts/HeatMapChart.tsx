@@ -11,6 +11,7 @@
  */
 
 import React, { useMemo } from 'react'
+import { t } from '../../../i18n/runtime'
 import { ResponsiveHeatMap } from '@nivo/heatmap'
 import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { AxisFormatConfig } from '../../types'
@@ -258,9 +259,9 @@ const HeatMapChart = React.memo(function HeatMapChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Run a query to see heatmap visualization
+            {t('chart.runtime.noDataHint.heatmap')}
           </div>
         </div>
       </div>
@@ -274,11 +275,11 @@ const HeatMapChart = React.memo(function HeatMapChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration required</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.heatmapConfigRequired')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            {!xAxisField && 'X-axis dimension required. '}
-            {!yAxisField && 'Y-axis dimension required. '}
-            {!valueField && 'Value measure required.'}
+            {!xAxisField && t('chart.runtime.heatmapXRequired')}
+            {!yAxisField && t('chart.runtime.heatmapYRequired')}
+            {!valueField && t('chart.runtime.heatmapValueRequired')}
           </div>
         </div>
       </div>
@@ -292,9 +293,9 @@ const HeatMapChart = React.memo(function HeatMapChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data to display</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noDataToDisplay')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            The query returned no results for the heatmap
+            {t('chart.runtime.heatmapNoResults')}
           </div>
         </div>
       </div>
@@ -316,7 +317,12 @@ const HeatMapChart = React.memo(function HeatMapChart({
     <div className="dc:relative dc:w-full dc:h-full" style={{ height }}>
       {truncated && (
         <div className="dc:absolute dc:top-0 dc:left-0 dc:right-0 dc:z-10 dc:px-3 dc:py-1.5 dc:text-xs bg-dc-warning-bg text-dc-warning dc:border-b border-dc-border">
-          Data truncated to {MAX_HEATMAP_ROWS}x{MAX_HEATMAP_COLS} cells (original: {originalRows}x{originalCols}). Add filters to reduce dimensions.
+          {t('chart.runtime.heatmapTruncated', {
+            maxRows: MAX_HEATMAP_ROWS,
+            maxCols: MAX_HEATMAP_COLS,
+            originalRows,
+            originalCols
+          })}
         </div>
       )}
       <ResponsiveHeatMap

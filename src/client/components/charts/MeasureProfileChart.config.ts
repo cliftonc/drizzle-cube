@@ -1,27 +1,27 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the measure profile chart type
  */
 export const measureProfileChartConfig: ChartTypeConfig = {
-  label: 'Measure Profile',
-  description: 'Plot N measures as sequential X-axis points to visualise a profile or shape across intervals',
-  useCase:
-    'Best for markout interval analysis (e.g. avgMinus2m → avgAtEvent → avgPlus2h), metric profiles, or any pattern across ordered measures',
+  label: t('chart.measureProfile.label'),
+  description: t('chart.measureProfile.description'),
+  useCase: t('chart.measureProfile.useCase'),
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   dropZones: [
     {
       key: 'yAxis',
-      label: 'Measures (X-Axis Order)',
-      description: 'Add 2 or more measures — they become the X-axis categories in the order listed',
+      label: t('chart.configText.measures_x_axis_order'),
+      description: t('chart.configText.add_2_or_more_measures_they_become_the_x_axis_categories_in_the_order_li'),
       mandatory: true,
       acceptTypes: ['measure'],
       emptyText: 'Drop 2+ measures here (displayed left → right)',
     },
     {
       key: 'series',
-      label: 'Series (Split into Multiple Lines)',
-      description: 'Dimension to split data into separate profile lines (e.g. symbol, platform)',
+      label: t('chart.configText.series_split_into_multiple_lines'),
+      description: t('chart.configText.dimension_to_split_data_into_separate_profile_lines_e_g_symbol_platform'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
@@ -31,42 +31,42 @@ export const measureProfileChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'showReferenceLineAtZero',
-      label: 'Show Zero Reference Line',
+      label: t('chart.option.showReferenceLineAtZero.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Draw a dashed line at Y = 0',
+      description: t('chart.option.showReferenceLineAtZero.description'),
     },
     {
       key: 'showDataLabels',
-      label: 'Show Data Labels',
+      label: t('chart.option.showDataLabels.label'),
       type: 'boolean',
       defaultValue: false,
-      description: 'Display value at each data point',
+      description: t('chart.configText.display_value_at_each_data_point'),
     },
     {
       key: 'showLegend',
-      label: 'Show Legend',
+      label: t('chart.option.showLegend.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Show series legend (only visible with a Series dimension)',
+      description: t('chart.configText.show_series_legend_only_visible_with_a_series_dimension'),
     },
     {
       key: 'lineType',
-      label: 'Line Interpolation',
+      label: t('chart.option.lineType.label'),
       type: 'select',
       defaultValue: 'monotone',
       options: [
-        { value: 'monotone', label: 'Smooth (monotone)' },
-        { value: 'linear', label: 'Linear' },
-        { value: 'step', label: 'Step' },
+        { value: 'monotone', label: t('chart.option.lineType.smooth') },
+        { value: 'linear', label: t('chart.option.lineType.linear') },
+        { value: 'step', label: t('chart.option.lineType.step') },
       ],
-      description: 'How data points are connected',
+      description: t('chart.option.lineType.description'),
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: t('chart.option.yAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for the Y-axis',
+      description: t('chart.configText.number_formatting_for_the_y_axis'),
     },
   ],
 }

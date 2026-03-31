@@ -26,6 +26,7 @@ import {
 } from './utils'
 import FieldSearchItem from './FieldSearchItem'
 import FieldDetailPanel from './FieldDetailPanel'
+import { t } from '../../../i18n/runtime'
 
 const SearchIcon = getIcon('search')
 const CloseIcon = getIcon('close')
@@ -219,9 +220,9 @@ export default function FieldSearchModal({
   if (!isOpen) return null
 
   const searchPlaceholder =
-    mode === 'metrics' ? 'Search metrics...' : mode === 'filter' ? 'Search fields to filter...' : 'Search dimensions...'
+    mode === 'metrics' ? t('fieldSearch.placeholder.metrics') : mode === 'filter' ? t('fieldSearch.placeholder.filter') : t('fieldSearch.placeholder.dimensions')
 
-  const modalTitle = mode === 'metrics' ? 'Select a Metric' : mode === 'filter' ? 'Select a Field to Filter' : 'Select a Dimension'
+  const modalTitle = mode === 'metrics' ? t('fieldSearch.modal.title.metrics') : mode === 'filter' ? t('fieldSearch.modal.title.filter') : t('fieldSearch.modal.title.dimensions')
   const focusedFieldId = focusedIndex >= 0 && flatFieldsList[focusedIndex]
     ? `field-option-${flatFieldsList[focusedIndex].name.replace(/\./g, '-')}`
     : undefined
@@ -279,7 +280,7 @@ export default function FieldSearchModal({
                 className="dc:w-full dc:px-3 dc:py-2 bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:text-sm text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
                 aria-label="Filter by cube"
               >
-                <option value="">All Cubes</option>
+                <option value="">{t('fieldSearch.filter.allCubes')}</option>
                 {cubeNames.map((cubeName) => (
                   <option key={cubeName} value={cubeName}>
                     {getCubeTitle(cubeName, schema)}
@@ -307,7 +308,7 @@ export default function FieldSearchModal({
                 }`}
                 aria-pressed={selectedCube === null}
               >
-                All
+                {t('fieldSearch.categories.all')}
               </button>
               {cubeNames.map((cubeName) => (
                 <button
@@ -337,11 +338,11 @@ export default function FieldSearchModal({
           >
             {filteredFields.length === 0 && recentOptions.length === 0 ? (
               <div className="dc:text-center dc:py-12 text-dc-text-muted">
-                <p className="dc:text-lg dc:mb-2">No fields found</p>
+                <p className="dc:text-lg dc:mb-2">{t('fieldSearch.empty.heading')}</p>
                 <p className="dc:text-sm">
                   {searchTerm
-                    ? `No ${mode === 'metrics' ? 'metrics' : 'dimensions'} match "${searchTerm}"`
-                    : `No ${mode === 'metrics' ? 'metrics' : 'dimensions'} available`}
+                    ? (mode === 'metrics' ? t('fieldSearch.empty.noMatchMetrics', { searchTerm }) : t('fieldSearch.empty.noMatchDimensions', { searchTerm }))
+                    : (mode === 'metrics' ? t('fieldSearch.empty.noMetrics') : t('fieldSearch.empty.noDimensions'))}
                 </p>
               </div>
             ) : (
@@ -350,7 +351,7 @@ export default function FieldSearchModal({
                 {recentOptions.length > 0 && (
                   <div>
                     <h3 className="dc:text-xs dc:font-semibold text-dc-text-muted dc:uppercase dc:tracking-wider dc:mb-2">
-                      Recents
+                      {t('fieldSearch.section.recents')}
                     </h3>
                     <div className="dc:space-y-1">
                       {recentOptions.map((field, idx) => (
@@ -421,21 +422,21 @@ export default function FieldSearchModal({
         <div className="dc:shrink-0 dc:border-t border-dc-border dc:px-4 dc:py-3 dc:flex dc:items-center dc:justify-between dc:text-sm text-dc-text-muted">
           <div>
             <span className="text-dc-text-secondary">{filteredFields.length}</span>{' '}
-            {mode === 'metrics' ? 'metrics' : mode === 'filter' ? 'fields' : 'dimensions'} available
+            {mode === 'metrics' ? t('fieldSearch.footer.metricsAvailable') : mode === 'filter' ? t('fieldSearch.footer.fieldsAvailable') : t('fieldSearch.footer.dimensionsAvailable')}
           </div>
           {/* Keyboard shortcuts - hidden on mobile */}
           <div className="dc:hidden dc:md:flex dc:items-center dc:gap-4">
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">↑↓</kbd> Navigate
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">↑↓</kbd> {t('fieldSearch.shortcut.navigate')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">Enter</kbd> Select
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyEnter')}</kbd> {t('fieldSearch.shortcut.select')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">Shift</kbd>+Click Multi-select
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyShift')}</kbd>{t('fieldSearch.shortcut.plusClick')} {t('fieldSearch.shortcut.multiSelect')}
             </span>
             <span>
-              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">Esc</kbd> Close
+              <kbd className="dc:px-1.5 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">{t('fieldSearch.shortcut.keyEsc')}</kbd> {t('fieldSearch.shortcut.close')}
             </span>
           </div>
         </div>

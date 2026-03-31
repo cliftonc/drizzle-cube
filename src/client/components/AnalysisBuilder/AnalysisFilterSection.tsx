@@ -15,6 +15,7 @@ import FieldSearchModal from './FieldSearchModal'
 import AnalysisFilterItem from './AnalysisFilterItem'
 import AnalysisFilterGroup from './AnalysisFilterGroup'
 import { convertDateRangeTypeToValue } from '../../shared/utils'
+import { t } from '../../../i18n/runtime'
 
 const AddIcon = getIcon('add')
 
@@ -286,7 +287,7 @@ export default function AnalysisFilterSection({
         title="Add filter"
       >
         <SectionHeading>
-          Filter
+          {t('analysis.sections.filters')}
           {totalFilterCount > 0 && (
             <span className="dc:ml-1.5 dc:text-xs dc:font-normal text-dc-text-muted dc:normal-case dc:tracking-normal">
               ({totalFilterCount})
@@ -310,7 +311,7 @@ export default function AnalysisFilterSection({
               }}
               className="dc:text-xs text-dc-text-muted hover:text-dc-error dc:underline dc:cursor-pointer"
             >
-              Clear all
+              {t('filter.section.clearAll')}
             </span>
           )}
           <AddIcon className="dc:w-5 dc:h-5 text-dc-text-secondary group-hover:text-dc-primary dc:transition-colors" />
@@ -331,7 +332,7 @@ export default function AnalysisFilterSection({
         {/* Filter List - Hierarchical Rendering */}
         {filters.length === 0 ? (
           <p className={`dc:text-sm ${isDragOver ? 'text-dc-primary dc:font-medium' : 'text-dc-text-muted'}`}>
-            {isDragOver ? 'Drop to add filter' : 'No filters applied'}
+            {isDragOver ? t('filter.section.dropHint') : t('filter.section.empty')}
           </p>
         ) : (
           <div className="dc:flex dc:flex-wrap dc:gap-2">

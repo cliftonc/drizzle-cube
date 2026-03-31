@@ -7,6 +7,7 @@
 import React from 'react'
 import { getIcon } from '../../icons'
 import type { DashboardFilter } from '../../types'
+import { t } from '../../../i18n/runtime'
 
 const FilterIcon = getIcon('filter')
 const AddIcon = getIcon('add')
@@ -103,7 +104,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
           <div className="dc:flex dc:items-center dc:gap-2">
             <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
             <h3 className="dc:text-sm dc:font-semibold" style={{ color: 'var(--dc-text)' }}>
-              Filters
+              {t('dashboardFilter.editMode.filters')}
             </h3>
             {dashboardFilters.length > 0 && (
               <span
@@ -175,7 +176,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 color: 'var(--dc-text-secondary)'
               }}
             >
-              No filters configured. Click "Add" to create one.
+              {t('dashboardFilter.editMode.noFilters')}
             </div>
           </div>
         )}
@@ -187,7 +188,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
         <div className="dc:flex dc:items-center dc:gap-2 dc:shrink-0">
           <FilterIcon className="dc:w-4 dc:h-4 dc:shrink-0" style={{ color: 'var(--dc-primary)' }} />
           <h3 className="dc:text-sm dc:font-semibold dc:whitespace-nowrap" style={{ color: 'var(--dc-text)' }}>
-            Filters
+            {t('dashboardFilter.editMode.filters')}
           </h3>
           {dashboardFilters.length > 0 && (
             <span
@@ -216,7 +217,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
                 color: 'var(--dc-text-secondary)'
               }}
             >
-              No filters configured. Click "Add" to create one.
+              {t('dashboardFilter.editMode.noFilters')}
             </div>
           </div>
         )}
@@ -236,7 +237,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
               title="Add date range filter (applies to all time dimensions)"
             >
               <AddIcon className="dc:w-3.5 dc:h-3.5" />
-              <span>Date Range</span>
+              <span>{t('dashboardFilter.editMode.dateRange')}</span>
             </button>
           )}
           <button
@@ -248,7 +249,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
             }}
           >
             <AddIcon className="dc:w-3.5 dc:h-3.5" />
-            <span>Filter</span>
+            <span>{t('dashboardFilter.editMode.filter')}</span>
           </button>
         </div>
       </div>

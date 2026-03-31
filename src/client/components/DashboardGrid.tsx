@@ -25,6 +25,7 @@ import { useDragAutoScroll } from '../hooks/useDragAutoScroll'
 import DashboardPortletCard from './DashboardPortletCard'
 import RowManagedLayout from './RowManagedLayout'
 import FloatingEditToolbar from './FloatingEditToolbar'
+import { t } from '../../i18n/runtime'
 
 const ChartBarIcon = getIcon('measure')
 const RefreshIcon = getIcon('refresh')
@@ -966,8 +967,8 @@ export default function DashboardGrid({
         <div className="dc:flex dc:justify-center dc:items-center dc:min-h-[50vh]">
           <div className="dc:text-center">
             <ChartBarIcon style={{ width: '64px', height: '64px', color: 'var(--dc-text-muted)', margin: '0 auto 16px auto' }} />
-            <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">No Portlets</h3>
-            <p className="dc:text-sm text-dc-text-secondary dc:mb-4">Add your first portlet to start visualizing your data</p>
+            <h3 className="dc:text-lg dc:font-semibold dc:mb-2 text-dc-text">{t('dashboard.noPortlets')}</h3>
+            <p className="dc:text-sm text-dc-text-secondary dc:mb-4">{t('dashboard.noPortletsDescription')}</p>
             {editable && (
               <div className="dc:flex dc:items-center dc:gap-3">
                 <button
@@ -981,7 +982,7 @@ export default function DashboardGrid({
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
                 >
                   <TextIcon className="dc:w-5 dc:h-5 dc:mr-2" />
-                  Add Text
+                  {t('dashboard.addText')}
                 </button>
                 <button
                   onClick={handleAddPortlet}
@@ -994,7 +995,7 @@ export default function DashboardGrid({
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--dc-surface)'}
                 >
                   <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
-                  Add Portlet
+                  {t('dashboard.addPortlet')}
                 </button>
               </div>
             )}
@@ -1007,8 +1008,8 @@ export default function DashboardGrid({
           onClose={actions.closePortletModal}
           onSave={handlePortletSave}
           portlet={editingPortlet}
-          title={editingPortlet ? 'Edit Portlet' : 'Add New Portlet'}
-          submitText={editingPortlet ? 'Update Portlet' : 'Add Portlet'}
+          title={editingPortlet ? t('dashboard.editPortlet') : t('dashboard.addNewPortlet')}
+          submitText={editingPortlet ? t('dashboard.updatePortlet') : t('dashboard.addPortlet')}
           colorPalette={colorPalette}
           dashboardFilters={dashboardFilters}
         />
@@ -1136,7 +1137,7 @@ export default function DashboardGrid({
               }}
             >
               {isEditMode ? <CheckIcon className="dc:w-4 dc:h-4 dc:mr-1.5" /> : <EditIcon className="dc:w-4 dc:h-4 dc:mr-1.5" />}
-              {isEditMode ? 'Finish Editing' : 'Edit'}
+              {isEditMode ? t('dashboard.finishEditing') : t('dashboard.edit')}
             </button>
             {isEditMode && allowedModes.length > 1 && (
               <div className="dc:inline-flex dc:rounded-md dc:border border-dc-border dc:overflow-hidden dc:whitespace-nowrap">
@@ -1150,7 +1151,7 @@ export default function DashboardGrid({
                   } ${!canChangeLayoutMode ? 'dc:cursor-not-allowed dc:opacity-50' : ''}`}
                 >
                   <GridIcon className="dc:w-4 dc:h-4 dc:shrink-0" />
-                  Grid
+                  {t('dashboard.grid')}
                 </button>
                 <button
                   onClick={() => actions.handleLayoutModeChange('rows')}
@@ -1162,14 +1163,14 @@ export default function DashboardGrid({
                   } ${!canChangeLayoutMode ? 'dc:cursor-not-allowed dc:opacity-50' : ''}`}
                 >
                   <RowsIcon className="dc:w-4 dc:h-4 dc:shrink-0" />
-                  Rows
+                  {t('dashboard.rows')}
                 </button>
               </div>
             )}
             {!isResponsiveEditable && (
               <div className="dc:flex dc:items-center dc:gap-2 dc:text-sm text-dc-text-secondary">
                 <DesktopIcon className="dc:w-4 dc:h-4" />
-                <span>Desktop view required for editing</span>
+                <span>{t('dashboard.desktopRequired')}</span>
               </div>
             )}
             {isEditMode && isResponsiveEditable && (
@@ -1197,7 +1198,7 @@ export default function DashboardGrid({
                 }}
               >
                 <TextIcon className="dc:w-5 dc:h-5 dc:mr-2" />
-                Add Text
+                {t('dashboard.addText')}
               </button>
 
               <button
@@ -1209,7 +1210,7 @@ export default function DashboardGrid({
                 }}
               >
                 <AddIcon className="dc:w-5 dc:h-5 dc:mr-2" />
-                Add Portlet
+                {t('dashboard.addPortlet')}
               </button>
             </div>
           )}
@@ -1267,9 +1268,9 @@ export default function DashboardGrid({
             <div className="dc:flex dc:items-center dc:gap-2 dc:flex-wrap">
               <FilterIcon className="dc:w-5 dc:h-5 dc:shrink-0" />
               <span className="dc:font-medium">
-                Filter Selection Mode - Click portlets to toggle '{selectedFilter.label}'
+                {t('dashboard.filterSelectionMode', { filterLabel: selectedFilter.label })}
               </span>
-              <span className="dc:text-sm dc:opacity-90 dc:hidden dc:sm:inline">• Press ESC to exit</span>
+              <span className="dc:text-sm dc:opacity-90 dc:hidden dc:sm:inline">{t('dashboard.filterSelectionEscHint')}</span>
             </div>
             <div className="dc:flex dc:items-center dc:gap-2">
               <button
@@ -1282,7 +1283,7 @@ export default function DashboardGrid({
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
               >
-                Select All
+                {t('common.actions.selectAll')}
               </button>
               <button
                 onClick={() => actions.exitFilterSelectionMode()}
@@ -1294,7 +1295,7 @@ export default function DashboardGrid({
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
               >
-                Exit
+                {t('common.actions.exit')}
               </button>
             </div>
           </div>

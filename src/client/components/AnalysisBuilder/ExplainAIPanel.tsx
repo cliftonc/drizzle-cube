@@ -13,6 +13,7 @@
 import React from 'react'
 import type { AIExplainAnalysis, ExplainRecommendation, ExplainIssue } from '../../types'
 import CodeBlock from '../../shared/components/CodeBlock'
+import { t } from '../../../i18n/runtime'
 
 interface ExplainAIPanelProps {
   /** AI analysis result */
@@ -65,9 +66,9 @@ const issueSeverityColors = {
  */
 function AssessmentBadge({ assessment, reason }: { assessment: 'good' | 'warning' | 'critical'; reason: unknown }) {
   const labels = {
-    good: 'Good',
-    warning: 'Warning',
-    critical: 'Critical',
+    good: t('explainAI.assessment.good'),
+    warning: t('explainAI.assessment.warning'),
+    critical: t('explainAI.assessment.critical'),
   }
 
   return (
@@ -131,7 +132,7 @@ function CopyButton({ text }: { text: string }) {
       className="dc:px-2 dc:py-1 dc:text-xs dc:rounded bg-dc-surface hover:bg-dc-surface-hover text-dc-text-muted"
       title="Copy to clipboard"
     >
-      {copied ? 'Copied!' : 'Copy'}
+      {copied ? t('explainAI.copied') : t('explainAI.copy')}
     </button>
   )
 }
@@ -141,10 +142,10 @@ function CopyButton({ text }: { text: string }) {
  */
 function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
   const typeLabels = {
-    index: 'INDEX',
-    table: 'TABLE',
-    cube: 'CUBE',
-    general: 'TIP',
+    index: t('explainAI.type.index'),
+    table: t('explainAI.type.table'),
+    cube: t('explainAI.type.cube'),
+    general: t('explainAI.type.general'),
   }
 
   return (
@@ -178,7 +179,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
         <div className="dc:mt-2">
           {rec.cubeName && (
             <p className="dc:text-xs text-dc-text-muted dc:mb-1">
-              Add to <code className="bg-dc-surface-secondary dc:px-1 dc:rounded">{rec.cubeName}</code> cube:
+              {t('explainAI.addToCube', { cubeName: rec.cubeName })}
             </p>
           )}
           <div className="dc:relative">
@@ -195,7 +196,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
       {/* Expected impact */}
       {rec.estimatedImpact && (
         <p className="dc:text-xs text-dc-text-muted dc:mt-2">
-          <strong>Expected impact:</strong> {safeText(rec.estimatedImpact)}
+          <strong>{t('explainAI.expectedImpact')}</strong> {safeText(rec.estimatedImpact)}
         </p>
       )}
     </div>
@@ -244,7 +245,7 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
         <div className="dc:flex dc:items-center dc:justify-between dc:px-6 dc:py-4 dc:border-b border-dc-border dc:flex-shrink-0">
           <div className="dc:flex dc:items-center dc:gap-3">
             <span className="dc:text-lg">✨</span>
-            <h3 className="dc:text-lg dc:font-semibold text-dc-text">AI Performance Analysis</h3>
+            <h3 className="dc:text-lg dc:font-semibold text-dc-text">{t('explainAI.title')}</h3>
           </div>
           <button
             onClick={handleClose}
@@ -267,14 +268,14 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
 
           {/* Summary */}
           <div>
-            <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">Summary</h4>
+            <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">{t('explainAI.summary')}</h4>
             <p className="text-dc-text">{safeText(analysis.summary)}</p>
           </div>
 
           {/* Query Understanding */}
           {analysis.queryUnderstanding && (
             <div>
-              <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">Query Analysis</h4>
+              <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">{t('explainAI.queryAnalysis')}</h4>
               <p className="text-dc-text-secondary">{safeText(analysis.queryUnderstanding)}</p>
             </div>
           )}
@@ -283,7 +284,7 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {analysis.issues && analysis.issues.length > 0 && (
             <div>
               <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-2">
-                Issues Found ({analysis.issues.length})
+                {t('explainAI.issuesFound', { count: analysis.issues.length })}
               </h4>
               <div className="dc:space-y-1 bg-dc-surface-secondary dc:rounded-lg dc:p-3">
                 {analysis.issues.map((issue, i) => (
@@ -297,7 +298,7 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {analysis.recommendations && analysis.recommendations.length > 0 && (
             <div>
               <h4 className="dc:text-sm dc:font-semibold text-dc-text-muted dc:uppercase dc:mb-3">
-                Recommendations ({analysis.recommendations.length})
+                {t('explainAI.recommendations', { count: analysis.recommendations.length })}
               </h4>
               <div className="dc:space-y-4">
                 {analysis.recommendations.map((rec, i) => (
@@ -310,7 +311,7 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {/* No recommendations case */}
           {(!analysis.recommendations || analysis.recommendations.length === 0) && (
             <div className="text-dc-text-muted dc:italic dc:p-4 bg-dc-surface-secondary dc:rounded-lg">
-              No specific recommendations. The query appears to be well-optimized.
+              {t('explainAI.noRecommendations')}
             </div>
           )}
         </div>
@@ -320,15 +321,15 @@ export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelPro
           {/* Meta info */}
           {analysis._meta && (
             <div className="dc:text-xs text-dc-text-muted">
-              Model: {analysis._meta.model}
-              {analysis._meta.usingUserKey && ' (using your API key)'}
+              {t('explainAI.modelLabel')} {analysis._meta.model}
+              {analysis._meta.usingUserKey && ` ${t('explainAI.usingUserKey')}`}
             </div>
           )}
           <button
             onClick={handleClose}
             className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-lg bg-dc-primary text-white hover:bg-dc-primary-hover dc:transition-colors"
           >
-            Close
+            {t('common.actions.close')}
           </button>
         </div>
       </div>

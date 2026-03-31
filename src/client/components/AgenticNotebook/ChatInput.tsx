@@ -3,6 +3,7 @@
  */
 
 import React, { useCallback, useRef, useEffect } from 'react'
+import { t } from '../../../i18n/runtime'
 
 interface ChatInputProps {
   value: string
@@ -25,7 +26,7 @@ const ChatInput = React.memo(function ChatInput({
   isStreaming = false,
   showContinue = false,
   disabled = false,
-  placeholder = 'Ask about your data...',
+  placeholder = t('notebook.chatInput.placeholder'),
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -67,7 +68,7 @@ const ChatInput = React.memo(function ChatInput({
           onClick={onStop}
           className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors text-dc-error border-dc-border dc:border dc:hover:opacity-80 dc:shrink-0"
         >
-          Stop
+          {t('notebook.chatInput.stop')}
         </button>
       ) : (
         <>
@@ -79,7 +80,7 @@ const ChatInput = React.memo(function ChatInput({
               }}
               className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors border-dc-border dc:border text-dc-text-secondary dc:hover:opacity-80 dc:shrink-0"
             >
-              Continue
+              {t('notebook.chatInput.continue')}
             </button>
           )}
           <button
@@ -87,7 +88,7 @@ const ChatInput = React.memo(function ChatInput({
             disabled={disabled || !value.trim()}
             className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors bg-dc-accent text-dc-accent-text dc:hover:opacity-90 dc:disabled:opacity-40 dc:disabled:cursor-not-allowed dc:shrink-0"
           >
-            Send
+            {t('notebook.chatInput.send')}
           </button>
         </>
       )}

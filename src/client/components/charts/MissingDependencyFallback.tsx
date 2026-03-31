@@ -1,3 +1,5 @@
+import { t } from '../../../i18n/runtime'
+
 interface MissingDependencyFallbackProps {
   chartType: string
   packageName: string
@@ -39,7 +41,7 @@ export function MissingDependencyFallback({
         marginBottom: '0.5rem',
         color: 'var(--dc-text, #111827)'
       }}>
-        Missing Dependency
+        {t('chart.runtime.missingDep.title')}
       </h3>
       <p style={{
         fontSize: '0.875rem',
@@ -47,19 +49,7 @@ export function MissingDependencyFallback({
         marginBottom: '1rem',
         maxWidth: '28rem'
       }}>
-        The <code style={{
-          padding: '0.125rem 0.375rem',
-          backgroundColor: 'var(--dc-surface-secondary, #f3f4f6)',
-          borderRadius: '0.25rem',
-          fontFamily: 'monospace',
-          fontSize: '0.75rem'
-        }}>{chartType}</code> chart requires the <code style={{
-          padding: '0.125rem 0.375rem',
-          backgroundColor: 'var(--dc-surface-secondary, #f3f4f6)',
-          borderRadius: '0.25rem',
-          fontFamily: 'monospace',
-          fontSize: '0.75rem'
-        }}>{packageName}</code> package.
+        {t('chart.runtime.missingDep.description', { chartType, packageName })}
       </p>
       <div style={{
         backgroundColor: 'var(--dc-surface-secondary, #f3f4f6)',
@@ -80,7 +70,7 @@ export function MissingDependencyFallback({
         color: 'var(--dc-text-muted, #9ca3af)',
         marginTop: '0.75rem'
       }}>
-        After installing, restart your development server.
+        {t('chart.runtime.missingDep.restartHint')}
       </p>
     </div>
   )

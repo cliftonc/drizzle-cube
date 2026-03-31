@@ -10,6 +10,7 @@ import React, { memo, useMemo, useCallback, useState, useRef, useEffect } from '
 import type { CubeMeta, FunnelBindingKey } from '../../types'
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions, getBindingKeyLabel } from '../../utils/funnelValidation'
+import { t } from '../../../i18n/runtime'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CheckIcon = getIcon('check')
@@ -167,7 +168,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
               onClick={handleClear}
               onKeyDown={(e) => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
               className="dc:p-0.5 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted hover:text-dc-text"
-              title="Clear binding key"
+              title={t('funnel.bindingKey.clearTitle')}
             >
               ×
             </span>
@@ -194,7 +195,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search dimensions..."
+                placeholder={t('funnel.bindingKey.searchPlaceholder')}
                 className="dc:w-full dc:pl-8 dc:pr-3 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border border-dc-border dc:rounded text-dc-text placeholder:text-dc-text-muted dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
               />
             </div>
@@ -204,7 +205,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
           <div className="dc:max-h-64 dc:overflow-y-auto dc:p-1">
             {Object.entries(filteredGroups).length === 0 ? (
               <div className="dc:px-3 dc:py-4 dc:text-sm text-dc-text-muted dc:text-center">
-                No matching dimensions found
+                {t('funnel.bindingKey.noMatching')}
               </div>
             ) : (
               Object.entries(filteredGroups).map(([cubeName, dims]) => (
@@ -240,7 +241,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
 
           {/* Help Text */}
           <div className="dc:px-3 dc:py-2 dc:border-t border-dc-border dc:text-xs text-dc-text-muted">
-            Select a dimension that identifies entities across funnel steps (e.g., user ID, order ID)
+            {t('funnel.bindingKey.helpText')}
           </div>
         </div>
       )}

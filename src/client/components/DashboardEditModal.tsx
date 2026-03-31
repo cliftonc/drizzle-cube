@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
+import { t } from '../../i18n/runtime'
 
 interface DashboardEditModalProps {
   isOpen: boolean
@@ -70,7 +71,7 @@ export default function DashboardEditModal({
         disabled={isSaving}
         className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary bg-dc-surface dc:border border-dc-border dc:rounded-md hover:bg-dc-surface-hover dc:disabled:opacity-50"
       >
-        Cancel
+        {t('common.actions.cancel')}
       </button>
       <button
         type="submit"
@@ -94,7 +95,7 @@ export default function DashboardEditModal({
       <form id="dashboard-form" onSubmit={handleSubmit} className="dc:space-y-4 dc:w-full">
         <div>
           <label htmlFor="dashboard-name" className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-1">
-            Dashboard Name
+            {t('dashboard.editModal.dashboardName')}
           </label>
           <input
             type="text"
@@ -110,7 +111,7 @@ export default function DashboardEditModal({
 
         <div>
           <label htmlFor="dashboard-description" className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-1">
-            Description (optional)
+            {t('dashboard.editModal.descriptionOptional')}
           </label>
           <textarea
             id="dashboard-description"

@@ -1,20 +1,20 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the waterfall chart type
  */
 export const waterfallChartConfig: ChartTypeConfig = {
-  label: 'Waterfall Chart',
-  description: 'Show cumulative effect of sequential positive and negative values',
-  useCase:
-    'Best for P&L decomposition, cash flow analysis, budget variance, or any sequential contribution breakdown',
+  label: t('chart.waterfall.label'),
+  description: t('chart.waterfall.description'),
+  useCase: t('chart.waterfall.useCase'),
   clickableElements: { bar: true },
   displayOptions: ['showTooltip', 'hideHeader'],
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Categories)',
-      description: 'Dimension labels for each bar segment (e.g. symbol, transaction type)',
+      label: t('chart.dropZone.xAxis.label'),
+      description: t('chart.configText.dimension_labels_for_each_bar_segment_e_g_symbol_transaction_type'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension'],
@@ -22,8 +22,8 @@ export const waterfallChartConfig: ChartTypeConfig = {
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Value)',
-      description: 'Single measure whose values are summed cumulatively',
+      label: t('chart.configText.y_axis_value'),
+      description: t('chart.configText.single_measure_whose_values_are_summed_cumulatively'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -33,30 +33,30 @@ export const waterfallChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'showTotal',
-      label: 'Show Total Bar',
+      label: t('chart.option.showTotal.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Append a final bar showing the running total',
+      description: t('chart.option.showTotal.description'),
     },
     {
       key: 'showConnectorLine',
-      label: 'Show Connector Line',
+      label: t('chart.option.showConnectorLine.label'),
       type: 'boolean',
       defaultValue: true,
-      description: 'Draw a dashed step-line connecting bar tops',
+      description: t('chart.option.showConnectorLine.description'),
     },
     {
       key: 'showDataLabels',
-      label: 'Show Data Labels',
+      label: t('chart.option.showDataLabels.label'),
       type: 'boolean',
       defaultValue: false,
-      description: 'Display the value above each bar segment',
+      description: t('chart.configText.display_the_value_above_each_bar_segment'),
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: t('chart.option.yAxisFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for the Y-axis',
+      description: t('chart.configText.number_formatting_for_the_y_axis'),
     },
   ],
 }

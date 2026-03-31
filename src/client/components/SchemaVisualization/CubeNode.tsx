@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import type { CubeMetaCube } from '../../types'
 import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
+import { t } from '../../../i18n/runtime'
 
 interface CubeNodeData {
   cube: CubeMetaCube
@@ -131,7 +132,7 @@ export function CubeNode({ data }: CubeNodeProps) {
                   : 'text-dc-text-muted dc:hover:text-dc-text dc:hover:bg-dc-surface-hover'
               }`}
               onClick={handleCubeInfoClick}
-              title="Cube info"
+              title={t('schema.cubeInfo')}
             >
               <InfoIcon className="dc:w-5 dc:h-5" />
             </button>
@@ -151,7 +152,7 @@ export function CubeNode({ data }: CubeNodeProps) {
           <div className="dc:px-4 dc:py-1.5 dc:border-b border-dc-border" style={{ backgroundColor: 'color-mix(in srgb, var(--dc-warning) 10%, var(--dc-surface))' }}>
             <h4 className="dc:text-xs dc:font-medium text-dc-text-secondary dc:flex dc:items-center">
               <span className="dc:w-2 dc:h-2 bg-dc-warning dc:rounded-full dc:mr-2" />
-              Measures ({cube.measures.length})
+              {t('schema.measures', { count: cube.measures.length })}
             </h4>
           </div>
           <div className="dc:max-h-64 dc:overflow-y-auto nowheel">
@@ -186,7 +187,7 @@ export function CubeNode({ data }: CubeNodeProps) {
           <div className="dc:px-4 dc:py-1.5 dc:border-b border-dc-border" style={{ backgroundColor: 'color-mix(in srgb, var(--dc-accent) 10%, var(--dc-surface))' }}>
             <h4 className="dc:text-xs dc:font-medium text-dc-text-secondary dc:flex dc:items-center">
               <span className="dc:w-2 dc:h-2 bg-dc-accent dc:rounded-full dc:mr-2" />
-              Time Dimensions ({timeDimensions.length})
+              {t('schema.timeDimensions', { count: timeDimensions.length })}
             </h4>
           </div>
           <div className="dc:max-h-64 dc:overflow-y-auto nowheel">
@@ -221,7 +222,7 @@ export function CubeNode({ data }: CubeNodeProps) {
           <div className="dc:px-4 dc:py-1.5 dc:border-b border-dc-border" style={{ backgroundColor: 'color-mix(in srgb, var(--dc-success) 10%, var(--dc-surface))' }}>
             <h4 className="dc:text-xs dc:font-medium text-dc-text-secondary dc:flex dc:items-center">
               <span className="dc:w-2 dc:h-2 bg-dc-success dc:rounded-full dc:mr-2" />
-              Dimensions ({regularDimensions.length})
+              {t('schema.dimensions', { count: regularDimensions.length })}
             </h4>
           </div>
           <div className="dc:max-h-64 dc:overflow-y-auto nowheel">

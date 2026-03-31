@@ -13,6 +13,7 @@ import { ensureAnalysisConfig } from '../../utils/configMigration'
 import NotebookPortletBlock from './NotebookPortletBlock'
 import NotebookMarkdownBlock from './NotebookMarkdownBlock'
 import PortletAnalysisModal from '../PortletAnalysisModal'
+import { t } from '../../../i18n/runtime'
 
 const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { colorPalette?: ColorPalette }) {
   const resolvedPalette = colorPalette ?? getColorPalette()
@@ -63,11 +64,10 @@ const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { co
       <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
         <div className="dc:text-center dc:max-w-sm dc:px-6">
           <h3 className="dc:text-base dc:font-semibold text-dc-text dc:mb-2">
-            Your notebook is empty
+            {t('notebook.canvas.emptyTitle')}
           </h3>
           <p className="dc:text-sm text-dc-text-secondary">
-            Ask the AI assistant a question about your data.
-            Charts and insights will appear here as the assistant analyzes your data.
+            {t('notebook.canvas.emptyDescription')}
           </p>
         </div>
       </div>
@@ -129,8 +129,8 @@ const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { co
           displayConfig: editingBlock.displayConfig,
           w: 5, h: 4, x: 0, y: 0,
         } : null}
-        title="Edit Visualization"
-        submitText="Update"
+        title={t('notebook.canvas.editVisualization')}
+        submitText={t('notebook.canvas.update')}
       />
     </div>
   )

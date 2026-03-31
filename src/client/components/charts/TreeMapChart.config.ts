@@ -1,25 +1,26 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
+import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the treemap chart type
  */
 export const treemapChartConfig: ChartTypeConfig = {
-  label: 'TreeMap',
-  description: 'Visualize hierarchical data with nested rectangles',
-  useCase: 'Best for showing part-to-whole relationships in hierarchical data, disk usage, budget allocation',
+  label: t('chart.treemap.label'),
+  description: t('chart.treemap.description'),
+  useCase: t('chart.treemap.useCase'),
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Categories',
-      description: 'Dimensions for treemap rectangles',
+      label: t('chart.configText.categories'),
+      description: t('chart.configText.dimensions_for_treemap_rectangles'),
       mandatory: true,
       acceptTypes: ['dimension'],
       emptyText: 'Drop dimensions for categories'
     },
     {
       key: 'yAxis',
-      label: 'Size',
-      description: 'Measure for rectangle sizes',
+      label: t('chart.configText.size'),
+      description: t('chart.configText.measure_for_rectangle_sizes'),
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
@@ -27,8 +28,8 @@ export const treemapChartConfig: ChartTypeConfig = {
     },
     {
       key: 'series',
-      label: 'Color Groups',
-      description: 'Dimension to color rectangles by category',
+      label: t('chart.configText.color_groups'),
+      description: t('chart.configText.dimension_to_color_rectangles_by_category'),
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
@@ -39,9 +40,9 @@ export const treemapChartConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: t('chart.option.valueFormat.label'),
       type: 'axisFormat',
-      description: 'Number formatting for size values'
+      description: t('chart.configText.number_formatting_for_size_values')
     }
   ],
   clickableElements: { cell: true }

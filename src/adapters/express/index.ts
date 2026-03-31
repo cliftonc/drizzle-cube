@@ -44,6 +44,7 @@ import {
   validateOriginHeader,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
 
 export interface ExpressAdapterOptions {
   /**
@@ -165,9 +166,19 @@ export function createCubeRouter(
 
   const router = Router()
 
+  const extractSecurityContextWithLocale = async (req: Request, res: Response): Promise<SecurityContext> => {
+    const securityContext = await extractSecurityContext(req, res)
+    const requestLocale = resolveRequestLocale((header) => req.get(header))
+    return withLocaleInSecurityContext(securityContext, requestLocale)
+  }
+
   // Configure CORS if provided
   if (corsConfig) {
-    router.use(cors(corsConfig))
+    const localeAwareCorsConfig: CorsOptions = {
+      ...corsConfig,
+      allowedHeaders: ensureLocaleHeader(corsConfig.allowedHeaders)
+    }
+    router.use(cors(localeAwareCorsConfig))
   }
 
   // JSON body parser with size limit
@@ -199,7 +210,7 @@ export function createCubeRouter(
       const query: SemanticQuery = req.body.query || req.body
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -254,7 +265,7 @@ export function createCubeRouter(
       }
 
       // Extract security context
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -308,7 +319,7 @@ export function createCubeRouter(
       }
 
       // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Check for cache bypass header (X-Cache-Control: no-cache)
       const skipCache = req.headers['x-cache-control'] === 'no-cache'
@@ -361,7 +372,7 @@ export function createCubeRouter(
     try {
       const query: SemanticQuery = req.body
       
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -411,7 +422,7 @@ export function createCubeRouter(
       }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -456,7 +467,7 @@ export function createCubeRouter(
       const query: SemanticQuery = req.body.query || req.body
       
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -488,7 +499,7 @@ export function createCubeRouter(
       const query: SemanticQuery = JSON.parse(queryParam)
 
       // Extract security context
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -515,7 +526,7 @@ export function createCubeRouter(
       const options: ExplainOptions = req.body.options || {}
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -579,7 +590,7 @@ export function createCubeRouter(
         const baseURLOverride = agentConfig.allowClientApiKey ? req.headers['x-agent-provider-endpoint'] as string | undefined : undefined
 
         // Extract security context (required for all queries)
-        const securityContext = await extractSecurityContext(req, res)
+        const securityContext = await extractSecurityContextWithLocale(req, res)
 
         // Build per-request system context from the callback (if configured)
         const systemContext = agentConfig.buildSystemContext?.(securityContext)
@@ -680,7 +691,7 @@ export function createCubeRouter(
           rpcRequest.params,
           {
             semanticLayer,
-            extractSecurityContext,
+            extractSecurityContext: (rawReq: any, rawRes: any) => extractSecurityContextWithLocale(rawReq, rawRes),
             rawRequest: req,
             rawResponse: res,
             negotiatedProtocol: protocol.negotiated,

@@ -10,6 +10,7 @@
 import React, { memo, useMemo } from 'react'
 import type { AnalysisType, CubeMeta } from '../../types'
 import { getIcon } from '../../icons'
+import { t } from '../../../i18n/runtime'
 
 const ChartBarIcon = getIcon('chartBar')
 const ChartFunnelIcon = getIcon('chartFunnel')
@@ -37,26 +38,26 @@ interface TypeOption {
 const typeOptions: TypeOption[] = [
   {
     type: 'query',
-    label: 'Query',
-    description: 'Standard analysis (single or multi-query)',
+    label: t('analysis.modes.query.label'),
+    description: t('analysis.modes.query.description'),
     icon: ChartBarIcon,
   },
   {
     type: 'funnel',
-    label: 'Funnel',
-    description: 'Sequential conversion analysis',
+    label: t('analysis.modes.funnel.label'),
+    description: t('analysis.modes.funnel.description'),
     icon: ChartFunnelIcon,
   },
   {
     type: 'flow',
-    label: 'Flow',
-    description: 'Bidirectional path analysis with Sankey visualization',
+    label: t('analysis.modes.flow.label'),
+    description: t('analysis.modes.flow.description'),
     icon: ChartSankeyIcon,
   },
   {
     type: 'retention',
-    label: 'Retention',
-    description: 'Cohort-based retention analysis over time periods',
+    label: t('analysis.modes.retention.label'),
+    description: t('analysis.modes.retention.description'),
     icon: ChartRetentionIcon,
   },
 ]
@@ -86,33 +87,37 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
   }, [hasEventStreamCubes])
 
   return (
-    <div className="dc:flex dc:items-center dc:gap-0.5 dc:p-1.5 dc:border-b border-dc-border bg-dc-surface">
-      {availableOptions.map((option) => {
-        const isSelected = value === option.type
-        const Icon = option.icon
+    <div className="dc:border-b border-dc-border bg-dc-surface">
+      <div className="dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
+        <div className="dc:flex dc:items-center dc:gap-0.5 dc:p-1.5 dc:min-w-max">
+          {availableOptions.map((option) => {
+            const isSelected = value === option.type
+            const Icon = option.icon
 
-        return (
-          <button
-            key={option.type}
-            onClick={() => !disabled && onChange(option.type)}
-            disabled={disabled}
-            title={option.description}
-            className={`
-              dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:rounded-md dc:text-sm dc:font-medium
-              dc:transition-colors dc:duration-150
-              ${
-                isSelected
-                  ? 'bg-dc-primary/10 text-dc-primary dc:border border-dc-primary/30'
-                  : 'text-dc-text-secondary hover:bg-dc-bg-secondary hover:text-dc-text dc:border border-transparent'
-              }
-              ${disabled ? 'dc:opacity-50 dc:cursor-not-allowed' : 'dc:cursor-pointer'}
-            `}
-          >
-            <Icon className="dc:h-4 dc:w-4 dc:flex-shrink-0" />
-            <span className="dc:truncate">{option.label}</span>
-          </button>
-        )
-      })}
+            return (
+              <button
+                key={option.type}
+                onClick={() => !disabled && onChange(option.type)}
+                disabled={disabled}
+                title={option.description}
+                className={`
+                  dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1.5 dc:rounded-md dc:text-sm dc:font-medium
+                  dc:transition-colors dc:duration-150 dc:flex-shrink-0 dc:whitespace-nowrap
+                  ${
+                    isSelected
+                      ? 'bg-dc-primary/10 text-dc-primary dc:border border-dc-primary/30'
+                      : 'text-dc-text-secondary hover:bg-dc-bg-secondary hover:text-dc-text dc:border border-transparent'
+                  }
+                  ${disabled ? 'dc:opacity-50 dc:cursor-not-allowed' : 'dc:cursor-pointer'}
+                `}
+              >
+                <Icon className="dc:h-4 dc:w-4 dc:flex-shrink-0" />
+                <span className="dc:whitespace-nowrap">{option.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 })

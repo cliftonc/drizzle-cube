@@ -1,4 +1,6 @@
+import { t } from '../../i18n/runtime'
+
 // Placeholder component - will be implemented in Phase 4
 export function AnalyticsPage() {
-  return <div>Analytics Page - Coming in Phase 4</div>
+  return <div>{t('analyticsPage.title')}</div>
 }

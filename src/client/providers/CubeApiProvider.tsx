@@ -25,6 +25,7 @@ interface CubeApiProviderProps {
   apiOptions: CubeApiOptions
   token?: string
   options?: CubeQueryOptions
+  locale?: string
   enableBatching?: boolean
   batchDelayMs?: number
   children: ReactNode
@@ -34,6 +35,7 @@ export function CubeApiProvider({
   apiOptions: initialApiOptions,
   token: initialToken,
   options = {},
+  locale,
   enableBatching = true,
   batchDelayMs = 50,
   children
@@ -53,10 +55,21 @@ export function CubeApiProvider({
 
   const config = overrideConfig ?? baseConfig
 
+  const apiOptionsWithLocale = useMemo(() => {
+    if (!locale) return config.apiOptions
+    return {
+      ...config.apiOptions,
+      headers: {
+        ...(config.apiOptions.headers ?? {}),
+        'X-DC-Locale': locale
+      }
+    }
+  }, [config.apiOptions, locale])
+
   // Create CubeClient - only recreates when config changes
   const cubeApi = useMemo(() =>
-    createCubeClient(config.token, config.apiOptions),
-    [config.apiOptions, config.token]
+    createCubeClient(config.token, apiOptionsWithLocale),
+    [apiOptionsWithLocale, config.token]
   )
 
   // Create BatchCoordinator - only recreates when cubeApi or batching config changes
@@ -74,11 +87,11 @@ export function CubeApiProvider({
   const value = useMemo(() => ({
     cubeApi,
     options,
-    apiOptions: config.apiOptions,
+    apiOptions: apiOptionsWithLocale,
     updateApiConfig,
     batchCoordinator,
     enableBatching
-  }), [cubeApi, options, config.apiOptions, updateApiConfig, batchCoordinator, enableBatching])
+  }), [cubeApi, options, apiOptionsWithLocale, updateApiConfig, batchCoordinator, enableBatching])
 
   return (
     <CubeApiContext.Provider value={value}>
