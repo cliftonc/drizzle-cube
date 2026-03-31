@@ -766,6 +766,13 @@ export interface MCPOptions {
   allowedOrigins?: string[]
   /** Enable MCP App visualization for load tool results (default: false) */
   app?: boolean
+  /**
+   * OAuth 2.1 Protected Resource Metadata URL (RFC 9728).
+   * When set, MCP endpoints require a Bearer token in the Authorization header.
+   * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
+   * Token validation is the responsibility of extractSecurityContext.
+   */
+  resourceMetadataUrl?: string
 }
 
 /**

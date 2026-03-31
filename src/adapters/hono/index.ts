@@ -42,6 +42,8 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
@@ -655,6 +657,12 @@ export function createCubeRoutes(
      * Implements MCP 2025-11-25 spec
      */
     app.post(`${mcpBasePath}`, async (c) => {
+      // OAuth 2.1 bearer token check (RFC 9728)
+      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
+        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return c.json({ error: 'Bearer token required' }, 401)
+      }
+
       // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
       const originValidation = validateOriginHeader(
         c.req.header('origin'),
@@ -783,12 +791,22 @@ export function createCubeRoutes(
      * Clients SHOULD send DELETE to terminate sessions
      */
     app.delete(`${mcpBasePath}`, (c) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
+        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return c.json({ error: 'Bearer token required' }, 401)
+      }
+
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return c.json({ error: 'Session termination not supported' }, 405)
     })
 
-    app.get(`${mcpBasePath}`, (_c) => {
+    app.get(`${mcpBasePath}`, (c) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
+        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return c.json({ error: 'Bearer token required' }, 401)
+      }
+
       const encoder = new TextEncoder()
       const eventId = primeEventId()
       let keepAlive: ReturnType<typeof setInterval>

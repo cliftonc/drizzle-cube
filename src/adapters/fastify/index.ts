@@ -41,6 +41,8 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
@@ -729,6 +731,12 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         }
       }
     }, async (request: FastifyRequest, reply: FastifyReply) => {
+      // OAuth 2.1 bearer token check (RFC 9728)
+      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
       const originValidation = validateOriginHeader(
         request.headers.origin as string | undefined,
@@ -827,6 +835,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     })
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       const eventId = primeEventId()
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -854,6 +867,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
      * Clients SHOULD send DELETE to terminate sessions
      */
     fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(_request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return reply.status(405).send({ error: 'Session termination not supported' })

@@ -42,6 +42,8 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
@@ -654,6 +656,13 @@ export function createCubeRouter(
      * DELETE /mcp    - Session termination
      */
     router.post(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      // OAuth 2.1 bearer token check (RFC 9728) — when resourceMetadataUrl is configured,
+      // reject requests without a Bearer token with 401 + WWW-Authenticate pointing to PRM
+      if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
       const originValidation = validateOriginHeader(
         req.headers.origin as string | undefined,
@@ -754,6 +763,11 @@ export function createCubeRouter(
     })
 
     router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       const eventId = primeEventId()
       res.status(200)
       res.setHeader('Content-Type', 'text/event-stream')
@@ -779,6 +793,11 @@ export function createCubeRouter(
      * Clients SHOULD send DELETE to terminate sessions
      */
     router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(_req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return res.status(405).json({ error: 'Session termination not supported' })

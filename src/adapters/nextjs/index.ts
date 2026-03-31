@@ -48,6 +48,8 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
@@ -897,6 +899,14 @@ export function createMcpRpcHandler(
   const semanticLayer = createSemanticLayer(options)
 
   return async function mcpRpcHandler(request: NextRequest) {
+    // OAuth 2.1 bearer token check (RFC 9728)
+    if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.get('authorization'))) {
+      return NextResponse.json(
+        { error: 'Bearer token required' },
+        { status: 401, headers: { 'WWW-Authenticate': buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl) } }
+      )
+    }
+
     // Handle DELETE for session termination (MCP 2025-11-25)
     if (request.method === 'DELETE') {
       return NextResponse.json(

@@ -24,6 +24,8 @@ import {
   DEFAULT_MCP_PROTOCOL,
   MCP_SESSION_ID_HEADER,
   MCP_PROTOCOL_VERSION_HEADER,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   type JsonRpcRequest,
   type McpDispatchContext
 } from '../../src/adapters/mcp-transport'
@@ -874,6 +876,54 @@ describe('MCP Transport Layer', () => {
           dispatchMcpMethod('unknownMethod', {}, dispatchCtx)
         ).rejects.toThrow('Unknown MCP method')
       })
+    })
+  })
+
+  describe('extractBearerToken', () => {
+    it('should extract token from valid Bearer header', () => {
+      expect(extractBearerToken('Bearer abc123')).toBe('abc123')
+    })
+
+    it('should be case-insensitive for Bearer prefix', () => {
+      expect(extractBearerToken('bearer abc123')).toBe('abc123')
+      expect(extractBearerToken('BEARER abc123')).toBe('abc123')
+    })
+
+    it('should return null for missing header', () => {
+      expect(extractBearerToken(null)).toBeNull()
+      expect(extractBearerToken(undefined)).toBeNull()
+    })
+
+    it('should return null for empty string', () => {
+      expect(extractBearerToken('')).toBeNull()
+    })
+
+    it('should return null for non-Bearer auth schemes', () => {
+      expect(extractBearerToken('Basic dXNlcjpwYXNz')).toBeNull()
+      expect(extractBearerToken('Digest realm="test"')).toBeNull()
+    })
+
+    it('should return null for Bearer without token', () => {
+      expect(extractBearerToken('Bearer ')).toBeNull()
+      expect(extractBearerToken('Bearer')).toBeNull()
+    })
+
+    it('should handle tokens with special characters', () => {
+      expect(extractBearerToken('Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJrZXljbG9hayJ9.sig')).toBe(
+        'eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJrZXljbG9hayJ9.sig'
+      )
+    })
+  })
+
+  describe('buildWwwAuthenticateChallenge', () => {
+    it('should build correct WWW-Authenticate header value', () => {
+      const result = buildWwwAuthenticateChallenge('https://example.com/.well-known/oauth-protected-resource')
+      expect(result).toBe('Bearer resource_metadata="https://example.com/.well-known/oauth-protected-resource"')
+    })
+
+    it('should handle URLs with paths', () => {
+      const result = buildWwwAuthenticateChallenge('https://auth.example.com/.well-known/oauth-protected-resource/mcp')
+      expect(result).toBe('Bearer resource_metadata="https://auth.example.com/.well-known/oauth-protected-resource/mcp"')
     })
   })
 })
