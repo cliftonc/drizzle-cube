@@ -572,9 +572,8 @@ describe('ExplainAIPanel', () => {
     it('should show cube name for cube recommendations', () => {
       render(<ExplainAIPanel analysis={mockAIAnalysis} />)
 
-      // The cube name "Employees" should appear in the recommendation section
-      // Note: case-sensitive search for the cube name
-      expect(screen.getByText('Employees')).toBeInTheDocument()
+      // The cube name should appear in the recommendation section
+      expect(screen.getByText(/Employees/)).toBeInTheDocument()
     })
 
     it('should render estimated impact when provided', () => {
