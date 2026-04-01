@@ -66,3 +66,4 @@ JSON-RPC 2.0 protocol layer shared by all adapters. `dispatchMcpMethod` routes `
 1. **Security context is mandatory** — `extractSecurityContext` must be provided; queries cannot execute without it.
 2. **API consistency** — all four adapters expose identical endpoints and response shapes.
 3. **MCP origin validation** — `validateOriginHeader` in mcp-transport.ts enforces allowed-origin checks before processing MCP requests.
+4. **Locale propagation** — all adapters extract the `X-DC-Locale` header via `resolveRequestLocale()` (in `locale.ts`) and merge it into `SecurityContext`. New adapters must include this. See `src/i18n/CLAUDE.md`.

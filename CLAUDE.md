@@ -8,6 +8,7 @@ Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics
 src/server/      # Core semantic layer — compiler, executors, query planning  → src/server/CLAUDE.md
 src/client/      # React analytics dashboard components                       → src/client/CLAUDE.md
 src/adapters/    # Framework adapters (Express, Fastify, Hono, Next.js)       → src/adapters/CLAUDE.md
+src/i18n/        # Internationalization runtime and locale files               → src/i18n/CLAUDE.md
 src/cli/         # CLI tool — `npx drizzle-cube charts init|list`
 src/shared/      # Shared utilities (date-range parsing)
 tests/           # Multi-database testing infrastructure                      → tests/CLAUDE.md
@@ -61,35 +62,11 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 - **Modular** — separate entry points: `drizzle-cube/server`, `drizzle-cube/client`, `drizzle-cube/adapters/*`
 - **Cube.js compatible** — API compatibility for easy migration
 
-## Internationalization Policy
+## Internationalization (i18n)
 
-All user-visible text must be translatable.
+**NEVER add bare user-facing strings.** All user-visible text must use translation keys. Full details in `src/i18n/CLAUDE.md`.
 
-- **NEVER add bare user-facing strings** in client or server code.
-- **ALWAYS use `t('...')`** for labels, descriptions, button text, tooltips, errors, warnings, empty states, hints, and API messages shown to users.
-- This rule applies to both:
-  - **Client UI** (`src/client/**`, `dev/client/**`)
-  - **Server-originated user messages** (`src/server/**`, adapters, validation and error responses that surface in UI/logs for users)
-
-### Allowed bare strings (exceptions)
-
-Bare strings are allowed only when they are not user-visible copy, for example:
-
-- object keys / JSON keys / translation keys
-- IDs, enum values, database field names, protocol/header names
-- route paths, query parameters, CSS class names
-- hidden/internal diagnostics not exposed to users
-- test-only fixtures/assertions
-
-### Implementation Guidance
-
-- Add new default English strings to `src/i18n/locales/en.json`.
-- Add corresponding translations in other locale files (for example `src/i18n/locales/nl-NL.json`).
-- Prefer reusing existing translation keys before introducing new ones.
-- When adding new configurable chart text (for example in `*.config.ts`), use translation keys for every `label` and `description`.
-
-### PR Checklist (i18n)
-
-- No new bare user-facing strings were introduced.
-- New keys exist in `en.json`.
-- Non-English locale files were updated (or explicitly noted as follow-up).
+- Use `t('key')` via `useTranslation()` in React components
+- **Configs store keys, components resolve** — chart configs hold translation key strings, NOT resolved text
+- Add new keys to `en.json`, `nl-NL.json`, and `en-US.json` (if British spelling differs)
+- PR checklist: no new bare strings, keys exist in all locale files

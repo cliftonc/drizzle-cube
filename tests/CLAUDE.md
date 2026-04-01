@@ -122,3 +122,4 @@ tests/
 6. **User-centric queries** — client tests use `getByRole`/`getByText` over `getByTestId`; `userEvent` over `fireEvent`
 7. **DuckDB limitations** — single-user OLAP engine; concurrency tests skipped; no `QUANTILE_CONT` in scalar subqueries; non-deterministic row ordering without `ORDER BY`
 8. **Naming** — test files use `*.test.ts` (server) / `*.test.tsx` (client) / `*.spec.ts` (Playwright)
+9. **i18n key coverage** — `tests/i18n/locales.test.ts` automatically validates that all chart config translation keys exist in `en.json`. Adding a new chart config with missing keys will fail this test. See `src/i18n/CLAUDE.md`.

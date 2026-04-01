@@ -248,3 +248,4 @@ All Tailwind utilities are prefixed with `dc:` to prevent conflicts in embedded 
 5. **Use TanStack Query hooks for all data fetching** — `useCubeLoadQuery`, `useMultiCubeLoadQuery`, etc.
 6. **Error boundaries required** — all chart components use `ChartErrorBoundary`
 7. **Use `dc:` prefix** — never use raw Tailwind colors; use `dc-*` theme classes
+8. **No bare user-facing strings** — all labels, descriptions, empty states, tooltips, and validation messages must use translation keys resolved via `useTranslation()` at render time. Chart configs store keys (e.g., `'chart.bar.label'`), NOT resolved text. See `src/i18n/CLAUDE.md`.
