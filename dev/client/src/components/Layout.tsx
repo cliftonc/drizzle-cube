@@ -10,7 +10,8 @@ const XMarkIcon = getIcon('close')
 const LOCALE_OPTIONS = [
   { value: 'en-GB', label: 'English (UK)' },
   { value: 'en-US', label: 'English (US)' },
-  { value: 'nl-NL', label: 'Nederlands' }
+  { value: 'nl-NL', label: 'Nederlands' },
+  { value: 'crowdin', label: 'Crowdin In-Context' }
 ] as const
 
 // GitHub icon component
