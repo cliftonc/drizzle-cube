@@ -11,7 +11,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -224,6 +224,7 @@ const SankeyChart = React.memo(function SankeyChart({
   colorPalette,
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Track container width for label positioning
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(800)

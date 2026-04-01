@@ -25,7 +25,7 @@ import {
 import { findFieldInSchema, getFieldTitle } from './utils'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')
@@ -53,6 +53,7 @@ export default function FilterConfigModal({
   onCancel,
   anchorElement
 }: FilterConfigModalProps) {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<SimpleFilter>(initialFilter)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
   const [isValueDropdownOpen, setIsValueDropdownOpen] = useState(false)
@@ -370,10 +371,10 @@ export default function FilterConfigModal({
   }, [filter])
 
   // Get current operator label
-  const operatorLabel = availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator
+  const operatorLabel = t(availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator)
 
   // Get current date range label
-  const dateRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || t('filter.modal.selectRange')
+  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
 
   // Get icon for field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
@@ -419,7 +420,7 @@ export default function FilterConfigModal({
                       option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                     }`}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 ))}
               </div>
@@ -714,7 +715,7 @@ export default function FilterConfigModal({
                           op.operator === filter.operator ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                         }`}
                       >
-                        {op.label}
+                        {t(op.label)}
                       </button>
                     ))}
                   </div>

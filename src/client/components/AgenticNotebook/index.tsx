@@ -28,7 +28,7 @@ import { useNotebookLayout } from '../../hooks/useNotebookLayout'
 import { getChartTypeIcon, getIcon } from '../../icons/registry'
 import type { ColorPalette } from '../../types'
 import type { ReactNode } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export interface AgenticNotebookProps {
   /** Initial config to restore (saved notebooks) */
@@ -75,6 +75,7 @@ function CollapsedNotebookStrip({
   nudge: boolean
   onExpand: () => void
 }) {
+  const { t } = useTranslation()
   const BookOpenIcon = getIcon('bookOpen')
   const DocumentIcon = getIcon('documentText')
 
@@ -136,6 +137,7 @@ function CollapsedNotebookStrip({
  * Collapsed strip showing AI chat icon (shown in narrow mode when notebook is expanded)
  */
 function CollapsedChatStrip({ onExpand }: { onExpand: () => void }) {
+  const { t } = useTranslation()
   const SparklesIcon = getIcon('sparkles')
 
   return (

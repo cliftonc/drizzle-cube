@@ -13,7 +13,7 @@ import { getIcon } from '../../icons'
 import { getFieldType } from '../../hooks/useDataBrowser'
 import { useDataBrowserStore } from '../../stores/dataBrowserStore'
 import LoadingIndicator from '../LoadingIndicator'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SortAscIcon = getIcon('chevronUp')
 const SortDescIcon = getIcon('chevronDown')
@@ -75,6 +75,7 @@ export default React.memo(function DataBrowserTable({
   selectedCube,
   loadingComponent,
 }: DataBrowserTableProps) {
+  const { t } = useTranslation()
   // Column widths from store (cosmetic only — never affects queries)
   const columnWidths = useDataBrowserStore((s) => s.columnWidths)
   const storeSetColumnWidth = useDataBrowserStore((s) => s.setColumnWidth)

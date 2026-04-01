@@ -14,7 +14,7 @@ import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
 import type { FilterValueSelectorProps } from './types'
 import { FILTER_OPERATORS } from './types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CloseIcon = getIcon('close')
@@ -26,6 +26,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   onValuesChange,
   schema
 }) => {
+  const { t } = useTranslation()
   const operatorMeta = FILTER_OPERATORS[operator]
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')

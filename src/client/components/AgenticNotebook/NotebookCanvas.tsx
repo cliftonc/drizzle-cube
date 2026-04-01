@@ -13,9 +13,10 @@ import { ensureAnalysisConfig } from '../../utils/configMigration'
 import NotebookPortletBlock from './NotebookPortletBlock'
 import NotebookMarkdownBlock from './NotebookMarkdownBlock'
 import PortletAnalysisModal from '../PortletAnalysisModal'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { colorPalette?: ColorPalette }) {
+  const { t } = useTranslation()
   const resolvedPalette = colorPalette ?? getColorPalette()
   const blocks = useNotebookStore(selectBlocks)
   const { removeBlock, moveBlock, updateBlock } = useNotebookStore(useShallow(selectBlockActions))

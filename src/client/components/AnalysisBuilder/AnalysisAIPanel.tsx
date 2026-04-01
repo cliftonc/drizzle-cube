@@ -7,7 +7,7 @@
 
 import { useCallback, KeyboardEvent } from 'react'
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SparklesIcon = getIcon('sparkles')
 const ErrorIcon = getIcon('error')
@@ -41,6 +41,7 @@ export default function AnalysisAIPanel({
   onAccept,
   onCancel
 }: AnalysisAIPanelProps) {
+  const { t } = useTranslation()
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {

@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import DataHistogram from '../DataHistogram'
 import type { ChartProps } from '../../types'
 
-const KpiText = React.memo(function KpiText({ 
-  data, 
-  chartConfig, 
+const KpiText = React.memo(function KpiText({
+  data,
+  chartConfig,
   displayConfig = {},
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const [fontSize, setFontSize] = useState(28)
   const [textWidth, setTextWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)

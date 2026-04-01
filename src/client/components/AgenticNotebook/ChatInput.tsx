@@ -3,7 +3,7 @@
  */
 
 import React, { useCallback, useRef, useEffect } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ChatInputProps {
   value: string
@@ -26,8 +26,10 @@ const ChatInput = React.memo(function ChatInput({
   isStreaming = false,
   showContinue = false,
   disabled = false,
-  placeholder = t('notebook.chatInput.placeholder'),
+  placeholder,
 }: ChatInputProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('notebook.chatInput.placeholder')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-resize textarea
@@ -58,7 +60,7 @@ const ChatInput = React.memo(function ChatInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         disabled={disabled}
         rows={1}
         className="dc:flex-1 dc:resize-none dc:rounded-lg dc:px-3 dc:py-2 dc:text-sm bg-dc-surface-secondary text-dc-text border-dc-border dc:border dc:outline-none dc:focus:ring-1 focus:ring-dc-accent dc:disabled:opacity-50"

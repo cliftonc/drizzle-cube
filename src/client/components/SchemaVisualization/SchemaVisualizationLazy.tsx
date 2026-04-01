@@ -8,7 +8,7 @@
  */
 
 import { lazy, Suspense, useState, useEffect } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import type { SchemaVisualizationProps } from './index'
 import { XyflowProvider } from './xyflowContext'
 import type { XyflowModule } from './xyflowContext'
@@ -16,6 +16,7 @@ import type { XyflowModule } from './xyflowContext'
 let loadFailed = false
 
 function MissingDependencyFallback(_props: SchemaVisualizationProps) {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full dc:p-8">
       <div className="dc:text-center dc:max-w-md">
@@ -35,6 +36,7 @@ function MissingDependencyFallback(_props: SchemaVisualizationProps) {
 }
 
 function LoadingFallback() {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
       <div className="dc:text-center">

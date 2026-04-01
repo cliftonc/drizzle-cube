@@ -14,7 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import {
   ComposedChart,
   Line,
@@ -158,6 +158,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   displayConfig,
   colorPalette,
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const [heatmapTooltip, setHeatmapTooltip] = useState<TooltipData | null>(null)
 

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, LabelList, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -104,6 +104,7 @@ const WaterfallChart = React.memo(function WaterfallChart({
   onDataPointClick,
   drillEnabled,
 }: ChartProps) {
+  const { t } = useTranslation()
   const getFieldLabel = useCubeFieldLabel()
 
   const showTotal = displayConfig?.showTotal ?? true

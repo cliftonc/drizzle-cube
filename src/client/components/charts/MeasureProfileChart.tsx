@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -80,6 +80,7 @@ const MeasureProfileChart = React.memo(function MeasureProfileChart({
   colorPalette,
   drillEnabled,
 }: ChartProps) {
+  const { t } = useTranslation()
   const getFieldLabel = useCubeFieldLabel()
 
   const showReferenceLineAtZero = displayConfig?.showReferenceLineAtZero ?? true

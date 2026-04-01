@@ -15,7 +15,7 @@ import FieldSearchModal from './FieldSearchModal'
 import AnalysisFilterItem from './AnalysisFilterItem'
 import AnalysisFilterGroup from './AnalysisFilterGroup'
 import { convertDateRangeTypeToValue } from '../../shared/utils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 
@@ -131,6 +131,7 @@ export default function AnalysisFilterSection({
   onFieldDropped,
   dimensionsOnly = false
 }: AnalysisFilterSectionProps) {
+  const { t } = useTranslation()
   const [showFieldModal, setShowFieldModal] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   // Track which group we're adding a filter to (path of indices, empty = root)

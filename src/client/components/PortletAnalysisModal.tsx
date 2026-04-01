@@ -8,7 +8,7 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import { funnelModeAdapter } from '../adapters/funnelModeAdapter'
 import { flowModeAdapter } from '../adapters/flowModeAdapter'
 import { retentionModeAdapter } from '../adapters/retentionModeAdapter'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface PortletAnalysisModalProps {
   isOpen: boolean
@@ -45,6 +45,7 @@ export default function PortletAnalysisModal({
   submitText,
   colorPalette
 }: PortletAnalysisModalProps) {
+  const { t } = useTranslation()
 
   // Ref to AnalysisBuilder for getting current query and chart config
   const builderRef = useRef<AnalysisBuilderRef>(null)

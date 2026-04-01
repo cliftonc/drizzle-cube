@@ -10,7 +10,7 @@ import React, { memo, useMemo, useCallback, useState, useRef, useEffect } from '
 import type { CubeMeta, FunnelBindingKey } from '../../types'
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions, getBindingKeyLabel } from '../../utils/funnelValidation'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CheckIcon = getIcon('check')
@@ -41,6 +41,7 @@ const FunnelBindingKeySelector = memo(function FunnelBindingKeySelector({
   disabled = false,
   className = '',
 }: FunnelBindingKeySelectorProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)

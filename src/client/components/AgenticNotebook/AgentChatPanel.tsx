@@ -11,7 +11,7 @@ import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import LoadingIndicator from '../LoadingIndicator'
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ThumbUpIcon = getIcon('thumbUp')
 const ThumbDownIcon = getIcon('thumbDown')
@@ -45,6 +45,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   loadingComponent,
   initialPrompt,
 }: AgentChatPanelProps) {
+  const { t } = useTranslation()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialPromptSentRef = useRef(false)
   const [lastTraceId, setLastTraceId] = useState<string | null>(null)
@@ -242,7 +243,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     doSend(
       t('notebook.saveAsDashboardPrompt')
     )
-  }, [doSend])
+  }, [doSend, t])
 
   const handleScore = useCallback((value: number) => {
     if (!lastTraceId || !onScore) return
@@ -344,6 +345,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
 })
 
 function ThinkingBubble({ loadingComponent }: { loadingComponent?: React.ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div
       className="dc:flex dc:mb-3 dc:justify-start"
@@ -360,6 +362,7 @@ function ThinkingBubble({ loadingComponent }: { loadingComponent?: React.ReactNo
 }
 
 function EmptyState() {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
       <div className="dc:text-center dc:max-w-xs">

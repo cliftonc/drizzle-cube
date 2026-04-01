@@ -10,7 +10,7 @@
 import React, { memo, useMemo } from 'react'
 import type { AnalysisType, CubeMeta } from '../../types'
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChartBarIcon = getIcon('chartBar')
 const ChartFunnelIcon = getIcon('chartFunnel')
@@ -30,34 +30,34 @@ interface AnalysisTypeSelectorProps {
 
 interface TypeOption {
   type: AnalysisType
-  label: string
-  description: string
+  labelKey: string
+  descriptionKey: string
   icon: React.ComponentType<{ className?: string }>
 }
 
-const typeOptions: TypeOption[] = [
+const typeOptionDefs: TypeOption[] = [
   {
     type: 'query',
-    label: t('analysis.modes.query.label'),
-    description: t('analysis.modes.query.description'),
+    labelKey: 'analysis.modes.query.label',
+    descriptionKey: 'analysis.modes.query.description',
     icon: ChartBarIcon,
   },
   {
     type: 'funnel',
-    label: t('analysis.modes.funnel.label'),
-    description: t('analysis.modes.funnel.description'),
+    labelKey: 'analysis.modes.funnel.label',
+    descriptionKey: 'analysis.modes.funnel.description',
     icon: ChartFunnelIcon,
   },
   {
     type: 'flow',
-    label: t('analysis.modes.flow.label'),
-    description: t('analysis.modes.flow.description'),
+    labelKey: 'analysis.modes.flow.label',
+    descriptionKey: 'analysis.modes.flow.description',
     icon: ChartSankeyIcon,
   },
   {
     type: 'retention',
-    label: t('analysis.modes.retention.label'),
-    description: t('analysis.modes.retention.description'),
+    labelKey: 'analysis.modes.retention.label',
+    descriptionKey: 'analysis.modes.retention.description',
     icon: ChartRetentionIcon,
   },
 ]
@@ -71,6 +71,13 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
   disabled = false,
   schema,
 }: AnalysisTypeSelectorProps) {
+  const { t } = useTranslation()
+
+  const typeOptions = useMemo(() => typeOptionDefs.map(opt => ({
+    ...opt,
+    label: t(opt.labelKey),
+    description: t(opt.descriptionKey),
+  })), [t])
   // Check if any cubes have eventStream metadata
   const hasEventStreamCubes = useMemo(() => {
     return schema?.cubes?.some((cube) => cube.meta?.eventStream) ?? false
@@ -84,7 +91,7 @@ const AnalysisTypeSelector = memo(function AnalysisTypeSelector({
       // Event-based modes (funnel, flow, retention) require eventStream cubes
       return hasEventStreamCubes
     })
-  }, [hasEventStreamCubes])
+  }, [hasEventStreamCubes, typeOptions])
 
   return (
     <div className="dc:border-b border-dc-border bg-dc-surface">

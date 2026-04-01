@@ -16,7 +16,7 @@ import type { MetaResponse } from '../../shared/types'
 import { getIcon } from '../../icons'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import { getRelatedCubesSchema } from './utils/fieldUtils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const DragHandleIcon = getIcon('menu')
 const CloseIcon = getIcon('close')
@@ -72,6 +72,7 @@ const FunnelStepCard = memo(function FunnelStepCard({
   onRemove,
   onUpdate,
 }: FunnelStepCardProps) {
+  const { t } = useTranslation()
   const [isEditingName, setIsEditingName] = useState(false)
   const [showTimeDropdown, setShowTimeDropdown] = useState(false)
   // Local state for name editing - only syncs to store on blur/Enter

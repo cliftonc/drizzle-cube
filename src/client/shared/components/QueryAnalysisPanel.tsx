@@ -6,7 +6,7 @@
 import React from 'react'
 import { getIcon } from '../../icons'
 import type { QueryAnalysis } from '../types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface QueryAnalysisPanelProps {
   analysis: QueryAnalysis
@@ -41,6 +41,7 @@ function getReasonBadgeClasses(reason: string): string {
 }
 
 const QueryAnalysisPanel: React.FC<QueryAnalysisPanelProps> = ({ analysis }) => {
+  const { t } = useTranslation()
   const InfoIcon = getIcon('info')
   const ArrowRightIcon = getIcon('chevronRight')
   const WarningIcon = getIcon('warning')

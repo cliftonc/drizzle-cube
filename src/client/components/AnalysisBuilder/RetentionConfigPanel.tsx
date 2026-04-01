@@ -22,7 +22,7 @@ import {
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation'
 import SectionHeading from './SectionHeading'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const ChevronRightIcon = getIcon('chevronRight')
@@ -336,6 +336,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
   dateRange,
   onDateRangeChange,
 }: DateRangeSelectorProps) {
+  const { t } = useTranslation()
   // Safe defaults if dateRange is undefined
   const safeDateRange = dateRange ?? { start: '', end: '' }
   const safeStart = safeDateRange.start ?? ''
@@ -511,6 +512,7 @@ const RetentionConfigPanel = memo(function RetentionConfigPanel({
   onBindingKeyChange = () => {},
   onTimeDimensionChange = () => {},
 }: RetentionConfigPanelProps) {
+  const { t } = useTranslation()
   // Get available options
   const availableCubes = useMemo(() => getAvailableCubes(schema), [schema])
 

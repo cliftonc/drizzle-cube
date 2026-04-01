@@ -13,7 +13,7 @@ const ClockIcon = getIcon('timeDimension')
 import DateRangeSelector from '../shared/DateRangeSelector'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ReadOnlyFilterListProps {
   dashboardFilters: DashboardFilter[]
@@ -32,6 +32,7 @@ const ReadOnlyFilterList: React.FC<ReadOnlyFilterListProps> = ({
   convertToMetaResponse,
   isTimeDimensionField
 }) => {
+  const { t } = useTranslation()
   // Render individual read-only filter
   const renderReadOnlyFilter = useCallback((dashboardFilter: DashboardFilter) => {
     const { id, label, filter, isUniversalTime } = dashboardFilter

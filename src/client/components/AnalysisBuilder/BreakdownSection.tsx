@@ -10,7 +10,7 @@ import type { MetaField } from '../../shared/types'
 import BreakdownItemCard from './BreakdownItemCard'
 import SectionHeading from './SectionHeading'
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 // Get icon once at module level to avoid recreating
 const AddIcon = getIcon('add')
@@ -62,6 +62,7 @@ const BreakdownSection = memo(function BreakdownSection({
   onOrderChange,
   onReorder
 }: BreakdownSectionProps) {
+  const { t } = useTranslation()
 
   // Drag/drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)

@@ -14,7 +14,7 @@ import FlowConfigPanel from './FlowConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import SectionHeading from './SectionHeading'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 type FlowPanelTab = 'config' | 'display'
 
@@ -103,6 +103,7 @@ const FlowModeContent = memo(function FlowModeContent({
   colorPalette,
   onDisplayConfigChange,
 }: FlowModeContentProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<FlowPanelTab>('config')
 
   // Check if display tab is available

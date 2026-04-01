@@ -10,7 +10,7 @@ import { getIcon } from '../../icons'
 import DateRangeSelector from './DateRangeSelector'
 import type { DateRangeFilterProps } from './types'
 import { getTimeDimensionsWithDateRanges } from './utils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 const CalendarIcon = getIcon('timeDimension')
@@ -20,6 +20,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   onDateRangeChange,
   onDateRangeRemove
 }) => {
+  const { t } = useTranslation()
   // Get current date ranges from time dimensions
   const currentDateRanges = getTimeDimensionsWithDateRanges({ timeDimensions })
   
@@ -94,7 +95,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           {timeDimensions.map(td => {
             if (!td.dateRange) return null
             
-            const allTimeDimensions = timeDimensions.map(t => t.dimension)
+            const allTimeDimensions = timeDimensions.map(td2 => td2.dimension)
             
             return (
               <DateRangeSelector

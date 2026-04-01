@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { ScatterChart as RechartsScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Legend, Tooltip } from 'recharts'
 import ChartContainer from './ChartContainer'
 import { CHART_COLORS, CHART_MARGINS } from '../../utils/chartConstants'
@@ -7,14 +7,15 @@ import { formatTimeValue, getFieldGranularity, parseNumericValue, isValidNumeric
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import type { ChartProps } from '../../types'
 
-const ScatterChart = React.memo(function ScatterChart({ 
-  data, 
-  chartConfig, 
+const ScatterChart = React.memo(function ScatterChart({
+  data,
+  chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()

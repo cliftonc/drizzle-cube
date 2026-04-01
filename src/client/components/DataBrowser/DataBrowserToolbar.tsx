@@ -5,7 +5,7 @@
  */
 
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const FilterIcon = getIcon('filter')
 const ColumnsIcon = getIcon('settings')
@@ -51,6 +51,7 @@ export default function DataBrowserToolbar({
   isFetching,
   onRefresh,
 }: DataBrowserToolbarProps) {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary">
       {/* Filter toggle */}

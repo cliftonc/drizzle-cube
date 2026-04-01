@@ -26,7 +26,7 @@ import {
 } from './utils'
 import FieldSearchItem from './FieldSearchItem'
 import FieldDetailPanel from './FieldDetailPanel'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SearchIcon = getIcon('search')
 const CloseIcon = getIcon('close')
@@ -40,6 +40,7 @@ export default function FieldSearchModal({
   selectedFields,
   recentFields: externalRecentFields
 }: FieldSearchModalProps) {
+  const { t } = useTranslation()
   // State
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCube, setSelectedCube] = useState<string | null>(null)

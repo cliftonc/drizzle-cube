@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
@@ -143,6 +143,7 @@ const CandlestickChart = React.memo(function CandlestickChart({
   onDataPointClick,
   drillEnabled,
 }: ChartProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 

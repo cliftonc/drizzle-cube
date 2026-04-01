@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { arc } from 'd3-shape'
 import { formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
@@ -73,6 +73,7 @@ const GaugeChart = React.memo(function GaugeChart({
   displayConfig = {},
   height = '100%',
 }: ChartProps) {
+  const { t } = useTranslation()
   const getFieldLabel = useCubeFieldLabel()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })

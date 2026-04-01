@@ -8,9 +8,10 @@
 import { memo } from 'react'
 import { getMeasureTypeIcon, getFieldTypeIcon } from '../../icons'
 import type { FieldDetailPanelProps } from './types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 function FieldDetailPanel({ field }: FieldDetailPanelProps) {
+  const { t } = useTranslation()
   if (!field) {
     return (
       <div className="dc:p-6 dc:text-center text-dc-text-muted">

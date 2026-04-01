@@ -11,7 +11,7 @@
 import { lazy, Suspense, ComponentType, ReactNode, LazyExoticComponent } from 'react'
 import type { BuiltInChartType, ChartType, ChartProps } from '../types'
 import { MissingDependencyFallback } from '../components/charts/MissingDependencyFallback'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 // Type for lazy-loaded chart components
 type LazyChartComponent = ComponentType<ChartProps>
@@ -133,15 +133,18 @@ const customChartMap = new Map<string, LazyExoticComponent<LazyChartComponent>>(
  * Creates a fallback component for an unknown/unregistered chart type.
  */
 function createUnknownChartFallback(chartType: string): LazyChartComponent {
-  const Fallback: LazyChartComponent = ({ height }) => (
-    <div
-      className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:gap-2"
-      style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
-    >
-      <div className="dc:text-sm dc:font-semibold text-dc-text-muted">{t('chart.runtime.unknownChartType')}</div>
-      <div className="dc:text-xs text-dc-text-muted">&ldquo;{chartType}&rdquo; is not registered</div>
-    </div>
-  )
+  const Fallback: LazyChartComponent = ({ height }) => {
+    const { t } = useTranslation()
+    return (
+      <div
+        className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:gap-2"
+        style={{ height: typeof height === 'number' ? `${height}px` : height || '200px' }}
+      >
+        <div className="dc:text-sm dc:font-semibold text-dc-text-muted">{t('chart.runtime.unknownChartType')}</div>
+        <div className="dc:text-xs text-dc-text-muted">&ldquo;{chartType}&rdquo; is not registered</div>
+      </div>
+    )
+  }
   Fallback.displayName = `UnknownChart_${chartType}`
   return Fallback
 }

@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { getIcon } from '../../icons'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SearchIcon = getIcon('search')
 const CubeIcon = getIcon('cube')
@@ -23,6 +23,7 @@ export default function DataBrowserSidebar({
   selectedCube,
   onSelectCube,
 }: DataBrowserSidebarProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
 
   const filteredCubes = useMemo(() => {

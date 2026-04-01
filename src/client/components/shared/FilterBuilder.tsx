@@ -22,7 +22,7 @@ import {
   countFilters,
   getAllFilterableFields
 } from './utils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 const FilterIcon = getIcon('filter')
@@ -34,6 +34,7 @@ const FilterBuilder: React.FC<FilterBuilderProps> = ({
   onFiltersChange,
   hideFieldSelector = false
 }) => {
+  const { t } = useTranslation()
   
   
   const totalFilterCount = countFilters(filters)

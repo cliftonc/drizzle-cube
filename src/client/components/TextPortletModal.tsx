@@ -13,7 +13,7 @@ import { ensureAnalysisConfig } from '../utils/configMigration'
 import type { PortletConfig, ChartDisplayConfig } from '../types'
 import type { AnalysisConfig } from '../types/analysisConfig'
 import type { ColorPalette } from '../utils/colorPalettes'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 
@@ -34,6 +34,7 @@ export default function TextPortletModal({
   colorPalette,
   existingTitles = [],
 }: TextPortletModalProps) {
+  const { t } = useTranslation()
   // Initialize displayConfig from existing portlet or defaults
   const initialDisplayConfig = useMemo(() => {
     if (portlet) {

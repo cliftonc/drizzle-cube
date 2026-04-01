@@ -1,4 +1,4 @@
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface MissingDependencyFallbackProps {
   chartType: string
@@ -17,6 +17,7 @@ export function MissingDependencyFallback({
   installCommand,
   height = 200
 }: MissingDependencyFallbackProps) {
+  const { t } = useTranslation()
   return (
     <div
       className="dc-missing-dependency-fallback"

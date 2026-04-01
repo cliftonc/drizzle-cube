@@ -938,12 +938,12 @@ export interface RecentFieldsStorage {
  * Time granularity options
  */
 export const TIME_GRANULARITIES = [
-  { value: 'hour', label: 'Hour' },
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'quarter', label: 'Quarter' },
-  { value: 'year', label: 'Year' }
+  { value: 'hour', label: 'timeGranularity.hour' },
+  { value: 'day', label: 'timeGranularity.day' },
+  { value: 'week', label: 'timeGranularity.week' },
+  { value: 'month', label: 'timeGranularity.month' },
+  { value: 'quarter', label: 'timeGranularity.quarter' },
+  { value: 'year', label: 'timeGranularity.year' }
 ] as const
 
 export type TimeGranularity = typeof TIME_GRANULARITIES[number]['value']

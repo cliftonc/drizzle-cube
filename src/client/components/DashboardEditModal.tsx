@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Modal from './Modal'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface DashboardEditModalProps {
   isOpen: boolean
@@ -21,6 +21,7 @@ export default function DashboardEditModal({
   initialName = '',
   initialDescription = ''
 }: DashboardEditModalProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)

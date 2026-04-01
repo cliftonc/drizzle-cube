@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { select, scaleQuantize, max, min, transition as _transition } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition() method
 import { CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
@@ -39,6 +39,7 @@ const ActivityGridChart = React.memo(function ActivityGridChart({
   onDataPointClick,
   drillEnabled
 }: ChartProps) {
+  const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })

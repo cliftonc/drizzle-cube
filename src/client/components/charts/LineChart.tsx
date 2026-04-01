@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -27,6 +27,7 @@ const LineChart = React.memo(function LineChart({
   onDataPointClick,
   drillEnabled
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()

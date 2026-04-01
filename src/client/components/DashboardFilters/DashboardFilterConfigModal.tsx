@@ -16,7 +16,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { getIcon } from '../../icons'
 import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types'
 import type { MetaResponse, DateRangeType, MetaField } from '../../shared/types'
@@ -67,6 +67,7 @@ export default function DashboardFilterConfigModal({
   onDelete,
   onClose
 }: DashboardFilterConfigModalProps) {
+  const { t } = useTranslation()
   // Local state for editing
   const [localLabel, setLocalLabel] = useState(initialFilter.label)
   const [localFilter, setLocalFilter] = useState<SimpleFilter>(initialFilter.filter as SimpleFilter)
@@ -341,13 +342,13 @@ export default function DashboardFilterConfigModal({
     }
 
     onSave(updatedFilter)
-  }, [initialFilter.id, initialFilter.isUniversalTime, localLabel, localFilter, onSave])
+  }, [initialFilter.id, initialFilter.isUniversalTime, localLabel, localFilter, onSave, t])
 
   // Get current operator label
-  const operatorLabel = availableOperators.find(op => op.operator === localFilter.operator)?.label || localFilter.operator
+  const operatorLabel = t(availableOperators.find(op => op.operator === localFilter.operator)?.label || localFilter.operator)
 
   // Get current date range label
-  const dateRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Select range'
+  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
 
   // Get icon for field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
@@ -397,7 +398,7 @@ export default function DashboardFilterConfigModal({
                       option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                     }`}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 ))}
               </div>
@@ -725,7 +726,7 @@ export default function DashboardFilterConfigModal({
                             op.operator === localFilter.operator ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                           }`}
                         >
-                          {op.label}
+                          {t(op.label)}
                         </button>
                       ))}
                     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import type { FlowChartData } from '../types/flow'
 import type { RetentionChartData } from '../types/retention'
 import { CodeBlock } from '../shared/components/CodeBlock'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface DebugModalProps {
   chartConfig: any
@@ -21,6 +21,7 @@ export default function DebugModal({
   chartType,
   cacheInfo
 }: DebugModalProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
 
   // Handle ESC key to close modal

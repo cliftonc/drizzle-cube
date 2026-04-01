@@ -11,7 +11,7 @@
  */
 
 import React, { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { ResponsiveHeatMap } from '@nivo/heatmap'
 import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { AxisFormatConfig } from '../../types'
@@ -212,6 +212,7 @@ const HeatMapChart = React.memo(function HeatMapChart({
   displayConfig,
   queryObject,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Get display config options
   const displayConfigAny = displayConfig as Record<string, unknown> | undefined
   const showLabels = (displayConfigAny?.showLabels as boolean) ?? false

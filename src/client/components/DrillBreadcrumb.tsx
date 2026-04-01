@@ -5,7 +5,7 @@
 
 import React from 'react'
 import type { DrillBreadcrumbProps } from '../types/drill'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 /**
  * Home icon for the root level
@@ -59,6 +59,7 @@ function getSafeLabel(label: string | undefined | null): string {
  * DrillBreadcrumb component
  */
 export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcrumbProps) {
+  const { t } = useTranslation()
   if (path.length === 0) {
     return null
   }

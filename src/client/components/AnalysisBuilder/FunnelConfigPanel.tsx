@@ -14,7 +14,7 @@ import type { CubeMeta, FunnelBindingKey } from '../../types'
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation'
 import SectionHeading from './SectionHeading'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const ChevronRightIcon = getIcon('chevronRight')
@@ -315,6 +315,7 @@ const FunnelConfigPanel = memo(function FunnelConfigPanel({
   onBindingKeyChange,
   onTimeDimensionChange,
 }: FunnelConfigPanelProps) {
+  const { t } = useTranslation()
   // Get available cubes (only those with eventStream metadata)
   const availableCubes = useMemo(() => getAvailableFunnelCubes(schema), [schema])
 

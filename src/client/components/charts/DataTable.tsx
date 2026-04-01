@@ -6,7 +6,7 @@
  */
 
 import React, { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { useCubeMeta } from '../../providers/CubeProvider'
 import { getMeasureTypeIcon } from '../../icons'
 import {
@@ -28,6 +28,7 @@ const DataTable = React.memo(function DataTable({
   queryObject,
   height = 300
 }: ChartProps) {
+  const { t } = useTranslation()
   const { getFieldLabel, meta } = useCubeMeta()
 
   // Detect if we should pivot based on query structure
@@ -102,6 +103,7 @@ function PivotedTable({
   meta: any
   leftYAxisFormat?: AxisFormatConfig
 }) {
+  const { t } = useTranslation()
   const { columns, rows } = pivotedData
 
   if (columns.length === 0 || rows.length === 0) {
@@ -263,6 +265,7 @@ function FlatTable({
   getFieldLabel: (field: string) => string
   leftYAxisFormat?: AxisFormatConfig
 }) {
+  const { t } = useTranslation()
   // Get all columns available in data
   const allColumns = Object.keys(data[0] || {})
 

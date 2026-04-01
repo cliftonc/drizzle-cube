@@ -1,6 +1,6 @@
 import { ReactElement, useState, useRef, useLayoutEffect, startTransition } from 'react'
 import { ResponsiveContainer } from 'recharts'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import LoadingIndicator from '../LoadingIndicator'
 
 interface ChartContainerProps {
@@ -9,6 +9,7 @@ interface ChartContainerProps {
 }
 
 export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
+  const { t } = useTranslation()
   // Track if container is ready to render ResponsiveContainer
   // We need to wait for the container to be in the DOM with valid dimensions
   const containerRef = useRef<HTMLDivElement>(null)

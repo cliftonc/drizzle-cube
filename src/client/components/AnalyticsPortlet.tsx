@@ -16,7 +16,7 @@ import { DrillBreadcrumb } from './DrillBreadcrumb'
 import { useDrillInteraction } from '../hooks/useDrillInteraction'
 import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
 import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
 import type { ServerFlowQuery } from '../types/flow'
@@ -51,6 +51,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   loadingComponent,
   onDebugDataReady
 }, ref) => {
+  const { t } = useTranslation()
   const onDebugDataReadyRef = useRef(onDebugDataReady)
 
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible

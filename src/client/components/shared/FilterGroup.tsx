@@ -18,7 +18,7 @@ import {
   createOrFilter,
   getFilterableFields
 } from './utils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const AddIcon = getIcon('add')
@@ -33,6 +33,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   query,
   depth = 0
 }) => {
+  const { t } = useTranslation()
   const [showAddMenu, setShowAddMenu] = useState(false)
   
   const isAndGroup = group.type === 'and'

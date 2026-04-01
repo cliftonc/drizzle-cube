@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { Icon } from '@iconify/react'
 import infoCircleIcon from '@iconify-icons/tabler/info-circle'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
@@ -16,6 +16,7 @@ const KpiNumber = React.memo(function KpiNumber({
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const [fontSize, setFontSize] = useState(32)
   const [textWidth, setTextWidth] = useState(250)
   const containerRef = useRef<HTMLDivElement>(null)

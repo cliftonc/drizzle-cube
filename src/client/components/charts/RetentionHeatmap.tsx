@@ -13,7 +13,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import type { ChartProps } from '../../types'
 import type { RetentionChartData, RetentionResultRow } from '../../types/retention'
 import { isRetentionData } from '../../types/retention'
@@ -86,6 +86,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
   height = '100%',
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   // Parse retention data

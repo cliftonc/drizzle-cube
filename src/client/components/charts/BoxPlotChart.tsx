@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import { formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
@@ -192,6 +192,7 @@ const BoxPlotChart = React.memo(function BoxPlotChart({
   onDataPointClick,
   drillEnabled,
 }: ChartProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 

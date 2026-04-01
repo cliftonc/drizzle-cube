@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, transition as _transition, type ScaleOrdinal, type ScaleQuantize } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition() method
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
@@ -26,6 +26,7 @@ const BubbleChart = React.memo(function BubbleChart({
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })

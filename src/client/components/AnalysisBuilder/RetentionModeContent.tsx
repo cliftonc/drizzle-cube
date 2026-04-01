@@ -32,7 +32,7 @@ import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import BreakdownSection from './BreakdownSection'
 import SectionHeading from './SectionHeading'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 type RetentionPanelTab = 'config' | 'display'
 
@@ -153,6 +153,7 @@ const RetentionModeContent = memo(function RetentionModeContent({
   colorPalette,
   onDisplayConfigChange,
 }: RetentionModeContentProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<RetentionPanelTab>('config')
 
   // Check if display tab is available

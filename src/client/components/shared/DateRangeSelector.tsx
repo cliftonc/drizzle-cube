@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import { DATE_RANGE_OPTIONS, type DateRangeType } from './types'
 import { convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const CalendarIcon = getIcon('timeDimension')
@@ -35,6 +36,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
   hideFieldSelector = false,
   hideRemoveButton = false
 }) => {
+  const { t } = useTranslation()
   // Parse current date range to determine the type and custom dates
   const getCurrentRangeType = (): DateRangeType => {
     if (!currentDateRange) return 'this_month'
@@ -166,7 +168,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
     onTimeDimensionChange(timeDimension, newTimeDimension)
   }
 
-  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Custom'
+  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'dateRange.custom'
 
   return (
     <div ref={containerRef} className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:p-3">
@@ -216,7 +218,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
               onClick={handleRangeDropdownToggle}
               className="dc:w-full dc:sm:w-40 dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
             >
-              <span className="dc:truncate">{selectedRangeLabel}</span>
+              <span className="dc:truncate">{t(selectedRangeLabel)}</span>
               <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
                 isRangeDropdownOpen ? 'dc:transform dc:rotate-180' : ''
               }`} />
@@ -232,7 +234,7 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
                       option.value === rangeType ? 'bg-dc-accent-bg dark:bg-dc-accent-bg text-dc-accent dark:text-dc-accent' : 'text-dc-text-secondary'
                     }`}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 ))}
               </div>

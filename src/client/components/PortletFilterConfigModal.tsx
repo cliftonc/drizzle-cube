@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import type { DashboardFilter } from '../types'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface PortletFilterConfigModalProps {
   isOpen: boolean
@@ -24,6 +24,7 @@ export default function PortletFilterConfigModal({
   onSave,
   portletTitle
 }: PortletFilterConfigModalProps) {
+  const { t } = useTranslation()
   const [selectedFilters, setSelectedFilters] = useState<string[]>(currentMapping)
 
   // Update local state when props change

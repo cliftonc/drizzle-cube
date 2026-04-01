@@ -11,7 +11,7 @@ import type { FieldSelection } from './FieldDetailPanel'
 import { useERDLayout } from './useERDLayout'
 import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const nodeTypes = { cubeNode: CubeNode }
 const edgeTypes = { relationshipEdge: RelationshipEdge }
@@ -66,6 +66,7 @@ export function SchemaVisualization({
   searchTerm,
   height = '100%',
 }: SchemaVisualizationProps) {
+  const { t } = useTranslation()
   const {
     ReactFlow: ReactFlowComponent,
     Controls,
@@ -251,7 +252,7 @@ export function SchemaVisualization({
 
     // Request fitView on first layout
     if (isFirstLayout) {
-      setFitViewToken(t => t + 1)
+      setFitViewToken(prev => prev + 1)
     }
   }, [displayNodes, displayEdges])
 

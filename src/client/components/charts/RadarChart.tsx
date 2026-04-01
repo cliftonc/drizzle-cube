@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -7,14 +7,15 @@ import { CHART_COLORS } from '../../utils/chartConstants'
 import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
-const RadarChart = React.memo(function RadarChart({ 
-  data, 
+const RadarChart = React.memo(function RadarChart({
+  data,
   chartConfig,
   displayConfig = {},
   queryObject,
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   
   try {

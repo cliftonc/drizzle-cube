@@ -15,7 +15,7 @@ import { useState, memo } from 'react'
 import { CodeBlock } from '../../shared'
 import { ExplainAIPanel } from './ExplainAIPanel'
 import type { ExplainResult, AIExplainAnalysis } from '../../types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ExecutionPlanPanelProps {
   /** The generated SQL to display */
@@ -87,6 +87,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
   title = 'Generated SQL',
   height = '16rem',
 }: ExecutionPlanPanelProps) {
+  const { t } = useTranslation()
   const [useAnalyze, setUseAnalyze] = useState(false)
   const [showAIModal, setShowAIModal] = useState(false)
 

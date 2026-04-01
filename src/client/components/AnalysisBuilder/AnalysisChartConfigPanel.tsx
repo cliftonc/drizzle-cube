@@ -16,7 +16,7 @@ import type { ChartType, ChartAxisConfig } from '../../types'
 import type { MetricItem, BreakdownItem } from './types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 import type { MetaResponse } from '../../shared/types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')
@@ -45,6 +45,7 @@ export default function AnalysisChartConfigPanel({
   onChartTypeChange,
   onChartConfigChange
 }: AnalysisChartConfigPanelProps) {
+  const { t } = useTranslation()
   // Track currently dragging item for immediate state updates
   const [draggedItem, setDraggedItem] = useState<{
     field: string

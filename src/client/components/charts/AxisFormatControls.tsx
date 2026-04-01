@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import SectionHeading from '../AnalysisBuilder/SectionHeading'
 import type { AxisFormatConfig } from '../../types'
 import { formatAxisValue } from '../../utils/chartUtils'
@@ -61,6 +61,7 @@ export function AxisFormatControls({
   axisLabel,
   previewValue = 1250000
 }: AxisFormatControlsProps) {
+  const { t } = useTranslation()
   const config = useMemo(() => value || {}, [value])
 
   // Get locale-aware currency symbol for the button
@@ -242,6 +243,7 @@ export function MultiAxisFormatControls({
   onChange,
   showAxes = { leftYAxis: true, rightYAxis: true }
 }: MultiAxisFormatControlsProps) {
+  const { t } = useTranslation()
   return (
     <div className="dc:space-y-4">
       {showAxes.leftYAxis && (

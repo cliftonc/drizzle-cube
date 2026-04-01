@@ -25,7 +25,7 @@ import { useDragAutoScroll } from '../hooks/useDragAutoScroll'
 import DashboardPortletCard from './DashboardPortletCard'
 import RowManagedLayout from './RowManagedLayout'
 import FloatingEditToolbar from './FloatingEditToolbar'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 const ChartBarIcon = getIcon('measure')
 const RefreshIcon = getIcon('refresh')
@@ -228,6 +228,7 @@ export default function DashboardGrid({
   onDashboardFiltersChange,
   dashboardModes
 }: DashboardGridProps) {
+  const { t } = useTranslation()
   // Get features from context for conditional modal rendering
   const { features } = useCubeFeatures()
 

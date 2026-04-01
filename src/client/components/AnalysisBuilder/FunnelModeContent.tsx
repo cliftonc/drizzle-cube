@@ -12,7 +12,7 @@ import type { ColorPalette } from '../../utils/colorPalettes'
 import FunnelConfigPanel from './FunnelConfigPanel'
 import FunnelStepList from './FunnelStepList'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export interface FunnelModeContentProps {
   /** Currently selected cube for funnel */
@@ -84,6 +84,7 @@ const FunnelModeContent = memo(function FunnelModeContent({
   colorPalette,
   onDisplayConfigChange,
 }: FunnelModeContentProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<FunnelPanelTab>('steps')
 
   // Check if display tab is available

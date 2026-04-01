@@ -1,5 +1,5 @@
 
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface DataHistogramProps {
   /** Array of numeric values to create histogram from */
@@ -39,6 +39,7 @@ export default function DataHistogram({
   showAverageIndicator = true,
   targetValue
 }: DataHistogramProps) {
+  const { t } = useTranslation()
   // Create histogram buckets from actual data
   const buckets = new Array(bucketCount).fill(0)
   const range = max - min

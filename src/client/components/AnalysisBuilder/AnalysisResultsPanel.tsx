@@ -18,7 +18,7 @@ import type { CubeQuery } from '../../types'
 import type { QueryAnalysis } from '../../shared/types'
 import { ExecutionPlanPanel } from './ExecutionPlanPanel'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 const SchemaVisualizationLazy = React.lazy(() =>
   import('../SchemaVisualization/SchemaVisualizationLazy').then(m => ({ default: m.SchemaVisualizationLazy }))
 )
@@ -245,6 +245,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   highlightedFields,
   onSchemaFieldClick
 }: AnalysisResultsPanelProps) {
+  const { t } = useTranslation()
   // Determine funnel mode from analysisType (preferred) or legacy prop
   const isFunnelMode = analysisType === 'funnel' || isFunnelModeProp
   // Determine flow mode from analysisType

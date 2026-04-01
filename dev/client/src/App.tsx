@@ -61,7 +61,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <CubeProvider
-        key={locale}
         apiOptions={apiOptions}
         features={features}
         customCharts={customCharts}

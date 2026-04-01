@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { Treemap } from 'recharts'
 import { scaleQuantize, scaleOrdinal } from 'd3'
 import ChartContainer from './ChartContainer'
@@ -19,6 +19,7 @@ const TreeMapChart = React.memo(function TreeMapChart({
   onDataPointClick,
   drillEnabled
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()

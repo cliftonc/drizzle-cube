@@ -13,7 +13,7 @@
 import React from 'react'
 import type { AIExplainAnalysis, ExplainRecommendation, ExplainIssue } from '../../types'
 import CodeBlock from '../../shared/components/CodeBlock'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ExplainAIPanelProps {
   /** AI analysis result */
@@ -65,6 +65,7 @@ const issueSeverityColors = {
  * Assessment badge component
  */
 function AssessmentBadge({ assessment, reason }: { assessment: 'good' | 'warning' | 'critical'; reason: unknown }) {
+  const { t } = useTranslation()
   const labels = {
     good: t('explainAI.assessment.good'),
     warning: t('explainAI.assessment.warning'),
@@ -106,6 +107,7 @@ function IssueItem({ issue }: { issue: ExplainIssue }) {
  * Copy button component
  */
 function CopyButton({ text }: { text: string }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = React.useState(false)
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -141,6 +143,7 @@ function CopyButton({ text }: { text: string }) {
  * Recommendation card component
  */
 function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
+  const { t } = useTranslation()
   const typeLabels = {
     index: t('explainAI.type.index'),
     table: t('explainAI.type.table'),
@@ -208,6 +211,7 @@ function RecommendationCard({ rec }: { rec: ExplainRecommendation }) {
  * Shows in a near full-screen modal with scrolling
  */
 export function ExplainAIPanel({ analysis, onClose, onClear }: ExplainAIPanelProps) {
+  const { t } = useTranslation()
   // Support both onClose (new) and onClear (legacy) for backward compatibility
   const handleClose = onClose || onClear
 

@@ -13,7 +13,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { SunburstChart as RechartsSunburst, ResponsiveContainer, Tooltip } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -250,6 +250,7 @@ const SunburstChart = React.memo(function SunburstChart({
   colorPalette,
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Track chart area dimensions (not the full container which includes footer)
   const chartAreaRef = useRef<HTMLDivElement>(null)
   const [chartSize, setChartSize] = useState({ width: 400, height: 400 })

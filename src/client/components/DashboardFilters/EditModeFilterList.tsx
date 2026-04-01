@@ -7,7 +7,7 @@
 import React from 'react'
 import { getIcon } from '../../icons'
 import type { DashboardFilter } from '../../types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const FilterIcon = getIcon('filter')
 const AddIcon = getIcon('add')
@@ -35,6 +35,7 @@ const EditModeFilterList: React.FC<EditModeFilterListProps> = ({
   selectedFilterId,
   onFilterSelect
 }) => {
+  const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = React.useState(false)
 
   // Render compact filter chip - just label + edit + delete

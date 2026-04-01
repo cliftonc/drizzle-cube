@@ -1,6 +1,6 @@
 import React from 'react'
 import Modal from './Modal'
-import { t } from '../../i18n/runtime'
+import { useTranslation } from '../hooks/useTranslation'
 
 export interface ConfirmModalProps {
   isOpen: boolean
@@ -34,13 +34,17 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = t('common.actions.confirm'),
+  title,
   message,
-  confirmText = t('common.actions.confirm'),
-  cancelText = t('common.actions.cancel'),
+  confirmText,
+  cancelText,
   confirmVariant = 'primary',
   isLoading = false,
 }) => {
+  const { t } = useTranslation()
+  const resolvedTitle = title ?? t('common.actions.confirm')
+  const resolvedConfirmText = confirmText ?? t('common.actions.confirm')
+  const resolvedCancelText = cancelText ?? t('common.actions.cancel')
   const handleConfirm = async () => {
     await onConfirm()
     onClose()
@@ -64,7 +68,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={title}
+      title={resolvedTitle}
       size="sm"
       closeOnBackdropClick={!isLoading}
       closeOnEscape={!isLoading}
@@ -76,7 +80,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             disabled={isLoading}
             className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary bg-dc-surface dc:border border-dc-border dc:rounded-md hover:bg-dc-surface-hover dc:transition-colors dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-2 focus:ring-dc-primary dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
           >
-            {cancelText}
+            {resolvedCancelText}
           </button>
           <button
             type="button"
@@ -93,7 +97,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 {t('common.modal.processing')}
               </span>
             ) : (
-              confirmText
+              resolvedConfirmText
             )}
           </button>
         </>

@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatDateForCube, convertDateRangeTypeToValue } from '../shared/utils'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 type TabType = 'fixed' | 'since' | 'last'
 type LastUnit = 'days' | 'weeks' | 'months' | 'quarters' | 'years'
@@ -33,6 +33,7 @@ const CustomDateDropdown: React.FC<CustomDateDropdownProps> = ({
   onDateRangeChange,
   currentDateRange
 }) => {
+  const { t } = useTranslation()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Tab state

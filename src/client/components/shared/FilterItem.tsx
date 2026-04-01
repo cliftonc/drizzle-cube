@@ -12,7 +12,7 @@ import type { FilterItemProps, MetaField, DateRangeType } from './types'
 import { getAllFilterableFields, getOrganizedFilterFields, getFieldType, getAvailableOperators, convertDateRangeTypeToValue, formatDateForCube, requiresNumberInput } from './utils'
 import { getMeasureIcon } from '../../utils/measureIcons'
 import { DATE_RANGE_OPTIONS } from './types'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const FilterIcon = getIcon('filter')
@@ -32,6 +32,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
   hideOperatorSelector = false,
   hideRemoveButton = false
 }) => {
+  const { t } = useTranslation()
   const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
   const [isDateRangeDropdownOpen, setIsDateRangeDropdownOpen] = useState(false)
@@ -256,7 +257,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
     }
   }
 
-  const selectedRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || t('dateRange.custom')
+  const selectedRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'dateRange.custom')
 
   return (
     <div ref={containerRef} className="bg-dc-surface dc:border border-dc-border dc:rounded-lg dc:p-3">
@@ -390,7 +391,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                 className="dc:w-full dc:sm:w-32 dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
               >
                 <span className="dc:truncate">
-                  {availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator}
+                  {t(availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator)}
                 </span>
                 <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-1 dc:transition-transform ${
                   isOperatorDropdownOpen ? 'dc:transform dc:rotate-180' : ''
@@ -407,7 +408,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                         operator.operator === filter.operator ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                       }`}
                     >
-                      {operator.label}
+                      {t(operator.label)}
                     </button>
                   ))}
                 </div>
@@ -445,7 +446,7 @@ const FilterItem: React.FC<FilterItemProps> = ({
                               option.value === rangeType ? 'bg-dc-accent-bg text-dc-accent' : 'text-dc-text-secondary'
                             }`}
                           >
-                            {option.label}
+                            {t(option.label)}
                           </button>
                         ))}
                       </div>

@@ -10,7 +10,7 @@ import type { CubeMeta, FunnelStepState } from '../../types'
 import { getIcon } from '../../icons'
 import FunnelStepCard from './FunnelStepCard'
 import SectionHeading from './SectionHeading'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 
@@ -49,6 +49,7 @@ const FunnelStepList = memo(function FunnelStepList({
   onSelectStep,
   onReorderSteps,
 }: FunnelStepListProps) {
+  const { t } = useTranslation()
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 

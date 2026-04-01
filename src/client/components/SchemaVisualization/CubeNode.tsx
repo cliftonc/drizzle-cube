@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react'
 import type { CubeMetaCube } from '../../types'
 import { getIcon } from '../../icons'
 import { useXyflow } from './xyflowContext'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface CubeNodeData {
   cube: CubeMetaCube
@@ -20,6 +20,7 @@ interface CubeNodeProps {
 }
 
 export function CubeNode({ data }: CubeNodeProps) {
+  const { t } = useTranslation()
   const { Handle, Position } = useXyflow()
   const { cube, onFieldClick, onCubeClick, isHighlighted, highlightedFields, searchTerm, selectedField } = data
 

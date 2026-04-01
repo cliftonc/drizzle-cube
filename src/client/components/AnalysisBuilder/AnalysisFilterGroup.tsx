@@ -11,7 +11,7 @@ import { getIcon } from '../../icons'
 import type { Filter, SimpleFilter, GroupFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
 import AnalysisFilterItem from './AnalysisFilterItem'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -56,6 +56,7 @@ export default function AnalysisFilterGroup({
   depth = 0,
   hideRemoveButton = false
 }: AnalysisFilterGroupProps) {
+  const { t } = useTranslation()
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false)
   const addMenuRef = useRef<HTMLDivElement>(null)
 

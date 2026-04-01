@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo } from 'react'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import { FunnelChart as RechartsFunnelChart, Funnel, LabelList, Tooltip, Cell, ResponsiveContainer } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -84,6 +84,7 @@ const FunnelChart = React.memo(function FunnelChart({
   colorPalette,
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Get display config options
   const customStepLabels = displayConfig?.funnelStepLabels
   const orientation = displayConfig?.funnelOrientation || 'horizontal'

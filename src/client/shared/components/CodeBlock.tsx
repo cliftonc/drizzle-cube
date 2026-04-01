@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import { getSyntaxHighlighter, loadSyntaxHighlighter } from '../../utils/syntaxHighlighting'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 import './CodeBlock.css'
 
 interface CodeBlockProps {
@@ -29,6 +29,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   className = '',
   headerRight
 }) => {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const codeRef = useRef<HTMLElement>(null)
   const CopyIcon = getIcon('copy')
