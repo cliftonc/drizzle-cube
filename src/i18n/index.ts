@@ -1,2 +1,2 @@
-export { t, loadLocale, setTranslations, getLocale, getMessages, createTranslator } from './runtime'
+export { t, loadLocale, setTranslations, getLocale, getMessages, createTranslator, setDebugMode } from './runtime'
 export type { TranslationKey, TranslationDictionary, TranslationParams } from './types'

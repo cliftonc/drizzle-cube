@@ -3,6 +3,16 @@ import type { TranslationKey, TranslationParams } from './types'
 
 let currentLocale = 'en-GB'
 let messages: Record<string, string> = en
+let debugMode = false
+
+/**
+ * Enable or disable i18n debug mode. When enabled, console.warn is
+ * emitted for missing translation keys — helps catch bare strings
+ * accidentally passed to t() and genuinely missing keys.
+ */
+export function setDebugMode(enabled: boolean): void {
+  debugMode = enabled
+}
 
 /**
  * Translate a key, optionally interpolating ICU {var} parameters.
@@ -10,7 +20,12 @@ let messages: Record<string, string> = en
  */
 export function t(key: TranslationKey, params?: TranslationParams): string {
   const template = messages[key as string]
-  if (!template) return key
+  if (!template) {
+    if (debugMode && typeof console !== 'undefined') {
+      console.warn(`[drizzle-cube i18n] Missing translation key: "${key}"`)
+    }
+    return key
+  }
   if (!params) return template
   // Simple ICU {var} interpolation — sufficient for Phase 1.
   // For plurals/gender, upgrade to Intl.MessageFormat later.

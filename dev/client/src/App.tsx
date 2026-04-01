@@ -65,6 +65,7 @@ function App() {
         features={features}
         customCharts={customCharts}
         locale={locale}
+        debugI18n
       >
         <Layout locale={locale} onLocaleChange={setLocale}>
           <Routes>

@@ -23,6 +23,7 @@ import type { BatchCoordinator } from '../client/BatchCoordinator'
 import type { ChartDefinition } from '../charts/chartPlugin'
 import { chartPluginRegistry } from '../charts/chartPlugin'
 import { I18nProvider } from './I18nProvider'
+import { setDebugMode } from '../../i18n/runtime'
 
 const DEFAULT_API_OPTIONS: CubeApiOptions = { apiUrl: '/cubejs-api/v1' }
 
@@ -77,6 +78,8 @@ interface CubeProviderProps {
   locale?: string
   /** Optional translation overrides merged on top of the loaded locale. */
   translations?: Record<string, string>
+  /** Enable i18n debug mode — logs console warnings for missing translation keys. */
+  debugI18n?: boolean
   children: ReactNode
 }
 
@@ -101,8 +104,14 @@ export function CubeProvider({
   customCharts,
   locale,
   translations,
+  debugI18n,
   children
 }: CubeProviderProps) {
+  // Enable/disable i18n debug mode (warns on missing keys)
+  useEffect(() => {
+    setDebugMode(!!debugI18n)
+  }, [debugI18n])
+
   const [internalQueryClient] = useState(() => createCubeQueryClient())
   const queryClient = providedQueryClient ?? internalQueryClient
 
