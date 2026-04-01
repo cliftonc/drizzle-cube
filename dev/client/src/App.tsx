@@ -92,8 +92,8 @@ function App() {
     }
   }, [locale, isCrowdin])
 
-  // When Crowdin is active, use the 'ach' pseudo-locale (Crowdin convention)
-  const effectiveLocale = isCrowdin ? 'ach' : locale
+  // When Crowdin is active, use 'af-ZA' (Afrikaans pseudo-locale with Crowdin identifiers)
+  const effectiveLocale = isCrowdin ? 'af-ZA' : locale
 
   const handleLocaleChange = useCallback((newLocale: string) => {
     setLocale(newLocale)
