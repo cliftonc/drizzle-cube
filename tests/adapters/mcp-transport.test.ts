@@ -909,9 +909,8 @@ describe('MCP Transport Layer', () => {
     })
 
     it('should handle tokens with special characters', () => {
-      expect(extractBearerToken('Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJrZXljbG9hayJ9.sig')).toBe(
-        'eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJrZXljbG9hayJ9.sig'
-      )
+      const fakeJwt = 'header.payload.signature'
+      expect(extractBearerToken(`Bearer ${fakeJwt}`)).toBe(fakeJwt)
     })
   })
 
