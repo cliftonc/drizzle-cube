@@ -899,7 +899,7 @@ describe('MCP Transport Layer', () => {
     })
 
     it('should return null for non-Bearer auth schemes', () => {
-      expect(extractBearerToken('Basic dXNlcjpwYXNz')).toBeNull()
+      expect(extractBearerToken('Basic dGVzdDp0ZXN0')).toBeNull() // test:test
       expect(extractBearerToken('Digest realm="test"')).toBeNull()
     })
 
