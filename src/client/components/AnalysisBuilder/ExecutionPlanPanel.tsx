@@ -15,6 +15,7 @@ import { useState, memo } from 'react'
 import { CodeBlock } from '../../shared'
 import { ExplainAIPanel } from './ExplainAIPanel'
 import type { ExplainResult, AIExplainAnalysis } from '../../types'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ExecutionPlanPanelProps {
   /** The generated SQL to display */
@@ -86,6 +87,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
   title = 'Generated SQL',
   height = '16rem',
 }: ExecutionPlanPanelProps) {
+  const { t } = useTranslation()
   const [useAnalyze, setUseAnalyze] = useState(false)
   const [showAIModal, setShowAIModal] = useState(false)
 
@@ -121,10 +123,10 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
       {aiAnalysisLoading ? (
         <>
           <span className="dc:animate-spin">⟳</span>
-          Analyzing...
+          {t('debug.aiAnalyzing')}
         </>
       ) : (
-        <>✨ AI Analysis</>
+        <>{`✨ ${t('debug.aiAnalysis')}`}</>
       )}
     </button>
   ) : null
@@ -136,7 +138,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
         <>
           <h4 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{title}</h4>
           <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse" style={{ height }}>
-            Loading SQL...
+            {t('results.debug.loadingSql')}
           </div>
         </>
       ) : sqlError ? (
@@ -162,7 +164,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
                   onChange={(e) => setUseAnalyze(e.target.checked)}
                   className="dc:w-3 dc:h-3 dc:rounded border-dc-border text-dc-accent focus:ring-dc-accent"
                 />
-                Include timing
+                {t('debug.explainIncludeTiming')}
               </label>
 
               {/* Explain Plan button */}
@@ -171,7 +173,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
                 disabled={explainLoading}
                 className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:disabled:opacity-50 dc:disabled:cursor-not-allowed"
               >
-                {explainLoading ? 'Running...' : 'Explain Plan'}
+                {explainLoading ? t('debug.explainRunning') : t('debug.explainPlan')}
               </button>
             </>
           }
@@ -190,11 +192,11 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
         <div>
           {explainLoading ? (
             <div className="bg-dc-surface-secondary dc:border border-dc-border dc:rounded dc:p-3 text-dc-text-muted dc:text-sm dc:animate-pulse">
-              Running EXPLAIN{useAnalyze ? ' ANALYZE' : ''}...
+              {useAnalyze ? t('debug.explainRunningAnalyze') : t('debug.explainRunningBasic')}
             </div>
           ) : explainError ? (
             <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
-              <strong>Explain Error:</strong> {explainError.message}
+              <strong>{t('debug.explainError')}</strong> {explainError.message}
             </div>
           ) : explainResult ? (
             <div className="dc:space-y-3">
@@ -205,27 +207,29 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
                 </span>
                 {explainResult.summary.hasSequentialScans && (
                   <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-warning-bg text-dc-warning dc:border border-dc-warning dc:rounded">
-                    Sequential Scans Detected
+                    {t('debug.sequentialScans')}
                   </span>
                 )}
                 {explainResult.summary.usedIndexes.length > 0 && (
                   <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-success-bg text-dc-success dc:border border-dc-success dc:rounded">
-                    {explainResult.summary.usedIndexes.length} Index{explainResult.summary.usedIndexes.length !== 1 ? 'es' : ''} Used
+                    {explainResult.summary.usedIndexes.length === 1
+                      ? t('debug.indexesUsed', { count: explainResult.summary.usedIndexes.length })
+                      : t('debug.indexesUsedPlural', { count: explainResult.summary.usedIndexes.length })}
                   </span>
                 )}
                 {explainResult.summary.executionTime !== undefined && (
                   <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
-                    Execution: {explainResult.summary.executionTime.toFixed(2)}ms
+                    {t('debug.executionTime', { time: explainResult.summary.executionTime.toFixed(2) })}
                   </span>
                 )}
                 {explainResult.summary.planningTime !== undefined && (
                   <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
-                    Planning: {explainResult.summary.planningTime.toFixed(2)}ms
+                    {t('debug.planningTime', { time: explainResult.summary.planningTime.toFixed(2) })}
                   </span>
                 )}
                 {explainResult.summary.totalCost !== undefined && (
                   <span className="dc:px-2 dc:py-1 dc:text-xs dc:font-medium bg-dc-surface-secondary text-dc-text-secondary dc:border border-dc-border dc:rounded">
-                    Cost: {explainResult.summary.totalCost.toFixed(2)}
+                    {t('debug.cost', { cost: explainResult.summary.totalCost.toFixed(2) })}
                   </span>
                 )}
               </div>
@@ -233,7 +237,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
               {/* Index usage details */}
               {explainResult.summary.usedIndexes.length > 0 && (
                 <div className="dc:text-xs text-dc-text-muted">
-                  <strong>Indexes:</strong> {explainResult.summary.usedIndexes.join(', ')}
+                  <strong>{t('debug.indexes')}</strong> {explainResult.summary.usedIndexes.join(', ')}
                 </div>
               )}
 
@@ -241,7 +245,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
               <CodeBlock
                 code={explainResult.raw}
                 language="sql"
-                title={`Execution Plan (${explainResult.summary.database})`}
+                title={t('debug.executionPlanTitle', { database: explainResult.summary.database })}
                 height="16rem"
                 headerRight={aiButton}
               />
@@ -253,7 +257,7 @@ export const ExecutionPlanPanel = memo(function ExecutionPlanPanel({
       {/* AI Analysis Error (shown inline) */}
       {aiAnalysisError && (
         <div className="text-dc-error dc:text-sm bg-dc-danger-bg dc:p-3 dc:rounded dc:border border-dc-error">
-          <strong>AI Analysis Error:</strong> {aiAnalysisError.message}
+          <strong>{t('debug.aiAnalysisError')}</strong> {aiAnalysisError.message}
         </div>
       )}
 

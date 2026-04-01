@@ -8,9 +8,9 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * pre-calculated step names, values, and conversion rates.
  */
 export const funnelChartConfig: ChartTypeConfig = {
-  label: 'Funnel Chart',
-  description: 'Show conversion through sequential steps',
-  useCase: 'Best for visualizing user journey funnels, sales pipelines, or multi-step processes',
+  label: 'chart.funnel.label',
+  description: 'chart.funnel.description',
+  useCase: 'chart.funnel.useCase',
   dropZones: [
     // Funnel charts don't use traditional drop zones since they work with
     // pre-calculated funnel data from useFunnelQuery. The steps are defined
@@ -18,80 +18,80 @@ export const funnelChartConfig: ChartTypeConfig = {
     // However, we keep xAxis and yAxis for compatibility with chart system.
     {
       key: 'xAxis',
-      label: 'Step Name',
-      description: 'Step names (auto-populated from funnel steps)',
+      label: 'chart.configText.step_name',
+      description: 'chart.configText.step_names_auto_populated_from_funnel_steps',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Steps defined in funnel config'
+      emptyText: 'chart.funnel.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Step Count',
-      description: 'Count at each step (auto-calculated)',
+      label: 'chart.configText.step_count',
+      description: 'chart.configText.count_at_each_step_auto_calculated',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Counts calculated from funnel execution'
+      emptyText: 'chart.funnel.dropZone.yAxis.empty'
     }
   ],
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
       key: 'funnelStyle',
-      label: 'Funnel Style',
+      label: 'chart.option.funnelStyle.label',
       type: 'buttonGroup',
       defaultValue: 'bars',
       options: [
-        { value: 'bars', label: 'Bars' },
-        { value: 'funnel', label: 'Funnel' }
+        { value: 'bars', label: 'chart.option.funnelStyle.bars' },
+        { value: 'funnel', label: 'chart.option.funnelStyle.funnel' }
       ],
-      description: 'Visualization style'
+      description: 'chart.configText.visualization_style'
     },
     {
       key: 'funnelOrientation',
-      label: 'Orientation',
+      label: 'chart.option.funnelOrientation.label',
       type: 'buttonGroup',
       defaultValue: 'horizontal',
       options: [
-        { value: 'horizontal', label: 'Horizontal' },
-        { value: 'vertical', label: 'Vertical' }
+        { value: 'horizontal', label: 'chart.option.funnelOrientation.horizontal' },
+        { value: 'vertical', label: 'chart.option.funnelOrientation.vertical' }
       ]
     },
     {
       key: 'hideSummaryFooter',
-      label: 'Hide Summary Footer',
+      label: 'chart.option.hideSummaryFooter.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Hide the summary footer showing steps count and overall conversion'
+      description: 'chart.option.hideSummaryFooter.description'
     },
     {
       key: 'showFunnelConversion',
-      label: 'Show Conversion Rate',
+      label: 'chart.option.showConversion.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Display step-to-step conversion percentage'
+      description: 'chart.option.showConversion.description'
     },
     {
       key: 'showFunnelAvgTime',
-      label: 'Show Avg Time',
+      label: 'chart.option.showAvgTime.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Display average time to convert'
+      description: 'chart.option.showAvgTime.description'
     },
     {
       key: 'showFunnelMedianTime',
-      label: 'Show Median Time',
+      label: 'chart.option.showMedianTime.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Display median time to convert'
+      description: 'chart.option.showMedianTime.description'
     },
     {
       key: 'showFunnelP90Time',
-      label: 'Show P90 Time',
+      label: 'chart.option.showP90Time.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Display 90th percentile time to convert'
+      description: 'chart.option.showP90Time.description'
     }
   ]
 }

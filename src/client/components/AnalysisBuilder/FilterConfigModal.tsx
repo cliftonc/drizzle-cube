@@ -25,6 +25,7 @@ import {
 import { findFieldInSchema, getFieldTitle } from './utils'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const ChevronDownIcon = getIcon('chevronDown')
@@ -52,6 +53,7 @@ export default function FilterConfigModal({
   onCancel,
   anchorElement
 }: FilterConfigModalProps) {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<SimpleFilter>(initialFilter)
   const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
   const [isValueDropdownOpen, setIsValueDropdownOpen] = useState(false)
@@ -369,10 +371,10 @@ export default function FilterConfigModal({
   }, [filter])
 
   // Get current operator label
-  const operatorLabel = availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator
+  const operatorLabel = t(availableOperators.find(op => op.operator === filter.operator)?.label || filter.operator)
 
   // Get current date range label
-  const dateRangeLabel = DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'Select range'
+  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
 
   // Get icon for field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
@@ -383,7 +385,7 @@ export default function FilterConfigModal({
     if (!operatorMeta?.requiresValues) {
       return (
         <div className="dc:text-sm text-dc-text-muted dc:italic dc:py-2">
-          No value required
+          {t('filter.modal.noValueRequired')}
         </div>
       )
     }
@@ -418,7 +420,7 @@ export default function FilterConfigModal({
                       option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                     }`}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </button>
                 ))}
               </div>
@@ -451,7 +453,7 @@ export default function FilterConfigModal({
                 onChange={handleCustomStartDate}
                 className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
               />
-              <span className="dc:text-sm text-dc-text-muted">to</span>
+              <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.dateTo')}</span>
               <input
                 type="date"
                 value={Array.isArray(filter.dateRange) ? filter.dateRange[1] : ''}
@@ -472,15 +474,15 @@ export default function FilterConfigModal({
             type="number"
             value={filter.values?.[0] ?? ''}
             onChange={handleBetweenStartInput}
-            placeholder="Min"
+            placeholder={t('filter.modal.min')}
             className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
           />
-          <span className="dc:text-sm text-dc-text-muted">to</span>
+          <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.to')}</span>
           <input
             type="number"
             value={filter.values?.[1] ?? ''}
             onChange={handleBetweenEndInput}
-            placeholder="Max"
+            placeholder={t('filter.modal.max')}
             className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
           />
         </div>
@@ -506,7 +508,7 @@ export default function FilterConfigModal({
           type="number"
           value={filter.values?.[0] ?? ''}
           onChange={handleDirectInput}
-          placeholder="Enter number"
+          placeholder={t('filter.modal.enterNumber')}
           className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
         />
       )
@@ -547,7 +549,7 @@ export default function FilterConfigModal({
               className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
             >
               <span className="text-dc-text-muted dc:truncate">
-                {valuesLoading ? 'Loading...' : 'Select value...'}
+                {valuesLoading ? t('filter.modal.loading') : t('filter.modal.selectValue')}
               </span>
               <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
                 isValueDropdownOpen ? 'dc:rotate-180' : ''
@@ -566,7 +568,7 @@ export default function FilterConfigModal({
                       setHighlightedIndex(-1)
                     }}
                     onKeyDown={handleValueKeyDown}
-                    placeholder="Search..."
+                    placeholder={t('filter.modal.search')}
                     className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
                     autoFocus
                   />
@@ -575,11 +577,11 @@ export default function FilterConfigModal({
                 {/* Values list */}
                 <div ref={valueListRef} className="dc:max-h-40 dc:overflow-y-auto">
                   {valuesLoading ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">Loading...</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.loading')}</div>
                   ) : valuesError ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">Error: {valuesError}</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('filter.modal.errorPrefix')}{valuesError}</div>
                   ) : distinctValues.length === 0 ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">No values found</div>
+                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.noValues')}</div>
                   ) : (
                     distinctValues.map((value, index) => {
                       const isSelected = filter.values?.includes(value)
@@ -610,7 +612,7 @@ export default function FilterConfigModal({
           {/* Helper text for multi-select */}
           {operatorMeta?.supportsMultipleValues && (
             <p className="dc:text-xs text-dc-text-muted">
-              Hold Shift to select multiple values
+              {t('filter.modal.multiSelectHint')}
             </p>
           )}
         </div>
@@ -623,7 +625,7 @@ export default function FilterConfigModal({
         type="text"
         value={filter.values?.[0] ?? ''}
         onChange={handleDirectInput}
-        placeholder="Enter value..."
+        placeholder={t('filter.modal.enterValue')}
         className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
       />
     )
@@ -661,7 +663,7 @@ export default function FilterConfigModal({
         >
           {/* Header */}
           <div className="dc:flex dc:items-center dc:justify-between dc:p-4 dc:border-b border-dc-border">
-            <h2 className="dc:text-lg dc:font-semibold text-dc-text">Edit Filter</h2>
+            <h2 className="dc:text-lg dc:font-semibold text-dc-text">{t('filter.modal.title')}</h2>
             <button
               onClick={onCancel}
               className="dc:p-1 text-dc-text-muted hover:text-dc-text dc:transition-colors"
@@ -675,7 +677,7 @@ export default function FilterConfigModal({
             {/* Field display */}
             <div>
               <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                Field
+                {t('filter.modal.fieldLabel')}
               </label>
               <div className="dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded">
                 <FieldIcon className="dc:w-5 dc:h-5 text-dc-filter-text" />
@@ -686,7 +688,7 @@ export default function FilterConfigModal({
             {/* Operator selector */}
             <div>
               <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                Operator
+                {t('filter.modal.operatorLabel')}
               </label>
               <div className="dc:relative">
                 <button
@@ -713,7 +715,7 @@ export default function FilterConfigModal({
                           op.operator === filter.operator ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
                         }`}
                       >
-                        {op.label}
+                        {t(op.label)}
                       </button>
                     ))}
                   </div>
@@ -724,7 +726,7 @@ export default function FilterConfigModal({
             {/* Value input */}
             <div>
               <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                Value
+                {t('filter.modal.valueLabel')}
               </label>
               {renderValueInput()}
             </div>
@@ -736,13 +738,13 @@ export default function FilterConfigModal({
               onClick={onCancel}
               className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary hover:text-dc-text dc:transition-colors"
             >
-              Cancel
+              {t('common.actions.cancel')}
             </button>
             <button
               onClick={() => onSave(filter)}
               className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium text-dc-primary-content bg-dc-primary hover:bg-dc-primary-hover dc:rounded dc:transition-colors"
             >
-              Save
+              {t('common.actions.save')}
             </button>
           </div>
         </div>

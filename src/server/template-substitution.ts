@@ -6,6 +6,7 @@
  */
 
 import { sql, SQL, StringChunk } from 'drizzle-orm'
+import { t } from '../i18n/runtime'
 import type { Cube, QueryContext } from './types/cube'
 
 /**
@@ -60,9 +61,7 @@ export function substituteTemplate(
     const targetCube = allCubes.get(targetCubeName)
 
     if (!targetCube) {
-      throw new Error(
-        `Cannot substitute {${originalRef}}: cube '${targetCubeName}' not found`
-      )
+      throw new Error(t('server.validation.template.substituteTargetCubeNotFound', { ref: `{${originalRef}}`, cubeName: targetCubeName }))
     }
 
     // Get resolved SQL builder for the measure
@@ -70,10 +69,7 @@ export function substituteTemplate(
     const resolvedBuilder = resolvedMeasures.get(fullMeasureName)
 
     if (!resolvedBuilder) {
-      throw new Error(
-        `Cannot substitute {${originalRef}}: measure '${fullMeasureName}' not resolved yet. ` +
-        `Ensure measures are resolved in dependency order.`
-      )
+      throw new Error(t('server.validation.template.substituteMeasureNotResolved', { ref: `{${originalRef}}`, measureName: fullMeasureName }))
     }
 
     // Call the builder function to get a fresh SQL object
@@ -210,26 +206,26 @@ export function validateTemplateSyntax(calculatedSql: string): {
     } else if (calculatedSql[i] === '}') {
       braceDepth--
       if (braceDepth < 0) {
-        errors.push(`Unmatched closing brace at position ${i}`)
+        errors.push(t('server.validation.template.unmatchedClosingBrace', { position: i }))
         break
       }
     }
   }
 
   if (braceDepth > 0) {
-    errors.push('Unmatched opening brace in template')
+    errors.push(t('server.validation.template.unmatchedOpeningBrace'))
   }
 
   // Check for empty references
   const emptyRefRegex = /\{\s*\}/
   if (emptyRefRegex.test(calculatedSql)) {
-    errors.push('Empty member reference {} found in template')
+    errors.push(t('server.validation.template.emptyReference'))
   }
 
   // Check for nested braces
   const nestedBraceRegex = /\{[^}]*\{/
   if (nestedBraceRegex.test(calculatedSql)) {
-    errors.push('Nested braces are not allowed in member references')
+    errors.push(t('server.validation.template.nestedBraces'))
   }
 
   // Check for invalid characters in member names
@@ -239,17 +235,12 @@ export function validateTemplateSyntax(calculatedSql: string): {
 
     // Allow alphanumeric, underscore, and dot
     if (!/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(fullRef)) {
-      errors.push(
-        `Invalid member reference {${ref.originalRef}}: must start with letter or underscore, ` +
-        `and contain only letters, numbers, underscores, and dots`
-      )
+      errors.push(t('server.validation.template.invalidMemberReference', { ref: `{${ref.originalRef}}` }))
     }
 
     // Check for multiple dots (only Cube.measure allowed)
     if (fullRef.split('.').length > 2) {
-      errors.push(
-        `Invalid member reference {${ref.originalRef}}: only one dot allowed (Cube.measure format)`
-      )
+      errors.push(t('server.validation.template.multipleDots', { ref: `{${ref.originalRef}}` }))
     }
   }
 

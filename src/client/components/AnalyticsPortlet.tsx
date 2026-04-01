@@ -16,6 +16,7 @@ import { DrillBreadcrumb } from './DrillBreadcrumb'
 import { useDrillInteraction } from '../hooks/useDrillInteraction'
 import { LazyChart, isValidChartType } from '../charts/ChartLoader'
 import { useChartConfig } from '../charts/lazyChartConfigRegistry'
+import { useTranslation } from '../hooks/useTranslation'
 import type { AnalyticsPortletProps, MultiQueryConfig, ServerFunnelQuery, CubeQuery } from '../types'
 import { isMultiQueryConfig, isServerFunnelQuery } from '../types'
 import type { ServerFlowQuery } from '../types/flow'
@@ -50,6 +51,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
   loadingComponent,
   onDebugDataReady
 }, ref) => {
+  const { t } = useTranslation()
   const onDebugDataReadyRef = useRef(onDebugDataReady)
 
   // Lazy loading: Use IntersectionObserver to detect when portlet is visible
@@ -561,8 +563,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
     return (
       <div ref={inViewRef} className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
-          <div className="dc:text-xs text-dc-text-secondary">Please configure this chart</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.configRequired')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('portlet.configRequiredHint')}</div>
         </div>
       </div>
     )
@@ -593,13 +595,13 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         <div ref={inViewRef} className="dc:p-4 dc:border dc:rounded-sm" style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}>
           <div className="dc:mb-2">
             <div className="dc:flex dc:items-center dc:justify-between">
-              <span className="dc:font-medium dc:text-sm" style={{ color: 'var(--dc-text)' }}>⚠️ Query Error</span>
+              <span className="dc:font-medium dc:text-sm" style={{ color: 'var(--dc-text)' }}>{`⚠️ ${t('portlet.queryError')}`}</span>
               <button
                 onClick={handleRetry}
                 className="dc:px-2 dc:py-1 text-white dc:rounded-sm dc:text-xs"
                 style={{ backgroundColor: 'var(--dc-primary)' }}
               >
-                Retry
+                {t('common.actions.retry')}
               </button>
             </div>
           </div>
@@ -612,14 +614,14 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
           <div className="dc:space-y-2 dc:text-xs">
             <details>
-              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Query (with filters applied)</summary>
+              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>{t('portlet.queryWithFilters')}</summary>
               <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                 {activeQuery ? JSON.stringify(activeQuery, null, 2) : query}
               </pre>
             </details>
 
             <details>
-              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>Chart Config</summary>
+              <summary className="dc:cursor-pointer dc:font-medium" style={{ color: 'var(--dc-text-secondary)' }}>{t('portlet.chartConfig')}</summary>
               <pre className="dc:mt-1 dc:p-2 dc:rounded-sm dc:text-xs dc:overflow-auto dc:max-h-20" style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.05)' }}>
                 {JSON.stringify({
                   chartType,
@@ -746,7 +748,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
         return (
           <div className="dc:flex dc:items-center dc:justify-center dc:w-full" style={{ height }}>
             <div className="dc:text-center text-dc-text-muted">
-              <div className="dc:text-sm dc:font-semibold dc:mb-1">Unsupported chart type</div>
+              <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.unsupportedChartType')}</div>
               <div className="dc:text-xs">{effectiveChartType}</div>
             </div>
           </div>
@@ -790,8 +792,8 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted dc:p-4" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render chart</div>
-            <div className="dc:text-xs text-dc-text-secondary">{error instanceof Error ? error.message : 'Unknown error'}</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('portlet.unableToRender')}</div>
+            <div className="dc:text-xs text-dc-text-secondary">{error instanceof Error ? error.message : t('errorBoundary.unknownError')}</div>
           </div>
         </div>
       )

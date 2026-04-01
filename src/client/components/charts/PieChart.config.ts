@@ -4,51 +4,51 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the pie chart type
  */
 export const pieChartConfig: ChartTypeConfig = {
-  label: 'Pie Chart',
-  description: 'Show proportions of a whole',
-  useCase: 'Best for showing percentage distribution or composition of a total (limit to 5-7 slices)',
+  label: 'chart.pie.label',
+  description: 'chart.pie.description',
+  useCase: 'chart.pie.useCase',
   clickableElements: { slice: true },
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Categories',
-      description: 'Dimension for pie slices',
+      label: 'chart.configText.categories',
+      description: 'chart.configText.dimension_for_pie_slices',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop a dimension for categories'
+      emptyText: 'chart.pie.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Values',
-      description: 'Measure for slice sizes',
+      label: 'chart.configText.values',
+      description: 'chart.configText.measure_for_slice_sizes',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for values'
+      emptyText: 'chart.pie.dropZone.yAxis.empty'
     }
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'innerRadius',
-      label: 'Inner Radius',
+      label: 'chart.option.innerRadius.label',
       type: 'select',
-      description: 'Hollow center size (0% = solid pie, higher = donut style)',
+      description: 'chart.configText.hollow_center_size_0_percent_solid_pie_higher_donut_style',
       defaultValue: '0%',
       options: [
-        { value: '0%', label: 'None (Pie)' },
-        { value: '20%', label: '20%' },
-        { value: '40%', label: '40%' },
-        { value: '60%', label: '60%' },
-        { value: '80%', label: '80%' },
+        { value: '0%', label: 'chart.configText.none_pie' },
+        { value: '20%', label: 'chart.configText.20_percent' },
+        { value: '40%', label: 'chart.configText.40_percent' },
+        { value: '60%', label: 'chart.configText.60_percent' },
+        { value: '80%', label: 'chart.configText.80_percent' },
       ]
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for values'
+      description: 'chart.option.valueFormat.description'
     }
   ]
 }

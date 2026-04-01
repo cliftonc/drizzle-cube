@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { select, scaleLinear, scaleSqrt, scaleOrdinal, scaleQuantize, extent, max, axisBottom, axisLeft, transition as _transition, type ScaleOrdinal, type ScaleQuantize } from 'd3'
 // _transition import is for side effects only - it extends Selection.prototype with .transition() method
 import { CHART_COLORS, CHART_COLORS_GRADIENT, CHART_MARGINS } from '../../utils/chartConstants'
@@ -25,6 +26,7 @@ const BubbleChart = React.memo(function BubbleChart({
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -633,8 +635,8 @@ const BubbleChart = React.memo(function BubbleChart({
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display in bubble chart</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.bubble')}</div>
         </div>
       </div>
     )
@@ -646,9 +648,9 @@ const BubbleChart = React.memo(function BubbleChart({
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Required</div>
-          <div className="dc:text-xs">Bubble chart requires xAxis, yAxis, series, and sizeField dimensions</div>
-          <div className="dc:text-xs dc:mt-1">Optional: colorField for bubble coloring</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.activityGridConfigRequired')}</div>
+          <div className="dc:text-xs">{t('chart.runtime.configErrorHint.bubbleRequired')}</div>
+          <div className="dc:text-xs dc:mt-1">{t('chart.runtime.configErrorHint.bubbleOptional')}</div>
         </div>
       </div>
     )
@@ -660,7 +662,7 @@ const BubbleChart = React.memo(function BubbleChart({
         <svg ref={svgRef} className="dc:w-full dc:h-full" />
         {!dimensionsReady && (
           <div className="dc:absolute dc:inset-0 dc:flex dc:items-center dc:justify-center">
-            <div className="text-dc-text-muted dc:text-sm">Measuring chart dimensions...</div>
+            <div className="text-dc-text-muted dc:text-sm">{t('chart.runtime.measuringDimensions')}</div>
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import { getSyntaxHighlighter, loadSyntaxHighlighter } from '../../utils/syntaxHighlighting'
+import { useTranslation } from '../../hooks/useTranslation'
 import './CodeBlock.css'
 
 interface CodeBlockProps {
@@ -28,6 +29,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   className = '',
   headerRight
 }) => {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const codeRef = useRef<HTMLElement>(null)
   const CopyIcon = getIcon('copy')
@@ -96,12 +98,12 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
             {copied ? (
               <>
                 <CheckIcon className="dc:w-3.5 dc:h-3.5 text-dc-success" />
-                <span className="text-dc-success">Copied</span>
+                <span className="text-dc-success">{t('common.actions.copied')}</span>
               </>
             ) : (
               <>
                 <CopyIcon className="dc:w-3.5 dc:h-3.5 text-dc-text-secondary" />
-                <span className="text-dc-text-secondary">Copy</span>
+                <span className="text-dc-text-secondary">{t('common.actions.copy')}</span>
               </>
             )}
           </button>

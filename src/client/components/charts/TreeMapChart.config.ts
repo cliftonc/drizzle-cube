@@ -4,44 +4,44 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the treemap chart type
  */
 export const treemapChartConfig: ChartTypeConfig = {
-  label: 'TreeMap',
-  description: 'Visualize hierarchical data with nested rectangles',
-  useCase: 'Best for showing part-to-whole relationships in hierarchical data, disk usage, budget allocation',
+  label: 'chart.treemap.label',
+  description: 'chart.treemap.description',
+  useCase: 'chart.treemap.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Categories',
-      description: 'Dimensions for treemap rectangles',
+      label: 'chart.configText.categories',
+      description: 'chart.configText.dimensions_for_treemap_rectangles',
       mandatory: true,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for categories'
+      emptyText: 'chart.treemap.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Size',
-      description: 'Measure for rectangle sizes',
+      label: 'chart.configText.size',
+      description: 'chart.configText.measure_for_rectangle_sizes',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for size'
+      emptyText: 'chart.treemap.dropZone.yAxis.empty'
     },
     {
       key: 'series',
-      label: 'Color Groups',
-      description: 'Dimension to color rectangles by category',
+      label: 'chart.configText.color_groups',
+      description: 'chart.configText.dimension_to_color_rectangles_by_category',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop a dimension for color grouping'
+      emptyText: 'chart.treemap.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for size values'
+      description: 'chart.configText.number_formatting_for_size_values'
     }
   ],
   clickableElements: { cell: true }

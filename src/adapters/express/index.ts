@@ -42,8 +42,11 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
 
 export interface ExpressAdapterOptions {
   /**
@@ -165,9 +168,19 @@ export function createCubeRouter(
 
   const router = Router()
 
+  const extractSecurityContextWithLocale = async (req: Request, res: Response): Promise<SecurityContext> => {
+    const securityContext = await extractSecurityContext(req, res)
+    const requestLocale = resolveRequestLocale((header) => req.get(header))
+    return withLocaleInSecurityContext(securityContext, requestLocale)
+  }
+
   // Configure CORS if provided
   if (corsConfig) {
-    router.use(cors(corsConfig))
+    const localeAwareCorsConfig: CorsOptions = {
+      ...corsConfig,
+      allowedHeaders: ensureLocaleHeader(corsConfig.allowedHeaders)
+    }
+    router.use(cors(localeAwareCorsConfig))
   }
 
   // JSON body parser with size limit
@@ -199,7 +212,7 @@ export function createCubeRouter(
       const query: SemanticQuery = req.body.query || req.body
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -254,7 +267,7 @@ export function createCubeRouter(
       }
 
       // Extract security context
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -308,7 +321,7 @@ export function createCubeRouter(
       }
 
       // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Check for cache bypass header (X-Cache-Control: no-cache)
       const skipCache = req.headers['x-cache-control'] === 'no-cache'
@@ -361,7 +374,7 @@ export function createCubeRouter(
     try {
       const query: SemanticQuery = req.body
       
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -411,7 +424,7 @@ export function createCubeRouter(
       }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -456,7 +469,7 @@ export function createCubeRouter(
       const query: SemanticQuery = req.body.query || req.body
       
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
       
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -488,7 +501,7 @@ export function createCubeRouter(
       const query: SemanticQuery = JSON.parse(queryParam)
 
       // Extract security context
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -515,7 +528,7 @@ export function createCubeRouter(
       const options: ExplainOptions = req.body.options || {}
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(req, res)
+      const securityContext = await extractSecurityContextWithLocale(req, res)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -579,7 +592,7 @@ export function createCubeRouter(
         const baseURLOverride = agentConfig.allowClientApiKey ? req.headers['x-agent-provider-endpoint'] as string | undefined : undefined
 
         // Extract security context (required for all queries)
-        const securityContext = await extractSecurityContext(req, res)
+        const securityContext = await extractSecurityContextWithLocale(req, res)
 
         // Build per-request system context from the callback (if configured)
         const systemContext = agentConfig.buildSystemContext?.(securityContext)
@@ -643,6 +656,13 @@ export function createCubeRouter(
      * DELETE /mcp    - Session termination
      */
     router.post(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      // OAuth 2.1 bearer token check (RFC 9728) — when resourceMetadataUrl is configured,
+      // reject requests without a Bearer token with 401 + WWW-Authenticate pointing to PRM
+      if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
       const originValidation = validateOriginHeader(
         req.headers.origin as string | undefined,
@@ -680,7 +700,7 @@ export function createCubeRouter(
           rpcRequest.params,
           {
             semanticLayer,
-            extractSecurityContext,
+            extractSecurityContext: (rawReq: any, rawRes: any) => extractSecurityContextWithLocale(rawReq, rawRes),
             rawRequest: req,
             rawResponse: res,
             negotiatedProtocol: protocol.negotiated,
@@ -743,6 +763,11 @@ export function createCubeRouter(
     })
 
     router.get(`${mcpBasePath}`, async (req: Request, res: Response) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       const eventId = primeEventId()
       res.status(200)
       res.setHeader('Content-Type', 'text/event-stream')
@@ -768,6 +793,11 @@ export function createCubeRouter(
      * Clients SHOULD send DELETE to terminate sessions
      */
     router.delete(`${mcpBasePath}`, (_req: Request, res: Response) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(_req.headers.authorization)) {
+        res.setHeader('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return res.status(401).json({ error: 'Bearer token required' })
+      }
+
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return res.status(405).json({ error: 'Session termination not supported' })

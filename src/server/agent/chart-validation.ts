@@ -6,6 +6,7 @@
  * Builds per-chart-type guidance for the tool description.
  */
 
+import { t } from '../../i18n/runtime'
 import { chartConfigRegistry } from '../../client/charts/chartConfigRegistry'
 import type { ChartTypeConfig } from '../../client/charts/chartConfigs'
 
@@ -42,10 +43,7 @@ export function validateChartConfig(
 
     if (!hasValue) {
       const acceptDesc = zone.acceptTypes?.join('/') ?? 'fields'
-      errors.push(
-        `chartConfig.${zone.key} is required for ${chartType} chart (${zone.label}). ` +
-        `Accepts: ${acceptDesc}.`
-      )
+      errors.push(t('server.validation.chart.dropZoneRequired', { key: zone.key, chartType, label: zone.label, acceptDesc }))
     }
   }
 
@@ -58,13 +56,9 @@ export function validateChartConfig(
       const timeDimensions = (_query.timeDimensions as Array<{ dimension: string }> | undefined) ?? []
       const hasDimensions = dimensions.length > 0 || timeDimensions.length > 0
       if (hasDimensions) {
-        errors.push(
-          'chartConfig.xAxis is required for bar charts. Put a dimension in xAxis so bars have category labels.'
-        )
+        errors.push(t('server.validation.chart.barXAxisRequired'))
       } else {
-        errors.push(
-          'Bar charts need an xAxis dimension for category labels. Add a dimension to the query or use "table" chart type instead.'
-        )
+        errors.push(t('server.validation.chart.barNeedsDimension'))
       }
     }
   }
@@ -81,11 +75,7 @@ export function validateChartConfig(
       : [chartConfig.series as string]
     const duplicates = seriesFields.filter(f => xAxisFields.has(f))
     if (duplicates.length > 0) {
-      errors.push(
-        `chartConfig.series must not contain the same field as xAxis (found: ${duplicates.join(', ')}). ` +
-        'The series field is only for splitting into grouped/stacked sub-series by a DIFFERENT dimension. ' +
-        'Remove the duplicate from series.'
-      )
+      errors.push(t('server.validation.chart.seriesDuplicatesXAxis', { duplicates: duplicates.join(', ') }))
     }
   }
 

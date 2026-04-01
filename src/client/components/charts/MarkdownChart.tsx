@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import Markdown from 'markdown-to-jsx'
 import type { ChartProps } from '../../types'
 
@@ -16,6 +17,7 @@ const MarkdownChart = React.memo(function MarkdownChart({
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const content = displayConfig.content || ''
   const accentColorIndex = displayConfig.accentColorIndex ?? 0
   const fontSize = displayConfig.fontSize || 'medium'
@@ -108,8 +110,8 @@ const MarkdownChart = React.memo(function MarkdownChart({
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No content</div>
-          <div className="dc:text-xs text-dc-text-secondary">Add markdown content in the chart configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.markdown.noContent')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.markdown.addContent')}</div>
         </div>
       </div>
     )

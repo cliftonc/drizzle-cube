@@ -1,5 +1,6 @@
 import { ReactElement, useState, useRef, useLayoutEffect, startTransition } from 'react'
 import { ResponsiveContainer } from 'recharts'
+import { useTranslation } from '../../hooks/useTranslation'
 import LoadingIndicator from '../LoadingIndicator'
 
 interface ChartContainerProps {
@@ -8,6 +9,7 @@ interface ChartContainerProps {
 }
 
 export default function ChartContainer({ children, height = "100%" }: ChartContainerProps) {
+  const { t } = useTranslation()
   // Track if container is ready to render ResponsiveContainer
   // We need to wait for the container to be in the DOM with valid dimensions
   const containerRef = useRef<HTMLDivElement>(null)
@@ -169,7 +171,7 @@ export default function ChartContainer({ children, height = "100%" }: ChartConta
         className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4 dc:text-center dc:border dc:border-dashed dc:rounded-lg"
         style={{ height, borderColor: 'var(--dc-border)', backgroundColor: 'var(--dc-surface)' }}
       >
-        <div className="dc:text-sm dc:font-semibold dc:mb-1 text-dc-text-muted">Unable to display chart</div>
+        <div className="dc:text-sm dc:font-semibold dc:mb-1 text-dc-text-muted">{t('chart.runtime.unableToDisplay')}</div>
         <div className="dc:text-xs text-dc-text-secondary">
           {error instanceof Error ? error.message : 'Failed to create responsive container'}
         </div>

@@ -14,6 +14,7 @@ import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
 import type { FilterValueSelectorProps } from './types'
 import { FILTER_OPERATORS } from './types'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const CloseIcon = getIcon('close')
@@ -25,6 +26,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
   onValuesChange,
   schema
 }) => {
+  const { t } = useTranslation()
   const operatorMeta = FILTER_OPERATORS[operator]
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -355,7 +357,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
           className="dc:w-full dc:text-left dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface hover:bg-dc-surface-hover dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:flex dc:items-center dc:justify-between dc:min-w-0"
         >
           <span className="text-dc-text-muted dc:truncate">
-            {valuesLoading && !hasLoadedInitial ? 'Loading values...' : 'Select value...'}
+            {valuesLoading && !hasLoadedInitial ? t('filter.shared.valueSelector.loadingValues') : t('filter.shared.valueSelector.selectValue')}
           </span>
           <ChevronDownIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
         </button>
@@ -369,7 +371,7 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
                 type="text"
                 value={searchText}
                 onChange={handleSearchChange}
-                placeholder="Search values..."
+                placeholder={t('filter.shared.valueSelector.searchValues')}
                 className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded-sm dc:px-2 dc:py-1 bg-dc-surface text-dc-text dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent"
                 autoFocus
               />
@@ -379,15 +381,15 @@ const FilterValueSelector: React.FC<FilterValueSelectorProps> = ({
             <div className="dc:max-h-48 dc:overflow-y-auto">
               {valuesLoading ? (
                 <div className="dc:p-2 dc:text-sm text-dc-text-muted">
-                  {searchText ? 'Searching...' : 'Loading values...'}
+                  {searchText ? t('filter.shared.valueSelector.searching') : t('filter.shared.valueSelector.loadingValues')}
                 </div>
               ) : valuesError ? (
                 <div className="dc:p-2 dc:text-sm text-dc-error">
-                  Error loading values: {valuesError}
+                  {t('filter.shared.valueSelector.errorLoading', { error: valuesError })}
                 </div>
               ) : distinctValues.length === 0 ? (
                 <div className="dc:p-2 dc:text-sm text-dc-text-muted">
-                  {searchText ? 'No matching values' : 'No values available'}
+                  {searchText ? t('filter.shared.valueSelector.noMatchingValues') : t('filter.shared.valueSelector.noValuesAvailable')}
                 </div>
               ) : (
                 distinctValues.map((value, index) => {

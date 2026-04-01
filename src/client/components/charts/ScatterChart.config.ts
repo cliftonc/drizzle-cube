@@ -4,51 +4,51 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the scatter chart type
  */
 export const scatterChartConfig: ChartTypeConfig = {
-  label: 'Scatter Plot',
-  description: 'Reveal correlations between variables',
-  useCase: 'Best for identifying patterns, correlations, outliers, and relationships between two measures',
+  label: 'chart.scatter.label',
+  description: 'chart.scatter.description',
+  useCase: 'chart.scatter.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis',
-      description: 'Measure or dimension for X position',
+      label: 'chart.runtime.axisFormat.xAxis',
+      description: 'chart.configText.measure_or_dimension_for_x_position',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension', 'measure'],
-      emptyText: 'Drop a field for X-axis'
+      emptyText: 'chart.scatter.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis',
-      description: 'Measure for Y position',
+      label: 'chart.configText.y_axis',
+      description: 'chart.configText.measure_for_y_position',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for Y-axis'
+      emptyText: 'chart.scatter.dropZone.yAxis.empty'
     },
     {
       key: 'series',
-      label: 'Series (Color Groups)',
-      description: 'Dimension to color points by category',
+      label: 'chart.configText.series_color_groups',
+      description: 'chart.configText.dimension_to_color_points_by_category',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop a dimension to color points'
+      emptyText: 'chart.scatter.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'xAxisFormat',
-      label: 'X-Axis Format',
+      label: 'chart.option.xAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for X-axis'
+      description: 'chart.option.xAxisFormat.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: 'chart.option.yAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for Y-axis'
+      description: 'chart.option.yAxisFormat.description'
     }
   ]
 }

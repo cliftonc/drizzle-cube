@@ -16,6 +16,7 @@ import type { ChartType, ChartAxisConfig } from '../../types'
 import type { MetricItem, BreakdownItem } from './types'
 import type { ChartAvailabilityMap } from '../../shared/chartDefaults'
 import type { MetaResponse } from '../../shared/types'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const MeasureIcon = getIcon('measure')
 const DimensionIcon = getIcon('dimension')
@@ -44,6 +45,7 @@ export default function AnalysisChartConfigPanel({
   onChartTypeChange,
   onChartConfigChange
 }: AnalysisChartConfigPanelProps) {
+  const { t } = useTranslation()
   // Track currently dragging item for immediate state updates
   const [draggedItem, setDraggedItem] = useState<{
     field: string
@@ -315,7 +317,7 @@ export default function AnalysisChartConfigPanel({
     return (
       <div className="dc:space-y-6">
         <div>
-          <SectionHeading className="dc:mb-2">Chart Type</SectionHeading>
+          <SectionHeading className="dc:mb-2">{t('chart.config.chartType')}</SectionHeading>
           <ChartTypeSelector
             selectedType={chartType}
             onTypeChange={onChartTypeChange}
@@ -325,7 +327,7 @@ export default function AnalysisChartConfigPanel({
           />
         </div>
         <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
-          Loading chart configuration...
+          {t('chart.config.loading')}
         </div>
       </div>
     )
@@ -360,7 +362,7 @@ export default function AnalysisChartConfigPanel({
     <div className="dc:space-y-6">
       {/* Chart Type Selector */}
       <div>
-        <SectionHeading className="dc:mb-2">Chart Type</SectionHeading>
+        <SectionHeading className="dc:mb-2">{t('chart.config.chartType')}</SectionHeading>
         <ChartTypeSelector
           selectedType={chartType}
           onTypeChange={onChartTypeChange}
@@ -374,7 +376,7 @@ export default function AnalysisChartConfigPanel({
       {!shouldSkipQuery && chartTypeConfig.dropZones.length > 0 && (
         <div>
           <SectionHeading className="dc:mb-2">
-            Chart Configuration
+            {t('chart.config.axisConfig')}
           </SectionHeading>
           <div className="dc:space-y-1">
             {chartTypeConfig.dropZones.map((dropZone) => (
@@ -404,9 +406,9 @@ export default function AnalysisChartConfigPanel({
       {!shouldSkipQuery && hasUnassignedFields && (
         <div>
           <div className="dc:mb-2">
-            <SectionHeading>Unassigned Fields</SectionHeading>
+            <SectionHeading>{t('chart.config.unassigned')}</SectionHeading>
             <div className="dc:text-xs text-dc-text-muted dc:mt-0.5">
-              Drag fields to chart axes above
+              {t('chart.config.unassignedHint')}
             </div>
           </div>
           <div className="dc:border-2 dc:border-dashed border-dc-border dc:rounded-lg dc:p-2 bg-dc-surface-secondary">
@@ -497,7 +499,7 @@ export default function AnalysisChartConfigPanel({
         availableFields.dimensions.length === 0 &&
         availableFields.timeDimensions.length === 0 && (
           <div className="dc:text-center text-dc-text-muted dc:text-sm dc:py-4">
-            <p>Add metrics and breakdowns in the Query tab to configure your chart.</p>
+            <p>{t('chart.config.noFields')}</p>
           </div>
         )}
     </div>

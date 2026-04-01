@@ -180,6 +180,25 @@ export function validateOriginHeader(
   return { valid: false, reason: 'Origin not in allowed list' }
 }
 
+/**
+ * Extract a Bearer token from an Authorization header.
+ * Returns the token string if present and well-formed, or null otherwise.
+ */
+export function extractBearerToken(authHeader: string | null | undefined): string | null {
+  if (!authHeader) return null
+  const match = /^Bearer\s+(\S+)$/i.exec(authHeader)
+  return match ? match[1] : null
+}
+
+/**
+ * Build a WWW-Authenticate challenge header value per MCP / RFC 9728.
+ * Points the client to the Protected Resource Metadata document so it can
+ * discover the authorization server and begin the OAuth 2.1 flow.
+ */
+export function buildWwwAuthenticateChallenge(resourceMetadataUrl: string): string {
+  return `Bearer resource_metadata="${resourceMetadataUrl}"`
+}
+
 export function serializeSseEvent(payload: unknown, eventId?: string, retryMs?: number): string {
   const lines: string[] = []
   if (eventId) {

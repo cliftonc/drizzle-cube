@@ -7,80 +7,80 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Best for showing patterns in matrix data like correlations, schedules, or category comparisons.
  */
 export const heatmapChartConfig: ChartTypeConfig = {
-  label: 'Heatmap',
-  description: 'Visualize intensity across two dimensions',
-  useCase: 'Best for showing patterns in matrix data like correlations, schedules, or category comparisons',
+  label: 'chart.heatmap.label',
+  description: 'chart.heatmap.description',
+  useCase: 'chart.heatmap.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Columns (X-Axis)',
-      description: 'Dimension for column categories',
+      label: 'chart.configText.columns_x_axis',
+      description: 'chart.configText.dimension_for_column_categories',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop one dimension here',
+      emptyText: 'chart.heatmap.dropZone.xAxis.empty',
     },
     {
       key: 'yAxis',
-      label: 'Rows (Y-Axis)',
-      description: 'Dimension for row categories',
+      label: 'chart.configText.rows_y_axis',
+      description: 'chart.configText.dimension_for_row_categories',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop one dimension here',
+      emptyText: 'chart.heatmap.dropZone.yAxis.empty',
     },
     {
       key: 'valueField',
-      label: 'Value (Color Intensity)',
-      description: 'Measure that determines cell color',
+      label: 'chart.configText.value_color_intensity',
+      description: 'chart.configText.measure_that_determines_cell_color',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop one measure here',
+      emptyText: 'chart.heatmap.dropZone.valueField.empty',
     },
   ],
   displayOptions: ['showLegend', 'showTooltip'],
   displayOptionsConfig: [
     {
       key: 'showLabels',
-      label: 'Show Cell Values',
+      label: 'chart.option.showLabels.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Display values inside each cell',
+      description: 'chart.option.showLabels.description',
     },
     {
       key: 'cellShape',
-      label: 'Cell Shape',
+      label: 'chart.option.cellShape.label',
       type: 'select',
       defaultValue: 'rect',
       options: [
-        { value: 'rect', label: 'Rectangle' },
-        { value: 'circle', label: 'Circle' },
+        { value: 'rect', label: 'chart.option.cellShape.rectangle' },
+        { value: 'circle', label: 'chart.option.cellShape.circle' },
       ],
     },
     {
       key: 'xAxisFormat',
-      label: 'X-Axis Format',
+      label: 'chart.option.xAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for X-axis labels',
+      description: 'chart.configText.number_formatting_for_x_axis_labels',
     },
     {
       key: 'yAxisFormat',
-      label: 'Y-Axis Format',
+      label: 'chart.option.yAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for Y-axis labels',
+      description: 'chart.configText.number_formatting_for_y_axis_labels',
     },
     {
       key: 'valueFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for cell values and legend',
+      description: 'chart.configText.number_formatting_for_cell_values_and_legend',
     },
   ],
   validate: (config) => {
-    if (!config.xAxis?.length) return { isValid: false, message: 'X-axis dimension required' }
-    if (!config.yAxis?.length) return { isValid: false, message: 'Y-axis dimension required' }
-    if (!config.valueField?.length) return { isValid: false, message: 'Value measure required' }
+    if (!config.xAxis?.length) return { isValid: false, message: 'chart.heatmap.validation.xAxisRequired' }
+    if (!config.yAxis?.length) return { isValid: false, message: 'chart.heatmap.validation.yAxisRequired' }
+    if (!config.valueField?.length) return { isValid: false, message: 'chart.heatmap.validation.valueRequired' }
     return { isValid: true }
   },
 }

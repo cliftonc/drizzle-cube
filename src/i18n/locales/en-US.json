@@ -1,0 +1,33 @@
+{
+  "analysis.modes.flow.description": "Bidirectional path analysis with Sankey visualization",
+
+  "chart.area.description": "Emphasize magnitude of change over time",
+  "chart.radialBar.description": "Circular progress and KPI visualization",
+  "chart.treemap.description": "Visualize hierarchical data with nested rectangles",
+  "chart.activityGrid.description": "GitHub-style activity grid showing temporal patterns across different time scales",
+  "chart.activityGrid.useCase": "Best for visualizing activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities",
+  "chart.kpiText.description": "Display key performance indicators as customizable text",
+  "chart.funnel.useCase": "Best for visualizing user journey funnels, sales pipelines, or multi-step processes",
+  "chart.sankey.useCase": "Best for visualizing user journey flows, path analysis, or state transitions",
+  "chart.sunburst.useCase": "Best for visualizing forward paths from a starting event in a compact radial layout",
+  "chart.heatmap.description": "Visualize intensity across two dimensions",
+  "chart.retentionHeatmap.description": "Cohort retention matrix visualization",
+  "chart.retentionHeatmap.useCase": "Visualize user retention over time by cohort",
+  "chart.retentionCombined.description": "Combined retention visualization with line chart and heatmap modes",
+  "chart.retentionCombined.useCase": "Visualize user retention over time with optional breakdown segmentation",
+  "chart.measureProfile.description": "Plot N measures as sequential X-axis points to visualize a profile or shape across intervals",
+  "chart.gauge.useCase": "Best for high-water marks vs equity, margin utilization, or any single value progress toward a goal",
+
+  "chart.option.innerRadius.description": "Hollow center size (0% = solid pie, higher = donut style)",
+  "chart.option.bullColor.label": "Bullish Color",
+  "chart.option.bullColor.description": "Candle color when close ≥ open",
+  "chart.option.bearColor.label": "Bearish Color",
+  "chart.option.bearColor.description": "Candle color when close < open",
+  "chart.option.showCentreLabel.label": "Show Center Label",
+  "chart.option.showCentreLabel.description": "Display current value and field name in the center of the gauge",
+  "chart.option.accentBorder.description": "Add an accent-colored border on one side of the content",
+
+  "chart.scatter.dropZone.series.empty": "Drop a dimension to color points",
+  "chart.bubble.dropZone.colorField.empty": "Drop a field for bubble color (optional)",
+  "chart.treemap.dropZone.series.empty": "Drop a dimension for color grouping"
+}

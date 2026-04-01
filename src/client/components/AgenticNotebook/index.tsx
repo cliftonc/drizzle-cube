@@ -28,6 +28,7 @@ import { useNotebookLayout } from '../../hooks/useNotebookLayout'
 import { getChartTypeIcon, getIcon } from '../../icons/registry'
 import type { ColorPalette } from '../../types'
 import type { ReactNode } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export interface AgenticNotebookProps {
   /** Initial config to restore (saved notebooks) */
@@ -74,6 +75,7 @@ function CollapsedNotebookStrip({
   nudge: boolean
   onExpand: () => void
 }) {
+  const { t } = useTranslation()
   const BookOpenIcon = getIcon('bookOpen')
   const DocumentIcon = getIcon('documentText')
 
@@ -87,7 +89,7 @@ function CollapsedNotebookStrip({
           ? { animation: 'dc-strip-nudge 0.8s ease-in-out 2', width: 48 }
           : { width: 48 }
       }
-      title="Expand notebook"
+      title={t('notebook.collapsed.expandNotebook')}
     >
       <BookOpenIcon className="dc:w-5 dc:h-5 text-dc-text-muted" />
       <div
@@ -99,7 +101,7 @@ function CollapsedNotebookStrip({
             className="dc:text-[9px] text-dc-text-disabled dc:writing-vertical-lr dc:mt-2"
             style={{ writingMode: 'vertical-lr' }}
           >
-            No blocks
+            {t('notebook.collapsed.noBlocks')}
           </span>
         ) : (
           blocks.map((block) => {
@@ -119,7 +121,7 @@ function CollapsedNotebookStrip({
                     ? { animation: 'dc-icon-pulse 0.6s ease-in-out 3' }
                     : undefined
                 }
-                title={block.type === 'portlet' ? block.title : (block.title || 'Markdown')}
+                title={block.type === 'portlet' ? block.title : (block.title || t('notebook.collapsed.markdown'))}
               >
                 <Icon className="dc:w-4 dc:h-4 text-dc-text-muted" />
               </div>
@@ -135,6 +137,7 @@ function CollapsedNotebookStrip({
  * Collapsed strip showing AI chat icon (shown in narrow mode when notebook is expanded)
  */
 function CollapsedChatStrip({ onExpand }: { onExpand: () => void }) {
+  const { t } = useTranslation()
   const SparklesIcon = getIcon('sparkles')
 
   return (
@@ -142,14 +145,14 @@ function CollapsedChatStrip({ onExpand }: { onExpand: () => void }) {
       type="button"
       onClick={onExpand}
       className="dc:w-12 dc:h-full dc:flex-shrink-0 dc:flex dc:flex-col dc:items-center dc:pt-3 dc:gap-2 bg-dc-surface border-dc-border dc:border-l dc:cursor-pointer dc:hover:bg-dc-surface-hover dc:transition-colors"
-      title="Expand AI chat"
+      title={t('notebook.collapsed.expandChat')}
     >
       <SparklesIcon className="dc:w-5 dc:h-5 text-dc-accent" />
       <span
         className="dc:text-[10px] dc:font-medium text-dc-text-muted"
         style={{ writingMode: 'vertical-lr' }}
       >
-        AI Chat
+        {t('notebook.collapsed.aiChat')}
       </span>
     </button>
   )

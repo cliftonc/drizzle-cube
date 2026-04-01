@@ -4,83 +4,83 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the Markdown chart type
  */
 export const markdownConfig: ChartTypeConfig = {
-  label: 'Markdown',
-  description: 'Display custom markdown content with formatting',
-  useCase: 'Perfect for adding documentation, notes, section headers, instructions, or formatted text to dashboards',
+  label: 'chart.markdown.label',
+  description: 'chart.markdown.description',
+  useCase: 'chart.markdown.useCase',
   skipQuery: true, // This chart doesn't require a valid query
   dropZones: [], // No drop zones needed for markdown content
   displayOptionsConfig: [
     {
       key: 'content',
-      label: 'Markdown Content',
+      label: 'chart.configText.markdown_content',
       type: 'string',
       placeholder: '# Welcome\n\nAdd your **markdown** content here:\n\n- Lists with bullets\n- [Links](https://example.com)\n- *Italic* and **bold** text\n\n---\n\nUse --- for horizontal rules.',
-      description: 'Enter markdown text. Supports headers (#), bold (**text**), italic (*text*), links ([text](url)), lists (- item), and horizontal rules (---).'
+      description: 'chart.configText.enter_markdown_text_supports_headers_bold_text_italic_text_links_text_ur'
     },
     {
       key: 'accentColorIndex',
-      label: 'Accent Color',
+      label: 'chart.configText.accent_color',
       type: 'paletteColor',
       defaultValue: 0,
-      description: 'Color from the dashboard palette for headers, bullets, and links'
+      description: 'chart.configText.color_from_the_dashboard_palette_for_headers_bullets_and_links'
     },
     {
       key: 'fontSize',
-      label: 'Font Size',
+      label: 'chart.option.fontSize.label',
       type: 'select',
       defaultValue: 'medium',
       options: [
-        { value: 'small', label: 'Small' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'large', label: 'Large' }
+        { value: 'small', label: 'chart.option.fontSize.small' },
+        { value: 'medium', label: 'chart.option.fontSize.medium' },
+        { value: 'large', label: 'chart.option.fontSize.large' }
       ],
-      description: 'Overall text size for the markdown content'
+      description: 'chart.configText.overall_text_size_for_the_markdown_content'
     },
     {
       key: 'alignment',
-      label: 'Text Alignment',
+      label: 'chart.option.alignment.label',
       type: 'select',
       defaultValue: 'left',
       options: [
-        { value: 'left', label: 'Left' },
-        { value: 'center', label: 'Center' },
-        { value: 'right', label: 'Right' }
+        { value: 'left', label: 'chart.option.accentBorder.left' },
+        { value: 'center', label: 'chart.option.alignment.center' },
+        { value: 'right', label: 'chart.option.alignment.right' }
       ],
-      description: 'Horizontal alignment of the markdown content'
+      description: 'chart.configText.horizontal_alignment_of_the_markdown_content'
     },
     {
       key: 'hideHeader',
-      label: 'Hide Header',
+      label: 'chart.option.hideHeader.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Hide the portlet header bar (title and action buttons)'
+      description: 'chart.option.hideHeader.description'
     },
     {
       key: 'transparentBackground',
-      label: 'Transparent Background',
+      label: 'chart.option.transparentBackground.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Remove card background, border, and shadow for seamless integration as section headers'
+      description: 'chart.option.transparentBackground.description'
     },
     {
       key: 'autoHeight',
-      label: 'Auto Height',
+      label: 'chart.option.autoHeight.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'In row and mobile layouts, size to markdown content instead of fixed row height'
+      description: 'chart.option.autoHeight.description'
     },
     {
       key: 'accentBorder',
-      label: 'Accent Border',
+      label: 'chart.option.accentBorder.label',
       type: 'select',
       defaultValue: 'none',
       options: [
-        { value: 'none', label: 'None' },
-        { value: 'left', label: 'Left' },
-        { value: 'top', label: 'Top' },
-        { value: 'bottom', label: 'Bottom' }
+        { value: 'none', label: 'chart.option.accentBorder.none' },
+        { value: 'left', label: 'chart.option.accentBorder.left' },
+        { value: 'top', label: 'chart.option.accentBorder.top' },
+        { value: 'bottom', label: 'chart.option.accentBorder.bottom' }
       ],
-      description: 'Add an accent-colored border on one side of the content'
+      description: 'chart.configText.add_an_accent_colored_border_on_one_side_of_the_content'
     }
   ]
 }

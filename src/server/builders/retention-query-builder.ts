@@ -10,6 +10,7 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
+import { t } from '../../i18n/runtime'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   RetentionQueryConfig,
@@ -88,12 +89,12 @@ export class RetentionQueryBuilder {
       const dimName = extractDimensionFromTimeDimension(config.timeDimension)
       const cube = cubes.get(cubeName)
       if (!cube) {
-        errors.push(`Cube not found: ${cubeName}`)
+        errors.push(t('server.validation.retention.cubeNotFound', { cubeName }))
       } else if (!cube.dimensions?.[dimName]) {
-        errors.push(`Time dimension not found: ${dimName} in cube ${cubeName}`)
+        errors.push(t('server.validation.retention.timeDimNotFound', { dimName }))
       }
     } catch {
-      errors.push(`Invalid time dimension format: ${config.timeDimension}`)
+      errors.push(t('server.validation.retention.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
     }
 
     // Validate binding key
@@ -101,11 +102,11 @@ export class RetentionQueryBuilder {
       for (const mapping of config.bindingKey) {
         const cube = cubes.get(mapping.cube)
         if (!cube) {
-          errors.push(`Binding key mapping cube not found: ${mapping.cube}`)
+          errors.push(t('server.validation.retention.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
         } else {
           const dimName = this.extractDimensionName(mapping.dimension)
           if (!cube.dimensions?.[dimName]) {
-            errors.push(`Binding key dimension not found: ${dimName} in cube ${mapping.cube}`)
+            errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
           }
         }
       }
@@ -113,13 +114,13 @@ export class RetentionQueryBuilder {
       // Single string format: 'CubeName.dimensionName'
       const [cubeName, dimName] = config.bindingKey.split('.')
       if (!cubeName || !dimName) {
-        errors.push(`Invalid binding key format: ${config.bindingKey}. Expected 'CubeName.dimensionName'`)
+        errors.push(t('server.validation.retention.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Binding key cube not found: ${cubeName}`)
+          errors.push(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(`Binding key dimension not found: ${dimName} in cube ${cubeName}`)
+          errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName }))
         }
       }
     }
@@ -129,13 +130,13 @@ export class RetentionQueryBuilder {
       for (const breakdownDim of config.breakdownDimensions) {
         const [breakdownCubeName, breakdownDimName] = breakdownDim.split('.')
         if (!breakdownCubeName || !breakdownDimName) {
-          errors.push(`Invalid breakdown dimension format: ${breakdownDim}. Expected 'CubeName.dimensionName'`)
+          errors.push(t('server.validation.retention.invalidBreakdownDimFormat', { dimension: breakdownDim }))
         } else {
           const cube = cubes.get(breakdownCubeName)
           if (!cube) {
-            errors.push(`Breakdown dimension cube not found: ${breakdownCubeName}`)
+            errors.push(t('server.validation.retention.breakdownDimCubeNotFound', { cubeName: breakdownCubeName }))
           } else if (!cube.dimensions?.[breakdownDimName]) {
-            errors.push(`Breakdown dimension not found: ${breakdownDimName} in cube ${breakdownCubeName}`)
+            errors.push(t('server.validation.retention.breakdownDimNotFound', { dimName: breakdownDimName, cubeName: breakdownCubeName }))
           }
         }
       }
@@ -143,43 +144,43 @@ export class RetentionQueryBuilder {
 
     // Validate periods
     if (config.periods < 1) {
-      errors.push('Periods must be at least 1')
+      errors.push(t('server.validation.retention.periodsMin'))
     }
     if (config.periods > 52) {
-      errors.push('Periods cannot exceed 52 (performance limit)')
+      errors.push(t('server.validation.retention.periodsMax'))
     }
 
     // Validate granularity
     const validGranularities = ['day', 'week', 'month']
     if (!validGranularities.includes(config.granularity)) {
-      errors.push(`Invalid granularity: ${config.granularity}`)
+      errors.push(t('server.validation.retention.invalidGranularity', { granularity: config.granularity }))
     }
 
     // Validate retention type
     const validRetentionTypes = ['classic', 'rolling']
     if (!validRetentionTypes.includes(config.retentionType)) {
-      errors.push(`Invalid retention type: ${config.retentionType}`)
+      errors.push(t('server.validation.retention.invalidRetentionType', { retentionType: config.retentionType }))
     }
 
     // Validate date range (required)
     if (!config.dateRange) {
-      errors.push('Date range is required')
+      errors.push(t('server.validation.retention.dateRangeRequired'))
     } else {
       if (!config.dateRange.start) {
-        errors.push('Date range start is required')
+        errors.push(t('server.validation.retention.dateRangeStartRequired'))
       } else {
         const start = new Date(config.dateRange.start)
         if (isNaN(start.getTime())) {
-          errors.push('Invalid date range start format')
+          errors.push(t('server.validation.retention.dateRangeInvalidStart'))
         }
       }
 
       if (!config.dateRange.end) {
-        errors.push('Date range end is required')
+        errors.push(t('server.validation.retention.dateRangeEndRequired'))
       } else {
         const end = new Date(config.dateRange.end)
         if (isNaN(end.getTime())) {
-          errors.push('Invalid date range end format')
+          errors.push(t('server.validation.retention.dateRangeInvalidEnd'))
         }
       }
 
@@ -188,7 +189,7 @@ export class RetentionQueryBuilder {
         const start = new Date(config.dateRange.start)
         const end = new Date(config.dateRange.end)
         if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start > end) {
-          errors.push('Date range start must be before or equal to end')
+          errors.push(t('server.validation.retention.dateRangeStartBeforeEnd'))
         }
       }
     }
@@ -316,12 +317,12 @@ export class RetentionQueryBuilder {
 
     const cube = cubes.get(cubeName)
     if (!cube) {
-      throw new Error(`Cube not found: ${cubeName}`)
+      throw new Error(t('server.validation.retention.cubeNotFound', { cubeName }))
     }
 
     const timeDimension = cube.dimensions?.[dimName]
     if (!timeDimension) {
-      throw new Error(`Time dimension not found: ${dimName}`)
+      throw new Error(t('server.validation.retention.timeDimNotFound', { dimName }))
     }
 
     const timeExpr = resolveSqlExpression(timeDimension.sql, context) as SQL
@@ -358,16 +359,16 @@ export class RetentionQueryBuilder {
       // Find the mapping for this cube
       const mapping = bindingKey.find(m => m.cube === cube.name)
       if (!mapping) {
-        throw new Error(`No binding key mapping found for cube: ${cube.name}`)
+        throw new Error(t('server.validation.retention.noBindingKeyMapping', { cubeName: cube.name }))
       }
       const dimName = this.extractDimensionName(mapping.dimension)
       const targetCube = cubes.get(mapping.cube)
       if (!targetCube) {
-        throw new Error(`Binding key cube not found: ${mapping.cube}`)
+        throw new Error(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName: mapping.cube }))
       }
       const dimension = targetCube.dimensions?.[dimName]
       if (!dimension) {
-        throw new Error(`Binding key dimension not found: ${mapping.dimension}`)
+        throw new Error(t('server.validation.retention.bindingKeyDimNotFound', { dimName: mapping.dimension, cubeName: mapping.cube }))
       }
       return resolveSqlExpression(dimension.sql, context) as SQL
     }
@@ -376,11 +377,11 @@ export class RetentionQueryBuilder {
     const [cubeName, dimName] = bindingKey.split('.')
     const targetCube = cubes.get(cubeName)
     if (!targetCube) {
-      throw new Error(`Binding key cube not found: ${cubeName}`)
+      throw new Error(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }))
     }
     const dimension = targetCube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Binding key dimension not found: ${bindingKey}`)
+      throw new Error(t('server.validation.retention.bindingKeyDimNotFound', { dimName: bindingKey, cubeName }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }

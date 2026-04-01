@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
@@ -19,6 +20,7 @@ const BarChart = React.memo(function BarChart({
   onDataPointClick,
   drillEnabled
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel()
@@ -124,7 +126,7 @@ const BarChart = React.memo(function BarChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
             <div className="dc:text-xs text-dc-text-secondary">No data points to display in bar chart</div>
           </div>
         </div>
@@ -135,7 +137,7 @@ const BarChart = React.memo(function BarChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
             <div className="dc:text-xs">{configError}</div>
           </div>
         </div>
@@ -190,7 +192,7 @@ const BarChart = React.memo(function BarChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
             <div className="dc:text-xs text-dc-text-secondary">No valid data points for bar chart after transformation</div>
           </div>
         </div>
@@ -386,9 +388,9 @@ const BarChart = React.memo(function BarChart({
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Bar Chart Error</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Bar Chart' })}</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
+          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
         </div>
       </div>
     )

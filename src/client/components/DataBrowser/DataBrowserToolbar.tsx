@@ -5,6 +5,7 @@
  */
 
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const FilterIcon = getIcon('filter')
 const ColumnsIcon = getIcon('settings')
@@ -50,6 +51,7 @@ export default function DataBrowserToolbar({
   isFetching,
   onRefresh,
 }: DataBrowserToolbarProps) {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2 dc:border-b border-dc-border bg-dc-surface-secondary">
       {/* Filter toggle */}
@@ -62,7 +64,7 @@ export default function DataBrowserToolbar({
         }`}
       >
         <FilterIcon className="dc:w-3.5 dc:h-3.5" />
-        Filters
+        {t('dataBrowser.toolbar.filters')}
         {filterCount > 0 && (
           <span className="dc:inline-flex dc:items-center dc:justify-center dc:w-4 dc:h-4 dc:text-[10px] dc:font-bold dc:rounded-full bg-dc-accent text-dc-surface">
             {filterCount}
@@ -76,7 +78,7 @@ export default function DataBrowserToolbar({
         className="dc:flex dc:items-center dc:gap-1.5 dc:px-2.5 dc:py-1.5 dc:text-xs dc:font-medium dc:rounded dc:border border-dc-border bg-dc-surface text-dc-text dc:hover:bg-dc-surface-hover dc:transition-colors"
       >
         <ColumnsIcon className="dc:w-3.5 dc:h-3.5" />
-        Columns
+        {t('dataBrowser.toolbar.columns')}
       </button>
 
       {/* Spacer */}
@@ -84,7 +86,7 @@ export default function DataBrowserToolbar({
 
       {/* Row count */}
       <span className="dc:text-xs text-dc-text-muted">
-        {rowCount} rows
+        {t('dataBrowser.toolbar.rows', { count: rowCount })}
       </span>
 
       {/* Refresh */}

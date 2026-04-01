@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useCallback } from 'react'
 import FilterValueSelector from '../shared/FilterValueSelector'
 import type { SimpleFilter, CubeMeta } from '../../types'
 import type { MetaResponse } from '../../shared/types'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface FilterValuePopoverProps {
   filter: SimpleFilter
@@ -59,6 +60,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
   onClose,
   anchorRef
 }) => {
+  const { t } = useTranslation()
   const popoverRef = useRef<HTMLDivElement>(null)
 
   // Handle click outside to close
@@ -116,7 +118,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
         className="dc:text-xs dc:font-medium dc:mb-2"
         style={{ color: 'var(--dc-text-secondary)' }}
       >
-        Edit value
+        {t('dashboardFilter.filterValue.editValue')}
       </div>
 
       {/* Value selector */}
@@ -142,7 +144,7 @@ const FilterValuePopover: React.FC<FilterValuePopoverProps> = ({
             backgroundColor: 'transparent'
           }}
         >
-          Close
+          {t('common.actions.close')}
         </button>
       </div>
     </div>

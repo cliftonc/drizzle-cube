@@ -3,6 +3,7 @@
  */
 
 import React, { useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface ChatInputProps {
   value: string
@@ -25,8 +26,10 @@ const ChatInput = React.memo(function ChatInput({
   isStreaming = false,
   showContinue = false,
   disabled = false,
-  placeholder = 'Ask about your data...',
+  placeholder,
 }: ChatInputProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('notebook.chatInput.placeholder')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-resize textarea
@@ -57,7 +60,7 @@ const ChatInput = React.memo(function ChatInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         disabled={disabled}
         rows={1}
         className="dc:flex-1 dc:resize-none dc:rounded-lg dc:px-3 dc:py-2 dc:text-sm bg-dc-surface-secondary text-dc-text border-dc-border dc:border dc:outline-none dc:focus:ring-1 focus:ring-dc-accent dc:disabled:opacity-50"
@@ -67,7 +70,7 @@ const ChatInput = React.memo(function ChatInput({
           onClick={onStop}
           className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors text-dc-error border-dc-border dc:border dc:hover:opacity-80 dc:shrink-0"
         >
-          Stop
+          {t('notebook.chatInput.stop')}
         </button>
       ) : (
         <>
@@ -79,7 +82,7 @@ const ChatInput = React.memo(function ChatInput({
               }}
               className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors border-dc-border dc:border text-dc-text-secondary dc:hover:opacity-80 dc:shrink-0"
             >
-              Continue
+              {t('notebook.chatInput.continue')}
             </button>
           )}
           <button
@@ -87,7 +90,7 @@ const ChatInput = React.memo(function ChatInput({
             disabled={disabled || !value.trim()}
             className="dc:px-4 dc:py-2 dc:rounded-lg dc:text-sm dc:font-medium dc:transition-colors bg-dc-accent text-dc-accent-text dc:hover:opacity-90 dc:disabled:opacity-40 dc:disabled:cursor-not-allowed dc:shrink-0"
           >
-            Send
+            {t('notebook.chatInput.send')}
           </button>
         </>
       )}

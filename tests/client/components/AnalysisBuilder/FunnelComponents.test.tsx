@@ -838,8 +838,8 @@ describe('FunnelStepCard', () => {
       // When active, the card expands to show filter section or "Add filter" button
       // AnalysisFilterSection renders "Add filter" button when no filters
       const addFilterButton = screen.queryByRole('button', { name: /add filter/i })
-      const filterText = screen.queryByText(/filters/i)
-      expect(addFilterButton || filterText).toBeTruthy()
+      const filterTexts = screen.queryAllByText(/filters/i)
+      expect(addFilterButton || filterTexts.length > 0).toBeTruthy()
     })
 
     it('should show collapsed content when not active', () => {
@@ -1093,8 +1093,8 @@ describe('FunnelStepCard', () => {
       // When active, should show filter section or "Add filter" button
       // AnalysisFilterSection shows "Add filter" button or filter list
       const addFilterButton = screen.queryByRole('button', { name: /add filter/i })
-      const filterText = screen.queryByText(/filters/i)
-      expect(addFilterButton || filterText).toBeTruthy()
+      const filterTexts = screen.queryAllByText(/filters/i)
+      expect(addFilterButton || filterTexts.length > 0).toBeTruthy()
     })
 
     it('should show filter count in collapsed state when filters exist', () => {

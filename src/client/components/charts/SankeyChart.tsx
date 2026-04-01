@@ -11,6 +11,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -223,6 +224,7 @@ const SankeyChart = React.memo(function SankeyChart({
   colorPalette,
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Track container width for label positioning
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(800)
@@ -281,9 +283,9 @@ const SankeyChart = React.memo(function SankeyChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No flow data</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.flow.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Configure a flow analysis with a starting step and event dimension
+            {t('chart.runtime.noDataHint.flow')}
           </div>
         </div>
       </div>
@@ -321,7 +323,7 @@ const SankeyChart = React.memo(function SankeyChart({
               <span className="dc:font-medium">{summaryStats.nodeCount}</span> events
             </div>
             <div className="text-dc-text">
-              <span className="text-dc-text-muted">Paths:</span>{' '}
+              <span className="text-dc-text-muted">{t('chart.runtime.flow.paths')}</span>{' '}
               <span className="dc:font-medium">{summaryStats.linkCount}</span>
             </div>
             <div className="text-dc-text-muted">

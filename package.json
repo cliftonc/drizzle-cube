@@ -1,6 +1,6 @@
 {
   "name": "drizzle-cube",
-  "version": "0.4.53",
+  "version": "0.5.0",
   "description": "Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics and dashboards with SQL injection protection.",
   "main": "./dist/server/index.js",
   "types": "./dist/server/index.d.ts",
@@ -150,6 +150,8 @@
     "dev:db:migrate": "cd dev && tsx scripts/migrate.ts",
     "dev:db:seed": "cd dev && tsx scripts/seed.ts",
     "dev:setup": "npm run dev:db:up && npm run dev:db:migrate && npm run dev:db:seed",
+    "i18n:push": "source .env 2>/dev/null; crowdin upload sources && crowdin upload translations",
+    "i18n:pull": "source .env 2>/dev/null; crowdin download",
     "preview": "npm run build:client && npm run preview:build && concurrently \"npm run dev:server\" \"npm run preview:serve\"",
     "preview:build": "cd dev/client && vite build --config vite.config.preview.ts",
     "preview:serve": "cd dev/client && vite preview --config vite.config.preview.ts"
@@ -286,6 +288,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.81.0",
+    "@crowdin/cli": "^4.14.1",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^10.0.0",
     "@fastify/cors": "^11.1.0",

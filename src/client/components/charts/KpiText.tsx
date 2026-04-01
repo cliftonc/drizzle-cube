@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
 import DataHistogram from '../DataHistogram'
 import type { ChartProps } from '../../types'
 
-const KpiText = React.memo(function KpiText({ 
-  data, 
-  chartConfig, 
+const KpiText = React.memo(function KpiText({
+  data,
+  chartConfig,
   displayConfig = {},
   height = "100%",
   colorPalette
 }: ChartProps) {
+  const { t } = useTranslation()
   const [fontSize, setFontSize] = useState(28)
   const [textWidth, setTextWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,8 +76,8 @@ const KpiText = React.memo(function KpiText({
         }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data points to display</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.kpi')}</div>
         </div>
       </div>
     )
@@ -106,8 +108,8 @@ const KpiText = React.memo(function KpiText({
         }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
-          <div className="dc:text-xs">No measure fields configured</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
+          <div className="dc:text-xs">{t('chart.runtime.configErrorHint.noMeasures')}</div>
         </div>
       </div>
     )
@@ -150,8 +152,8 @@ const KpiText = React.memo(function KpiText({
         }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
-          <div className="dc:text-xs">All values are null or invalid</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
+          <div className="dc:text-xs">{t('chart.runtime.noValidDataHint.kpiText')}</div>
         </div>
       </div>
     )

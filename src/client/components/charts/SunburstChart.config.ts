@@ -8,48 +8,48 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * radiating outward from the central starting step.
  */
 export const sunburstChartConfig: ChartTypeConfig = {
-  label: 'Sunburst Chart',
-  description: 'Show hierarchical flow as radial rings',
-  useCase: 'Best for visualizing forward paths from a starting event in a compact radial layout',
+  label: 'chart.sunburst.label',
+  description: 'chart.sunburst.description',
+  useCase: 'chart.sunburst.useCase',
   dropZones: [
     // Sunburst charts work with pre-calculated flow data like Sankey
     {
       key: 'xAxis',
-      label: 'Event Type',
-      description: 'Event dimension that categorizes flow nodes',
+      label: 'chart.configText.event_type',
+      description: 'chart.configText.event_dimension_that_categorizes_flow_nodes',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Auto-populated from flow config',
+      emptyText: 'chart.sunburst.dropZone.xAxis.empty',
     },
     {
       key: 'yAxis',
-      label: 'Flow Count',
-      description: 'Count of entities following each path',
+      label: 'chart.configText.flow_count',
+      description: 'chart.configText.count_of_entities_following_each_path',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Calculated from flow execution',
+      emptyText: 'chart.sunburst.dropZone.yAxis.empty',
     },
   ],
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
       key: 'innerRadius',
-      label: 'Inner Radius',
+      label: 'chart.option.innerRadius.label',
       type: 'number',
       defaultValue: 40,
       min: 0,
       max: 100,
       step: 10,
-      description: 'Size of the center hole (0 for full circle)',
+      description: 'chart.configText.size_of_the_center_hole_0_for_full_circle',
     },
     {
       key: 'hideSummaryFooter',
-      label: 'Hide Summary Footer',
+      label: 'chart.option.hideSummaryFooter.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Hide the statistics footer below the chart',
+      description: 'chart.configText.hide_the_statistics_footer_below_the_chart',
     },
   ],
 }

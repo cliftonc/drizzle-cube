@@ -4,35 +4,35 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the radial bar chart type
  */
 export const radialBarChartConfig: ChartTypeConfig = {
-  label: 'Radial Bar Chart',
-  description: 'Circular progress and KPI visualization',
-  useCase: 'Best for showing progress toward goals, KPIs, or comparing percentages in a compact form',
+  label: 'chart.radialBar.label',
+  description: 'chart.radialBar.description',
+  useCase: 'chart.radialBar.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Categories',
-      description: 'Dimensions for radial segments',
+      label: 'chart.configText.categories',
+      description: 'chart.configText.dimensions_for_radial_segments',
       mandatory: true,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for categories'
+      emptyText: 'chart.radialBar.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Values',
-      description: 'Measures for radial bar lengths',
+      label: 'chart.configText.values',
+      description: 'chart.configText.measures_for_radial_bar_lengths',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for values'
+      emptyText: 'chart.radialBar.dropZone.yAxis.empty'
     }
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for values'
+      description: 'chart.option.valueFormat.description'
     }
   ]
 }

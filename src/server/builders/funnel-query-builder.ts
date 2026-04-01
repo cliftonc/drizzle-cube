@@ -8,6 +8,7 @@
  */
 
 import { sql, SQL, and, eq } from 'drizzle-orm'
+import { t } from '../../i18n/runtime'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   FunnelQueryConfig,
@@ -85,31 +86,31 @@ export class FunnelQueryBuilder {
 
     // Check minimum steps
     if (config.steps.length < 2) {
-      errors.push('Funnel must have at least 2 steps')
+      errors.push(t('server.validation.funnel.minSteps'))
     }
 
     // Validate binding key
     if (typeof config.bindingKey === 'string') {
       const [cubeName, dimName] = config.bindingKey.split('.')
       if (!cubeName || !dimName) {
-        errors.push(`Invalid binding key format: ${config.bindingKey}. Expected 'CubeName.dimensionName'`)
+        errors.push(t('server.validation.funnel.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Binding key cube not found: ${cubeName}`)
+          errors.push(t('server.validation.funnel.bindingKeyCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(`Binding key dimension not found: ${dimName} in cube ${cubeName}`)
+          errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName }))
         }
       }
     } else if (Array.isArray(config.bindingKey)) {
       for (const mapping of config.bindingKey) {
         const cube = cubes.get(mapping.cube)
         if (!cube) {
-          errors.push(`Binding key mapping cube not found: ${mapping.cube}`)
+          errors.push(t('server.validation.funnel.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
         } else {
           const [, dimName] = mapping.dimension.split('.')
           if (!cube.dimensions?.[dimName]) {
-            errors.push(`Binding key dimension not found: ${dimName} in cube ${mapping.cube}`)
+            errors.push(t('server.validation.funnel.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
           }
         }
       }
@@ -119,13 +120,13 @@ export class FunnelQueryBuilder {
     if (typeof config.timeDimension === 'string') {
       const [cubeName, dimName] = config.timeDimension.split('.')
       if (!cubeName || !dimName) {
-        errors.push(`Invalid time dimension format: ${config.timeDimension}. Expected 'CubeName.dimensionName'`)
+        errors.push(t('server.validation.funnel.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Time dimension cube not found: ${cubeName}`)
+          errors.push(t('server.validation.funnel.timeDimCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(`Time dimension not found: ${dimName} in cube ${cubeName}`)
+          errors.push(t('server.validation.funnel.timeDimNotFound', { dimName, cubeName }))
         }
       }
     }
@@ -135,14 +136,14 @@ export class FunnelQueryBuilder {
       const step = config.steps[i]
 
       if (!step.name) {
-        errors.push(`Step ${i} must have a name`)
+        errors.push(t('server.validation.funnel.stepMustHaveName', { step: i }))
       }
 
       // For multi-cube steps, validate cube exists
       if ('cube' in step && step.cube) {
         const cube = cubes.get(step.cube)
         if (!cube) {
-          errors.push(`Step ${i} cube not found: ${step.cube}`)
+          errors.push(t('server.validation.funnel.stepCubeNotFound', { step: i, cube: step.cube }))
         }
       }
 
@@ -165,18 +166,15 @@ export class FunnelQueryBuilder {
             const [filterCubeName, filterField] = (filter as FilterCondition).member.split('.')
             const filterCube = cubes.get(filterCubeName)
             if (!filterCube) {
-              errors.push(`Step ${i} filter cube not found: ${filterCubeName}`)
+              errors.push(t('server.validation.funnel.stepFilterCubeNotFound', { step: i, cubeName: filterCubeName }))
             } else {
               // Check if it's a dimension
               if (!filterCube.dimensions?.[filterField]) {
                 // Check if it's a measure - provide helpful error message
                 if (filterCube.measures?.[filterField]) {
-                  errors.push(
-                    `Step ${i} filter '${filterCubeName}.${filterField}' is a measure. ` +
-                    `Funnel step filters only support dimensions, not measures.`
-                  )
+                  errors.push(t('server.validation.funnel.stepFilterIsMeasure', { step: i, member: `${filterCubeName}.${filterField}` }))
                 } else {
-                  errors.push(`Step ${i} filter member not found: ${filterField} in cube ${filterCubeName}`)
+                  errors.push(t('server.validation.funnel.stepFilterMemberNotFound', { step: i, field: filterField, cubeName: filterCubeName }))
                 }
               }
 
@@ -184,10 +182,7 @@ export class FunnelQueryBuilder {
               if (stepCubeName && filterCubeName !== stepCubeName && resolver) {
                 const joinPath = resolver.findPath(stepCubeName, filterCubeName)
                 if (!joinPath || joinPath.length === 0) {
-                  errors.push(
-                    `Step ${i} filter '${filterCubeName}.${filterField}' requires a join from '${stepCubeName}' ` +
-                    `but no join path was found. Define a join relationship between these cubes.`
-                  )
+                  errors.push(t('server.validation.funnel.stepFilterNoJoinPath', { step: i, member: `${filterCubeName}.${filterField}`, stepCube: stepCubeName }))
                 }
               }
             }
@@ -199,7 +194,7 @@ export class FunnelQueryBuilder {
       if (step.timeToConvert && i > 0) {
         const durationPattern = /^P(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$/
         if (!durationPattern.test(step.timeToConvert)) {
-          errors.push(`Step ${i} timeToConvert must be ISO 8601 duration format: ${step.timeToConvert}`)
+          errors.push(t('server.validation.funnel.stepTimeToConvertFormat', { step: i, value: step.timeToConvert }))
         }
       }
     }
@@ -406,7 +401,7 @@ export class FunnelQueryBuilder {
     if ('cube' in step && step.cube) {
       const cube = cubes.get(step.cube)
       if (!cube) {
-        throw new Error(`Cube not found for step: ${step.cube}`)
+        throw new Error(t('server.errors.funnel.cubeNotFoundForStep', { cube: step.cube }))
       }
       return cube
     }
@@ -416,12 +411,12 @@ export class FunnelQueryBuilder {
       const [cubeName] = config.bindingKey.split('.')
       const cube = cubes.get(cubeName)
       if (!cube) {
-        throw new Error(`Cube not found for binding key: ${config.bindingKey}`)
+        throw new Error(t('server.errors.funnel.cubeNotFoundForBindingKey', { bindingKey: config.bindingKey }))
       }
       return cube
     }
 
-    throw new Error('Cannot resolve cube for step - multi-cube funnel requires cube specification in each step')
+    throw new Error(t('server.errors.funnel.cannotResolveCubeForStep'))
   }
 
   /**
@@ -436,7 +431,7 @@ export class FunnelQueryBuilder {
       const [, dimName] = config.bindingKey.split('.')
       const dimension = cube.dimensions?.[dimName]
       if (!dimension) {
-        throw new Error(`Binding key dimension not found: ${config.bindingKey}`)
+        throw new Error(t('server.errors.funnel.bindingKeyDimNotFound', { bindingKey: config.bindingKey }))
       }
       return resolveSqlExpression(dimension.sql, context) as SQL
     }
@@ -444,12 +439,12 @@ export class FunnelQueryBuilder {
     // Multi-cube binding key - find the mapping for this cube
     const mapping = config.bindingKey.find(m => m.cube === cube.name)
     if (!mapping) {
-      throw new Error(`No binding key mapping found for cube: ${cube.name}`)
+      throw new Error(t('server.errors.funnel.noBindingKeyMapping', { cubeName: cube.name }))
     }
     const [, dimName] = mapping.dimension.split('.')
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Binding key dimension not found: ${mapping.dimension}`)
+      throw new Error(t('server.errors.funnel.bindingKeyMappingDimNotFound', { dimension: mapping.dimension }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }
@@ -466,7 +461,7 @@ export class FunnelQueryBuilder {
       const [, dimName] = config.timeDimension.split('.')
       const dimension = cube.dimensions?.[dimName]
       if (!dimension) {
-        throw new Error(`Time dimension not found: ${config.timeDimension}`)
+        throw new Error(t('server.errors.funnel.timeDimNotFound', { timeDimension: config.timeDimension }))
       }
       return resolveSqlExpression(dimension.sql, context) as SQL
     }
@@ -474,12 +469,12 @@ export class FunnelQueryBuilder {
     // Multi-cube time dimension - find the mapping for this cube
     const mapping = config.timeDimension.find(m => m.cube === cube.name)
     if (!mapping) {
-      throw new Error(`No time dimension mapping found for cube: ${cube.name}`)
+      throw new Error(t('server.errors.funnel.noTimeDimMapping', { cubeName: cube.name }))
     }
     const [, dimName] = mapping.dimension.split('.')
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Time dimension not found: ${mapping.dimension}`)
+      throw new Error(t('server.errors.funnel.timeDimMappingNotFound', { dimension: mapping.dimension }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }

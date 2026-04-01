@@ -18,6 +18,7 @@ import {
   createOrFilter,
   getFilterableFields
 } from './utils'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const AddIcon = getIcon('add')
@@ -32,6 +33,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
   query,
   depth = 0
 }) => {
+  const { t } = useTranslation()
   const [showAddMenu, setShowAddMenu] = useState(false)
   
   const isAndGroup = group.type === 'and'
@@ -181,7 +183,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
             <button
               onClick={() => setShowAddMenu(!showAddMenu)}
               className="text-dc-text-muted hover:text-dc-text-secondary focus:outline-hidden"
-              title="Add condition"
+              title={t('filter.shared.group.addCondition')}
             >
               <AddIcon className="dc:w-4 dc:h-4" />
             </button>
@@ -192,19 +194,19 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
                   onClick={handleAddSimpleFilter}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
-                  Add Filter
+                  {t('filter.shared.group.addFilter')}
                 </button>
                 <button
                   onClick={handleAddAndGroup}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
-                  Add AND Group
+                  {t('filter.shared.group.addAndGroup')}
                 </button>
                 <button
                   onClick={handleAddOrGroup}
                   className="dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover focus:outline-hidden focus:bg-dc-surface-hover"
                 >
-                  Add OR Group
+                  {t('filter.shared.group.addOrGroup')}
                 </button>
               </div>
             )}
@@ -214,7 +216,7 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
           <button
             onClick={() => onGroupRemove(index)}
             className="text-dc-text-muted hover:text-dc-error focus:outline-hidden"
-            title="Remove group"
+            title={t('filter.group.removeGroup')}
           >
             <CloseIcon className="dc:w-4 dc:h-4" />
           </button>
@@ -256,12 +258,12 @@ const FilterGroup: React.FC<FilterGroupProps> = ({
         {/* Empty state */}
         {filters.length === 0 && (
           <div className="dc:text-center dc:py-4 text-dc-text-muted dc:text-sm">
-            No conditions in this group.
+            {t('filter.shared.group.noConditions')}
             <button
               onClick={handleAddSimpleFilter}
               className="dc:ml-2 text-dc-accent hover:text-dc-accent focus:outline-hidden dc:underline"
             >
-              Add a filter
+              {t('filter.shared.group.addFilterLink')}
             </button>
           </div>
         )}

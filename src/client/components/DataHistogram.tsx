@@ -1,4 +1,6 @@
 
+import { useTranslation } from '../hooks/useTranslation'
+
 interface DataHistogramProps {
   /** Array of numeric values to create histogram from */
   values: number[]
@@ -37,6 +39,7 @@ export default function DataHistogram({
   showAverageIndicator = true,
   targetValue
 }: DataHistogramProps) {
+  const { t } = useTranslation()
   // Create histogram buckets from actual data
   const buckets = new Array(bucketCount).fill(0)
   const range = max - min
@@ -175,7 +178,7 @@ export default function DataHistogram({
 
       {/* Average indicator */}
       <div className="dc:text-center dc:mt-1 dc:text-xs text-dc-text-muted">
-        Average of {values.length} values
+        {t('dataHistogram.average', { count: values.length })}
       </div>
     </div>
   )

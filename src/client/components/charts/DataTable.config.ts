@@ -4,26 +4,26 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the data table type
  */
 export const dataTableConfig: ChartTypeConfig = {
-  label: 'Data Table',
-  description: 'Display detailed tabular data',
-  useCase: 'Best for precise values, detailed analysis, sortable/filterable data exploration',
+  label: 'chart.table.label',
+  description: 'chart.table.description',
+  useCase: 'chart.table.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Columns',
-      description: 'All fields to display as columns',
+      label: 'chart.configText.columns',
+      description: 'chart.configText.all_fields_to_display_as_columns',
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension', 'measure'],
-      emptyText: 'Drop fields to display as columns (or leave empty for all)'
+      emptyText: 'chart.table.dropZone.xAxis.empty'
     }
   ],
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for numeric values'
+      description: 'chart.configText.number_formatting_for_numeric_values'
     }
   ]
 }

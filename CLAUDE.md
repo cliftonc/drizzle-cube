@@ -8,6 +8,7 @@ Drizzle ORM-first semantic layer with Cube.js compatibility. Type-safe analytics
 src/server/      # Core semantic layer — compiler, executors, query planning  → src/server/CLAUDE.md
 src/client/      # React analytics dashboard components                       → src/client/CLAUDE.md
 src/adapters/    # Framework adapters (Express, Fastify, Hono, Next.js)       → src/adapters/CLAUDE.md
+src/i18n/        # Internationalization runtime and locale files               → src/i18n/CLAUDE.md
 src/cli/         # CLI tool — `npx drizzle-cube charts init|list`
 src/shared/      # Shared utilities (date-range parsing)
 tests/           # Multi-database testing infrastructure                      → tests/CLAUDE.md
@@ -60,3 +61,12 @@ Each engine has a dedicated executor in `src/server/executors/`. Auto-detection 
 - **Security-first** — multi-tenant isolation is mandatory
 - **Modular** — separate entry points: `drizzle-cube/server`, `drizzle-cube/client`, `drizzle-cube/adapters/*`
 - **Cube.js compatible** — API compatibility for easy migration
+
+## Internationalization (i18n)
+
+**NEVER add bare user-facing strings.** All user-visible text must use translation keys. Full details in `src/i18n/CLAUDE.md`.
+
+- Use `t('key')` via `useTranslation()` in React components
+- **Configs store keys, components resolve** — chart configs hold translation key strings, NOT resolved text
+- Add new keys to `en.json`, `nl-NL.json`, and `en-US.json` (if British spelling differs)
+- PR checklist: no new bare strings, keys exist in all locale files

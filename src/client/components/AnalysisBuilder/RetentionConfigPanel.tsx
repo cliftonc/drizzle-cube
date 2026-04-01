@@ -22,6 +22,7 @@ import {
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation'
 import SectionHeading from './SectionHeading'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const ChevronRightIcon = getIcon('chevronRight')
@@ -335,6 +336,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
   dateRange,
   onDateRangeChange,
 }: DateRangeSelectorProps) {
+  const { t } = useTranslation()
   // Safe defaults if dateRange is undefined
   const safeDateRange = dateRange ?? { start: '', end: '' }
   const safeStart = safeDateRange.start ?? ''
@@ -413,7 +415,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
     <div className="dc:flex-1 dc:min-w-0">
       <label className="dc:flex dc:items-center dc:gap-1.5 dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
         {CalendarIcon && <CalendarIcon className="dc:w-3.5 dc:h-3.5" />}
-        Date Range
+        {t('retention.dateRange.label')}
       </label>
 
       <div ref={dropdownRef} className="dc:relative">
@@ -458,7 +460,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
 
             {/* Custom Range */}
             <div className="dc:border-t border-dc-border dc:pt-3">
-              <div className="dc:text-xs dc:font-medium text-dc-text-muted dc:mb-2">Custom Range</div>
+              <div className="dc:text-xs dc:font-medium text-dc-text-muted dc:mb-2">{t('retention.dateRange.customRange')}</div>
               <div className="dc:flex dc:gap-2 dc:items-center dc:mb-2">
                 <input
                   type="date"
@@ -486,7 +488,7 @@ export const DateRangeSelector = memo(function DateRangeSelector({
                 disabled={!customStart || !customEnd}
                 className="dc:w-full dc:px-3 dc:py-1.5 dc:text-xs bg-dc-primary text-white dc:rounded hover:bg-dc-primary-hover dc:disabled:opacity-50 dc:disabled:cursor-not-allowed dc:transition-colors"
               >
-                Apply Custom Range
+                {t('retention.dateRange.applyCustom')}
               </button>
             </div>
           </div>
@@ -510,6 +512,7 @@ const RetentionConfigPanel = memo(function RetentionConfigPanel({
   onBindingKeyChange = () => {},
   onTimeDimensionChange = () => {},
 }: RetentionConfigPanelProps) {
+  const { t } = useTranslation()
   // Get available options
   const availableCubes = useMemo(() => getAvailableCubes(schema), [schema])
 
@@ -578,7 +581,7 @@ const RetentionConfigPanel = memo(function RetentionConfigPanel({
           ) : (
             ChevronDownIcon && <ChevronDownIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
           )}
-          <SectionHeading className="dc:mb-0">Configuration</SectionHeading>
+          <SectionHeading className="dc:mb-0">{t('retention.config.configuration')}</SectionHeading>
           {isConfigComplete && (
             <span className="dc:flex dc:items-center dc:gap-1 dc:text-xs text-dc-success">
               {CheckIcon && <CheckIcon className="dc:w-3.5 dc:h-3.5" />}

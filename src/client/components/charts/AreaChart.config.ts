@@ -4,75 +4,75 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the area chart type
  */
 export const areaChartConfig: ChartTypeConfig = {
-  label: 'Area Chart',
-  description: 'Emphasize magnitude of change over time',
-  useCase: 'Best for showing cumulative totals, volume changes, or stacked comparisons over time',
+  label: 'chart.area.label',
+  description: 'chart.area.description',
+  useCase: 'chart.area.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Time/Categories)',
-      description: 'Time dimensions or dimensions for X-axis',
+      label: 'chart.configText.x_axis_time_categories',
+      description: 'chart.configText.time_dimensions_or_dimensions_for_x_axis',
       mandatory: true,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop time dimensions or dimensions here'
+      emptyText: 'chart.area.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Values)',
-      description: 'Measures for area values',
+      label: 'chart.dropZone.yAxis.label',
+      description: 'chart.configText.measures_for_area_values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures here',
+      emptyText: 'chart.area.dropZone.yAxis.empty',
       enableDualAxis: true
     },
     {
       key: 'series',
-      label: 'Series (Stack Areas)',
-      description: 'Dimensions to create stacked areas',
+      label: 'chart.configText.series_stack_areas',
+      description: 'chart.configText.dimensions_to_create_stacked_areas',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions here for stacked areas'
+      emptyText: 'chart.area.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',
-      label: 'Stacking',
+      label: 'chart.option.stacking.label',
       type: 'select',
       defaultValue: 'none',
       options: [
-        { value: 'none', label: 'None' },
-        { value: 'normal', label: 'Stacked' },
-        { value: 'percent', label: 'Stacked 100%' }
+        { value: 'none', label: 'chart.option.accentBorder.none' },
+        { value: 'normal', label: 'chart.option.stacking.stacked' },
+        { value: 'percent', label: 'chart.option.stacking.percent' }
       ],
-      description: 'How to stack multiple area series'
+      description: 'chart.configText.how_to_stack_multiple_area_series'
     },
     {
       key: 'connectNulls',
-      label: 'Connect Nulls',
+      label: 'chart.option.connectNulls.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Draw continuous line through missing data points'
+      description: 'chart.option.connectNulls.description'
     },
     {
       key: 'target',
-      label: 'Target Values',
+      label: 'chart.option.target.label',
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
-      description: 'Single value or comma-separated values to spread across X-axis'
+      description: 'chart.option.target.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Left Y-Axis Format',
+      label: 'chart.option.leftYAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for left Y-axis'
+      description: 'chart.option.leftYAxisFormat.description'
     },
     {
       key: 'rightYAxisFormat',
-      label: 'Right Y-Axis Format',
+      label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for right Y-axis'
+      description: 'chart.option.rightYAxisFormat.description'
     }
   ]
 }

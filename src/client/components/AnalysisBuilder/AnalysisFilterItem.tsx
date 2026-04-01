@@ -13,6 +13,7 @@ import type { MetaResponse } from '../../shared/types'
 import { FILTER_OPERATORS } from '../../shared/types'
 import { getFieldTitle, findFieldInSchema } from './utils'
 import FilterConfigModal from './FilterConfigModal'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -36,6 +37,7 @@ export default function AnalysisFilterItem({
   onRemove,
   onUpdate
 }: AnalysisFilterItemProps) {
+  const { t } = useTranslation()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
@@ -50,10 +52,10 @@ export default function AnalysisFilterItem({
 
   // Get operator metadata
   const operatorMeta = FILTER_OPERATORS[filter.operator]
-  const operatorLabel = operatorMeta?.label || filter.operator
+  const operatorLabel = operatorMeta?.label ? t(operatorMeta.label) : filter.operator
 
   // Format value display
-  const valueDisplay = formatValueDisplay(filter, operatorMeta)
+  const valueDisplay = formatValueDisplay(filter, operatorMeta, t)
 
   // Get appropriate icon and colors based on field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
@@ -88,7 +90,7 @@ export default function AnalysisFilterItem({
         <button
           onClick={onRemove}
           className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0 dc:mt-0.5"
-          title="Remove filter"
+          title={t('filter.removeButton.title')}
         >
           {CloseIcon && <CloseIcon className="dc:w-4 dc:h-4" />}
         </button>
@@ -115,7 +117,7 @@ export default function AnalysisFilterItem({
  * Formats the filter value(s) for display in the chip.
  * Handles various value types and multiple values.
  */
-function formatValueDisplay(filter: SimpleFilter, operatorMeta: any): string {
+function formatValueDisplay(filter: SimpleFilter, operatorMeta: any, t: (key: string, params?: Record<string, unknown>) => string): string {
   // No value required for set/notSet operators
   if (!operatorMeta?.requiresValues) {
     return ''
@@ -133,7 +135,7 @@ function formatValueDisplay(filter: SimpleFilter, operatorMeta: any): string {
 
   // No values selected
   if (values.length === 0) {
-    return '(empty)'
+    return t('filter.valueDisplay.empty')
   }
 
   // Single value
@@ -147,5 +149,5 @@ function formatValueDisplay(filter: SimpleFilter, operatorMeta: any): string {
   }
 
   // More than two values - show first two plus count
-  return `${values[0]}, ${values[1]}, +${values.length - 2} more`
+  return `${values[0]}, ${values[1]}, +${values.length - 2} ${t('filter.valueDisplay.more')}`
 }

@@ -10,6 +10,7 @@
  */
 
 import React, { useMemo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { FunnelChart as RechartsFunnelChart, Funnel, LabelList, Tooltip, Cell, ResponsiveContainer } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartConstants'
 import type { ChartProps } from '../../types'
@@ -83,6 +84,7 @@ const FunnelChart = React.memo(function FunnelChart({
   colorPalette,
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   // Get display config options
   const customStepLabels = displayConfig?.funnelStepLabels
   const orientation = displayConfig?.funnelOrientation || 'horizontal'
@@ -155,9 +157,9 @@ const FunnelChart = React.memo(function FunnelChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No funnel data</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.funnel.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Configure a funnel with at least 2 steps and a binding key
+            {t('chart.runtime.noDataHint.funnel')}
           </div>
         </div>
       </div>
@@ -220,7 +222,7 @@ const FunnelChart = React.memo(function FunnelChart({
                 <span className="dc:font-medium">{funnelData.length}</span> steps
               </div>
               <div className="text-dc-text">
-                <span className="text-dc-text-muted">Overall:</span>{' '}
+                <span className="text-dc-text-muted">{t('chart.runtime.funnel.overall')}</span>{' '}
                 <span className="dc:font-medium">
                   {firstStepValue > 0
                     ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
@@ -324,7 +326,7 @@ const FunnelChart = React.memo(function FunnelChart({
                 <span className="dc:font-medium">{funnelData.length}</span> steps
               </div>
               <div className="text-dc-text">
-                <span className="text-dc-text-muted">Overall:</span>{' '}
+                <span className="text-dc-text-muted">{t('chart.runtime.funnel.overall')}</span>{' '}
                 <span className="dc:font-medium">
                   {firstStepValue > 0
                     ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`
@@ -426,7 +428,7 @@ const FunnelChart = React.memo(function FunnelChart({
               <span className="dc:font-medium">{funnelData.length}</span> steps
             </div>
             <div className="text-dc-text">
-              <span className="text-dc-text-muted">Overall:</span>{' '}
+              <span className="text-dc-text-muted">{t('chart.runtime.funnel.overall')}</span>{' '}
               <span className="dc:font-medium">
                 {firstStepValue > 0
                   ? `${((funnelData[funnelData.length - 1]?.value || 0) / firstStepValue * 100).toFixed(1)}%`

@@ -14,6 +14,7 @@ import FlowConfigPanel from './FlowConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import SectionHeading from './SectionHeading'
+import { useTranslation } from '../../hooks/useTranslation'
 
 type FlowPanelTab = 'config' | 'display'
 
@@ -102,6 +103,7 @@ const FlowModeContent = memo(function FlowModeContent({
   colorPalette,
   onDisplayConfigChange,
 }: FlowModeContentProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<FlowPanelTab>('config')
 
   // Check if display tab is available
@@ -118,31 +120,33 @@ const FlowModeContent = memo(function FlowModeContent({
   return (
     <div className="dc:flex dc:flex-col dc:h-full dc:min-h-0 dc:overflow-hidden">
       {/* Tab Bar */}
-      <div className="dc:flex dc:border-b border-dc-border dc:flex-shrink-0">
-        <button
-          onClick={() => setActiveTab('config')}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'config'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-        >
-          Flow
-        </button>
-        <button
-          onClick={() => hasDisplayTab && setActiveTab('display')}
-          disabled={!hasDisplayTab}
-          className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors ${
-            activeTab === 'display'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : !hasDisplayTab
-                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+      <div className="dc:border-b border-dc-border dc:flex-shrink-0 dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
+        <div className="dc:flex dc:min-w-max">
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'config'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
                 : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-          title={!hasDisplayTab ? 'Display options not available' : 'Display options'}
-        >
-          Display
-        </button>
+            }`}
+          >
+            {t('flow.tabs.flow')}
+          </button>
+          <button
+            onClick={() => hasDisplayTab && setActiveTab('display')}
+            disabled={!hasDisplayTab}
+            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
+              activeTab === 'display'
+                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
+                : !hasDisplayTab
+                  ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
+                  : 'text-dc-text-secondary hover:text-dc-text'
+            }`}
+            title={!hasDisplayTab ? t('flow.tabs.displayUnavailable') : t('flow.tabs.displayTitle')}
+          >
+            {t('flow.tabs.display')}
+          </button>
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -166,9 +170,9 @@ const FlowModeContent = memo(function FlowModeContent({
             {/* Visualization Type - now in main config since it affects query */}
             {onChartTypeChange && (
               <div>
-                <SectionHeading>Visualization</SectionHeading>
+                <SectionHeading>{t('flow.visualization.title')}</SectionHeading>
                 <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                  Choose how to visualize the flow data. This affects how data is aggregated.
+                  {t('flow.visualization.description')}
                 </p>
                 <div className="dc:flex dc:gap-2">
                   <button
@@ -181,9 +185,9 @@ const FlowModeContent = memo(function FlowModeContent({
                     }`}
                   >
                     <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
-                      <span>Sankey</span>
+                      <span>{t('flow.visualization.sankey')}</span>
                       <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
-                        Paths can converge
+                        {t('flow.visualization.sankeyHint')}
                       </span>
                     </div>
                   </button>
@@ -197,9 +201,9 @@ const FlowModeContent = memo(function FlowModeContent({
                     }`}
                   >
                     <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
-                      <span>Sunburst</span>
+                      <span>{t('flow.visualization.sunburst')}</span>
                       <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
-                        Unique paths only
+                        {t('flow.visualization.sunburstHint')}
                       </span>
                     </div>
                   </button>
@@ -209,15 +213,15 @@ const FlowModeContent = memo(function FlowModeContent({
 
             {/* Starting Step Section */}
             <div>
-              <SectionHeading>Starting Step</SectionHeading>
+              <SectionHeading>{t('flow.startingStep.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Define the anchor event from which paths will be explored in both directions.
+                {t('flow.startingStep.description')}
               </p>
 
               {/* Starting Step Filters */}
               <div>
                 <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-2">
-                  Filter Conditions
+                  {t('flow.startingStep.filterLabel')}
                 </label>
                 <AnalysisFilterSection
                   filters={startingStep.filters}
@@ -229,20 +233,20 @@ const FlowModeContent = memo(function FlowModeContent({
 
             {/* Depth Configuration */}
             <div>
-              <SectionHeading>Exploration Depth</SectionHeading>
+              <SectionHeading>{t('flow.depth.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
                 {chartType === 'sunburst'
-                  ? 'How many steps to explore after the starting step.'
-                  : 'How many steps to explore before and after the starting step.'}
+                  ? t('flow.depth.descriptionSunburst')
+                  : t('flow.depth.descriptionSankey')}
               </p>
 
               <div className="dc:grid dc:grid-cols-2 dc:gap-4">
                 {/* Steps Before - disabled for sunburst */}
                 <div className={chartType === 'sunburst' ? 'dc:opacity-50' : ''}>
                   <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    Steps Before
+                    {t('flow.depth.stepsBefore')}
                     {chartType === 'sunburst' && (
-                      <span className="dc:ml-1 text-dc-text-muted">(N/A)</span>
+                      <span className="dc:ml-1 text-dc-text-muted">{t('flow.depth.stepsBeforeNA')}</span>
                     )}
                   </label>
                   <div className="dc:flex dc:items-center dc:gap-2">
@@ -264,7 +268,7 @@ const FlowModeContent = memo(function FlowModeContent({
                 {/* Steps After */}
                 <div>
                   <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    Steps After
+                    {t('flow.depth.stepsAfter')}
                   </label>
                   <div className="dc:flex dc:items-center dc:gap-2">
                     <input
@@ -285,7 +289,7 @@ const FlowModeContent = memo(function FlowModeContent({
               {/* Performance warning for high depth */}
               {((chartType !== 'sunburst' && stepsBefore >= 4) || stepsAfter >= 4) && (
                 <div className="dc:mt-3 dc:px-3 dc:py-2 bg-dc-warning-bg dc:rounded dc:border border-dc-warning dc:text-xs text-dc-warning">
-                  High step depth (4-5) may impact query performance on large datasets.
+                  {t('flow.depth.performanceWarning')}
                 </div>
               )}
 
@@ -293,9 +297,9 @@ const FlowModeContent = memo(function FlowModeContent({
 
             {/* Join strategy selection */}
             <div>
-              <SectionHeading>Join Strategy</SectionHeading>
+              <SectionHeading>{t('flow.joinStrategy.title')}</SectionHeading>
               <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                Control how before/after steps are fetched. Switch to window if lateral is slower on your DB.
+                {t('flow.joinStrategy.description')}
               </p>
               <select
                 className="dc:w-full dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 dc:text-sm bg-dc-surface text-dc-text"
@@ -304,9 +308,9 @@ const FlowModeContent = memo(function FlowModeContent({
                   onJoinStrategyChange?.(e.target.value as 'auto' | 'lateral' | 'window')
                 }
               >
-                <option value="auto">Auto (prefer lateral if available)</option>
-                <option value="lateral">Lateral (index seeks)</option>
-                <option value="window">Window (ROW_NUMBER)</option>
+                <option value="auto">{t('flow.joinStrategy.auto')}</option>
+                <option value="lateral">{t('flow.joinStrategy.lateral')}</option>
+                <option value="window">{t('flow.joinStrategy.window')}</option>
               </select>
             </div>
           </div>

@@ -6,6 +6,7 @@
  */
 
 import React, { useMemo } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { useCubeMeta } from '../../providers/CubeProvider'
 import { getMeasureTypeIcon } from '../../icons'
 import {
@@ -27,6 +28,7 @@ const DataTable = React.memo(function DataTable({
   queryObject,
   height = 300
 }: ChartProps) {
+  const { t } = useTranslation()
   const { getFieldLabel, meta } = useCubeMeta()
 
   // Detect if we should pivot based on query structure
@@ -53,8 +55,8 @@ const DataTable = React.memo(function DataTable({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.table')}</div>
         </div>
       </div>
     )
@@ -101,6 +103,7 @@ function PivotedTable({
   meta: any
   leftYAxisFormat?: AxisFormatConfig
 }) {
+  const { t } = useTranslation()
   const { columns, rows } = pivotedData
 
   if (columns.length === 0 || rows.length === 0) {
@@ -110,8 +113,8 @@ function PivotedTable({
         style={{ height }}
       >
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-          <div className="dc:text-xs text-dc-text-secondary">No data to display in table</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.table')}</div>
         </div>
       </div>
     )
@@ -262,6 +265,7 @@ function FlatTable({
   getFieldLabel: (field: string) => string
   leftYAxisFormat?: AxisFormatConfig
 }) {
+  const { t } = useTranslation()
   // Get all columns available in data
   const allColumns = Object.keys(data[0] || {})
 
@@ -297,7 +301,7 @@ function FlatTable({
       >
         <div className="dc:text-center text-dc-text-muted">
           <div className="dc:text-sm dc:font-semibold dc:mb-1">No columns available</div>
-          <div className="dc:text-xs text-dc-text-secondary">Data structure is invalid</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.table.invalidStructure')}</div>
         </div>
       </div>
     )

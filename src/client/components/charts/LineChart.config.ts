@@ -4,86 +4,86 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the line chart type
  */
 export const lineChartConfig: ChartTypeConfig = {
-  label: 'Line Chart',
-  description: 'Show trends and changes over time',
-  useCase: 'Best for continuous data, trends, time series, and showing relationships between multiple series',
+  label: 'chart.line.label',
+  description: 'chart.line.description',
+  useCase: 'chart.line.useCase',
   clickableElements: { point: true },
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Time/Categories)',
-      description: 'Time dimensions or dimensions for X-axis',
+      label: 'chart.configText.x_axis_time_categories',
+      description: 'chart.configText.time_dimensions_or_dimensions_for_x_axis',
       mandatory: true,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop time dimensions or dimensions here'
+      emptyText: 'chart.line.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Values)',
-      description: 'Measures for line values',
+      label: 'chart.dropZone.yAxis.label',
+      description: 'chart.configText.measures_for_line_values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures here',
+      emptyText: 'chart.line.dropZone.yAxis.empty',
       enableDualAxis: true
     },
     {
       key: 'series',
-      label: 'Series (Multiple Lines)',
-      description: 'Dimensions to create separate lines',
+      label: 'chart.configText.series_multiple_lines',
+      description: 'chart.configText.dimensions_to_create_separate_lines',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions here for multiple lines'
+      emptyText: 'chart.line.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'connectNulls',
-      label: 'Connect Nulls',
+      label: 'chart.option.connectNulls.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Draw continuous line through missing data points'
+      description: 'chart.option.connectNulls.description'
     },
     {
       key: 'target',
-      label: 'Target Values',
+      label: 'chart.option.target.label',
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
-      description: 'Single value or comma-separated values to spread across X-axis'
+      description: 'chart.option.target.description'
     },
     {
       key: 'priorPeriodStyle',
-      label: 'Prior Period Line Style',
+      label: 'chart.option.priorPeriodStyle.label',
       type: 'select',
       defaultValue: 'dashed',
       options: [
-        { value: 'dashed', label: 'Dashed' },
-        { value: 'dotted', label: 'Dotted' },
-        { value: 'solid', label: 'Solid' }
+        { value: 'dashed', label: 'chart.option.priorPeriodStyle.dashed' },
+        { value: 'dotted', label: 'chart.option.priorPeriodStyle.dotted' },
+        { value: 'solid', label: 'chart.option.priorPeriodStyle.solid' }
       ],
-      description: 'Line style for prior period in comparison mode'
+      description: 'chart.option.priorPeriodStyle.description'
     },
     {
       key: 'priorPeriodOpacity',
-      label: 'Prior Period Opacity',
+      label: 'chart.option.priorPeriodOpacity.label',
       type: 'number',
       defaultValue: 0.5,
       min: 0.1,
       max: 1,
       step: 0.1,
-      description: 'Opacity for prior period lines (0.1 to 1)'
+      description: 'chart.option.priorPeriodOpacity.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Left Y-Axis Format',
+      label: 'chart.option.leftYAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for left Y-axis'
+      description: 'chart.option.leftYAxisFormat.description'
     },
     {
       key: 'rightYAxisFormat',
-      label: 'Right Y-Axis Format',
+      label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for right Y-axis'
+      description: 'chart.option.rightYAxisFormat.description'
     }
   ]
 }

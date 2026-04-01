@@ -4,88 +4,88 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the KPI Delta chart type
  */
 export const kpiDeltaConfig: ChartTypeConfig = {
-  label: 'KPI Delta',
-  description: 'Display change between latest and previous values with trend indicators',
-  useCase: 'Perfect for showing performance changes over time, such as revenue growth, user acquisition changes, or other metrics where the trend and delta are more important than the absolute value',
+  label: 'chart.kpiDelta.label',
+  description: 'chart.kpiDelta.description',
+  useCase: 'chart.kpiDelta.useCase',
   dropZones: [
     {
       key: 'yAxis',
-      label: 'Value',
-      description: 'Measure to track changes for',
+      label: 'chart.configText.value',
+      description: 'chart.configText.measure_to_track_changes_for',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure here'
+      emptyText: 'chart.kpiDelta.dropZone.yAxis.empty'
     },
     {
       key: 'xAxis',
-      label: 'Dimension (optional)',
-      description: 'Dimension for ordering data (typically time)',
+      label: 'chart.configText.dimension_optional',
+      description: 'chart.configText.dimension_for_ordering_data_typically_time',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop a dimension for ordering'
+      emptyText: 'chart.kpiDelta.dropZone.xAxis.empty'
     }
   ],
   displayOptionsConfig: [
     {
       key: 'prefix',
-      label: 'Prefix',
+      label: 'chart.option.prefix.label',
       type: 'string',
       placeholder: 'e.g., $, €, #',
-      description: 'Text to display before the number'
+      description: 'chart.option.prefix.description'
     },
     {
       key: 'suffix',
-      label: 'Suffix',
+      label: 'chart.option.suffix.label',
       type: 'string',
       placeholder: 'e.g., %, units, items',
-      description: 'Text to display after the number'
+      description: 'chart.option.suffix.description'
     },
     {
       key: 'decimals',
-      label: 'Decimal Places',
+      label: 'chart.option.decimals.label',
       type: 'number',
       defaultValue: 1,
       min: 0,
       max: 10,
       step: 1,
-      description: 'Number of decimal places to display'
+      description: 'chart.option.decimals.description'
     },
     {
       key: 'positiveColorIndex',
-      label: 'Positive Change Color',
+      label: 'chart.configText.positive_change_color',
       type: 'paletteColor',
       defaultValue: 2, // Typically green in most palettes
-      description: 'Color for positive changes (increases)'
+      description: 'chart.configText.color_for_positive_changes_increases'
     },
     {
       key: 'negativeColorIndex',
-      label: 'Negative Change Color', 
+      label: 'chart.configText.negative_change_color', 
       type: 'paletteColor',
       defaultValue: 3, // Typically red in most palettes
-      description: 'Color for negative changes (decreases)'
+      description: 'chart.configText.color_for_negative_changes_decreases'
     },
     {
       key: 'showHistogram',
-      label: 'Show Variance Histogram',
+      label: 'chart.option.showHistogram.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Display historical variance chart below the delta'
+      description: 'chart.option.showHistogram.description'
     },
     {
       key: 'useLastCompletePeriod',
-      label: 'Use Last Complete Period',
+      label: 'chart.option.useLastCompletePeriod.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Exclude current incomplete period from delta calculation (e.g., partial week/month)'
+      description: 'chart.configText.exclude_current_incomplete_period_from_delta_calculation_e_g_partial_wee'
     },
     {
       key: 'skipLastPeriod',
-      label: 'Skip Last Period',
+      label: 'chart.option.skipLastPeriod.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Always exclude the last period regardless of completeness'
+      description: 'chart.option.skipLastPeriod.description'
     }
   ],
   displayOptions: ['hideHeader'],
@@ -93,7 +93,7 @@ export const kpiDeltaConfig: ChartTypeConfig = {
     if (!config.yAxis || (Array.isArray(config.yAxis) && config.yAxis.length === 0)) {
       return {
         isValid: false,
-        message: 'A measure is required for KPI Delta charts'
+        message: 'chart.kpiDelta.validation.measureRequired'
       }
     }
     

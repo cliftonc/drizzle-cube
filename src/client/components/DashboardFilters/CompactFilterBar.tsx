@@ -13,6 +13,7 @@ import CustomDateDropdown from './CustomDateDropdown'
 import XTDDropdown from './XTDDropdown'
 import FilterChip from './FilterChip'
 import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
+import { useTranslation } from '../../hooks/useTranslation'
 import {
   detectPresetFromDateRange,
   calculateDateRange,
@@ -44,6 +45,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   onEditFilter,
   onRemoveFilter
 }) => {
+  const { t } = useTranslation()
   // Local state for immediate UI feedback on filter value changes.
   // Without this, changes require a full round-trip through the parent's
   // onConfigChange → state update → re-render cycle before being visible.
@@ -241,7 +243,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
             }}
           >
             <CalendarIcon className="dc:w-3 dc:h-3" />
-            <span>Custom</span>
+            <span>{t('dateRange.custom')}</span>
             <ChevronDownIcon className="dc:w-3 dc:h-3" />
           </button>
 
@@ -378,7 +380,7 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
                 }}
               >
                 <CalendarIcon className="dc:w-3 dc:h-3" />
-                <span>Custom</span>
+                <span>{t('dateRange.custom')}</span>
               </button>
 
               {showCustomDropdown && (

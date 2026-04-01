@@ -8,7 +8,7 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
 
 export const retentionCombinedConfig: ChartTypeConfig = {
-  label: 'Retention Chart',
+  label: 'chart.retentionCombined.label',
   // RetentionCombinedChart auto-configures from the retention data structure
   // No drop zones needed as the chart maps directly to retention result data
   dropZones: [],
@@ -17,39 +17,39 @@ export const retentionCombinedConfig: ChartTypeConfig = {
   displayOptionsConfig: [
     {
       key: 'retentionDisplayMode',
-      label: 'Display Mode',
+      label: 'chart.option.retentionDisplayMode.label',
       type: 'select',
       defaultValue: 'line',
       options: [
-        { value: 'line', label: 'Line Chart' },
-        { value: 'heatmap', label: 'Heatmap Table' },
-        { value: 'combined', label: 'Combined' },
+        { value: 'line', label: 'chart.option.retentionDisplayMode.lineChart' },
+        { value: 'heatmap', label: 'chart.option.retentionDisplayMode.heatmapTable' },
+        { value: 'combined', label: 'chart.option.retentionDisplayMode.combined' },
       ],
-      description: 'Choose how to visualize retention data',
+      description: 'chart.configText.choose_how_to_visualize_retention_data',
     },
     {
       key: 'showLegend',
-      label: 'Show Legend',
+      label: 'chart.option.showLegend.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Show the legend for breakdown segments',
+      description: 'chart.configText.show_the_legend_for_breakdown_segments',
     },
     {
       key: 'showGrid',
-      label: 'Show Grid',
+      label: 'chart.option.showGrid.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Show grid lines on the chart',
+      description: 'chart.option.showGrid.description',
     },
     {
       key: 'showTooltip',
-      label: 'Show Tooltip',
+      label: 'chart.option.showTooltip.label',
       type: 'boolean',
       defaultValue: true,
-      description: 'Show tooltip on hover with detailed stats',
+      description: 'chart.option.showTooltip.description',
     },
   ],
 
-  description: 'Combined retention visualization with line chart and heatmap modes',
-  useCase: 'Visualize user retention over time with optional breakdown segmentation',
+  description: 'chart.retentionCombined.description',
+  useCase: 'chart.retentionCombined.useCase',
 }

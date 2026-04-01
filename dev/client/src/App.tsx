@@ -1,3 +1,4 @@
+import { useEffect, useState, useCallback } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CubeProvider } from '@drizzle-cube/client'
@@ -15,9 +16,49 @@ import DataBrowserPage from './pages/DataBrowserPage'
 
 // Create a client
 const queryClient = new QueryClient()
+const LOCALE_STORAGE_KEY = 'drizzle-cube-dev-locale'
+const DEFAULT_LOCALE = 'en-GB'
+const SUPPORTED_LOCALES = ['en-GB', 'en-US', 'nl-NL', 'crowdin'] as const
+const CROWDIN_PROJECT_ID = 'drizzle-cube'
+const apiOptions = { apiUrl: '/cubejs-api/v1' }
+
+/**
+ * Load or unload the Crowdin In-Context (JIPT) script.
+ * When active, Crowdin overlays editable translation UI on the page.
+ * Requires the pseudo-locale package generated in Crowdin > Tools > In-Context.
+ */
+function loadCrowdinJipt() {
+  if (document.getElementById('crowdin-jipt')) return
+  const config = document.createElement('script')
+  config.id = 'crowdin-jipt-config'
+  config.textContent = `var _jipt = []; _jipt.push(['project', '${CROWDIN_PROJECT_ID}']);`
+  document.head.appendChild(config)
+
+  const script = document.createElement('script')
+  script.id = 'crowdin-jipt'
+  script.src = 'https://cdn.crowdin.com/jipt/jipt.js'
+  document.head.appendChild(script)
+}
+
+function unloadCrowdinJipt() {
+  document.getElementById('crowdin-jipt')?.remove()
+  document.getElementById('crowdin-jipt-config')?.remove()
+  // JIPT injects UI elements — reload to clean up
+  if (document.querySelector('.crowdin-jipt')) {
+    window.location.reload()
+  }
+}
+
+function getInitialLocale(): string {
+  if (typeof window === 'undefined') return DEFAULT_LOCALE
+  const storedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+  if (storedLocale && SUPPORTED_LOCALES.includes(storedLocale as typeof SUPPORTED_LOCALES[number])) {
+    return storedLocale
+  }
+  return DEFAULT_LOCALE
+}
 
 // Stable references for CubeProvider props (never change)
-const apiOptions = { apiUrl: '/cubejs-api/v1' }
 const features = {
   enableAI: true,
   aiEndpoint: '/api/ai/generate',
@@ -39,14 +80,35 @@ const features = {
 }
 
 function App() {
+  const [locale, setLocale] = useState<string>(getInitialLocale)
+  const isCrowdin = locale === 'crowdin'
+
+  useEffect(() => {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
+    if (isCrowdin) {
+      loadCrowdinJipt()
+    } else {
+      unloadCrowdinJipt()
+    }
+  }, [locale, isCrowdin])
+
+  // When Crowdin is active, use 'af-ZA' (Afrikaans pseudo-locale with Crowdin identifiers)
+  const effectiveLocale = isCrowdin ? 'af-ZA' : locale
+
+  const handleLocaleChange = useCallback((newLocale: string) => {
+    setLocale(newLocale)
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <CubeProvider
         apiOptions={apiOptions}
         features={features}
         customCharts={customCharts}
+        locale={effectiveLocale}
+        debugI18n
       >
-        <Layout>
+        <Layout locale={locale} onLocaleChange={handleLocaleChange}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/dashboards" element={<DashboardListPage />} />

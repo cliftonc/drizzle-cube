@@ -5,6 +5,7 @@
 
 import React from 'react'
 import type { DrillBreadcrumbProps } from '../types/drill'
+import { useTranslation } from '../hooks/useTranslation'
 
 /**
  * Home icon for the root level
@@ -58,6 +59,7 @@ function getSafeLabel(label: string | undefined | null): string {
  * DrillBreadcrumb component
  */
 export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcrumbProps) {
+  const { t } = useTranslation()
   if (path.length === 0) {
     return null
   }
@@ -71,7 +73,7 @@ export function DrillBreadcrumb({ path, onNavigate, onLevelClick }: DrillBreadcr
         title="Go back one level"
       >
         <BackIcon className="dc:w-3.5 dc:h-3.5" />
-        <span className="dc:sr-only">Back</span>
+        <span className="dc:sr-only">{t('drill.back')}</span>
       </button>
 
       <span className="text-dc-text-muted">|</span>

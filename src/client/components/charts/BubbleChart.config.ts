@@ -4,69 +4,69 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the bubble chart type
  */
 export const bubbleChartConfig: ChartTypeConfig = {
-  label: 'Bubble Chart',
-  description: 'Compare three dimensions of data',
-  useCase: 'Best for showing relationships between three variables (X, Y, and size), market analysis',
+  label: 'chart.bubble.label',
+  description: 'chart.bubble.description',
+  useCase: 'chart.bubble.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis',
-      description: 'Horizontal axis position',
+      label: 'chart.runtime.axisFormat.xAxis',
+      description: 'chart.configText.horizontal_axis_position',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension', 'measure'],
-      emptyText: 'Drop a field for X-axis position'
+      emptyText: 'chart.bubble.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis', 
-      description: 'Vertical axis position',
+      label: 'chart.configText.y_axis', 
+      description: 'chart.configText.vertical_axis_position',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for Y-axis position'
+      emptyText: 'chart.bubble.dropZone.yAxis.empty'
     },
     {
       key: 'sizeField',
-      label: 'Bubble Radius',
-      description: 'Size of bubbles based on this measure',
+      label: 'chart.configText.bubble_radius',
+      description: 'chart.configText.size_of_bubbles_based_on_this_measure',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for bubble size'
+      emptyText: 'chart.bubble.dropZone.sizeField.empty'
     },
     {
       key: 'series',
-      label: 'Bubble Labels',
-      description: 'Field to use for bubble labels and identification',
+      label: 'chart.configText.bubble_labels',
+      description: 'chart.configText.field_to_use_for_bubble_labels_and_identification',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop a dimension for bubble labels'
+      emptyText: 'chart.bubble.dropZone.series.empty'
     },
     {
       key: 'colorField',
-      label: 'Bubble Colour',
-      description: 'Color bubbles by this field (optional)',
+      label: 'chart.configText.bubble_colour',
+      description: 'chart.configText.color_bubbles_by_this_field_optional',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension', 'measure'],
-      emptyText: 'Drop a field for bubble color (optional)'
+      emptyText: 'chart.bubble.dropZone.colorField.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'minBubbleSize', 'maxBubbleSize', 'bubbleOpacity', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'xAxisFormat',
-      label: 'X-Axis Format',
+      label: 'chart.option.xAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for X-axis'
+      description: 'chart.option.xAxisFormat.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: 'chart.option.yAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for Y-axis and values'
+      description: 'chart.configText.number_formatting_for_y_axis_and_values'
     }
   ]
 }

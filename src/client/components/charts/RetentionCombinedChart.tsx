@@ -14,6 +14,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import {
   ComposedChart,
   Line,
@@ -157,6 +158,7 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
   displayConfig,
   colorPalette,
 }: ChartProps) {
+  const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
   const [heatmapTooltip, setHeatmapTooltip] = useState<TooltipData | null>(null)
 
@@ -220,9 +222,9 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Configure retention analysis to see results
+            {t('chart.runtime.noDataHint.retention')}
           </div>
         </div>
       </div>
@@ -236,8 +238,8 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
-          <div className="dc:text-xs text-dc-text-secondary">Data format may be incorrect</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.unableToRender')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.dataFormatIncorrect')}</div>
         </div>
       </div>
     )
@@ -416,10 +418,10 @@ const RetentionCombinedChart = React.memo(function RetentionCombinedChart({
             : formatPeriodLabel(heatmapTooltip.period, retentionData?.granularity)}
         </div>
         <div className="text-dc-text-secondary dc:space-y-0.5">
-          <div>Cohort Size: {heatmapTooltip.cohortSize.toLocaleString()}</div>
-          <div>Retained: {heatmapTooltip.retainedUsers.toLocaleString()}</div>
+          <div>{t('chart.runtime.retention.cohortSize', { count: heatmapTooltip.cohortSize.toLocaleString() })}</div>
+          <div>{t('chart.runtime.retention.retained', { count: heatmapTooltip.retainedUsers.toLocaleString() })}</div>
           <div className="dc:font-medium text-dc-text">
-            Rate: {formatPercentage(heatmapTooltip.retentionRate)}
+            {t('chart.runtime.retention.rate', { rate: formatPercentage(heatmapTooltip.retentionRate) })}
           </div>
         </div>
       </div>

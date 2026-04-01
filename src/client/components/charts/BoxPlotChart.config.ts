@@ -4,38 +4,36 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the box plot chart type
  */
 export const boxPlotChartConfig: ChartTypeConfig = {
-  label: 'Box Plot',
-  description: 'Show statistical distribution (median, IQR, whiskers) across categories',
-  useCase:
-    'Best for P&L spread per symbol, trade size distribution, latency distribution across platforms',
+  label: 'chart.boxPlot.label',
+  description: 'chart.boxPlot.description',
+  useCase: 'chart.boxPlot.useCase',
   displayOptions: ['hideHeader'],
   dropZones: [
     {
       key: 'xAxis',
-      label: 'X-Axis (Groups)',
-      description: 'Dimension to group boxes by (e.g. symbol, platform)',
+      label: 'chart.configText.x_axis_groups',
+      description: 'chart.configText.dimension_to_group_boxes_by_e_g_symbol_platform',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop a dimension here',
+      emptyText: 'chart.boxPlot.dropZone.xAxis.empty',
     },
     {
       key: 'yAxis',
-      label: 'Y-Axis (Measures)',
-      description:
-        'Drop 1 measure for auto mode, 3 for avg/stddev/median mode, or 5 for min/q1/median/q3/max mode',
+      label: 'chart.configText.y_axis_measures',
+      description: 'chart.configText.drop_1_measure_for_auto_mode_3_for_avg_stddev_median_mode_or_5_for_min_q',
       mandatory: true,
       maxItems: 5,
       acceptTypes: ['measure'],
-      emptyText: 'Drop 1, 3, or 5 measures here',
+      emptyText: 'chart.boxPlot.dropZone.yAxis.empty',
     },
   ],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Y-Axis Format',
+      label: 'chart.option.yAxisFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for the value axis',
+      description: 'chart.configText.number_formatting_for_the_value_axis',
     },
   ],
 }

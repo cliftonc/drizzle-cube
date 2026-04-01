@@ -14,6 +14,7 @@
  */
 
 import { sql, SQL, and } from 'drizzle-orm'
+import { t } from '../../i18n/runtime'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 import type {
   FlowQueryConfig,
@@ -89,9 +90,7 @@ export class FlowQueryBuilder {
     const supportsLateral = capabilities.supportsLateralSubqueriesInCTE
 
     if (engine === 'sqlite') {
-      errors.push(
-        'Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.'
-      )
+      errors.push(t('server.validation.flow.sqliteNotSupported'))
       return { isValid: false, errors, warnings }
     }
 
@@ -99,30 +98,24 @@ export class FlowQueryBuilder {
     if (typeof config.bindingKey === 'string') {
       const [cubeName, dimName] = config.bindingKey.split('.')
       if (!cubeName || !dimName) {
-        errors.push(
-          `Invalid binding key format: ${config.bindingKey}. Expected 'CubeName.dimensionName'`
-        )
+        errors.push(t('server.validation.flow.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Binding key cube not found: ${cubeName}`)
+          errors.push(t('server.validation.flow.bindingKeyCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(
-            `Binding key dimension not found: ${dimName} in cube ${cubeName}`
-          )
+          errors.push(t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName }))
         }
       }
     } else if (Array.isArray(config.bindingKey)) {
       for (const mapping of config.bindingKey) {
         const cube = cubes.get(mapping.cube)
         if (!cube) {
-          errors.push(`Binding key mapping cube not found: ${mapping.cube}`)
+          errors.push(t('server.validation.flow.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
         } else {
           const [, dimName] = mapping.dimension.split('.')
           if (!cube.dimensions?.[dimName]) {
-            errors.push(
-              `Binding key dimension not found: ${dimName} in cube ${mapping.cube}`
-            )
+            errors.push(t('server.validation.flow.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
           }
         }
       }
@@ -132,15 +125,13 @@ export class FlowQueryBuilder {
     if (typeof config.timeDimension === 'string') {
       const [cubeName, dimName] = config.timeDimension.split('.')
       if (!cubeName || !dimName) {
-        errors.push(
-          `Invalid time dimension format: ${config.timeDimension}. Expected 'CubeName.dimensionName'`
-        )
+        errors.push(t('server.validation.flow.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Time dimension cube not found: ${cubeName}`)
+          errors.push(t('server.validation.flow.timeDimCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(`Time dimension not found: ${dimName} in cube ${cubeName}`)
+          errors.push(t('server.validation.flow.timeDimNotFound', { dimName, cubeName }))
         }
       }
     }
@@ -149,48 +140,42 @@ export class FlowQueryBuilder {
     if (config.eventDimension) {
       const [cubeName, dimName] = config.eventDimension.split('.')
       if (!cubeName || !dimName) {
-        errors.push(
-          `Invalid event dimension format: ${config.eventDimension}. Expected 'CubeName.dimensionName'`
-        )
+        errors.push(t('server.validation.flow.invalidEventDimFormat', { eventDimension: config.eventDimension }))
       } else {
         const cube = cubes.get(cubeName)
         if (!cube) {
-          errors.push(`Event dimension cube not found: ${cubeName}`)
+          errors.push(t('server.validation.flow.eventDimCubeNotFound', { cubeName }))
         } else if (!cube.dimensions?.[dimName]) {
-          errors.push(
-            `Event dimension not found: ${dimName} in cube ${cubeName}`
-          )
+          errors.push(t('server.validation.flow.eventDimNotFound', { dimName, cubeName }))
         }
       }
     } else {
-      errors.push('Event dimension is required for flow analysis')
+      errors.push(t('server.validation.flow.eventDimRequired'))
     }
 
     // Validate starting step
     if (!config.startingStep) {
-      errors.push('Starting step is required for flow analysis')
+      errors.push(t('server.validation.flow.startingStepRequired'))
     } else {
       if (!config.startingStep.filter) {
-        errors.push('Starting step must have at least one filter')
+        errors.push(t('server.validation.flow.startingStepFilterRequired'))
       }
       if (!config.startingStep.name) {
-        warnings.push('Starting step has no name - using default')
+        warnings.push(t('server.validation.flow.startingStepNameMissing'))
       }
     }
 
     // Validate depth bounds
     if (config.stepsBefore < 0 || config.stepsBefore > 5) {
-      errors.push(`stepsBefore must be between 0 and 5, got: ${config.stepsBefore}`)
+      errors.push(t('server.validation.flow.stepsBeforeRange', { value: config.stepsBefore }))
     }
     if (config.stepsAfter < 0 || config.stepsAfter > 5) {
-      errors.push(`stepsAfter must be between 0 and 5, got: ${config.stepsAfter}`)
+      errors.push(t('server.validation.flow.stepsAfterRange', { value: config.stepsAfter }))
     }
 
     // Performance warnings for high depth
     if (config.stepsBefore >= 4 || config.stepsAfter >= 4) {
-      warnings.push(
-        'High step depth (4-5) may impact query performance on large datasets'
-      )
+      warnings.push(t('server.validation.flow.highStepDepthWarning'))
     }
 
     // Validate join strategy
@@ -198,9 +183,9 @@ export class FlowQueryBuilder {
       config.joinStrategy &&
       !['auto', 'lateral', 'window'].includes(config.joinStrategy)
     ) {
-      errors.push(`Invalid joinStrategy: ${config.joinStrategy}`)
+      errors.push(t('server.validation.flow.invalidJoinStrategy', { joinStrategy: config.joinStrategy }))
     } else if (config.joinStrategy === 'lateral' && !supportsLateral) {
-      errors.push('Lateral joins are not supported on this database')
+      errors.push(t('server.validation.flow.lateralNotSupported'))
     }
 
     return {
@@ -226,9 +211,7 @@ export class FlowQueryBuilder {
   ): ReturnType<typeof context.db.select> {
     const engine = this.databaseAdapter.getEngineType()
     if (engine === 'sqlite') {
-      throw new Error(
-        'Flow queries are not supported on SQLite. Use PostgreSQL or MySQL for flow analysis.'
-      )
+      throw new Error(t('server.validation.flow.sqliteNotSupported'))
     }
     const capabilities = this.databaseAdapter.getCapabilities()
     // Flow CTEs use correlated LATERAL subqueries that reference other CTEs,
@@ -239,7 +222,7 @@ export class FlowQueryBuilder {
       joinStrategy === 'lateral' || (joinStrategy === 'auto' && supportsLateral)
 
     if (joinStrategy === 'lateral' && !supportsLateral) {
-      throw new Error('Lateral joins with CTE references are not supported on this database')
+      throw new Error(t('server.validation.flow.lateralNotSupportedExec'))
     }
 
     // Normalize config for execution
@@ -359,12 +342,12 @@ export class FlowQueryBuilder {
     } else if (Array.isArray(config.bindingKey) && config.bindingKey.length > 0) {
       cubeName = config.bindingKey[0].cube
     } else {
-      throw new Error('Cannot resolve cube for flow query')
+      throw new Error(t('server.errors.flow.cannotResolveCube'))
     }
 
     const cube = cubes.get(cubeName)
     if (!cube) {
-      throw new Error(`Cube not found: ${cubeName}`)
+      throw new Error(t('server.errors.flow.cubeNotFound', { cubeName }))
     }
     return cube
   }
@@ -381,19 +364,19 @@ export class FlowQueryBuilder {
       const [, dimName] = config.bindingKey.split('.')
       const dimension = cube.dimensions?.[dimName]
       if (!dimension) {
-        throw new Error(`Binding key dimension not found: ${config.bindingKey}`)
+        throw new Error(t('server.errors.flow.bindingKeyDimNotFound', { bindingKey: config.bindingKey }))
       }
       return resolveSqlExpression(dimension.sql, context) as SQL
     }
 
     const mapping = config.bindingKey.find((m) => m.cube === cube.name)
     if (!mapping) {
-      throw new Error(`No binding key mapping found for cube: ${cube.name}`)
+      throw new Error(t('server.errors.flow.noBindingKeyMapping', { cubeName: cube.name }))
     }
     const [, dimName] = mapping.dimension.split('.')
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Binding key dimension not found: ${mapping.dimension}`)
+      throw new Error(t('server.errors.flow.bindingKeyMappingDimNotFound', { dimension: mapping.dimension }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }
@@ -410,19 +393,19 @@ export class FlowQueryBuilder {
       const [, dimName] = config.timeDimension.split('.')
       const dimension = cube.dimensions?.[dimName]
       if (!dimension) {
-        throw new Error(`Time dimension not found: ${config.timeDimension}`)
+        throw new Error(t('server.errors.flow.timeDimNotFound', { timeDimension: config.timeDimension }))
       }
       return resolveSqlExpression(dimension.sql, context) as SQL
     }
 
     const mapping = config.timeDimension.find((m) => m.cube === cube.name)
     if (!mapping) {
-      throw new Error(`No time dimension mapping found for cube: ${cube.name}`)
+      throw new Error(t('server.errors.flow.noTimeDimMapping', { cubeName: cube.name }))
     }
     const [, dimName] = mapping.dimension.split('.')
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Time dimension not found: ${mapping.dimension}`)
+      throw new Error(t('server.errors.flow.timeDimMappingNotFound', { dimension: mapping.dimension }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }
@@ -438,7 +421,7 @@ export class FlowQueryBuilder {
     const [, dimName] = config.eventDimension.split('.')
     const dimension = cube.dimensions?.[dimName]
     if (!dimension) {
-      throw new Error(`Event dimension not found: ${config.eventDimension}`)
+      throw new Error(t('server.errors.flow.eventDimNotFound', { eventDimension: config.eventDimension }))
     }
     return resolveSqlExpression(dimension.sql, context) as SQL
   }

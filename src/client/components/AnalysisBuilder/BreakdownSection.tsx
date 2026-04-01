@@ -10,6 +10,7 @@ import type { MetaField } from '../../shared/types'
 import BreakdownItemCard from './BreakdownItemCard'
 import SectionHeading from './SectionHeading'
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 // Get icon once at module level to avoid recreating
 const AddIcon = getIcon('add')
@@ -61,6 +62,7 @@ const BreakdownSection = memo(function BreakdownSection({
   onOrderChange,
   onReorder
 }: BreakdownSectionProps) {
+  const { t } = useTranslation()
 
   // Drag/drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -254,7 +256,7 @@ const BreakdownSection = memo(function BreakdownSection({
         className="dc:flex dc:items-center dc:justify-between dc:mb-3 dc:w-full dc:py-1 dc:px-2 dc:-ml-2 dc:rounded-lg hover:bg-dc-primary/10 dc:transition-colors dc:group"
         title="Add breakdown"
       >
-        <SectionHeading>Breakdown</SectionHeading>
+        <SectionHeading>{t('analysis.sections.breakdown')}</SectionHeading>
         <AddIcon className="dc:w-5 dc:h-5 text-dc-text-secondary group-hover:text-dc-primary dc:transition-colors" />
       </button>
 

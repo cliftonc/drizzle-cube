@@ -8,6 +8,7 @@
  */
 
 import { lazy, Suspense, useState, useEffect } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import type { SchemaVisualizationProps } from './index'
 import { XyflowProvider } from './xyflowContext'
 import type { XyflowModule } from './xyflowContext'
@@ -15,15 +16,16 @@ import type { XyflowModule } from './xyflowContext'
 let loadFailed = false
 
 function MissingDependencyFallback(_props: SchemaVisualizationProps) {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full dc:p-8">
       <div className="dc:text-center dc:max-w-md">
         <div className="dc:text-4xl dc:mb-4">&#128269;</div>
         <h3 className="dc:text-lg dc:font-semibold text-dc-text dc:mb-2">
-          Schema Visualization requires additional packages
+          {t('schema.missingDeps.title')}
         </h3>
         <p className="dc:text-sm text-dc-text-secondary dc:mb-4">
-          Install the required dependencies to enable the interactive schema diagram:
+          {t('schema.missingDeps.description')}
         </p>
         <code className="dc:block dc:px-4 dc:py-2 dc:rounded bg-dc-surface-secondary dc:text-sm dc:font-mono text-dc-text dc:border border-dc-border">
           npm install @xyflow/react elkjs
@@ -34,11 +36,12 @@ function MissingDependencyFallback(_props: SchemaVisualizationProps) {
 }
 
 function LoadingFallback() {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
       <div className="dc:text-center">
         <div className="dc:animate-spin dc:rounded-full dc:h-8 dc:w-8 dc:border-b-2 border-dc-accent dc:mx-auto dc:mb-2" />
-        <p className="dc:text-sm text-dc-text-muted">Loading schema visualization...</p>
+        <p className="dc:text-sm text-dc-text-muted">{t('schema.loadingVisualization')}</p>
       </div>
     </div>
   )

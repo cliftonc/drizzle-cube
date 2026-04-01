@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import SectionHeading from './SectionHeading'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const LIMIT_PRESETS = [5, 10, 25, 50, 100, 500, 1000] as const
 
@@ -18,6 +19,7 @@ interface LimitSectionProps {
 }
 
 export default function LimitSection({ limit, onLimitChange }: LimitSectionProps) {
+  const { t } = useTranslation()
   const isCustom = limit != null && !LIMIT_PRESETS.includes(limit as typeof LIMIT_PRESETS[number])
   const [showCustomInput, setShowCustomInput] = useState(isCustom)
   const [customValue, setCustomValue] = useState(isCustom ? String(limit) : '')
@@ -70,7 +72,7 @@ export default function LimitSection({ limit, onLimitChange }: LimitSectionProps
       {/* Header */}
       <div className="dc:flex dc:items-center dc:justify-between dc:mb-3">
         <SectionHeading>
-          Limit
+          {t('query.limit.label')}
           {limit != null && (
             <span className="dc:ml-1.5 dc:text-xs dc:font-normal text-dc-text-muted dc:normal-case dc:tracking-normal">
               ({limit.toLocaleString()})
@@ -87,7 +89,7 @@ export default function LimitSection({ limit, onLimitChange }: LimitSectionProps
             }}
             className="dc:text-xs text-dc-text-muted hover:text-dc-error dc:underline dc:cursor-pointer"
           >
-            Clear
+            {t('query.limit.clear')}
           </span>
         )}
       </div>

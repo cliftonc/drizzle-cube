@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import { arc } from 'd3-shape'
 import { formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFieldLabel } from '../../hooks/useCubeFieldLabel'
@@ -72,6 +73,7 @@ const GaugeChart = React.memo(function GaugeChart({
   displayConfig = {},
   height = '100%',
 }: ChartProps) {
+  const { t } = useTranslation()
   const getFieldLabel = useCubeFieldLabel()
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
@@ -142,8 +144,8 @@ const GaugeChart = React.memo(function GaugeChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
-            <div className="dc:text-xs text-dc-text-secondary">No data points to display in gauge chart</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
+            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.gauge')}</div>
           </div>
         </div>
       )
@@ -153,7 +155,7 @@ const GaugeChart = React.memo(function GaugeChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">Configuration Error</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
             <div className="dc:text-xs">{configError}</div>
           </div>
         </div>
@@ -166,8 +168,8 @@ const GaugeChart = React.memo(function GaugeChart({
       return (
         <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
           <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">No valid data</div>
-            <div className="dc:text-xs text-dc-text-secondary">Gauge value is not a valid number</div>
+            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
+            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noValidDataHint.gauge')}</div>
           </div>
         </div>
       )
@@ -299,9 +301,9 @@ const GaugeChart = React.memo(function GaugeChart({
     return (
       <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Gauge Chart Error</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : 'Unknown rendering error'}</div>
-          <div className="dc:text-xs text-dc-text-muted">Check the data and configuration</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Gauge Chart' })}</div>
+          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
+          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
         </div>
       </div>
     )

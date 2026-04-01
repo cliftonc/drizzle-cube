@@ -220,88 +220,88 @@ export interface FilterOperatorMeta {
 export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   // String operators
   equals: {
-    label: 'equals',
-    description: 'Exact match',
+    label: 'filter.operator.equals.label',
+    description: 'filter.operator.equals.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'boolean', 'time']
   },
   notEquals: {
-    label: 'not equals',
-    description: 'Does not match',
+    label: 'filter.operator.notEquals.label',
+    description: 'filter.operator.notEquals.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'boolean', 'time']
   },
   contains: {
-    label: 'contains',
-    description: 'Contains text (case insensitive)',
+    label: 'filter.operator.contains.label',
+    description: 'filter.operator.contains.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   notContains: {
-    label: 'not contains',
-    description: 'Does not contain text',
+    label: 'filter.operator.notContains.label',
+    description: 'filter.operator.notContains.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   startsWith: {
-    label: 'starts with',
-    description: 'Starts with text',
+    label: 'filter.operator.startsWith.label',
+    description: 'filter.operator.startsWith.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   notStartsWith: {
-    label: 'not starts with',
-    description: 'Does not start with text',
+    label: 'filter.operator.notStartsWith.label',
+    description: 'filter.operator.notStartsWith.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   endsWith: {
-    label: 'ends with',
-    description: 'Ends with text',
+    label: 'filter.operator.endsWith.label',
+    description: 'filter.operator.endsWith.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   notEndsWith: {
-    label: 'not ends with',
-    description: 'Does not end with text',
+    label: 'filter.operator.notEndsWith.label',
+    description: 'filter.operator.notEndsWith.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   like: {
-    label: 'like',
-    description: 'SQL LIKE pattern matching (case sensitive)',
+    label: 'filter.operator.like.label',
+    description: 'filter.operator.like.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   notLike: {
-    label: 'not like',
-    description: 'SQL NOT LIKE pattern matching (case sensitive)',
+    label: 'filter.operator.notLike.label',
+    description: 'filter.operator.notLike.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   ilike: {
-    label: 'ilike',
-    description: 'SQL ILIKE pattern matching (case insensitive)',
+    label: 'filter.operator.ilike.label',
+    description: 'filter.operator.ilike.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
@@ -309,48 +309,48 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Numeric operators
   gt: {
-    label: 'greater than',
-    description: 'Greater than value',
+    label: 'filter.operator.gt.label',
+    description: 'filter.operator.gt.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   gte: {
-    label: 'greater than or equal',
-    description: 'Greater than or equal to value',
+    label: 'filter.operator.gte.label',
+    description: 'filter.operator.gte.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   lt: {
-    label: 'less than',
-    description: 'Less than value',
+    label: 'filter.operator.lt.label',
+    description: 'filter.operator.lt.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   lte: {
-    label: 'less than or equal',
-    description: 'Less than or equal to value',
+    label: 'filter.operator.lte.label',
+    description: 'filter.operator.lte.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   between: {
-    label: 'between',
-    description: 'Between two values (inclusive)',
+    label: 'filter.operator.between.label',
+    description: 'filter.operator.between.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
     fieldTypes: ['number', 'count', 'sum', 'avg', 'min', 'max']
   },
   notBetween: {
-    label: 'not between',
-    description: 'Not between two values',
+    label: 'filter.operator.notBetween.label',
+    description: 'filter.operator.notBetween.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'number',
@@ -358,16 +358,16 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Array operators
   in: {
-    label: 'in',
-    description: 'Matches any of the provided values',
+    label: 'filter.operator.in.label',
+    description: 'filter.operator.in.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'boolean']
   },
   notIn: {
-    label: 'not in',
-    description: 'Does not match any of the provided values',
+    label: 'filter.operator.notIn.label',
+    description: 'filter.operator.notIn.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'any',
@@ -375,32 +375,32 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Null/Empty operators
   set: {
-    label: 'is set',
-    description: 'Is not null/empty',
+    label: 'filter.operator.set.label',
+    description: 'filter.operator.set.description',
     requiresValues: false,
     supportsMultipleValues: false,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'time', 'boolean']
   },
   notSet: {
-    label: 'is not set',
-    description: 'Is null/empty',
+    label: 'filter.operator.notSet.label',
+    description: 'filter.operator.notSet.description',
     requiresValues: false,
     supportsMultipleValues: false,
     valueType: 'any',
     fieldTypes: ['string', 'number', 'time', 'boolean']
   },
   isEmpty: {
-    label: 'is empty',
-    description: 'Is empty string or null',
+    label: 'filter.operator.isEmpty.label',
+    description: 'filter.operator.isEmpty.description',
     requiresValues: false,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   isNotEmpty: {
-    label: 'is not empty',
-    description: 'Is not empty string and not null',
+    label: 'filter.operator.isNotEmpty.label',
+    description: 'filter.operator.isNotEmpty.description',
     requiresValues: false,
     supportsMultipleValues: false,
     valueType: 'string',
@@ -408,24 +408,24 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Date operators
   inDateRange: {
-    label: 'in date range',
-    description: 'Between two dates',
+    label: 'filter.operator.inDateRange.label',
+    description: 'filter.operator.inDateRange.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'date',
     fieldTypes: ['time']
   },
   beforeDate: {
-    label: 'before date',
-    description: 'Before specified date',
+    label: 'filter.operator.beforeDate.label',
+    description: 'filter.operator.beforeDate.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'date',
     fieldTypes: ['time']
   },
   afterDate: {
-    label: 'after date',
-    description: 'After specified date',
+    label: 'filter.operator.afterDate.label',
+    description: 'filter.operator.afterDate.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'date',
@@ -433,16 +433,16 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // Regex operators
   regex: {
-    label: 'matches regex',
-    description: 'Matches regular expression pattern',
+    label: 'filter.operator.regex.label',
+    description: 'filter.operator.regex.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
     fieldTypes: ['string']
   },
   notRegex: {
-    label: 'not matches regex',
-    description: 'Does not match regular expression pattern',
+    label: 'filter.operator.notRegex.label',
+    description: 'filter.operator.notRegex.description',
     requiresValues: true,
     supportsMultipleValues: false,
     valueType: 'string',
@@ -450,24 +450,24 @@ export const FILTER_OPERATORS: Record<FilterOperator, FilterOperatorMeta> = {
   },
   // PostgreSQL array operators
   arrayContains: {
-    label: 'array contains all',
-    description: 'Array field contains all specified values (PostgreSQL only)',
+    label: 'filter.operator.arrayContains.label',
+    description: 'filter.operator.arrayContains.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'string',
     fieldTypes: ['string']
   },
   arrayOverlaps: {
-    label: 'array contains any',
-    description: 'Array field contains any of the specified values (PostgreSQL only)',
+    label: 'filter.operator.arrayOverlaps.label',
+    description: 'filter.operator.arrayOverlaps.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'string',
     fieldTypes: ['string']
   },
   arrayContained: {
-    label: 'array values in',
-    description: 'All array field values are within specified values (PostgreSQL only)',
+    label: 'filter.operator.arrayContained.label',
+    description: 'filter.operator.arrayContained.description',
     requiresValues: true,
     supportsMultipleValues: true,
     valueType: 'string',
@@ -506,38 +506,38 @@ export interface DateRangeOption {
 }
 
 export const DATE_RANGE_OPTIONS: DateRangeOption[] = [
-  { value: 'custom', label: 'Custom' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'this_week', label: 'This week' },
-  { value: 'this_month', label: 'This month' },
-  { value: 'this_quarter', label: 'This quarter' },
-  { value: 'this_year', label: 'This year' },
-  { value: 'last_7_days', label: 'Last 7 days' },
-  { value: 'last_30_days', label: 'Last 30 days' },
-  { value: 'last_n_days', label: 'Last N days' },
-  { value: 'last_week', label: 'Last week' },
-  { value: 'last_n_weeks', label: 'Last N weeks' },
-  { value: 'last_month', label: 'Last month' },
-  { value: 'last_12_months', label: 'Last 12 months' },
-  { value: 'last_n_months', label: 'Last N months' },
-  { value: 'last_quarter', label: 'Last quarter' },
-  { value: 'last_n_quarters', label: 'Last N quarters' },
-  { value: 'last_year', label: 'Last year' },
-  { value: 'last_n_years', label: 'Last N years' }
-] as const
+  { value: 'custom', label: 'dateRange.custom' },
+  { value: 'today', label: 'dateRange.today' },
+  { value: 'yesterday', label: 'dateRange.yesterday' },
+  { value: 'this_week', label: 'dateRange.thisWeek' },
+  { value: 'this_month', label: 'dateRange.thisMonth' },
+  { value: 'this_quarter', label: 'dateRange.thisQuarter' },
+  { value: 'this_year', label: 'dateRange.thisYear' },
+  { value: 'last_7_days', label: 'dateRange.last7Days' },
+  { value: 'last_30_days', label: 'dateRange.last30Days' },
+  { value: 'last_n_days', label: 'dateRange.lastNDays' },
+  { value: 'last_week', label: 'dateRange.lastWeek' },
+  { value: 'last_n_weeks', label: 'dateRange.lastNWeeks' },
+  { value: 'last_month', label: 'dateRange.lastMonth' },
+  { value: 'last_12_months', label: 'dateRange.last12Months' },
+  { value: 'last_n_months', label: 'dateRange.lastNMonths' },
+  { value: 'last_quarter', label: 'dateRange.lastQuarter' },
+  { value: 'last_n_quarters', label: 'dateRange.lastNQuarters' },
+  { value: 'last_year', label: 'dateRange.lastYear' },
+  { value: 'last_n_years', label: 'dateRange.lastNYears' }
+]
 
 // ============================================================================
 // Time dimension granularity options
 // ============================================================================
 
 export const TIME_GRANULARITIES = [
-  { value: 'hour', label: 'Hour' },
-  { value: 'day', label: 'Day' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'quarter', label: 'Quarter' },
-  { value: 'year', label: 'Year' }
-] as const
+  { value: 'hour', label: 'timeGranularity.hour' },
+  { value: 'day', label: 'timeGranularity.day' },
+  { value: 'week', label: 'timeGranularity.week' },
+  { value: 'month', label: 'timeGranularity.month' },
+  { value: 'quarter', label: 'timeGranularity.quarter' },
+  { value: 'year', label: 'timeGranularity.year' }
+]
 
-export type TimeGranularity = typeof TIME_GRANULARITIES[number]['value']
+export type TimeGranularity = 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year'

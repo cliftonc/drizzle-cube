@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState, useCallback, memo } from 'react'
+import { useState, useCallback, memo, type ReactNode } from 'react'
 import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
@@ -7,6 +7,12 @@ import ThemeToggle from './ThemeToggle'
 const DocumentTextIcon = getIcon('documentText')
 const Bars3Icon = getIcon('menu')
 const XMarkIcon = getIcon('close')
+const LOCALE_OPTIONS = [
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'nl-NL', label: 'Nederlands' },
+  { value: 'crowdin', label: 'Crowdin In-Context' }
+] as const
 
 // GitHub icon component
 const GitHubIcon = ({ className }: { className?: string }) => (
@@ -80,7 +86,9 @@ const FloatingGitHubButton = memo(function FloatingGitHubButton() {
 })
 
 interface LayoutProps {
-  children: React.ReactNode
+  children: ReactNode
+  locale: string
+  onLocaleChange: (locale: string) => void
 }
 
 /**
@@ -90,7 +98,7 @@ interface LayoutProps {
  * However, stable child components (LogoLink, FloatingGitHubButton, ThemeToggle)
  * are memoized to prevent unnecessary re-renders.
  */
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, locale, onLocaleChange }: LayoutProps) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -106,7 +114,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="h-screen flex flex-col bg-dc-surface-secondary transition-colors overflow-hidden">
       <FloatingGitHubButton />
       <nav className="bg-dc-surface shadow-2xs border-b border-dc-border relative z-10 transition-colors shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Desktop layout */}
             <div className="flex">
@@ -114,13 +122,13 @@ export default function Layout({ children }: LayoutProps) {
                 <LogoLink />
               </div>
               {/* Desktop navigation */}
-              <div className="hidden md:ml-6 md:flex md:space-x-8">
+              <div className="hidden md:ml-6 md:flex md:space-x-6">
                 <Link
                   to="/"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Home
@@ -129,8 +137,8 @@ export default function Layout({ children }: LayoutProps) {
                   to="/dashboards"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/dashboards')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Dashboards
@@ -139,8 +147,8 @@ export default function Layout({ children }: LayoutProps) {
                   to="/analysis-builder"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/analysis-builder')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Analysis Builder
@@ -149,8 +157,8 @@ export default function Layout({ children }: LayoutProps) {
                   to="/notebooks"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/notebooks')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Notebooks
@@ -159,8 +167,8 @@ export default function Layout({ children }: LayoutProps) {
                   to="/schema"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/schema')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Schema
@@ -169,8 +177,8 @@ export default function Layout({ children }: LayoutProps) {
                   to="/data-browser"
                   className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
                     isActive('/data-browser')
-                      ? 'border-dc-primary text-dc-text'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border'
+                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
+                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
                   }`}
                 >
                   Data Browser
@@ -179,12 +187,27 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             
             {/* Desktop external links */}
-            <div className="hidden md:flex md:items-center md:space-x-4">
+            <div className="hidden md:flex md:items-center md:space-x-3">
+              <label className="inline-flex items-center gap-2 text-sm text-dc-text-muted">
+                <span className="hidden xl:inline">Language</span>
+                <select
+                  value={locale}
+                  onChange={(event) => onLocaleChange(event.target.value)}
+                  className="rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary"
+                  aria-label="Select language"
+                >
+                  {LOCALE_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <a
                 href="https://www.drizzle-cube.dev"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-dc-text-muted hover:text-dc-text text-sm font-semibold transition-colors"
+                className="inline-flex items-center text-dc-text-muted hover:text-dc-text text-sm font-semibold transition-colors whitespace-nowrap"
               >
                 <DocumentTextIcon className="w-4 h-4 mr-1.5" />
                 Documentation
@@ -193,7 +216,7 @@ export default function Layout({ children }: LayoutProps) {
                 href="https://github.com/cliftonc/drizzle-cube"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-dc-text-muted hover:text-dc-text text-sm font-semibold transition-colors"
+                className="inline-flex items-center text-dc-text-muted hover:text-dc-text text-sm font-semibold transition-colors whitespace-nowrap"
               >
                 <GitHubIcon className="w-4 h-4 mr-1.5" />
                 GitHub
@@ -293,6 +316,21 @@ export default function Layout({ children }: LayoutProps) {
               {/* Mobile external links */}
               <div className="border-t border-dc-border pt-4 pb-3">
                 <div className="space-y-1">
+                  <label className="block px-3 py-2 text-sm font-medium text-dc-text-muted">
+                    Language
+                    <select
+                      value={locale}
+                      onChange={(event) => onLocaleChange(event.target.value)}
+                      className="mt-2 block w-full rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary"
+                      aria-label="Select language"
+                    >
+                      {LOCALE_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <a
                     href="https://www.drizzle-cube.dev"
                     target="_blank"

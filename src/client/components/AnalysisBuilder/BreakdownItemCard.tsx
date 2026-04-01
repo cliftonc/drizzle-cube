@@ -8,6 +8,7 @@ import { memo } from 'react'
 import type { BreakdownItemCardProps, TimeGranularity } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 /**
  * BreakdownItemCard displays a selected breakdown with:
@@ -33,6 +34,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
   onDragStart,
   onDragEnd
 }: BreakdownItemCardProps) {
+  const { t } = useTranslation()
   const DimensionIcon = getIcon('dimension')
   const TimeIcon = getIcon('timeDimension')
   const CloseIcon = getIcon('close')
@@ -114,7 +116,7 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
         >
           {TIME_GRANULARITIES.map((g) => (
             <option key={g.value} value={g.value}>
-              {g.label}
+              {t(g.label)}
             </option>
           ))}
         </select>

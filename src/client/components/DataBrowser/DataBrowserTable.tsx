@@ -13,6 +13,7 @@ import { getIcon } from '../../icons'
 import { getFieldType } from '../../hooks/useDataBrowser'
 import { useDataBrowserStore } from '../../stores/dataBrowserStore'
 import LoadingIndicator from '../LoadingIndicator'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SortAscIcon = getIcon('chevronUp')
 const SortDescIcon = getIcon('chevronDown')
@@ -74,6 +75,7 @@ export default React.memo(function DataBrowserTable({
   selectedCube,
   loadingComponent,
 }: DataBrowserTableProps) {
+  const { t } = useTranslation()
   // Column widths from store (cosmetic only — never affects queries)
   const columnWidths = useDataBrowserStore((s) => s.columnWidths)
   const storeSetColumnWidth = useDataBrowserStore((s) => s.setColumnWidth)
@@ -149,9 +151,9 @@ export default React.memo(function DataBrowserTable({
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-base dc:font-semibold dc:mb-1">Select a cube</div>
+          <div className="dc:text-base dc:font-semibold dc:mb-1">{t('dataBrowser.selectCube')}</div>
           <div className="dc:text-sm text-dc-text-secondary">
-            Choose a cube from the sidebar to browse its data
+            {t('dataBrowser.selectCubeHint')}
           </div>
         </div>
       </div>
@@ -165,7 +167,7 @@ export default React.memo(function DataBrowserTable({
         {loadingComponent ?? (
           <>
             <LoadingIndicator size="md" />
-            <div className="dc:text-sm text-dc-text-muted">Loading data...</div>
+            <div className="dc:text-sm text-dc-text-muted">{t('dataBrowser.loadingData')}</div>
           </>
         )}
       </div>
@@ -177,8 +179,8 @@ export default React.memo(function DataBrowserTable({
     return (
       <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
         <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data</div>
-          <div className="dc:text-xs text-dc-text-secondary">No rows returned for this query</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('dataBrowser.noData')}</div>
+          <div className="dc:text-xs text-dc-text-secondary">{t('dataBrowser.noRows')}</div>
         </div>
       </div>
     )

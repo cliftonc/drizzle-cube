@@ -11,6 +11,7 @@ import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import LoadingIndicator from '../LoadingIndicator'
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ThumbUpIcon = getIcon('thumbUp')
 const ThumbDownIcon = getIcon('thumbDown')
@@ -44,6 +45,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
   loadingComponent,
   initialPrompt,
 }: AgentChatPanelProps) {
+  const { t } = useTranslation()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const initialPromptSentRef = useRef(false)
   const [lastTraceId, setLastTraceId] = useState<string | null>(null)
@@ -239,9 +241,9 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
 
   const handleSaveAsDashboard = useCallback(() => {
     doSend(
-      'Save the current notebook as a dashboard with a professional layout, section headers, and appropriate filters.'
+      t('notebook.saveAsDashboardPrompt')
     )
-  }, [doSend])
+  }, [doSend, t])
 
   const handleScore = useCallback((value: number) => {
     if (!lastTraceId || !onScore) return
@@ -257,15 +259,15 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
     <div className="dc:flex dc:flex-col dc:h-full bg-dc-surface">
       {/* Header */}
       <div className="dc:flex dc:items-center dc:justify-between dc:px-4 dc:py-3 border-dc-border dc:border-b">
-        <h3 className="dc:text-sm dc:font-semibold text-dc-text">AI Assistant</h3>
+        <h3 className="dc:text-sm dc:font-semibold text-dc-text">{t('notebook.aiAssistant')}</h3>
         <div className="dc:flex dc:items-center dc:gap-1">
           {showSaveAsDashboard && (
             <button
               onClick={handleSaveAsDashboard}
               className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-accent dc:hover:opacity-80"
-              title="Save notebook as a dashboard"
+              title={t('notebook.saveAsDashboardTitle')}
             >
-              Save as Dashboard
+              {t('notebook.saveAsDashboard')}
             </button>
           )}
           {(messages.length > 0) && (
@@ -273,9 +275,9 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
               onClick={handleClear}
               disabled={isStreaming}
               className="dc:text-xs dc:px-2 dc:py-1 dc:rounded text-dc-text-secondary dc:hover:opacity-80 dc:disabled:opacity-40"
-              title="Clear notebook and chat"
+              title={t('notebook.clearTitle')}
             >
-              Clear
+              {t('common.actions.clear')}
             </button>
           )}
         </div>
@@ -301,24 +303,24 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
         {(showFeedback || lastScored) && (
           <div className="dc:flex dc:items-center dc:justify-center dc:gap-3 dc:py-4 dc:mt-2">
             {lastScored ? (
-              <span className="dc:text-sm text-dc-text-secondary">Thanks for your feedback!</span>
+              <span className="dc:text-sm text-dc-text-secondary">{t('notebook.feedbackThanks')}</span>
             ) : (
               <>
-                <span className="dc:text-sm text-dc-text-secondary">Was this helpful?</span>
+                <span className="dc:text-sm text-dc-text-secondary">{t('notebook.feedbackQuestion')}</span>
                 <div className="dc:flex dc:items-center dc:gap-2">
                   <button
                     onClick={() => handleScore(1)}
                     className="dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:rounded-lg dc:text-sm dc:font-medium border-dc-border dc:border text-dc-success hover:bg-dc-success-bg dc:transition-colors bg-dc-surface dc:cursor-pointer"
                   >
                     <ThumbUpIcon className="dc:w-4 dc:h-4" />
-                    Yes
+                    {t('notebook.feedbackYes')}
                   </button>
                   <button
                     onClick={() => handleScore(0)}
                     className="dc:flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:rounded-lg dc:text-sm dc:font-medium border-dc-border dc:border text-dc-error hover:bg-dc-danger-bg dc:transition-colors bg-dc-surface dc:cursor-pointer"
                   >
                     <ThumbDownIcon className="dc:w-4 dc:h-4" />
-                    No
+                    {t('notebook.feedbackNo')}
                   </button>
                 </div>
               </>
@@ -343,6 +345,7 @@ const AgentChatPanel = React.memo(function AgentChatPanel({
 })
 
 function ThinkingBubble({ loadingComponent }: { loadingComponent?: React.ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div
       className="dc:flex dc:mb-3 dc:justify-start"
@@ -352,26 +355,27 @@ function ThinkingBubble({ loadingComponent }: { loadingComponent?: React.ReactNo
         {loadingComponent
           ? <span className="dc:inline-flex dc:items-center dc:justify-center dc:h-4 dc:w-4">{loadingComponent}</span>
           : <LoadingIndicator size="xs" />}
-        <span>Thinking...</span>
+        <span>{t('notebook.thinking')}</span>
       </div>
     </div>
   )
 }
 
 function EmptyState() {
+  const { t } = useTranslation()
   return (
     <div className="dc:flex dc:items-center dc:justify-center dc:h-full">
       <div className="dc:text-center dc:max-w-xs">
         <div className="dc:text-lg dc:font-semibold text-dc-text dc:mb-2">
-          Data Analysis Assistant
+          {t('notebook.emptyState.title')}
         </div>
         <p className="dc:text-sm text-dc-text-secondary dc:mb-4">
-          Ask me about your data and I'll create visualizations and insights.
+          {t('notebook.emptyState.description')}
         </p>
         <div className="dc:space-y-2 dc:text-xs text-dc-text-muted">
-          <p>"Show me employee productivity trends"</p>
-          <p>"What are the top departments by headcount?"</p>
-          <p>"Compare revenue across product categories"</p>
+          <p>{t('notebook.emptyState.example1')}</p>
+          <p>{t('notebook.emptyState.example2')}</p>
+          <p>{t('notebook.emptyState.example3')}</p>
         </div>
       </div>
     </div>

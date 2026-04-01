@@ -250,7 +250,7 @@ describe('Next.js Adapter', () => {
       
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*')
       expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, OPTIONS')
-      expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, Authorization')
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, Authorization, X-DC-Locale')
       expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true')
     })
   })
@@ -433,7 +433,7 @@ describe('Next.js Adapter', () => {
       expect(response.status).toBe(200)
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*')
       expect(response.headers.get('Access-Control-Allow-Methods')).toBe('GET, POST, OPTIONS')
-      expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, Authorization')
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type, Authorization, X-DC-Locale')
       expect(response.headers.get('Access-Control-Allow-Credentials')).toBe('true')
     })
 

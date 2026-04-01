@@ -11,6 +11,7 @@ import type { DashboardFilter, SimpleFilter } from '../../types'
 import type { MetaResponse } from '../../shared/types'
 import { FILTER_OPERATORS } from '../../shared/types'
 import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -34,6 +35,7 @@ export default function DashboardFilterItem({
   onClick,
   onRemove
 }: DashboardFilterItemProps) {
+  const { t } = useTranslation()
   // For dashboard filters, the filter.filter is the SimpleFilter
   const simpleFilter = filter.filter as SimpleFilter
 
@@ -90,7 +92,7 @@ export default function DashboardFilterItem({
 
   // Get operator metadata
   const operatorMeta = FILTER_OPERATORS[simpleFilter.operator]
-  const operatorLabel = operatorMeta?.label || simpleFilter.operator
+  const operatorLabel = operatorMeta?.label ? t(operatorMeta.label) : simpleFilter.operator
 
   // Format value display
   const valueDisplay = formatValueDisplay(simpleFilter, operatorMeta)
@@ -120,7 +122,7 @@ export default function DashboardFilterItem({
           {needsConfiguration ? (
             <>
               <span className="dc:font-medium">{filter.label}</span>
-              <span className="text-dc-text-muted dc:ml-1 dc:italic">Click to configure</span>
+              <span className="text-dc-text-muted dc:ml-1 dc:italic">{t('dashboardFilter.clickToConfigure')}</span>
             </>
           ) : (
             <>

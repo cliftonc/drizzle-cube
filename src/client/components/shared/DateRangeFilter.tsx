@@ -10,6 +10,7 @@ import { getIcon } from '../../icons'
 import DateRangeSelector from './DateRangeSelector'
 import type { DateRangeFilterProps } from './types'
 import { getTimeDimensionsWithDateRanges } from './utils'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 const CalendarIcon = getIcon('timeDimension')
@@ -19,6 +20,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   onDateRangeChange,
   onDateRangeRemove
 }) => {
+  const { t } = useTranslation()
   // Get current date ranges from time dimensions
   const currentDateRanges = getTimeDimensionsWithDateRanges({ timeDimensions })
   
@@ -55,7 +57,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         <div className="dc:flex dc:items-center">
           <CalendarIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:mr-2" />
           <h4 className="dc:text-sm dc:font-semibold text-dc-text-secondary">
-            Date Ranges ({dateRangeCount})
+            {t('filter.shared.dateRange.title', { count: dateRangeCount })}
           </h4>
         </div>
 
@@ -66,7 +68,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               onClick={handleClearAllDateRanges}
               className="dc:text-xs text-dc-text-muted hover:text-dc-error focus:outline-hidden dc:underline"
             >
-              Clear all
+              {t('filter.shared.dateRange.clearAll')}
             </button>
           )}
           
@@ -79,10 +81,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                 ? 'text-dc-accent dark:text-dc-accent bg-dc-accent-bg dark:bg-dc-accent-bg dc:border border-dc-accent dark:border-dc-accent hover:bg-dc-accent-bg dark:hover:bg-dc-accent-bg focus:ring-dc-accent'
                 : 'text-dc-text-muted bg-dc-surface-secondary dc:border border-dc-border dc:cursor-not-allowed'
             }`}
-            title={availableTimeDimensions.length === 0 ? 'All time dimensions already have date ranges' : 'Add date range'}
+            title={availableTimeDimensions.length === 0 ? t('filter.shared.dateRange.allHaveDateRanges') : t('filter.shared.dateRange.addDateRange')}
           >
             <AddIcon className="dc:w-3 dc:h-3" />
-            <span>Add Date Range</span>
+            <span>{t('filter.shared.dateRange.addDateRange')}</span>
           </button>
         </div>
       </div>
@@ -93,7 +95,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           {timeDimensions.map(td => {
             if (!td.dateRange) return null
             
-            const allTimeDimensions = timeDimensions.map(t => t.dimension)
+            const allTimeDimensions = timeDimensions.map(td2 => td2.dimension)
             
             return (
               <DateRangeSelector

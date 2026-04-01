@@ -4,42 +4,42 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the radar chart type
  */
 export const radarChartConfig: ChartTypeConfig = {
-  label: 'Radar Chart',
-  description: 'Compare multiple metrics across categories',
-  useCase: 'Best for multivariate comparisons, performance metrics, strengths/weaknesses analysis',
+  label: 'chart.radar.label',
+  description: 'chart.radar.description',
+  useCase: 'chart.radar.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: 'Axes (Categories)',
-      description: 'Dimensions for radar axes',
+      label: 'chart.configText.axes_categories',
+      description: 'chart.configText.dimensions_for_radar_axes',
       mandatory: true,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for radar axes'
+      emptyText: 'chart.radar.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: 'Values',
-      description: 'Measures for radar values',
+      label: 'chart.configText.values',
+      description: 'chart.configText.measures_for_radar_values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures for values'
+      emptyText: 'chart.radar.dropZone.yAxis.empty'
     },
     {
       key: 'series',
-      label: 'Series (Multiple Shapes)',
-      description: 'Dimensions to create multiple radar shapes',
+      label: 'chart.configText.series_multiple_shapes',
+      description: 'chart.configText.dimensions_to_create_multiple_radar_shapes',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for multiple shapes'
+      emptyText: 'chart.radar.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: 'Value Format',
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: 'Number formatting for values'
+      description: 'chart.option.valueFormat.description'
     }
   ]
 }

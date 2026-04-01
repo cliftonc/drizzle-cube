@@ -41,8 +41,11 @@ import {
   wantsEventStream,
   validateAcceptHeader,
   validateOriginHeader,
+  extractBearerToken,
+  buildWwwAuthenticateChallenge,
   MCP_SESSION_ID_HEADER
 } from '../mcp-transport'
+import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
 
 export interface FastifyAdapterOptions {
   /**
@@ -163,9 +166,19 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     return done(new Error('At least one cube must be provided in the cubes array'))
   }
 
+  const extractSecurityContextWithLocale = async (request: FastifyRequest): Promise<SecurityContext> => {
+    const securityContext = await extractSecurityContext(request)
+    const requestLocale = resolveRequestLocale((header) => request.headers[header.toLowerCase()] as string | string[] | undefined)
+    return withLocaleInSecurityContext(securityContext, requestLocale)
+  }
+
   // Register CORS plugin if configured
   if (corsConfig) {
-    fastify.register(import('@fastify/cors'), corsConfig)
+    const localeAwareCorsConfig: FastifyCorsOptions = {
+      ...corsConfig,
+      allowedHeaders: ensureLocaleHeader(corsConfig.allowedHeaders as string[] | string | undefined)
+    }
+    fastify.register(import('@fastify/cors'), localeAwareCorsConfig)
   }
 
   // Configure body limit - just a placeholder hook that doesn't use reply
@@ -207,7 +220,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const query: SemanticQuery = body.query || body
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -266,7 +279,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       }
 
       // Extract security context
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -334,7 +347,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       }
 
       // Extract security context ONCE (shared across all queries)
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
 
       // Check for cache bypass header (X-Cache-Control: no-cache)
       const skipCache = request.headers['x-cache-control'] === 'no-cache'
@@ -395,7 +408,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     try {
       const query: SemanticQuery = request.body as SemanticQuery
       
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -449,7 +462,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const { query: queryParam } = request.query as { query: string }
 
       const query: SemanticQuery = JSON.parse(queryParam)
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
       
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -503,7 +516,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const query: SemanticQuery = body.query || body
       
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
       
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -539,7 +552,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const query: SemanticQuery = JSON.parse(queryParam)
 
       // Extract security context
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
 
       // Perform dry-run analysis
       const result = await handleDryRun(query, securityContext, semanticLayer)
@@ -575,7 +588,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
       const options: ExplainOptions = body.options || {}
 
       // Extract security context using user-provided function
-      const securityContext = await extractSecurityContext(request)
+      const securityContext = await extractSecurityContextWithLocale(request)
 
       // Validate query structure and field existence
       const validation = semanticLayer.validateQuery(query)
@@ -648,7 +661,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         const baseURLOverride = agentConfig.allowClientApiKey ? request.headers['x-agent-provider-endpoint'] as string | undefined : undefined
 
         // Extract security context (required for all queries)
-        const securityContext = await extractSecurityContext(request)
+        const securityContext = await extractSecurityContextWithLocale(request)
 
         // Build per-request system context from the callback (if configured)
         const systemContext = agentConfig.buildSystemContext?.(securityContext)
@@ -718,6 +731,12 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
         }
       }
     }, async (request: FastifyRequest, reply: FastifyReply) => {
+      // OAuth 2.1 bearer token check (RFC 9728)
+      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
       const originValidation = validateOriginHeader(
         request.headers.origin as string | undefined,
@@ -755,7 +774,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
           rpcRequest.params,
           {
             semanticLayer,
-            extractSecurityContext,
+            extractSecurityContext: (rawReq: any, _rawRes: any) => extractSecurityContextWithLocale(rawReq),
             rawRequest: request,
             rawResponse: reply,
             negotiatedProtocol: protocol.negotiated,
@@ -816,6 +835,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
     })
 
     fastify.get(`${mcpBasePath}`, async (request: FastifyRequest, reply: FastifyReply) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       const eventId = primeEventId()
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -843,6 +867,11 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
      * Clients SHOULD send DELETE to terminate sessions
      */
     fastify.delete(`${mcpBasePath}`, async (_request: FastifyRequest, reply: FastifyReply) => {
+      if (mcp.resourceMetadataUrl && !extractBearerToken(_request.headers.authorization)) {
+        reply.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
+        return reply.status(401).send({ error: 'Bearer token required' })
+      }
+
       // For now, return 405 Method Not Allowed as we don't track sessions server-side
       // A full implementation would track sessions and clean up resources here
       return reply.status(405).send({ error: 'Session termination not supported' })

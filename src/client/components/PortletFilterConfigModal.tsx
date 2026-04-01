@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import type { DashboardFilter } from '../types'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface PortletFilterConfigModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export default function PortletFilterConfigModal({
   onSave,
   portletTitle
 }: PortletFilterConfigModalProps) {
+  const { t } = useTranslation()
   const [selectedFilters, setSelectedFilters] = useState<string[]>(currentMapping)
 
   // Update local state when props change
@@ -57,17 +59,19 @@ export default function PortletFilterConfigModal({
     // Handle simple filters
     if ('member' in filter.filter && filter.filter.member) {
       const values = filter.filter.values || []
-      const valuesText = values.length > 0 ? values.join(', ') : 'no value'
+      const valuesText = values.length > 0 ? values.join(', ') : t('portlet.filterConfig.noValue')
       return `${filter.filter.member} ${filter.filter.operator} ${valuesText}`
     }
 
     // Handle group filters (AND/OR)
     if ('type' in filter.filter && filter.filter.type) {
       const filterCount = filter.filter.filters?.length || 0
-      return `${filter.filter.type.toUpperCase()} group with ${filterCount} filter${filterCount !== 1 ? 's' : ''}`
+      return filterCount === 1
+        ? t('portlet.filterConfig.groupFilter', { type: filter.filter.type.toUpperCase(), count: filterCount })
+        : t('portlet.filterConfig.groupFilterPlural', { type: filter.filter.type.toUpperCase(), count: filterCount })
     }
 
-    return 'Complex filter'
+    return t('portlet.filterConfig.complexFilter')
   }
 
   if (!isOpen) return null
@@ -81,9 +85,9 @@ export default function PortletFilterConfigModal({
       >
         {/* Header */}
         <div className="dc:px-6 dc:py-4 dc:border-b border-dc-border bg-dc-surface-secondary dc:rounded-t-lg">
-          <h2 className="dc:text-lg dc:font-semibold text-dc-text">Configure Dashboard Filters</h2>
+          <h2 className="dc:text-lg dc:font-semibold text-dc-text">{t('portlet.filterConfig.title')}</h2>
           <p className="dc:text-sm text-dc-text-secondary dc:mt-1">
-            Choose which dashboard filters apply to "{portletTitle}"
+            {t('portlet.filterConfig.subtitle', { portletTitle })}
           </p>
         </div>
 
@@ -104,15 +108,15 @@ export default function PortletFilterConfigModal({
                   d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                 />
               </svg>
-              <p className="dc:text-sm dc:font-medium">No dashboard filters available</p>
-              <p className="dc:text-xs dc:mt-1">Add filters at the dashboard level first</p>
+              <p className="dc:text-sm dc:font-medium">{t('portlet.filterConfig.noFilters')}</p>
+              <p className="dc:text-xs dc:mt-1">{t('portlet.filterConfig.noFiltersHint')}</p>
             </div>
           ) : (
             <div className="dc:space-y-3">
               <div className="dc:flex dc:items-center dc:justify-between dc:mb-4 dc:pb-2 dc:border-b border-dc-border">
-                <span className="dc:text-sm dc:font-medium text-dc-text">Available Filters</span>
+                <span className="dc:text-sm dc:font-medium text-dc-text">{t('portlet.filterConfig.availableFilters')}</span>
                 <span className="dc:text-xs text-dc-text-secondary">
-                  {selectedFilters.length} of {dashboardFilters.length} selected
+                  {t('portlet.filterConfig.selectedCount', { selected: selectedFilters.length, total: dashboardFilters.length })}
                 </span>
               </div>
 
@@ -150,7 +154,7 @@ export default function PortletFilterConfigModal({
                               color: 'white'
                             }}
                           >
-                            Applied
+                            {t('portlet.filterConfig.applied')}
                           </span>
                         )}
                       </div>
@@ -171,7 +175,7 @@ export default function PortletFilterConfigModal({
             onClick={handleCancel}
             className="dc:px-4 dc:py-2 dc:text-sm dc:font-medium dc:rounded-md dc:border border-dc-border bg-dc-surface hover:bg-dc-surface-hover dc:transition-colors text-dc-text"
           >
-            Cancel
+            {t('common.actions.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -180,7 +184,7 @@ export default function PortletFilterConfigModal({
               backgroundColor: 'var(--dc-primary)'
             }}
           >
-            Apply Filters
+            {t('portlet.filterConfig.applyFilters')}
           </button>
         </div>
       </div>

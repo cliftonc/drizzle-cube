@@ -4,37 +4,37 @@ import type { ChartTypeConfig } from '../../charts/chartConfigs'
  * Configuration for the activity grid chart type
  */
 export const activityGridChartConfig: ChartTypeConfig = {
-  label: 'Activity Grid',
-  description: 'GitHub-style activity grid showing temporal patterns across different time scales',
-  useCase: 'Best for visualizing activity patterns over time. Supports hour (3hr blocks × days), day (days × weeks), week (weeks × months), month (months × quarters), and quarter (quarters × years) granularities',
+  label: 'chart.activityGrid.label',
+  description: 'chart.activityGrid.description',
+  useCase: 'chart.activityGrid.useCase',
   dropZones: [
     {
       key: 'dateField',
-      label: 'Time Dimension',
-      description: 'Time field that determines grid structure (granularity affects layout)',
+      label: 'chart.configText.time_dimension',
+      description: 'chart.configText.time_field_that_determines_grid_structure_granularity_affects_layout',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['timeDimension'],
-      emptyText: 'Drop a time dimension (granularity affects grid structure)'
+      emptyText: 'chart.activityGrid.dropZone.dateField.empty'
     },
     {
       key: 'valueField',
-      label: 'Activity Measure',
-      description: 'Measure used for activity intensity (color coding)',
+      label: 'chart.configText.activity_measure',
+      description: 'chart.configText.measure_used_for_activity_intensity_color_coding',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for activity intensity'
+      emptyText: 'chart.activityGrid.dropZone.valueField.empty'
     }
   ],
   displayOptions: ['showLabels', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'fitToWidth',
-      label: 'Fit to Width',
+      label: 'chart.option.fitToWidth.label',
       type: 'boolean',
       defaultValue: false,
-      description: 'Automatically size blocks to fill portlet width and height while maintaining aspect ratio'
+      description: 'chart.option.fitToWidth.description'
     }
   ],
   validate: (config) => {
@@ -43,14 +43,14 @@ export const activityGridChartConfig: ChartTypeConfig = {
     if (!dateField || (Array.isArray(dateField) && dateField.length === 0)) {
       return {
         isValid: false,
-        message: 'Time dimension is required for activity grid'
+        message: 'chart.activityGrid.validation.timeDimensionRequired'
       }
     }
 
     if (!valueField || (Array.isArray(valueField) && valueField.length === 0)) {
       return {
         isValid: false,
-        message: 'Activity measure is required for intensity mapping'
+        message: 'chart.activityGrid.validation.measureRequired'
       }
     }
 

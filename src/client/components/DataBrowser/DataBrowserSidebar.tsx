@@ -7,6 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SearchIcon = getIcon('search')
 const CubeIcon = getIcon('cube')
@@ -22,6 +23,7 @@ export default function DataBrowserSidebar({
   selectedCube,
   onSelectCube,
 }: DataBrowserSidebarProps) {
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
 
   const filteredCubes = useMemo(() => {
@@ -41,7 +43,7 @@ export default function DataBrowserSidebar({
     <div className="dc:flex dc:flex-col dc:h-full dc:border-r border-dc-border bg-dc-surface dc:w-60 dc:shrink-0">
       {/* Header */}
       <div className="dc:px-3 dc:py-3 dc:border-b border-dc-border">
-        <h2 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">Cubes</h2>
+        <h2 className="dc:text-sm dc:font-semibold text-dc-text dc:mb-2">{t('dataBrowser.sidebar.cubes')}</h2>
         {/* Search */}
         <div className="dc:relative">
           <SearchIcon className="dc:absolute dc:left-2 dc:top-1/2 dc:-translate-y-1/2 dc:w-3.5 dc:h-3.5 text-dc-text-muted" />
@@ -49,7 +51,7 @@ export default function DataBrowserSidebar({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
+            placeholder={t('dataBrowser.sidebar.searchPlaceholder')}
             className="dc:w-full dc:pl-7 dc:pr-2 dc:py-1.5 dc:text-xs dc:rounded border-dc-border dc:border bg-dc-surface text-dc-text dc:outline-none dc:focus:ring-1 focus:ring-dc-accent"
           />
         </div>
@@ -74,7 +76,7 @@ export default function DataBrowserSidebar({
 
         {filteredCubes.length === 0 && (
           <div className="dc:px-3 dc:py-4 dc:text-xs text-dc-text-muted dc:text-center">
-            No cubes found
+            {t('dataBrowser.sidebar.noCubes')}
           </div>
         )}
       </div>

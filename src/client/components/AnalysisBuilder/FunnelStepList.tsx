@@ -10,6 +10,7 @@ import type { CubeMeta, FunnelStepState } from '../../types'
 import { getIcon } from '../../icons'
 import FunnelStepCard from './FunnelStepCard'
 import SectionHeading from './SectionHeading'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 
@@ -48,6 +49,7 @@ const FunnelStepList = memo(function FunnelStepList({
   onSelectStep,
   onReorderSteps,
 }: FunnelStepListProps) {
+  const { t } = useTranslation()
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -86,7 +88,7 @@ const FunnelStepList = memo(function FunnelStepList({
       {/* Header */}
       <div className="dc:flex dc:items-center dc:justify-between">
         <SectionHeading>
-          Funnel Steps
+          {t('funnel.steps.title')}
           {steps.length > 0 && (
             <span className="dc:ml-1.5 dc:text-xs dc:font-normal text-dc-text-muted dc:normal-case dc:tracking-normal">
               ({steps.length})
@@ -99,14 +101,14 @@ const FunnelStepList = memo(function FunnelStepList({
       {steps.length === 0 ? (
         <div className="dc:text-center dc:py-8">
           <p className="dc:text-sm text-dc-text-muted dc:mb-3">
-            No steps defined. Add at least 2 steps to create a funnel.
+            {t('funnel.steps.emptyMessage')}
           </p>
           <button
             onClick={onAddStep}
             className="dc:inline-flex dc:items-center dc:gap-1.5 dc:px-3 dc:py-1.5 dc:text-sm dc:font-medium text-dc-primary bg-dc-primary/10 dc:rounded-md hover:bg-dc-primary/20 dc:transition-colors"
           >
             <AddIcon className="dc:w-4 dc:h-4" />
-            Add First Step
+            {t('funnel.steps.addFirst')}
           </button>
         </div>
       ) : (
@@ -150,14 +152,14 @@ const FunnelStepList = memo(function FunnelStepList({
           className="dc:flex dc:items-center dc:justify-center dc:gap-1.5 dc:w-full dc:py-2 dc:text-sm dc:font-medium text-dc-text-secondary bg-dc-surface dc:border-2 dc:border-dashed border-dc-border dc:rounded-lg hover:border-dc-primary hover:text-dc-primary hover:bg-dc-primary/5 dc:transition-colors"
         >
           <AddIcon className="dc:w-4 dc:h-4" />
-          Add Step
+          {t('funnel.steps.addStep')}
         </button>
       )}
 
       {/* Validation Hint */}
       {steps.length === 1 && (
         <p className="dc:text-xs text-dc-warning dc:text-center">
-          Add at least one more step to create a valid funnel
+          {t('funnel.steps.validationHint')}
         </p>
       )}
     </div>

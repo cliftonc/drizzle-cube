@@ -8,12 +8,14 @@
 import { memo } from 'react'
 import { getMeasureTypeIcon, getFieldTypeIcon } from '../../icons'
 import type { FieldDetailPanelProps } from './types'
+import { useTranslation } from '../../hooks/useTranslation'
 
 function FieldDetailPanel({ field }: FieldDetailPanelProps) {
+  const { t } = useTranslation()
   if (!field) {
     return (
       <div className="dc:p-6 dc:text-center text-dc-text-muted">
-        <p className="dc:text-sm">Hover over a field to see details</p>
+        <p className="dc:text-sm">{t('fieldPanel.emptyState')}</p>
       </div>
     )
   }
@@ -47,27 +49,27 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
   const getTypeDisplay = () => {
     if (field.fieldType === 'measure') {
       const typeMap: Record<string, string> = {
-        count: 'Count',
-        countDistinct: 'Count Distinct',
-        countDistinctApprox: 'Count Distinct (Approx)',
-        sum: 'Sum',
-        avg: 'Average',
-        min: 'Minimum',
-        max: 'Maximum',
-        runningTotal: 'Running Total',
-        number: 'Number'
+        count: t('fieldTypes.count'),
+        countDistinct: t('fieldTypes.countDistinct'),
+        countDistinctApprox: t('fieldTypes.countDistinctApprox'),
+        sum: t('fieldTypes.sum'),
+        avg: t('fieldTypes.avg'),
+        min: t('fieldTypes.min'),
+        max: t('fieldTypes.max'),
+        runningTotal: t('fieldTypes.runningTotal'),
+        number: t('fieldTypes.number')
       }
       return typeMap[field.type] || field.type
     } else if (field.fieldType === 'timeDimension') {
-      return 'Time Dimension'
+      return t('fieldTypes.time')
     } else {
       const typeMap: Record<string, string> = {
-        string: 'Text',
-        number: 'Number',
-        boolean: 'Boolean',
-        geo: 'Geographic'
+        string: t('fieldTypes.string'),
+        number: t('fieldTypes.number'),
+        boolean: t('fieldTypes.boolean'),
+        geo: t('fieldTypes.geo')
       }
-      return typeMap[field.type] || 'Dimension'
+      return typeMap[field.type] || t('fieldTypes.dimension')
     }
   }
 
@@ -102,15 +104,15 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
       {/* Metadata */}
       <div className="dc:space-y-3 dc:pt-4 dc:border-t border-dc-border">
         <div className="dc:flex dc:items-center dc:justify-between">
-          <span className="dc:text-xs text-dc-text-muted">Type</span>
+          <span className="dc:text-xs text-dc-text-muted">{t('fieldPanel.labels.type')}</span>
           <span className="dc:text-sm text-dc-text dc:font-medium">{getTypeDisplay()}</span>
         </div>
         <div className="dc:flex dc:items-center dc:justify-between">
-          <span className="dc:text-xs text-dc-text-muted">Cube</span>
+          <span className="dc:text-xs text-dc-text-muted">{t('fieldPanel.labels.cube')}</span>
           <span className="dc:text-sm text-dc-text dc:font-medium">{field.cubeName}</span>
         </div>
         <div className="dc:flex dc:items-center dc:justify-between">
-          <span className="dc:text-xs text-dc-text-muted">Category</span>
+          <span className="dc:text-xs text-dc-text-muted">{t('fieldPanel.labels.category')}</span>
           <span
             className={`dc:text-xs dc:px-2 dc:py-0.5 dc:rounded dc:font-medium ${
               field.fieldType === 'measure'
@@ -121,10 +123,10 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
             }`}
           >
             {field.fieldType === 'measure'
-              ? 'Measure'
+              ? t('fieldCategory.measure')
               : field.fieldType === 'timeDimension'
-                ? 'Time Dimension'
-                : 'Dimension'}
+                ? t('fieldCategory.timeDimension')
+                : t('fieldCategory.dimension')}
           </span>
         </div>
       </div>
@@ -132,7 +134,7 @@ function FieldDetailPanel({ field }: FieldDetailPanelProps) {
       {/* Usage hint */}
       <div className="dc:mt-6 dc:p-3 bg-dc-surface dc:rounded-lg">
         <p className="dc:text-xs text-dc-text-muted">
-          Press <kbd className="dc:px-1 dc:py-0.5 bg-dc-surface-tertiary dc:rounded dc:text-xs">Enter</kbd> or click to add this field to your query.
+          {t('fieldPanel.usageHint')}
         </p>
       </div>
     </div>

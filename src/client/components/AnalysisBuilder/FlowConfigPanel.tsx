@@ -15,6 +15,7 @@ import type { CubeMeta, FunnelBindingKey } from '../../types'
 import { getIcon } from '../../icons'
 import { getAvailableBindingKeyDimensions } from '../../utils/funnelValidation'
 import SectionHeading from './SectionHeading'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const ChevronDownIcon = getIcon('chevronDown')
 const ChevronRightIcon = getIcon('chevronRight')
@@ -349,6 +350,7 @@ const FlowConfigPanel = memo(function FlowConfigPanel({
   onTimeDimensionChange,
   onEventDimensionChange,
 }: FlowConfigPanelProps) {
+  const { t } = useTranslation()
   // Get available cubes (only those with eventStream metadata)
   const availableCubes = useMemo(() => getAvailableFlowCubes(schema), [schema])
 
@@ -438,7 +440,7 @@ const FlowConfigPanel = memo(function FlowConfigPanel({
           ) : (
             ChevronDownIcon && <ChevronDownIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
           )}
-          <SectionHeading className="dc:mb-0">Configuration</SectionHeading>
+          <SectionHeading className="dc:mb-0">{t('flow.config.configuration')}</SectionHeading>
           {isConfigComplete && (
             <span className="dc:flex dc:items-center dc:gap-1 dc:text-xs text-dc-success">
               {CheckIcon && <CheckIcon className="dc:w-3.5 dc:h-3.5" />}

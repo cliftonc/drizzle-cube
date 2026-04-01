@@ -13,6 +13,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from '../../hooks/useTranslation'
 import type { ChartProps } from '../../types'
 import type { RetentionChartData, RetentionResultRow } from '../../types/retention'
 import { isRetentionData } from '../../types/retention'
@@ -85,6 +86,7 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
   height = '100%',
   displayConfig,
 }: ChartProps) {
+  const { t } = useTranslation()
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   // Parse retention data
@@ -181,9 +183,9 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">No data available</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Configure retention analysis to see results
+            {t('chart.runtime.noDataHint.retention')}
           </div>
         </div>
       </div>
@@ -197,9 +199,9 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         style={{ height }}
       >
         <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">Unable to render retention data</div>
+          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.unableToRender')}</div>
           <div className="dc:text-xs text-dc-text-secondary">
-            Data format may be incorrect
+            {t('chart.runtime.dataFormatIncorrect')}
           </div>
         </div>
       </div>
@@ -216,10 +218,10 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
         <thead className="dc:sticky dc:top-0 bg-dc-bg dc:z-10">
           <tr>
             <th className="dc:text-left dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[100px]">
-              Cohort
+              {t('chart.runtime.retention.cohort')}
             </th>
             <th className="dc:text-right dc:p-2 dc:font-medium text-dc-text dc:border-b border-dc-border dc:min-w-[80px]">
-              Users
+              {t('chart.runtime.retention.users')}
             </th>
             {periods.map(period => (
               <th
@@ -291,13 +293,16 @@ const RetentionHeatmap = React.memo(function RetentionHeatmap({
           }}
         >
           <div className="dc:font-medium text-dc-text dc:mb-1">
-            {formatCohortPeriod(tooltip.cohort)} - Period {tooltip.period}
+            {t('chart.runtime.retention.periodLabel', {
+              cohort: formatCohortPeriod(tooltip.cohort),
+              period: tooltip.period
+            })}
           </div>
           <div className="text-dc-text-secondary dc:space-y-0.5">
-            <div>Cohort Size: {tooltip.cohortSize.toLocaleString()}</div>
-            <div>Retained: {tooltip.retainedUsers.toLocaleString()}</div>
+            <div>{t('chart.runtime.retention.cohortSize', { count: tooltip.cohortSize.toLocaleString() })}</div>
+            <div>{t('chart.runtime.retention.retained', { count: tooltip.retainedUsers.toLocaleString() })}</div>
             <div className="dc:font-medium text-dc-text">
-              Rate: {formatPercentage(tooltip.retentionRate)}
+              {t('chart.runtime.retention.rate', { rate: formatPercentage(tooltip.retentionRate) })}
             </div>
           </div>
         </div>

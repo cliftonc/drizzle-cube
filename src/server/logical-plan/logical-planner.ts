@@ -34,6 +34,7 @@ import {
   type PreferredPathSelection
 } from '../resolvers/join-path-resolver'
 import { MeasureBuilder } from '../builders/measure-builder'
+import { t } from '../../i18n/runtime'
 
 
 /**
@@ -356,7 +357,7 @@ export class LogicalPlanner {
         effectiveProcessed
       )
       if (!joinPath || joinPath.length === 0) {
-        throw new Error(`No join path found from '${primaryCube.name}' to '${cubeName}'`)
+        throw new Error(t('server.errors.noJoinPath', { fromCube: primaryCube.name, toCube: cubeName }))
       }
 
       // Add all cubes in the join path
@@ -367,7 +368,7 @@ export class LogicalPlanner {
 
         const cube = cubes.get(toCube)
         if (!cube) {
-          throw new Error(`Cube '${toCube}' not found`)
+          throw new Error(t('server.errors.cubeNotFound', { cubeName: toCube }))
         }
 
         // Compute effective relationship: reversed belongsTo↔hasMany

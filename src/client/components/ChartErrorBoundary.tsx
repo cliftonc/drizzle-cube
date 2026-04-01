@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react'
 import { getIcon } from '../icons'
+import { t } from '../../i18n/runtime'
 
 const RefreshIcon = getIcon('refresh')
 
@@ -71,25 +72,25 @@ export default class ChartErrorBoundary extends Component<Props, State> {
             {this.props.portletTitle ? `Unable to render ${this.props.portletTitle}` : 'Unable to render chart'}
           </h3>
           <p className="dc:text-sm text-dc-text-secondary dc:mb-4 dc:max-w-md">
-            There was an error rendering this chart component. The error details are shown below.
+            {t('error.renderDescription')}
           </p>
 
           {/* Error details */}
           <div className="dc:w-full dc:max-w-2xl dc:mb-4">
             <div className="bg-dc-surface-secondary dc:rounded-lg dc:p-3 dc:text-left">
               <div className="dc:text-xs dc:font-mono dc:mb-2 text-dc-text">
-                <strong>Error:</strong> {this.state.error?.message}
+                <strong>{t('error.errorLabel')}</strong> {this.state.error?.message}
               </div>
               {this.state.error?.name && (
                 <div className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
-                  <strong>Type:</strong> {this.state.error.name}
+                  <strong>{t('error.typeLabel')}</strong> {this.state.error.name}
                 </div>
               )}
 
               {/* Portlet Config Debug Info */}
               {this.props.portletConfig && (
                 <details className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
-                  <summary className="dc:cursor-pointer">Portlet Configuration</summary>
+                  <summary className="dc:cursor-pointer">{t('error.portletConfig')}</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: 'rgba(var(--dc-primary-rgb), 0.1)' }}>
                     {JSON.stringify(this.props.portletConfig, null, 2)}
@@ -100,7 +101,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               {/* Cube Query Debug Info */}
               {this.props.cubeQuery && (
                 <details className="dc:text-xs dc:font-mono text-dc-text-secondary dc:mb-2">
-                  <summary className="dc:cursor-pointer">Cube Query</summary>
+                  <summary className="dc:cursor-pointer">{t('error.cubeQuery')}</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap dc:p-2 dc:rounded-sm dc:overflow-auto dc:max-h-32"
                     style={{ backgroundColor: '#d1fae5' }}>
                     {typeof this.props.cubeQuery === 'string' 
@@ -113,7 +114,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
 
               {this.state.errorInfo && (
                 <details className="dc:text-xs dc:font-mono text-dc-text-secondary">
-                  <summary className="dc:cursor-pointer">Component Stack</summary>
+                  <summary className="dc:cursor-pointer">{t('error.componentStack')}</summary>
                   <pre className="dc:mt-2 dc:whitespace-pre-wrap">{this.state.errorInfo}</pre>
                 </details>
               )}
@@ -128,7 +129,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               backgroundColor: 'var(--dc-primary)'
             }}
           >
-            <RefreshIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />Try Again
+            <RefreshIcon style={{ width: '16px', height: '16px', display: 'inline', marginRight: '4px' }} />{t('error.tryAgain')}
           </button>
         </div>
       )

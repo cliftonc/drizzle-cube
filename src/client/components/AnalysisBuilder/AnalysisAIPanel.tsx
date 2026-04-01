@@ -7,6 +7,7 @@
 
 import { useCallback, KeyboardEvent } from 'react'
 import { getIcon } from '../../icons'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const SparklesIcon = getIcon('sparkles')
 const ErrorIcon = getIcon('error')
@@ -40,6 +41,7 @@ export default function AnalysisAIPanel({
   onAccept,
   onCancel
 }: AnalysisAIPanelProps) {
+  const { t } = useTranslation()
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -59,10 +61,10 @@ export default function AnalysisAIPanel({
       <div className="dc:px-4 dc:py-2 dc:flex dc:items-center dc:justify-between dc:border-b border-dc-border bg-dc-surface-secondary">
         <div className="dc:flex dc:items-center dc:gap-2">
           <SparklesIcon className="dc:w-4 dc:h-4 text-dc-accent" />
-          <span className="dc:text-sm dc:font-medium text-dc-text">AI Query Generator</span>
+          <span className="dc:text-sm dc:font-medium text-dc-text">{t('analysis.ai.title')}</span>
           {isGenerating && (
             <span className="dc:text-xs text-dc-accent dc:animate-pulse">
-              Generating...
+              {t('analysis.ai.generating')}
             </span>
           )}
         </div>
@@ -72,14 +74,14 @@ export default function AnalysisAIPanel({
               onClick={onAccept}
               className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-white bg-dc-success dc:hover:opacity-80 dc:rounded dc:transition-colors"
             >
-              Accept
+              {t('analysis.ai.button.accept')}
             </button>
           )}
           <button
             onClick={onCancel}
             className="dc:px-3 dc:py-1 dc:text-xs dc:font-medium text-dc-text-secondary hover:text-dc-text bg-dc-surface hover:bg-dc-surface-hover dc:border border-dc-border dc:rounded dc:transition-colors"
           >
-            {hasGeneratedQuery ? 'Cancel' : 'Close'}
+            {hasGeneratedQuery ? t('analysis.ai.button.cancel') : t('analysis.ai.button.close')}
           </button>
         </div>
       </div>
@@ -93,13 +95,13 @@ export default function AnalysisAIPanel({
               value={userPrompt}
               onChange={(e) => onPromptChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe your query in natural language... (e.g., 'Show total sales by month for the last year')"
+              placeholder={t('analysis.ai.placeholder')}
               className="dc:w-full dc:px-3 dc:py-2 dc:text-sm dc:border border-dc-border dc:rounded-md dc:shadow-sm dc:focus:outline-none dc:focus:ring-2 focus:ring-dc-accent focus:border-dc-accent dc:resize-none bg-dc-surface text-dc-text placeholder-dc-text-muted"
               rows={2}
               disabled={isGenerating}
             />
             <div className="dc:mt-1 dc:text-xs text-dc-text-muted">
-              Press Enter to generate, Shift+Enter for new line
+              {t('analysis.ai.shortcutHint')}
             </div>
           </div>
 
@@ -117,12 +119,12 @@ export default function AnalysisAIPanel({
               {isGenerating ? (
                 <>
                   <div className="dc:w-4 dc:h-4 dc:border-2 border-white border-t-transparent dc:rounded-full dc:animate-spin" />
-                  <span>Generating...</span>
+                  <span>{t('analysis.ai.button.generating')}</span>
                 </>
               ) : (
                 <>
                   <SparklesIcon className="dc:w-4 dc:h-4" />
-                  <span>Generate</span>
+                  <span>{t('analysis.ai.button.generate')}</span>
                 </>
               )}
             </button>
@@ -141,8 +143,7 @@ export default function AnalysisAIPanel({
         {hasGeneratedQuery && !error && (
           <div className="dc:mt-3 dc:p-3 bg-dc-success-bg dc:border border-dc-success-border dc:rounded-md">
             <div className="dc:text-sm text-dc-success">
-              Query generated and loaded! Check the results below, then click{' '}
-              <strong>Accept</strong> to keep or <strong>Cancel</strong> to revert.
+              {t('analysis.ai.successMessage')}
             </div>
           </div>
         )}
