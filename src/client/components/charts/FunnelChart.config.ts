@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the funnel chart type
@@ -9,9 +8,9 @@ import { t } from '../../../i18n/runtime'
  * pre-calculated step names, values, and conversion rates.
  */
 export const funnelChartConfig: ChartTypeConfig = {
-  label: t('chart.funnel.label'),
-  description: t('chart.funnel.description'),
-  useCase: t('chart.funnel.useCase'),
+  label: 'chart.funnel.label',
+  description: 'chart.funnel.description',
+  useCase: 'chart.funnel.useCase',
   dropZones: [
     // Funnel charts don't use traditional drop zones since they work with
     // pre-calculated funnel data from useFunnelQuery. The steps are defined
@@ -19,80 +18,80 @@ export const funnelChartConfig: ChartTypeConfig = {
     // However, we keep xAxis and yAxis for compatibility with chart system.
     {
       key: 'xAxis',
-      label: t('chart.configText.step_name'),
-      description: t('chart.configText.step_names_auto_populated_from_funnel_steps'),
+      label: 'chart.configText.step_name',
+      description: 'chart.configText.step_names_auto_populated_from_funnel_steps',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Steps defined in funnel config'
+      emptyText: 'chart.funnel.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.configText.step_count'),
-      description: t('chart.configText.count_at_each_step_auto_calculated'),
+      label: 'chart.configText.step_count',
+      description: 'chart.configText.count_at_each_step_auto_calculated',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Counts calculated from funnel execution'
+      emptyText: 'chart.funnel.dropZone.yAxis.empty'
     }
   ],
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
       key: 'funnelStyle',
-      label: t('chart.option.funnelStyle.label'),
+      label: 'chart.option.funnelStyle.label',
       type: 'buttonGroup',
       defaultValue: 'bars',
       options: [
-        { value: 'bars', label: t('chart.option.funnelStyle.bars') },
-        { value: 'funnel', label: t('chart.option.funnelStyle.funnel') }
+        { value: 'bars', label: 'chart.option.funnelStyle.bars' },
+        { value: 'funnel', label: 'chart.option.funnelStyle.funnel' }
       ],
-      description: t('chart.configText.visualization_style')
+      description: 'chart.configText.visualization_style'
     },
     {
       key: 'funnelOrientation',
-      label: t('chart.option.funnelOrientation.label'),
+      label: 'chart.option.funnelOrientation.label',
       type: 'buttonGroup',
       defaultValue: 'horizontal',
       options: [
-        { value: 'horizontal', label: t('chart.option.funnelOrientation.horizontal') },
-        { value: 'vertical', label: t('chart.option.funnelOrientation.vertical') }
+        { value: 'horizontal', label: 'chart.option.funnelOrientation.horizontal' },
+        { value: 'vertical', label: 'chart.option.funnelOrientation.vertical' }
       ]
     },
     {
       key: 'hideSummaryFooter',
-      label: t('chart.option.hideSummaryFooter.label'),
+      label: 'chart.option.hideSummaryFooter.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.option.hideSummaryFooter.description')
+      description: 'chart.option.hideSummaryFooter.description'
     },
     {
       key: 'showFunnelConversion',
-      label: t('chart.option.showConversion.label'),
+      label: 'chart.option.showConversion.label',
       type: 'boolean',
       defaultValue: true,
-      description: t('chart.option.showConversion.description')
+      description: 'chart.option.showConversion.description'
     },
     {
       key: 'showFunnelAvgTime',
-      label: t('chart.option.showAvgTime.label'),
+      label: 'chart.option.showAvgTime.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.option.showAvgTime.description')
+      description: 'chart.option.showAvgTime.description'
     },
     {
       key: 'showFunnelMedianTime',
-      label: t('chart.option.showMedianTime.label'),
+      label: 'chart.option.showMedianTime.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.option.showMedianTime.description')
+      description: 'chart.option.showMedianTime.description'
     },
     {
       key: 'showFunnelP90Time',
-      label: t('chart.option.showP90Time.label'),
+      label: 'chart.option.showP90Time.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.option.showP90Time.description')
+      description: 'chart.option.showP90Time.description'
     }
   ]
 }

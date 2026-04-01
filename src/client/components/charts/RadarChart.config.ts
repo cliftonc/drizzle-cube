@@ -1,46 +1,45 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the radar chart type
  */
 export const radarChartConfig: ChartTypeConfig = {
-  label: t('chart.radar.label'),
-  description: t('chart.radar.description'),
-  useCase: t('chart.radar.useCase'),
+  label: 'chart.radar.label',
+  description: 'chart.radar.description',
+  useCase: 'chart.radar.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.configText.axes_categories'),
-      description: t('chart.configText.dimensions_for_radar_axes'),
+      label: 'chart.configText.axes_categories',
+      description: 'chart.configText.dimensions_for_radar_axes',
       mandatory: true,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for radar axes'
+      emptyText: 'chart.radar.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.configText.values'),
-      description: t('chart.configText.measures_for_radar_values'),
+      label: 'chart.configText.values',
+      description: 'chart.configText.measures_for_radar_values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures for values'
+      emptyText: 'chart.radar.dropZone.yAxis.empty'
     },
     {
       key: 'series',
-      label: t('chart.configText.series_multiple_shapes'),
-      description: t('chart.configText.dimensions_to_create_multiple_radar_shapes'),
+      label: 'chart.configText.series_multiple_shapes',
+      description: 'chart.configText.dimensions_to_create_multiple_radar_shapes',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for multiple shapes'
+      emptyText: 'chart.radar.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: t('chart.option.valueFormat.label'),
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.valueFormat.description')
+      description: 'chart.option.valueFormat.description'
     }
   ]
 }

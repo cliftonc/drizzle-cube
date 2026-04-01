@@ -1,4 +1,3 @@
-import { t } from '../../i18n/runtime'
 
 /**
  * Configuration for a single axis drop zone in the chart configuration UI
@@ -130,27 +129,27 @@ export const defaultChartConfig: ChartTypeConfig = {
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.dropZone.xAxis.label'),
-      description: t('chart.dropZone.xAxis.description'),
+      label: 'chart.dropZone.xAxis.label',
+      description: 'chart.dropZone.xAxis.description',
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: t('chart.dropZone.xAxis.empty')
+      emptyText: 'chart.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.dropZone.yAxis.label'),
-      description: t('chart.dropZone.yAxis.description'),
+      label: 'chart.dropZone.yAxis.label',
+      description: 'chart.dropZone.yAxis.description',
       mandatory: false,
       acceptTypes: ['measure', 'dimension'],
-      emptyText: t('chart.dropZone.yAxis.empty')
+      emptyText: 'chart.dropZone.yAxis.empty'
     },
     {
       key: 'series',
-      label: t('chart.dropZone.series.label'),
-      description: t('chart.dropZone.series.description'),
+      label: 'chart.dropZone.series.label',
+      description: 'chart.dropZone.series.description',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: t('chart.dropZone.series.empty')
+      emptyText: 'chart.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip']

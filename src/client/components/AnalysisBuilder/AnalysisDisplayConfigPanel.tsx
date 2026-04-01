@@ -10,7 +10,7 @@ import SectionHeading from './SectionHeading'
 import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
 import type { ChartType, ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types'
 import { AxisFormatControls } from '../charts/AxisFormatControls'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 interface AnalysisDisplayConfigPanelProps {
   chartType: ChartType
@@ -81,6 +81,8 @@ export default function AnalysisDisplayConfigPanel({
   onDisplayConfigChange,
   excludeKeys,
 }: AnalysisDisplayConfigPanelProps) {
+  const { t } = useTranslation()
+
   // Get configuration for current chart type
   const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
 
@@ -222,14 +224,14 @@ export default function AnalysisDisplayConfigPanel({
                     className="dc:rounded border-dc-border focus:ring-dc-accent"
                     style={{ color: 'var(--dc-primary)' }}
                   />
-                  <span className="dc:text-sm text-dc-text">{option.label}</span>
+                  <span className="dc:text-sm text-dc-text">{t(option.label)}</span>
                 </label>
               )}
 
               {option.type === 'string' && (
                 <div className="dc:space-y-1">
                   <label className="dc:text-sm text-dc-text-secondary">
-                    {option.label}
+                    {t(option.label)}
                     {option.key === 'content' && (
                       <span className="dc:text-xs text-dc-text-muted dc:ml-1">
                         (only headers, lists and links)
@@ -272,14 +274,14 @@ export default function AnalysisDisplayConfigPanel({
                     />
                   )}
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'paletteColor' && (
                 <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
                   <div className="dc:flex dc:flex-wrap dc:gap-2">
                     {colorPalette?.colors.map((color, index) => {
                       const isSelected =
@@ -330,14 +332,14 @@ export default function AnalysisDisplayConfigPanel({
                     ]}
                   </div>
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'number' && (
                 <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
                   <input
                     type="number"
                     value={
@@ -358,14 +360,14 @@ export default function AnalysisDisplayConfigPanel({
                     className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
                   />
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'select' && (
                 <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
                   <select
                     value={
                       (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
@@ -382,19 +384,19 @@ export default function AnalysisDisplayConfigPanel({
                   >
                     {option.options?.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {t(opt.label)}
                       </option>
                     ))}
                   </select>
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'color' && (
                 <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
                   <div className="dc:flex dc:items-center dc:space-x-2">
                     <input
                       type="color"
@@ -429,14 +431,14 @@ export default function AnalysisDisplayConfigPanel({
                     />
                   </div>
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}
 
               {option.type === 'axisFormat' && (
                 <AxisFormatControls
-                  axisLabel={option.label}
+                  axisLabel={t(option.label)}
                   value={(displayConfig[option.key as keyof ChartDisplayConfig] as AxisFormatConfig) || {}}
                   onChange={(config) =>
                     onDisplayConfigChange({
@@ -449,7 +451,7 @@ export default function AnalysisDisplayConfigPanel({
 
               {option.type === 'stringArray' && (
                 <StringArrayInput
-                  label={option.label}
+                  label={t(option.label)}
                   value={(displayConfig[option.key as keyof ChartDisplayConfig] as string[]) ?? []}
                   onChange={(arrayValue) =>
                     onDisplayConfigChange({
@@ -458,13 +460,13 @@ export default function AnalysisDisplayConfigPanel({
                     })
                   }
                   placeholder={option.placeholder}
-                  description={option.description}
+                  description={option.description ? t(option.description) : undefined}
                 />
               )}
 
               {option.type === 'buttonGroup' && (
                 <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{option.label}</label>
+                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
                   <div className="dc:flex dc:border border-dc-border dc:rounded-sm dc:overflow-hidden">
                     {option.options?.map((opt) => {
                       const isSelected = (displayConfig[option.key as keyof ChartDisplayConfig] ?? option.defaultValue) === opt.value
@@ -484,13 +486,13 @@ export default function AnalysisDisplayConfigPanel({
                               : 'bg-dc-surface text-dc-text hover:bg-dc-border'
                           }`}
                         >
-                          {opt.label}
+                          {t(opt.label)}
                         </button>
                       )
                     })}
                   </div>
                   {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{option.description}</p>
+                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
                   )}
                 </div>
               )}

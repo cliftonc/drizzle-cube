@@ -1,39 +1,38 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the radial bar chart type
  */
 export const radialBarChartConfig: ChartTypeConfig = {
-  label: t('chart.radialBar.label'),
-  description: t('chart.radialBar.description'),
-  useCase: t('chart.radialBar.useCase'),
+  label: 'chart.radialBar.label',
+  description: 'chart.radialBar.description',
+  useCase: 'chart.radialBar.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.configText.categories'),
-      description: t('chart.configText.dimensions_for_radial_segments'),
+      label: 'chart.configText.categories',
+      description: 'chart.configText.dimensions_for_radial_segments',
       mandatory: true,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions for categories'
+      emptyText: 'chart.radialBar.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.configText.values'),
-      description: t('chart.configText.measures_for_radial_bar_lengths'),
+      label: 'chart.configText.values',
+      description: 'chart.configText.measures_for_radial_bar_lengths',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure for values'
+      emptyText: 'chart.radialBar.dropZone.yAxis.empty'
     }
   ],
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'leftYAxisFormat',
-      label: t('chart.option.valueFormat.label'),
+      label: 'chart.option.valueFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.valueFormat.description')
+      description: 'chart.option.valueFormat.description'
     }
   ]
 }

@@ -1,62 +1,61 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the waterfall chart type
  */
 export const waterfallChartConfig: ChartTypeConfig = {
-  label: t('chart.waterfall.label'),
-  description: t('chart.waterfall.description'),
-  useCase: t('chart.waterfall.useCase'),
+  label: 'chart.waterfall.label',
+  description: 'chart.waterfall.description',
+  useCase: 'chart.waterfall.useCase',
   clickableElements: { bar: true },
   displayOptions: ['showTooltip', 'hideHeader'],
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.dropZone.xAxis.label'),
-      description: t('chart.configText.dimension_labels_for_each_bar_segment_e_g_symbol_transaction_type'),
+      label: 'chart.dropZone.xAxis.label',
+      description: 'chart.configText.dimension_labels_for_each_bar_segment_e_g_symbol_transaction_type',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop a dimension here',
+      emptyText: 'chart.waterfall.dropZone.xAxis.empty',
     },
     {
       key: 'yAxis',
-      label: t('chart.configText.y_axis_value'),
-      description: t('chart.configText.single_measure_whose_values_are_summed_cumulatively'),
+      label: 'chart.configText.y_axis_value',
+      description: 'chart.configText.single_measure_whose_values_are_summed_cumulatively',
       mandatory: true,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Drop a measure here',
+      emptyText: 'chart.waterfall.dropZone.yAxis.empty',
     },
   ],
   displayOptionsConfig: [
     {
       key: 'showTotal',
-      label: t('chart.option.showTotal.label'),
+      label: 'chart.option.showTotal.label',
       type: 'boolean',
       defaultValue: true,
-      description: t('chart.option.showTotal.description'),
+      description: 'chart.option.showTotal.description',
     },
     {
       key: 'showConnectorLine',
-      label: t('chart.option.showConnectorLine.label'),
+      label: 'chart.option.showConnectorLine.label',
       type: 'boolean',
       defaultValue: true,
-      description: t('chart.option.showConnectorLine.description'),
+      description: 'chart.option.showConnectorLine.description',
     },
     {
       key: 'showDataLabels',
-      label: t('chart.option.showDataLabels.label'),
+      label: 'chart.option.showDataLabels.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.configText.display_the_value_above_each_bar_segment'),
+      description: 'chart.configText.display_the_value_above_each_bar_segment',
     },
     {
       key: 'leftYAxisFormat',
-      label: t('chart.option.yAxisFormat.label'),
+      label: 'chart.option.yAxisFormat.label',
       type: 'axisFormat',
-      description: t('chart.configText.number_formatting_for_the_y_axis'),
+      description: 'chart.configText.number_formatting_for_the_y_axis',
     },
   ],
 }

@@ -4,6 +4,7 @@ import type { ChartAvailabilityMap } from '../shared/chartDefaults'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import { chartPluginRegistry } from '../charts/chartPlugin'
 import { getChartTypeIcon } from '../icons'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface ChartTypeSelectorProps {
   selectedType: ChartType
@@ -30,6 +31,7 @@ export default function ChartTypeSelector({
   availability,
   excludeTypes = []
 }: ChartTypeSelectorProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
 
   // Re-render when custom charts are registered/unregistered
@@ -61,7 +63,7 @@ export default function ChartTypeSelector({
           {SelectedIcon && (
             <SelectedIcon className="dc:h-5 dc:w-5 text-dc-text-secondary" />
           )}
-          <span className="dc:text-sm dc:font-medium text-dc-text">{selectedLabel}</span>
+          <span className="dc:text-sm dc:font-medium text-dc-text">{t(selectedLabel)}</span>
         </div>
         <svg
           className={`dc:h-4 dc:w-4 text-dc-text-muted dc:transform dc:transition-transform ${isOpen ? 'dc:rotate-180' : ''}`}
@@ -93,8 +95,8 @@ export default function ChartTypeSelector({
 
                 // Build tooltip text - show unavailable reason if not available, otherwise show description
                 const tooltipText = !isAvailable && unavailableReason
-                  ? unavailableReason
-                  : [description, useCase].filter(Boolean).join('. ')
+                  ? t(unavailableReason)
+                  : [description, useCase].filter(Boolean).map(s => t(s!)).join('. ')
 
                 return (
                   <button
@@ -144,7 +146,7 @@ export default function ChartTypeSelector({
                             : 'text-dc-text'
                       }`}
                       style={isSelected && isAvailable ? { color: 'var(--dc-primary)' } : undefined}>
-                        {label}
+                        {t(label)}
                       </span>
                     </div>
 

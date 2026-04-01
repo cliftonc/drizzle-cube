@@ -1,79 +1,78 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the area chart type
  */
 export const areaChartConfig: ChartTypeConfig = {
-  label: t('chart.area.label'),
-  description: t('chart.area.description'),
-  useCase: t('chart.area.useCase'),
+  label: 'chart.area.label',
+  description: 'chart.area.description',
+  useCase: 'chart.area.useCase',
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.configText.x_axis_time_categories'),
-      description: t('chart.configText.time_dimensions_or_dimensions_for_x_axis'),
+      label: 'chart.configText.x_axis_time_categories',
+      description: 'chart.configText.time_dimensions_or_dimensions_for_x_axis',
       mandatory: true,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop time dimensions or dimensions here'
+      emptyText: 'chart.area.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.dropZone.yAxis.label'),
-      description: t('chart.configText.measures_for_area_values'),
+      label: 'chart.dropZone.yAxis.label',
+      description: 'chart.configText.measures_for_area_values',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures here',
+      emptyText: 'chart.area.dropZone.yAxis.empty',
       enableDualAxis: true
     },
     {
       key: 'series',
-      label: t('chart.configText.series_stack_areas'),
-      description: t('chart.configText.dimensions_to_create_stacked_areas'),
+      label: 'chart.configText.series_stack_areas',
+      description: 'chart.configText.dimensions_to_create_stacked_areas',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions here for stacked areas'
+      emptyText: 'chart.area.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',
-      label: t('chart.option.stacking.label'),
+      label: 'chart.option.stacking.label',
       type: 'select',
       defaultValue: 'none',
       options: [
-        { value: 'none', label: t('chart.option.accentBorder.none') },
-        { value: 'normal', label: t('chart.option.stacking.stacked') },
-        { value: 'percent', label: t('chart.option.stacking.percent') }
+        { value: 'none', label: 'chart.option.accentBorder.none' },
+        { value: 'normal', label: 'chart.option.stacking.stacked' },
+        { value: 'percent', label: 'chart.option.stacking.percent' }
       ],
-      description: t('chart.configText.how_to_stack_multiple_area_series')
+      description: 'chart.configText.how_to_stack_multiple_area_series'
     },
     {
       key: 'connectNulls',
-      label: t('chart.option.connectNulls.label'),
+      label: 'chart.option.connectNulls.label',
       type: 'boolean',
       defaultValue: false,
-      description: t('chart.option.connectNulls.description')
+      description: 'chart.option.connectNulls.description'
     },
     {
       key: 'target',
-      label: t('chart.option.target.label'),
+      label: 'chart.option.target.label',
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
-      description: t('chart.option.target.description')
+      description: 'chart.option.target.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: t('chart.option.leftYAxisFormat.label'),
+      label: 'chart.option.leftYAxisFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.leftYAxisFormat.description')
+      description: 'chart.option.leftYAxisFormat.description'
     },
     {
       key: 'rightYAxisFormat',
-      label: t('chart.option.rightYAxisFormat.label'),
+      label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.rightYAxisFormat.description')
+      description: 'chart.option.rightYAxisFormat.description'
     }
   ]
 }

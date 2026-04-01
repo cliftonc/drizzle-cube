@@ -14,7 +14,7 @@
 import { useState, useCallback, useRef, useEffect, DragEvent } from 'react'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
 import type { AxisDropZoneConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const CloseIcon = getIcon('close')
 const DimensionIcon = getIcon('dimension')
@@ -64,6 +64,7 @@ export default function AnalysisAxisDropZone({
   yAxisAssignment,
   onYAxisAssignmentChange
 }: AnalysisAxisDropZoneProps) {
+  const { t } = useTranslation()
   const { key, label, description, mandatory, maxItems, emptyText } = config
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const [isDraggedOver, setIsDraggedOver] = useState(false)
@@ -321,10 +322,10 @@ export default function AnalysisAxisDropZone({
       {/* Header */}
       <div className="dc:mb-2">
         <h4 className="dc:text-sm dc:font-medium text-dc-text dc:flex dc:items-center">
-          {label}
+          {t(label)}
           {mandatory && <span className="text-dc-error dc:ml-1">*</span>}
         </h4>
-        {description && <div className="dc:text-xs text-dc-text-muted dc:mt-0.5">{description}</div>}
+        {description && <div className="dc:text-xs text-dc-text-muted dc:mt-0.5">{t(description)}</div>}
       </div>
 
       {/* Drop Zone Container */}
@@ -405,7 +406,7 @@ export default function AnalysisAxisDropZone({
       >
         {fields.length === 0 ? (
           <div className="dc:text-sm text-dc-text-muted dc:text-center dc:py-2">
-            {isFull ? 'Maximum items reached' : emptyText || `Drop fields here`}
+            {isFull ? t('chart.dropZone.maxReached') : t(emptyText || 'chart.dropZone.default.empty')}
           </div>
         ) : (
           <div
@@ -495,7 +496,7 @@ export default function AnalysisAxisDropZone({
                       type="button"
                       onClick={() => onRemove(field, key)}
                       className="dc:p-1 text-dc-text-muted hover:text-dc-danger dc:opacity-0 dc:group-hover:opacity-100 dc:transition-opacity dc:flex-shrink-0"
-                      title={`Remove from ${label}`}
+                      title={`Remove from ${t(label)}`}
                     >
                       <CloseIcon className="dc:w-4 dc:h-4" />
                     </button>

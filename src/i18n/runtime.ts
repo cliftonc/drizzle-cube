@@ -39,6 +39,9 @@ export async function loadLocale(locale: string): Promise<void> {
     currentLocale = locale
     messages = { ...en, ...dict.default }
   } catch {
+    if (typeof console !== 'undefined') {
+      console.warn(`[drizzle-cube] Failed to load locale "${locale}", falling back to en-GB`)
+    }
     currentLocale = 'en-GB'
     messages = en
   }

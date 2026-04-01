@@ -1,73 +1,72 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the bar chart type
  */
 export const barChartConfig: ChartTypeConfig = {
-  label: t('chart.bar.label'),
-  description: t('chart.bar.description'),
-  useCase: t('chart.bar.useCase'),
+  label: 'chart.bar.label',
+  description: 'chart.bar.description',
+  useCase: 'chart.bar.useCase',
   clickableElements: { bar: true },
   dropZones: [
     {
       key: 'xAxis',
-      label: t('chart.dropZone.xAxis.label'),
-      description: t('chart.dropZone.xAxis.description'),
+      label: 'chart.dropZone.xAxis.label',
+      description: 'chart.dropZone.xAxis.description',
       mandatory: false,
       acceptTypes: ['dimension', 'timeDimension'],
-      emptyText: 'Drop dimensions & time dimensions here'
+      emptyText: 'chart.bar.dropZone.xAxis.empty'
     },
     {
       key: 'yAxis',
-      label: t('chart.dropZone.yAxis.label'),
-      description: t('chart.configText.measures_for_bar_heights'),
+      label: 'chart.dropZone.yAxis.label',
+      description: 'chart.configText.measures_for_bar_heights',
       mandatory: true,
       acceptTypes: ['measure'],
-      emptyText: 'Drop measures here',
+      emptyText: 'chart.bar.dropZone.yAxis.empty',
       enableDualAxis: true
     },
     {
       key: 'series',
-      label: t('chart.dropZone.series.label'),
-      description: t('chart.dropZone.series.description'),
+      label: 'chart.dropZone.series.label',
+      description: 'chart.dropZone.series.description',
       mandatory: false,
       acceptTypes: ['dimension'],
-      emptyText: 'Drop dimensions here to split data into series'
+      emptyText: 'chart.bar.dropZone.series.empty'
     }
   ],
   displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',
-      label: t('chart.option.stacking.label'),
+      label: 'chart.option.stacking.label',
       type: 'select',
       defaultValue: 'none',
       options: [
-        { value: 'none', label: t('chart.option.accentBorder.none') },
-        { value: 'normal', label: t('chart.option.stacking.stacked') },
-        { value: 'percent', label: t('chart.option.stacking.percent') }
+        { value: 'none', label: 'chart.option.accentBorder.none' },
+        { value: 'normal', label: 'chart.option.stacking.stacked' },
+        { value: 'percent', label: 'chart.option.stacking.percent' }
       ],
-      description: t('chart.configText.how_to_stack_multiple_bar_series')
+      description: 'chart.configText.how_to_stack_multiple_bar_series'
     },
     {
       key: 'target',
-      label: t('chart.option.target.label'),
+      label: 'chart.option.target.label',
       type: 'string',
       placeholder: 'e.g., 100 or 50,75 for spread',
-      description: t('chart.option.target.description')
+      description: 'chart.option.target.description'
     },
     {
       key: 'leftYAxisFormat',
-      label: t('chart.option.leftYAxisFormat.label'),
+      label: 'chart.option.leftYAxisFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.leftYAxisFormat.description')
+      description: 'chart.option.leftYAxisFormat.description'
     },
     {
       key: 'rightYAxisFormat',
-      label: t('chart.option.rightYAxisFormat.label'),
+      label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
-      description: t('chart.option.rightYAxisFormat.description')
+      description: 'chart.option.rightYAxisFormat.description'
     }
   ]
 }

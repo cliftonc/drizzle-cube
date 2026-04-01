@@ -1,5 +1,4 @@
 import type { ChartTypeConfig } from '../../charts/chartConfigs'
-import { t } from '../../../i18n/runtime'
 
 /**
  * Configuration for the sunburst chart type
@@ -9,48 +8,48 @@ import { t } from '../../../i18n/runtime'
  * radiating outward from the central starting step.
  */
 export const sunburstChartConfig: ChartTypeConfig = {
-  label: t('chart.sunburst.label'),
-  description: t('chart.sunburst.description'),
-  useCase: t('chart.sunburst.useCase'),
+  label: 'chart.sunburst.label',
+  description: 'chart.sunburst.description',
+  useCase: 'chart.sunburst.useCase',
   dropZones: [
     // Sunburst charts work with pre-calculated flow data like Sankey
     {
       key: 'xAxis',
-      label: t('chart.configText.event_type'),
-      description: t('chart.configText.event_dimension_that_categorizes_flow_nodes'),
+      label: 'chart.configText.event_type',
+      description: 'chart.configText.event_dimension_that_categorizes_flow_nodes',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['dimension'],
-      emptyText: 'Auto-populated from flow config',
+      emptyText: 'chart.sunburst.dropZone.xAxis.empty',
     },
     {
       key: 'yAxis',
-      label: t('chart.configText.flow_count'),
-      description: t('chart.configText.count_of_entities_following_each_path'),
+      label: 'chart.configText.flow_count',
+      description: 'chart.configText.count_of_entities_following_each_path',
       mandatory: false,
       maxItems: 1,
       acceptTypes: ['measure'],
-      emptyText: 'Calculated from flow execution',
+      emptyText: 'chart.sunburst.dropZone.yAxis.empty',
     },
   ],
   displayOptions: ['hideHeader'],
   displayOptionsConfig: [
     {
       key: 'innerRadius',
-      label: t('chart.option.innerRadius.label'),
+      label: 'chart.option.innerRadius.label',
       type: 'number',
       defaultValue: 40,
       min: 0,
       max: 100,
       step: 10,
-      description: t('chart.configText.size_of_the_center_hole_0_for_full_circle'),
+      description: 'chart.configText.size_of_the_center_hole_0_for_full_circle',
     },
     {
       key: 'hideSummaryFooter',
-      label: t('chart.option.hideSummaryFooter.label'),
+      label: 'chart.option.hideSummaryFooter.label',
       type: 'boolean',
       defaultValue: true,
-      description: t('chart.configText.hide_the_statistics_footer_below_the_chart'),
+      description: 'chart.configText.hide_the_statistics_footer_below_the_chart',
     },
   ],
 }

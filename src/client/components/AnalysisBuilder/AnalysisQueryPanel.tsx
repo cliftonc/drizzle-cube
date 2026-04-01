@@ -22,7 +22,7 @@ import AnalysisTypeSelector from './AnalysisTypeSelector'
 import FunnelModeContent from './FunnelModeContent'
 import FlowModeContent from './FlowModeContent'
 import RetentionModeContent from './RetentionModeContent'
-import { t } from '../../../i18n/runtime'
+import { useTranslation } from '../../hooks/useTranslation'
 
 const AddIcon = getIcon('add')
 const CloseIcon = getIcon('close')
@@ -152,6 +152,8 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   retentionDisplayConfig,
   onRetentionDisplayConfigChange,
 }: AnalysisQueryPanelProps) {
+  const { t } = useTranslation()
+
   // Mark unused props
   void _validationStatus
   void _validationError
@@ -455,13 +457,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           {adapterValidation.errors.map((error, i) => (
             <div key={`adapter-error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
               <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{error}</span>
+              <span>{t(error)}</span>
             </div>
           ))}
           {adapterValidation.warnings.map((warning, i) => (
             <div key={`adapter-warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
               <InfoIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{warning}</span>
+              <span>{t(warning)}</span>
             </div>
           ))}
         </div>
@@ -473,13 +475,13 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
           {multiQueryValidation.errors.map((error, i) => (
             <div key={`error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
               <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{error.message}</span>
+              <span>{t(error.message)}</span>
             </div>
           ))}
           {multiQueryValidation.warnings.map((warning, i) => (
             <div key={`warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
               <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{warning.message}</span>
+              <span>{t(warning.message)}</span>
             </div>
           ))}
         </div>

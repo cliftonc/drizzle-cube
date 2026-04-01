@@ -25,5 +25,9 @@
   "chart.option.bearColor.description": "Candle color when close < open",
   "chart.option.showCentreLabel.label": "Show Center Label",
   "chart.option.showCentreLabel.description": "Display current value and field name in the center of the gauge",
-  "chart.option.accentBorder.description": "Add an accent-colored border on one side of the content"
+  "chart.option.accentBorder.description": "Add an accent-colored border on one side of the content",
+
+  "chart.scatter.dropZone.series.empty": "Drop a dimension to color points",
+  "chart.bubble.dropZone.colorField.empty": "Drop a field for bubble color (optional)",
+  "chart.treemap.dropZone.series.empty": "Drop a dimension for color grouping"
 }
