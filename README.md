@@ -271,3 +271,6 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 ---
 
 **Built with ❤️ for the Drizzle ORM community**
+
+Powered by Sustain.
+
