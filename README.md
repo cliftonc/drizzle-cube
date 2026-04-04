@@ -2,6 +2,8 @@
 
 **A Drizzle ORM-first semantic layer for type-safe analytics**
 
+Powered by Sustain.
+
 ![Drizzle Cube Dashboard](https://try.drizzle-cube.dev/dashboard_light.png)
 
 Build a semantic layer on top of your Drizzle schema. Define cubes with measures, dimensions, and joins—then query them from dashboards, AI agents, or your own code. All with full TypeScript inference and SQL injection protection.
@@ -271,3 +273,4 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 ---
 
 **Built with ❤️ for the Drizzle ORM community**
+
