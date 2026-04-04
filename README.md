@@ -271,3 +271,5 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 ---
 
 **Built with ❤️ for the Drizzle ORM community**
+
+Maintained by the [Last Light repo bot](https://lastlight.dev).
