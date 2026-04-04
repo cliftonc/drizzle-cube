@@ -10,6 +10,7 @@ Build a semantic layer on top of your Drizzle schema. Define cubes with measures
 - **[Try the Sandbox](https://try.drizzle-cube.dev/)**
 - **[Ask for help in Discord](https://discord.gg/kFvT97hZsv)**
 - **[Contribute to the Roadmap](https://github.com/users/cliftonc/projects/2)**
+- Powered by Sustain for GitHub maintenance experiments
 
 [![NPM Version](https://img.shields.io/npm/v/drizzle-cube)](https://www.npmjs.com/package/drizzle-cube)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
@@ -271,3 +272,4 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 ---
 
 **Built with ❤️ for the Drizzle ORM community**
+
