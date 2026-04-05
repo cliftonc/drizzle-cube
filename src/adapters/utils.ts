@@ -22,3 +22,1002 @@ import type {
   MCPPromptResolver,
   MCPResourceResolver
 } from './mcp-transport'
+
+/**
+ * Calculate query complexity based on query structure
+ */
+export function calculateQueryComplexity(query: SemanticQuery): string {
+  let complexity = 0
+  complexity += (query.measures?.length || 0) * 1
+  complexity += (query.dimensions?.length || 0) * 1
+  complexity += (query.filters?.length || 0) * 2
+  complexity += (query.timeDimensions?.length || 0) * 3
+
+  if (complexity <= 5) return 'low'
+  if (complexity <= 15) return 'medium'
+  return 'high'
+}
+
+/**
+ * Recursively extract cube names from filters (handles nested AND/OR logical filters)
+ * Similar to query-planner's extractCubeNamesFromFilter
+ */
+function extractCubeNamesFromFilter(filter: any, cubesSet: Set<string>): void {
+  // Handle logical filters (AND/OR) - Server format: { and: [...] } or { or: [...] }
+  if ('and' in filter || 'or' in filter) {
+    const logicalFilters = filter.and || filter.or || []
+    for (const subFilter of logicalFilters) {
+      extractCubeNamesFromFilter(subFilter, cubesSet)
+    }
+    return
+  }
+
+  // Handle simple filter condition
+  if ('member' in filter) {
+    const [cubeName] = filter.member.split('.')
+    if (cubeName) {
+      cubesSet.add(cubeName)
+    }
+  }
+}
+
+/**
+ * Generate a unique request ID
+ */
+export function generateRequestId(): string {
+  return crypto.randomUUID()
+}
+
+/**
+ * Build transformed query metadata for Cube.js compatibility
+ */
+export function buildTransformedQuery(query: SemanticQuery): any {
+  const sortedDimensions = query.dimensions || []
+  const sortedTimeDimensions = query.timeDimensions || []
+  const measures = query.measures || []
+
+  return {
+    sortedDimensions,
+    sortedTimeDimensions,
+    timeDimensions: sortedTimeDimensions,
+    measures,
+    leafMeasureAdditive: true,
+    leafMeasures: measures,
+    measureToLeafMeasures: {},
+    hasNoTimeDimensionsWithoutGranularity: true,
+    allFiltersWithinSelectedDimensions: true,
+    isAdditive: true,
+    granularityHierarchies: {},
+    hasMultipliedMeasures: false,
+    hasCumulativeMeasures: false,
+    windowGranularity: null,
+    filterDimensionsSingleValueEqual: {},
+    ownedDimensions: sortedDimensions,
+    ownedTimeDimensionsWithRollupGranularity: [],
+    ownedTimeDimensionsAsIs: [],
+    allBackAliasMembers: {},
+    hasMultiStage: false,
+    ungrouped: query.ungrouped || false
+  }
+}
+
+/**
+ * Get database type from semantic layer
+ */
+export function getDatabaseType(semanticLayer: SemanticLayerCompiler): string {
+  return semanticLayer.getEngineType() ?? 'postgres'
+}
+
+type DryRunMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
+type DryRunQueryType = 'regularQuery' | 'comparisonQuery' | 'funnelQuery' | 'flowQuery' | 'retentionQuery'
+type DryRunJoinType = 'single_cube' | 'multi_cube_join' | 'funnel_cte' | 'flow_cte' | 'retention_cte'
+
+interface DryRunResponseOptions {
+  mode: DryRunMode
+  queryType: DryRunQueryType
+  joinType: DryRunJoinType
+  complexity: string
+  query: SemanticQuery
+  cubesUsed: string[]
+  sqlResult: { sql: string; params?: unknown[] }
+  analysis?: QueryAnalysis
+  normalizedQueries?: unknown[]
+  transformedQueries?: unknown[]
+  modeMetadata?: unknown
+}
+
+function resolveDryRunMode(query: SemanticQuery): DryRunMode {
+  const activeModes: DryRunMode[] = []
+
+  const hasComparison = query.timeDimensions?.some(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+  if (hasComparison) {
+    activeModes.push('comparison')
+  }
+
+  if (query.funnel && query.funnel.steps?.length >= 2) {
+    activeModes.push('funnel')
+  }
+
+  if (query.flow && query.flow.bindingKey && query.flow.eventDimension) {
+    activeModes.push('flow')
+  }
+
+  if (query.retention && query.retention.bindingKey && query.retention.timeDimension) {
+    activeModes.push('retention')
+  }
+
+  if (activeModes.length === 0) {
+    return 'regular'
+  }
+
+  if (activeModes.length > 1) {
+    throw new Error(`Query contains multiple query modes: ${activeModes.join(', ')}`)
+  }
+
+  return activeModes[0]
+}
+
+function collectDryRunAnalysis(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+): QueryAnalysis | undefined {
+  try {
+    return semanticLayer.analyzeQuery(query, securityContext)
+  } catch (analysisError) {
+    // Analysis is optional - don't fail the dry-run if it fails
+    console.warn('Query analysis failed:', String(analysisError).replace(/\n|\r/g, ''))
+    return undefined
+  }
+}
+
+function validateDryRunQuery(
+  query: SemanticQuery,
+  semanticLayer: SemanticLayerCompiler,
+  label: string
+): void {
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`${label} validation failed: ${validation.errors.join(', ')}`)
+  }
+}
+
+async function collectDryRunArtifacts(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  const sqlResult = await semanticLayer.dryRun(query, securityContext)
+  const analysis = collectDryRunAnalysis(query, securityContext, semanticLayer)
+  return { sqlResult, analysis }
+}
+
+function addCubeFromMember(member: string, cubesSet: Set<string>): void {
+  const [cubeName] = member.split('.')
+  if (cubeName) cubesSet.add(cubeName)
+}
+
+function addCubesFromMappings(
+  mappings: Array<{ cube: string }> | undefined,
+  cubesSet: Set<string>
+): void {
+  if (!mappings) return
+  for (const mapping of mappings) {
+    if (mapping.cube) cubesSet.add(mapping.cube)
+  }
+}
+
+function collectRegularReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+
+  query.measures?.forEach(measure => addCubeFromMember(measure, referencedCubes))
+  query.dimensions?.forEach(dimension => addCubeFromMember(dimension, referencedCubes))
+  query.timeDimensions?.forEach(timeDimension => addCubeFromMember(timeDimension.dimension, referencedCubes))
+
+  query.filters?.forEach(filter => {
+    extractCubeNamesFromFilter(filter, referencedCubes)
+  })
+
+  return Array.from(referencedCubes)
+}
+
+function collectFunnelReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const funnel = query.funnel!
+
+  if (typeof funnel.bindingKey === 'string') {
+    addCubeFromMember(funnel.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(funnel.bindingKey, referencedCubes)
+  }
+
+  if (typeof funnel.timeDimension === 'string') {
+    addCubeFromMember(funnel.timeDimension, referencedCubes)
+  } else {
+    addCubesFromMappings(funnel.timeDimension, referencedCubes)
+  }
+
+  for (const step of funnel.steps) {
+    if ('cube' in step && step.cube) referencedCubes.add(step.cube)
+  }
+
+  return Array.from(referencedCubes)
+}
+
+function collectFlowReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const flow = query.flow!
+
+  if (typeof flow.bindingKey === 'string') {
+    addCubeFromMember(flow.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(flow.bindingKey, referencedCubes)
+  }
+
+  if (typeof flow.timeDimension === 'string') {
+    addCubeFromMember(flow.timeDimension, referencedCubes)
+  } else {
+    addCubesFromMappings(flow.timeDimension, referencedCubes)
+  }
+
+  addCubeFromMember(flow.eventDimension, referencedCubes)
+
+  return Array.from(referencedCubes)
+}
+
+function collectRetentionReferencedCubes(query: SemanticQuery): string[] {
+  const referencedCubes = new Set<string>()
+  const retention = query.retention!
+
+  if (typeof retention.timeDimension === 'string') {
+    addCubeFromMember(retention.timeDimension, referencedCubes)
+  } else if (retention.timeDimension?.cube) {
+    referencedCubes.add(retention.timeDimension.cube)
+  }
+
+  if (typeof retention.bindingKey === 'string') {
+    addCubeFromMember(retention.bindingKey, referencedCubes)
+  } else {
+    addCubesFromMappings(retention.bindingKey, referencedCubes)
+  }
+
+  for (const dimension of retention.breakdownDimensions || []) {
+    addCubeFromMember(dimension, referencedCubes)
+  }
+
+  return Array.from(referencedCubes)
+}
+
+function buildDryRunResponse(options: DryRunResponseOptions) {
+  const normalizedQueries = options.normalizedQueries || []
+  const transformedQueries = options.transformedQueries || normalizedQueries
+
+  return {
+    mode: options.mode,
+    queryType: options.queryType,
+    normalizedQueries,
+    queryOrder: options.cubesUsed,
+    transformedQueries,
+    pivotQuery: {
+      query: options.query,
+      cubes: options.cubesUsed
+    },
+    sql: {
+      sql: [options.sqlResult.sql],
+      params: options.sqlResult.params || []
+    },
+    complexity: options.complexity,
+    valid: true,
+    cubesUsed: options.cubesUsed,
+    joinType: options.joinType,
+    query: options.query,
+    analysis: options.analysis,
+    planningTrace: options.analysis?.planningTrace,
+    modeMetadata: options.modeMetadata
+  }
+}
+
+/**
+ * Helper function to handle dry-run logic for all adapters
+ */
+export async function handleDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  const mode = resolveDryRunMode(query)
+
+  const handlers: Record<DryRunMode, () => Promise<any>> = {
+    regular: () => handleRegularDryRun(query, securityContext, semanticLayer),
+    comparison: () => handleComparisonDryRun(query, securityContext, semanticLayer),
+    funnel: () => handleFunnelDryRun(query, securityContext, semanticLayer),
+    flow: () => handleFlowDryRun(query, securityContext, semanticLayer),
+    retention: () => handleRetentionDryRun(query, securityContext, semanticLayer)
+  }
+
+  return handlers[mode]()
+}
+
+async function handleRegularDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Query')
+  const cubesUsed = collectRegularReferencedCubes(query)
+  const isMultiCube = cubesUsed.length > 1
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+
+  // Create normalized queries array (for Cube.js compatibility)
+  const normalizedQueries = cubesUsed.map(cubeName => ({
+    cube: cubeName,
+    query: {
+      measures: query.measures?.filter(m => m.startsWith(cubeName + '.')) || [],
+      dimensions: query.dimensions?.filter(d => d.startsWith(cubeName + '.')) || [],
+      filters: query.filters || [],
+      timeDimensions: query.timeDimensions || [],
+      order: query.order || {},
+      limit: query.limit,
+      offset: query.offset
+    }
+  }))
+
+  return buildDryRunResponse({
+    mode: 'regular',
+    queryType: 'regularQuery',
+    joinType: isMultiCube ? 'multi_cube_join' : 'single_cube',
+    complexity: calculateQueryComplexity(query),
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    normalizedQueries
+  })
+}
+
+async function handleComparisonDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Comparison query')
+  const cubesUsed = collectRegularReferencedCubes(query)
+  const isMultiCube = cubesUsed.length > 1
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+
+  const comparisonTimeDimension = query.timeDimensions?.find(td =>
+    td.compareDateRange && td.compareDateRange.length >= 2
+  )
+
+  const comparisonMetadata = comparisonTimeDimension
+    ? {
+        timeDimension: comparisonTimeDimension.dimension,
+        granularity: comparisonTimeDimension.granularity || 'day',
+        periodCount: comparisonTimeDimension.compareDateRange?.length ?? 0,
+        compareDateRange: comparisonTimeDimension.compareDateRange,
+        sqlPreviewPeriodIndex: 0,
+        note: 'Dry-run SQL preview shows the first comparison period; execution runs all periods and merges results.'
+      }
+    : undefined
+
+  return buildDryRunResponse({
+    mode: 'comparison',
+    queryType: 'comparisonQuery',
+    joinType: isMultiCube ? 'multi_cube_join' : 'single_cube',
+    complexity: calculateQueryComplexity(query),
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: comparisonMetadata
+  })
+}
+
+/**
+ * Format standard Cube.js API response
+ */
+export function formatCubeResponse(
+  query: SemanticQuery,
+  result: {
+    data: any[]
+    annotation?: any
+    cache?: { hit: boolean; cachedAt?: string; ttlMs?: number; ttlRemainingMs?: number }
+    warnings?: Array<{ code: string; message: string; severity: string; cubes?: string[]; measures?: string[]; suggestion?: string }>
+  },
+  semanticLayer: SemanticLayerCompiler
+) {
+  const dbType = getDatabaseType(semanticLayer)
+  const requestId = generateRequestId()
+  const lastRefreshTime = new Date().toISOString()
+  const transformedQuery = buildTransformedQuery(query)
+
+  return {
+    queryType: "regularQuery",
+    results: [{
+      query,
+      lastRefreshTime,
+      usedPreAggregations: {},
+      transformedQuery,
+      requestId,
+      annotation: result.annotation,
+      dataSource: "default",
+      dbType,
+      extDbType: dbType,
+      external: false,
+      slowQuery: false,
+      data: result.data,
+      // Include cache metadata if present (indicates cache hit with TTL info)
+      ...(result.cache && { cache: result.cache }),
+      // Include warnings if present (e.g., fan-out without dimensions)
+      ...(result.warnings?.length && { warnings: result.warnings })
+    }],
+    pivotQuery: {
+      ...query,
+      queryType: "regularQuery"
+    },
+    slowQuery: false
+  }
+}
+
+/**
+ * Format SQL string using sql-formatter with appropriate dialect
+ */
+export function formatSqlString(sqlString: string, engineType: 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'): string {
+  try {
+    // Map drizzle-cube engine types to sql-formatter language options
+    const dialectMap = {
+      postgres: 'postgresql',
+      mysql: 'mysql',
+      sqlite: 'sqlite',
+      singlestore: 'mysql',  // SingleStore uses MySQL dialect for formatting
+      duckdb: 'postgresql',  // DuckDB is PostgreSQL-compatible for formatting
+      databend: 'postgresql', // Databend is PostgreSQL-compatible for formatting
+      snowflake: 'postgresql' // Snowflake is PostgreSQL-compatible for formatting
+    } as const
+    
+    return format(sqlString, {
+      language: dialectMap[engineType],
+      tabWidth: 2,
+      keywordCase: 'upper',
+      indentStyle: 'standard'
+    })
+  } catch (error) {
+    // If formatting fails, return original SQL
+
+    // codeql[js/log-injection] error source is internal, not user-controlled
+    console.warn('SQL formatting failed:', error)
+    return sqlString
+  }
+}
+
+/**
+ * Format SQL generation response
+ */
+export function formatSqlResponse(
+  query: SemanticQuery,
+  sqlResult: { sql: string; params?: any[] }
+) {
+  return {
+    sql: sqlResult.sql,
+    params: sqlResult.params || [],
+    query
+  }
+}
+
+/**
+ * Format metadata response with query guidance for AI consumers
+ */
+export function formatMetaResponse(metadata: any) {
+  return {
+    cubes: metadata,
+    // Query guidance for AI agents - helps prevent common mistakes
+    queryGuidance: {
+      dateHandling: {
+        critical: 'Date filtering and time grouping are DIFFERENT operations',
+        forAggregatedTotals: {
+          description: 'For totals over a date range (no time breakdown), use filters with inDateRange operator - NOT timeDimensions',
+          example: {
+            filters: [{ member: 'Cube.date', operator: 'inDateRange', values: ['last 3 months'] }]
+          },
+          useCase: 'User asks for "total sales last month", "top 5 last quarter", "sum over past year"'
+        },
+        forTimeSeries: {
+          description: 'For time series grouped by period (trend analysis), use timeDimensions WITH granularity',
+          example: {
+            timeDimensions: [{ dimension: 'Cube.date', granularity: 'month', dateRange: 'last 3 months' }]
+          },
+          useCase: 'User asks for "monthly breakdown", "daily trend", "per week"'
+        },
+        warning: 'Using timeDimensions WITHOUT granularity groups by day, returning many rows instead of aggregates. This is the #1 query mistake.'
+      },
+      crossCubeQueries: {
+        description: 'Include dimensions from related cubes - the system auto-joins based on relationships',
+        example: 'To get employee names with productivity: measures=["Productivity.total"], dimensions=["Employees.name"]',
+        howToFind: 'Check the "joins" property in each cube metadata to see relationships'
+      },
+      topNPattern: {
+        description: 'For "top N" queries, use filters (not timeDimensions) + order + limit',
+        example: {
+          measures: ['Cube.total'],
+          dimensions: ['RelatedCube.name'],
+          filters: [{ member: 'Cube.date', operator: 'inDateRange', values: ['last 3 months'] }],
+          order: { 'Cube.total': 'desc' },
+          limit: 5
+        }
+      },
+      filterSyntax: {
+        description: 'Filters must be flat arrays of { member, operator, values }',
+        operators: ['equals', 'notEquals', 'contains', 'notContains', 'gt', 'gte', 'lt', 'lte', 'inDateRange', 'beforeDate', 'afterDate', 'set', 'notSet'],
+        dateRangeValues: {
+          relative: ['last 7 days', 'last 3 months', 'last year', 'this week', 'this month', 'this quarter'],
+          absolute: ['2024-01-01', '2024-03-31']
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Standard error response format
+ */
+export function formatErrorResponse(error: string | Error, status: number = 500) {
+  return {
+    error: error instanceof Error ? error.message : error,
+    status
+  }
+}
+
+/**
+ * Options for batch request handling
+ */
+export interface BatchRequestOptions {
+  /**
+   * Whether to bypass server-side cache for all queries in the batch
+   * When true, all queries will be executed fresh without cache
+   */
+  skipCache?: boolean
+}
+
+/**
+ * Handle batch query requests - wrapper around existing single query execution
+ * Executes multiple queries in parallel and returns partial success results
+ *
+ * @param queries - Array of semantic queries to execute
+ * @param securityContext - Security context (extracted once, shared across all queries)
+ * @param semanticLayer - Semantic layer compiler instance
+ * @param options - Optional batch request options (e.g., skipCache)
+ * @returns Array of results matching input query order (successful or error results)
+ */
+export async function handleBatchRequest(
+  queries: SemanticQuery[],
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler,
+  options?: BatchRequestOptions
+) {
+  // Execute all queries in parallel using Promise.allSettled for partial success
+  // This ensures one failing query doesn't affect others
+  const settledResults = await Promise.allSettled(
+    queries.map(async (query) => {
+      // Use EXISTING single query execution logic - NO CODE DUPLICATION
+      // Pass skipCache option to bypass server-side caching when requested
+      const result = await semanticLayer.executeMultiCubeQuery(query, securityContext, {
+        skipCache: options?.skipCache
+      })
+
+      // Use EXISTING response formatter - NO CODE DUPLICATION
+      return formatCubeResponse(query, result, semanticLayer)
+    })
+  )
+
+  // Transform Promise.allSettled results to match expected format
+  const results = settledResults.map((settledResult, index) => {
+    if (settledResult.status === 'fulfilled') {
+      // Query succeeded - return the formatted result with success flag
+      return {
+        success: true,
+        ...settledResult.value
+      }
+    } else {
+      // Query failed - return error information
+      return {
+        success: false,
+        error: settledResult.reason instanceof Error
+          ? settledResult.reason.message
+          : String(settledResult.reason),
+        query: queries[index] // Include the query that failed for debugging
+      }
+    }
+  })
+
+  return { results }
+}
+
+/**
+ * Helper function to handle funnel dry-run logic
+ * Funnel queries have a different structure and generate CTE-based SQL
+ */
+async function handleFunnelDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Funnel query')
+  const cubesUsed = collectFunnelReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+  const funnel = query.funnel!
+
+  const funnelMetadata = {
+    stepCount: funnel.steps.length,
+    steps: funnel.steps.map((step, index) => ({
+      index,
+      name: step.name,
+      timeToConvert: step.timeToConvert,
+      cube: 'cube' in step ? step.cube : undefined
+    })),
+    bindingKey: funnel.bindingKey,
+    timeDimension: funnel.timeDimension,
+    includeTimeMetrics: funnel.includeTimeMetrics,
+    globalTimeWindow: funnel.globalTimeWindow
+  }
+
+  return buildDryRunResponse({
+    mode: 'funnel',
+    queryType: 'funnelQuery',
+    joinType: 'funnel_cte',
+    complexity: 'high',
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: funnelMetadata
+  })
+}
+
+/**
+ * Helper function to handle flow dry-run logic
+ * Flow queries have a different structure and generate CTE-based SQL
+ */
+async function handleFlowDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Flow query')
+  const cubesUsed = collectFlowReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+  const flow = query.flow!
+
+  const flowMetadata = {
+    stepsBefore: flow.stepsBefore,
+    stepsAfter: flow.stepsAfter,
+    bindingKey: flow.bindingKey,
+    timeDimension: flow.timeDimension,
+    eventDimension: flow.eventDimension,
+    startingStep: flow.startingStep
+  }
+
+  return buildDryRunResponse({
+    mode: 'flow',
+    queryType: 'flowQuery',
+    joinType: 'flow_cte',
+    complexity: 'high',
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: flowMetadata
+  })
+}
+
+/**
+ * Handle dry-run for retention queries
+ */
+async function handleRetentionDryRun(
+  query: SemanticQuery,
+  securityContext: SecurityContext,
+  semanticLayer: SemanticLayerCompiler
+) {
+  validateDryRunQuery(query, semanticLayer, 'Retention query')
+  const cubesUsed = collectRetentionReferencedCubes(query)
+  const { sqlResult, analysis } = await collectDryRunArtifacts(query, securityContext, semanticLayer)
+  const retention = query.retention!
+
+  const retentionMetadata = {
+    timeDimension: retention.timeDimension,
+    bindingKey: retention.bindingKey,
+    granularity: retention.granularity,
+    periods: retention.periods,
+    retentionType: retention.retentionType,
+    breakdownDimensions: retention.breakdownDimensions,
+    segmentCount: retention.breakdownDimensions?.length || 1
+  }
+
+  return buildDryRunResponse({
+    mode: 'retention',
+    queryType: 'retentionQuery',
+    joinType: 'retention_cte',
+    complexity: 'high',
+    query,
+    cubesUsed,
+    sqlResult,
+    analysis,
+    modeMetadata: retentionMetadata
+  })
+}
+
+// ============================================
+// MCP (AI-Ready) Endpoint Handlers
+// ============================================
+
+/**
+ * MCP Endpoint Options
+ */
+export interface MCPOptions {
+  /** Enable MCP endpoints (default: true) */
+  enabled?: boolean
+  /** Which MCP tools to expose (default: all) */
+  tools?: ('discover' | 'suggest' | 'validate' | 'load')[]
+  /** Base path for MCP endpoints (default: '/mcp') */
+  basePath?: string
+  /**
+   * Allowed origins for MCP requests (for Origin header validation per MCP 2025-11-25).
+   * If not provided, all origins are allowed (permissive mode).
+   * Set this to restrict access to specific origins for production security.
+   * Example: ['http://localhost:3000', 'https://myapp.com']
+   */
+  allowedOrigins?: string[]
+  /** Enable MCP App visualization for load tool results (default: false) */
+  app?: boolean
+  /**
+   * Override the MCP prompt set exposed by the built-in endpoint.
+   * Pass an array to replace the defaults, or a function to derive from them.
+   */
+  prompts?: MCPPromptResolver
+  /**
+   * Override the MCP resources exposed by the built-in endpoint.
+   * Pass an array to replace the defaults, or a function to derive from them.
+   * The live schema resource is always appended automatically.
+   */
+  resources?: MCPResourceResolver
+  /**
+   * OAuth 2.1 Protected Resource Metadata URL (RFC 9728).
+   * When set, MCP endpoints require a Bearer token in the Authorization header.
+   * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
+   * Token validation is the responsibility of extractSecurityContext.
+   */
+  resourceMetadataUrl?: string
+}
+
+/**
+ * Discovery request body
+ */
+export interface DiscoverRequest {
+  /** Topic or keyword to search for */
+  topic?: string
+  /** Natural language intent */
+  intent?: string
+  /** Maximum results to return */
+  limit?: number
+  /** Minimum relevance score (0-1) */
+  minScore?: number
+}
+
+/**
+ * Suggest request body
+ */
+export interface SuggestRequest {
+  /** Natural language query */
+  naturalLanguage: string
+  /** Optional target cube name */
+  cube?: string
+}
+
+/**
+ * Validate request body
+ */
+export interface ValidateRequest {
+  /** Query to validate */
+  query: SemanticQuery
+}
+
+/**
+ * Load request body - execute a query
+ */
+export interface LoadRequest {
+  /** Query to execute */
+  query: SemanticQuery
+}
+
+/**
+ * Handle /discover endpoint - find relevant cubes based on topic/intent
+ */
+export async function handleDiscover(
+  semanticLayer: SemanticLayerCompiler,
+  body: DiscoverRequest
+): Promise<{ cubes: CubeDiscoveryResult[] }> {
+  const metadata = semanticLayer.getMetadata()
+  const results = discoverCubes(metadata, {
+    topic: body.topic,
+    intent: body.intent,
+    limit: body.limit,
+    minScore: body.minScore
+  })
+
+  return { cubes: results }
+}
+
+/**
+ * Handle /suggest endpoint - generate query from natural language
+ */
+export async function handleSuggest(
+  semanticLayer: SemanticLayerCompiler,
+  body: SuggestRequest
+): Promise<QuerySuggestion> {
+  const metadata = semanticLayer.getMetadata()
+  return suggestQuery(metadata, body.naturalLanguage, body.cube)
+}
+
+/**
+ * Handle /validate endpoint - validate query with corrections
+ */
+export async function handleValidate(
+  semanticLayer: SemanticLayerCompiler,
+  body: ValidateRequest
+): Promise<AIValidationResult> {
+  const metadata = semanticLayer.getMetadata()
+  return aiValidateQuery(body.query, metadata)
+}
+
+/**
+ * Auto-correct double-prefixed field: "CubeName.CubeName.field" -> "CubeName.field"
+ */
+function fixDoublePrefixed(field: string): string {
+  const parts = field.split('.')
+  if (parts.length === 3 && parts[0] === parts[1]) {
+    return `${parts[0]}.${parts[2]}`
+  }
+  return field
+}
+
+/**
+ * Normalize AI-generated query fields before validation/execution.
+ * Fixes common LLM mistakes:
+ * - Double-prefixed fields: "Teams.Teams.name" -> "Teams.name"
+ * - Order as array: [{key: dir}] -> {key: dir}
+ * - Underscore order keys: "Teams_count" -> "Teams.count"
+ * - Invalid order keys dropped (falls back to first measure desc)
+ *
+ * This runs in the shared handleLoad path so both MCP and Agent benefit.
+ */
+export function normalizeQueryFields(query: Record<string, unknown>): Record<string, unknown> {
+  // Fix double-prefixed measures/dimensions
+  const fixStringArray = (arr: unknown): string[] | undefined => {
+    if (!Array.isArray(arr)) return undefined
+    return arr.map((f: unknown) => typeof f === 'string' ? fixDoublePrefixed(f) : f as string)
+  }
+
+  if (Array.isArray(query.measures)) {
+    query.measures = fixStringArray(query.measures)
+  }
+  if (Array.isArray(query.dimensions)) {
+    query.dimensions = fixStringArray(query.dimensions)
+  }
+
+  // Fix double-prefixed filter members and timeDimension names
+  if (Array.isArray(query.filters)) {
+    for (const filter of query.filters as Array<Record<string, unknown>>) {
+      if (typeof filter.member === 'string') {
+        filter.member = fixDoublePrefixed(filter.member)
+      }
+    }
+  }
+  if (Array.isArray(query.timeDimensions)) {
+    for (const td of query.timeDimensions as Array<Record<string, unknown>>) {
+      if (typeof td.dimension === 'string') {
+        td.dimension = fixDoublePrefixed(td.dimension)
+      }
+    }
+  }
+
+  // Normalize order: array [{key: dir}] -> merged object
+  if (Array.isArray(query.order)) {
+    const merged: Record<string, unknown> = {}
+    for (const entry of query.order) {
+      if (entry && typeof entry === 'object') {
+        Object.assign(merged, entry)
+      }
+    }
+    query.order = merged
+  }
+
+  // Fix order keys: double-prefix, underscore->dot, drop invalid
+  if (query.order && typeof query.order === 'object' && !Array.isArray(query.order)) {
+    const queryFields = new Set([
+      ...(Array.isArray(query.measures) ? query.measures as string[] : []),
+      ...(Array.isArray(query.dimensions) ? query.dimensions as string[] : []),
+    ])
+
+    const fixedOrder: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(query.order as Record<string, unknown>)) {
+      const dpFixed = fixDoublePrefixed(key)
+      if (queryFields.has(dpFixed)) {
+        fixedOrder[dpFixed] = val
+        continue
+      }
+
+      // Try underscore -> dot conversion
+      if (!key.includes('.') && key.includes('_')) {
+        const withDots = key.replace(/_/g, '.')
+        const normalized = fixDoublePrefixed(withDots)
+        if (queryFields.has(normalized)) {
+          fixedOrder[normalized] = val
+          continue
+        }
+        // Try matching by field suffix
+        const match = [...queryFields].find(f => {
+          const fieldName = f.split('.')[1]
+          return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
+        })
+        if (match) {
+          fixedOrder[match] = val
+          continue
+        }
+      }
+
+      // Drop order keys not in query measures/dimensions
+      if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
+        continue
+      }
+
+      fixedOrder[dpFixed] = val
+    }
+
+    // Default to first measure desc if all keys were dropped
+    if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
+      const firstMeasure = Array.isArray(query.measures) ? (query.measures as string[])[0] : undefined
+      if (firstMeasure) {
+        fixedOrder[firstMeasure] = 'desc'
+      }
+    }
+
+    query.order = fixedOrder
+  }
+
+  return query
+}
+
+/**
+ * Handle /load endpoint - execute a query and return results
+ * This completes the AI workflow: discover → suggest → validate → load
+ */
+export async function handleLoad(
+  semanticLayer: SemanticLayerCompiler,
+  securityContext: SecurityContext,
+  body: LoadRequest
+): Promise<{
+  data: Record<string, unknown>[]
+  annotation: any
+  query: SemanticQuery
+}> {
+  // Auto-correct common AI-generated field mistakes before validation
+  const query = normalizeQueryFields(body.query as Record<string, unknown>) as SemanticQuery
+
+  // Validate query structure and field existence
+  const validation = semanticLayer.validateQuery(query)
+  if (!validation.isValid) {
+    throw new Error(`Query validation failed: ${validation.errors.join(', ')}`)
+  }
+
+  // Execute the query
+  const result = await semanticLayer.executeMultiCubeQuery(query, securityContext)
+
+  return {
+    data: result.data,
+    annotation: result.annotation,
+    query
+  }
+}
+
+

@@ -31,13 +31,13 @@ import {
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
+  buildMcpResources,
   dispatchMcpMethod,
-  getDefaultPrompts,
-  getDefaultResources,
   isNotification,
   negotiateProtocol,
   parseJsonRpc,
   primeEventId,
+  resolveMcpPrompts,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -639,16 +639,8 @@ export function createCubeRoutes(
   // ============================================
 
   if (mcp.enabled !== false) {
-    // Build dynamic MCP resources/prompts (include schema)
-    const schemaResource = {
-      uri: 'drizzle-cube://schema',
-      name: 'Cube Schema',
-      description: 'Current cube metadata as JSON',
-      mimeType: 'application/json',
-      text: JSON.stringify(semanticLayer.getMetadata(), null, 2)
-    }
-    const mcpResources = [...getDefaultResources(), schemaResource]
-    const mcpPrompts = getDefaultPrompts()
+    const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
+    const mcpPrompts = resolveMcpPrompts(mcp.prompts)
 
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
@@ -878,3 +870,5 @@ export function createCubeApp(
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase }
+
+

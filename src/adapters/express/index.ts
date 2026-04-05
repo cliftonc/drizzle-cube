@@ -33,11 +33,13 @@ import {
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
+  buildMcpResources,
   dispatchMcpMethod,
   isNotification,
   negotiateProtocol,
   parseJsonRpc,
   primeEventId,
+  resolveMcpPrompts,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -647,6 +649,8 @@ export function createCubeRouter(
   // ============================================
 
   if (mcp.enabled !== false) {
+    const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
+    const mcpPrompts = resolveMcpPrompts(mcp.prompts)
     const mcpBasePath = mcp.basePath ?? '/mcp'
     /**
      * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
@@ -704,6 +708,8 @@ export function createCubeRouter(
             rawRequest: req,
             rawResponse: res,
             negotiatedProtocol: protocol.negotiated,
+            resources: mcpResources,
+            prompts: mcpPrompts,
             appEnabled: !!mcp.app
           }
         )
@@ -851,3 +857,6 @@ export function createCubeApp(
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase, CorsOptions }
+
+
+

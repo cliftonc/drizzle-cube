@@ -39,11 +39,13 @@ import {
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
+  buildMcpResources,
   dispatchMcpMethod,
   isNotification,
   negotiateProtocol,
   parseJsonRpc,
   primeEventId,
+  resolveMcpPrompts,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -897,6 +899,8 @@ export function createMcpRpcHandler(
   const { mcp = { enabled: true } } = options
 
   const semanticLayer = createSemanticLayer(options)
+  const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
+  const mcpPrompts = resolveMcpPrompts(mcp.prompts)
 
   return async function mcpRpcHandler(request: NextRequest) {
     // OAuth 2.1 bearer token check (RFC 9728)
@@ -1009,6 +1013,8 @@ export function createMcpRpcHandler(
           extractSecurityContext: (req) => extractSecurityContext(req as any),
           rawRequest: request,
           rawResponse: null,
+          resources: mcpResources,
+          prompts: mcpPrompts,
           appEnabled: !!mcp.app
         }
       )
@@ -1283,3 +1289,6 @@ export type {
   DrizzleDatabase,
   NextCorsOptions as CorsOptions
 }
+
+
+
