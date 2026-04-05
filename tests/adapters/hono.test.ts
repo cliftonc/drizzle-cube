@@ -441,7 +441,7 @@ describe('Hono Adapter', () => {
     const customApp = createCubeRoutes(createRoutesOptions({
       mcp: {
         enabled: true,
-        prompts: (defaults) => [
+        prompts: (defaults: import('../../src/adapters/mcp-transport').MCPPrompt[]) => [
           ...defaults,
           {
             name: 'custom-prompt',
@@ -512,3 +512,4 @@ describe('Hono Adapter', () => {
     }).toThrow('Either semanticLayer or a non-empty cubes array must be provided')
   })
 })
+
