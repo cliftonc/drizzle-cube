@@ -62,6 +62,9 @@ export interface MCPResource {
   text: string
 }
 
+export type MCPPromptResolver = MCPPrompt[] | ((defaults: MCPPrompt[]) => MCPPrompt[])
+export type MCPResourceResolver = MCPResource[] | ((defaults: MCPResource[]) => MCPResource[])
+
 export interface ProtocolNegotiation {
   ok: boolean
   negotiated: string | null
@@ -783,3 +786,42 @@ export function getDefaultResources(): MCPResource[] {
 export function getDefaultPrompts(): MCPPrompt[] {
   return PROMPTS
 }
+
+export function resolveMcpPrompts(prompts?: MCPPromptResolver): MCPPrompt[] {
+  const defaults = getDefaultPrompts()
+  if (typeof prompts === 'function') {
+    return prompts(defaults)
+  }
+  return prompts ?? defaults
+}
+
+export function resolveMcpResources(resources?: MCPResourceResolver): MCPResource[] {
+  const defaults = getDefaultResources()
+  if (typeof resources === 'function') {
+    return resources(defaults)
+  }
+  return resources ?? defaults
+}
+
+export function buildMcpSchemaResource(semanticLayer: SemanticLayerCompiler): MCPResource {
+  return {
+    uri: 'drizzle-cube://schema',
+    name: 'Cube Schema',
+    description: 'Current cube metadata as JSON',
+    mimeType: 'application/json',
+    text: JSON.stringify(semanticLayer.getMetadata(), null, 2)
+  }
+}
+
+export function buildMcpResources(
+  semanticLayer: SemanticLayerCompiler,
+  resources?: MCPResourceResolver
+): MCPResource[] {
+  const schemaResource = buildMcpSchemaResource(semanticLayer)
+  const baseResources = resolveMcpResources(resources)
+    .filter(resource => resource.uri !== schemaResource.uri)
+
+  return [...baseResources, schemaResource]
+}
+
+

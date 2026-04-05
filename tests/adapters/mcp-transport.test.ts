@@ -18,8 +18,11 @@ import {
   normalizeHeader,
   isNotification,
   primeEventId,
+  buildMcpResources,
   getDefaultResources,
   getDefaultPrompts,
+  resolveMcpPrompts,
+  resolveMcpResources,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
   MCP_SESSION_ID_HEADER,
@@ -570,6 +573,56 @@ describe('MCP Transport Layer', () => {
     })
   })
 
+  describe('prompt/resource resolvers', () => {
+    it('should allow prompt overrides derived from defaults', () => {
+      const prompts = resolveMcpPrompts(defaults => [
+        ...defaults,
+        {
+          name: 'custom-prompt',
+          description: 'Custom prompt',
+          messages: [{
+            role: 'user',
+            content: { type: 'text', text: 'custom instructions' }
+          }]
+        }
+      ])
+
+      expect(prompts.some(prompt => prompt.name === 'custom-prompt')).toBe(true)
+      expect(prompts.length).toBe(getDefaultPrompts().length + 1)
+    })
+
+    it('should allow resource overrides derived from defaults', () => {
+      const resources = resolveMcpResources(defaults => [
+        ...defaults,
+        {
+          uri: 'drizzle-cube://custom',
+          name: 'Custom Resource',
+          description: 'Custom resource',
+          mimeType: 'text/plain',
+          text: 'hello'
+        }
+      ])
+
+      expect(resources.some(resource => resource.uri === 'drizzle-cube://custom')).toBe(true)
+      expect(resources.length).toBe(getDefaultResources().length + 1)
+    })
+
+    it('should append the live schema resource when building MCP resources', async () => {
+      const { semanticLayer, close } = await createTestSemanticLayer()
+      try {
+        const { testEmployeesCube } = await createTestCubesForCurrentDatabase()
+        semanticLayer.registerCube(testEmployeesCube)
+
+        const resources = buildMcpResources(semanticLayer, defaults => defaults.filter(resource => resource.uri !== 'drizzle-cube://quickstart'))
+
+        expect(resources.some(resource => resource.uri === 'drizzle-cube://schema')).toBe(true)
+        expect(resources.some(resource => resource.uri === 'drizzle-cube://quickstart')).toBe(false)
+      } finally {
+        close()
+      }
+    })
+  })
+
   describe('dispatchMcpMethod', () => {
     let semanticLayer: any
     let closeFn: (() => void) | null = null
@@ -926,3 +979,5 @@ describe('MCP Transport Layer', () => {
     })
   })
 })
+
+

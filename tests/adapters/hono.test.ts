@@ -437,6 +437,40 @@ describe('Hono Adapter', () => {
     expect(data.error).toBe('Query parameter is required')
   })
 
+  it('should allow prompt overrides derived from defaults for MCP endpoints', async () => {
+    const customApp = createCubeRoutes(createRoutesOptions({
+      mcp: {
+        enabled: true,
+        prompts: (defaults: import('../../src/adapters/mcp-transport').MCPPrompt[]) => [
+          ...defaults,
+          {
+            name: 'custom-prompt',
+            description: 'Custom prompt',
+            messages: [{
+              role: 'user',
+              content: { type: 'text', text: 'custom instructions' }
+            }]
+          }
+        ]
+      }
+    }))
+
+    const req = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream'
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'prompts/list' })
+    })
+
+    const res = await customApp.request(req)
+    expect(res.status).toBe(200)
+
+    const data = await res.json() as any
+    expect(data.result.prompts.some((prompt: any) => prompt.name === 'custom-prompt')).toBe(true)
+  })
+
   // Helper function tests
   it('should work with mountCubeRoutes helper', async () => {
     const existingApp = new Hono()
@@ -478,3 +512,4 @@ describe('Hono Adapter', () => {
     }).toThrow('Either semanticLayer or a non-empty cubes array must be provided')
   })
 })
+

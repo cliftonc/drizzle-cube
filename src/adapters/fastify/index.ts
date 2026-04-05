@@ -32,11 +32,13 @@ import {
 import {
   buildJsonRpcError,
   buildJsonRpcResult,
+  buildMcpResources,
   dispatchMcpMethod,
   isNotification,
   negotiateProtocol,
   parseJsonRpc,
   primeEventId,
+  resolveMcpPrompts,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -716,6 +718,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   // ============================================
 
   if (mcp.enabled !== false) {
+    const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
+    const mcpPrompts = resolveMcpPrompts(mcp.prompts)
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
@@ -778,6 +782,8 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
             rawRequest: request,
             rawResponse: reply,
             negotiatedProtocol: protocol.negotiated,
+            resources: mcpResources,
+            prompts: mcpPrompts,
             appEnabled: !!mcp.app
           }
         )
@@ -933,3 +939,6 @@ export function createCubeApp(
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase, FastifyCorsOptions }
+
+
+

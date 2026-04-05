@@ -18,6 +18,10 @@ import {
   suggestQuery,
   aiValidateQuery
 } from '../server'
+import type {
+  MCPPromptResolver,
+  MCPResourceResolver
+} from './mcp-transport'
 
 /**
  * Calculate query complexity based on query structure
@@ -767,6 +771,17 @@ export interface MCPOptions {
   /** Enable MCP App visualization for load tool results (default: false) */
   app?: boolean
   /**
+   * Override the MCP prompt set exposed by the built-in endpoint.
+   * Pass an array to replace the defaults, or a function to derive from them.
+   */
+  prompts?: MCPPromptResolver
+  /**
+   * Override the MCP resources exposed by the built-in endpoint.
+   * Pass an array to replace the defaults, or a function to derive from them.
+   * The live schema resource is always appended automatically.
+   */
+  resources?: MCPResourceResolver
+  /**
    * OAuth 2.1 Protected Resource Metadata URL (RFC 9728).
    * When set, MCP endpoints require a Bearer token in the Authorization header.
    * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
@@ -1004,3 +1019,5 @@ export async function handleLoad(
     query
   }
 }
+
+

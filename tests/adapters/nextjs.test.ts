@@ -33,6 +33,7 @@ import {
   createDryRunHandler,
   createBatchHandler,
   createCubeHandlers,
+  createMcpRpcHandler,
   createOptionsHandler,
   type NextAdapterOptions,
   type NextCorsOptions
@@ -51,13 +52,19 @@ const mockNextUrl = {
   searchParams: new URLSearchParams()
 }
 
-function createMockNextRequest(method: string, body?: any, searchParams?: Record<string, string>): NextRequest {
+function createMockNextRequest(
+  method: string,
+  body?: any,
+  searchParams?: Record<string, string>,
+  headers?: Record<string, string>
+): NextRequest {
   const url = 'http://localhost:3000/api/cubejs'
   const request = new Request(url, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'Origin': 'http://localhost:3000'
+      'Origin': 'http://localhost:3000',
+      ...headers
     },
     body: body ? JSON.stringify(body) : undefined
   })
@@ -571,6 +578,41 @@ describe('Next.js Adapter', () => {
     })
   })
 
+  describe('MCP Handler', () => {
+    it('should allow prompt overrides derived from defaults', async () => {
+      const handler = createMcpRpcHandler({
+        ...adapterOptions,
+        mcp: {
+          enabled: true,
+          prompts: (defaults) => [
+            ...defaults,
+            {
+              name: 'custom-prompt',
+              description: 'Custom prompt',
+              messages: [{
+                role: 'user',
+                content: { type: 'text', text: 'custom instructions' }
+              }]
+            }
+          ]
+        }
+      })
+
+      const request = createMockNextRequest(
+        'POST',
+        { jsonrpc: '2.0', id: 1, method: 'prompts/list' },
+        undefined,
+        { Accept: 'application/json, text/event-stream' }
+      )
+      const response = await handler(request)
+
+      expect(response.status).toBe(200)
+
+      const data = await response.json() as any
+      expect(data.result.prompts.some((prompt: any) => prompt.name === 'custom-prompt')).toBe(true)
+    })
+  })
+
   // Skip batch handler tests on DuckDB due to parallel query execution
   describe.skipIf(skipIfDuckDB())('Batch Handler', () => {
     it('should create batch handler', () => {
@@ -662,3 +704,6 @@ describe('Next.js Adapter', () => {
     })
   })
 })
+
+
+
