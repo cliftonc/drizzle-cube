@@ -33,13 +33,9 @@ import type { ChartAxisConfig, ChartDisplayConfig, FieldLabelMap, ChartProps } f
 import McpChartSwitcher from './McpChartSwitcher'
 
 // Auto-selection
-import { autoSelectChart, type McpChartType, type ChartSelection } from './chartAutoSelect'
+import { autoSelectChartType, deriveChartConfig, type McpChartType } from './chartAutoSelect'
 import { applyHostContext, applyFallbackTheme } from './theme-bridge'
 import './global.css'
-
-// ────────────────────────────────────────────────────────────
-// Chart component map
-// ────────────────────────────────────────────────────────────
 
 const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   bar: BarChart,
@@ -64,10 +60,6 @@ const chartComponentMap: Record<string, React.ComponentType<ChartProps>> = {
   measureProfile: MeasureProfileChart,
 }
 
-// ────────────────────────────────────────────────────────────
-// Annotation → FieldLabelMap
-// ────────────────────────────────────────────────────────────
-
 function buildLabelMapFromAnnotation(annotation: any): FieldLabelMap {
   const map: FieldLabelMap = {}
   for (const [key, val] of Object.entries(annotation?.measures || {}))
@@ -88,10 +80,6 @@ function fallbackLabel(field: string): string {
     .trim()
 }
 
-// ────────────────────────────────────────────────────────────
-// Chart hint types (supports old flat + new structured format)
-// ────────────────────────────────────────────────────────────
-
 interface ChartHint {
   type?: McpChartType
   title?: string
@@ -103,40 +91,37 @@ interface ChartHint {
 }
 
 /** Normalize a chart hint into chartConfig + displayConfig */
-function normalizeHint(hint: ChartHint, sel: ChartSelection): {
+function normalizeHint(
+  hint: ChartHint,
+  baseChartConfig: ChartAxisConfig,
+  chartType: McpChartType,
+): {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
 } {
-  // Start with auto-selected values
-  let chartConfig: ChartAxisConfig = {
-    xAxis: sel.xAxis,
-    yAxis: sel.yAxis,
-    series: sel.series,
-  }
+  // Start with derived values for the current chart type
+  let chartConfig: ChartAxisConfig = { ...baseChartConfig }
   let displayConfig: ChartDisplayConfig = {}
+  const canOverrideChartConfig = hint.type === chartType
 
-  // Structured config from hint takes priority
-  if (hint.chartConfig) {
+  // Structured config from hint takes priority only when the hint explicitly targets this chart type
+  if (canOverrideChartConfig && hint.chartConfig) {
     chartConfig = { ...chartConfig, ...hint.chartConfig }
   }
   if (hint.displayConfig) {
     displayConfig = { ...displayConfig, ...hint.displayConfig }
   }
 
-  // Flat aliases override (backward compat)
-  if (hint.xAxis) {
+  // Flat aliases override only when the hint explicitly targets this chart type
+  if (canOverrideChartConfig && hint.xAxis) {
     chartConfig.xAxis = [hint.xAxis]
   }
-  if (hint.yAxis) {
+  if (canOverrideChartConfig && hint.yAxis) {
     chartConfig.yAxis = hint.yAxis
   }
 
   return { chartConfig, displayConfig }
 }
-
-// ────────────────────────────────────────────────────────────
-// Types
-// ────────────────────────────────────────────────────────────
 
 interface LoadResult {
   data: any[]
@@ -144,27 +129,25 @@ interface LoadResult {
   query?: any
 }
 
-// ────────────────────────────────────────────────────────────
-// Main App
-// ────────────────────────────────────────────────────────────
+type ChartConfigSource = 'auto' | 'hint' | 'manual'
 
-function McpApp() {
+export function McpApp() {
   const [result, setResult] = useState<LoadResult | null>(null)
   const [chartType, setChartType] = useState<McpChartType>('table')
-  const [selection, setSelection] = useState<ChartSelection | null>(null)
+  const [chartConfig, setChartConfig] = useState<ChartAxisConfig>({})
+  const [displayConfig, setDisplayConfig] = useState<ChartDisplayConfig>({})
+  const [chartConfigSource, setChartConfigSource] = useState<ChartConfigSource>('auto')
   const [chartHint, setChartHint] = useState<ChartHint | null>(null)
   const chartHintRef = useRef<ChartHint | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [appRef, setAppRef] = useState<App | null>(null)
 
-  // Build label map from annotation
   const labelMap = useMemo<FieldLabelMap>(() => {
     if (!result?.annotation) return {}
     return buildLabelMapFromAnnotation(result.annotation)
   }, [result?.annotation])
 
-  // Build CubeMetaContext value
   const metaContextValue = useMemo<CubeMetaContextValue>(() => ({
     meta: null,
     labelMap,
@@ -194,7 +177,6 @@ function McpApp() {
         parsed = res as LoadResult
       }
 
-      // Handle Cube.js response format: { results: [{ data, query, annotation }] }
       if (parsed && 'results' in parsed && Array.isArray((parsed as any).results)) {
         const firstResult = (parsed as any).results[0]
         if (firstResult) {
@@ -215,22 +197,30 @@ function McpApp() {
       setError(null)
 
       const query = parsed.query || {}
-      const sel = autoSelectChart(query, parsed.data)
+      const nextHint = hint || null
+      const autoChartType = autoSelectChartType(query, parsed.data)
+      const resolvedChartType = nextHint?.type || autoChartType
+      const derivedSelection = deriveChartConfig(query, parsed.data, resolvedChartType)
+      const derivedChartConfig: ChartAxisConfig = {
+        xAxis: derivedSelection.xAxis,
+        yAxis: derivedSelection.yAxis,
+        series: derivedSelection.series,
+      }
 
-      // AI chart hint overrides auto-selection
-      if (hint) {
-        setChartHint(hint)
-        const resolvedType = hint.type || sel.chartType
-        setChartType(resolvedType)
-        setSelection({
-          chartType: resolvedType,
-          xAxis: hint.xAxis ? [hint.xAxis] : (hint.chartConfig?.xAxis || sel.xAxis),
-          yAxis: hint.yAxis || (hint.chartConfig?.yAxis || sel.yAxis),
-          series: hint.chartConfig?.series || sel.series,
-        })
+      chartHintRef.current = nextHint
+      setChartHint(nextHint)
+
+      if (nextHint) {
+        const normalizedHint = normalizeHint(nextHint, derivedChartConfig, resolvedChartType)
+        setChartType(resolvedChartType)
+        setChartConfig(normalizedHint.chartConfig)
+        setDisplayConfig(normalizedHint.displayConfig)
+        setChartConfigSource('hint')
       } else {
-        setSelection(sel)
-        setChartType(sel.chartType)
+        setChartType(derivedSelection.chartType)
+        setChartConfig(derivedChartConfig)
+        setDisplayConfig({})
+        setChartConfigSource('auto')
       }
     } catch (err) {
       setError(`Failed to parse result: ${err instanceof Error ? err.message : String(err)}`)
@@ -244,7 +234,6 @@ function McpApp() {
       setAppRef(appInstance)
       appInstance.ontoolinput = (params) => {
         setLoading(true)
-        // Extract AI chart hint from tool input arguments
         const args = params?.arguments as Record<string, unknown> | undefined
         const hint = (args?.chart as ChartHint | undefined) ?? null
         chartHintRef.current = hint
@@ -266,14 +255,24 @@ function McpApp() {
     },
   })
 
-  // Apply fallback theme on mount
   useEffect(() => {
     applyFallbackTheme()
   }, [])
 
   const handleChartTypeChange = useCallback((ct: McpChartType) => {
-    setChartType(ct)
-  }, [])
+    if (!result) return
+
+    const derivedSelection = deriveChartConfig(result.query || {}, result.data || [], ct)
+
+    setChartType(derivedSelection.chartType)
+    setChartConfig({
+      xAxis: derivedSelection.xAxis,
+      yAxis: derivedSelection.yAxis,
+      series: derivedSelection.series,
+    })
+    setDisplayConfig({})
+    setChartConfigSource('manual')
+  }, [result])
 
   void function handleRequery(query: Record<string, unknown>) {
     const currentApp = appRef || app
@@ -322,24 +321,18 @@ function McpApp() {
   }
 
   const query = result.query || {}
-
-  // Build chart props from selection + hint
-  const { chartConfig, displayConfig } = selection && chartHint
-    ? normalizeHint(chartHint, selection)
-    : {
-        chartConfig: selection ? { xAxis: selection.xAxis, yAxis: selection.yAxis, series: selection.series } as ChartAxisConfig : undefined,
-        displayConfig: {} as ChartDisplayConfig,
-      }
-
   const ChartComponent = chartComponentMap[chartType] || DataTable
+  const chartTitle = chartHint?.title && chartConfigSource !== 'auto'
+    ? chartHint.title
+    : null
 
   return (
     <CubeMetaContext.Provider value={metaContextValue}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          {chartHint?.title ? (
+          {chartTitle ? (
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--dc-text, #1e293b)' }}>
-              {chartHint.title}
+              {chartTitle}
             </div>
           ) : <div />}
           <McpChartSwitcher
@@ -368,9 +361,11 @@ function McpApp() {
   )
 }
 
-// ────────────────────────────────────────────────────────────
-// Mount
-// ────────────────────────────────────────────────────────────
+const rootElement = typeof document !== 'undefined' ? document.getElementById('root') : null
 
-const root = createRoot(document.getElementById('root')!)
-root.render(<McpApp />)
+if (rootElement) {
+  const root = createRoot(rootElement)
+  root.render(<McpApp />)
+}
+
+
