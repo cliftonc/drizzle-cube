@@ -91,27 +91,32 @@ interface ChartHint {
 }
 
 /** Normalize a chart hint into chartConfig + displayConfig */
-function normalizeHint(hint: ChartHint, baseChartConfig: ChartAxisConfig): {
+function normalizeHint(
+  hint: ChartHint,
+  baseChartConfig: ChartAxisConfig,
+  chartType: McpChartType,
+): {
   chartConfig: ChartAxisConfig
   displayConfig: ChartDisplayConfig
 } {
   // Start with derived values for the current chart type
   let chartConfig: ChartAxisConfig = { ...baseChartConfig }
   let displayConfig: ChartDisplayConfig = {}
+  const canOverrideChartConfig = hint.type === chartType
 
-  // Structured config from hint takes priority
-  if (hint.chartConfig) {
+  // Structured config from hint takes priority only when the hint explicitly targets this chart type
+  if (canOverrideChartConfig && hint.chartConfig) {
     chartConfig = { ...chartConfig, ...hint.chartConfig }
   }
   if (hint.displayConfig) {
     displayConfig = { ...displayConfig, ...hint.displayConfig }
   }
 
-  // Flat aliases override (backward compat)
-  if (hint.xAxis) {
+  // Flat aliases override only when the hint explicitly targets this chart type
+  if (canOverrideChartConfig && hint.xAxis) {
     chartConfig.xAxis = [hint.xAxis]
   }
-  if (hint.yAxis) {
+  if (canOverrideChartConfig && hint.yAxis) {
     chartConfig.yAxis = hint.yAxis
   }
 
@@ -206,7 +211,7 @@ export function McpApp() {
       setChartHint(nextHint)
 
       if (nextHint) {
-        const normalizedHint = normalizeHint(nextHint, derivedChartConfig)
+        const normalizedHint = normalizeHint(nextHint, derivedChartConfig, resolvedChartType)
         setChartType(resolvedChartType)
         setChartConfig(normalizedHint.chartConfig)
         setDisplayConfig(normalizedHint.displayConfig)
@@ -362,3 +367,5 @@ if (rootElement) {
   const root = createRoot(rootElement)
   root.render(<McpApp />)
 }
+
+

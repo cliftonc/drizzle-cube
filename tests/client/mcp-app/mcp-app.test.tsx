@@ -203,4 +203,51 @@ describe('McpApp chart switching', () => {
       series: [],
     })
   })
+
+  it('keeps derived table columns when a typeless legacy hint is present on initial render', async () => {
+    render(<McpApp />)
+
+    await waitFor(() => {
+      expect(mockApp.ontoolinput).toBeTypeOf('function')
+    })
+
+    const data = Array.from({ length: 31 }, (_, index) => ({
+      'Orders.status': index % 2 === 0 ? 'paid' : 'pending',
+      'Orders.region': index % 3 === 0 ? 'emea' : 'na',
+      'Orders.count': index + 1,
+      'Orders.revenue': (index + 1) * 100,
+      'Orders.channel': index % 2 === 0 ? 'web' : 'store',
+    }))
+
+    await act(async () => {
+      mockApp.ontoolinput?.({
+        arguments: {
+          chart: {
+            title: 'Orders table',
+            xAxis: 'Orders.status',
+            yAxis: ['Orders.count'],
+          },
+        },
+        structuredContent: {
+          data,
+          query: {
+            dimensions: ['Orders.status', 'Orders.region'],
+            measures: ['Orders.count', 'Orders.revenue'],
+          },
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('data-table-chart')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Orders table')).toBeInTheDocument()
+    expect(readChartConfig('data-table-chart')).toEqual({
+      xAxis: ['Orders.status', 'Orders.region', 'Orders.count', 'Orders.revenue', 'Orders.channel'],
+      yAxis: [],
+      series: [],
+    })
+  })
 })
+
