@@ -663,6 +663,17 @@ describe('MCP Transport Layer', () => {
         expect(result.serverInfo.name).toBe('drizzle-cube')
       })
 
+      it('should use custom serverName when provided in context', async () => {
+        const customCtx: McpDispatchContext = {
+          ...dispatchCtx,
+          serverName: 'Semantius Cube'
+        }
+        const result = await dispatchMcpMethod('initialize', {}, customCtx) as any
+
+        expect(result).toHaveProperty('serverInfo')
+        expect(result.serverInfo.name).toBe('Semantius Cube')
+      })
+
       it('should negotiate protocol version', async () => {
         const result = await dispatchMcpMethod(
           'initialize',

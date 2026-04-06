@@ -808,6 +808,11 @@ export interface MCPOptions {
    * Token validation is the responsibility of extractSecurityContext.
    */
   resourceMetadataUrl?: string
+  /**
+   * Optional name to use in the MCP serverInfo.name field (initialize response).
+   * Defaults to 'drizzle-cube'. Override to match your product branding.
+   */
+  serverName?: string
 }
 
 /**
