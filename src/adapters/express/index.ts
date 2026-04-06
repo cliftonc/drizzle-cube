@@ -711,7 +711,8 @@ export function createCubeRouter(
             resources: mcpResources,
             prompts: mcpPrompts,
             appEnabled: !!mcp.app,
-            appConfig: typeof mcp.app === 'object' ? mcp.app : undefined
+            appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
+            serverName: mcp.serverName
           }
         )
 

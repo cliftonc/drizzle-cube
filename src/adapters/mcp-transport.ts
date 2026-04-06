@@ -65,6 +65,8 @@ export interface McpDispatchContext {
   appEnabled?: boolean
   /** Locale configuration for the MCP App (only used when appEnabled is true) */
   appConfig?: McpAppConfig
+  /** Optional name for the MCP serverInfo.name field. Defaults to 'drizzle-cube'. */
+  serverName?: string
 }
 
 export interface MCPResource {
@@ -264,6 +266,7 @@ export async function dispatchMcpMethod(
   ctx: McpDispatchContext
 ): Promise<unknown> {
   const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled, appConfig } = ctx
+  const serverName = ctx.serverName ?? 'drizzle-cube'
   const prompts = ctx.prompts ?? PROMPTS
   const baseResources = ctx.resources ?? RESOURCES
 
@@ -304,7 +307,7 @@ export async function dispatchMcpMethod(
         },
         sessionId: primeEventId(),
         serverInfo: {
-          name: 'drizzle-cube',
+          name: serverName,
           // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
           version: typeof process !== 'undefined' ? process.env?.npm_package_version || 'dev' : 'worker'
         }

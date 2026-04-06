@@ -1,1 +1,1 @@
-current_phase: architect
+current_phase: executor
