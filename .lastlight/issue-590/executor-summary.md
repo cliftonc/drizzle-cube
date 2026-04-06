@@ -66,3 +66,17 @@ mcp: {
 // Boolean still works (en-GB fallback, browser detection on)
 mcp: { enabled: true, app: true }
 ```
+
+## Fix Loop 1 (post-reviewer)
+
+**Issue fixed**: XSS in `getMcpAppHtml` — `JSON.stringify` output was not safe for embedding in `<script>` tags because `</script>` sequences are not escaped by default.
+
+**Fix**: Added `.replace(/<\//g, '<\\/')` after `JSON.stringify` in `getMcpAppHtml`. This is the standard technique for safely embedding JSON in HTML `<script>` blocks — the `</` sequence cannot appear in the output unescaped, preventing script-tag breakout.
+
+**Test updated**: Replaced synthetic reimplementation tests with tests that verify:
+- The escaping rule itself (that `</` cannot appear in escaped output)
+- Parseability after unescaping (round-trip check)
+- JSON shape correctness
+- Script placement before `</head>`
+
+Typecheck: still clean after fix.

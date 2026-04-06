@@ -28,10 +28,12 @@ import { mcpAppHtml } from '../mcp-app/generated-html'
 /** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
 export function getMcpAppHtml(config?: McpAppConfig): string {
   if (!mcpAppHtml || !config) return mcpAppHtml
-  const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${JSON.stringify({
+  // Escape `</` → `<\/` so the JSON cannot break out of the script block
+  const safeJson = JSON.stringify({
     defaultLocale: config.defaultLocale,
     detectBrowserLocale: config.detectBrowserLocale,
-  })}</script>`
+  }).replace(/<\//g, '<\\/')
+  const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${safeJson}</script>`
   return mcpAppHtml.replace('</head>', `${script}</head>`)
 }
 
