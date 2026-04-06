@@ -982,17 +982,19 @@ describe('MCP Transport Layer', () => {
   })
 
   describe('getMcpAppHtml locale config injection', () => {
-    it('returns empty string when app html is not built (no config)', () => {
-      // mcpAppHtml is '' in test environment (no build artifact)
+    it('returns base html unchanged when no config is provided', () => {
+      // No config → no injection; the built HTML is returned as-is
       const html = getMcpAppHtml()
-      expect(html).toBe('')
+      expect(html).toContain('<!DOCTYPE html>')
+      expect(html).not.toContain('__DRIZZLE_CUBE_MCP_APP_CONFIG__')
     })
 
-    it('returns empty string when app html is not built (with config)', () => {
-      // In test environment mcpAppHtml is '', so getMcpAppHtml(config) must also return ''
+    it('injects config script into html when config is provided', () => {
       const config: McpAppConfig = { defaultLocale: 'nl-NL' }
       const result = getMcpAppHtml(config)
-      expect(result).toBe('')
+      expect(result).toContain('__DRIZZLE_CUBE_MCP_APP_CONFIG__')
+      expect(result).toContain('"nl-NL"')
+      expect(result).toContain('</head>')
     })
 
     // The injection logic is tested via a thin wrapper that patches the module-level html.
