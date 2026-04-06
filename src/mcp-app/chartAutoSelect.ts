@@ -37,13 +37,89 @@ export const SUPPORTED_CHARTS: McpChartType[] = [
   'kpiDelta', 'kpiText', 'candlestick', 'measureProfile',
 ]
 
+function getMeasures(query: LoadQuery): string[] {
+  return query.measures || []
+}
+
+function getDimensions(query: LoadQuery): string[] {
+  return query.dimensions || []
+}
+
+function getChartTimeDimensions(query: LoadQuery): string[] {
+  return query.timeDimensions
+    ?.filter(timeDimension => Boolean(timeDimension.granularity))
+    .map(timeDimension => timeDimension.dimension) || []
+}
+
+function getAllTimeDimensions(query: LoadQuery): string[] {
+  return query.timeDimensions?.map(timeDimension => timeDimension.dimension) || []
+}
+
+function dedupeFields(fields: string[]): string[] {
+  const seen = new Set<string>()
+
+  return fields.filter((field) => {
+    if (!field || seen.has(field)) return false
+    seen.add(field)
+    return true
+  })
+}
+
+function getRemainingRowKeys(data: any[], existingFields: string[]): string[] {
+  const seen = new Set(existingFields)
+  const remainingKeys: string[] = []
+
+  for (const row of data) {
+    if (!row || typeof row !== 'object') continue
+
+    for (const key of Object.keys(row)) {
+      if (seen.has(key)) continue
+      seen.add(key)
+      remainingKeys.push(key)
+    }
+  }
+
+  return remainingKeys
+}
+
+function getTableColumns(query: LoadQuery, data: any[]): string[] {
+  const baseColumns = dedupeFields([
+    ...getDimensions(query),
+    ...getAllTimeDimensions(query),
+    ...getMeasures(query),
+  ])
+
+  return [...baseColumns, ...getRemainingRowKeys(data, baseColumns)]
+}
+
+function getDefaultChartAxes(query: LoadQuery): Omit<ChartSelection, 'chartType'> {
+  const measures = getMeasures(query)
+  const dimensions = getDimensions(query)
+  const timeDimensions = getChartTimeDimensions(query)
+  const xAxis: string[] = []
+  const series: string[] = []
+
+  if (timeDimensions.length > 0) {
+    xAxis.push(timeDimensions[0])
+  } else if (dimensions.length > 0) {
+    xAxis.push(dimensions[0])
+    series.push(...dimensions.slice(1))
+  }
+
+  return {
+    xAxis,
+    yAxis: [...measures],
+    series,
+  }
+}
+
 /**
  * Check if a chart type is available for the given query shape
  */
 export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowCount: number): boolean {
-  const measures = query.measures || []
-  const dimensions = query.dimensions || []
-  const timeDims = query.timeDimensions?.filter(td => td.granularity) || []
+  const measures = getMeasures(query)
+  const dimensions = getDimensions(query)
+  const timeDims = getChartTimeDimensions(query)
   const hasMeasure = measures.length > 0
   const hasDimension = dimensions.length > 0
   const hasTimeDim = timeDims.length > 0
@@ -91,51 +167,56 @@ export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowC
 /**
  * Select the best chart type based on query + data shape
  */
-export function autoSelectChart(query: LoadQuery, data: any[]): ChartSelection {
-  const measures = query.measures || []
-  const dimensions = query.dimensions || []
-  const timeDims = query.timeDimensions?.filter(td => td.granularity) || []
+export function autoSelectChartType(query: LoadQuery, data: any[]): McpChartType {
+  const measures = getMeasures(query)
+  const dimensions = getDimensions(query)
+  const timeDims = getChartTimeDimensions(query)
   const rowCount = data.length
-
-  // Build axis config
-  const yAxis = [...measures]
-  const xAxis: string[] = []
-  const series: string[] = []
-
-  // Determine x-axis: prefer time dimension, then first dimension
-  if (timeDims.length > 0) {
-    xAxis.push(timeDims[0].dimension)
-  } else if (dimensions.length > 0) {
-    xAxis.push(dimensions[0])
-    // Extra dimensions become series
-    for (let i = 1; i < dimensions.length; i++) {
-      series.push(dimensions[i])
-    }
-  }
-
-  // Chart type selection
-  let chartType: McpChartType
 
   if (measures.length >= 1 && dimensions.length === 0 && timeDims.length === 0 && rowCount <= 1) {
     // Single aggregate value → KPI
-    chartType = 'kpiNumber'
-  } else if (timeDims.length > 0 && measures.length >= 1) {
-    // Time series → line
-    chartType = 'line'
-  } else if (dimensions.length > 0 && measures.length >= 1) {
-    if (rowCount <= 10 && measures.length === 1 && dimensions.length === 1) {
-      // Few categories, single measure → pie
-      chartType = 'pie'
-    } else if (rowCount <= 30) {
-      // Moderate categories → bar
-      chartType = 'bar'
-    } else {
-      // Many rows → table
-      chartType = 'table'
-    }
-  } else {
-    chartType = 'table'
+    return 'kpiNumber'
   }
 
-  return { chartType, xAxis, yAxis, series }
+  if (timeDims.length > 0 && measures.length >= 1) {
+    // Time series → line
+    return 'line'
+  }
+
+  if (dimensions.length > 0 && measures.length >= 1) {
+    if (rowCount <= 10 && measures.length === 1 && dimensions.length === 1) {
+      // Few categories, single measure → pie
+      return 'pie'
+    }
+
+    if (rowCount <= 30) {
+      // Moderate categories → bar
+      return 'bar'
+    }
+
+    // Many rows → table
+    return 'table'
+  }
+
+  return 'table'
+}
+
+export function deriveChartConfig(query: LoadQuery, data: any[], chartType: McpChartType): ChartSelection {
+  if (chartType === 'table') {
+    return {
+      chartType,
+      xAxis: getTableColumns(query, data),
+      yAxis: [],
+      series: [],
+    }
+  }
+
+  return {
+    chartType,
+    ...getDefaultChartAxes(query),
+  }
+}
+
+export function autoSelectChart(query: LoadQuery, data: any[]): ChartSelection {
+  return deriveChartConfig(query, data, autoSelectChartType(query, data))
 }
