@@ -8,8 +8,12 @@ import {
   generateRequestId,
   type DiscoverRequest,
   type ValidateRequest,
-  type LoadRequest
+  type LoadRequest,
+  type McpAppConfig
 } from './utils'
+
+// Re-export McpAppConfig for adapters that import from mcp-transport
+export type { McpAppConfig }
 
 // Re-export MCPPrompt for external consumers
 export { type MCPPrompt }
@@ -21,9 +25,14 @@ export const MCP_APP_MIME_TYPE = 'text/html;profile=mcp-app'
 // MCP App HTML loaded from generated file (built by scripts/generate-mcp-app-html.ts)
 import { mcpAppHtml } from '../mcp-app/generated-html'
 
-/** Get the bundled MCP App HTML. Returns empty string if not yet built. */
-export function getMcpAppHtml(): string {
-  return mcpAppHtml
+/** Get the bundled MCP App HTML, optionally with locale config injected. Returns empty string if not yet built. */
+export function getMcpAppHtml(config?: McpAppConfig): string {
+  if (!mcpAppHtml || !config) return mcpAppHtml
+  const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${JSON.stringify({
+    defaultLocale: config.defaultLocale,
+    detectBrowserLocale: config.detectBrowserLocale,
+  })}</script>`
+  return mcpAppHtml.replace('</head>', `${script}</head>`)
 }
 
 export type JsonRpcId = string | number | null | undefined
@@ -52,6 +61,8 @@ export interface McpDispatchContext {
   prompts?: MCPPrompt[]
   /** Enable MCP App visualization for load tool */
   appEnabled?: boolean
+  /** Locale configuration for the MCP App (only used when appEnabled is true) */
+  appConfig?: McpAppConfig
 }
 
 export interface MCPResource {
@@ -250,14 +261,14 @@ export async function dispatchMcpMethod(
   params: unknown,
   ctx: McpDispatchContext
 ): Promise<unknown> {
-  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled } = ctx
+  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled, appConfig } = ctx
   const prompts = ctx.prompts ?? PROMPTS
   const baseResources = ctx.resources ?? RESOURCES
 
   // Add MCP App visualization resource when app mode is enabled
   const resources = appEnabled ? [
     ...baseResources,
-    ...getMcpAppResource()
+    ...getMcpAppResource(appConfig)
   ] : baseResources
 
   switch (method) {
@@ -632,8 +643,8 @@ function wrapContent(result: unknown) {
 // MCP App visualization resource
 // ---------------------------------------------
 
-function getMcpAppResource(): MCPResource[] {
-  const html = getMcpAppHtml()
+function getMcpAppResource(config?: McpAppConfig): MCPResource[] {
+  const html = getMcpAppHtml(config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,

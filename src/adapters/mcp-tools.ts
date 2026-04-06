@@ -41,6 +41,7 @@ import {
 import type { MCPPrompt } from '../server/ai/mcp-prompts'
 import {
   type MCPResource,
+  type McpAppConfig,
   buildToolList,
   getDefaultResources,
   getDefaultPrompts,
@@ -113,8 +114,12 @@ export interface GetCubeToolsOptions {
   /** Custom MCP resources (defaults to built-in drizzle-cube resources) */
   resources?: MCPResource[]
 
-  /** Enable MCP App visualization for the load tool (default: false) */
-  app?: boolean
+  /**
+   * Enable MCP App visualization for the load tool.
+   * Pass `true` to enable with defaults, or a config object to set locale options.
+   * @example app: { defaultLocale: 'nl-NL', detectBrowserLocale: false }
+   */
+  app?: boolean | McpAppConfig
 }
 
 /**
@@ -220,12 +225,15 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
     tools: enabledTools = ['discover', 'validate', 'load', 'chart'],
     prompts = getDefaultPrompts(),
     resources: customResources,
-    app: appEnabled = false
+    app = false
   } = options
+
+  const appEnabled = !!app
+  const appConfig: McpAppConfig | undefined = typeof app === 'object' ? app : undefined
 
   // Build resources: custom or defaults + optional app resource
   const baseResources = customResources ?? getDefaultResources()
-  const resources = appEnabled ? [...baseResources, ...getMcpAppResources()] : baseResources
+  const resources = appEnabled ? [...baseResources, ...getMcpAppResources(appConfig)] : baseResources
 
   // Get tool schemas from the single source of truth in mcp-transport
   const allTools = buildToolList({ appEnabled })
@@ -318,8 +326,8 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
   }
 }
 
-function getMcpAppResources(): MCPResource[] {
-  const html = getMcpAppHtml()
+function getMcpAppResources(config?: McpAppConfig): MCPResource[] {
+  const html = getMcpAppHtml(config)
   if (!html) return []
   return [{
     uri: MCP_APP_RESOURCE_URI,

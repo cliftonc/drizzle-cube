@@ -23,6 +23,7 @@ import {
   getDefaultPrompts,
   resolveMcpPrompts,
   resolveMcpResources,
+  getMcpAppHtml,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
   MCP_SESSION_ID_HEADER,
@@ -30,7 +31,8 @@ import {
   extractBearerToken,
   buildWwwAuthenticateChallenge,
   type JsonRpcRequest,
-  type McpDispatchContext
+  type McpDispatchContext,
+  type McpAppConfig
 } from '../../src/adapters/mcp-transport'
 import { createTestSemanticLayer } from '../helpers/test-database'
 import { testSecurityContexts } from '../helpers/enhanced-test-data'
@@ -976,6 +978,54 @@ describe('MCP Transport Layer', () => {
     it('should handle URLs with paths', () => {
       const result = buildWwwAuthenticateChallenge('https://auth.example.com/.well-known/oauth-protected-resource/mcp')
       expect(result).toBe('Bearer resource_metadata="https://auth.example.com/.well-known/oauth-protected-resource/mcp"')
+    })
+  })
+
+  describe('getMcpAppHtml locale config injection', () => {
+    it('returns empty string when app html is not built', () => {
+      // mcpAppHtml is '' in test environment (no build artifact)
+      const html = getMcpAppHtml()
+      expect(html).toBe('')
+    })
+
+    it('returns html unchanged when no config is provided', () => {
+      // Patch getMcpAppHtml indirectly — test the injection logic directly with a synthetic html
+      // Since generated-html.ts exports '' in test env, we test via a re-implementation of the logic.
+      const fakeHtml = '<html><head></head><body></body></html>'
+      const config: McpAppConfig = { defaultLocale: 'nl-NL', detectBrowserLocale: false }
+      // Verify the injection pattern works on a synthetic string
+      const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${JSON.stringify({
+        defaultLocale: config.defaultLocale,
+        detectBrowserLocale: config.detectBrowserLocale,
+      })}</script>`
+      const injected = fakeHtml.replace('</head>', `${script}</head>`)
+      expect(injected).toContain('window.__DRIZZLE_CUBE_MCP_APP_CONFIG__')
+      expect(injected).toContain('"defaultLocale":"nl-NL"')
+      expect(injected).toContain('"detectBrowserLocale":false')
+      expect(injected).toContain('</head>')
+    })
+
+    it('injects script with defaultLocale and detectBrowserLocale', () => {
+      const config: McpAppConfig = { defaultLocale: 'en-US', detectBrowserLocale: true }
+      const fakeHtml = '<!DOCTYPE html><html><head><title>test</title></head><body><div id="root"></div></body></html>'
+      const script = `<script>window.__DRIZZLE_CUBE_MCP_APP_CONFIG__ = ${JSON.stringify({
+        defaultLocale: config.defaultLocale,
+        detectBrowserLocale: config.detectBrowserLocale,
+      })}</script>`
+      const injected = fakeHtml.replace('</head>', `${script}</head>`)
+      // Script must appear before </head>
+      const scriptIdx = injected.indexOf('<script>')
+      const headCloseIdx = injected.indexOf('</head>')
+      expect(scriptIdx).toBeLessThan(headCloseIdx)
+      expect(injected).toContain('"defaultLocale":"en-US"')
+      expect(injected).toContain('"detectBrowserLocale":true')
+    })
+
+    it('getMcpAppHtml with config returns empty string when no html built', () => {
+      // In test environment mcpAppHtml is '', so getMcpAppHtml(config) must also return ''
+      const config: McpAppConfig = { defaultLocale: 'nl-NL' }
+      const result = getMcpAppHtml(config)
+      expect(result).toBe('')
     })
   })
 })

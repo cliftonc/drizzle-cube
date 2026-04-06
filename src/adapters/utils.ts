@@ -752,6 +752,22 @@ async function handleRetentionDryRun(
 // ============================================
 
 /**
+ * Locale configuration for the MCP App visualization.
+ */
+export interface McpAppConfig {
+  /**
+   * Default locale to use when the browser locale is unavailable or detection is disabled.
+   * BCP-47 format (e.g. 'en-GB', 'nl-NL', 'en-US'). Defaults to 'en-GB'.
+   */
+  defaultLocale?: string
+  /**
+   * When true (default), the MCP App will prefer the browser/runtime locale over defaultLocale.
+   * Set to false to force defaultLocale regardless of the browser setting.
+   */
+  detectBrowserLocale?: boolean
+}
+
+/**
  * MCP Endpoint Options
  */
 export interface MCPOptions {
@@ -768,8 +784,12 @@ export interface MCPOptions {
    * Example: ['http://localhost:3000', 'https://myapp.com']
    */
   allowedOrigins?: string[]
-  /** Enable MCP App visualization for load tool results (default: false) */
-  app?: boolean
+  /**
+   * Enable MCP App visualization for load tool results.
+   * Pass `true` to enable with defaults, or a config object to set locale options.
+   * @example app: { defaultLocale: 'nl-NL', detectBrowserLocale: false }
+   */
+  app?: boolean | McpAppConfig
   /**
    * Override the MCP prompt set exposed by the built-in endpoint.
    * Pass an array to replace the defaults, or a function to derive from them.

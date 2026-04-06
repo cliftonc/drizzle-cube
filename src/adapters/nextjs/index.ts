@@ -1015,7 +1015,8 @@ export function createMcpRpcHandler(
           rawResponse: null,
           resources: mcpResources,
           prompts: mcpPrompts,
-          appEnabled: !!mcp.app
+          appEnabled: !!mcp.app,
+          appConfig: typeof mcp.app === 'object' ? mcp.app : undefined
         }
       )
 
