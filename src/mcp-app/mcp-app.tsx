@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useApp } from '@modelcontextprotocol/ext-apps/react'
 import type { App } from '@modelcontextprotocol/ext-apps'
+import { I18nProvider } from '../client/providers/I18nProvider'
 
 // Real chart components
 import BarChart from '../client/components/charts/BarChart'
@@ -361,11 +362,37 @@ export function McpApp() {
   )
 }
 
+// ────────────────────────────────────────────────────────────
+// Locale resolution
+// ────────────────────────────────────────────────────────────
+
+interface McpAppWindowConfig {
+  defaultLocale?: string
+  detectBrowserLocale?: boolean
+}
+
+function resolveMcpAppLocale(): string {
+  const config: McpAppWindowConfig =
+    (typeof window !== 'undefined' && (window as any).__DRIZZLE_CUBE_MCP_APP_CONFIG__) || {}
+  const { defaultLocale = 'en-GB', detectBrowserLocale = true } = config
+
+  if (detectBrowserLocale && typeof navigator !== 'undefined' && navigator.language) {
+    return navigator.language
+  }
+  return defaultLocale
+}
+
+// ────────────────────────────────────────────────────────────
+// Mount
+// ────────────────────────────────────────────────────────────
+
 const rootElement = typeof document !== 'undefined' ? document.getElementById('root') : null
 
 if (rootElement) {
   const root = createRoot(rootElement)
-  root.render(<McpApp />)
+  root.render(
+    <I18nProvider locale={resolveMcpAppLocale()}>
+      <McpApp />
+    </I18nProvider>
+  )
 }
-
-

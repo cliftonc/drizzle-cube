@@ -710,7 +710,8 @@ export function createCubeRouter(
             negotiatedProtocol: protocol.negotiated,
             resources: mcpResources,
             prompts: mcpPrompts,
-            appEnabled: !!mcp.app
+            appEnabled: !!mcp.app,
+            appConfig: typeof mcp.app === 'object' ? mcp.app : undefined
           }
         )
 
