@@ -187,6 +187,7 @@
     "@anthropic-ai/sdk": ">=0.30.0",
     "@google/generative-ai": ">=0.21.0",
     "@neondatabase/serverless": "^1.0.1",
+    "@nivo/geo": "^0.99.0",
     "@nivo/heatmap": "^0.99.0",
     "@xyflow/react": "^12.0.0",
     "cors": "^2.8.5",
@@ -237,6 +238,9 @@
       "optional": true
     },
     "next": {
+      "optional": true
+    },
+    "@nivo/geo": {
       "optional": true
     },
     "@nivo/heatmap": {
@@ -299,6 +303,7 @@
     "@iconify-icons/tabler": "^1.2.95",
     "@iconify/react": "^6.0.0",
     "@neondatabase/serverless": "^1.0.1",
+    "@nivo/geo": "^0.99.0",
     "@nivo/heatmap": "^0.99.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.12",

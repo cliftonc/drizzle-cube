@@ -93,6 +93,10 @@ const chartDependencyMap: Partial<Record<BuiltInChartType, { packageName: string
     packageName: 'd3-shape',
     installCommand: 'npm install d3-shape'
   },
+  choropleth: {
+    packageName: '@nivo/geo',
+    installCommand: 'npm install @nivo/geo'
+  },
   // Charts with no external deps: table, activityGrid, kpiNumber, kpiDelta, kpiText, markdown, retentionHeatmap, boxPlot, candlestick
 }
 
@@ -124,6 +128,7 @@ const chartImportMap: Record<BuiltInChartType, () => Promise<{ default: LazyChar
   candlestick: () => import('../components/charts/CandlestickChart'),
   measureProfile: () => import('../components/charts/MeasureProfileChart'),
   gauge: () => import('../components/charts/GaugeChart'),
+  choropleth: () => import('../components/charts/ChoroplethChart'),
 }
 
 // Registry for custom (plugin) chart components

@@ -118,6 +118,7 @@ export type BuiltInChartType =
   | 'candlestick'
   | 'measureProfile'
   | 'gauge'
+  | 'choropleth'
 
 // Chart type identifier — includes all built-in types plus any string for custom chart plugins.
 // Use BuiltInChartType when you need to narrow to built-ins only.
@@ -275,6 +276,13 @@ export interface ChartDisplayConfig {
   // Measure profile chart specific display options
   showReferenceLineAtZero?: boolean
   lineType?: 'monotone' | 'linear' | 'step'
+
+  // Choropleth map specific display options
+  geoFeatures?: string // GeoJSON Feature array as a JSON string
+  geoFeaturesUrl?: string // URL to fetch a GeoJSON FeatureCollection or Feature array
+  geoProjection?: 'mercator' | 'naturalEarth1' | 'equalEarth' | 'equirectangular'
+  geoIdProperty?: string // Feature property to match against dimension values (default: feature id)
+  unknownColor?: string // Colour for regions with no matching data
 
   // Gauge chart specific display options
   minValue?: number
