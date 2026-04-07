@@ -155,11 +155,16 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
     return transformToGeoData(data as Record<string, unknown>[], regionField, valueField)
   }, [data, regionField, valueField])
 
-  // Domain
+  // Domain — use reduce to avoid call-stack limits on large datasets
   const domain = useMemo<[number, number]>(() => {
     if (chartData.length === 0) return [0, 100]
-    const values = chartData.map((d) => d.value)
-    return [Math.min(...values), Math.max(...values)]
+    let min = chartData[0].value
+    let max = chartData[0].value
+    for (const d of chartData) {
+      if (d.value < min) min = d.value
+      if (d.value > max) max = d.value
+    }
+    return [min, max]
   }, [chartData])
 
   // Color scale from palette gradient
