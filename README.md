@@ -271,3 +271,7 @@ MIT © [Clifton Cunningham](https://github.com/cliftonc)
 ---
 
 **Built with ❤️ for the Drizzle ORM community**
+
+---
+
+> This repository is maintained with the assistance of [Last Light](https://github.com/apps/last-light), an automated GitHub maintenance bot that handles issue triage, pull request reviews, and routine repository upkeep.
