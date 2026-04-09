@@ -471,6 +471,16 @@ export class DrizzlePlanBuilder {
         joinCubeBase.from,
         joinCube.joinCondition
       )
+      if (joinCubeBase.joins) {
+        for (const baseJoin of joinCubeBase.joins) {
+          keysQuery = this.applyJoinByType(
+            keysQuery,
+            baseJoin.type ?? 'left',
+            baseJoin.table,
+            baseJoin.on
+          )
+        }
+      }
       if (joinCubeBase.where) {
         keysWhereConditions.push(joinCubeBase.where)
       }

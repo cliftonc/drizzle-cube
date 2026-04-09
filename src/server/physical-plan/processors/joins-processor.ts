@@ -180,6 +180,7 @@ export function applyJoins(
       let joinTarget: any
       let joinCondition: any
       let securityCondition: SQL | undefined
+      let joinCubeBase: ReturnType<Cube['sql']> | undefined
 
       if (cteAlias) {
         // Join to CTE instead of base table - use sql table reference
@@ -195,7 +196,7 @@ export function applyJoins(
 
         // Regular join to base table
         // Get the cube's SQL definition ONCE to avoid SQL object mutation issues
-        const joinCubeBase = joinCube.cube.sql(context)
+        joinCubeBase = joinCube.cube.sql(context)
         joinTarget = joinCubeBase.from
 
         // Get security condition for this cube (for LEFT JOINs, will be added to ON clause)
@@ -255,6 +256,27 @@ export function applyJoins(
               cubesWithSecurityInJoin.add(joinCube.cube.name)
             }
             break
+        }
+
+        // Apply table-level joins defined in the joined cube's base SQL.
+        // This mirrors primaryCubeBase.joins behavior for non-primary cubes.
+        if (joinCubeBase?.joins) {
+          for (const baseJoin of joinCubeBase.joins) {
+            switch (baseJoin.type || 'left') {
+              case 'left':
+                drizzleQuery = drizzleQuery.leftJoin(baseJoin.table, baseJoin.on)
+                break
+              case 'inner':
+                drizzleQuery = drizzleQuery.innerJoin(baseJoin.table, baseJoin.on)
+                break
+              case 'right':
+                drizzleQuery = drizzleQuery.rightJoin(baseJoin.table, baseJoin.on)
+                break
+              case 'full':
+                drizzleQuery = drizzleQuery.fullJoin(baseJoin.table, baseJoin.on)
+                break
+            }
+          }
         }
       } catch {
         // If join fails (e.g., duplicate alias), log and continue

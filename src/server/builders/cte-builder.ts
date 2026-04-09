@@ -167,6 +167,26 @@ export class CTEBuilder {
       .select(cteSelections)
       .from(cubeBase.from)
 
+    // Apply table-level joins declared in the cube's base SQL.
+    if (cubeBase.joins) {
+      for (const join of cubeBase.joins) {
+        switch (join.type || 'left') {
+          case 'left':
+            cteQuery = cteQuery.leftJoin(join.table, join.on)
+            break
+          case 'inner':
+            cteQuery = cteQuery.innerJoin(join.table, join.on)
+            break
+          case 'right':
+            cteQuery = cteQuery.rightJoin(join.table, join.on)
+            break
+          case 'full':
+            cteQuery = cteQuery.fullJoin(join.table, join.on)
+            break
+        }
+      }
+    }
+
     // If there are intermediate joins (multi-hop fan-out prevention),
     // add JOINs to the intermediate tables inside the CTE
     // Example: EmployeeTeams CTE needs to JOIN to Employees to get department_id
