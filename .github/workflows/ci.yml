@@ -7,6 +7,24 @@ on:
     branches: [ main ]
 
 jobs:
+  # Detect version-only commits (e.g. "0.5.2" from npm version patch).
+  # Test jobs skip when code hasn't changed — lint/typecheck/build still
+  # run so CI reports success for the npm-publish workflow.
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-test: ${{ steps.check.outputs.should-test }}
+    steps:
+      - id: check
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if echo "$MSG" | grep -qP '^\d+\.\d+\.\d+$'; then
+            echo "Version-only commit detected ($MSG) — skipping test jobs"
+            echo "should-test=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should-test=true" >> "$GITHUB_OUTPUT"
+          fi
+
   lint-and-typecheck:
     runs-on: ubuntu-latest
 
@@ -61,6 +79,8 @@ jobs:
           key: ${{ runner.os }}-build-${{ github.sha }}
 
   test-postgres:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -101,6 +121,8 @@ jobs:
           TEST_DATABASE_URL: postgres://test:test@localhost:5433/drizzle_cube_test
 
   test-mysql:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -142,6 +164,8 @@ jobs:
           MYSQL_TEST_DATABASE_URL: mysql://test:test@localhost:3307/drizzle_cube_test
 
   test-sqlite:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -197,6 +221,8 @@ jobs:
   #         TEST_DB_TYPE: duckdb
 
   test-databend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -237,9 +263,10 @@ jobs:
           DATABEND_DSN: databend://databend:databend@localhost:18000/default?sslmode=disable
 
   test-snowflake:
+    needs: detect-changes
     runs-on: ubuntu-latest
-    # Only run if Snowflake secrets are configured
-    if: ${{ vars.HAS_SNOWFLAKE_SECRETS == 'true' }}
+    # Only run if Snowflake secrets are configured AND code actually changed
+    if: vars.HAS_SNOWFLAKE_SECRETS == 'true' && needs.detect-changes.outputs.should-test == 'true'
 
     steps:
       - name: Checkout code
@@ -265,6 +292,8 @@ jobs:
           SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE || 'COMPUTE_WH' }}
 
   test-client:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should-test == 'true'
     runs-on: ubuntu-latest
 
     steps:
