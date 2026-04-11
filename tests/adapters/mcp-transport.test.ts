@@ -21,8 +21,10 @@ import {
   buildMcpResources,
   getDefaultResources,
   getDefaultPrompts,
+  getDefaultInstructions,
   resolveMcpPrompts,
   resolveMcpResources,
+  resolveMcpInstructions,
   getMcpAppHtml,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
@@ -609,6 +611,27 @@ describe('MCP Transport Layer', () => {
       expect(resources.length).toBe(getDefaultResources().length + 1)
     })
 
+    it('should return default instructions when nothing is provided', () => {
+      const instructions = resolveMcpInstructions()
+      expect(typeof instructions).toBe('string')
+      expect(instructions.length).toBeGreaterThan(0)
+      // Sanity-check the defaults still mention the critical concepts
+      expect(instructions).toMatch(/discover/i)
+      expect(instructions).toMatch(/inDateRange/)
+    })
+
+    it('should replace defaults when a string is provided', () => {
+      const instructions = resolveMcpInstructions('custom rules only')
+      expect(instructions).toBe('custom rules only')
+    })
+
+    it('should allow function-based extension of default instructions', () => {
+      const defaults = getDefaultInstructions()
+      const instructions = resolveMcpInstructions(d => `${d}\n\n## Project addendum\nUse cube X for sales.`)
+      expect(instructions.startsWith(defaults)).toBe(true)
+      expect(instructions).toContain('Project addendum')
+    })
+
     it('should append the live schema resource when building MCP resources', async () => {
       const { semanticLayer, close } = await createTestSemanticLayer()
       try {
@@ -699,6 +722,34 @@ describe('MCP Transport Layer', () => {
 
         expect(result).toHaveProperty('sessionId')
         expect(typeof result.sessionId).toBe('string')
+      })
+
+      it('should include default instructions per MCP spec', async () => {
+        // MCP spec: InitializeResult.instructions is the only server-authored
+        // string clients are expected to surface to the model. Without this,
+        // clients (e.g. Claude Desktop) silently ignore prompts/resources and
+        // the model invents query syntax.
+        const result = await dispatchMcpMethod('initialize', {}, dispatchCtx) as any
+
+        expect(result).toHaveProperty('instructions')
+        expect(typeof result.instructions).toBe('string')
+        expect(result.instructions.length).toBeGreaterThan(0)
+        // The default instructions MUST mandate the discover-first workflow
+        // and call out the date-filtering rule (the #1 source of mistakes).
+        expect(result.instructions).toMatch(/discover/i)
+        expect(result.instructions).toMatch(/MUST/)
+        expect(result.instructions).toMatch(/inDateRange/)
+        expect(result.instructions).toMatch(/queryLanguageReference/)
+      })
+
+      it('should use custom instructions when provided in context', async () => {
+        const customCtx: McpDispatchContext = {
+          ...dispatchCtx,
+          instructions: 'Custom project rules: only query the Sales cube.'
+        }
+        const result = await dispatchMcpMethod('initialize', {}, customCtx) as any
+
+        expect(result.instructions).toBe('Custom project rules: only query the Sales cube.')
       })
     })
 
@@ -896,6 +947,44 @@ describe('MCP Transport Layer', () => {
         }, dispatchCtx) as any
 
         expect(result).toHaveProperty('cubes')
+      })
+
+      it('should embed the query language reference and date filtering guide', async () => {
+        // The discover response is the primary delivery mechanism for query
+        // construction guidance — clients cannot be relied on to forward
+        // prompts/* to the model, so we piggyback on discover (the mandated
+        // first call) to guarantee the model sees the rules every time.
+        const result = await dispatchMcpMethod('discover', {
+          topic: 'employees'
+        }, dispatchCtx) as any
+
+        expect(result).toHaveProperty('queryLanguageReference')
+        expect(typeof result.queryLanguageReference).toBe('string')
+        expect(result.queryLanguageReference.length).toBeGreaterThan(0)
+        // Sanity-check the reference contains DSL hallmarks
+        expect(result.queryLanguageReference).toContain('CubeName')
+        expect(result.queryLanguageReference).toContain('FilterOperator')
+
+        expect(result).toHaveProperty('dateFilteringGuide')
+        expect(typeof result.dateFilteringGuide).toBe('string')
+        expect(result.dateFilteringGuide).toMatch(/inDateRange/)
+        expect(result.dateFilteringGuide).toMatch(/granularity/i)
+      })
+
+      it('should embed the reference fields when invoked via tools/call too', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'discover',
+          arguments: { topic: 'employees' }
+        }, dispatchCtx) as any
+
+        expect(result).toHaveProperty('content')
+        expect(Array.isArray(result.content)).toBe(true)
+        const text = result.content[0]?.text
+        expect(typeof text).toBe('string')
+        const parsed = JSON.parse(text)
+        expect(parsed).toHaveProperty('cubes')
+        expect(parsed).toHaveProperty('queryLanguageReference')
+        expect(parsed).toHaveProperty('dateFilteringGuide')
       })
     })
 

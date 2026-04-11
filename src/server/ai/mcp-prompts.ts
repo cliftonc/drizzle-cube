@@ -185,3 +185,73 @@ export const MCP_PROMPTS: MCPPrompt[] = [
 export function getDefaultMCPPrompts(): MCPPrompt[] {
   return MCP_PROMPTS
 }
+
+/**
+ * Default instructions returned in the MCP `initialize` result.
+ *
+ * Per the MCP spec (InitializeResult.instructions), this string is the only
+ * server-authored guidance that clients are expected to surface to the model
+ * (e.g. by adding it to the system prompt). `prompts/*` and `resources/*` are
+ * pull-based and are usually invoked by the *user* (slash commands) — not by
+ * the model — so we cannot rely on them for correctness.
+ *
+ * The instructions therefore:
+ *  1. Mandate the discover → (validate) → load workflow.
+ *  2. Tell the model that the `discover` tool response itself contains the
+ *     full query language reference (`queryLanguageReference`) and the date
+ *     filtering decision tree (`dateFilteringGuide`). The model MUST read
+ *     those fields before constructing any query — they are the source of
+ *     truth for syntax, operators, and analysis modes.
+ *  3. Inline the single most-violated rule (aggregated totals vs time
+ *     series) so that even a model that ignores the discover payload still
+ *     sees it once in its system prompt.
+ *
+ * Keep this body short (< ~2 KB) — long instructions get truncated or
+ * deprioritised by some clients.
+ */
+export const DEFAULT_MCP_INSTRUCTIONS: string = [
+  'You are an analyst agent connected to a Drizzle Cube semantic layer.',
+  '',
+  '## Mandatory workflow',
+  '1. CALL `discover` FIRST. Always. Even if you think you know the schema.',
+  '   The discover response contains TWO things you MUST read before writing any query:',
+  '   - `cubes`: the available cubes, their measures, dimensions, and join relationships.',
+  '   - `queryLanguageReference`: the COMPLETE query language reference (TypeScript DSL,',
+  '     filter operators, analysis modes, and rules). This is the source of truth — do',
+  '     NOT construct queries from memory or guess syntax.',
+  '   - `dateFilteringGuide`: the decision tree for date filtering vs time grouping.',
+  '     Read this whenever the user asks about a time period.',
+  '2. Construct your query using ONLY field names that appear in the discover response,',
+  '   in exact `CubeName.fieldName` form (two parts, one dot).',
+  '3. Optionally call `validate` to auto-correct schema issues.',
+  '4. Call `load` to execute the query and return data.',
+  '',
+  '## The #1 mistake to avoid (read `dateFilteringGuide` for the full rules)',
+  'When the user asks for AGGREGATED TOTALS over a time period ("total sales last 6 months",',
+  '"top customers this quarter"), you MUST filter with `inDateRange` and you MUST NOT use',
+  '`timeDimensions`. Using `timeDimensions` without a granularity returns daily rows and is',
+  'almost always wrong; using it WITH a granularity returns a time series, not a total.',
+  '',
+  'Aggregated totals → `filters: [{ member, operator: "inDateRange", values: ["last 6 months"] }]`',
+  'Time series      → `timeDimensions: [{ dimension, dateRange, granularity: "month" }]`',
+  '',
+  '## Field naming',
+  'Fields are EXACTLY `CubeName.fieldName`. Copy verbatim from discover.',
+  'WRONG: `Sales.Sales.count` (double-prefixed), `Sales` (bare cube), `Sales_count` (underscore).',
+  'RIGHT: `Sales.count`, `Customers.region`.',
+  '',
+  '## Cross-cube joins',
+  'The `joins` property in each discover result lists related cubes. You can include',
+  'dimensions from any related cube in the same query — the system auto-joins them.',
+  '',
+  'If you skip `discover` and guess, your query will fail or return wrong results. Always discover first.'
+].join('\n')
+
+/**
+ * Get the default MCP instructions string returned in the `initialize` result.
+ * Exposed as a function (not just a const) so consumers can wrap or extend it
+ * via the `instructions` resolver in `MCPOptions`.
+ */
+export function getDefaultMcpInstructions(): string {
+  return DEFAULT_MCP_INSTRUCTIONS
+}

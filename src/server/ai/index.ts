@@ -39,6 +39,8 @@ export {
   QUERY_RULES_PROMPT,
   QUERY_BUILDING_PROMPT,
   DATE_FILTERING_PROMPT,
+  DEFAULT_MCP_INSTRUCTIONS,
   getDefaultMCPPrompts,
+  getDefaultMcpInstructions,
   type MCPPrompt
 } from './mcp-prompts'
