@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { useApp } from '@modelcontextprotocol/ext-apps/react'
 import type { App } from '@modelcontextprotocol/ext-apps'
 import { I18nProvider } from '../client/providers/I18nProvider'
+import { useTranslation } from '../client/hooks/useTranslation'
 
 // Real chart components
 import BarChart from '../client/components/charts/BarChart'
@@ -70,6 +71,26 @@ function buildLabelMapFromAnnotation(annotation: any): FieldLabelMap {
   for (const [key, val] of Object.entries(annotation?.timeDimensions || {}))
     map[key] = (val as any).title || key.split('.')[1] || key
   return map
+}
+
+function pluralKey(base: string, count: number): string {
+  return count === 1 ? base : `${base}Plural`
+}
+
+function formatFooterCounts(
+  t: (key: string, params?: Record<string, unknown>) => string,
+  rowCount: number,
+  measureCount: number,
+  dimensionCount: number,
+): string {
+  const parts: string[] = [t(pluralKey('mcp.footer.rows', rowCount), { count: rowCount })]
+  if (measureCount > 0) {
+    parts.push(t(pluralKey('mcp.footer.measures', measureCount), { count: measureCount }))
+  }
+  if (dimensionCount > 0) {
+    parts.push(t(pluralKey('mcp.footer.dimensions', dimensionCount), { count: dimensionCount }))
+  }
+  return parts.join(' | ')
 }
 
 function fallbackLabel(field: string): string {
@@ -143,6 +164,7 @@ export function McpApp() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [appRef, setAppRef] = useState<App | null>(null)
+  const { t } = useTranslation()
 
   const labelMap = useMemo<FieldLabelMap>(() => {
     if (!result?.annotation) return {}
@@ -167,7 +189,7 @@ export function McpApp() {
         if (textContent?.text) {
           parsed = JSON.parse(textContent.text)
         } else {
-          setError('No text content in result')
+          setError(t('mcp.error.noTextContent'))
           return
         }
       } else if (res && typeof res === 'object' && 'data' in res) {
@@ -190,7 +212,7 @@ export function McpApp() {
       }
 
       if (!parsed?.data || !Array.isArray(parsed.data)) {
-        setError('Invalid result format: missing data array')
+        setError(t('mcp.error.invalidResultFormat'))
         return
       }
 
@@ -224,9 +246,9 @@ export function McpApp() {
         setChartConfigSource('auto')
       }
     } catch (err) {
-      setError(`Failed to parse result: ${err instanceof Error ? err.message : String(err)}`)
+      setError(t('mcp.error.parseFailed', { message: err instanceof Error ? err.message : String(err) }))
     }
-  }, [])
+  }, [t])
 
   const { app, isConnected, error: connectError } = useApp({
     appInfo: { name: 'Drizzle Cube Visualization', version: '1.0.0' },
@@ -281,14 +303,14 @@ export function McpApp() {
     setLoading(true)
     currentApp.callServerTool({ name: 'load', arguments: { query } })
       .then(res => processResult(res))
-      .catch(err => setError(`Query failed: ${err instanceof Error ? err.message : String(err)}`))
+      .catch(err => setError(t('mcp.error.queryFailed', { message: err instanceof Error ? err.message : String(err) })))
       .finally(() => setLoading(false))
   }
 
   if (connectError) {
     return (
       <div style={{ padding: 16, color: 'var(--dc-error, #ef4444)' }}>
-        <strong>Connection error:</strong> {connectError.message}
+        <strong>{t('mcp.error.connectionLabel')}</strong> {connectError.message}
       </div>
     )
   }
@@ -296,7 +318,7 @@ export function McpApp() {
   if (error) {
     return (
       <div style={{ padding: 16, color: 'var(--dc-error, #ef4444)' }}>
-        <strong>Error:</strong> {error}
+        <strong>{t('mcp.error.errorLabel')}</strong> {error}
       </div>
     )
   }
@@ -307,7 +329,7 @@ export function McpApp() {
         <svg width="20" height="20" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite', marginRight: 8 }}>
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="31.4 31.4" strokeLinecap="round" />
         </svg>
-        {!isConnected ? 'Connecting...' : 'Loading...'}
+        {!isConnected ? t('mcp.status.connecting') : t('mcp.status.loading')}
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     )
@@ -316,7 +338,7 @@ export function McpApp() {
   if (!result) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, color: 'var(--dc-text-muted, #94a3b8)' }}>
-        Waiting for query results...
+        {t('mcp.status.waiting')}
       </div>
     )
   }
@@ -353,9 +375,7 @@ export function McpApp() {
           />
         </div>
         <div style={{ marginTop: 12, fontSize: 11, color: 'var(--dc-text-muted, #94a3b8)' }}>
-          {result.data.length} row{result.data.length !== 1 ? 's' : ''}
-          {query.measures?.length ? ` | ${query.measures.length} measure${query.measures.length !== 1 ? 's' : ''}` : ''}
-          {query.dimensions?.length ? ` | ${query.dimensions.length} dimension${query.dimensions.length !== 1 ? 's' : ''}` : ''}
+          {formatFooterCounts(t, result.data.length, query.measures?.length ?? 0, query.dimensions?.length ?? 0)}
         </div>
       </div>
     </CubeMetaContext.Provider>

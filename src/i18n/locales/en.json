@@ -1589,5 +1589,21 @@
   "analyticsPage.title": "Analytics Page - Coming in Phase 4",
 
   "dataHistogram.average": "Average of {count} values",
-  "dataHistogram.valuesInRange": "{count} values in this range"
+  "dataHistogram.valuesInRange": "{count} values in this range",
+
+  "mcp.status.connecting": "Connecting...",
+  "mcp.status.loading": "Loading...",
+  "mcp.status.waiting": "Waiting for query results...",
+  "mcp.error.connectionLabel": "Connection error:",
+  "mcp.error.errorLabel": "Error:",
+  "mcp.error.noTextContent": "No text content in result",
+  "mcp.error.invalidResultFormat": "Invalid result format: missing data array",
+  "mcp.error.parseFailed": "Failed to parse result: {message}",
+  "mcp.error.queryFailed": "Query failed: {message}",
+  "mcp.footer.rows": "{count} row",
+  "mcp.footer.rowsPlural": "{count} rows",
+  "mcp.footer.measures": "{count} measure",
+  "mcp.footer.measuresPlural": "{count} measures",
+  "mcp.footer.dimensions": "{count} dimension",
+  "mcp.footer.dimensionsPlural": "{count} dimensions"
 }

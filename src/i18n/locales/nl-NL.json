@@ -1485,5 +1485,21 @@
   "drill.empty": "(leeg)",
   "analyticsPage.title": "Analysepagina - Komt in fase 4",
   "dataHistogram.average": "Gemiddelde van {count} waarden",
-  "dataHistogram.valuesInRange": "{count} waarden in deze bereik"
+  "dataHistogram.valuesInRange": "{count} waarden in deze bereik",
+
+  "mcp.status.connecting": "Verbinden...",
+  "mcp.status.loading": "Laden...",
+  "mcp.status.waiting": "Wachten op queryresultaten...",
+  "mcp.error.connectionLabel": "Verbindingsfout:",
+  "mcp.error.errorLabel": "Fout:",
+  "mcp.error.noTextContent": "Geen tekstinhoud in resultaat",
+  "mcp.error.invalidResultFormat": "Ongeldig resultaatformaat: data-array ontbreekt",
+  "mcp.error.parseFailed": "Kon resultaat niet verwerken: {message}",
+  "mcp.error.queryFailed": "Query mislukt: {message}",
+  "mcp.footer.rows": "{count} rij",
+  "mcp.footer.rowsPlural": "{count} rijen",
+  "mcp.footer.measures": "{count} metriek",
+  "mcp.footer.measuresPlural": "{count} metrieken",
+  "mcp.footer.dimensions": "{count} dimensie",
+  "mcp.footer.dimensionsPlural": "{count} dimensies"
 }
