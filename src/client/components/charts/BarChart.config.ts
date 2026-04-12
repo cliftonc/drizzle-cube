@@ -8,6 +8,11 @@ export const barChartConfig: ChartTypeConfig = {
   description: 'chart.bar.description',
   useCase: 'chart.bar.useCase',
   clickableElements: { bar: true },
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

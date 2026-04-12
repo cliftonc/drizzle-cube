@@ -7,6 +7,11 @@ export const bubbleChartConfig: ChartTypeConfig = {
   label: 'chart.bubble.label',
   description: 'chart.bubble.description',
   useCase: 'chart.bubble.useCase',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 2) return { available: false, reason: 'chart.availability.requiresTwoMeasures' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.bubble' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

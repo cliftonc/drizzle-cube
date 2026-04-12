@@ -5,7 +5,7 @@
  * Metrics, Filters, and Breakdowns.
  */
 
-import React, { useEffect, memo, useCallback, useMemo } from 'react'
+import React, { memo, useCallback, useMemo } from 'react'
 import type { AnalysisQueryPanelProps, BreakdownItem } from './types'
 import type { MetaField } from '../../shared/types'
 import type { QueryMergeStrategy, CubeMeta } from '../../types'
@@ -184,13 +184,6 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
   const comparisonEnabledBreakdown = useMemo(() => {
     return breakdowns.find(b => b.isTimeDimension && b.enableComparison)
   }, [breakdowns])
-
-  // Force query tab when no metrics are selected
-  useEffect(() => {
-    if (metrics.length === 0 && (activeTab === 'chart' || activeTab === 'display')) {
-      onActiveTabChange('query')
-    }
-  }, [metrics.length, activeTab, onActiveTabChange])
 
   // Handle query tab click
   const handleQueryTabClick = useCallback((index: number) => {
@@ -391,34 +384,28 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         )}
 
         <button
-          onClick={() => metrics.length > 0 && onActiveTabChange('chart')}
-          disabled={metrics.length === 0}
+          onClick={() => onActiveTabChange('chart')}
           className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
             isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'chart'
               ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : metrics.length === 0
-                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
-                : 'text-dc-text-secondary hover:text-dc-text'
+              : 'text-dc-text-secondary hover:text-dc-text'
           }`}
-          title={metrics.length === 0 ? t('analysis.tabs.chartDisabled') : t('analysis.tabs.chartTitle')}
+          title={t('analysis.tabs.chartTitle')}
         >
           {t('analysis.tabs.chart')}
         </button>
         <button
-          onClick={() => metrics.length > 0 && onActiveTabChange('display')}
-          disabled={metrics.length === 0}
+          onClick={() => onActiveTabChange('display')}
           className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
             isMultiQuery ? '' : 'dc:flex-1'
           } ${
             activeTab === 'display'
               ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : metrics.length === 0
-                ? 'text-dc-text-muted dc:cursor-not-allowed dc:opacity-50'
-                : 'text-dc-text-secondary hover:text-dc-text'
+              : 'text-dc-text-secondary hover:text-dc-text'
           }`}
-          title={metrics.length === 0 ? t('analysis.tabs.displayDisabled') : t('analysis.tabs.displayTitle')}
+          title={t('analysis.tabs.displayTitle')}
         >
           {t('analysis.tabs.display')}
         </button>

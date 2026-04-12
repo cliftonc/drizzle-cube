@@ -200,7 +200,7 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   onActiveViewChange,
   displayLimit = 100,
   onDisplayLimitChange,
-  hasMetrics = false,
+  chartAvailability,
   // Debug props - per-query for multi-query mode
   debugDataPerQuery = [],
   // Share props
@@ -405,9 +405,21 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
   // to allow share URLs and portlet configs to restore their saved view
   const isFirstRunRef = useRef(true)
 
-  // Force table view when no metrics are selected (only for query mode)
-  // In funnel mode, we allow chart view even during loading since funnel charts
-  // don't require traditional "metrics" - they have funnel steps instead
+  // Whether the current chart type can actually render with the current query shape.
+  // Drives the Chart view toggle — table is always available, bar/line/etc. need measures.
+  const isCurrentChartRenderable =
+    chartAvailability?.[chartType]?.available ?? true
+  const chartViewEnabled =
+    isCurrentChartRenderable || isFlowMode || isFunnelMode || isRetentionMode
+  const chartViewUnavailableReason = chartAvailability?.[chartType]?.reason
+  const chartButtonTitle = chartViewEnabled
+    ? t('results.toolbar.chartView')
+    : chartViewUnavailableReason
+      ? t(chartViewUnavailableReason)
+      : t('results.toolbar.chartDisabled')
+
+  // Force table view when the selected chart type can't render with the current query.
+  // In funnel/flow/retention modes, charts have their own requirements, so we skip this.
   useEffect(() => {
     // Skip on first run to allow share/portlet state to load first
     if (isFirstRunRef.current) {
@@ -415,14 +427,12 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
       return
     }
 
-    // Don't force table view in funnel, flow, or retention mode - they work differently
-    // Check both analysisType directly AND computed isFunnelMode to avoid stale closure issues
     if (analysisType === 'funnel' || analysisType === 'flow' || analysisType === 'retention' || isFunnelMode) return
 
-    if (!hasMetrics && activeView === 'chart') {
+    if (!isCurrentChartRenderable && activeView === 'chart') {
       onActiveViewChange('table')
     }
-  }, [hasMetrics, activeView, onActiveViewChange, isFunnelMode, analysisType])
+  }, [isCurrentChartRenderable, activeView, onActiveViewChange, isFunnelMode, analysisType])
 
   // Create a combined query object for the chart (includes measures from ALL queries)
   const combinedQueryForChart = useMemo(() => {
@@ -1735,18 +1745,18 @@ const AnalysisResultsPanel = memo(function AnalysisResultsPanel({
         {!showDebug && !showSchema && (
           <div className="dc:px-4 dc:py-3 dc:border-t border-dc-border bg-dc-surface dc:flex dc:justify-center dc:flex-shrink-0">
             <div className="dc:flex dc:items-center bg-dc-surface-secondary dc:border border-dc-border dc:rounded-md dc:overflow-hidden">
-              {/* Chart button - always enabled for flow/funnel/retention modes which don't need traditional metrics */}
+              {/* Chart button - enabled when the selected chart type can render with the current query */}
               <button
-                onClick={() => (hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) && onActiveViewChange('chart')}
-                disabled={!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode}
+                onClick={() => chartViewEnabled && onActiveViewChange('chart')}
+                disabled={!chartViewEnabled}
                 className={`dc:flex dc:items-center dc:gap-1.5 dc:px-4 dc:py-1.5 dc:text-sm dc:font-medium dc:transition-colors ${
                   activeView === 'chart'
                     ? 'bg-dc-primary text-white'
-                    : (!hasMetrics && !isFlowMode && !isFunnelMode && !isRetentionMode)
+                    : !chartViewEnabled
                       ? 'text-dc-text-disabled bg-dc-surface-tertiary dc:cursor-not-allowed'
                       : 'text-dc-text-secondary hover:bg-dc-surface-hover'
                 }`}
-                title={(hasMetrics || isFlowMode || isFunnelMode || isRetentionMode) ? 'Chart view' : 'Add metrics to enable chart view'}
+                title={chartButtonTitle}
               >
                 <ChartIcon className="dc:w-4 dc:h-4" />
                 {t('results.view.chart')}

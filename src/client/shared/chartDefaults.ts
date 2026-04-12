@@ -8,6 +8,7 @@
 import type { ChartType, ChartAxisConfig } from '../types'
 import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
+import type { ChartAvailability, ChartAvailabilityContext } from '../charts/chartConfigs'
 
 // ============================================================================
 // Types
@@ -23,15 +24,8 @@ export interface SmartChartDefaults {
   chartConfig: ChartAxisConfig
 }
 
-/**
- * Availability status for a chart type
- */
-export interface ChartAvailability {
-  /** Whether the chart type can be used with current selections */
-  available: boolean
-  /** Reason why the chart is unavailable (for tooltip) */
-  reason?: string
-}
+// Re-export from chartConfigs so existing imports keep working
+export type { ChartAvailability } from '../charts/chartConfigs'
 
 /**
  * Map of chart type availability statuses
@@ -82,139 +76,38 @@ function getTimeDimensions(breakdowns: BreakdownItem[]): BreakdownItem[] {
 // ============================================================================
 
 /**
- * Check if a specific chart type is available given current selections
+ * Build a ChartAvailabilityContext from the current metrics/breakdowns.
+ * `dimensionCount` intentionally includes time dimensions — a time dimension
+ * can serve any role a regular dimension does (pie slices, heatmap axes, etc).
+ */
+function buildAvailabilityContext(
+  metrics: MetricItem[],
+  breakdowns: BreakdownItem[]
+): ChartAvailabilityContext {
+  return {
+    measureCount: metrics.length,
+    dimensionCount: breakdowns.length,
+    timeDimensionCount: getTimeDimensions(breakdowns).length,
+  }
+}
+
+/**
+ * Check if a specific chart type is available given current selections.
+ * Delegates to each chart's own `isAvailable` declared in its .config.ts —
+ * availability requirements live next to the chart they describe, not here.
  */
 export function getChartAvailability(
   chartType: ChartType,
   metrics: MetricItem[],
   breakdowns: BreakdownItem[]
 ): ChartAvailability {
-  const measureCount = metrics.length
-  const dimensionCount = getDimensions(breakdowns).length
-  const timeDimensionCount = getTimeDimensions(breakdowns).length
-  const totalBreakdowns = breakdowns.length
-
-  switch (chartType) {
-    // Always available charts
-    case 'table':
-    case 'markdown':
-      return { available: true }
-
-    // Measure-only charts (KPI Number, KPI Text)
-    case 'kpiNumber':
-    case 'kpiText':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      return { available: true }
-
-    // Bar chart - needs dimension for categories + measure for values
-    case 'bar':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (totalBreakdowns < 1) {
-        return { available: false, reason: 'Requires at least 1 breakdown for categories' }
-      }
-      return { available: true }
-
-    // KPI Delta - needs dimension for ordering + measure for values
-    case 'kpiDelta':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (totalBreakdowns < 1) {
-        return { available: false, reason: 'Requires at least 1 breakdown for ordering' }
-      }
-      return { available: true }
-
-    // Line and area charts - need dimension/time + measure
-    case 'line':
-    case 'area':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (totalBreakdowns < 1) {
-        return { available: false, reason: 'Requires a breakdown (dimension or time)' }
-      }
-      return { available: true }
-
-    // Pie chart - needs dimension (not time) + measure
-    case 'pie':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires 1 measure' }
-      }
-      if (dimensionCount < 1) {
-        return { available: false, reason: 'Requires 1 dimension (not time dimension)' }
-      }
-      return { available: true }
-
-    // Scatter - needs measure + any breakdown
-    case 'scatter':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      // Scatter can work with just measures (x and y from different measures)
-      // or with dimension + measure
-      if (measureCount < 2 && totalBreakdowns < 1) {
-        return { available: false, reason: 'Requires 2 measures or 1 measure + 1 breakdown' }
-      }
-      return { available: true }
-
-    // Bubble - needs 2+ measures and 1+ breakdown (dimension or time dimension for series)
-    case 'bubble':
-      if (measureCount < 2) {
-        return { available: false, reason: 'Requires at least 2 measures' }
-      }
-      if (totalBreakdowns < 1) {
-        return { available: false, reason: 'Requires at least 1 breakdown for series grouping' }
-      }
-      return { available: true }
-
-    // Radar - needs dimension + measure
-    case 'radar':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (dimensionCount < 1) {
-        return { available: false, reason: 'Requires at least 1 dimension' }
-      }
-      return { available: true }
-
-    // Radial Bar - needs dimension + measure
-    case 'radialBar':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (dimensionCount < 1) {
-        return { available: false, reason: 'Requires at least 1 dimension' }
-      }
-      return { available: true }
-
-    // Treemap - needs dimension + measure
-    case 'treemap':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (dimensionCount < 1) {
-        return { available: false, reason: 'Requires at least 1 dimension' }
-      }
-      return { available: true }
-
-    // Activity Grid - needs time dimension + measure
-    case 'activityGrid':
-      if (measureCount < 1) {
-        return { available: false, reason: 'Requires at least 1 measure' }
-      }
-      if (timeDimensionCount < 1) {
-        return { available: false, reason: 'Requires a time dimension' }
-      }
-      return { available: true }
-
-    default:
-      // Unknown chart type - assume available
-      return { available: true }
+  const config = chartConfigRegistry[chartType]
+  if (!config || !config.isAvailable) {
+    // Charts that don't declare requirements (table, markdown, unknown plugins)
+    // are always available.
+    return { available: true }
   }
+  return config.isAvailable(buildAvailabilityContext(metrics, breakdowns))
 }
 
 /**

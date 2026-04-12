@@ -77,7 +77,7 @@ export default function ChartTypeSelector({
 
       {/* Dropdown Menu - Grid Layout */}
       {isOpen && (
-        <div className={`dc:absolute dc:z-10 dc:mt-1 dc:w-full bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg dc:max-h-80 dc:overflow-auto ${compact ? '' : 'dc:min-w-max'}`}>
+        <div className={`dc:absolute dc:z-10 dc:mt-1 dc:w-full bg-dc-surface dc:border border-dc-border dc:rounded-md dc:shadow-lg ${compact ? '' : 'dc:min-w-max'}`}>
           <div className="dc:p-2">
             <div className={`dc:grid dc:gap-1.5 ${compact ? 'dc:grid-cols-2' : 'dc:grid-cols-2 dc:sm:grid-cols-3 dc:lg:grid-cols-4'}`}>
               {chartTypes.map((type) => {

@@ -109,7 +109,7 @@ describe('AnalysisQueryPanel', () => {
       expect(onActiveTabChange).toHaveBeenCalledWith('display')
     })
 
-    it('should disable Chart and Display tabs when no metrics selected', async () => {
+    it('should keep Chart and Display tabs selectable even with no metrics selected', async () => {
       const user = userEvent.setup()
       const onActiveTabChange = vi.fn()
 
@@ -124,11 +124,13 @@ describe('AnalysisQueryPanel', () => {
       const chartTab = screen.getByRole('button', { name: /^chart$/i })
       const displayTab = screen.getByRole('button', { name: /^display$/i })
 
-      expect(chartTab).toBeDisabled()
-      expect(displayTab).toBeDisabled()
+      // Tabs are always enabled — chart/display panels themselves guide users
+      // toward chart types compatible with the current query shape.
+      expect(chartTab).not.toBeDisabled()
+      expect(displayTab).not.toBeDisabled()
 
       await user.click(chartTab)
-      expect(onActiveTabChange).not.toHaveBeenCalled()
+      expect(onActiveTabChange).toHaveBeenCalledWith('chart')
     })
 
     it('should show tab content for active tab only', () => {

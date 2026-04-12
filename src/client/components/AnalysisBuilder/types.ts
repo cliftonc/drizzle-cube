@@ -488,8 +488,8 @@ export interface AnalysisResultsPanelProps {
   /** Callback when display limit changes */
   onDisplayLimitChange: (limit: number) => void
 
-  /** Whether the query has metrics (measures) - needed to enable/disable chart view */
-  hasMetrics: boolean
+  /** Map of chart type availability - drives whether chart view can render */
+  chartAvailability?: ChartAvailabilityMap
 
   // Debug information (from dry-run) - per-query for multi-query mode
   /** Debug data for each query (SQL, analysis, loading/error state) */

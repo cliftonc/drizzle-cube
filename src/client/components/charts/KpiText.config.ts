@@ -7,6 +7,10 @@ export const kpiTextConfig: ChartTypeConfig = {
   label: 'chart.kpiText.label',
   description: 'chart.kpiText.description',
   useCase: 'chart.kpiText.useCase',
+  isAvailable: ({ measureCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'yAxis',

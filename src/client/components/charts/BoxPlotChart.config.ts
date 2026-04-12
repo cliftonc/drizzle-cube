@@ -7,6 +7,11 @@ export const boxPlotChartConfig: ChartTypeConfig = {
   label: 'chart.boxPlot.label',
   description: 'chart.boxPlot.description',
   useCase: 'chart.boxPlot.useCase',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   displayOptions: ['hideHeader'],
   dropZones: [
     {

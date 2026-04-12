@@ -28,10 +28,8 @@
   "analysis.tabs.query": "Query",
   "analysis.tabs.chart": "Chart",
   "analysis.tabs.chartTitle": "Chart configuration",
-  "analysis.tabs.chartDisabled": "Add metrics to configure chart",
   "analysis.tabs.display": "Display",
   "analysis.tabs.displayTitle": "Display options",
-  "analysis.tabs.displayDisabled": "Add metrics to configure display",
 
   "analysis.multiQuery.removeQuery": "Remove query",
   "analysis.multiQuery.addQuery": "Add new query",
@@ -980,6 +978,14 @@
 
   "common.actions.copied": "Copied",
   "common.actions.copyToClipboard": "Copy to clipboard",
+
+  "chart.availability.requiresMeasure": "Requires at least 1 measure",
+  "chart.availability.requiresTwoMeasures": "Requires at least 2 measures",
+  "chart.availability.requiresDimension": "Requires at least 1 dimension",
+  "chart.availability.requiresTwoDimensions": "Requires at least 2 dimensions",
+  "chart.availability.requiresTimeDimension": "Requires a time dimension",
+  "chart.availability.scatter": "Requires 2 measures, or 1 measure plus 1 dimension",
+  "chart.availability.bubble": "Requires at least 2 measures and 1 dimension",
 
   "chart.runtime.noData": "No data available",
   "chart.runtime.noDataHint.bar": "No data points to display in bar chart",
