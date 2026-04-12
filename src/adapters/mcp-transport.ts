@@ -277,7 +277,7 @@ export async function dispatchMcpMethod(
   params: unknown,
   ctx: McpDispatchContext
 ): Promise<unknown> {
-  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled, appConfig } = ctx
+  const { appEnabled, appConfig } = ctx
   const serverName = ctx.serverName ?? 'drizzle-cube'
   const prompts = ctx.prompts ?? PROMPTS
   const baseResources = ctx.resources ?? RESOURCES
@@ -395,23 +395,6 @@ export async function dispatchMcpMethod(
       }
     }
 
-    case 'discover':
-      return handleDiscover(semanticLayer, (params || {}) as DiscoverRequest)
-    case 'validate': {
-      const p = (params || {}) as ValidateRequest
-      if (!p.query) {
-        throw jsonRpcError(-32602, 'query is required')
-      }
-      return handleValidate(semanticLayer, p)
-    }
-    case 'load': {
-      const p = (params || {}) as LoadRequest
-      if (!p.query) {
-        throw jsonRpcError(-32602, 'query is required')
-      }
-      const securityContext = await extractSecurityContext(rawRequest, rawResponse)
-      return handleLoad(semanticLayer, securityContext, p)
-    }
     default:
       throw jsonRpcError(-32601, `Unknown MCP method: ${method}`)
   }
@@ -476,7 +459,7 @@ Checks:
 - Filter syntax and operators
 - Cross-cube join validity
 
-Returns corrected query if issues found.`,
+Returns corrected query if issues found, plus the generated SQL for debugging.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -618,7 +601,11 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
       case 'validate': {
         const body = (args || {}) as ValidateRequest
         if (!body.query) throw jsonRpcError(-32602, 'query is required')
-        return wrapContent(await handleValidate(semanticLayer, body))
+        let securityContext: SecurityContext | undefined
+        try {
+          securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        } catch { /* validate works without auth — SQL just won't be included */ }
+        return wrapContent(await handleValidate(semanticLayer, body, securityContext))
       }
       case 'load': {
         const body = (args || {}) as LoadRequest

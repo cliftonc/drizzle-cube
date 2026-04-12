@@ -940,88 +940,109 @@ describe('MCP Transport Layer', () => {
       })
     })
 
-    describe('discover method (direct)', () => {
+    describe('discover via tools/call', () => {
       it('should discover cubes', async () => {
-        const result = await dispatchMcpMethod('discover', {
-          topic: 'employees'
-        }, dispatchCtx) as any
-
-        expect(result).toHaveProperty('cubes')
-      })
-
-      it('should embed the query language reference and date filtering guide', async () => {
-        // The discover response is the primary delivery mechanism for query
-        // construction guidance — clients cannot be relied on to forward
-        // prompts/* to the model, so we piggyback on discover (the mandated
-        // first call) to guarantee the model sees the rules every time.
-        const result = await dispatchMcpMethod('discover', {
-          topic: 'employees'
-        }, dispatchCtx) as any
-
-        expect(result).toHaveProperty('queryLanguageReference')
-        expect(typeof result.queryLanguageReference).toBe('string')
-        expect(result.queryLanguageReference.length).toBeGreaterThan(0)
-        // Sanity-check the reference contains DSL hallmarks
-        expect(result.queryLanguageReference).toContain('CubeName')
-        expect(result.queryLanguageReference).toContain('FilterOperator')
-
-        expect(result).toHaveProperty('dateFilteringGuide')
-        expect(typeof result.dateFilteringGuide).toBe('string')
-        expect(result.dateFilteringGuide).toMatch(/inDateRange/)
-        expect(result.dateFilteringGuide).toMatch(/granularity/i)
-      })
-
-      it('should embed the reference fields when invoked via tools/call too', async () => {
         const result = await dispatchMcpMethod('tools/call', {
           name: 'discover',
           arguments: { topic: 'employees' }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('content')
-        expect(Array.isArray(result.content)).toBe(true)
-        const text = result.content[0]?.text
-        expect(typeof text).toBe('string')
-        const parsed = JSON.parse(text)
+        const parsed = JSON.parse(result.content[0].text)
         expect(parsed).toHaveProperty('cubes')
+      })
+
+      it('should embed the query language reference and date filtering guide', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'discover',
+          arguments: { topic: 'employees' }
+        }, dispatchCtx) as any
+
+        const parsed = JSON.parse(result.content[0].text)
         expect(parsed).toHaveProperty('queryLanguageReference')
+        expect(typeof parsed.queryLanguageReference).toBe('string')
+        expect(parsed.queryLanguageReference.length).toBeGreaterThan(0)
+        expect(parsed.queryLanguageReference).toContain('CubeName')
+        expect(parsed.queryLanguageReference).toContain('FilterOperator')
+
         expect(parsed).toHaveProperty('dateFilteringGuide')
+        expect(typeof parsed.dateFilteringGuide).toBe('string')
+        expect(parsed.dateFilteringGuide).toMatch(/inDateRange/)
+        expect(parsed.dateFilteringGuide).toMatch(/granularity/i)
       })
     })
 
-    describe('validate method (direct)', () => {
+    describe('validate via tools/call', () => {
       it('should validate query', async () => {
-        const result = await dispatchMcpMethod('validate', {
-          query: {
-            measures: ['Employees.count']
-          }
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'validate',
+          arguments: { query: { measures: ['Employees.count'] } }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('isValid')
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('isValid')
+      })
+
+      it('should return sql when query is valid', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'validate',
+          arguments: { query: { measures: ['Employees.count'] } }
+        }, dispatchCtx) as any
+
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed.isValid).toBe(true)
+        expect(parsed).toHaveProperty('sql')
+        expect(parsed.sql).toHaveProperty('sql')
       })
 
       it('should throw error without query', async () => {
         await expect(
-          dispatchMcpMethod('validate', {}, dispatchCtx)
+          dispatchMcpMethod('tools/call', {
+            name: 'validate',
+            arguments: {}
+          }, dispatchCtx)
         ).rejects.toThrow('query is required')
       })
     })
 
-    describe('load method (direct)', () => {
+    describe('load via tools/call', () => {
       it('should execute query', async () => {
-        const result = await dispatchMcpMethod('load', {
-          query: {
-            measures: ['Employees.count']
-          }
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'load',
+          arguments: { query: { measures: ['Employees.count'] } }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('data')
-        expect(result).toHaveProperty('annotation')
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('data')
+        expect(parsed).toHaveProperty('annotation')
       })
 
       it('should throw error without query', async () => {
         await expect(
-          dispatchMcpMethod('load', {}, dispatchCtx)
+          dispatchMcpMethod('tools/call', {
+            name: 'load',
+            arguments: {}
+          }, dispatchCtx)
         ).rejects.toThrow('query is required')
+      })
+    })
+
+    describe('bare method names rejected', () => {
+      it('should reject bare discover method', async () => {
+        await expect(
+          dispatchMcpMethod('discover', {}, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
+      })
+
+      it('should reject bare validate method', async () => {
+        await expect(
+          dispatchMcpMethod('validate', { query: { measures: ['Employees.count'] } }, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
+      })
+
+      it('should reject bare load method', async () => {
+        await expect(
+          dispatchMcpMethod('load', { query: { measures: ['Employees.count'] } }, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
       })
     })
 

@@ -949,10 +949,25 @@ export async function handleSuggest(
  */
 export async function handleValidate(
   semanticLayer: SemanticLayerCompiler,
-  body: ValidateRequest
-): Promise<AIValidationResult> {
+  body: ValidateRequest,
+  securityContext?: SecurityContext
+): Promise<AIValidationResult & { sql?: { sql: string; params?: any[] } }> {
   const metadata = semanticLayer.getMetadata()
-  return aiValidateQuery(body.query, metadata)
+  const result = await aiValidateQuery(body.query, metadata)
+
+  if (result.isValid && securityContext) {
+    try {
+      const query = normalizeQueryFields(
+        (result.correctedQuery ?? body.query) as Record<string, unknown>
+      ) as SemanticQuery
+      const dryRun = await semanticLayer.dryRun(query, securityContext)
+      return { ...result, sql: dryRun }
+    } catch {
+      return result
+    }
+  }
+
+  return result
 }
 
 /**
