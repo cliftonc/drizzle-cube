@@ -328,21 +328,6 @@ export const queryModeAdapter: ModeAdapter<QuerySliceState> = {
     const errors: string[] = []
     const warnings: string[] = []
 
-    // Check if any query has metrics
-    const hasAnyMetrics = state.queryStates.some((q) => q.metrics.length > 0)
-    if (!hasAnyMetrics) {
-      errors.push('At least one metric is required')
-    }
-
-    // Check each query state
-    state.queryStates.forEach((qs, index) => {
-      const prefix = state.queryStates.length > 1 ? `Query ${index + 1}: ` : ''
-
-      if (qs.metrics.length === 0 && qs.breakdowns.length === 0) {
-        warnings.push(`${prefix}Query is empty`)
-      }
-    })
-
     // Multi-query specific validation
     if (state.queryStates.length > 1) {
       if (state.mergeStrategy === 'merge') {

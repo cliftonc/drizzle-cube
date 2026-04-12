@@ -650,9 +650,9 @@ describe('adapterRegistry', () => {
       const initialState = queryAdapter.createInitial()
       expect(initialState.queryStates).toHaveLength(1)
 
-      // Validate empty state
+      // Validate empty state — empty query is silent (not an error)
       const validation = queryAdapter.validate(initialState)
-      expect(validation.isValid).toBe(false)
+      expect(validation.isValid).toBe(true)
 
       // Get default chart config
       const chartConfig = queryAdapter.getDefaultChartConfig()

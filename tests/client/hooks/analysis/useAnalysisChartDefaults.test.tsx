@@ -238,6 +238,135 @@ describe('useAnalysisChartDefaults', () => {
 
       expect(result.current.chartType).toBe('line')
     })
+
+    it('should populate xAxis with ALL fields when switching to table', () => {
+      const metrics = [createMetric('Employees.count', 'Count')]
+      const breakdowns = [
+        createBreakdown('Employees.department', false),
+        createBreakdown('Employees.createdAt', true, 'day'),
+      ]
+
+      const { result } = renderHook(
+        () =>
+          useAnalysisChartDefaults({
+            combinedMetrics: metrics,
+            combinedBreakdowns: breakdowns,
+            hasDebounced: false,
+          }),
+        {
+          wrapper: createWrapperWithInitialChartConfig({
+            chartType: 'bar',
+            chartConfig: {
+              xAxis: ['Employees.department'],
+              yAxis: ['Employees.count'],
+            },
+          }),
+        }
+      )
+
+      expect(result.current.chartType).toBe('bar')
+
+      act(() => {
+        result.current.setChartType('table')
+      })
+
+      expect(result.current.chartType).toBe('table')
+      expect(result.current.chartConfig.xAxis).toEqual(
+        expect.arrayContaining([
+          'Employees.department',
+          'Employees.createdAt',
+          'Employees.count',
+        ])
+      )
+      expect(result.current.chartConfig.xAxis).toHaveLength(3)
+    })
+
+    it('should add new fields to table xAxis when added while on table chart', async () => {
+      const metrics = [createMetric('Employees.count', 'Count')]
+      const initialBreakdowns = [createBreakdown('Employees.department', false)]
+
+      const { result, rerender } = renderHook(
+        ({ breakdowns, hasDebounced }: { breakdowns: BreakdownItem[]; hasDebounced: boolean }) =>
+          useAnalysisChartDefaults({
+            combinedMetrics: metrics,
+            combinedBreakdowns: breakdowns,
+            hasDebounced,
+          }),
+        {
+          wrapper: createWrapperWithInitialChartConfig({
+            chartType: 'table',
+            chartConfig: {
+              xAxis: ['Employees.department', 'Employees.count'],
+            },
+          }),
+          initialProps: { breakdowns: initialBreakdowns, hasDebounced: true as boolean },
+        }
+      )
+
+      expect(result.current.chartType).toBe('table')
+
+      // Add a new breakdown
+      const newBreakdowns = [
+        ...initialBreakdowns,
+        createBreakdown('Employees.createdAt', true, 'day'),
+      ]
+      rerender({ breakdowns: newBreakdowns, hasDebounced: true })
+
+      await waitFor(() => {
+        expect(result.current.chartConfig.xAxis).toContain('Employees.createdAt')
+      })
+      expect(result.current.chartConfig.xAxis).toEqual(
+        expect.arrayContaining([
+          'Employees.department',
+          'Employees.createdAt',
+          'Employees.count',
+        ])
+      )
+    })
+
+    it('should repopulate table xAxis when re-selected after fields change', () => {
+      const initialMetrics = [createMetric('Employees.count', 'Count')]
+      const initialBreakdowns = [createBreakdown('Employees.department', false)]
+
+      const { result, rerender } = renderHook(
+        ({ metrics, breakdowns }: { metrics: MetricItem[]; breakdowns: BreakdownItem[] }) =>
+          useAnalysisChartDefaults({
+            combinedMetrics: metrics,
+            combinedBreakdowns: breakdowns,
+            hasDebounced: false,
+          }),
+        {
+          wrapper: createWrapperWithInitialChartConfig({
+            chartType: 'table',
+            chartConfig: {
+              xAxis: ['Employees.department', 'Employees.count'],
+            },
+          }),
+          initialProps: { metrics: initialMetrics, breakdowns: initialBreakdowns },
+        }
+      )
+
+      // Add a new breakdown
+      const newBreakdowns = [
+        ...initialBreakdowns,
+        createBreakdown('Employees.createdAt', true, 'day'),
+      ]
+      rerender({ metrics: initialMetrics, breakdowns: newBreakdowns })
+
+      // User re-selects table to refresh
+      act(() => {
+        result.current.setChartType('table')
+      })
+
+      expect(result.current.chartConfig.xAxis).toEqual(
+        expect.arrayContaining([
+          'Employees.department',
+          'Employees.createdAt',
+          'Employees.count',
+        ])
+      )
+      expect(result.current.chartConfig.xAxis).toHaveLength(3)
+    })
   })
 
   // ==========================================================================

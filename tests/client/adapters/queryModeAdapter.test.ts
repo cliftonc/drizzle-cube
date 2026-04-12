@@ -218,7 +218,7 @@ describe('queryModeAdapter', () => {
       expect(result.errors).toHaveLength(0)
     })
 
-    it('should return invalid for state without metrics', () => {
+    it('should return valid with no warnings for empty state (no unsolicited nagging)', () => {
       const state: QuerySliceState = {
         queryStates: [{
           metrics: [],
@@ -233,26 +233,9 @@ describe('queryModeAdapter', () => {
 
       const result = queryModeAdapter.validate(state)
 
-      expect(result.isValid).toBe(false)
-      expect(result.errors).toContain('At least one metric is required')
-    })
-
-    it('should warn for empty query', () => {
-      const state: QuerySliceState = {
-        queryStates: [{
-          metrics: [],
-          breakdowns: [],
-          filters: [],
-          validationStatus: 'idle',
-          validationError: null,
-        }],
-        activeQueryIndex: 0,
-        mergeStrategy: 'concat',
-      }
-
-      const result = queryModeAdapter.validate(state)
-
-      expect(result.warnings.some(w => w.includes('empty'))).toBe(true)
+      expect(result.isValid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+      expect(result.warnings).toHaveLength(0)
     })
   })
 

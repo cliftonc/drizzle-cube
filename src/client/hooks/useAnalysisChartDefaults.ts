@@ -182,18 +182,35 @@ export function useAnalysisChartDefaults(
       setChartConfig(newConfig)
       setUserManuallySelectedChart(false)
     } else if (combinedMetrics.length > 0 || combinedBreakdowns.length > 0) {
-      // Apply smart defaults only if chart config is empty
-      const isChartConfigEmpty =
-        !chartConfig.xAxis?.length &&
-        !chartConfig.yAxis?.length &&
-        !chartConfig.series?.length
-      if (isChartConfigEmpty) {
-        const { chartConfig: smartDefaults } = getSmartChartDefaults(
-          combinedMetrics,
-          combinedBreakdowns,
-          chartType
-        )
-        setChartConfig(smartDefaults)
+      if (chartType === 'table') {
+        // Table columns should reflect all selected fields — append any
+        // missing ones to preserve existing column ordering.
+        const allFields = [
+          ...combinedBreakdowns.map((b) => b.field),
+          ...combinedMetrics.map((m) => m.field),
+        ]
+        const currentXAxis = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis : []
+        const missingFields = allFields.filter((f) => !currentXAxis.includes(f))
+        if (missingFields.length > 0) {
+          setChartConfig({
+            ...chartConfig,
+            xAxis: [...currentXAxis, ...missingFields],
+          })
+        }
+      } else {
+        // Apply smart defaults only if chart config is empty
+        const isChartConfigEmpty =
+          !chartConfig.xAxis?.length &&
+          !chartConfig.yAxis?.length &&
+          !chartConfig.series?.length
+        if (isChartConfigEmpty) {
+          const { chartConfig: smartDefaults } = getSmartChartDefaults(
+            combinedMetrics,
+            combinedBreakdowns,
+            chartType
+          )
+          setChartConfig(smartDefaults)
+        }
       }
     }
   }, [
