@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import BarChart from '../../../../src/client/components/charts/BarChart'
 
+
 // Mock the useCubeFieldLabel hook
 vi.mock('../../../../src/client/hooks/useCubeFieldLabel', () => ({
   useCubeFieldLabel: () => (field: string) => {
@@ -626,6 +627,35 @@ describe('BarChart', () => {
         />
       )
 
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+  })
+
+  describe('showAllXLabels', () => {
+    it('should render with all X labels shown by default', () => {
+      render(<BarChart data={mockData} chartConfig={basicChartConfig} />)
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels explicitly true', () => {
+      render(
+        <BarChart
+          data={mockData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: true }}
+        />
+      )
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels disabled', () => {
+      render(
+        <BarChart
+          data={mockData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: false }}
+        />
+      )
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })
   })

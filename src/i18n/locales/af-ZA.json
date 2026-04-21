@@ -330,6 +330,8 @@
   "chart.option.target.description": "crwdns3313:0crwdne3313:0",
   "chart.option.connectNulls.label": "crwdns3315:0crwdne3315:0",
   "chart.option.connectNulls.description": "crwdns3317:0crwdne3317:0",
+  "chart.option.showAllXLabels.label": "Wys Alle X-etikette",
+  "chart.option.showAllXLabels.description": "Wys elke etiket op die X-as in plaas van oorvleuelende etikette outomaties te verberg",
   "chart.option.leftYAxisFormat.label": "crwdns3319:0crwdne3319:0",
   "chart.option.leftYAxisFormat.description": "crwdns3321:0crwdne3321:0",
   "chart.option.rightYAxisFormat.label": "crwdns3323:0crwdne3323:0",

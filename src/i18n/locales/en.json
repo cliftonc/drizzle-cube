@@ -416,6 +416,8 @@
   "chart.option.target.description": "Single value or comma-separated values to spread across X-axis",
   "chart.option.connectNulls.label": "Connect Nulls",
   "chart.option.connectNulls.description": "Draw continuous line through missing data points",
+  "chart.option.showAllXLabels.label": "Show All X Labels",
+  "chart.option.showAllXLabels.description": "Display every label on the X-axis instead of auto-hiding overlapping labels",
   "chart.option.leftYAxisFormat.label": "Left Y-Axis Format",
   "chart.option.leftYAxisFormat.description": "Number formatting for left Y-axis",
   "chart.option.rightYAxisFormat.label": "Right Y-Axis Format",

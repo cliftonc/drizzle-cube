@@ -89,6 +89,13 @@ export const lineChartConfig: ChartTypeConfig = {
       label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
       description: 'chart.option.rightYAxisFormat.description'
+    },
+    {
+      key: 'showAllXLabels',
+      label: 'chart.option.showAllXLabels.label',
+      type: 'boolean',
+      defaultValue: true,
+      description: 'chart.option.showAllXLabels.description'
     }
   ]
 }

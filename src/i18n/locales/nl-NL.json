@@ -393,6 +393,8 @@
   "chart.option.target.description": "Enkele waarde of door komma's gescheiden waarden om over de X-as te spreiden",
   "chart.option.connectNulls.label": "Verbind null-waarden",
   "chart.option.connectNulls.description": "Tekenen doorlopende regel through ontbrekend gegevens punten",
+  "chart.option.showAllXLabels.label": "Toon alle X-labels",
+  "chart.option.showAllXLabels.description": "Toon elk label op de X-as in plaats van overlappende labels automatisch te verbergen",
   "chart.option.leftYAxisFormat.label": "Left Y-As Format",
   "chart.option.leftYAxisFormat.description": "Nummer formatting voor left Y-axis",
   "chart.option.rightYAxisFormat.label": "Right Y-As Format",

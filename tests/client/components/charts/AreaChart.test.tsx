@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AreaChart from '../../../../src/client/components/charts/AreaChart'
 
+
 // Mock ChartContainer to bypass the dimension check and render children immediately
 vi.mock('../../../../src/client/components/charts/ChartContainer', () => ({
   default: ({ children, height }: { children: React.ReactElement; height?: string | number }) => {
@@ -762,6 +763,35 @@ describe('AreaChart', () => {
 
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
+    })
+  })
+
+  describe('showAllXLabels', () => {
+    it('should render with all X labels shown by default', () => {
+      render(<AreaChart data={mockAreaData} chartConfig={basicChartConfig} />)
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels explicitly true', () => {
+      render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: true }}
+        />
+      )
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels disabled', () => {
+      render(
+        <AreaChart
+          data={mockAreaData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: false }}
+        />
+      )
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })
   })
 })
