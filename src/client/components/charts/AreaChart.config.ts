@@ -7,6 +7,11 @@ export const areaChartConfig: ChartTypeConfig = {
   label: 'chart.area.label',
   description: 'chart.area.description',
   useCase: 'chart.area.useCase',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',
@@ -34,7 +39,7 @@ export const areaChartConfig: ChartTypeConfig = {
       emptyText: 'chart.area.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',

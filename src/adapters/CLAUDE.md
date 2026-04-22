@@ -7,8 +7,8 @@ HTTP + MCP adapter layer: maps Cube.js-compatible endpoints onto Express, Fastif
 | Path | Key Exports | Purpose |
 |------|-------------|---------|
 | types.ts | `BaseAdapterOptions`, `ContextExtractor`, `CorsConfig`, `AdapterResponse`, `AdapterFactory` | Shared interfaces for all adapters |
-| utils.ts | `calculateQueryComplexity`, `handleDryRun`, `handleLoad`, `handleBatchRequest`, `handleDiscover`, `handleSuggest`, `handleValidate`, `formatCubeResponse`, `formatSqlResponse`, `formatMetaResponse`, `MCPOptions` | Request handlers and response formatters shared across frameworks |
-| mcp-transport.ts | `dispatchMcpMethod`, `negotiateProtocol`, `validateOriginHeader`, `parseJsonRpc`, `serializeSseEvent`, `buildJsonRpcError`, `buildJsonRpcResult`, `jsonRpcError` | MCP JSON-RPC protocol: method dispatch, SSE serialization, origin validation |
+| utils.ts | `calculateQueryComplexity`, `handleDryRun`, `handleLoad`, `handleBatchRequest`, `handleDiscover`, `handleSuggest`, `handleValidate`, `formatCubeResponse`, `formatSqlResponse`, `formatMetaResponse`, `MCPOptions`, `DiscoverResponse` | Request handlers and response formatters shared across frameworks |
+| mcp-transport.ts | `dispatchMcpMethod`, `negotiateProtocol`, `validateOriginHeader`, `parseJsonRpc`, `serializeSseEvent`, `buildJsonRpcError`, `buildJsonRpcResult`, `jsonRpcError`, `resolveMcpPrompts`, `resolveMcpResources`, `resolveMcpInstructions`, `getDefaultInstructions` | MCP JSON-RPC protocol: method dispatch, SSE serialization, origin validation, instructions resolver |
 | express/index.ts | `ExpressAdapterOptions`, `createCubeRouter`, `mountCubeRoutes`, `createCubeApp` | Express router/app factory |
 | fastify/index.ts | `FastifyAdapterOptions`, `cubePlugin`, `registerCubeRoutes`, `createCubeApp` | Fastify plugin + app factory |
 | hono/index.ts | `HonoAdapterOptions`, `createCubeRoutes`, `mountCubeRoutes`, `createCubeApp` | Hono routes/app factory |
@@ -60,6 +60,15 @@ Express, Fastify, and Hono export **router/app creators** (`createCubeRouter`, `
 ## MCP Transport (mcp-transport.ts)
 
 JSON-RPC 2.0 protocol layer shared by all adapters. `dispatchMcpMethod` routes `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, and `prompts/get` to semantic-layer operations. `negotiateProtocol` selects the highest mutually-supported MCP protocol version. `validateOriginHeader` enforces origin allowlists. `serializeSseEvent` formats Server-Sent Events for the GET /mcp streaming connection.
+
+### Delivering query-construction guidance to the LLM
+
+Most MCP clients do NOT forward `prompts/*` or `resources/*` content to the model — they expose them as user-triggered slash commands. The two channels we *can* rely on are:
+
+1. **`InitializeResult.instructions`** — `dispatchMcpMethod('initialize', …)` returns an `instructions` string that clients merge into the LLM system prompt. Default content lives in `DEFAULT_MCP_INSTRUCTIONS` (`src/server/ai/mcp-prompts.ts`). Override per-deployment via `MCPOptions.instructions` (string or `(defaults) => string` resolver). Use `resolveMcpInstructions()` to apply the resolver in your adapter before passing it to `dispatchMcpMethod` as `ctx.instructions`.
+2. **`discover` tool response** — `handleDiscover` always returns `queryLanguageReference` and `dateFilteringGuide` alongside the matched cubes. The `discover` tool description and the default instructions both mandate calling `discover` first, so the model receives the full DSL on the first tool call without an extra roundtrip.
+
+When adding a new adapter: `resolveMcpInstructions(mcp.instructions)` once at setup time, and pass the result as `ctx.instructions` into every `dispatchMcpMethod` call (mirrors the existing `prompts` / `resources` plumbing).
 
 ## Guard Rails
 

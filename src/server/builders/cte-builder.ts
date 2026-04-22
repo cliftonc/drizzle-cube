@@ -27,6 +27,36 @@ import type { DrizzleSqlBuilder } from '../physical-plan/drizzle-sql-builder'
 export type CTEInfo = NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[0]
 
 /**
+ * Apply a cube's BaseQueryDefinition.joins (intra-cube table-level joins)
+ * to a Drizzle query/subquery built from cubeBase.from. Used by the CTE
+ * builder for both pre-aggregation CTEs and propagating-filter subqueries
+ * to ensure joined-table columns are in scope for SELECTs and WHEREs.
+ */
+function applyBaseJoins(
+  query: any,
+  cubeBase: { joins?: Array<{ table: any; on: SQL; type?: 'left' | 'right' | 'inner' | 'full' }> }
+): any {
+  if (!cubeBase.joins) return query
+  for (const join of cubeBase.joins) {
+    switch (join.type || 'left') {
+      case 'left':
+        query = query.leftJoin(join.table, join.on)
+        break
+      case 'inner':
+        query = query.innerJoin(join.table, join.on)
+        break
+      case 'right':
+        query = query.rightJoin(join.table, join.on)
+        break
+      case 'full':
+        query = query.fullJoin(join.table, join.on)
+        break
+    }
+  }
+  return query
+}
+
+/**
  * CTEBuilder handles the construction of Common Table Expressions
  * for pre-aggregation in hasMany relationship queries.
  *
@@ -166,6 +196,12 @@ export class CTEBuilder {
     let cteQuery = context.db
       .select(cteSelections)
       .from(cubeBase.from)
+
+    // Apply the cube's intra-cube table-level joins
+    // (BaseQueryDefinition.joins) so columns from joined tables are in
+    // scope for the CTE's selections, intermediate join chain, and WHERE
+    // clause. Must run BEFORE the intermediate-cube join chain below.
+    cteQuery = applyBaseJoins(cteQuery, cubeBase)
 
     // If there are intermediate joins (multi-hop fan-out prevention),
     // add JOINs to the intermediate tables inside the CTE
@@ -508,10 +544,14 @@ export class CTEBuilder {
     if (joinConditions.length === 1) {
       // Single key: use simple IN clause
       const { source: sourcePK, target: cteFK } = joinConditions[0]
-      const subquery = context.db
+      let subquery: any = context.db
         .select({ pk: sourcePK })
         .from(cubeBase.from)
-        .where(combinedWhere!)
+      // Apply the source cube's intra-cube table-level joins so any
+      // joined-table column referenced by the propagating filter (or
+      // security WHERE) is in scope.
+      subquery = applyBaseJoins(subquery, cubeBase)
+      subquery = subquery.where(combinedWhere!)
 
       return sql`${cteFK} IN ${subquery}`
     } else {
@@ -525,10 +565,11 @@ export class CTEBuilder {
         combinedWhere!
       )
 
-      const existsSubquery = context.db
+      let existsSubquery: any = context.db
         .select({ one: sql`1` })
         .from(cubeBase.from)
-        .where(existsWhere!)
+      existsSubquery = applyBaseJoins(existsSubquery, cubeBase)
+      existsSubquery = existsSubquery.where(existsWhere!)
 
       return sql`EXISTS ${existsSubquery}`
     }

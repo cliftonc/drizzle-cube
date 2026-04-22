@@ -39,6 +39,7 @@ import {
   parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
+  resolveMcpInstructions,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -720,6 +721,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
   if (mcp.enabled !== false) {
     const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
     const mcpPrompts = resolveMcpPrompts(mcp.prompts)
+    const mcpInstructions = resolveMcpInstructions(mcp.instructions)
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
     /**
@@ -784,6 +786,7 @@ export const cubePlugin: FastifyPluginCallback<FastifyAdapterOptions> = function
             negotiatedProtocol: protocol.negotiated,
             resources: mcpResources,
             prompts: mcpPrompts,
+            instructions: mcpInstructions,
             appEnabled: !!mcp.app,
             appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
             serverName: mcp.serverName

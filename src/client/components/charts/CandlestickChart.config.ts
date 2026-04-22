@@ -9,6 +9,11 @@ export const candlestickChartConfig: ChartTypeConfig = {
   useCase: 'chart.candlestick.useCase',
   clickableElements: { bar: true },
   displayOptions: ['hideHeader'],
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 2) return { available: false, reason: 'chart.availability.requiresTwoMeasures' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

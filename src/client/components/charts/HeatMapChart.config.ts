@@ -10,6 +10,11 @@ export const heatmapChartConfig: ChartTypeConfig = {
   label: 'chart.heatmap.label',
   description: 'chart.heatmap.description',
   useCase: 'chart.heatmap.useCase',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 2) return { available: false, reason: 'chart.availability.requiresTwoDimensions' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

@@ -8,6 +8,11 @@ export const lineChartConfig: ChartTypeConfig = {
   description: 'chart.line.description',
   useCase: 'chart.line.useCase',
   clickableElements: { point: true },
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',
@@ -35,7 +40,7 @@ export const lineChartConfig: ChartTypeConfig = {
       emptyText: 'chart.line.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'connectNulls',

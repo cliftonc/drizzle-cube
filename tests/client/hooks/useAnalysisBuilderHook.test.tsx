@@ -1231,12 +1231,13 @@ describe('useAnalysisBuilder', () => {
       expect(result.current.adapterValidation).toHaveProperty('warnings')
     })
 
-    it('adapterValidation.isValid should be false with no metrics in query mode', () => {
+    it('adapterValidation.isValid should be true with no metrics in query mode (no unsolicited errors)', () => {
       const { result } = renderHook(() => useAnalysisBuilder(), {
         wrapper: createWrapper(),
       })
 
-      expect(result.current.adapterValidation.isValid).toBe(false)
+      expect(result.current.adapterValidation.isValid).toBe(true)
+      expect(result.current.adapterValidation.errors).toHaveLength(0)
     })
 
     it('adapterValidation.isValid should be true with metrics in query mode', () => {

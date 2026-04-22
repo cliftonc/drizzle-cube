@@ -7,6 +7,14 @@ export const scatterChartConfig: ChartTypeConfig = {
   label: 'chart.scatter.label',
   description: 'chart.scatter.description',
   useCase: 'chart.scatter.useCase',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    // Scatter needs either 2 measures, or 1 measure + 1 dimension
+    if (measureCount < 2 && dimensionCount < 1) {
+      return { available: false, reason: 'chart.availability.scatter' }
+    }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

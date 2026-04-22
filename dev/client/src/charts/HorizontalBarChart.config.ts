@@ -4,6 +4,11 @@ export const horizontalBarConfig: ChartTypeConfig = {
   label: 'Horizontal Bar',
   description: 'Horizontal bars comparing values across categories',
   useCase: 'Great for ranked lists, category comparisons, and data with long labels',
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',

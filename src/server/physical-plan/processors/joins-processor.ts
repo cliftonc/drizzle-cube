@@ -180,6 +180,12 @@ export function applyJoins(
       let joinTarget: any
       let joinCondition: any
       let securityCondition: SQL | undefined
+      // Captured in the non-CTE branch so the joined cube's intra-cube
+      // table-level joins (BaseQueryDefinition.joins) can be applied to
+      // the outer query AFTER the inter-cube join is in place. CTE branch
+      // leaves this undefined because the CTE definition already contains
+      // those joins (see cte-builder.ts).
+      let joinCubeBase: ReturnType<Cube['sql']> | undefined
 
       if (cteAlias) {
         // Join to CTE instead of base table - use sql table reference
@@ -195,7 +201,7 @@ export function applyJoins(
 
         // Regular join to base table
         // Get the cube's SQL definition ONCE to avoid SQL object mutation issues
-        const joinCubeBase = joinCube.cube.sql(context)
+        joinCubeBase = joinCube.cube.sql(context)
         joinTarget = joinCubeBase.from
 
         // Get security condition for this cube (for LEFT JOINs, will be added to ON clause)
@@ -255,6 +261,30 @@ export function applyJoins(
               cubesWithSecurityInJoin.add(joinCube.cube.name)
             }
             break
+        }
+
+        // Apply the joined cube's intra-cube table-level joins
+        // (BaseQueryDefinition.joins). These must be added AFTER the
+        // inter-cube join above so the cube's base table is in scope for
+        // the join ON conditions. Skipped in the CTE branch because the
+        // CTE definition already contains these joins.
+        if (joinCubeBase?.joins) {
+          for (const join of joinCubeBase.joins) {
+            switch (join.type || 'left') {
+              case 'left':
+                drizzleQuery = drizzleQuery.leftJoin(join.table, join.on)
+                break
+              case 'inner':
+                drizzleQuery = drizzleQuery.innerJoin(join.table, join.on)
+                break
+              case 'right':
+                drizzleQuery = drizzleQuery.rightJoin(join.table, join.on)
+                break
+              case 'full':
+                drizzleQuery = drizzleQuery.fullJoin(join.table, join.on)
+                break
+            }
+          }
         }
       } catch {
         // If join fails (e.g., duplicate alias), log and continue

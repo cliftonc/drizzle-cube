@@ -21,8 +21,10 @@ import {
   buildMcpResources,
   getDefaultResources,
   getDefaultPrompts,
+  getDefaultInstructions,
   resolveMcpPrompts,
   resolveMcpResources,
+  resolveMcpInstructions,
   getMcpAppHtml,
   SUPPORTED_MCP_PROTOCOLS,
   DEFAULT_MCP_PROTOCOL,
@@ -609,6 +611,27 @@ describe('MCP Transport Layer', () => {
       expect(resources.length).toBe(getDefaultResources().length + 1)
     })
 
+    it('should return default instructions when nothing is provided', () => {
+      const instructions = resolveMcpInstructions()
+      expect(typeof instructions).toBe('string')
+      expect(instructions.length).toBeGreaterThan(0)
+      // Sanity-check the defaults still mention the critical concepts
+      expect(instructions).toMatch(/discover/i)
+      expect(instructions).toMatch(/inDateRange/)
+    })
+
+    it('should replace defaults when a string is provided', () => {
+      const instructions = resolveMcpInstructions('custom rules only')
+      expect(instructions).toBe('custom rules only')
+    })
+
+    it('should allow function-based extension of default instructions', () => {
+      const defaults = getDefaultInstructions()
+      const instructions = resolveMcpInstructions(d => `${d}\n\n## Project addendum\nUse cube X for sales.`)
+      expect(instructions.startsWith(defaults)).toBe(true)
+      expect(instructions).toContain('Project addendum')
+    })
+
     it('should append the live schema resource when building MCP resources', async () => {
       const { semanticLayer, close } = await createTestSemanticLayer()
       try {
@@ -699,6 +722,34 @@ describe('MCP Transport Layer', () => {
 
         expect(result).toHaveProperty('sessionId')
         expect(typeof result.sessionId).toBe('string')
+      })
+
+      it('should include default instructions per MCP spec', async () => {
+        // MCP spec: InitializeResult.instructions is the only server-authored
+        // string clients are expected to surface to the model. Without this,
+        // clients (e.g. Claude Desktop) silently ignore prompts/resources and
+        // the model invents query syntax.
+        const result = await dispatchMcpMethod('initialize', {}, dispatchCtx) as any
+
+        expect(result).toHaveProperty('instructions')
+        expect(typeof result.instructions).toBe('string')
+        expect(result.instructions.length).toBeGreaterThan(0)
+        // The default instructions MUST mandate the discover-first workflow
+        // and call out the date-filtering rule (the #1 source of mistakes).
+        expect(result.instructions).toMatch(/discover/i)
+        expect(result.instructions).toMatch(/MUST/)
+        expect(result.instructions).toMatch(/inDateRange/)
+        expect(result.instructions).toMatch(/queryLanguageReference/)
+      })
+
+      it('should use custom instructions when provided in context', async () => {
+        const customCtx: McpDispatchContext = {
+          ...dispatchCtx,
+          instructions: 'Custom project rules: only query the Sales cube.'
+        }
+        const result = await dispatchMcpMethod('initialize', {}, customCtx) as any
+
+        expect(result.instructions).toBe('Custom project rules: only query the Sales cube.')
       })
     })
 
@@ -889,50 +940,109 @@ describe('MCP Transport Layer', () => {
       })
     })
 
-    describe('discover method (direct)', () => {
+    describe('discover via tools/call', () => {
       it('should discover cubes', async () => {
-        const result = await dispatchMcpMethod('discover', {
-          topic: 'employees'
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'discover',
+          arguments: { topic: 'employees' }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('cubes')
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('cubes')
+      })
+
+      it('should embed the query language reference and date filtering guide', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'discover',
+          arguments: { topic: 'employees' }
+        }, dispatchCtx) as any
+
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('queryLanguageReference')
+        expect(typeof parsed.queryLanguageReference).toBe('string')
+        expect(parsed.queryLanguageReference.length).toBeGreaterThan(0)
+        expect(parsed.queryLanguageReference).toContain('CubeName')
+        expect(parsed.queryLanguageReference).toContain('FilterOperator')
+
+        expect(parsed).toHaveProperty('dateFilteringGuide')
+        expect(typeof parsed.dateFilteringGuide).toBe('string')
+        expect(parsed.dateFilteringGuide).toMatch(/inDateRange/)
+        expect(parsed.dateFilteringGuide).toMatch(/granularity/i)
       })
     })
 
-    describe('validate method (direct)', () => {
+    describe('validate via tools/call', () => {
       it('should validate query', async () => {
-        const result = await dispatchMcpMethod('validate', {
-          query: {
-            measures: ['Employees.count']
-          }
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'validate',
+          arguments: { query: { measures: ['Employees.count'] } }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('isValid')
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('isValid')
+      })
+
+      it('should return sql when query is valid', async () => {
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'validate',
+          arguments: { query: { measures: ['Employees.count'] } }
+        }, dispatchCtx) as any
+
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed.isValid).toBe(true)
+        expect(parsed).toHaveProperty('sql')
+        expect(parsed.sql).toHaveProperty('sql')
       })
 
       it('should throw error without query', async () => {
         await expect(
-          dispatchMcpMethod('validate', {}, dispatchCtx)
+          dispatchMcpMethod('tools/call', {
+            name: 'validate',
+            arguments: {}
+          }, dispatchCtx)
         ).rejects.toThrow('query is required')
       })
     })
 
-    describe('load method (direct)', () => {
+    describe('load via tools/call', () => {
       it('should execute query', async () => {
-        const result = await dispatchMcpMethod('load', {
-          query: {
-            measures: ['Employees.count']
-          }
+        const result = await dispatchMcpMethod('tools/call', {
+          name: 'load',
+          arguments: { query: { measures: ['Employees.count'] } }
         }, dispatchCtx) as any
 
-        expect(result).toHaveProperty('data')
-        expect(result).toHaveProperty('annotation')
+        const parsed = JSON.parse(result.content[0].text)
+        expect(parsed).toHaveProperty('data')
+        expect(parsed).toHaveProperty('annotation')
       })
 
       it('should throw error without query', async () => {
         await expect(
-          dispatchMcpMethod('load', {}, dispatchCtx)
+          dispatchMcpMethod('tools/call', {
+            name: 'load',
+            arguments: {}
+          }, dispatchCtx)
         ).rejects.toThrow('query is required')
+      })
+    })
+
+    describe('bare method names rejected', () => {
+      it('should reject bare discover method', async () => {
+        await expect(
+          dispatchMcpMethod('discover', {}, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
+      })
+
+      it('should reject bare validate method', async () => {
+        await expect(
+          dispatchMcpMethod('validate', { query: { measures: ['Employees.count'] } }, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
+      })
+
+      it('should reject bare load method', async () => {
+        await expect(
+          dispatchMcpMethod('load', { query: { measures: ['Employees.count'] } }, dispatchCtx)
+        ).rejects.toThrow('Unknown MCP method')
       })
     })
 

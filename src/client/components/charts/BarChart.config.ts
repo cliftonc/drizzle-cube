@@ -8,6 +8,11 @@ export const barChartConfig: ChartTypeConfig = {
   description: 'chart.bar.description',
   useCase: 'chart.bar.useCase',
   clickableElements: { bar: true },
+  isAvailable: ({ measureCount, dimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (dimensionCount < 1) return { available: false, reason: 'chart.availability.requiresDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',
@@ -35,7 +40,7 @@ export const barChartConfig: ChartTypeConfig = {
       emptyText: 'chart.bar.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',

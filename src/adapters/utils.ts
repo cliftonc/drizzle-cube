@@ -18,9 +18,12 @@ import {
   suggestQuery,
   aiValidateQuery
 } from '../server'
+import { QUERY_LANGUAGE_REFERENCE } from '../server/ai/query-schema'
+import { DATE_FILTERING_PROMPT } from '../server/ai/mcp-prompts'
 import type {
   MCPPromptResolver,
-  MCPResourceResolver
+  MCPResourceResolver,
+  MCPInstructionsResolver
 } from './mcp-transport'
 
 /**
@@ -802,6 +805,18 @@ export interface MCPOptions {
    */
   resources?: MCPResourceResolver
   /**
+   * Override the `InitializeResult.instructions` string returned by the
+   * MCP `initialize` handshake. Per the MCP spec, this is the only
+   * server-authored guidance that clients are expected to surface to the
+   * model (it is typically merged into the system prompt).
+   *
+   * Pass a string to replace the defaults entirely, or a function to
+   * derive from / extend them. Use this to append project-specific
+   * guidance (e.g. cube semantics, naming conventions) without losing
+   * the built-in workflow rules.
+   */
+  instructions?: MCPInstructionsResolver
+  /**
    * OAuth 2.1 Protected Resource Metadata URL (RFC 9728).
    * When set, MCP endpoints require a Bearer token in the Authorization header.
    * Unauthenticated requests receive 401 with WWW-Authenticate pointing to this URL.
@@ -856,12 +871,53 @@ export interface LoadRequest {
 }
 
 /**
- * Handle /discover endpoint - find relevant cubes based on topic/intent
+ * Discovery response shape returned by `handleDiscover`.
+ *
+ * In addition to the matched cubes, the response embeds the full query
+ * language reference and the date filtering decision tree. This is the
+ * primary delivery mechanism for query-construction guidance: clients
+ * cannot be relied upon to forward `prompts/*` content to the model, so
+ * we piggyback on `discover` (the mandated first call in our workflow)
+ * to guarantee the model sees the rules before it builds a query.
+ *
+ * The fields are stable strings — consumers may render or strip them as
+ * they see fit, but the MCP `discover` tool relies on them being present.
+ */
+export interface DiscoverResponse {
+  /** Matched cubes (possibly empty) with measures, dimensions, and joins */
+  cubes: CubeDiscoveryResult[]
+  /**
+   * Complete TypeScript DSL reference for query construction. Source of
+   * truth for field naming, filter operators, time dimensions, and
+   * analysis modes (funnel/flow/retention).
+   */
+  queryLanguageReference: string
+  /**
+   * Decision tree for date filtering vs time grouping. The single most
+   * common source of incorrect queries — read this whenever the user
+   * mentions a time period.
+   */
+  dateFilteringGuide: string
+}
+
+/**
+ * Date filtering decision tree extracted from the corresponding MCP prompt.
+ * Hoisted into a constant so we don't pay the cost of unwrapping the prompt
+ * shape on every discover call.
+ */
+const DATE_FILTERING_GUIDE_TEXT: string =
+  DATE_FILTERING_PROMPT.messages[0]?.content.text ?? ''
+
+/**
+ * Handle /discover endpoint - find relevant cubes based on topic/intent.
+ *
+ * Always returns `queryLanguageReference` and `dateFilteringGuide` alongside
+ * the matched cubes. See `DiscoverResponse` for the rationale.
  */
 export async function handleDiscover(
   semanticLayer: SemanticLayerCompiler,
   body: DiscoverRequest
-): Promise<{ cubes: CubeDiscoveryResult[] }> {
+): Promise<DiscoverResponse> {
   const metadata = semanticLayer.getMetadata()
   const results = discoverCubes(metadata, {
     topic: body.topic,
@@ -870,7 +926,11 @@ export async function handleDiscover(
     minScore: body.minScore
   })
 
-  return { cubes: results }
+  return {
+    cubes: results,
+    queryLanguageReference: QUERY_LANGUAGE_REFERENCE,
+    dateFilteringGuide: DATE_FILTERING_GUIDE_TEXT
+  }
 }
 
 /**
@@ -889,10 +949,25 @@ export async function handleSuggest(
  */
 export async function handleValidate(
   semanticLayer: SemanticLayerCompiler,
-  body: ValidateRequest
-): Promise<AIValidationResult> {
+  body: ValidateRequest,
+  securityContext?: SecurityContext
+): Promise<AIValidationResult & { sql?: { sql: string; params?: any[] } }> {
   const metadata = semanticLayer.getMetadata()
-  return aiValidateQuery(body.query, metadata)
+  const result = await aiValidateQuery(body.query, metadata)
+
+  if (result.isValid && securityContext) {
+    try {
+      const query = normalizeQueryFields(
+        (result.correctedQuery ?? body.query) as Record<string, unknown>
+      ) as SemanticQuery
+      const dryRun = await semanticLayer.dryRun(query, securityContext)
+      return { ...result, sql: dryRun }
+    } catch {
+      return result
+    }
+  }
+
+  return result
 }
 
 /**

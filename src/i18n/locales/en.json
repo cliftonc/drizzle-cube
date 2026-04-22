@@ -28,10 +28,8 @@
   "analysis.tabs.query": "Query",
   "analysis.tabs.chart": "Chart",
   "analysis.tabs.chartTitle": "Chart configuration",
-  "analysis.tabs.chartDisabled": "Add metrics to configure chart",
   "analysis.tabs.display": "Display",
   "analysis.tabs.displayTitle": "Display options",
-  "analysis.tabs.displayDisabled": "Add metrics to configure display",
 
   "analysis.multiQuery.removeQuery": "Remove query",
   "analysis.multiQuery.addQuery": "Add new query",
@@ -427,6 +425,8 @@
   "chart.option.target.description": "Single value or comma-separated values to spread across X-axis",
   "chart.option.connectNulls.label": "Connect Nulls",
   "chart.option.connectNulls.description": "Draw continuous line through missing data points",
+  "chart.option.showAllXLabels.label": "Show All X Labels",
+  "chart.option.showAllXLabels.description": "Display every label on the X-axis instead of auto-hiding overlapping labels",
   "chart.option.leftYAxisFormat.label": "Left Y-Axis Format",
   "chart.option.leftYAxisFormat.description": "Number formatting for left Y-axis",
   "chart.option.rightYAxisFormat.label": "Right Y-Axis Format",
@@ -1009,6 +1009,14 @@
 
   "common.actions.copied": "Copied",
   "common.actions.copyToClipboard": "Copy to clipboard",
+
+  "chart.availability.requiresMeasure": "Requires at least 1 measure",
+  "chart.availability.requiresTwoMeasures": "Requires at least 2 measures",
+  "chart.availability.requiresDimension": "Requires at least 1 dimension",
+  "chart.availability.requiresTwoDimensions": "Requires at least 2 dimensions",
+  "chart.availability.requiresTimeDimension": "Requires a time dimension",
+  "chart.availability.scatter": "Requires 2 measures, or 1 measure plus 1 dimension",
+  "chart.availability.bubble": "Requires at least 2 measures and 1 dimension",
 
   "chart.runtime.noData": "No data available",
   "chart.runtime.noDataHint.bar": "No data points to display in bar chart",
@@ -1628,5 +1636,21 @@
   "analyticsPage.title": "Analytics Page - Coming in Phase 4",
 
   "dataHistogram.average": "Average of {count} values",
-  "dataHistogram.valuesInRange": "{count} values in this range"
+  "dataHistogram.valuesInRange": "{count} values in this range",
+
+  "mcp.status.connecting": "Connecting...",
+  "mcp.status.loading": "Loading...",
+  "mcp.status.waiting": "Waiting for query results...",
+  "mcp.error.connectionLabel": "Connection error:",
+  "mcp.error.errorLabel": "Error:",
+  "mcp.error.noTextContent": "No text content in result",
+  "mcp.error.invalidResultFormat": "Invalid result format: missing data array",
+  "mcp.error.parseFailed": "Failed to parse result: {message}",
+  "mcp.error.queryFailed": "Query failed: {message}",
+  "mcp.footer.rows": "{count} row",
+  "mcp.footer.rowsPlural": "{count} rows",
+  "mcp.footer.measures": "{count} measure",
+  "mcp.footer.measuresPlural": "{count} measures",
+  "mcp.footer.dimensions": "{count} dimension",
+  "mcp.footer.dimensionsPlural": "{count} dimensions"
 }

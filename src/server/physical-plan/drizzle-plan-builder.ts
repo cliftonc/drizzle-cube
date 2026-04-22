@@ -471,6 +471,19 @@ export class DrizzlePlanBuilder {
         joinCubeBase.from,
         joinCube.joinCondition
       )
+      // Apply the joined cube's intra-cube table-level joins
+      // (BaseQueryDefinition.joins) so columns from joined tables are in
+      // scope for both the keys CTE selection and the WHERE clause.
+      if (joinCubeBase.joins) {
+        for (const join of joinCubeBase.joins) {
+          keysQuery = this.applyJoinByType(
+            keysQuery,
+            join.type ?? 'left',
+            join.table,
+            join.on
+          )
+        }
+      }
       if (joinCubeBase.where) {
         keysWhereConditions.push(joinCubeBase.where)
       }
@@ -560,6 +573,20 @@ export class DrizzlePlanBuilder {
     let aggQuery = context.db
       .select(aggSelections)
       .from(multipliedBase.from)
+
+    // Apply the multiplied cube's intra-cube table-level joins
+    // (BaseQueryDefinition.joins) so columns from joined tables are in
+    // scope for the agg CTE's measure expressions and WHERE clause.
+    if (multipliedBase.joins) {
+      for (const join of multipliedBase.joins) {
+        aggQuery = this.applyJoinByType(
+          aggQuery,
+          join.type ?? 'left',
+          join.table,
+          join.on
+        )
+      }
+    }
 
     const aggWhereConditions: SQL[] = []
     if (multipliedBase.where) {

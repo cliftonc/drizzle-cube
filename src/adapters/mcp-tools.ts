@@ -286,7 +286,11 @@ export function getCubeTools(options: GetCubeToolsOptions): CubeTools {
           if (!body.query) {
             return wrapError('query is required')
           }
-          return wrapContent(await handleValidate(semanticLayer, body))
+          let securityContext: SecurityContext | undefined
+          try {
+            securityContext = await getSecurityContext(meta) as SecurityContext
+          } catch { /* validate works without auth — SQL just won't be included */ }
+          return wrapContent(await handleValidate(semanticLayer, body, securityContext))
         }
 
         case 'load': {

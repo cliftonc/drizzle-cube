@@ -93,15 +93,24 @@ export const DATE_FILTERING_PROMPT: MCPPrompt = {
           '',
           '```',
           'User wants data over a time period?',
-          '|- AGGREGATED TOTALS ("total sales last month")',
-          '|  -> filters with inDateRange (NOT timeDimensions)',
+          '|- AGGREGATED TOTALS — no time breakdown in the output',
+          '|  ("total sales last month", "top 5 customers this quarter")',
+          '|  -> filters with inDateRange, NEVER timeDimensions',
+          '|     Use this whenever the user does NOT want time in the result rows.',
           '|',
-          '|- TIME SERIES ("daily sales last month")',
-          '|  -> timeDimensions WITH granularity',
-          '|',
-          '|- BOTH ("monthly breakdown for last quarter")',
-          '   -> filters inDateRange + timeDimensions with granularity',
+          '|- TIME SERIES — time breakdown in the output',
+          '|  ("daily sales last month", "monthly breakdown for last quarter")',
+          '|  -> timeDimensions with BOTH dateRange AND granularity',
+          '|     ONE entry covers both filtering and grouping — do NOT also add an',
+          '|     inDateRange filter on the same field (it duplicates the WHERE clause).',
           '```',
+          '',
+          '## NEVER duplicate date filtering on the same field',
+          'Do NOT put both a `filters[].inDateRange` and a `timeDimensions[].dateRange` on the same field — the engine will emit the same WHERE clause twice. Pick ONE based on whether the user wants time in the output:',
+          '- No time in output → `filters[].inDateRange` ONLY (no timeDimensions)',
+          '- Time in output   → `timeDimensions[].dateRange + granularity` ONLY (no inDateRange filter on the same field)',
+          '',
+          'Only combine `filters` + `timeDimensions` when the filter is on a DIFFERENT field (e.g., "monthly trend for EU customers" → filter on region + timeDimension on date).',
           '',
           '## Aggregated Totals (most common)',
           'When: "last 3 months", "over the past year", "in Q1", "since January"',
@@ -149,11 +158,12 @@ export const DATE_FILTERING_PROMPT: MCPPrompt = {
           '',
           '| User Request | Approach |',
           '|---|---|',
-          '| "total for last 3 months" | filters + inDateRange |',
-          '| "top 5 last quarter" | filters + inDateRange + order + limit |',
-          '| "monthly trend" | timeDimensions + granularity |',
-          '| "daily breakdown last week" | timeDimensions + dateRange + granularity |',
-          '| "compare this month to last" | timeDimensions + compareDateRange |'
+          '| "total for last 3 months" | filters + inDateRange (no timeDimensions) |',
+          '| "top 5 last quarter" | filters + inDateRange + order + limit (no timeDimensions) |',
+          '| "monthly trend" | timeDimensions with dateRange + granularity |',
+          '| "daily breakdown last week" | timeDimensions with dateRange + granularity |',
+          '| "compare this month to last" | timeDimensions with compareDateRange + granularity |',
+          '| "monthly trend for EU customers" | filters on region + timeDimensions with dateRange + granularity |'
         ].join('\n')
       }
     }
@@ -184,4 +194,74 @@ export const MCP_PROMPTS: MCPPrompt[] = [
  */
 export function getDefaultMCPPrompts(): MCPPrompt[] {
   return MCP_PROMPTS
+}
+
+/**
+ * Default instructions returned in the MCP `initialize` result.
+ *
+ * Per the MCP spec (InitializeResult.instructions), this string is the only
+ * server-authored guidance that clients are expected to surface to the model
+ * (e.g. by adding it to the system prompt). `prompts/*` and `resources/*` are
+ * pull-based and are usually invoked by the *user* (slash commands) — not by
+ * the model — so we cannot rely on them for correctness.
+ *
+ * The instructions therefore:
+ *  1. Mandate the discover → (validate) → load workflow.
+ *  2. Tell the model that the `discover` tool response itself contains the
+ *     full query language reference (`queryLanguageReference`) and the date
+ *     filtering decision tree (`dateFilteringGuide`). The model MUST read
+ *     those fields before constructing any query — they are the source of
+ *     truth for syntax, operators, and analysis modes.
+ *  3. Inline the single most-violated rule (aggregated totals vs time
+ *     series) so that even a model that ignores the discover payload still
+ *     sees it once in its system prompt.
+ *
+ * Keep this body short (< ~2 KB) — long instructions get truncated or
+ * deprioritised by some clients.
+ */
+export const DEFAULT_MCP_INSTRUCTIONS: string = [
+  'You are an analyst agent connected to a Drizzle Cube semantic layer.',
+  '',
+  '## Mandatory workflow',
+  '1. CALL `discover` FIRST. Always. Even if you think you know the schema.',
+  '   The discover response contains TWO things you MUST read before writing any query:',
+  '   - `cubes`: the available cubes, their measures, dimensions, and join relationships.',
+  '   - `queryLanguageReference`: the COMPLETE query language reference (TypeScript DSL,',
+  '     filter operators, analysis modes, and rules). This is the source of truth — do',
+  '     NOT construct queries from memory or guess syntax.',
+  '   - `dateFilteringGuide`: the decision tree for date filtering vs time grouping.',
+  '     Read this whenever the user asks about a time period.',
+  '2. Construct your query using ONLY field names that appear in the discover response,',
+  '   in exact `CubeName.fieldName` form (two parts, one dot).',
+  '3. Optionally call `validate` to auto-correct schema issues.',
+  '4. Call `load` to execute the query and return data.',
+  '',
+  '## The #1 mistake to avoid (read `dateFilteringGuide` for the full rules)',
+  'When the user asks for AGGREGATED TOTALS over a time period ("total sales last 6 months",',
+  '"top customers this quarter"), you MUST filter with `inDateRange` and you MUST NOT use',
+  '`timeDimensions`. Using `timeDimensions` without a granularity returns daily rows and is',
+  'almost always wrong; using it WITH a granularity returns a time series, not a total.',
+  '',
+  'Aggregated totals → `filters: [{ member, operator: "inDateRange", values: ["last 6 months"] }]`',
+  'Time series      → `timeDimensions: [{ dimension, dateRange, granularity: "month" }]`',
+  '',
+  '## Field naming',
+  'Fields are EXACTLY `CubeName.fieldName`. Copy verbatim from discover.',
+  'WRONG: `Sales.Sales.count` (double-prefixed), `Sales` (bare cube), `Sales_count` (underscore).',
+  'RIGHT: `Sales.count`, `Customers.region`.',
+  '',
+  '## Cross-cube joins',
+  'The `joins` property in each discover result lists related cubes. You can include',
+  'dimensions from any related cube in the same query — the system auto-joins them.',
+  '',
+  'If you skip `discover` and guess, your query will fail or return wrong results. Always discover first.'
+].join('\n')
+
+/**
+ * Get the default MCP instructions string returned in the `initialize` result.
+ * Exposed as a function (not just a const) so consumers can wrap or extend it
+ * via the `instructions` resolver in `MCPOptions`.
+ */
+export function getDefaultMcpInstructions(): string {
+  return DEFAULT_MCP_INSTRUCTIONS
 }

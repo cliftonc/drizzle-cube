@@ -8,6 +8,10 @@ export const measureProfileChartConfig: ChartTypeConfig = {
   description: 'chart.measureProfile.description',
   useCase: 'chart.measureProfile.useCase',
   displayOptions: ['showLegend', 'showTooltip', 'hideHeader'],
+  isAvailable: ({ measureCount }) => {
+    if (measureCount < 2) return { available: false, reason: 'chart.availability.requiresTwoMeasures' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'yAxis',

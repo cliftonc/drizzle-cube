@@ -64,6 +64,37 @@ export interface DisplayOptionConfig {
 }
 
 /**
+ * Whether a chart type can be rendered with the current query shape.
+ * Each chart's .config.ts declares its own `isAvailable` to keep requirements
+ * co-located with the chart itself (rather than in a central switch).
+ */
+export interface ChartAvailability {
+  /** Whether the chart type can be used with the current selections */
+  available: boolean
+  /** Translation key explaining why the chart is unavailable (for tooltip) */
+  reason?: string
+}
+
+/**
+ * Snapshot of the current query shape passed to each chart's `isAvailable`.
+ */
+export interface ChartAvailabilityContext {
+  /** Number of measures selected */
+  measureCount: number
+  /**
+   * Number of dimension-like breakdowns (regular dimensions + time dimensions).
+   * A time dimension can serve any role a regular dimension does (categories,
+   * axes, heatmap rows/columns, pie slices, etc.), so they are counted together.
+   */
+  dimensionCount: number
+  /**
+   * Number of time dimensions specifically. Only needed by charts that *require*
+   * a time dimension (e.g. activityGrid).
+   */
+  timeDimensionCount: number
+}
+
+/**
  * Configuration for which elements in a chart support clicking (for drill-down)
  */
 export interface ClickableElementsConfig {
@@ -113,6 +144,12 @@ export interface ChartTypeConfig {
 
   /** Configuration for which elements support clicking (for drill-down) */
   clickableElements?: ClickableElementsConfig
+
+  /**
+   * Whether this chart type can render with the given query shape.
+   * Omit to mean "always available".
+   */
+  isAvailable?: (ctx: ChartAvailabilityContext) => ChartAvailability
 }
 
 /**

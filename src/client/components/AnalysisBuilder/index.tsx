@@ -289,7 +289,7 @@ const AnalysisBuilderInner = forwardRef<AnalysisBuilderRef, AnalysisBuilderInner
               onActiveViewChange={analysis.actions.setActiveView}
               displayLimit={analysis.displayLimit}
               onDisplayLimitChange={analysis.actions.setDisplayLimit}
-              hasMetrics={analysis.analysisType === 'funnel' ? (analysis.funnelSteps.length >= 2 && !!analysis.funnelBindingKey && !!analysis.funnelTimeDimension) : analysis.queryState.metrics.length > 0}
+              chartAvailability={analysis.chartAvailability}
               // Debug props - per-query debug data for multi-query mode
               debugDataPerQuery={analysis.debugDataPerQuery}
               // Share props (hidden when viewing shared analysis with initialQuery)

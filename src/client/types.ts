@@ -172,6 +172,7 @@ export interface ChartDisplayConfig {
   stacked?: boolean // Deprecated: use stackType instead
   stackType?: 'none' | 'normal' | 'percent' // Stacking mode: none, normal (sum), or percent (100%)
   connectNulls?: boolean // For Area/Line charts: draw continuous lines through missing data
+  showAllXLabels?: boolean // Force all X-axis category labels to display (interval=0)
   hideHeader?: boolean // Hide portlet header in non-edit mode
   
   // Pie chart specific display options

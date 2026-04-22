@@ -40,6 +40,7 @@ import {
   parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
+  resolveMcpInstructions,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -651,6 +652,7 @@ export function createCubeRouter(
   if (mcp.enabled !== false) {
     const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
     const mcpPrompts = resolveMcpPrompts(mcp.prompts)
+    const mcpInstructions = resolveMcpInstructions(mcp.instructions)
     const mcpBasePath = mcp.basePath ?? '/mcp'
     /**
      * MCP Streamable HTTP endpoint (JSON-RPC 2.0 + optional SSE)
@@ -710,6 +712,7 @@ export function createCubeRouter(
             negotiatedProtocol: protocol.negotiated,
             resources: mcpResources,
             prompts: mcpPrompts,
+            instructions: mcpInstructions,
             appEnabled: !!mcp.app,
             appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
             serverName: mcp.serverName

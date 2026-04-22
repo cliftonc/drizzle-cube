@@ -9,6 +9,10 @@ export const gaugeChartConfig: ChartTypeConfig = {
   useCase: 'chart.gauge.useCase',
   clickableElements: {},
   displayOptions: ['hideHeader'],
+  isAvailable: ({ measureCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'yAxis',

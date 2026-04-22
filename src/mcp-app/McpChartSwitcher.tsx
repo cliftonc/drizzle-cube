@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getChartTypeIcon } from '../client/icons'
 import { chartConfigRegistry } from '../client/charts/chartConfigRegistry'
+import { useTranslation } from '../client/hooks/useTranslation'
 import { isChartAvailable, type McpChartType } from './chartAutoSelect'
 
 /** Chart types that have real components in the MCP app */
@@ -12,10 +13,6 @@ const MCP_CHART_TYPES: McpChartType[] = [
   'activityGrid', 'measureProfile',
 ]
 
-function getLabel(type: string): string {
-  return chartConfigRegistry[type]?.label || type
-}
-
 interface McpChartSwitcherProps {
   selected: McpChartType
   query: any
@@ -25,6 +22,15 @@ interface McpChartSwitcherProps {
 
 export default function McpChartSwitcher({ selected, query, rowCount, onSelect }: McpChartSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const { t } = useTranslation()
+
+  // Chart configs store translation keys (e.g., 'chart.bar.label') —
+  // resolve them via t() at render time. Falls back to the type id
+  // if no config/label is registered for the chart type.
+  const getLabel = (type: string): string => {
+    const key = chartConfigRegistry[type]?.label
+    return key ? t(key) : type
+  }
 
   const SelectedIcon = getChartTypeIcon(selected)
   const selectedLabel = getLabel(selected)

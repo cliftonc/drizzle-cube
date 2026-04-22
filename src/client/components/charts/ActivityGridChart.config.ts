@@ -7,6 +7,11 @@ export const activityGridChartConfig: ChartTypeConfig = {
   label: 'chart.activityGrid.label',
   description: 'chart.activityGrid.description',
   useCase: 'chart.activityGrid.useCase',
+  isAvailable: ({ measureCount, timeDimensionCount }) => {
+    if (measureCount < 1) return { available: false, reason: 'chart.availability.requiresMeasure' }
+    if (timeDimensionCount < 1) return { available: false, reason: 'chart.availability.requiresTimeDimension' }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'dateField',

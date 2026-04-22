@@ -1,5 +1,9 @@
 import type { SemanticLayerCompiler, SecurityContext } from '../server'
-import { getDefaultMCPPrompts, type MCPPrompt } from '../server/ai/mcp-prompts'
+import {
+  getDefaultMCPPrompts,
+  getDefaultMcpInstructions,
+  type MCPPrompt
+} from '../server/ai/mcp-prompts'
 import { QUERY_PARAMS_SCHEMA } from '../server/ai/query-schema'
 import {
   handleDiscover,
@@ -61,6 +65,13 @@ export interface McpDispatchContext {
   negotiatedProtocol?: string | null
   resources?: MCPResource[]
   prompts?: MCPPrompt[]
+  /**
+   * Pre-resolved instructions string returned in the `initialize` result
+   * (`InitializeResult.instructions` per MCP spec). When omitted, falls
+   * back to `getDefaultMcpInstructions()`. Adapters resolve this from the
+   * `MCPOptions.instructions` resolver before calling `dispatchMcpMethod`.
+   */
+  instructions?: string
   /** Enable MCP App visualization for load tool */
   appEnabled?: boolean
   /** Locale configuration for the MCP App (only used when appEnabled is true) */
@@ -79,6 +90,7 @@ export interface MCPResource {
 
 export type MCPPromptResolver = MCPPrompt[] | ((defaults: MCPPrompt[]) => MCPPrompt[])
 export type MCPResourceResolver = MCPResource[] | ((defaults: MCPResource[]) => MCPResource[])
+export type MCPInstructionsResolver = string | ((defaults: string) => string)
 
 export interface ProtocolNegotiation {
   ok: boolean
@@ -265,10 +277,11 @@ export async function dispatchMcpMethod(
   params: unknown,
   ctx: McpDispatchContext
 ): Promise<unknown> {
-  const { semanticLayer, extractSecurityContext, rawRequest, rawResponse, appEnabled, appConfig } = ctx
+  const { appEnabled, appConfig } = ctx
   const serverName = ctx.serverName ?? 'drizzle-cube'
   const prompts = ctx.prompts ?? PROMPTS
   const baseResources = ctx.resources ?? RESOURCES
+  const instructions = ctx.instructions ?? getDefaultMcpInstructions()
 
   // Add MCP App visualization resource when app mode is enabled
   const resources = appEnabled ? [
@@ -310,7 +323,12 @@ export async function dispatchMcpMethod(
           name: serverName,
           // Use safe check for process.env to support edge runtimes (Cloudflare Workers, etc.)
           version: typeof process !== 'undefined' ? process.env?.npm_package_version || 'dev' : 'worker'
-        }
+        },
+        // MCP spec: InitializeResult.instructions — the only server-authored
+        // string clients are expected to surface to the model. Tells the LLM
+        // it MUST call discover first and read the queryLanguageReference
+        // returned in that response before constructing any query.
+        instructions
       }
     }
 
@@ -377,23 +395,6 @@ export async function dispatchMcpMethod(
       }
     }
 
-    case 'discover':
-      return handleDiscover(semanticLayer, (params || {}) as DiscoverRequest)
-    case 'validate': {
-      const p = (params || {}) as ValidateRequest
-      if (!p.query) {
-        throw jsonRpcError(-32602, 'query is required')
-      }
-      return handleValidate(semanticLayer, p)
-    }
-    case 'load': {
-      const p = (params || {}) as LoadRequest
-      if (!p.query) {
-        throw jsonRpcError(-32602, 'query is required')
-      }
-      const securityContext = await extractSecurityContext(rawRequest, rawResponse)
-      return handleLoad(semanticLayer, securityContext, p)
-    }
     default:
       throw jsonRpcError(-32601, `Unknown MCP method: ${method}`)
   }
@@ -428,14 +429,14 @@ export function buildToolList(options?: { appEnabled?: boolean }) {
   const tools: Array<{ name: string; description: string; inputSchema: Record<string, unknown>; _meta?: unknown }> = [
     {
       name: 'discover',
-      description: `Find relevant cubes based on topic or intent. Call this FIRST to understand available data.
+      description: `MANDATORY FIRST CALL. You MUST call this before constructing any query — even if you think you know the schema.
 
-Returns cubes with:
-- All measures and dimensions with their types
-- Relationship information (joins) showing how cubes connect
-- Metadata hints (eventStream for funnels, etc.)
+Returns:
+- 'cubes': matched cubes with measures, dimensions, joins, and metadata hints (eventStream for funnels, etc.)
+- 'queryLanguageReference': the COMPLETE TypeScript DSL for query construction. This is the source of truth for field naming, filter operators, time dimensions, and analysis modes (funnel/flow/retention). READ IT before building queries — do not guess syntax.
+- 'dateFilteringGuide': decision tree for date filtering vs time grouping. READ IT whenever the user mentions a time period — this is the #1 source of incorrect queries.
 
-IMPORTANT: The 'joins' property shows relationships between cubes. You can include dimensions from ANY related cube in your query - the system auto-joins them.
+The 'joins' property on each cube shows relationships. You can include dimensions from ANY related cube in your query — the system auto-joins them.
 
 Example: If Productivity has a join to Employees, you can query:
 { "measures": ["Productivity.totalPullRequests"], "dimensions": ["Employees.name"] }`,
@@ -458,7 +459,7 @@ Checks:
 - Filter syntax and operators
 - Cross-cube join validity
 
-Returns corrected query if issues found.`,
+Returns corrected query if issues found, plus the generated SQL for debugging.`,
       inputSchema: {
         type: 'object',
         required: ['query'],
@@ -474,15 +475,16 @@ Returns corrected query if issues found.`,
       name: 'load',
       description: `Execute a semantic query and return aggregated results.
 
-Supports regular queries (measures/dimensions), funnel, flow, and retention analysis modes.
-See the query language prompt for the full DSL reference.
+PREREQUISITE: You MUST have called 'discover' first in this session. The discover response contains the 'queryLanguageReference' (full DSL) and 'dateFilteringGuide' you need to construct a correct query. If you have not yet called discover, call it NOW before calling load.
 
-Key rules:
-- Fields are always "CubeName.fieldName" format
-- Cross-cube joins: include dimensions from related cubes (system auto-joins)
-- Aggregated totals: use filters with inDateRange (NOT timeDimensions)
-- Time series: use timeDimensions WITH granularity
-- Top N pattern: filters + order + limit
+Supports regular queries (measures/dimensions), funnel, flow, and retention analysis modes — see the queryLanguageReference returned by discover for the full DSL.
+
+Key rules (the queryLanguageReference is authoritative — these are reminders, not the full spec):
+- Fields are EXACTLY "CubeName.fieldName" (two parts, one dot). Copy verbatim from discover.
+- Cross-cube joins: include dimensions from related cubes (system auto-joins).
+- Aggregated totals over a period: use filters with inDateRange — NOT timeDimensions.
+- Time series ("by month", "daily trend"): use timeDimensions WITH granularity.
+- Top N: filters + order + limit.
 
 Use "load" for data retrieval. Use "chart" to visualise results with an interactive chart.`,
       inputSchema: {
@@ -599,7 +601,11 @@ async function executeToolCall(params: unknown, ctx: McpDispatchContext) {
       case 'validate': {
         const body = (args || {}) as ValidateRequest
         if (!body.query) throw jsonRpcError(-32602, 'query is required')
-        return wrapContent(await handleValidate(semanticLayer, body))
+        let securityContext: SecurityContext | undefined
+        try {
+          securityContext = await extractSecurityContext(rawRequest, rawResponse)
+        } catch { /* validate works without auth — SQL just won't be included */ }
+        return wrapContent(await handleValidate(semanticLayer, body, securityContext))
       }
       case 'load': {
         const body = (args || {}) as LoadRequest
@@ -803,6 +809,14 @@ export function getDefaultPrompts(): MCPPrompt[] {
   return PROMPTS
 }
 
+/**
+ * Default instructions string returned in `InitializeResult.instructions`.
+ * Re-exported here so adapter consumers don't need to reach into `server/ai`.
+ */
+export function getDefaultInstructions(): string {
+  return getDefaultMcpInstructions()
+}
+
 export function resolveMcpPrompts(prompts?: MCPPromptResolver): MCPPrompt[] {
   const defaults = getDefaultPrompts()
   if (typeof prompts === 'function') {
@@ -817,6 +831,22 @@ export function resolveMcpResources(resources?: MCPResourceResolver): MCPResourc
     return resources(defaults)
   }
   return resources ?? defaults
+}
+
+/**
+ * Resolve the MCP instructions string for the `initialize` response.
+ *
+ * - `undefined` → returns the built-in defaults.
+ * - `string`    → replaces the defaults entirely.
+ * - `(defaults) => string` → derive from / extend the defaults (e.g. append
+ *   project-specific guidance like custom cube semantics).
+ */
+export function resolveMcpInstructions(instructions?: MCPInstructionsResolver): string {
+  const defaults = getDefaultInstructions()
+  if (typeof instructions === 'function') {
+    return instructions(defaults)
+  }
+  return instructions ?? defaults
 }
 
 export function buildMcpSchemaResource(semanticLayer: SemanticLayerCompiler): MCPResource {

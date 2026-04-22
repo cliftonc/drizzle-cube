@@ -46,6 +46,7 @@ import {
   parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
+  resolveMcpInstructions,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -901,6 +902,7 @@ export function createMcpRpcHandler(
   const semanticLayer = createSemanticLayer(options)
   const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
   const mcpPrompts = resolveMcpPrompts(mcp.prompts)
+  const mcpInstructions = resolveMcpInstructions(mcp.instructions)
 
   return async function mcpRpcHandler(request: NextRequest) {
     // OAuth 2.1 bearer token check (RFC 9728)
@@ -1015,6 +1017,7 @@ export function createMcpRpcHandler(
           rawResponse: null,
           resources: mcpResources,
           prompts: mcpPrompts,
+          instructions: mcpInstructions,
           appEnabled: !!mcp.app,
           appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
           serverName: mcp.serverName

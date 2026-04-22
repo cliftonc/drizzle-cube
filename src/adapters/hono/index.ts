@@ -38,6 +38,7 @@ import {
   parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
+  resolveMcpInstructions,
   serializeSseEvent,
   wantsEventStream,
   validateAcceptHeader,
@@ -641,6 +642,7 @@ export function createCubeRoutes(
   if (mcp.enabled !== false) {
     const mcpResources = buildMcpResources(semanticLayer, mcp.resources)
     const mcpPrompts = resolveMcpPrompts(mcp.prompts)
+    const mcpInstructions = resolveMcpInstructions(mcp.instructions)
 
     const mcpBasePath = mcp.basePath ?? '/mcp'
 
@@ -699,6 +701,7 @@ export function createCubeRoutes(
             negotiatedProtocol: protocol.negotiated,
             resources: mcpResources,
             prompts: mcpPrompts,
+            instructions: mcpInstructions,
             appEnabled: !!mcp.app,
             appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
             serverName: mcp.serverName
