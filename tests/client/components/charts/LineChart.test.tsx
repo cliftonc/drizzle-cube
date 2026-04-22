@@ -7,8 +7,9 @@
 
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import LineChart from '../../../../src/client/components/charts/LineChart'
+
 
 // Mock the useCubeFieldLabel hook
 vi.mock('../../../../src/client/hooks/useCubeFieldLabel', () => ({
@@ -594,6 +595,35 @@ describe('LineChart', () => {
         <LineChart data={dataWithNulls} chartConfig={basicChartConfig} />
       )
 
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+  })
+
+  describe('showAllXLabels', () => {
+    it('should render with all X labels shown by default', () => {
+      render(<LineChart data={mockData} chartConfig={basicChartConfig} />)
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels explicitly true', () => {
+      render(
+        <LineChart
+          data={mockData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: true }}
+        />
+      )
+      expect(screen.getByTestId('chart-container')).toBeInTheDocument()
+    })
+
+    it('should render with showAllXLabels disabled', () => {
+      render(
+        <LineChart
+          data={mockData}
+          chartConfig={basicChartConfig}
+          displayConfig={{ showAllXLabels: false }}
+        />
+      )
       expect(screen.getByTestId('chart-container')).toBeInTheDocument()
     })
   })

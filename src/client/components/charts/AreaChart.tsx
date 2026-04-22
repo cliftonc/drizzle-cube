@@ -38,6 +38,8 @@ const AreaChart = React.memo(function AreaChart({
       connectNulls: displayConfig?.connectNulls ?? false
     }
 
+    const showAllXLabels = displayConfig?.showAllXLabels ?? true
+
     // Extract axis format configs
     const leftYAxisFormat = displayConfig?.leftYAxisFormat
     const rightYAxisFormat = displayConfig?.rightYAxisFormat
@@ -162,7 +164,7 @@ const AreaChart = React.memo(function AreaChart({
       <ChartContainer height={height}>
         <ComposedChart data={enhancedChartData} margin={chartMargins} stackOffset={stackOffset} accessibilityLayer={false}>
           {safeDisplayConfig.showGrid && <CartesianGrid strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
-          <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} />
+          <XAxis dataKey="name" type="category" tick={<AngledXAxisTick />} height={60} interval={showAllXLabels ? 0 : undefined} />
           <YAxis
             yAxisId="left"
             orientation="left"

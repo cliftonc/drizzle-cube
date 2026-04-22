@@ -40,7 +40,7 @@ export const barChartConfig: ChartTypeConfig = {
       emptyText: 'chart.bar.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',

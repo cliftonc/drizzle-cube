@@ -39,7 +39,7 @@ export const areaChartConfig: ChartTypeConfig = {
       emptyText: 'chart.area.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',

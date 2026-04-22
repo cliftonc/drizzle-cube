@@ -71,6 +71,8 @@ const LineChart = React.memo(function LineChart({
       connectNulls: displayConfig?.connectNulls ?? false
     }
 
+    const showAllXLabels = displayConfig?.showAllXLabels ?? true
+
     // Extract axis format configs
     const leftYAxisFormat = displayConfig?.leftYAxisFormat
     const rightYAxisFormat = displayConfig?.rightYAxisFormat
@@ -236,6 +238,7 @@ const LineChart = React.memo(function LineChart({
                 : undefined
             } />}
             height={60}
+            interval={showAllXLabels ? 0 : undefined}
           />
           <YAxis
             yAxisId="left"
