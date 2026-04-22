@@ -11,6 +11,16 @@ export const choroplethChartConfig: ChartTypeConfig = {
   label: 'chart.choropleth.label',
   description: 'chart.choropleth.description',
   useCase: 'chart.choropleth.useCase',
+  // Choropleth requires at least one map dataset registered by the developer
+  // via features.choropleth.maps. Without one, there's nothing to render, so
+  // the chart type is hidden from the picker.
+  isAvailable: ({ features }) => {
+    const mapCount = Object.keys(features?.choropleth?.maps ?? {}).length
+    if (mapCount === 0) {
+      return { available: false, reason: 'chart.choropleth.unavailable.noMaps' }
+    }
+    return { available: true }
+  },
   dropZones: [
     {
       key: 'xAxis',
@@ -33,18 +43,11 @@ export const choroplethChartConfig: ChartTypeConfig = {
   ],
   displayOptionsConfig: [
     {
-      key: 'geoFeatures',
-      label: 'chart.option.geoFeatures.label',
-      type: 'string',
-      placeholder: 'chart.option.geoFeatures.placeholder',
-      description: 'chart.option.geoFeatures.description',
-    },
-    {
-      key: 'geoFeaturesUrl',
-      label: 'chart.option.geoFeaturesUrl.label',
-      type: 'string',
-      placeholder: 'chart.option.geoFeaturesUrl.placeholder',
-      description: 'chart.option.geoFeaturesUrl.description',
+      key: 'mapId',
+      label: 'chart.option.choroplethMap.label',
+      type: 'select',
+      optionsSource: 'choroplethMaps',
+      description: 'chart.option.choroplethMap.description',
     },
     {
       key: 'geoProjection',
@@ -58,21 +61,6 @@ export const choroplethChartConfig: ChartTypeConfig = {
         { value: 'equirectangular', label: 'chart.option.geoProjection.equirectangular' },
       ],
       description: 'chart.option.geoProjection.description',
-    },
-    {
-      key: 'geoIdProperty',
-      label: 'chart.option.geoIdProperty.label',
-      type: 'string',
-      defaultValue: '',
-      placeholder: 'chart.option.geoIdProperty.placeholder',
-      description: 'chart.option.geoIdProperty.description',
-    },
-    {
-      key: 'unknownColor',
-      label: 'chart.option.unknownColor.label',
-      type: 'color',
-      defaultValue: '#cccccc',
-      description: 'chart.option.unknownColor.description',
     },
     {
       key: 'showGraticule',

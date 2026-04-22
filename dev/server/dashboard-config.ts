@@ -652,8 +652,9 @@ export const productivityDashboardConfig = {
       },
 
       // Choropleth: Employees by Country
-      // Sample GeoJSON is served from dev/client/public/world_countries.geojson.
-      // Singapore is absent from the simplified world map — those employees render with unknownColor.
+      // The GeoJSON source is registered at the app level via
+      // CubeProvider's features.choropleth.maps — end users only pick a map by id.
+      // Singapore is absent from the simplified world map — those employees render in the theme's neutral colour.
       {
         id: 'employees-by-country-map',
         title: 'Global Team Distribution',
@@ -667,10 +668,8 @@ export const productivityDashboardConfig = {
           valueField: ['Employees.count']
         },
         displayConfig: {
-          geoFeaturesUrl: '/world_countries.geojson',
-          geoIdProperty: 'name',
+          mapId: 'world',
           geoProjection: 'naturalEarth1',
-          unknownColor: '#e5e7eb',
           showGraticule: false,
           showLegend: true
         },
@@ -678,6 +677,33 @@ export const productivityDashboardConfig = {
         h: 8,
         x: 0,
         y: 85
+      },
+
+      // Choropleth: Employees by US State
+      // Uses the us_states.geojson dataset registered at the app level. International
+      // employees fall into the unknown-region colour (neutral theme colour).
+      {
+        id: 'employees-by-us-state-map',
+        title: 'US Team Distribution',
+        query: JSON.stringify({
+          measures: ['Employees.count'],
+          dimensions: ['Employees.region']
+        }, null, 2),
+        chartType: 'choropleth' as const,
+        chartConfig: {
+          xAxis: ['Employees.region'],
+          valueField: ['Employees.count']
+        },
+        displayConfig: {
+          mapId: 'usStates',
+          geoProjection: 'equirectangular',
+          showGraticule: false,
+          showLegend: true
+        },
+        w: 12,
+        h: 8,
+        x: 0,
+        y: 93
       }
     ]
   }

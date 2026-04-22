@@ -76,7 +76,27 @@ const features = {
     format: 'png' as const
   },
   // XLSX data export from portlets (requires exceljs)
-  xlsExport: { enabled: true }
+  xlsExport: { enabled: true },
+  // Choropleth map datasets — developer-registered, end users pick by id.
+  // Each map ships its own GeoJSON and tells nivo which feature property to
+  // match against the region dimension value. Dashboards can switch between
+  // world-level (Employees.country) and US-level (Employees.region) views.
+  choropleth: {
+    enabled: true,
+    defaultMap: 'world',
+    maps: {
+      world: {
+        label: 'World Countries',
+        url: '/world_countries.geojson',
+        idProperty: 'name',
+      },
+      usStates: {
+        label: 'US States',
+        url: '/us_states.geojson',
+        idProperty: 'name',
+      },
+    },
+  },
 }
 
 function App() {

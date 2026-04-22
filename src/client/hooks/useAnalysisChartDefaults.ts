@@ -14,6 +14,7 @@ import { useAnalysisBuilderStore, selectChartConfig } from '../stores/analysisBu
 import { useShallow } from 'zustand/react/shallow'
 import { getAllChartAvailability, getSmartChartDefaults, shouldAutoSwitchChartType } from '../shared/chartDefaults'
 import { getColorPalette, type ColorPalette } from '../utils/colorPalettes'
+import { useCubeFeatures } from '../providers/CubeFeaturesProvider'
 import type { ChartType, ChartAxisConfig, ChartDisplayConfig } from '../types'
 import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
 import type { ChartAvailabilityMap } from '../shared/chartDefaults'
@@ -81,6 +82,10 @@ export function useAnalysisChartDefaults(
   const setLocalPaletteName = useAnalysisBuilderStore((state) => state.setLocalPaletteName)
   const setUserManuallySelectedChart = useAnalysisBuilderStore((state) => state.setUserManuallySelectedChart)
 
+  // Feature config — pass through to availability/defaults so chart configs can gate on
+  // developer-level setup (e.g. choropleth needs features.choropleth.maps to be registered).
+  const { features: cubeFeatures } = useCubeFeatures()
+
   // Mode-aware setters - route to appropriate store action based on analysis type
   const setChartType = useCallback(
     (type: ChartType) => {
@@ -91,7 +96,8 @@ export function useAnalysisChartDefaults(
         const { chartConfig: smartConfig } = getSmartChartDefaults(
           combinedMetrics,
           combinedBreakdowns,
-          type
+          type,
+          cubeFeatures
         )
         setQueryChartConfig(smartConfig)
       }
@@ -100,6 +106,7 @@ export function useAnalysisChartDefaults(
       analysisType,
       combinedMetrics,
       combinedBreakdowns,
+      cubeFeatures,
       setFunnelChartType,
       setChartTypeManual,
       setQueryChartConfig,
@@ -128,10 +135,11 @@ export function useAnalysisChartDefaults(
     [analysisType, setFunnelDisplayConfig, setQueryDisplayConfig]
   )
 
-  // Chart availability
+  // Chart availability — uses the cubeFeatures hoisted above so chart configs can
+  // gate on developer-level setup (e.g. features.choropleth.maps registration).
   const chartAvailability = useMemo(
-    () => getAllChartAvailability(combinedMetrics, combinedBreakdowns),
-    [combinedMetrics, combinedBreakdowns]
+    () => getAllChartAvailability(combinedMetrics, combinedBreakdowns, cubeFeatures),
+    [combinedMetrics, combinedBreakdowns, cubeFeatures]
   )
 
   // Effective color palette
@@ -169,14 +177,16 @@ export function useAnalysisChartDefaults(
       combinedMetrics,
       combinedBreakdowns,
       chartType,
-      userManuallySelectedChart
+      userManuallySelectedChart,
+      cubeFeatures
     )
 
     if (newChartType) {
       const { chartConfig: newConfig } = getSmartChartDefaults(
         combinedMetrics,
         combinedBreakdowns,
-        newChartType
+        newChartType,
+        cubeFeatures
       )
       setChartType(newChartType)
       setChartConfig(newConfig)
@@ -207,7 +217,8 @@ export function useAnalysisChartDefaults(
           const { chartConfig: smartDefaults } = getSmartChartDefaults(
             combinedMetrics,
             combinedBreakdowns,
-            chartType
+            chartType,
+            cubeFeatures
           )
           setChartConfig(smartDefaults)
         }
@@ -220,6 +231,7 @@ export function useAnalysisChartDefaults(
     chartType,
     userManuallySelectedChart,
     chartConfig,
+    cubeFeatures,
     setChartType,
     setChartConfig,
     setUserManuallySelectedChart,

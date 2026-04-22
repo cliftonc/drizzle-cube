@@ -11,6 +11,7 @@ import { useChartConfig } from '../../charts/lazyChartConfigRegistry'
 import type { ChartType, ChartDisplayConfig, ColorPalette, AxisFormatConfig } from '../../types'
 import { AxisFormatControls } from '../charts/AxisFormatControls'
 import { useTranslation } from '../../hooks/useTranslation'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 
 interface AnalysisDisplayConfigPanelProps {
   chartType: ChartType
@@ -82,6 +83,7 @@ export default function AnalysisDisplayConfigPanel({
   excludeKeys,
 }: AnalysisDisplayConfigPanelProps) {
   const { t } = useTranslation()
+  const { features: cubeFeatures } = useCubeFeatures()
 
   // Get configuration for current chart type
   const { config: chartTypeConfig, loaded: chartConfigLoaded } = useChartConfig(chartType)
@@ -383,34 +385,50 @@ export default function AnalysisDisplayConfigPanel({
                 </div>
               )}
 
-              {option.type === 'select' && (
-                <div className="dc:space-y-1">
-                  <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
-                  <select
-                    value={
-                      (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
-                      option.defaultValue ??
-                      ''
-                    }
-                    onChange={(e) =>
-                      onDisplayConfigChange({
-                        ...displayConfig,
-                        [option.key]: e.target.value
-                      })
-                    }
-                    className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text"
-                  >
-                    {option.options?.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {t(opt.label)}
-                      </option>
-                    ))}
-                  </select>
-                  {option.description && (
-                    <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
-                  )}
-                </div>
-              )}
+              {option.type === 'select' && (() => {
+                // Resolve select options — static list by default, or dynamic from feature config.
+                const resolvedOptions = option.optionsSource === 'choroplethMaps'
+                  ? Object.entries(cubeFeatures.choropleth?.maps ?? {}).map(([id, m]) => ({
+                      value: id,
+                      label: m.label,
+                    }))
+                  : option.options ?? []
+                // `label` may be a literal (dynamic options) or a translation key (static options);
+                // `t()` falls through to the input when no key matches.
+                return (
+                  <div className="dc:space-y-1">
+                    <label className="dc:text-sm text-dc-text-secondary">{t(option.label)}</label>
+                    <select
+                      value={
+                        (displayConfig[option.key as keyof ChartDisplayConfig] as string) ??
+                        option.defaultValue ??
+                        ''
+                      }
+                      onChange={(e) =>
+                        onDisplayConfigChange({
+                          ...displayConfig,
+                          [option.key]: e.target.value
+                        })
+                      }
+                      disabled={resolvedOptions.length === 0}
+                      className="dc:w-full dc:px-2 dc:py-1 dc:text-sm dc:border border-dc-border dc:rounded-sm focus:ring-dc-accent focus:border-dc-accent bg-dc-surface text-dc-text disabled:dc:opacity-50"
+                    >
+                      {resolvedOptions.length === 0 && option.optionsSource === 'choroplethMaps' ? (
+                        <option value="">{t('chart.option.choroplethMap.noneConfigured')}</option>
+                      ) : (
+                        resolvedOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {t(opt.label)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {option.description && (
+                      <p className="dc:text-xs text-dc-text-muted">{t(option.description)}</p>
+                    )}
+                  </div>
+                )
+              })()}
 
               {option.type === 'color' && (
                 <div className="dc:space-y-1">

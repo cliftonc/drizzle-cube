@@ -18,13 +18,16 @@ import { useTranslation } from '../../hooks/useTranslation'
 import { ResponsiveChoropleth } from '@nivo/geo'
 import type { ChartProps } from '../../types'
 import { formatAxisValue } from '../../utils/chartUtils'
+import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 
 // Width/height divisors per projection — used to fit the map to its container.
-// Derived from d3-geo's default output size at scale=1 for each projection.
+// Derived from the bounds of d3-geo's default output at scale=1. These match
+// the actual rendered extent of each projection so min(w/wf, h/hf) * scale
+// produces a map that fills the container along its constraining axis.
 const PROJECTION_FIT: Record<string, [number, number]> = {
-  naturalEarth1: [6.3, 3.15],
-  mercator: [6.28, 6.28],
-  equalEarth: [5.3, 2.65],
+  naturalEarth1: [5.1, 2.64],
+  mercator: [6.28, 4.86],
+  equalEarth: [5.4, 2.58],
   equirectangular: [6.28, 3.14],
 }
 
@@ -99,16 +102,27 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
   onDataPointClick,
 }: ChartProps) {
   const { t } = useTranslation()
+  const { features: cubeFeatures } = useCubeFeatures()
   const displayConfigAny = displayConfig as Record<string, unknown> | undefined
 
-  // Config values
-  const geoFeaturesRaw = displayConfigAny?.geoFeatures as string | undefined
-  const geoFeaturesUrl = displayConfigAny?.geoFeaturesUrl as string | undefined
+  // User-editable display options (via portlet config)
   const geoProjection = (displayConfigAny?.geoProjection as string | undefined) ?? 'naturalEarth1'
-  const geoIdProperty = displayConfigAny?.geoIdProperty as string | undefined
-  const unknownColor = (displayConfigAny?.unknownColor as string | undefined) ?? '#cccccc'
   const showGraticule = (displayConfigAny?.showGraticule as boolean | undefined) ?? false
   const showLegend = (displayConfigAny?.showLegend as boolean | undefined) ?? true
+
+  // Resolve the map dataset from developer-level feature config.
+  // End users only pick by id; URLs / GeoJSON / idProperty are set by the app.
+  const choroplethFeature = cubeFeatures.choropleth
+  const availableMaps = choroplethFeature?.maps ?? {}
+  const requestedMapId = displayConfigAny?.mapId as string | undefined
+  const mapId =
+    (requestedMapId && availableMaps[requestedMapId] ? requestedMapId : undefined) ??
+    choroplethFeature?.defaultMap ??
+    Object.keys(availableMaps)[0]
+  const mapDataset = mapId ? availableMaps[mapId] : undefined
+  const geoFeaturesRaw = mapDataset?.features
+  const geoFeaturesUrl = mapDataset?.url
+  const geoIdProperty = mapDataset?.idProperty
 
   // Extract field names
   const regionField = chartConfig?.xAxis
@@ -288,7 +302,7 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
           domain={domain}
           match={matchFn as any}
           colors={colors as any}
-          unknownColor={unknownColor}
+          unknownColor="var(--dc-surface-tertiary)"
           projectionType={geoProjection as any}
           projectionScale={projectionScale}
           projectionTranslation={[0.5, 0.5]}
@@ -296,7 +310,7 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
           enableGraticule={showGraticule}
           graticuleLineColor="rgba(0,0,0,0.2)"
           borderWidth={0.5}
-          borderColor="var(--dc-surface)"
+          borderColor="var(--dc-border)"
           isInteractive
           onClick={
             onDataPointClick
