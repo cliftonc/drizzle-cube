@@ -40,7 +40,7 @@ export const barChartConfig: ChartTypeConfig = {
       emptyText: 'chart.bar.dropZone.series.empty'
     }
   ],
-  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'hideHeader'],
+  displayOptions: ['showLegend', 'showGrid', 'showTooltip', 'showAllXLabels', 'hideHeader'],
   displayOptionsConfig: [
     {
       key: 'stackType',
@@ -72,13 +72,6 @@ export const barChartConfig: ChartTypeConfig = {
       label: 'chart.option.rightYAxisFormat.label',
       type: 'axisFormat',
       description: 'chart.option.rightYAxisFormat.description'
-    },
-    {
-      key: 'showAllXLabels',
-      label: 'chart.option.showAllXLabels.label',
-      type: 'boolean',
-      defaultValue: true,
-      description: 'chart.option.showAllXLabels.description'
     }
   ]
 }

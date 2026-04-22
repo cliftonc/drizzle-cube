@@ -185,6 +185,24 @@ export default function AnalysisDisplayConfigPanel({
             </label>
           )}
 
+          {chartTypeConfig.displayOptions?.includes('showAllXLabels') && (
+            <label className="dc:flex dc:items-center dc:space-x-2">
+              <input
+                type="checkbox"
+                checked={displayConfig.showAllXLabels ?? true}
+                onChange={(e) =>
+                  onDisplayConfigChange({
+                    ...displayConfig,
+                    showAllXLabels: e.target.checked
+                  })
+                }
+                className="dc:rounded border-dc-border focus:ring-dc-accent"
+                style={{ color: 'var(--dc-primary)' }}
+              />
+              <span className="dc:text-sm text-dc-text">{t('chart.option.showAllXLabels.label')}</span>
+            </label>
+          )}
+
           {chartTypeConfig.displayOptions?.includes('hideHeader') && (
             <label className="dc:flex dc:items-center dc:space-x-2">
               <input
