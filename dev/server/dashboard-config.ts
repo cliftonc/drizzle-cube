@@ -649,6 +649,35 @@ export const productivityDashboardConfig = {
         h: 6,
         x: 6,
         y: 79
+      },
+
+      // Choropleth: Employees by Country
+      // Sample GeoJSON is served from dev/client/public/world_countries.geojson.
+      // Singapore is absent from the simplified world map — those employees render with unknownColor.
+      {
+        id: 'employees-by-country-map',
+        title: 'Global Team Distribution',
+        query: JSON.stringify({
+          measures: ['Employees.count'],
+          dimensions: ['Employees.country']
+        }, null, 2),
+        chartType: 'choropleth' as const,
+        chartConfig: {
+          xAxis: ['Employees.country'],
+          valueField: ['Employees.count']
+        },
+        displayConfig: {
+          geoFeaturesUrl: '/world_countries.geojson',
+          geoIdProperty: 'name',
+          geoProjection: 'naturalEarth1',
+          unknownColor: '#e5e7eb',
+          showGraticule: false,
+          showLegend: true
+        },
+        w: 12,
+        h: 8,
+        x: 0,
+        y: 85
       }
     ]
   }

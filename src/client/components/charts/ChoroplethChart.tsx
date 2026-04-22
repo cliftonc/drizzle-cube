@@ -13,10 +13,20 @@
  * (or the property named in displayConfig.geoIdProperty).
  */
 
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { ResponsiveChoropleth } from '@nivo/geo'
 import type { ChartProps } from '../../types'
+import { formatAxisValue } from '../../utils/chartUtils'
+
+// Width/height divisors per projection — used to fit the map to its container.
+// Derived from d3-geo's default output size at scale=1 for each projection.
+const PROJECTION_FIT: Record<string, [number, number]> = {
+  naturalEarth1: [6.3, 3.15],
+  mercator: [6.28, 6.28],
+  equalEarth: [5.3, 2.65],
+  equirectangular: [6.28, 3.14],
+}
 
 // ─── Feature helpers ──────────────────────────────────────────────────────────
 
@@ -112,6 +122,25 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
   const [urlFeatures, setUrlFeatures] = useState<GeoFeature[] | null>(null)
   const [urlLoading, setUrlLoading] = useState(false)
   const [urlError, setUrlError] = useState(false)
+
+  // Track container size so the projection can fit the actual portlet dimensions.
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
+  useEffect(() => {
+    const el = mapContainerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerSize({ w: entry.contentRect.width, h: entry.contentRect.height })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const projectionScale = useMemo(() => {
+    if (containerSize.w === 0 || containerSize.h === 0) return 160
+    const [wf, hf] = PROJECTION_FIT[geoProjection] ?? PROJECTION_FIT.naturalEarth1
+    return Math.floor(Math.min(containerSize.w / wf, containerSize.h / hf))
+  }, [containerSize, geoProjection])
 
   useEffect(() => {
     if (!geoFeaturesUrl || geoFeaturesRaw) {
@@ -245,106 +274,96 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
       }
     : 'id'
 
+  const gradientCss = `linear-gradient(to right, ${colors.join(', ')})`
+  const minLabel = formatAxisValue(domain[0])
+  const maxLabel = formatAxisValue(domain[1])
+
   return (
-    <div className="dc:relative dc:w-full dc:h-full" style={{ height }}>
-      <ResponsiveChoropleth
-        data={chartData}
-        features={features}
-        margin={{ top: 0, right: 0, bottom: showLegend ? 50 : 0, left: 0 }}
-        domain={domain}
-        match={matchFn as any}
-        colors={colors as any}
-        unknownColor={unknownColor}
-        projectionType={geoProjection as any}
-        projectionScale={160}
-        projectionTranslation={[0.5, 0.5]}
-        projectionRotation={[0, 0, 0]}
-        enableGraticule={showGraticule}
-        graticuleLineColor="rgba(0,0,0,0.2)"
-        borderWidth={0.5}
-        borderColor="var(--dc-surface)"
-        isInteractive
-        onClick={
-          onDataPointClick
-            ? (feature, event) => {
-                const featureAny = feature as any
-                const regionId = geoIdProperty
-                  ? String(featureAny.data?.properties?.[geoIdProperty] ?? featureAny.id ?? '')
-                  : String(featureAny.id ?? '')
-                onDataPointClick({
-                  dataPoint: { [regionField ?? 'id']: regionId, value: featureAny.value },
-                  clickedField: regionField ?? 'id',
-                  xValue: regionId,
-                  position: { x: (event as any)?.clientX ?? 0, y: (event as any)?.clientY ?? 0 },
-                  nativeEvent: event as any,
-                })
-              }
-            : undefined
-        }
-        legends={
-          showLegend
-            ? [
-                {
-                  anchor: 'bottom-left',
-                  direction: 'row',
-                  justify: true,
-                  translateX: 20,
-                  translateY: -20,
-                  itemsSpacing: 0,
-                  itemWidth: 94,
-                  itemHeight: 18,
-                  itemDirection: 'left-to-right',
-                  itemOpacity: 0.85,
-                  symbolSize: 18,
-                  effects: [
-                    {
-                      on: 'hover',
-                      style: {
-                        itemTextColor: 'var(--dc-text)',
-                        itemOpacity: 1,
-                      },
-                    },
-                  ],
-                },
-              ]
-            : []
-        }
-        theme={{
-          text: { fill: 'var(--dc-text)' },
-          tooltip: {
-            container: {
-              background: 'var(--dc-surface)',
-              color: 'var(--dc-text)',
-              borderRadius: '4px',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-            },
-          },
-        }}
-        tooltip={({ feature }) => {
-          const featureAny = feature as any
-          const featureId = geoIdProperty
-            ? String(featureAny.data?.properties?.[geoIdProperty] ?? featureAny.id ?? '')
-            : String(featureAny.id ?? '')
-          const label = featureAny.label ?? featureId
-          const value = featureAny.value
-          return (
-            <div
-              className="dc:px-3 dc:py-2 dc:text-sm"
-              style={{
+    <div className="dc:relative dc:w-full dc:h-full dc:flex dc:flex-col dc:p-2" style={{ height }}>
+      <div ref={mapContainerRef} className="dc:flex-1 dc:min-h-0">
+        <ResponsiveChoropleth
+          data={chartData}
+          features={features}
+          margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+          domain={domain}
+          match={matchFn as any}
+          colors={colors as any}
+          unknownColor={unknownColor}
+          projectionType={geoProjection as any}
+          projectionScale={projectionScale}
+          projectionTranslation={[0.5, 0.5]}
+          projectionRotation={[0, 0, 0]}
+          enableGraticule={showGraticule}
+          graticuleLineColor="rgba(0,0,0,0.2)"
+          borderWidth={0.5}
+          borderColor="var(--dc-surface)"
+          isInteractive
+          onClick={
+            onDataPointClick
+              ? (feature, event) => {
+                  const featureAny = feature as any
+                  const regionId = geoIdProperty
+                    ? String(featureAny.data?.properties?.[geoIdProperty] ?? featureAny.id ?? '')
+                    : String(featureAny.id ?? '')
+                  onDataPointClick({
+                    dataPoint: { [regionField ?? 'id']: regionId, value: featureAny.value },
+                    clickedField: regionField ?? 'id',
+                    xValue: regionId,
+                    position: { x: (event as any)?.clientX ?? 0, y: (event as any)?.clientY ?? 0 },
+                    nativeEvent: event as any,
+                  })
+                }
+              : undefined
+          }
+          legends={[]}
+          theme={{
+            text: { fill: 'var(--dc-text)' },
+            tooltip: {
+              container: {
                 background: 'var(--dc-surface)',
                 color: 'var(--dc-text)',
-                borderRadius: 4,
+                borderRadius: '4px',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-              }}
-            >
-              <strong>{label}</strong>
-              {value !== undefined && value !== null && (
-                <span className="dc:ml-2">{typeof value === 'number' ? value.toLocaleString() : value}</span>
-              )}
-            </div>
-          )
-        }}
-      />
+              },
+            },
+          }}
+          tooltip={({ feature }) => {
+            const featureAny = feature as any
+            const featureId = geoIdProperty
+              ? String(featureAny.data?.properties?.[geoIdProperty] ?? featureAny.id ?? '')
+              : String(featureAny.id ?? '')
+            const label = featureAny.label ?? featureId
+            const value = featureAny.value
+            return (
+              <div
+                className="dc:px-3 dc:py-2 dc:text-sm"
+                style={{
+                  background: 'var(--dc-surface)',
+                  color: 'var(--dc-text)',
+                  borderRadius: 4,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                }}
+              >
+                <strong>{label}</strong>
+                {value !== undefined && value !== null && (
+                  <span className="dc:ml-2">{formatAxisValue(Number(value))}</span>
+                )}
+              </div>
+            )
+          }}
+        />
+      </div>
+      {showLegend && chartData.length > 0 && (
+        <div className="dc:flex dc:items-center dc:gap-2 dc:px-2 dc:pt-2 dc:pb-1 dc:text-xs text-dc-text-secondary">
+          <span>{minLabel}</span>
+          <div
+            className="dc:flex-1 dc:h-2 dc:rounded-sm"
+            style={{ background: gradientCss }}
+            aria-hidden="true"
+          />
+          <span>{maxLabel}</span>
+        </div>
+      )}
     </div>
   )
 })
