@@ -13,22 +13,29 @@
  * (or the property named in displayConfig.geoIdProperty).
  */
 
-import React, { useMemo, useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { ResponsiveChoropleth } from '@nivo/geo'
+import {
+  geoNaturalEarth1,
+  geoMercator,
+  geoEqualEarth,
+  geoEquirectangular,
+  type GeoProjection,
+} from 'd3-geo'
 import type { ChartProps } from '../../types'
 import { formatAxisValue } from '../../utils/chartUtils'
 import { useCubeFeatures } from '../../providers/CubeFeaturesProvider'
 
-// Width/height divisors per projection — used to fit the map to its container.
-// Derived from the bounds of d3-geo's default output at scale=1. These match
-// the actual rendered extent of each projection so min(w/wf, h/hf) * scale
-// produces a map that fills the container along its constraining axis.
-const PROJECTION_FIT: Record<string, [number, number]> = {
-  naturalEarth1: [5.1, 2.64],
-  mercator: [6.28, 4.86],
-  equalEarth: [5.4, 2.58],
-  equirectangular: [6.28, 3.14],
+// d3-geo projection constructors keyed by nivo's projection-type strings.
+// Used to compute fit-to-bounds scale/translation from the actual feature
+// collection, which handles region-specific maps (e.g. US states) that
+// would otherwise render tiny inside a world-sized sphere projection.
+const PROJECTION_CTORS: Record<string, () => GeoProjection> = {
+  naturalEarth1: geoNaturalEarth1,
+  mercator: geoMercator,
+  equalEarth: geoEqualEarth,
+  equirectangular: geoEquirectangular,
 }
 
 // ─── Feature helpers ──────────────────────────────────────────────────────────
@@ -137,24 +144,33 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
   const [urlLoading, setUrlLoading] = useState(false)
   const [urlError, setUrlError] = useState(false)
 
-  // Track container size so the projection can fit the actual portlet dimensions.
-  const mapContainerRef = useRef<HTMLDivElement>(null)
+  // Track container size so the projection can fit the actual portlet
+  // dimensions. We use a callback ref so the ResizeObserver attaches the
+  // moment the wrapper div mounts — the chart renders empty states
+  // (loading/missing-features) before the real map wrapper exists, so a
+  // traditional useRef + useEffect on mount would miss the element.
   const [containerSize, setContainerSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
-  useEffect(() => {
-    const el = mapContainerRef.current
-    if (!el) return
+  const observerRef = React.useRef<ResizeObserver | null>(null)
+  const mapContainerRef = useCallback((el: HTMLDivElement | null) => {
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+    if (!el) {
+      setContainerSize({ w: 0, h: 0 })
+      return
+    }
+    // Seed synchronously from the element's current box — RO only fires on
+    // the next change, so without this the first render sees 0×0.
+    const rect = el.getBoundingClientRect()
+    setContainerSize({ w: rect.width, h: rect.height })
     const ro = new ResizeObserver(([entry]) => {
       setContainerSize({ w: entry.contentRect.width, h: entry.contentRect.height })
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    observerRef.current = ro
   }, [])
-
-  const projectionScale = useMemo(() => {
-    if (containerSize.w === 0 || containerSize.h === 0) return 160
-    const [wf, hf] = PROJECTION_FIT[geoProjection] ?? PROJECTION_FIT.naturalEarth1
-    return Math.floor(Math.min(containerSize.w / wf, containerSize.h / hf))
-  }, [containerSize, geoProjection])
+  useEffect(() => () => observerRef.current?.disconnect(), [])
 
   useEffect(() => {
     if (!geoFeaturesUrl || geoFeaturesRaw) {
@@ -217,6 +233,77 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
     }
     return ['#e0f2fe', '#0369a1']
   }, [colorPalette])
+
+  // Fit the projection to the actual feature bounds + container size. Region-
+  // specific maps (e.g. US states) would otherwise render tiny as a small patch
+  // of a sphere-sized projection. We compute the projected cartesian bounds at
+  // scale=1/translate=[0,0] via geoPath, then derive the scale that fits those
+  // bounds into the container and the translation that centers them. This is
+  // more robust than projection.fitSize() for GeoJSON with longitudes outside
+  // [-180, 180] (Alaska in some US datasets), which can confuse d3's
+  // spherical-bounds calculation.
+  // Returned values match what nivo expects: absolute `scale` plus
+  // `[tx/w, ty/h]` translation ratios that it multiplies by its inner width/
+  // height (outer minus margin — we account for the 4px margin below).
+  // Compute projectionScale and projectionTranslation from the actual feature
+  // bounds so region-specific maps (e.g. US states) fill the portlet instead
+  // of rendering as a tiny patch of a sphere-sized projection. We deliberately
+  // walk coordinates manually through a unit-scale projection rather than use
+  // `d3.geoPath(projection).bounds()` — the latter runs through d3's stream
+  // with antimeridian clipping and polar-cutting, which can inflate bounds to
+  // the full sphere whenever geometry touches a discontinuity.
+  const { projectionScale, projectionTranslation } = useMemo<{
+    projectionScale: number
+    projectionTranslation: [number, number]
+  }>(() => {
+    const defaults = {
+      projectionScale: 160,
+      projectionTranslation: [0.5, 0.5] as [number, number],
+    }
+    if (!features || features.length === 0) return defaults
+    if (containerSize.w === 0 || containerSize.h === 0) return defaults
+    const ctor = PROJECTION_CTORS[geoProjection] ?? PROJECTION_CTORS.naturalEarth1
+    const project = ctor().scale(1).translate([0, 0]).rotate([0, 0, 0])
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    let pointCount = 0
+    const visitPoint = (lon: number, lat: number) => {
+      const p = project([lon, lat])
+      if (!p) return
+      const [x, y] = p
+      if (!isFinite(x) || !isFinite(y)) return
+      if (x < x0) x0 = x; if (x > x1) x1 = x
+      if (y < y0) y0 = y; if (y > y1) y1 = y
+      pointCount++
+    }
+    const visitCoords = (coords: any) => {
+      if (typeof coords?.[0] === 'number') {
+        visitPoint(coords[0], coords[1])
+      } else if (Array.isArray(coords)) {
+        for (const c of coords) visitCoords(c)
+      }
+    }
+    for (const f of features) {
+      const geom = (f as any).geometry
+      if (geom?.coordinates) visitCoords(geom.coordinates)
+    }
+    const projectedW = x1 - x0
+    const projectedH = y1 - y0
+    if (pointCount === 0 || !isFinite(projectedW) || !isFinite(projectedH) || projectedW <= 0 || projectedH <= 0) {
+      return defaults
+    }
+    // Nivo's inner dimensions = container outer minus our 4px margin on each side.
+    const innerW = Math.max(1, containerSize.w - 8)
+    const innerH = Math.max(1, containerSize.h - 8)
+    // Fit within 95% of inner dims so the map breathes inside the portlet.
+    const scale = Math.min((innerW * 0.95) / projectedW, (innerH * 0.95) / projectedH)
+    // Center the projected bounds within inner dimensions.
+    const tx = innerW / 2 - ((x0 + x1) / 2) * scale
+    const ty = innerH / 2 - ((y0 + y1) / 2) * scale
+    return {
+      projectionScale: scale,
+      projectionTranslation: [tx / innerW, ty / innerH],
+    }
+  }, [features, containerSize, geoProjection])
 
   // ── Empty states ─────────────────────────────────────────────────────────────
 
@@ -305,12 +392,12 @@ const ChoroplethChart = React.memo(function ChoroplethChart({
           unknownColor="var(--dc-surface-tertiary)"
           projectionType={geoProjection as any}
           projectionScale={projectionScale}
-          projectionTranslation={[0.5, 0.5]}
+          projectionTranslation={projectionTranslation}
           projectionRotation={[0, 0, 0]}
           enableGraticule={showGraticule}
           graticuleLineColor="rgba(0,0,0,0.2)"
-          borderWidth={0.5}
-          borderColor="var(--dc-border)"
+          borderWidth={0.75}
+          borderColor="var(--dc-border-secondary)"
           isInteractive
           onClick={
             onDataPointClick

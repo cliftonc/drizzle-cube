@@ -91,7 +91,11 @@ const features = {
         idProperty: 'name',
       },
       usStates: {
-        label: 'US States',
+        // Contiguous 48 + DC. Alaska and Hawaii are omitted because their
+        // real geographic positions would spread the bbox too wide to render
+        // legibly (nivo doesn't ship the albersUsa projection that normally
+        // insets them). Drop a pre-inset GeoJSON here if you need them.
+        label: 'US States (Lower 48)',
         url: '/us_states.geojson',
         idProperty: 'name',
       },
