@@ -38,6 +38,7 @@ const configImportMap: Record<BuiltInChartType, () => Promise<{ [key: string]: C
   candlestick: () => import('../components/charts/CandlestickChart.config'),
   measureProfile: () => import('../components/charts/MeasureProfileChart.config'),
   gauge: () => import('../components/charts/GaugeChart.config'),
+  choropleth: () => import('../components/charts/ChoroplethChart.config'),
 }
 
 // Map from built-in chart type to expected export name
@@ -68,6 +69,7 @@ const configExportNames: Record<BuiltInChartType, string> = {
   candlestick: 'candlestickChartConfig',
   measureProfile: 'measureProfileChartConfig',
   gauge: 'gaugeChartConfig',
+  choropleth: 'choroplethChartConfig',
 }
 
 // Cache for loaded configs

@@ -49,7 +49,14 @@ export interface DisplayOptionConfig {
   
   /** Options for select type */
   options?: Array<{ value: any; label: string }>
-  
+
+  /**
+   * Dynamic source for select options, resolved at render time from feature config.
+   * Use this for options that depend on developer-level configuration rather than
+   * being known statically (e.g. the list of choropleth map datasets).
+   */
+  optionsSource?: 'choroplethMaps'
+
   /** Help text shown below the input */
   description?: string
   
@@ -79,6 +86,9 @@ export interface ChartAvailability {
  * Snapshot of the current query shape passed to each chart's `isAvailable`.
  */
 export interface ChartAvailabilityContext {
+  /** App-level feature config (e.g. registered choropleth maps). Chart configs may
+   *  gate availability on developer-registered features, not just query shape. */
+  features?: import('../types').FeaturesConfig
   /** Number of measures selected */
   measureCount: number
   /**

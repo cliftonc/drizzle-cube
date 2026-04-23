@@ -82,9 +82,11 @@ function getTimeDimensions(breakdowns: BreakdownItem[]): BreakdownItem[] {
  */
 function buildAvailabilityContext(
   metrics: MetricItem[],
-  breakdowns: BreakdownItem[]
+  breakdowns: BreakdownItem[],
+  features?: import('../types').FeaturesConfig
 ): ChartAvailabilityContext {
   return {
+    features,
     measureCount: metrics.length,
     dimensionCount: breakdowns.length,
     timeDimensionCount: getTimeDimensions(breakdowns).length,
@@ -99,7 +101,8 @@ function buildAvailabilityContext(
 export function getChartAvailability(
   chartType: ChartType,
   metrics: MetricItem[],
-  breakdowns: BreakdownItem[]
+  breakdowns: BreakdownItem[],
+  features?: import('../types').FeaturesConfig
 ): ChartAvailability {
   const config = chartConfigRegistry[chartType]
   if (!config || !config.isAvailable) {
@@ -107,7 +110,7 @@ export function getChartAvailability(
     // are always available.
     return { available: true }
   }
-  return config.isAvailable(buildAvailabilityContext(metrics, breakdowns))
+  return config.isAvailable(buildAvailabilityContext(metrics, breakdowns, features))
 }
 
 /**
@@ -115,14 +118,15 @@ export function getChartAvailability(
  */
 export function getAllChartAvailability(
   metrics: MetricItem[],
-  breakdowns: BreakdownItem[]
+  breakdowns: BreakdownItem[],
+  features?: import('../types').FeaturesConfig
 ): ChartAvailabilityMap {
   // Derive chart types dynamically from the registry (includes custom plugins)
   const chartTypes = Object.keys(chartConfigRegistry) as ChartType[]
 
   const availability: Partial<ChartAvailabilityMap> = {}
   for (const chartType of chartTypes) {
-    availability[chartType] = getChartAvailability(chartType, metrics, breakdowns)
+    availability[chartType] = getChartAvailability(chartType, metrics, breakdowns, features)
   }
 
   return availability as ChartAvailabilityMap
@@ -146,10 +150,11 @@ export function getAllChartAvailability(
 export function selectBestChartType(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
-  currentChartType: ChartType
+  currentChartType: ChartType,
+  features?: import('../types').FeaturesConfig
 ): ChartType {
   // Check if current chart type is still valid
-  const currentAvailability = getChartAvailability(currentChartType, metrics, breakdowns)
+  const currentAvailability = getChartAvailability(currentChartType, metrics, breakdowns, features)
   if (currentAvailability.available) {
     return currentChartType
   }
@@ -193,10 +198,11 @@ export function selectBestChartType(
 export function getSmartChartDefaults(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
-  currentChartType: ChartType
+  currentChartType: ChartType,
+  features?: import('../types').FeaturesConfig
 ): SmartChartDefaults {
   // First, determine the best chart type
-  const chartType = selectBestChartType(metrics, breakdowns, currentChartType)
+  const chartType = selectBestChartType(metrics, breakdowns, currentChartType, features)
 
   // Then, auto-configure the chart axes based on chart type
   const chartConfig = buildChartConfig(chartType, metrics, breakdowns)
@@ -350,18 +356,19 @@ export function shouldAutoSwitchChartType(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[],
   currentChartType: ChartType,
-  userManuallySelected: boolean
+  userManuallySelected: boolean,
+  features?: import('../types').FeaturesConfig
 ): ChartType | null {
   // If user manually selected this chart type, only switch if it becomes invalid
   if (userManuallySelected) {
-    const availability = getChartAvailability(currentChartType, metrics, breakdowns)
+    const availability = getChartAvailability(currentChartType, metrics, breakdowns, features)
     if (availability.available) {
       return null // Keep user's choice
     }
   }
 
   // Check if a better chart type should be used
-  const recommendedType = selectBestChartType(metrics, breakdowns, currentChartType)
+  const recommendedType = selectBestChartType(metrics, breakdowns, currentChartType, features)
 
   // Only suggest switch if recommended type is different
   if (recommendedType !== currentChartType) {
