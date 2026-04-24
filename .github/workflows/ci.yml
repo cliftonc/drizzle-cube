@@ -129,7 +129,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:9.6
+        image: mysql:9.7
         env:
           MYSQL_ROOT_PASSWORD: test
           MYSQL_DATABASE: drizzle_cube_test
