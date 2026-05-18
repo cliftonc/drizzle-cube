@@ -325,7 +325,7 @@
     "concurrently": "^9.0.0",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
-    "databend-driver": "^0.33.6",
+    "databend-driver": "^0.34.0",
     "dotenv": "^17.2.3",
     "drizzle-databend": "^0.1.12",
     "drizzle-kit": "^0.31.8",
