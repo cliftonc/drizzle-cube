@@ -118,6 +118,7 @@ export type BuiltInChartType =
   | 'candlestick'
   | 'measureProfile'
   | 'gauge'
+  | 'choropleth'
 
 // Chart type identifier — includes all built-in types plus any string for custom chart plugins.
 // Use BuiltInChartType when you need to narrow to built-ins only.
@@ -276,6 +277,11 @@ export interface ChartDisplayConfig {
   // Measure profile chart specific display options
   showReferenceLineAtZero?: boolean
   lineType?: 'monotone' | 'linear' | 'step'
+
+  // Choropleth map specific display options
+  /** Key into features.choropleth.maps — selects which named map dataset to render */
+  mapId?: string
+  geoProjection?: 'mercator' | 'naturalEarth1' | 'equalEarth' | 'equirectangular'
 
   // Gauge chart specific display options
   minValue?: number
@@ -597,6 +603,34 @@ export interface XlsExportFeatureConfig {
   filenamePrefix?: string
 }
 
+/**
+ * A single named map dataset usable by the choropleth chart.
+ * Configured by the developer — not end-user editable.
+ */
+export interface ChoroplethMapDataset {
+  /** Human-readable label shown in the chart's map picker (e.g. 'World Countries', 'US States') */
+  label: string
+  /** URL to fetch a GeoJSON FeatureCollection or Feature array (runtime fetch) */
+  url?: string
+  /** Inline GeoJSON FeatureCollection/Feature array as a JSON string (alternative to url) */
+  features?: string
+  /** Feature property to match against the dimension value. Defaults to feature.id. */
+  idProperty?: string
+}
+
+/**
+ * Choropleth chart feature configuration (requires @nivo/geo peer dependency).
+ * Developers register named map datasets here so dashboard authors can pick one
+ * without having to paste URLs or GeoJSON themselves.
+ */
+export interface ChoroplethFeatureConfig {
+  enabled: boolean
+  /** Named map datasets available to choropleth portlets */
+  maps: Record<string, ChoroplethMapDataset>
+  /** Map id used when a portlet hasn't explicitly chosen one */
+  defaultMap?: string
+}
+
 // Features configuration
 export interface FeaturesConfig {
   enableAI?: boolean // Default: true for backward compatibility
@@ -608,6 +642,7 @@ export interface FeaturesConfig {
   thumbnail?: ThumbnailFeatureConfig // Optional dashboard thumbnail capture on save
   manualRefresh?: boolean // When true, queries don't auto-execute on config changes. User must click Refresh. (default: false)
   xlsExport?: XlsExportFeatureConfig // Optional XLSX data export from portlets (requires exceljs)
+  choropleth?: ChoroplethFeatureConfig // Optional choropleth map datasets (requires @nivo/geo)
 }
 
 // Grid layout types (simplified)

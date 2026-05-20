@@ -24,6 +24,7 @@ import { waterfallChartConfig } from '../components/charts/WaterfallChart.config
 import { candlestickChartConfig } from '../components/charts/CandlestickChart.config'
 import { measureProfileChartConfig } from '../components/charts/MeasureProfileChart.config'
 import { gaugeChartConfig } from '../components/charts/GaugeChart.config'
+import { choroplethChartConfig } from '../components/charts/ChoroplethChart.config'
 import type { ChartTypeConfig, ChartConfigRegistry } from './chartConfigs'
 
 /**
@@ -56,6 +57,7 @@ export const chartConfigRegistry: ChartConfigRegistry = {
   candlestick: candlestickChartConfig,
   measureProfile: measureProfileChartConfig,
   gauge: gaugeChartConfig,
+  choropleth: choroplethChartConfig,
 }
 
 /**
