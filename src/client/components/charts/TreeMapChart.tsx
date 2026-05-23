@@ -192,7 +192,8 @@ const TreeMapChart = React.memo(function TreeMapChart({
         const cellData = treemapData[index]
         if (cellData && onDataPointClick) {
           // Use query measures for proper field name (chartConfig.yAxis may contain display labels)
-          const measureField = queryObject?.measures?.[0] || chartConfig?.yAxis?.[0] || ''
+          const firstMeasure = queryObject?.measures?.[0]
+          const measureField = (typeof firstMeasure === 'string' ? firstMeasure : firstMeasure?.name) || chartConfig?.yAxis?.[0] || ''
           onDataPointClick({
             dataPoint: cellData,
             clickedField: measureField,

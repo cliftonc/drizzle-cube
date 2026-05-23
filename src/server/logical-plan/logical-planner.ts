@@ -34,6 +34,7 @@ import {
   type PreferredPathSelection
 } from '../resolvers/join-path-resolver'
 import { MeasureBuilder } from '../builders/measure-builder'
+import { getStaticMeasureNames } from '../query-measures'
 import { t } from '../../i18n/runtime'
 
 
@@ -74,11 +75,9 @@ export class LogicalPlanner {
     const cubesUsed = new Set<string>()
     
     // Extract cube names from measures
-    if (query.measures) {
-      for (const measure of query.measures) {
-        const [cubeName] = measure.split('.')
-        cubesUsed.add(cubeName)
-      }
+    for (const measure of getStaticMeasureNames(query.measures)) {
+      const [cubeName] = measure.split('.')
+      cubesUsed.add(cubeName)
     }
     
     // Extract cube names from dimensions
@@ -305,11 +304,9 @@ export class LogicalPlanner {
 
     // Cubes with measures are still needed for CTE pre-detection.
     const cubesWithMeasures = new Set<string>()
-    if (query.measures) {
-      for (const measure of query.measures) {
-        const [cubeName] = measure.split('.')
-        cubesWithMeasures.add(cubeName)
-      }
+    for (const measure of getStaticMeasureNames(query.measures)) {
+      const [cubeName] = measure.split('.')
+      cubesWithMeasures.add(cubeName)
     }
 
     // Rust-style hinting: include all query member cubes to drive path selection.
@@ -473,7 +470,7 @@ export class LogicalPlanner {
       const isPrimary = false
 
       // Get measures from this cube
-      const measuresFromSelect = query.measures.filter(m =>
+      const measuresFromSelect = getStaticMeasureNames(query.measures).filter(m =>
         m.startsWith(cube.name + '.')
       )
       const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
@@ -816,11 +813,9 @@ export class LogicalPlanner {
 
     // Identify cubes with measures in the query (needed for both paths)
     const cubesWithMeasures = new Set<string>()
-    if (query.measures) {
-      for (const measure of query.measures) {
-        const [cubeName] = measure.split('.')
-        cubesWithMeasures.add(cubeName)
-      }
+    for (const measure of getStaticMeasureNames(query.measures)) {
+      const [cubeName] = measure.split('.')
+      cubesWithMeasures.add(cubeName)
     }
 
     for (const jc of joinCubes) {
@@ -1572,7 +1567,7 @@ export class LogicalPlanner {
     }
 
     const cubesWithMeasures = new Set<string>()
-    for (const measure of query.measures) {
+    for (const measure of getStaticMeasureNames(query.measures)) {
       const [cubeName] = measure.split('.')
       cubesWithMeasures.add(cubeName)
     }
@@ -1600,7 +1595,7 @@ export class LogicalPlanner {
         'Results are aggregated at the join key level, which may produce unexpected totals.',
       severity: 'warning',
       cubes: [...cubesWithMeasures].sort(),
-      measures: query.measures,
+      measures: getStaticMeasureNames(query.measures),
       suggestion: 'Add a dimension to see per-group breakdowns, or add a time dimension with granularity.'
     }
   }

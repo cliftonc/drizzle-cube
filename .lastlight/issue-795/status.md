@@ -1,4 +1,4 @@
-current_phase: architect
+current_phase: fix_loop_1
 branch: lastlight/795-query-time-dynamic-measures
 issue: 795
 updated_at: 2026-05-23

@@ -181,7 +181,7 @@ export function getFilterableFields(schema: MetaResponse, query?: CubeQuery): Me
 
   // Add measures
   if (query.measures) {
-    query.measures.forEach(measure => selectedFields.add(measure))
+    query.measures.forEach(measure => selectedFields.add(typeof measure === 'string' ? measure : measure.name))
   }
 
   // Add dimensions
@@ -221,7 +221,7 @@ export function getOrganizedFilterFields(schema: MetaResponse, query?: CubeQuery
 
   // Add measures
   if (query.measures) {
-    query.measures.forEach(measure => selectedFields.add(measure))
+    query.measures.forEach(measure => selectedFields.add(typeof measure === 'string' ? measure : measure.name))
   }
 
   // Add dimensions
@@ -301,7 +301,7 @@ export function cleanupFiltersLegacy(filters: Filter[], query: CubeQuery): Filte
 
   // Add measures
   if (query.measures) {
-    query.measures.forEach(measure => selectedFields.add(measure))
+    query.measures.forEach(measure => selectedFields.add(typeof measure === 'string' ? measure : measure.name))
   }
 
   // Add dimensions
@@ -368,7 +368,7 @@ export function cleanupOrder(order: Record<string, 'asc' | 'desc'> | undefined, 
   if (!order) return undefined
 
   const allFields = [
-    ...(query.measures || []),
+    ...(query.measures || []).map(measure => typeof measure === 'string' ? measure : measure.name),
     ...(query.dimensions || []),
     ...(query.timeDimensions || []).map(td => td.dimension)
   ]

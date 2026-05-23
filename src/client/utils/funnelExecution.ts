@@ -67,7 +67,8 @@ export function getBindingKeyField(
 export function getCubeNameFromQuery(query: CubeQuery): string | null {
   // Check measures first
   if (query.measures && query.measures.length > 0) {
-    const parts = query.measures[0].split('.')
+    const firstMeasure = query.measures.find((measure): measure is string => typeof measure === 'string')
+    const parts = firstMeasure?.split('.') || []
     if (parts.length >= 2) {
       return parts[0]
     }

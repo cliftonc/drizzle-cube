@@ -20,6 +20,7 @@ import type {
   QueryMergeStrategy,
   Filter,
 } from '../types'
+import { getQueryMeasureFields } from '../types'
 import type {
   AnalysisBuilderState,
   MetricItem,
@@ -199,7 +200,7 @@ function queryToBreakdowns(query: CubeQuery): BreakdownItem[] {
  */
 function cubeQueryToState(query: CubeQuery): AnalysisBuilderState {
   return {
-    metrics: measuresToMetrics(query.measures || []),
+    metrics: measuresToMetrics(getQueryMeasureFields(query.measures)),
     breakdowns: queryToBreakdowns(query),
     filters: (query.filters as Filter[]) || [],
     order: query.order,

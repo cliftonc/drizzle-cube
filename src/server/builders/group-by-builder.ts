@@ -24,6 +24,7 @@ import type {
 import { resolveSqlExpression } from '../cube-utils'
 import { DateTimeBuilder } from './date-time-builder'
 import { MeasureBuilder } from './measure-builder'
+import { getStaticMeasureNames } from '../query-measures'
 
 export class GroupByBuilder {
   constructor(private dateTimeBuilder: DateTimeBuilder) {}
@@ -81,14 +82,15 @@ export class GroupByBuilder {
     // This also includes post-aggregation window functions that reference aggregate base measures
     const hasDimensions = (query.dimensions && query.dimensions.length > 0) ||
                           (query.timeDimensions && query.timeDimensions.length > 0)
-    const hasMeasures = query.measures && query.measures.length > 0
+    const staticMeasures = getStaticMeasureNames(query.measures)
+    const hasMeasures = staticMeasures.length > 0
 
     // For dimension-only queries (no measures), we need GROUP BY for DISTINCT behavior
     const isDimensionOnlyQuery = hasDimensions && !hasMeasures
 
     let hasAggregateMeasures = false
 
-    for (const measureName of query.measures || []) {
+    for (const measureName of staticMeasures) {
       const [cubeName, fieldName] = measureName.split('.')
       const cube = cubeMap.get(cubeName)
       if (cube && cube.measures && cube.measures[fieldName]) {

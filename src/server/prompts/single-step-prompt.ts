@@ -45,7 +45,7 @@ Return a JSON object with these fields:
 QUERY STRUCTURE:
 {
   dimensions?: string[], // dimension names from CUBE SCHEMA
-  measures?: string[], // measure names from CUBE SCHEMA
+  measures?: Array<string | { name: string, formula: string, title?: string, format?: 'currency'|'percent'|'number'|'integer' }>, // static measure names or query-time dynamic measures
   timeDimensions?: [{
     dimension: string, // time dimension from CUBE SCHEMA
     granularity?: 'second'|'minute'|'hour'|'day'|'week'|'month'|'quarter'|'year',

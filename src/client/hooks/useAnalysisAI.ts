@@ -223,9 +223,9 @@ export function useAnalysisAI({
       // Load query into builder state
       setState(prev => ({
         ...prev,
-        metrics: (cubeQuery.measures || []).map((field, index) => ({
+        metrics: (cubeQuery.measures || []).map((measure, index) => ({
           id: generateId(),
-          field,
+          field: typeof measure === 'string' ? measure : measure.name,
           label: generateMetricLabel(index)
         })),
         breakdowns: [

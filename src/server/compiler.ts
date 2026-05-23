@@ -28,6 +28,8 @@ import { formatSqlString } from '../adapters/utils'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
 import { resolveCubeReference } from './cube-utils'
+import { parseDynamicMeasureFormula } from './dynamic-measures'
+import { getDynamicMeasures, getStaticMeasureNames, isDynamicMeasure } from './query-measures'
 import { t } from '../i18n/runtime'
 
 export class SemanticLayerCompiler {
@@ -760,7 +762,13 @@ export function validateQueryAgainstCubes(
 
   // Validate measures
   if (query.measures) {
+    const staticMeasureNames = new Set(getStaticMeasureNames(query.measures))
     for (const measure of query.measures) {
+      if (isDynamicMeasure(measure)) {
+        validateDynamicMeasure(measure, cubes, errors, staticMeasureNames)
+        continue
+      }
+
       const [cubeName, fieldName] = measure.split('.')
       
       if (!cubeName || !fieldName) {
@@ -849,6 +857,23 @@ export function validateQueryAgainstCubes(
     }
   }
 
+  if (query.order) {
+    const queryFields = new Set([
+      ...getStaticMeasureNames(query.measures),
+      ...(query.dimensions || []),
+      ...(query.timeDimensions || []).map(td => td.dimension)
+    ])
+    for (const orderMember of Object.keys(query.order)) {
+      if (!queryFields.has(orderMember)) {
+        errors.push(`Order member '${orderMember}' must be a selected static measure or dimension`)
+      }
+    }
+  }
+
+  if (getDynamicMeasures(query.measures).length > 0 && query.timeDimensions?.some(td => td.compareDateRange?.length)) {
+    errors.push('Dynamic measures are not supported with compareDateRange')
+  }
+
   // Ensure at least one cube is referenced
   if (referencedCubes.size === 0) {
     errors.push(t('server.validation.query.mustReferenceAtLeastOneCube'))
@@ -896,6 +921,10 @@ export function validateQueryAgainstCubes(
 
     if (query.measures) {
       for (const measureName of query.measures) {
+        if (isDynamicMeasure(measureName)) {
+          errors.push(`Dynamic measure '${measureName.name}' is incompatible with ungrouped queries`)
+          continue
+        }
         const [cubeName, fieldName] = measureName.split('.')
         const cube = cubes.get(cubeName)
         if (cube && cube.measures[fieldName]) {
@@ -942,6 +971,52 @@ export function validateQueryAgainstCubes(
   return {
     isValid: errors.length === 0,
     errors
+  }
+}
+
+function validateDynamicMeasure(
+  measure: unknown,
+  cubes: Map<string, Cube>,
+  errors: string[],
+  staticMeasureNames: Set<string>
+): void {
+  if (!measure || typeof measure !== 'object' || Array.isArray(measure)) {
+    errors.push('Dynamic measure must be an object')
+    return
+  }
+
+  const dynamicMeasure = measure as { name?: unknown; formula?: unknown; format?: unknown }
+  if (typeof dynamicMeasure.name !== 'string' || dynamicMeasure.name.length === 0) {
+    errors.push('Dynamic measure must have a name')
+    return
+  }
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(dynamicMeasure.name)) {
+    errors.push(`Dynamic measure name '${dynamicMeasure.name}' must be a bare identifier`)
+  }
+  if (typeof dynamicMeasure.formula !== 'string' || dynamicMeasure.formula.trim().length === 0) {
+    errors.push(`Dynamic measure '${dynamicMeasure.name}' must have a formula`)
+    return
+  }
+  if (dynamicMeasure.format !== undefined && !['currency', 'percent', 'number', 'integer'].includes(String(dynamicMeasure.format))) {
+    errors.push(`Dynamic measure '${dynamicMeasure.name}' has invalid format '${String(dynamicMeasure.format)}'`)
+  }
+
+  const parsed = parseDynamicMeasureFormula(dynamicMeasure.formula)
+  if (!parsed.isValid) {
+    errors.push(`Dynamic measure '${dynamicMeasure.name}' has invalid formula: ${parsed.error}`)
+    return
+  }
+
+  for (const reference of parsed.references) {
+    const [cubeName, fieldName] = reference.split('.')
+    const cube = cubes.get(cubeName)
+    if (!cube || !cube.measures[fieldName]) {
+      errors.push(`Dynamic measure '${dynamicMeasure.name}' references unknown measure '${reference}'`)
+      continue
+    }
+    if (!staticMeasureNames.has(reference)) {
+      errors.push(`Dynamic measure '${dynamicMeasure.name}' references '${reference}' which must be selected as a static measure`)
+    }
   }
 }
 

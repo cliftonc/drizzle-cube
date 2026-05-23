@@ -16,8 +16,22 @@
 export const QUERY_PARAMS_SCHEMA = {
   measures: {
     type: 'array',
-    items: { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
-    description: 'Aggregation measures — EXACTLY "CubeName.measureName" (two parts, one dot). Copy field names verbatim from discover results. WRONG: "Sales.Sales.count" (double-prefixed). RIGHT: "Sales.count".'
+    items: {
+      anyOf: [
+        { type: 'string', pattern: '^[A-Z][a-zA-Z0-9]*\\.[a-zA-Z][a-zA-Z0-9]*$' },
+        {
+          type: 'object',
+          properties: {
+            name: { type: 'string', pattern: '^[A-Za-z_][A-Za-z0-9_]*$' },
+            formula: { type: 'string', description: 'Arithmetic over selected static measures, e.g. "Sales.revenue / Sales.count". Supports numbers, + - * /, parentheses.' },
+            title: { type: 'string' },
+            format: { type: 'string', enum: ['currency', 'percent', 'number', 'integer'] }
+          },
+          required: ['name', 'formula']
+        }
+      ]
+    },
+    description: 'Aggregation measures. Use static "CubeName.measureName" strings, or dynamic objects {name, formula}. Dynamic formulas may only reference static measures also selected in this same measures array; dynamic measures cannot be used in filters or order.'
   },
   dimensions: {
     type: 'array',
@@ -179,7 +193,7 @@ export const QUERY_LANGUAGE_REFERENCE = `
 // === DRIZZLE CUBE QUERY LANGUAGE (TypeScript DSL) ===
 
 type RegularQuery = {
-  measures?: string[]           // "CubeName.measureName" — aggregations
+  measures?: QueryMeasure[]     // static aggregations or query-time dynamic measures
   dimensions?: string[]         // "CubeName.dimensionName" — groupings (can cross cubes via joins)
   filters?: (FilterCondition | LogicalFilter)[]
   timeDimensions?: TimeDimension[]
@@ -188,6 +202,15 @@ type RegularQuery = {
   offset?: number
   ungrouped?: boolean           // raw rows without GROUP BY
   fillMissingDatesValue?: number | null
+}
+
+type QueryMeasure = string | DynamicMeasure
+
+type DynamicMeasure = {
+  name: string                  // bare result key, e.g. "averageValue"; no dots
+  formula: string               // arithmetic over selected static measures, e.g. "Sales.revenue / Sales.count"
+  title?: string
+  format?: 'currency' | 'percent' | 'number' | 'integer'
 }
 
 type FilterCondition = {

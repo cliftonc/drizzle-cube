@@ -8,6 +8,7 @@
  */
 
 import type { CubeResultSet, CubeQuery, QueryMergeStrategy } from '../types'
+import { getQueryMeasureField, getQueryMeasureFields } from '../types'
 
 /**
  * Metadata fields injected into multi-query data
@@ -132,7 +133,7 @@ export function mergeResultsByKey(
 
       // Add measures using raw field names (no prefix)
       // If same measure exists in multiple queries, first one wins
-      measures.forEach(measure => {
+      getQueryMeasureFields(measures).forEach(measure => {
         if (!(measure in mergedRow)) {
           mergedRow[measure] = row[measure]
         }
@@ -141,7 +142,7 @@ export function mergeResultsByKey(
       // Copy other dimensions (non-measure, non-merge-key fields) from first query
       if (queryIndex === 0) {
         Object.keys(row).forEach(field => {
-          if (!mergeKeys.includes(field) && !measures.includes(field)) {
+          if (!mergeKeys.includes(field) && !getQueryMeasureFields(measures).includes(field)) {
             if (!(field in mergedRow)) {
               mergedRow[field] = row[field]
             }
@@ -212,7 +213,7 @@ export function getCombinedFields(
 
   queries.forEach((query) => {
     // Measures use raw field names (no prefix), de-duplicated
-    query.measures?.forEach(m => measures.add(m))
+    query.measures?.forEach(m => measures.add(getQueryMeasureField(m)))
 
     // Dimensions are shared across queries (de-duplicated)
     query.dimensions?.forEach(d => dimensions.add(d))
@@ -235,7 +236,7 @@ export function getCombinedFields(
 export function generateQueryLabel(query: CubeQuery, index: number): string {
   // Try to use first measure name without cube prefix
   if (query.measures && query.measures.length > 0) {
-    const firstMeasure = query.measures[0]
+    const firstMeasure = getQueryMeasureField(query.measures[0])
     const parts = firstMeasure.split('.')
     if (parts.length > 1) {
       return parts[parts.length - 1] // Use measure name without cube prefix

@@ -17,7 +17,7 @@ export interface ChartSelection {
 }
 
 interface LoadQuery {
-  measures?: string[]
+  measures?: Array<string | { name: string }>
   dimensions?: string[]
   timeDimensions?: Array<{
     dimension: string
@@ -38,7 +38,7 @@ export const SUPPORTED_CHARTS: McpChartType[] = [
 ]
 
 function getMeasures(query: LoadQuery): string[] {
-  return query.measures || []
+  return query.measures?.map(measure => typeof measure === 'string' ? measure : measure.name) || []
 }
 
 function getDimensions(query: LoadQuery): string[] {

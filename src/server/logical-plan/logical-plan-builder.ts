@@ -19,6 +19,7 @@ import type { SemanticQuery } from '../types/query'
 import type { LogicalPlanner } from './logical-planner'
 import { MeasureBuilder } from '../builders/measure-builder'
 import { resolveCubeReference } from '../cube-utils'
+import { getStaticMeasureNames } from '../query-measures'
 import { t } from '../../i18n/runtime'
 import type {
   LogicalNode,
@@ -130,7 +131,7 @@ export class LogicalPlanBuilder {
     }
 
     const hasWindowFunctions = MeasureBuilder.hasPostAggregationWindows(
-      query.measures ?? [],
+      getStaticMeasureNames(query.measures),
       cubesInQuery
     )
 
@@ -346,12 +347,13 @@ export class LogicalPlanBuilder {
     cubes: Map<string, Cube>,
     ctx: QueryContext
   ): MultiFactMerge | null {
-    if (!query.measures || query.measures.length < 2) {
+    const staticMeasures = getStaticMeasureNames(query.measures)
+    if (staticMeasures.length < 2) {
       return null
     }
 
     const measureCubes = new Set<string>()
-    for (const measure of query.measures) {
+    for (const measure of staticMeasures) {
       const [cubeName] = measure.split('.')
       if (cubeName) measureCubes.add(cubeName)
     }
@@ -401,7 +403,7 @@ export class LogicalPlanBuilder {
 
     const groupNodes: LogicalNode[] = []
     for (const measureCubeName of measureCubeNames) {
-      const groupMeasures = (query.measures ?? []).filter(
+      const groupMeasures = staticMeasures.filter(
         measure => measure.startsWith(`${measureCubeName}.`)
       )
 
@@ -621,7 +623,7 @@ export class LogicalPlanBuilder {
     }
 
     const multipliedCubeName = Array.from(multipliedCubeNames)[0]
-    const queryMeasures = query.measures ?? []
+    const queryMeasures = getStaticMeasureNames(query.measures)
     if (queryMeasures.length === 0) {
       return false
     }
@@ -814,9 +816,10 @@ export class LogicalPlanBuilder {
   // ---------------------------------------------------------------------------
 
   private buildMeasureRefs(query: SemanticQuery, cubes: Map<string, Cube>): MeasureRef[] {
-    if (!query.measures) return []
+    const staticMeasures = getStaticMeasureNames(query.measures)
+    if (staticMeasures.length === 0) return []
 
-    return query.measures.map(name => {
+    return staticMeasures.map(name => {
       const [cubeName, localName] = name.split('.')
       const cube = cubes.get(cubeName)
       if (!cube) throw new Error(t('server.errors.cubeNotFoundForMeasure', { cubeName, measure: name }))

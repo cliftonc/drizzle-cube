@@ -6,6 +6,7 @@
 import { t } from '../../i18n/runtime'
 import type { CubeMetadata } from '../types/metadata'
 import type { SemanticQuery, Filter } from '../types/query'
+import { getStaticMeasureNames } from '../query-measures'
 import { findBestFieldMatch } from './discovery'
 
 /**
@@ -547,10 +548,8 @@ export function validateQuery(
   }
 
   // Validate measures
-  if (query.measures) {
-    for (const measure of query.measures) {
-      validateMeasure(measure, metadata, errors, corrections)
-    }
+  for (const measure of getStaticMeasureNames(query.measures)) {
+    validateMeasure(measure, metadata, errors, corrections)
   }
 
   // Validate dimensions
@@ -618,7 +617,7 @@ export function validateQuery(
     const clonedQuery: SemanticQuery = JSON.parse(JSON.stringify(query)) // Deep clone
 
     if (clonedQuery.measures) {
-      clonedQuery.measures = clonedQuery.measures.map(m => corrections.get(m) || m)
+      clonedQuery.measures = clonedQuery.measures.map(m => typeof m === 'string' ? corrections.get(m) || m : m)
     }
     if (clonedQuery.dimensions) {
       clonedQuery.dimensions = clonedQuery.dimensions.map(d => corrections.get(d) || d)

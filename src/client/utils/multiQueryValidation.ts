@@ -143,10 +143,11 @@ export function detectMeasureCollisions(queries: CubeQuery[]): MultiQueryValidat
 
   queries.forEach((query, index) => {
     query.measures?.forEach(measure => {
-      if (!measureCounts.has(measure)) {
-        measureCounts.set(measure, [])
+      const measureName = typeof measure === 'string' ? measure : measure.name
+      if (!measureCounts.has(measureName)) {
+        measureCounts.set(measureName, [])
       }
-      measureCounts.get(measure)!.push(index)
+      measureCounts.get(measureName)!.push(index)
     })
   })
 
