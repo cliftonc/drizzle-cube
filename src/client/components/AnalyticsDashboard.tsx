@@ -7,7 +7,6 @@
 import { useCallback, useMemo } from 'react'
 import DashboardGrid from './DashboardGrid'
 import { useCubeFeatures, useCubeMeta } from '../providers/CubeProvider'
-import { DashboardStoreProvider } from '../stores/dashboardStore'
 import { getColorPalette } from '../utils/colorPalettes'
 import { useDirtyStateTracking } from '../hooks/useDirtyStateTracking'
 import type { AnalyticsDashboardProps, DashboardConfig, DashboardFilter } from '../types'
@@ -98,23 +97,21 @@ export default function AnalyticsDashboard({
   }, [config.colorPalette])
 
   return (
-    <DashboardStoreProvider>
-      <div className="dc:w-full">
-        {/* Dashboard Grid (now includes filter panel) */}
-        <DashboardGrid
-          config={config}
-          editable={editable}
-          dashboardFilters={mergedDashboardFilters}
-          loadingComponent={loadingComponent}
-          onConfigChange={handleConfigChangeWithDirtyTracking}
-          onSave={handleSaveWithDirtyTracking}
-          onSaveThumbnail={onSaveThumbnail}
-          colorPalette={colorPalette}
-          schema={meta}
-          dashboardModes={dashboardModes}
-          onDashboardFiltersChange={handleDashboardFiltersChange}
-        />
-      </div>
-    </DashboardStoreProvider>
+    <div className="dc:w-full">
+      {/* Dashboard Grid (owns its store via DashboardProvider, includes filter panel) */}
+      <DashboardGrid
+        config={config}
+        editable={editable}
+        dashboardFilters={mergedDashboardFilters}
+        loadingComponent={loadingComponent}
+        onConfigChange={handleConfigChangeWithDirtyTracking}
+        onSave={handleSaveWithDirtyTracking}
+        onSaveThumbnail={onSaveThumbnail}
+        colorPalette={colorPalette}
+        schema={meta}
+        dashboardModes={dashboardModes}
+        onDashboardFiltersChange={handleDashboardFiltersChange}
+      />
+    </div>
   )
 }
