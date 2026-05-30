@@ -47,6 +47,16 @@ export type { LazyChartProps } from './charts/ChartLoader'
 
 // Layout components
 export { default as DashboardGrid } from './components/DashboardGrid'
+// Composable dashboard pieces (DashboardGrid is a back-compat composition of these)
+export {
+  DashboardProvider,
+  DashboardToolbar,
+  DashboardFilterBar,
+  DashboardGridSurface,
+  DashboardModals,
+  useDashboardContext,
+} from './components/dashboard'
+export type { DashboardContextValue, DashboardProviderProps } from './components/dashboard'
 export { default as PortletContainer } from './components/PortletContainer'
 export { default as DrillMenu } from './components/DrillMenu'
 export { default as DrillBreadcrumb } from './components/DrillBreadcrumb'
