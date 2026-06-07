@@ -322,7 +322,7 @@
     "@vitest/ui": "^4.0.0",
     "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.0.0",
-    "concurrently": "^9.0.0",
+    "concurrently": "^10.0.0",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
     "databend-driver": "^0.34.0",
