@@ -1,10 +1,12 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
-import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../types'
+import type { ChartType, DashboardFilter, DashboardFilterMapping, DashboardLayoutMode, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore'
 import { ensureAnalysisConfig } from '../utils/configMigration'
+import { mappingIncludesFilter, getMappingMemberOverride } from '../utils/filterUtils'
+import { useTranslation } from '../hooks/useTranslation'
 import { useCubeFeatures } from '../providers/CubeFeaturesProvider'
 import { getIcon } from '../icons/registry'
 import { isPortletCopyAvailable, copyPortletToClipboard } from '../utils/thumbnail'
@@ -122,7 +124,7 @@ interface PortletChartBodyProps {
   renderChartConfig: unknown
   renderDisplayConfig: unknown
   dashboardFilters?: DashboardFilter[]
-  dashboardFilterMapping?: string[]
+  dashboardFilterMapping?: DashboardFilterMapping
   eagerLoad: boolean
   title: string
   isMarkdownAutoHeight: boolean
@@ -221,6 +223,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
 
   // Get features for copy-to-clipboard functionality
   const { features } = useCubeFeatures()
+  const { t } = useTranslation()
 
   // Icons for copy-to-clipboard and export buttons
   const CameraIcon = getIcon('camera')
@@ -302,16 +305,31 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   }, [])
 
   const hasSelectedFilter = selectedFilterId
-    ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
+    ? mappingIncludesFilter(portlet.dashboardFilterMapping, selectedFilterId)
     : false
   const isInSelectionMode = !!selectedFilterId
+
+  // In filter selection mode, show which field the selected filter targets on
+  // this portlet (the per-portlet override, or the filter's own field)
+  const effectiveFilterField = useMemo(() => {
+    if (!isInSelectionMode || !hasSelectedFilter || !selectedFilterId) return null
+    const selectedFilter = dashboardFilters?.find(f => f.id === selectedFilterId)
+    if (!selectedFilter || selectedFilter.isUniversalTime) return null
+
+    const override = getMappingMemberOverride(portlet.dashboardFilterMapping, selectedFilterId)
+    if (override) return { field: override, isOverride: true }
+    if ('member' in selectedFilter.filter && selectedFilter.filter.member) {
+      return { field: selectedFilter.filter.member, isOverride: false }
+    }
+    return null
+  }, [isInSelectionMode, hasSelectedFilter, selectedFilterId, dashboardFilters, portlet.dashboardFilterMapping])
 
   const mergedContainerClassName = [
     isTransparent
       ? 'dc:flex dc:flex-col dc:transition-all'
       : 'bg-dc-surface dc:border dc:rounded-lg dc:flex dc:flex-col dc:transition-all',
     isMarkdownAutoHeight ? '' : 'dc:h-full',
-    isInSelectionMode ? 'dc:cursor-pointer' : '',
+    isInSelectionMode ? 'dc:cursor-pointer dc:relative' : '',
     containerProps?.className
   ]
     .filter(Boolean)
@@ -386,6 +404,34 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
       }}
       {...restContainerProps}
     >
+      {/* Filter selection mode: show which field the selected filter targets
+          on this portlet; click opens the filter config modal to change it */}
+      {effectiveFilterField && (
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            callbacks.onOpenFilterConfig(portlet)
+          }}
+          onTouchEnd={(event) => {
+            event.stopPropagation()
+            event.preventDefault()
+            callbacks.onOpenFilterConfig(portlet)
+          }}
+          title={t('dashboard.filterFieldChipHint')}
+          className="dc:absolute dc:bottom-2 dc:left-1/2 dc:-translate-x-1/2 dc:z-10 dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:text-xs dc:font-medium dc:rounded-full dc:border dc:cursor-pointer dc:transition-colors dc:max-w-[90%] dc:truncate"
+          style={{
+            backgroundColor: effectiveFilterField.isOverride
+              ? 'var(--dc-primary)'
+              : 'var(--dc-surface)',
+            color: effectiveFilterField.isOverride ? 'white' : 'var(--dc-text-secondary)',
+            borderColor: 'var(--dc-primary)',
+            boxShadow: 'var(--dc-shadow-sm)'
+          }}
+        >
+          <icons.FilterIcon style={{ width: '12px', height: '12px' }} />
+          <span className="dc:truncate">{effectiveFilterField.field}</span>
+        </button>
+      )}
       {(!shouldHideHeader || isEditMode) && (
         <div
           className={mergedHeaderClassName}

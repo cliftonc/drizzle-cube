@@ -84,6 +84,15 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     return `df_${Date.now()}_${Math.random().toString(36).substring(7)}`
   }, [])
 
+  // Apply a committed filter mutation: update dashboard state, then persist
+  const applyFilters = useCallback(async (updatedFilters: DashboardFilter[]) => {
+    onDashboardFiltersChange(updatedFilters)
+
+    if (onSaveFilters) {
+      await onSaveFilters(updatedFilters)
+    }
+  }, [onDashboardFiltersChange, onSaveFilters])
+
   // Handle adding a new filter - create temporary filter for modal
   const handleAddFilter = useCallback(() => {
     const newFilter: DashboardFilter = {
@@ -114,8 +123,10 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     }
     // Add directly to filters without opening modal
     const updatedFilters = [...dashboardFilters, newFilter]
-    onDashboardFiltersChange(updatedFilters)
-  }, [generateFilterId, dashboardFilters, onDashboardFiltersChange])
+    applyFilters(updatedFilters).catch(error => {
+      console.error('Failed to save filters:', error)
+    })
+  }, [generateFilterId, dashboardFilters, applyFilters])
 
   // Handle editing an existing filter - just open modal with filter
   const handleEditFilter = useCallback((filterId: string) => {
@@ -126,17 +137,19 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
     }
   }, [dashboardFilters])
 
-  // Handle removing a filter - simple filter list update
+  // Handle removing a filter - update filter list and persist
   const handleRemoveFilter = useCallback((filterId: string) => {
     const updatedFilters = dashboardFilters.filter(df => df.id !== filterId)
-    onDashboardFiltersChange(updatedFilters)
+    applyFilters(updatedFilters).catch(error => {
+      console.error('Failed to save filters:', error)
+    })
 
     // Close modal if we're deleting the filter being edited
     if (editingFilter?.id === filterId) {
       setEditingFilter(null)
       setShowFilterBuilder(false)
     }
-  }, [dashboardFilters, editingFilter, onDashboardFiltersChange])
+  }, [dashboardFilters, editingFilter, applyFilters])
 
   // Handle save from modal - update or add filter and save
   const handleSaveFilter = useCallback(async (filterData: DashboardFilter) => {
@@ -154,19 +167,14 @@ const DashboardFilterPanel: React.FC<DashboardFilterPanelProps> = ({
       updatedFilters = [...dashboardFilters, filterData]
     }
 
-    // Update dashboard state
-    onDashboardFiltersChange(updatedFilters)
-
-    // Trigger save if callback provided
-    if (onSaveFilters) {
-      try {
-        await onSaveFilters(updatedFilters)
-      } catch (error) {
-        console.error('Failed to save filters:', error)
-        throw error // Re-throw so modal can handle it
-      }
+    // Update dashboard state and persist
+    try {
+      await applyFilters(updatedFilters)
+    } catch (error) {
+      console.error('Failed to save filters:', error)
+      throw error // Re-throw so modal can handle it
     }
-  }, [dashboardFilters, onDashboardFiltersChange, onSaveFilters])
+  }, [dashboardFilters, applyFilters])
 
   // Handle modal close - just clean up state
   const handleCloseFilterBuilder = useCallback(() => {

@@ -35,6 +35,7 @@ import { ScrollContainerProvider } from '../../providers/ScrollContainerContext'
 import { useDashboard } from '../../hooks/useDashboardHook'
 import type {
   PortletConfig,
+  DashboardFilterMapping,
   DashboardLayoutMode,
   RowLayout
 } from '../../types'
@@ -234,10 +235,22 @@ export default function DashboardCoordinator({
     return () => clearTimeout(timer)
   }, [isInitialized, config.portlets, actions])
 
-  // Set up ESC key listener for filter selection mode
+  // Whether any dashboard modal is open - Enter/Esc belong to the modal then
+  const isAnyModalOpen =
+    isPortletModalOpen || isTextModalOpen || isFilterConfigModalOpen || !!deleteConfirmPortletId
+
+  // Set up Enter/ESC key listener for filter selection mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedFilterId) {
+      if (!selectedFilterId || isAnyModalOpen) return
+
+      if (e.key === 'Escape') {
+        actions.exitFilterSelectionMode()
+      } else if (e.key === 'Enter') {
+        // Ignore Enter on interactive elements so keyboard activation
+        // (e.g. pressing a focused button) doesn't also exit the mode
+        const target = e.target as HTMLElement | null
+        if (target?.closest('button, a, input, select, textarea, [contenteditable="true"]')) return
         actions.exitFilterSelectionMode()
       }
     }
@@ -247,7 +260,7 @@ export default function DashboardCoordinator({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selectedFilterId, actions])
+  }, [selectedFilterId, isAnyModalOpen, actions])
 
   const handleLayoutChange = useCallback((_layout: Layout) => {
     // This function is called for ALL layout changes
@@ -695,7 +708,7 @@ export default function DashboardCoordinator({
   }, [])
 
   // Handle saving filter configuration - delegate to hook action
-  const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
+  const handleSaveFilterConfig = useCallback(async (mapping: DashboardFilterMapping) => {
     await actions.saveFilterConfig(mapping)
   }, [actions])
 

@@ -281,6 +281,28 @@ describe('DashboardFilterPanel', () => {
 
       expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
     })
+
+    it('should call onSaveFilters with updated filters when adding time filter', async () => {
+      const user = userEvent.setup()
+      const onSaveFilters = vi.fn()
+      render(
+        <DashboardFilterPanel
+          {...defaultProps}
+          isEditMode={true}
+          onSaveFilters={onSaveFilters}
+        />
+      )
+
+      await user.click(screen.getByTestId('add-time-filter-btn'))
+
+      await waitFor(() => {
+        expect(onSaveFilters).toHaveBeenCalledTimes(1)
+      })
+
+      const savedFilters = onSaveFilters.mock.calls[0][0]
+      expect(savedFilters).toHaveLength(3) // 2 existing + 1 new
+      expect(savedFilters[2].isUniversalTime).toBe(true)
+    })
   })
 
   // ==========================================================================
@@ -365,6 +387,91 @@ describe('DashboardFilterPanel', () => {
 
       // Modal should be closed
       expect(screen.queryByTestId('filter-edit-modal')).not.toBeInTheDocument()
+    })
+
+    it('should call onSaveFilters with updated filters when removing in edit mode', async () => {
+      const user = userEvent.setup()
+      const onSaveFilters = vi.fn()
+      render(
+        <DashboardFilterPanel
+          {...defaultProps}
+          isEditMode={true}
+          onSaveFilters={onSaveFilters}
+        />
+      )
+
+      await user.click(screen.getByTestId('remove-filter-1'))
+
+      await waitFor(() => {
+        expect(onSaveFilters).toHaveBeenCalledTimes(1)
+      })
+
+      const savedFilters = onSaveFilters.mock.calls[0][0]
+      expect(savedFilters).toHaveLength(1)
+      expect(savedFilters[0].id).toBe('filter-2')
+    })
+
+    it('should call onSaveFilters when removing from CompactFilterBar', async () => {
+      const user = userEvent.setup()
+      const onSaveFilters = vi.fn()
+      render(
+        <DashboardFilterPanel
+          {...defaultProps}
+          isEditMode={false}
+          onSaveFilters={onSaveFilters}
+        />
+      )
+
+      await user.click(screen.getByTestId('compact-remove-filter-2'))
+
+      await waitFor(() => {
+        expect(onSaveFilters).toHaveBeenCalledTimes(1)
+      })
+
+      const savedFilters = onSaveFilters.mock.calls[0][0]
+      expect(savedFilters).toHaveLength(1)
+      expect(savedFilters[0].id).toBe('filter-1')
+    })
+
+    it('should remove filter without error when onSaveFilters is not provided', async () => {
+      const user = userEvent.setup()
+      const onDashboardFiltersChange = vi.fn()
+      render(
+        <DashboardFilterPanel
+          {...defaultProps}
+          isEditMode={true}
+          onDashboardFiltersChange={onDashboardFiltersChange}
+          onSaveFilters={undefined}
+        />
+      )
+
+      await user.click(screen.getByTestId('remove-filter-1'))
+
+      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('should still update state when onSaveFilters rejects', async () => {
+      const user = userEvent.setup()
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const onDashboardFiltersChange = vi.fn()
+      const onSaveFilters = vi.fn().mockRejectedValue(new Error('save failed'))
+      render(
+        <DashboardFilterPanel
+          {...defaultProps}
+          isEditMode={true}
+          onDashboardFiltersChange={onDashboardFiltersChange}
+          onSaveFilters={onSaveFilters}
+        />
+      )
+
+      await user.click(screen.getByTestId('remove-filter-1'))
+
+      expect(onDashboardFiltersChange).toHaveBeenCalledTimes(1)
+      await waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith('Failed to save filters:', expect.any(Error))
+      })
+
+      consoleError.mockRestore()
     })
   })
 

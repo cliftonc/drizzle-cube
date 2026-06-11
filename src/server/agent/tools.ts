@@ -186,8 +186,20 @@ export function getToolDefinitions(): ToolDefinition[] {
                 },
                 dashboardFilterMapping: {
                   type: 'array',
-                  items: { type: 'string' },
-                  description: 'Array of dashboard filter IDs that apply to this portlet'
+                  items: {
+                    anyOf: [
+                      { type: 'string' },
+                      {
+                        type: 'object',
+                        properties: {
+                          filterId: { type: 'string', description: 'Dashboard filter ID' },
+                          member: { type: 'string', description: 'Optional field to remap the filter to for this portlet (e.g. "Invoices.customerId")' }
+                        },
+                        required: ['filterId']
+                      }
+                    ]
+                  },
+                  description: 'Dashboard filters that apply to this portlet: filter IDs, or { filterId, member } entries to remap a filter to a different field for this portlet'
                 },
                 analysisType: {
                   type: 'string',
@@ -553,7 +565,7 @@ export function createToolExecutor(options: {
             id: p.id as string,
             title: p.title as string,
             analysisConfig,
-            dashboardFilterMapping: p.dashboardFilterMapping as string[] | undefined,
+            dashboardFilterMapping: p.dashboardFilterMapping as Array<string | { filterId: string; member?: string }> | undefined,
             w: p.w as number,
             h: p.h as number,
             x: p.x as number,

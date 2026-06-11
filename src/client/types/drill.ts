@@ -210,7 +210,7 @@ export interface UseDrillInteractionOptions {
   dashboardFilters?: import('../types').DashboardFilter[]
 
   /** Which dashboard filters apply to this portlet */
-  dashboardFilterMapping?: string[]
+  dashboardFilterMapping?: import('../types').DashboardFilterMapping
 
   /** Callback to update a dashboard filter */
   onDashboardFilterChange?: (filterId: string, filter: import('../types').Filter) => void

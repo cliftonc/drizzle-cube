@@ -47,6 +47,7 @@ import type {
   PortletConfig,
   RowLayout,
   DashboardFilter,
+  DashboardFilterMapping,
   DashboardGridSettings,
   DashboardLayoutMode,
 } from '../types'
@@ -180,7 +181,7 @@ export interface UseDashboardActions {
   // Filter Operations
   toggleFilterForPortlet: (portletId: string, filterId: string) => Promise<void>
   selectAllForFilter: (filterId: string) => Promise<void>
-  saveFilterConfig: (mapping: string[]) => Promise<void>
+  saveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>
 
   // Config Operations
   handlePaletteChange: (paletteName: string) => Promise<void>

@@ -5,8 +5,80 @@
  * Memoization should be handled at the component level using useMemo.
  */
 
-import type { Filter, DashboardFilter, CubeMeta, GroupFilter, DashboardConfig, SimpleFilter } from '../types'
+import type {
+  Filter,
+  DashboardFilter,
+  DashboardFilterMapping,
+  DashboardFilterMappingEntry,
+  CubeMeta,
+  GroupFilter,
+  DashboardConfig,
+  SimpleFilter
+} from '../types'
 import { ensureAnalysisConfig } from './configMigration'
+
+/**
+ * Normalize a portlet filter mapping to entry objects.
+ * Plain string entries (the legacy format) become { filterId } with no override.
+ */
+export function normalizeFilterMapping(
+  mapping: DashboardFilterMapping | undefined
+): DashboardFilterMappingEntry[] {
+  if (!mapping) return []
+  return mapping.map(entry =>
+    typeof entry === 'string' ? { filterId: entry } : entry
+  )
+}
+
+/**
+ * Serialize mapping entries for storage.
+ * Entries without a member override collapse back to plain strings so saved
+ * configs only change shape when an override is actually used.
+ */
+export function serializeFilterMapping(
+  entries: DashboardFilterMappingEntry[]
+): DashboardFilterMapping {
+  return entries.map(entry => (entry.member ? entry : entry.filterId))
+}
+
+/**
+ * Check whether a mapping (either format) includes a given dashboard filter
+ */
+export function mappingIncludesFilter(
+  mapping: DashboardFilterMapping | undefined,
+  filterId: string
+): boolean {
+  if (!mapping) return false
+  return mapping.some(entry =>
+    typeof entry === 'string' ? entry === filterId : entry.filterId === filterId
+  )
+}
+
+/**
+ * Get the per-portlet member override for a dashboard filter, if any
+ */
+export function getMappingMemberOverride(
+  mapping: DashboardFilterMapping | undefined,
+  filterId: string
+): string | undefined {
+  if (!mapping) return undefined
+  const entry = mapping.find(e =>
+    typeof e === 'string' ? e === filterId : e.filterId === filterId
+  )
+  return typeof entry === 'object' ? entry.member : undefined
+}
+
+/**
+ * Clone a filter with its member rewritten to the override field.
+ * Only SimpleFilters can be rewritten; GroupFilters pass through unchanged.
+ */
+export function applyMemberOverride(filter: Filter, member?: string): Filter {
+  if (!member) return filter
+  if ('member' in filter && 'operator' in filter) {
+    return { ...filter, member }
+  }
+  return filter
+}
 
 /**
  * Check if a filter should be included in the query (has valid values or doesn't require values)
@@ -47,13 +119,17 @@ export function shouldIncludeFilter(filter: Filter): boolean {
 /**
  * Get dashboard filters that should be applied to a portlet based on its mapping configuration
  *
+ * Mapping entries may carry a per-portlet member override, in which case the
+ * filter is applied with its member rewritten to the override field (operator
+ * and values stay shared across all portlets).
+ *
  * @param dashboardFilters - All available dashboard filters
- * @param filterMapping - Array of filter IDs that apply to this portlet
+ * @param filterMapping - The portlet's filter mapping (filter IDs or entries with member overrides)
  * @returns Array of filters that should be applied to the portlet
  */
 export function getApplicableDashboardFilters(
   dashboardFilters: DashboardFilter[] | undefined,
-  filterMapping: string[] | undefined
+  filterMapping: DashboardFilterMapping | undefined
 ): Filter[] {
   if (!dashboardFilters || !dashboardFilters.length) {
     return []
@@ -64,11 +140,12 @@ export function getApplicableDashboardFilters(
     return []
   }
 
-  // Compute filters that are in the mapping AND have valid values
+  // Compute filters that are in the mapping AND have valid values,
+  // rewriting the member where the mapping carries an override
   return dashboardFilters
-    .filter(df => filterMapping.includes(df.id))
+    .filter(df => mappingIncludesFilter(filterMapping, df.id))
     .filter(df => shouldIncludeFilter(df.filter))
-    .map(df => df.filter)
+    .map(df => applyMemberOverride(df.filter, getMappingMemberOverride(filterMapping, df.id)))
 }
 
 /**
@@ -209,34 +286,40 @@ function extractMemberNamesFromFilter(filter: Filter): string[] {
  */
 export function validatePortletFilterMapping(
   dashboardFilters: DashboardFilter[] | undefined,
-  filterMapping: string[] | undefined,
+  filterMapping: DashboardFilterMapping | undefined,
   cubeMeta: CubeMeta | null
 ): { isValid: boolean; invalidFilterIds: string[]; missingFilterIds: string[] } {
   if (!filterMapping || !filterMapping.length) {
     return { isValid: true, invalidFilterIds: [], missingFilterIds: [] }
   }
 
+  const entries = normalizeFilterMapping(filterMapping)
+
   if (!dashboardFilters || !dashboardFilters.length) {
     // Mapping references filters that don't exist
     return {
       isValid: false,
       invalidFilterIds: [],
-      missingFilterIds: filterMapping
+      missingFilterIds: entries.map(e => e.filterId)
     }
   }
 
   const invalidFilterIds: string[] = []
   const missingFilterIds: string[] = []
 
-  filterMapping.forEach(filterId => {
+  entries.forEach(({ filterId, member }) => {
     const dashboardFilter = dashboardFilters.find(df => df.id === filterId)
 
     if (!dashboardFilter) {
       // Filter ID in mapping doesn't exist in dashboard filters
       missingFilterIds.push(filterId)
+    } else if (member && !('member' in dashboardFilter.filter)) {
+      // A member override on a group filter cannot be applied
+      invalidFilterIds.push(filterId)
     } else {
-      // Check if filter is valid for the cube metadata
-      const isValid = validateFilterForCube(dashboardFilter.filter, cubeMeta)
+      // Validate the effective filter (with any member override applied)
+      const effectiveFilter = applyMemberOverride(dashboardFilter.filter, member)
+      const isValid = validateFilterForCube(effectiveFilter, cubeMeta)
       if (!isValid) {
         invalidFilterIds.push(filterId)
       }
@@ -378,7 +461,7 @@ function getDateRangeFromFilter(filter: SimpleFilter): string[] | string | undef
  */
 export function applyUniversalTimeFilters(
   dashboardFilters: DashboardFilter[] | undefined,
-  filterMapping: string[] | undefined,
+  filterMapping: DashboardFilterMapping | undefined,
   portletTimeDimensions: TimeDimension[] | undefined
 ): TimeDimension[] | undefined {
   // Return as-is if no time dimensions in portlet (skip silently)
@@ -393,7 +476,7 @@ export function applyUniversalTimeFilters(
 
   // Find applicable universal time filters that have valid date ranges
   const universalTimeFilters = dashboardFilters
-    ?.filter(df => df.isUniversalTime && filterMapping.includes(df.id))
+    ?.filter(df => df.isUniversalTime && mappingIncludesFilter(filterMapping, df.id))
     ?.filter(df => {
       // Must be a SimpleFilter with a valid dateRange
       if (!('member' in df.filter)) return false

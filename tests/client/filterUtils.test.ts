@@ -10,9 +10,14 @@ import {
   validateFilterForCube,
   validatePortletFilterMapping,
   extractDashboardFields,
-  applyUniversalTimeFilters
+  applyUniversalTimeFilters,
+  normalizeFilterMapping,
+  serializeFilterMapping,
+  mappingIncludesFilter,
+  getMappingMemberOverride,
+  applyMemberOverride
 } from '../../src/client/utils/filterUtils'
-import type { DashboardFilter, CubeMeta, DashboardConfig, Filter, SimpleFilter } from '../../src/client/types'
+import type { DashboardFilter, DashboardFilterMapping, CubeMeta, DashboardConfig, Filter, SimpleFilter } from '../../src/client/types'
 
 // Helper to create simple filter
 function createSimpleFilter(member: string, values: string[] = ['value1']): SimpleFilter {
@@ -265,6 +270,202 @@ describe('filterUtils', () => {
       const result = validatePortletFilterMapping(undefined, ['filter-1'], cubeMeta)
       expect(result.isValid).toBe(false)
       expect(result.missingFilterIds).toContain('filter-1')
+    })
+
+    it('should validate the effective filter when a member override is set', () => {
+      const mapping: DashboardFilterMapping = [{ filterId: 'filter-1', member: 'Sales.region' }]
+      const result = validatePortletFilterMapping(dashboardFilters, mapping, cubeMeta)
+      expect(result.isValid).toBe(true)
+    })
+
+    it('should flag a member override pointing at an unknown field', () => {
+      const mapping: DashboardFilterMapping = [{ filterId: 'filter-1', member: 'Unknown.field' }]
+      const result = validatePortletFilterMapping(dashboardFilters, mapping, cubeMeta)
+      expect(result.isValid).toBe(false)
+      expect(result.invalidFilterIds).toContain('filter-1')
+    })
+
+    it('should flag a member override set on a group filter', () => {
+      const groupDashboardFilters: DashboardFilter[] = [
+        {
+          id: 'filter-group',
+          label: 'Group',
+          filter: {
+            type: 'and',
+            filters: [createSimpleFilter('Sales.category', ['A'])]
+          }
+        }
+      ]
+      const mapping: DashboardFilterMapping = [{ filterId: 'filter-group', member: 'Sales.region' }]
+      const result = validatePortletFilterMapping(groupDashboardFilters, mapping, cubeMeta)
+      expect(result.isValid).toBe(false)
+      expect(result.invalidFilterIds).toContain('filter-group')
+    })
+  })
+
+  describe('filter mapping helpers', () => {
+    describe('normalizeFilterMapping', () => {
+      it('should return empty array for undefined', () => {
+        expect(normalizeFilterMapping(undefined)).toEqual([])
+      })
+
+      it('should convert plain strings to entries', () => {
+        expect(normalizeFilterMapping(['filter-1', 'filter-2'])).toEqual([
+          { filterId: 'filter-1' },
+          { filterId: 'filter-2' }
+        ])
+      })
+
+      it('should pass object entries through and handle mixed mappings', () => {
+        const mapping: DashboardFilterMapping = [
+          'filter-1',
+          { filterId: 'filter-2', member: 'Invoices.customerId' }
+        ]
+        expect(normalizeFilterMapping(mapping)).toEqual([
+          { filterId: 'filter-1' },
+          { filterId: 'filter-2', member: 'Invoices.customerId' }
+        ])
+      })
+    })
+
+    describe('serializeFilterMapping', () => {
+      it('should collapse entries without overrides to plain strings', () => {
+        expect(serializeFilterMapping([
+          { filterId: 'filter-1' },
+          { filterId: 'filter-2', member: 'Invoices.customerId' }
+        ])).toEqual([
+          'filter-1',
+          { filterId: 'filter-2', member: 'Invoices.customerId' }
+        ])
+      })
+
+      it('should round-trip a legacy string mapping unchanged', () => {
+        const legacy: DashboardFilterMapping = ['filter-1', 'filter-2']
+        expect(serializeFilterMapping(normalizeFilterMapping(legacy))).toEqual(legacy)
+      })
+    })
+
+    describe('mappingIncludesFilter', () => {
+      const mapping: DashboardFilterMapping = [
+        'filter-1',
+        { filterId: 'filter-2', member: 'Invoices.customerId' }
+      ]
+
+      it('should match plain string entries', () => {
+        expect(mappingIncludesFilter(mapping, 'filter-1')).toBe(true)
+      })
+
+      it('should match object entries', () => {
+        expect(mappingIncludesFilter(mapping, 'filter-2')).toBe(true)
+      })
+
+      it('should return false for absent filters and undefined mapping', () => {
+        expect(mappingIncludesFilter(mapping, 'filter-3')).toBe(false)
+        expect(mappingIncludesFilter(undefined, 'filter-1')).toBe(false)
+      })
+    })
+
+    describe('getMappingMemberOverride', () => {
+      const mapping: DashboardFilterMapping = [
+        'filter-1',
+        { filterId: 'filter-2', member: 'Invoices.customerId' },
+        { filterId: 'filter-3' }
+      ]
+
+      it('should return the override for object entries that have one', () => {
+        expect(getMappingMemberOverride(mapping, 'filter-2')).toBe('Invoices.customerId')
+      })
+
+      it('should return undefined for string entries, no-override entries, and absent filters', () => {
+        expect(getMappingMemberOverride(mapping, 'filter-1')).toBeUndefined()
+        expect(getMappingMemberOverride(mapping, 'filter-3')).toBeUndefined()
+        expect(getMappingMemberOverride(mapping, 'filter-9')).toBeUndefined()
+        expect(getMappingMemberOverride(undefined, 'filter-1')).toBeUndefined()
+      })
+    })
+
+    describe('applyMemberOverride', () => {
+      it('should clone a simple filter with the member rewritten', () => {
+        const original = createSimpleFilter('Orders.customerId', ['42'])
+        const result = applyMemberOverride(original, 'Invoices.customerId')
+
+        expect(result).toEqual({
+          member: 'Invoices.customerId',
+          operator: 'equals',
+          values: ['42']
+        })
+        // Original is not mutated
+        expect(original.member).toBe('Orders.customerId')
+      })
+
+      it('should return the filter unchanged when no override is given', () => {
+        const original = createSimpleFilter('Orders.customerId')
+        expect(applyMemberOverride(original, undefined)).toBe(original)
+      })
+
+      it('should pass group filters through unchanged', () => {
+        const group: Filter = {
+          type: 'and',
+          filters: [createSimpleFilter('Sales.category', ['A'])]
+        }
+        expect(applyMemberOverride(group, 'Sales.region')).toBe(group)
+      })
+    })
+
+    describe('getApplicableDashboardFilters with member overrides', () => {
+      it('should rewrite the member for entries with an override', () => {
+        const dashboardFilters = [
+          createDashboardFilter('filter-1', 'Orders.customerId', ['42']),
+          createDashboardFilter('filter-2', 'Sales.region', ['US'])
+        ]
+        const mapping: DashboardFilterMapping = [
+          { filterId: 'filter-1', member: 'Invoices.customerId' },
+          'filter-2'
+        ]
+
+        const result = getApplicableDashboardFilters(dashboardFilters, mapping)
+
+        expect(result).toHaveLength(2)
+        expect(result[0]).toMatchObject({ member: 'Invoices.customerId', operator: 'equals', values: ['42'] })
+        expect(result[1]).toMatchObject({ member: 'Sales.region', values: ['US'] })
+        // The dashboard filter itself is untouched
+        expect((dashboardFilters[0].filter as SimpleFilter).member).toBe('Orders.customerId')
+      })
+
+      it('should still exclude overridden filters with empty values', () => {
+        const dashboardFilters = [createDashboardFilter('filter-1', 'Orders.customerId', [])]
+        const mapping: DashboardFilterMapping = [{ filterId: 'filter-1', member: 'Invoices.customerId' }]
+
+        expect(getApplicableDashboardFilters(dashboardFilters, mapping)).toEqual([])
+      })
+    })
+
+    describe('applyUniversalTimeFilters with mixed mapping shapes', () => {
+      it('should apply a mapped universal time filter referenced by an object entry', () => {
+        const dashboardFilters: DashboardFilter[] = [
+          {
+            id: 'time-1',
+            label: 'Date Range',
+            isUniversalTime: true,
+            filter: {
+              member: '__universal_time__',
+              operator: 'inDateRange',
+              values: ['last 30 days']
+            }
+          }
+        ]
+        const timeDimensions = [{ dimension: 'Orders.createdAt', granularity: 'month' }]
+
+        const result = applyUniversalTimeFilters(
+          dashboardFilters,
+          [{ filterId: 'time-1' }],
+          timeDimensions
+        )
+
+        expect(result).toEqual([
+          { dimension: 'Orders.createdAt', granularity: 'month', dateRange: 'last 30 days' }
+        ])
+      })
     })
   })
 

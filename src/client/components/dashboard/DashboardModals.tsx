@@ -19,6 +19,7 @@ export default function DashboardModals() {
     config,
     colorPalette,
     dashboardFilters,
+    schema,
     isPortletModalOpen,
     editingPortlet,
     isTextModalOpen,
@@ -66,6 +67,8 @@ export default function DashboardModals() {
         currentMapping={filterConfigPortlet?.dashboardFilterMapping || []}
         onSave={handleSaveFilterConfig}
         portletTitle={filterConfigPortlet?.title || ''}
+        schema={schema || null}
+        portlet={filterConfigPortlet}
       />
 
       {/* Delete Confirmation Modal */}
