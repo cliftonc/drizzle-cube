@@ -1414,6 +1414,7 @@
   "dashboard.editModeHint": "Drag • Resize • Automatisch-save",
   "dashboard.filterSelectionMode": "Filter Selection Modus - Klik portlets naar toggle '{filterLabel}'",
   "dashboard.filterSelectionEscHint": "• Druk op Enter of Esc om op te slaan",
+  "dashboard.filterFieldChipHint": "Klik om te wijzigen op welk veld dit filter wordt toegepast voor deze portlet",
   "dashboard.editPortlet": "Bewerken Portlet",
   "dashboard.addNewPortlet": "Voeg Nieuw Portlet",
   "dashboard.updatePortlet": "Bijwerken Portlet",

@@ -164,7 +164,12 @@ export default function PortletFilterConfigModal({
               <div className="dc:flex dc:items-center dc:justify-between dc:mb-4 dc:pb-2 dc:border-b border-dc-border">
                 <span className="dc:text-sm dc:font-medium text-dc-text">{t('portlet.filterConfig.availableFilters')}</span>
                 <span className="dc:text-xs text-dc-text-secondary">
-                  {t('portlet.filterConfig.selectedCount', { selected: selectedEntries.length, total: dashboardFilters.length })}
+                  {t('portlet.filterConfig.selectedCount', {
+                    // Count only entries for filters that still exist - stale
+                    // mapping entries (deleted filters) aren't shown in the list
+                    selected: selectedEntries.filter(e => dashboardFilters.some(df => df.id === e.filterId)).length,
+                    total: dashboardFilters.length
+                  })}
                 </span>
               </div>
 

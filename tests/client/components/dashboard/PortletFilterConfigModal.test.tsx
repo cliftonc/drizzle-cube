@@ -111,6 +111,17 @@ describe('PortletFilterConfigModal', () => {
 
       expect(screen.getByText('2 of 3 selected')).toBeInTheDocument()
     })
+
+    it('should not count stale mapping entries for deleted filters', () => {
+      render(
+        <PortletFilterConfigModal
+          {...defaultProps}
+          currentMapping={['filter-1', 'deleted-filter-a', 'deleted-filter-b']}
+        />
+      )
+
+      expect(screen.getByText('1 of 3 selected')).toBeInTheDocument()
+    })
   })
 
   // ==========================================================================

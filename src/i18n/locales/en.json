@@ -1509,6 +1509,7 @@
   "dashboard.editModeHint": "Drag \u2022 Resize \u2022 Auto-save",
   "dashboard.filterSelectionMode": "Filter Selection Mode - Click portlets to toggle '{filterLabel}'",
   "dashboard.filterSelectionEscHint": "\u2022 Press Enter or Esc to save",
+  "dashboard.filterFieldChipHint": "Click to change which field this filter applies to for this portlet",
   "dashboard.editPortlet": "Edit Portlet",
   "dashboard.addNewPortlet": "Add New Portlet",
   "dashboard.updatePortlet": "Update Portlet",

@@ -491,6 +491,78 @@ describe('DashboardPortletCard', () => {
     })
   })
 
+  describe('filter selection mode field chip', () => {
+    const selectionDashboardFilters = [
+      {
+        id: 'filter-1',
+        label: 'Employee',
+        filter: { member: 'Employees.name', operator: 'contains' as const, values: ['Engineering'] }
+      }
+    ]
+
+    // Enters filter selection mode for filter-1 via the store
+    function SelectFilter({ children }: { children: React.ReactNode }) {
+      const setSelectedFilterId = useDashboardStore((s) => s.setSelectedFilterId)
+      React.useEffect(() => {
+        setSelectedFilterId('filter-1')
+      }, [setSelectedFilterId])
+      return <>{children}</>
+    }
+
+    function renderInSelectionMode(props: ReturnType<typeof createDefaultProps>) {
+      return render(
+        <TestWrapperEditMode>
+          <SelectFilter>
+            <DashboardPortletCard {...props} dashboardFilters={selectionDashboardFilters} />
+          </SelectFilter>
+        </TestWrapperEditMode>
+      )
+    }
+
+    it('should show the filter field chip on portlets that have the selected filter', () => {
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: ['filter-1'] })
+
+      renderInSelectionMode(props)
+
+      expect(screen.getByText('Employees.name')).toBeInTheDocument()
+    })
+
+    it('should show the override field when the mapping has a member override', () => {
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({
+        dashboardFilterMapping: [{ filterId: 'filter-1', member: 'Departments.name' }]
+      })
+
+      renderInSelectionMode(props)
+
+      expect(screen.getByText('Departments.name')).toBeInTheDocument()
+      expect(screen.queryByText('Employees.name')).not.toBeInTheDocument()
+    })
+
+    it('should not show the chip when the portlet does not have the selected filter', () => {
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: [] })
+
+      renderInSelectionMode(props)
+
+      expect(screen.queryByText('Employees.name')).not.toBeInTheDocument()
+    })
+
+    it('should open the filter config modal when the chip is clicked, without toggling the filter', async () => {
+      const user = userEvent.setup()
+      const props = createDefaultProps()
+      props.portlet = createMockPortlet({ dashboardFilterMapping: ['filter-1'] })
+
+      renderInSelectionMode(props)
+
+      await user.click(screen.getByText('Employees.name'))
+
+      expect(props.callbacks.onOpenFilterConfig).toHaveBeenCalledWith(props.portlet)
+      expect(props.callbacks.onToggleFilter).not.toHaveBeenCalled()
+    })
+  })
+
   describe('data-portlet-id attribute', () => {
     it('should set data-portlet-id attribute on container', () => {
       const props = createDefaultProps()
