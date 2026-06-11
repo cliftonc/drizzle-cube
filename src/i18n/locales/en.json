@@ -1508,7 +1508,7 @@
   "dashboard.desktopRequired": "Desktop view required for editing",
   "dashboard.editModeHint": "Drag \u2022 Resize \u2022 Auto-save",
   "dashboard.filterSelectionMode": "Filter Selection Mode - Click portlets to toggle '{filterLabel}'",
-  "dashboard.filterSelectionEscHint": "\u2022 Press ESC to exit",
+  "dashboard.filterSelectionEscHint": "\u2022 Press Enter or Esc to save",
   "dashboard.editPortlet": "Edit Portlet",
   "dashboard.addNewPortlet": "Add New Portlet",
   "dashboard.updatePortlet": "Update Portlet",

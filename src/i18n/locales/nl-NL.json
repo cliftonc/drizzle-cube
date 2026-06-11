@@ -1413,7 +1413,7 @@
   "dashboard.desktopRequired": "Desktop view vereist voor editing",
   "dashboard.editModeHint": "Drag • Resize • Automatisch-save",
   "dashboard.filterSelectionMode": "Filter Selection Modus - Klik portlets naar toggle '{filterLabel}'",
-  "dashboard.filterSelectionEscHint": "• Druk ESC naar exit",
+  "dashboard.filterSelectionEscHint": "• Druk op Enter of Esc om op te slaan",
   "dashboard.editPortlet": "Bewerken Portlet",
   "dashboard.addNewPortlet": "Voeg Nieuw Portlet",
   "dashboard.updatePortlet": "Bijwerken Portlet",

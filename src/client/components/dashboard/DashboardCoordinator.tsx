@@ -234,10 +234,18 @@ export default function DashboardCoordinator({
     return () => clearTimeout(timer)
   }, [isInitialized, config.portlets, actions])
 
-  // Set up ESC key listener for filter selection mode
+  // Set up Enter/ESC key listener for filter selection mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedFilterId) {
+      if (!selectedFilterId) return
+
+      if (e.key === 'Escape') {
+        actions.exitFilterSelectionMode()
+      } else if (e.key === 'Enter') {
+        // Ignore Enter on interactive elements so keyboard activation
+        // (e.g. pressing a focused button) doesn't also exit the mode
+        const target = e.target as HTMLElement | null
+        if (target?.closest('button, a, input, select, textarea, [contenteditable="true"]')) return
         actions.exitFilterSelectionMode()
       }
     }
