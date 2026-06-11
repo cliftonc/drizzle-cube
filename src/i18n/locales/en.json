@@ -1552,6 +1552,10 @@
   "portlet.filterConfig.groupFilter": "{type} group with {count} filter",
   "portlet.filterConfig.groupFilterPlural": "{type} group with {count} filters",
   "portlet.filterConfig.applyFilters": "Apply Filters",
+  "portlet.filterConfig.applyToField": "Apply to field",
+  "portlet.filterConfig.applyToFieldDefault": "Default ({field})",
+  "portlet.filterConfig.mappedTo": "Mapped to {field}",
+  "portlet.filterConfig.mappedFieldMissing": "The mapped field \"{field}\" is no longer available in the schema",
 
   "textPortlet.editText": "Edit Text",
   "textPortlet.addText": "Add Text",

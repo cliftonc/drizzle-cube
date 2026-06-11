@@ -17,6 +17,7 @@ import {
   buildDrillQuery,
   getMeasureDrillMembers
 } from '../utils/drillQueryBuilder'
+import { mappingIncludesFilter } from '../utils/filterUtils'
 
 /**
  * Hook for managing drill-down interaction
@@ -89,7 +90,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
 
     // Check for universal time filter
     return dashboardFilters.some(f =>
-      f.isUniversalTime && dashboardFilterMapping.includes(f.id)
+      f.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, f.id)
     )
   }, [dashboardFilters, dashboardFilterMapping])
 

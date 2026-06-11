@@ -1192,6 +1192,111 @@ describe('useDashboardHook', () => {
       const newConfig = onConfigChange.mock.calls[0][0] as DashboardConfig
       expect(newConfig.portlets[0].dashboardFilterMapping).toEqual(['filter-1', 'filter-2'])
     })
+
+    it('should toggle off a filter mapped via an object entry with member override', async () => {
+      const configWithOverride: DashboardConfig = {
+        ...mockConfig,
+        portlets: [{
+          ...mockPortlet,
+          dashboardFilterMapping: [{ filterId: 'filter-1', member: 'Other.field' }, 'filter-2'],
+        }],
+      }
+
+      const onConfigChange = vi.fn()
+      const onSave = vi.fn().mockResolvedValue(undefined)
+      const { wrapper } = createDashboardWrapper()
+      const { result } = renderHook(
+        () => useDashboard({
+          config: configWithOverride,
+          dashboardFilters: mockDashboardFilters,
+          gridSettings: mockGridSettings,
+          onConfigChange,
+          onSave,
+        }),
+        { wrapper }
+      )
+
+      await act(async () => {
+        await result.current.actions.toggleFilterForPortlet('portlet-1', 'filter-1')
+      })
+
+      expect(onConfigChange).toHaveBeenCalled()
+      const newConfig = onConfigChange.mock.calls[0][0] as DashboardConfig
+      // Object entry removed, other entries untouched
+      expect(newConfig.portlets[0].dashboardFilterMapping).toEqual(['filter-2'])
+    })
+
+    it('should not duplicate a filter in select-all when mapped via an object entry', async () => {
+      const configWithOverride: DashboardConfig = {
+        ...mockConfig,
+        portlets: [{
+          ...mockPortlet,
+          dashboardFilterMapping: [{ filterId: 'filter-1', member: 'Other.field' }],
+        }],
+      }
+
+      const onConfigChange = vi.fn()
+      const onSave = vi.fn().mockResolvedValue(undefined)
+      const { wrapper } = createDashboardWrapper()
+      const { result } = renderHook(
+        () => useDashboard({
+          config: configWithOverride,
+          dashboardFilters: mockDashboardFilters,
+          gridSettings: mockGridSettings,
+          onConfigChange,
+          onSave,
+        }),
+        { wrapper }
+      )
+
+      await act(async () => {
+        await result.current.actions.selectAllForFilter('filter-1')
+      })
+
+      // Portlet already had the filter (via object entry) - mapping unchanged,
+      // and in this single-portlet config nothing changed so no save fires
+      const lastCall = onConfigChange.mock.calls.at(-1)
+      if (lastCall) {
+        const newConfig = lastCall[0] as DashboardConfig
+        expect(newConfig.portlets[0].dashboardFilterMapping).toEqual([
+          { filterId: 'filter-1', member: 'Other.field' }
+        ])
+      }
+    })
+
+    it('should save filter config with object entries (member overrides)', async () => {
+      const onConfigChange = vi.fn()
+      const onSave = vi.fn().mockResolvedValue(undefined)
+      const { wrapper } = createDashboardWrapper()
+      const { result } = renderHook(
+        () => useDashboard({
+          config: mockConfig,
+          dashboardFilters: mockDashboardFilters,
+          gridSettings: mockGridSettings,
+          onConfigChange,
+          onSave,
+        }),
+        { wrapper }
+      )
+
+      act(() => {
+        result.current.actions.openFilterConfig(mockPortlet)
+      })
+
+      await act(async () => {
+        await result.current.actions.saveFilterConfig([
+          'filter-1',
+          { filterId: 'filter-2', member: 'Invoices.customerId' }
+        ])
+      })
+
+      expect(onConfigChange).toHaveBeenCalled()
+      const newConfig = onConfigChange.mock.calls[0][0] as DashboardConfig
+      expect(newConfig.portlets[0].dashboardFilterMapping).toEqual([
+        'filter-1',
+        { filterId: 'filter-2', member: 'Invoices.customerId' }
+      ])
+    })
   })
 
   // ==========================================================================

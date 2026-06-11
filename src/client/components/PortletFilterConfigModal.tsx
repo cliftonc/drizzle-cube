@@ -1,19 +1,30 @@
 /**
  * Portlet Filter Configuration Modal
- * Allows users to configure which dashboard filters apply to a specific portlet
+ * Allows users to configure which dashboard filters apply to a specific portlet,
+ * and optionally remap a filter to a different (join-reachable) field for this portlet
  */
 
-import { useState, useEffect } from 'react'
-import type { DashboardFilter } from '../types'
+import { useState, useEffect, useMemo } from 'react'
+import type {
+  DashboardFilter,
+  DashboardFilterMapping,
+  DashboardFilterMappingEntry,
+  CubeMeta,
+  PortletConfig
+} from '../types'
+import { normalizeFilterMapping, serializeFilterMapping } from '../utils/filterUtils'
+import { getReachableDimensionOptions } from '../utils/joinReachability'
 import { useTranslation } from '../hooks/useTranslation'
 
 interface PortletFilterConfigModalProps {
   isOpen: boolean
   onClose: () => void
   dashboardFilters: DashboardFilter[]
-  currentMapping: string[]
-  onSave: (mapping: string[]) => void
+  currentMapping: DashboardFilterMapping
+  onSave: (mapping: DashboardFilterMapping) => void
   portletTitle: string
+  schema?: CubeMeta | null
+  portlet?: PortletConfig | null
 }
 
 export default function PortletFilterConfigModal({
@@ -22,35 +33,72 @@ export default function PortletFilterConfigModal({
   dashboardFilters = [],
   currentMapping = [],
   onSave,
-  portletTitle
+  portletTitle,
+  schema = null,
+  portlet = null
 }: PortletFilterConfigModalProps) {
   const { t } = useTranslation()
-  const [selectedFilters, setSelectedFilters] = useState<string[]>(currentMapping)
+  const [selectedEntries, setSelectedEntries] = useState<DashboardFilterMappingEntry[]>(
+    () => normalizeFilterMapping(currentMapping)
+  )
 
-  // Update local state when props change
+  // Update local state when props change. Bail out (return the previous
+  // state) when the content is unchanged: the prop may be a fresh array
+  // identity on every render, and always setting fresh state would loop.
   useEffect(() => {
-    setSelectedFilters(currentMapping)
+    setSelectedEntries(prev => {
+      const next = normalizeFilterMapping(currentMapping)
+      return JSON.stringify(next) === JSON.stringify(prev) ? prev : next
+    })
   }, [currentMapping, isOpen])
 
   const handleToggleFilter = (filterId: string) => {
-    setSelectedFilters(prev => {
-      if (prev.includes(filterId)) {
-        return prev.filter(id => id !== filterId)
+    setSelectedEntries(prev => {
+      if (prev.some(e => e.filterId === filterId)) {
+        return prev.filter(e => e.filterId !== filterId)
       } else {
-        return [...prev, filterId]
+        return [...prev, { filterId }]
       }
     })
   }
 
+  const handleMemberChange = (filterId: string, member: string) => {
+    setSelectedEntries(prev =>
+      prev.map(e =>
+        e.filterId === filterId
+          ? (member ? { filterId, member } : { filterId })
+          : e
+      )
+    )
+  }
+
   const handleSave = () => {
-    onSave(selectedFilters)
+    onSave(serializeFilterMapping(selectedEntries))
     onClose()
   }
 
   const handleCancel = () => {
-    setSelectedFilters(currentMapping) // Reset to original
+    setSelectedEntries(normalizeFilterMapping(currentMapping)) // Reset to original
     onClose()
   }
+
+  // Reachable, type-compatible field options per simple filter member.
+  // Keyed by the filter's own member so filters sharing a member share options.
+  const fieldOptionsByMember = useMemo(() => {
+    const result = new Map<string, ReturnType<typeof getReachableDimensionOptions>>()
+    if (!schema || !portlet) return result
+
+    dashboardFilters.forEach(df => {
+      if (df.isUniversalTime) return
+      if (!('member' in df.filter) || !df.filter.member) return
+      if (result.has(df.filter.member)) return
+      result.set(
+        df.filter.member,
+        getReachableDimensionOptions(schema, portlet, { sameTypeAs: df.filter.member })
+      )
+    })
+    return result
+  }, [schema, portlet, dashboardFilters])
 
   // Format filter preview text
   const formatFilterPreview = (filter: DashboardFilter): string => {
@@ -116,12 +164,22 @@ export default function PortletFilterConfigModal({
               <div className="dc:flex dc:items-center dc:justify-between dc:mb-4 dc:pb-2 dc:border-b border-dc-border">
                 <span className="dc:text-sm dc:font-medium text-dc-text">{t('portlet.filterConfig.availableFilters')}</span>
                 <span className="dc:text-xs text-dc-text-secondary">
-                  {t('portlet.filterConfig.selectedCount', { selected: selectedFilters.length, total: dashboardFilters.length })}
+                  {t('portlet.filterConfig.selectedCount', { selected: selectedEntries.length, total: dashboardFilters.length })}
                 </span>
               </div>
 
               {dashboardFilters.map(filter => {
-                const isSelected = selectedFilters.includes(filter.id)
+                const entry = selectedEntries.find(e => e.filterId === filter.id)
+                const isSelected = !!entry
+                const isSimpleFilter = !!filter.filter && 'member' in filter.filter && !!filter.filter.member
+                const canRemap = isSelected && isSimpleFilter && !filter.isUniversalTime
+                const fieldOptions = canRemap
+                  ? fieldOptionsByMember.get((filter.filter as { member: string }).member) || []
+                  : []
+                // A saved override pointing at a field that's no longer offered
+                // (schema changed) is kept selected, with a warning
+                const overrideIsStale = !!entry?.member &&
+                  !fieldOptions.some(group => group.dimensions.some(d => d.name === entry.member))
 
                 return (
                   <label
@@ -157,10 +215,51 @@ export default function PortletFilterConfigModal({
                             {t('portlet.filterConfig.applied')}
                           </span>
                         )}
+                        {entry?.member && (
+                          <span
+                            className="dc:px-2 dc:py-0.5 dc:text-xs dc:rounded-full bg-dc-accent-bg text-dc-accent dc:truncate"
+                            title={entry.member}
+                          >
+                            {t('portlet.filterConfig.mappedTo', { field: entry.member })}
+                          </span>
+                        )}
                       </div>
                       <div className="dc:mt-1 dc:text-xs text-dc-text-secondary dc:break-words">
                         {formatFilterPreview(filter)}
                       </div>
+                      {canRemap && fieldOptions.length > 0 && (
+                        <div className="dc:mt-2" onClick={(e) => e.preventDefault()}>
+                          <label className="dc:block dc:text-xs dc:font-medium text-dc-text-secondary dc:mb-1">
+                            {t('portlet.filterConfig.applyToField')}
+                          </label>
+                          <select
+                            value={entry?.member || ''}
+                            onChange={(e) => handleMemberChange(filter.id, e.target.value)}
+                            className="dc:w-full dc:text-sm dc:rounded-md dc:border border-dc-border bg-dc-surface text-dc-text dc:px-2 dc:py-1.5 dc:focus:ring-2 focus:ring-dc-primary"
+                          >
+                            <option value="">
+                              {t('portlet.filterConfig.applyToFieldDefault', { field: (filter.filter as { member: string }).member })}
+                            </option>
+                            {overrideIsStale && entry?.member && (
+                              <option value={entry.member}>{entry.member}</option>
+                            )}
+                            {fieldOptions.map(group => (
+                              <optgroup key={group.cubeName} label={group.cubeTitle}>
+                                {group.dimensions.map(dimension => (
+                                  <option key={dimension.name} value={dimension.name}>
+                                    {dimension.title || dimension.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                          </select>
+                          {overrideIsStale && (
+                            <p className="dc:mt-1 dc:text-xs text-dc-warning">
+                              {t('portlet.filterConfig.mappedFieldMissing', { field: entry?.member || '' })}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </label>
                 )

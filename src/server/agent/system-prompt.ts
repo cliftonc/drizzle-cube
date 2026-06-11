@@ -269,6 +269,7 @@ export function buildAgentSystemPrompt(metadata: CubeMetadata[]): string {
     '- Add dimension filters for key fields used across portlets (e.g., department, status, region)',
     '- Use human-readable labels (e.g., "Department" not "Employees.departmentName")',
     '- Map filters to portlets using `dashboardFilterMapping` — list the filter IDs that apply',
+    '- To apply a filter to a different field for one portlet, use `{ filterId, member }` instead of a plain ID (e.g. remap a Customer filter to `Invoices.customerId`); the target field must be join-reachable from the portlet query',
     '- When promoting a hardcoded filter to a dashboard filter, REMOVE that filter from the portlet query',
     '',
     '### Analysis Types',

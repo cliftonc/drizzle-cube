@@ -27,6 +27,7 @@ import type {
   DashboardConfig,
   PortletConfig,
   DashboardFilter,
+  DashboardFilterMapping,
   CubeMeta,
   DashboardLayoutMode,
   DashboardGridSettings,
@@ -142,7 +143,7 @@ export interface DashboardContextValue {
   handlePaletteChange: (paletteName: string) => Promise<void>
   handleFilterSelect: (filterId: string) => void
   handleSelectAllForFilter: (filterId: string) => Promise<void>
-  handleSaveFilterConfig: (mapping: string[]) => Promise<void>
+  handleSaveFilterConfig: (mapping: DashboardFilterMapping) => Promise<void>
   handlePortletSave: (portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => Promise<void>
   handlePortletRefresh: (portletId: string, options?: { bustCache?: boolean }) => void
   handleLayoutChange: (layout: Layout) => void

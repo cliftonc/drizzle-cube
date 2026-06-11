@@ -23,7 +23,7 @@ import type { ServerFlowQuery } from '../types/flow'
 import { isServerFlowQuery } from '../types/flow'
 import type { ServerRetentionQuery } from '../types/retention'
 import { isServerRetentionQuery } from '../types/retention'
-import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters } from '../utils/filterUtils'
+import { getApplicableDashboardFilters, mergeDashboardAndPortletFilters, applyUniversalTimeFilters, mappingIncludesFilter } from '../utils/filterUtils'
 import { cleanQueryForServer } from '../shared/utils'
 
 
@@ -149,7 +149,7 @@ const AnalyticsPortlet = React.memo(forwardRef<AnalyticsPortletRef, AnalyticsPor
 
         // Apply universal time filters as inDateRange filter on step 0
         const universalTimeFilters = dashboardFilters?.filter(df =>
-          df.isUniversalTime && dashboardFilterMapping?.includes(df.id)
+          df.isUniversalTime && mappingIncludesFilter(dashboardFilterMapping, df.id)
         )
         if (universalTimeFilters && universalTimeFilters.length > 0 && modifiedFunnel.funnel.steps.length > 0) {
           const timeFilter = universalTimeFilters[0]

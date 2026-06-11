@@ -308,7 +308,7 @@ export interface PortletConfig {
   chartConfig?: ChartAxisConfig
   /** @deprecated Use analysisConfig.charts[mode].displayConfig instead */
   displayConfig?: ChartDisplayConfig
-  dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
+  dashboardFilterMapping?: DashboardFilterMapping // Dashboard filters that apply to this portlet (IDs or entries with member overrides)
   eagerLoad?: boolean // Force immediate loading (overrides dashboard lazy loading setting)
   /** @deprecated Use analysisConfig.analysisType instead */
   analysisType?: AnalysisType // Optional - defaults to 'query' when undefined (backward compatible)
@@ -435,6 +435,18 @@ export interface DashboardFilter {
   isUniversalTime?: boolean // When true, applies to all timeDimensions in portlets (ignores member field)
 }
 
+// Mapping entry connecting a dashboard filter to a portlet, optionally
+// rewriting the filter's member to a different field for that portlet
+export interface DashboardFilterMappingEntry {
+  filterId: string // The dashboard filter this entry refers to
+  member?: string // When set, the filter's member is rewritten to this field for this portlet (SimpleFilter only)
+}
+
+// A portlet's dashboard filter mapping. Plain strings (filter IDs) remain
+// supported for backward compatibility with saved dashboards; object entries
+// are only needed when a per-portlet member override is used.
+export type DashboardFilterMapping = Array<string | DashboardFilterMappingEntry>
+
 // Cube query types
 export interface CubeQuery {
   measures?: string[]
@@ -524,7 +536,7 @@ export interface AnalyticsPortletProps {
   chartConfig?: ChartAxisConfig
   displayConfig?: ChartDisplayConfig
   dashboardFilters?: DashboardFilter[] // Dashboard-level filters to merge with portlet query
-  dashboardFilterMapping?: string[] // Array of dashboard filter IDs that apply to this portlet
+  dashboardFilterMapping?: DashboardFilterMapping // Dashboard filters that apply to this portlet (IDs or entries with member overrides)
   eagerLoad?: boolean // Force immediate loading (default: false, lazy load enabled)
   isVisible?: boolean // Whether the portlet is visible in the viewport (for lazy loading)
   height?: string | number

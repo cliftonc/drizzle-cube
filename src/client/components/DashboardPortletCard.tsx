@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef, type HTMLAttributes, type ReactNode, type CSSProperties, type ComponentType } from 'react'
-import type { ChartType, DashboardFilter, DashboardLayoutMode, PortletConfig } from '../types'
+import type { ChartType, DashboardFilter, DashboardFilterMapping, DashboardLayoutMode, PortletConfig } from '../types'
 import AnalyticsPortlet from './AnalyticsPortlet'
 import DebugModal from './DebugModal'
 import type { ColorPalette } from '../utils/colorPalettes'
 import { useDashboardStore, type PortletDebugDataEntry } from '../stores/dashboardStore'
 import { ensureAnalysisConfig } from '../utils/configMigration'
+import { mappingIncludesFilter } from '../utils/filterUtils'
 import { useCubeFeatures } from '../providers/CubeFeaturesProvider'
 import { getIcon } from '../icons/registry'
 import { isPortletCopyAvailable, copyPortletToClipboard } from '../utils/thumbnail'
@@ -122,7 +123,7 @@ interface PortletChartBodyProps {
   renderChartConfig: unknown
   renderDisplayConfig: unknown
   dashboardFilters?: DashboardFilter[]
-  dashboardFilterMapping?: string[]
+  dashboardFilterMapping?: DashboardFilterMapping
   eagerLoad: boolean
   title: string
   isMarkdownAutoHeight: boolean
@@ -302,7 +303,7 @@ const DashboardPortletCard = React.memo(function DashboardPortletCard({
   }, [])
 
   const hasSelectedFilter = selectedFilterId
-    ? (portlet.dashboardFilterMapping || []).includes(selectedFilterId)
+    ? mappingIncludesFilter(portlet.dashboardFilterMapping, selectedFilterId)
     : false
   const isInSelectionMode = !!selectedFilterId
 

@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand'
 import { captureThumbnail } from '../../utils/thumbnail'
 import type {
   DashboardConfig,
+  DashboardFilterMapping,
   DashboardGridSettings,
   DashboardLayoutMode,
   PortletConfig,
@@ -10,6 +11,7 @@ import type {
   ThumbnailFeatureConfig
 } from '../../types'
 import type { DashboardStore, DashboardStoreActions } from '../../stores/dashboardStore'
+import { mappingIncludesFilter } from '../../utils/filterUtils'
 import {
   convertPortletsToRows,
   convertRowsToPortlets,
@@ -431,12 +433,14 @@ export function useDashboardController({
       const updatedPortlets = cfg.portlets.map((p) => {
         if (p.id === portletId) {
           const currentMapping = p.dashboardFilterMapping || []
-          const hasFilter = currentMapping.includes(filterId)
+          const hasFilter = mappingIncludesFilter(currentMapping, filterId)
 
           return {
             ...p,
             dashboardFilterMapping: hasFilter
-              ? currentMapping.filter((id) => id !== filterId)
+              ? currentMapping.filter((entry) =>
+                  typeof entry === 'string' ? entry !== filterId : entry.filterId !== filterId
+                )
               : [...currentMapping, filterId],
           }
         }
@@ -459,7 +463,7 @@ export function useDashboardController({
       const cfg = configRef.current
       const updatedPortlets = cfg.portlets.map((p) => {
         const currentMapping = p.dashboardFilterMapping || []
-        if (!currentMapping.includes(filterId)) {
+        if (!mappingIncludesFilter(currentMapping, filterId)) {
           return {
             ...p,
             dashboardFilterMapping: [...currentMapping, filterId],
@@ -478,7 +482,7 @@ export function useDashboardController({
   )
 
   const saveFilterConfig = useCallback(
-    async (mapping: string[]) => {
+    async (mapping: DashboardFilterMapping) => {
       const filterConfigPortlet = storeApi.getState().filterConfigPortlet
       if (!onConfigChangeRef.current || !filterConfigPortlet) return
 

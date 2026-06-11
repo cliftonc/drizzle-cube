@@ -8,7 +8,8 @@ import type {
   CubeMeta,
   CubeMetaHierarchy,
   TimeGranularity,
-  DashboardFilter
+  DashboardFilter,
+  DashboardFilterMapping
 } from '../types'
 import type {
   DrillOption,
@@ -149,7 +150,7 @@ export function buildDrillOptions(
   query: CubeQuery,
   metadata: CubeMeta | null,
   dashboardFilters?: DashboardFilter[],
-  dashboardFilterMapping?: string[]
+  dashboardFilterMapping?: DashboardFilterMapping
 ): DrillOption[] {
   if (!metadata) {
     return []
@@ -196,7 +197,7 @@ function buildTimeDrillOptions(
   query: CubeQuery,
   metadata: CubeMeta,
   _dashboardFilters?: DashboardFilter[],
-  _dashboardFilterMapping?: string[]
+  _dashboardFilterMapping?: DashboardFilterMapping
 ): DrillOption[] {
   const options: DrillOption[] = []
 
@@ -267,7 +268,7 @@ function buildHierarchyDrillOptions(
   query: CubeQuery,
   metadata: CubeMeta,
   _dashboardFilters?: DashboardFilter[],
-  _dashboardFilterMapping?: string[]
+  _dashboardFilterMapping?: DashboardFilterMapping
 ): DrillOption[] {
   const options: DrillOption[] = []
 

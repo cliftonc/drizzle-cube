@@ -35,6 +35,7 @@ import { ScrollContainerProvider } from '../../providers/ScrollContainerContext'
 import { useDashboard } from '../../hooks/useDashboardHook'
 import type {
   PortletConfig,
+  DashboardFilterMapping,
   DashboardLayoutMode,
   RowLayout
 } from '../../types'
@@ -703,7 +704,7 @@ export default function DashboardCoordinator({
   }, [])
 
   // Handle saving filter configuration - delegate to hook action
-  const handleSaveFilterConfig = useCallback(async (mapping: string[]) => {
+  const handleSaveFilterConfig = useCallback(async (mapping: DashboardFilterMapping) => {
     await actions.saveFilterConfig(mapping)
   }, [actions])
 

@@ -481,6 +481,170 @@ describe('PortletFilterConfigModal', () => {
   })
 
   // ==========================================================================
+  // Field Mapping (per-portlet member override) Tests
+  // ==========================================================================
+  describe('Field Mapping', () => {
+    const schema = {
+      cubes: [
+        {
+          name: 'Employees',
+          title: 'Employees',
+          measures: [{ name: 'Employees.count', title: 'Count', shortTitle: 'Count', type: 'count' }],
+          dimensions: [
+            { name: 'Employees.departmentId', title: 'Department ID', shortTitle: 'Dept', type: 'string' },
+            { name: 'Employees.isActive', title: 'Is Active', shortTitle: 'Active', type: 'boolean' }
+          ],
+          segments: [],
+          relationships: [{ targetCube: 'Departments', relationship: 'belongsTo' as const }]
+        },
+        {
+          name: 'Departments',
+          title: 'Departments',
+          measures: [],
+          dimensions: [
+            { name: 'Departments.name', title: 'Department Name', shortTitle: 'Name', type: 'string' }
+          ],
+          segments: []
+        }
+      ]
+    }
+
+    const portlet = {
+      id: 'portlet-1',
+      title: 'Test Portlet',
+      query: JSON.stringify({ measures: ['Employees.count'] }),
+      chartType: 'bar',
+      w: 6,
+      h: 4,
+      x: 0,
+      y: 0
+    } as any
+
+    const mappingProps = {
+      ...defaultProps,
+      schema: schema as any,
+      portlet
+    }
+
+    it('should show the Apply to field dropdown for a checked simple filter', () => {
+      render(<PortletFilterConfigModal {...mappingProps} currentMapping={['filter-1']} />)
+
+      const select = screen.getByRole('combobox')
+      expect(select).toBeInTheDocument()
+      // Default option reflects the filter's own field
+      expect(screen.getByRole('option', { name: 'Default (Employees.departmentId)' })).toBeInTheDocument()
+    })
+
+    it('should not show a dropdown for unchecked filters', () => {
+      render(<PortletFilterConfigModal {...mappingProps} currentMapping={[]} />)
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    })
+
+    it('should not show a dropdown for group filters', () => {
+      render(<PortletFilterConfigModal {...mappingProps} currentMapping={['filter-3']} />)
+
+      // filter-3 is the group filter - checked but no remap dropdown
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    })
+
+    it('should not show dropdowns when schema/portlet are not provided', () => {
+      render(<PortletFilterConfigModal {...defaultProps} currentMapping={['filter-1']} />)
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    })
+
+    it('should offer only type-compatible dimensions of reachable cubes', () => {
+      render(<PortletFilterConfigModal {...mappingProps} currentMapping={['filter-1']} />)
+
+      // filter-1 targets Employees.departmentId (string)
+      expect(screen.getByRole('option', { name: 'Department Name' })).toBeInTheDocument()
+      // boolean dimension is type-incompatible
+      expect(screen.queryByRole('option', { name: 'Is Active' })).not.toBeInTheDocument()
+    })
+
+    it('should save an object entry when a field override is selected', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <PortletFilterConfigModal
+          {...mappingProps}
+          onSave={onSave}
+          currentMapping={['filter-1', 'filter-2']}
+        />
+      )
+
+      const selects = screen.getAllByRole('combobox')
+      await user.selectOptions(selects[0], 'Departments.name')
+      await user.click(screen.getByRole('button', { name: /apply filters/i }))
+
+      expect(onSave).toHaveBeenCalledWith([
+        { filterId: 'filter-1', member: 'Departments.name' },
+        'filter-2'
+      ])
+    })
+
+    it('should serialize back to a plain string when reverting to the default field', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <PortletFilterConfigModal
+          {...mappingProps}
+          onSave={onSave}
+          currentMapping={[{ filterId: 'filter-1', member: 'Departments.name' }]}
+        />
+      )
+
+      // Revert to default (empty value option)
+      await user.selectOptions(screen.getByRole('combobox'), '')
+      await user.click(screen.getByRole('button', { name: /apply filters/i }))
+
+      expect(onSave).toHaveBeenCalledWith(['filter-1'])
+    })
+
+    it('should show the mapped badge and preselect the override from the saved mapping', () => {
+      render(
+        <PortletFilterConfigModal
+          {...mappingProps}
+          currentMapping={[{ filterId: 'filter-1', member: 'Departments.name' }]}
+        />
+      )
+
+      expect(screen.getByText('Mapped to Departments.name')).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveValue('Departments.name')
+    })
+
+    it('should keep a stale override selected and warn instead of dropping it', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      render(
+        <PortletFilterConfigModal
+          {...mappingProps}
+          onSave={onSave}
+          currentMapping={[{ filterId: 'filter-1', member: 'Removed.field' }]}
+        />
+      )
+
+      expect(screen.getByRole('combobox')).toHaveValue('Removed.field')
+      expect(screen.getByText(/no longer available in the schema/i)).toBeInTheDocument()
+
+      // Saving without touching the dropdown keeps the stale override
+      await user.click(screen.getByRole('button', { name: /apply filters/i }))
+      expect(onSave).toHaveBeenCalledWith([{ filterId: 'filter-1', member: 'Removed.field' }])
+    })
+
+    it('should not toggle the checkbox when interacting with the dropdown', async () => {
+      const user = userEvent.setup()
+      render(<PortletFilterConfigModal {...mappingProps} currentMapping={['filter-1']} />)
+
+      await user.selectOptions(screen.getByRole('combobox'), 'Departments.name')
+
+      // Filter stays checked
+      expect(screen.getAllByRole('checkbox')[0]).toBeChecked()
+    })
+  })
+
+  // ==========================================================================
   // Edge Cases
   // ==========================================================================
   describe('Edge Cases', () => {
