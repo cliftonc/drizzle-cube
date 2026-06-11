@@ -235,10 +235,14 @@ export default function DashboardCoordinator({
     return () => clearTimeout(timer)
   }, [isInitialized, config.portlets, actions])
 
+  // Whether any dashboard modal is open - Enter/Esc belong to the modal then
+  const isAnyModalOpen =
+    isPortletModalOpen || isTextModalOpen || isFilterConfigModalOpen || !!deleteConfirmPortletId
+
   // Set up Enter/ESC key listener for filter selection mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!selectedFilterId) return
+      if (!selectedFilterId || isAnyModalOpen) return
 
       if (e.key === 'Escape') {
         actions.exitFilterSelectionMode()
@@ -256,7 +260,7 @@ export default function DashboardCoordinator({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selectedFilterId, actions])
+  }, [selectedFilterId, isAnyModalOpen, actions])
 
   const handleLayoutChange = useCallback((_layout: Layout) => {
     // This function is called for ALL layout changes
