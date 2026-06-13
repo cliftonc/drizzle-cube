@@ -258,6 +258,42 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
       // The real engine type was passed through (no collapsing to a subset).
       expect(seenEngines).toContain(dbType === 'both' ? 'postgres' : dbType)
     })
+
+    it('an optimiser rewrite changes the generated SQL (Stage 2)', async () => {
+      const query: SemanticQuery = {
+        measures: ['Employees.count', 'Employees.avgSalary'],
+        dimensions: ['Employees.name']
+      }
+
+      // Baseline: no optimiser rewrites (IdentityOptimiser).
+      const baseExecutor = new QueryExecutor(dbExecutor)
+      const baseSql = await baseExecutor.generateMultiCubeSQL(cubes, query, securityContext)
+
+      // Optimiser that drops the second measure and forces a limit. Because
+      // build() now derives its clauses from the optimised plan, these rewrites
+      // must surface in the generated SQL.
+      const rewriteOptimiser: PlanOptimiser = {
+        name: 'test-sql-rewrite',
+        optimise(plan) {
+          const node = plan as QueryNode
+          if (node.type !== 'query') return plan
+          return { ...node, measures: node.measures.slice(0, 1), limit: 7 }
+        }
+      }
+      const rewriteExecutor = new QueryExecutor(dbExecutor, undefined, undefined, rewriteOptimiser)
+      const rewriteSql = await rewriteExecutor.generateMultiCubeSQL(cubes, query, securityContext)
+
+      // The optimised SQL differs from the baseline.
+      expect(rewriteSql.sql).not.toBe(baseSql.sql)
+      // The dropped measure's alias is gone from the optimised SQL.
+      expect(baseSql.sql).toContain('Employees.avgSalary')
+      expect(rewriteSql.sql).not.toContain('Employees.avgSalary')
+      // The forced limit is applied (inline or parameterised).
+      const limitApplied =
+        /limit/i.test(rewriteSql.sql) &&
+        (/\b7\b/.test(rewriteSql.sql) || (rewriteSql.params ?? []).includes(7))
+      expect(limitApplied).toBe(true)
+    })
   })
 
   // ---------------------------------------------------------------------------

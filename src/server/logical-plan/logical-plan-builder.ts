@@ -785,6 +785,7 @@ export class LogicalPlanBuilder {
       orderBy,
       limit: query.limit,
       offset: query.offset,
+      ungrouped: query.ungrouped,
       warnings
     }
   }

@@ -167,7 +167,16 @@ export class DrizzlePlanBuilder {
     }
   }
 
-  private toSemanticQuery(node: QueryNode): SemanticQuery {
+  /**
+   * Reconstruct a SemanticQuery from a (possibly optimised) QueryNode.
+   *
+   * This is the materialization seam that makes the logical plan a real IR:
+   * the executor derives the query the physical builder consumes from the
+   * optimised plan, so optimiser rewrites of measures/filters/limit/etc. take
+   * effect in the generated SQL. Must faithfully round-trip every field the
+   * physical builder and processors read off a SemanticQuery.
+   */
+  toSemanticQuery(node: QueryNode): SemanticQuery {
     const order =
       node.orderBy.length > 0
         ? Object.fromEntries(node.orderBy.map(entry => [entry.name, entry.direction]))
@@ -186,7 +195,8 @@ export class DrizzlePlanBuilder {
       filters: node.filters,
       order,
       limit: node.limit,
-      offset: node.offset
+      offset: node.offset,
+      ungrouped: node.ungrouped
     }
   }
 

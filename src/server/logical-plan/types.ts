@@ -157,6 +157,8 @@ export interface QueryNode extends LogicalNodeBase {
   orderBy: OrderByRef[]
   limit?: number
   offset?: number
+  /** When true, skip GROUP BY (raw rows) */
+  ungrouped?: boolean
   /** Planning warnings surfaced to the caller */
   warnings: QueryWarning[]
 }

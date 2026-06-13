@@ -550,6 +550,10 @@ export class QueryExecutor {
     const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
 
+    // Derive the query the physical builder consumes from the OPTIMISED plan
+    // (not the raw user query) so optimiser rewrites take effect in the SQL.
+    const planQuery = this.drizzlePlanBuilder.toSemanticQuery(optimisedPlan)
+
     // Validate security context is applied to all cubes in the query plan.
     // This is a dev-time warning only (no-op outside development unless
     // DRIZZLE_CUBE_WARN_SECURITY is set), so it is safe to run on every path,
@@ -557,7 +561,7 @@ export class QueryExecutor {
     this.validateSecurityContext(physicalPlan, context)
 
     // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, planQuery, context)
 
     debugSql('query', builtQuery)
 
@@ -878,9 +882,13 @@ export class QueryExecutor {
     // Create unified query plan from shared logical planning pipeline
     const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
-    
+
+    // Derive the query the physical builder consumes from the OPTIMISED plan
+    // (not the raw user query) so optimiser rewrites take effect in the SQL.
+    const planQuery = this.drizzlePlanBuilder.toSemanticQuery(optimisedPlan)
+
     // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, planQuery, context)
     
     // Extract SQL from the built query
     const sqlObj = builtQuery.toSQL()
