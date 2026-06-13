@@ -20,7 +20,7 @@ import {
   resolveCubeReference,
   reverseRelationship
 } from '../cube-utils'
-import { MeasureBuilder } from '../builders/measure-builder'
+import { categorizeForPostAggregation } from '../measure-classification'
 import { ResolverCache, analyzeCubeUsage, extractCubeNamesFromFilter } from './planner-utils'
 import { FilterPropagation } from './filter-propagation'
 import type { JoinRef } from './types'
@@ -183,7 +183,7 @@ export class CTEPlanner {
 
       // Categorize measures for post-aggregation window function handling
       const cubeMap = new Map([[cube.name, cube]])
-      const { aggregateMeasures, requiredBaseMeasures } = MeasureBuilder.categorizeForPostAggregation(
+      const { aggregateMeasures, requiredBaseMeasures } = categorizeForPostAggregation(
         allMeasuresFromThisCube,
         cubeMap
       )

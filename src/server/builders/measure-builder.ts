@@ -28,6 +28,15 @@ import type {
 
 import { resolveSqlExpression } from '../cube-utils'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
+import {
+  WINDOW_FUNCTION_TYPES,
+  isWindowFunction as isWindowFunctionFn,
+  isPostAggregationWindow as isPostAggregationWindowFn,
+  getWindowBaseMeasure as getWindowBaseMeasureFn,
+  getDefaultWindowOperation as getDefaultWindowOperationFn,
+  categorizeForPostAggregation as categorizeForPostAggregationFn,
+  hasPostAggregationWindows as hasPostAggregationWindowsFn
+} from '../measure-classification'
 import { CalculatedMeasureResolver } from '../resolvers/calculated-measure-resolver'
 import { substituteTemplate, getMemberReferences, type ResolvedMeasures } from '../template-substitution'
 
@@ -604,10 +613,7 @@ export class MeasureBuilder {
    * - No re-aggregation in outer query
    * - Return individual rows, not grouped results
    */
-  static WINDOW_FUNCTION_TYPES = [
-    'lag', 'lead', 'rank', 'denseRank', 'rowNumber',
-    'ntile', 'firstValue', 'lastValue', 'movingAvg', 'movingSum'
-  ] as const
+  static WINDOW_FUNCTION_TYPES = WINDOW_FUNCTION_TYPES
 
   /**
    * Check if a measure type is a window function
@@ -615,7 +621,7 @@ export class MeasureBuilder {
    * @returns true if this is a window function type
    */
   static isWindowFunction(measureType: string): boolean {
-    return (MeasureBuilder.WINDOW_FUNCTION_TYPES as readonly string[]).includes(measureType)
+    return isWindowFunctionFn(measureType)
   }
 
   /**
@@ -677,10 +683,7 @@ export class MeasureBuilder {
    * @returns true if this is a post-aggregation window function
    */
   static isPostAggregationWindow(measure: any): boolean {
-    return (
-      MeasureBuilder.isWindowFunction(measure.type) &&
-      measure.windowConfig?.measure !== undefined
-    )
+    return isPostAggregationWindowFn(measure)
   }
 
   /**
@@ -692,11 +695,7 @@ export class MeasureBuilder {
    * @returns Fully qualified base measure name, or null if not a post-agg window
    */
   static getWindowBaseMeasure(measure: any, cubeName: string): string | null {
-    if (!measure.windowConfig?.measure) {
-      return null
-    }
-    const ref = measure.windowConfig.measure
-    return ref.includes('.') ? ref : `${cubeName}.${ref}`
+    return getWindowBaseMeasureFn(measure, cubeName)
   }
 
   /**
@@ -709,13 +708,7 @@ export class MeasureBuilder {
    * @returns Default operation for the window type
    */
   static getDefaultWindowOperation(windowType: string): 'raw' | 'difference' | 'ratio' | 'percentChange' {
-    switch (windowType) {
-      case 'lag':
-      case 'lead':
-        return 'difference'
-      default:
-        return 'raw'
-    }
+    return getDefaultWindowOperationFn(windowType)
   }
 
   /**
@@ -737,35 +730,7 @@ export class MeasureBuilder {
     postAggWindowMeasures: string[]
     requiredBaseMeasures: Set<string>
   } {
-    const aggregateMeasures: string[] = []
-    const postAggWindowMeasures: string[] = []
-    const requiredBaseMeasures = new Set<string>()
-
-    for (const measureName of measureNames) {
-      const [cubeName, fieldName] = measureName.split('.')
-      const cube = cubeMap.get(cubeName)
-
-      if (cube?.measures?.[fieldName]) {
-        const measure = cube.measures[fieldName]
-
-        if (MeasureBuilder.isPostAggregationWindow(measure)) {
-          postAggWindowMeasures.push(measureName)
-
-          // Extract and add the base measure as a required dependency
-          const baseMeasure = MeasureBuilder.getWindowBaseMeasure(measure, cubeName)
-          if (baseMeasure) {
-            requiredBaseMeasures.add(baseMeasure)
-          }
-        } else if (!MeasureBuilder.isWindowFunction(measure.type)) {
-          // Regular aggregate measure (not a window function)
-          aggregateMeasures.push(measureName)
-        }
-        // Note: Pre-aggregation window functions (no windowConfig.measure) are no longer supported
-        // They should be updated to use the new post-aggregation pattern
-      }
-    }
-
-    return { aggregateMeasures, postAggWindowMeasures, requiredBaseMeasures }
+    return categorizeForPostAggregationFn(measureNames, cubeMap)
   }
 
   /**
@@ -779,10 +744,6 @@ export class MeasureBuilder {
     measureNames: string[],
     cubeMap: Map<string, Cube>
   ): boolean {
-    const { postAggWindowMeasures } = MeasureBuilder.categorizeForPostAggregation(
-      measureNames,
-      cubeMap
-    )
-    return postAggWindowMeasures.length > 0
+    return hasPostAggregationWindowsFn(measureNames, cubeMap)
   }
 }

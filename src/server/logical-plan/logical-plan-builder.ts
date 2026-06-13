@@ -17,7 +17,7 @@ import type { Cube, QueryContext, PhysicalQueryPlan, QueryWarning, Measure } fro
 import type { QueryAnalysis, PreAggregationAnalysis } from '../types/analysis'
 import type { SemanticQuery } from '../types/query'
 import type { LogicalPlanner } from './logical-planner'
-import { MeasureBuilder } from '../builders/measure-builder'
+import { hasPostAggregationWindows } from '../measure-classification'
 import { resolveCubeReference } from '../cube-utils'
 import { t } from '../../i18n/runtime'
 import type {
@@ -129,7 +129,7 @@ export class LogicalPlanBuilder {
       }
     }
 
-    const hasWindowFunctions = MeasureBuilder.hasPostAggregationWindows(
+    const hasWindowFunctions = hasPostAggregationWindows(
       query.measures ?? [],
       cubesInQuery
     )

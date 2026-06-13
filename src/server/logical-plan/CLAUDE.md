@@ -56,7 +56,18 @@ Reference types: `CubeRef`, `MeasureRef`, `DimensionRef`, `TimeDimensionRef`, `C
 
 ## Guard Rails
 
-1. The logical plan is a pure data structure — no SQL generation happens here
-2. `LogicalPlanWithAnalysis` always includes an analysis trace for dry-run/explain output
-3. Optimiser passes must be side-effect-free; they receive and return `LogicalNode` trees
-4. Node types use a discriminated union on `type` field for exhaustive pattern matching
+1. The logical plan is a pure, symbolic data structure — **no Drizzle SQL and no
+   baked security context**. `JoinRef` carries a `joinDef` (CubeJoin), not a
+   pre-built `joinCondition`; `IntermediateJoinInfo` carries a cube ref, not a
+   `securityFilter` SQL. All join conditions and the security WHERE are
+   materialized by `DrizzlePlanBuilder` (the `derivePhysicalPlanContext` /
+   `materializeJoin` seam and the CTE builder), using the request's security
+   context at build time.
+2. Planning must not import `builders/` (the SQL-generation layer). Pure measure
+   classification used by planning lives in `../measure-classification.ts`.
+3. `LogicalPlanWithAnalysis` always includes an analysis trace for dry-run/explain output
+4. Optimiser passes must be side-effect-free; they receive and return `LogicalNode`
+   trees. The executor derives the `SemanticQuery` the physical builder consumes
+   from the **optimised** plan (`DrizzlePlanBuilder.toSemanticQuery`), so optimiser
+   rewrites of measures/filters/limit/etc. take effect in the generated SQL.
+5. Node types use a discriminated union on `type` field for exhaustive pattern matching
