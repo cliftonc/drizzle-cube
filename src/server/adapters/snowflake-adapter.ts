@@ -5,11 +5,14 @@
  * VAR_POP/VAR_SAMP, PERCENTILE_CONT, and window functions.
  * Key difference: uses DATEADD(unit, amount, ts) instead of INTERVAL arithmetic,
  * and TABLE(GENERATOR(ROWCOUNT => n)) instead of generate_series()
+ *
+ * Inherits shared defaults from BaseDatabaseAdapter (ILIKE matching, CASE WHEN conditional
+ * aggregation, COALESCE null-handling, standard window functions). Only Snowflake-specific SQL is here.
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
-import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
+import { BaseDatabaseAdapter, type DatabaseCapabilities } from './base-adapter'
 
 export class SnowflakeAdapter extends BaseDatabaseAdapter {
   getEngineType(): 'snowflake' {
@@ -29,17 +32,11 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
 
   /**
    * Build Snowflake INTERVAL from ISO 8601 duration
-   * Snowflake doesn't support INTERVAL literal syntax directly in all contexts,
-   * so we chain DATEADD calls. For standalone interval expressions, we return
-   * a DATEADD chain applied to TIMESTAMP '1970-01-01' and subtract it back.
-   * However, buildIntervalFromISO is typically used with buildDateAddInterval,
-   * so we return a structured representation.
+   * Snowflake doesn't have a standalone INTERVAL type like PostgreSQL.
+   * We convert to total seconds for use in DATEADD; callers should prefer buildDateAddInterval.
    */
   buildIntervalFromISO(duration: string): SQL {
-    // Snowflake doesn't have a standalone INTERVAL type like PostgreSQL.
-    // We convert to total seconds for use in DATEADD.
     const totalSeconds = this.durationToSeconds(duration)
-    // Return as a seconds value - callers should use buildDateAddInterval instead
     return sql`${totalSeconds}`
   }
 
@@ -67,22 +64,6 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
     if (parsed.seconds) result = sql`DATEADD('SECOND', ${parsed.seconds}, ${result})`
 
     return result
-  }
-
-  /**
-   * Build Snowflake conditional aggregation using CASE WHEN
-   * Snowflake supports FILTER clause but CASE WHEN is more portable
-   */
-  buildConditionalAggregation(
-    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
-    expr: SQL | null,
-    condition: SQL
-  ): SQL {
-    const fnName = aggFn.toUpperCase()
-    if (aggFn === 'count' && !expr) {
-      return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN 1 END)`
-    }
-    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
   }
 
   /**
@@ -128,32 +109,12 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build Snowflake string matching conditions using native ILIKE
-   * Snowflake supports ILIKE natively
+   * Snowflake uses function-style regex matching: REGEXP_LIKE(field, pattern)
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
-    switch (operator) {
-      case 'contains':
-        return sql`${fieldExpr} ILIKE ${`%${value}%`}`
-      case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${`%${value}%`}`
-      case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${`${value}%`}`
-      case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${`%${value}`}`
-      case 'like':
-        return sql`${fieldExpr} LIKE ${value}`
-      case 'notLike':
-        return sql`${fieldExpr} NOT LIKE ${value}`
-      case 'ilike':
-        return sql`${fieldExpr} ILIKE ${value}`
-      case 'regex':
-        return sql`REGEXP_LIKE(${fieldExpr}, ${value})`
-      case 'notRegex':
-        return sql`NOT REGEXP_LIKE(${fieldExpr}, ${value})`
-      default:
-        throw new Error(`Unsupported string operator: ${operator}`)
-    }
+  protected regexCondition(fieldExpr: AnyColumn | SQL, value: string, negated: boolean): SQL {
+    return negated
+      ? sql`NOT REGEXP_LIKE(${fieldExpr}, ${value})`
+      : sql`REGEXP_LIKE(${fieldExpr}, ${value})`
   }
 
   /**
@@ -171,62 +132,6 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
       default:
         throw new Error(`Unsupported cast type: ${targetType}`)
     }
-  }
-
-  /**
-   * Build Snowflake AVG aggregation with COALESCE for NULL handling
-   */
-  buildAvg(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COALESCE(AVG(${fieldExpr}), 0)`
-  }
-
-  /**
-   * Build Snowflake CASE WHEN conditional expression
-   */
-  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
-    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
-
-    if (elseValue !== undefined) {
-      return sql`CASE ${cases} ELSE ${elseValue} END`
-    }
-    return sql`CASE ${cases} END`
-  }
-
-  /**
-   * Build Snowflake boolean literal
-   * Snowflake uses TRUE/FALSE keywords
-   */
-  buildBooleanLiteral(value: boolean): SQL {
-    return value ? sql`TRUE` : sql`FALSE`
-  }
-
-  /**
-   * Convert filter values - Snowflake uses native types
-   */
-  convertFilterValue(value: any): any {
-    return value
-  }
-
-  /**
-   * Prepare date value for Snowflake
-   * Snowflake accepts Date objects directly
-   */
-  prepareDateValue(date: Date): any {
-    return date
-  }
-
-  /**
-   * Snowflake stores timestamps as native timestamp types
-   */
-  isTimestampInteger(): boolean {
-    return false
-  }
-
-  /**
-   * Snowflake time dimensions already return proper values
-   */
-  convertTimeDimensionResult(value: any): any {
-    return value
   }
 
   // ============================================
@@ -251,23 +156,6 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build Snowflake STDDEV aggregation
-   */
-  buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
-    const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
-    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
-  }
-
-  /**
-   * Build Snowflake VARIANCE aggregation
-   * Snowflake supports native VAR_POP/VAR_SAMP
-   */
-  buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
-    const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
-    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
-  }
-
-  /**
    * Build Snowflake PERCENTILE_CONT aggregation
    * Uses ordered-set aggregate function
    */
@@ -275,81 +163,5 @@ export class SnowflakeAdapter extends BaseDatabaseAdapter {
     // Snowflake requires PERCENTILE_CONT argument to be a constant literal, not a bind variable
     const pct = (percentile / 100).toString()
     return sql`PERCENTILE_CONT(${sql.raw(pct)}) WITHIN GROUP (ORDER BY ${fieldExpr})`
-  }
-
-  /**
-   * Build Snowflake window function expression
-   * Snowflake has full window function support
-   */
-  buildWindowFunction(
-    type: WindowFunctionType,
-    fieldExpr: AnyColumn | SQL | null,
-    partitionBy?: (AnyColumn | SQL)[],
-    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
-    config?: WindowFunctionConfig
-  ): SQL {
-    // Build OVER clause components
-    const partitionClause = partitionBy && partitionBy.length > 0
-      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
-      : sql``
-
-    const orderClause = orderBy && orderBy.length > 0
-      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
-          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
-        ), sql`, `)}`
-      : sql``
-
-    // Build frame clause if specified
-    let frameClause = sql``
-    if (config?.frame) {
-      const { type: frameType, start, end } = config.frame
-      const frameTypeStr = frameType.toUpperCase()
-
-      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
-        : typeof start === 'number' ? `${start} PRECEDING`
-        : 'CURRENT ROW'
-
-      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
-        : end === 'current' ? 'CURRENT ROW'
-        : typeof end === 'number' ? `${end} FOLLOWING`
-        : 'CURRENT ROW'
-
-      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
-    }
-
-    // Combine OVER clause
-    const overParts: SQL[] = []
-    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
-    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
-    if (config?.frame) overParts.push(frameClause)
-
-    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
-    const over = sql`OVER (${overContent})`
-
-    // Build the window function based on type
-    switch (type) {
-      case 'lag':
-        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'lead':
-        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'rank':
-        return sql`RANK() ${over}`
-      case 'denseRank':
-        return sql`DENSE_RANK() ${over}`
-      case 'rowNumber':
-        return sql`ROW_NUMBER() ${over}`
-      case 'ntile':
-        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
-      case 'firstValue':
-        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
-      case 'lastValue':
-        return sql`LAST_VALUE(${fieldExpr}) ${over}`
-      case 'movingAvg':
-        return sql`AVG(${fieldExpr}) ${over}`
-      case 'movingSum':
-        return sql`SUM(${fieldExpr}) ${over}`
-      default:
-        throw new Error(`Unsupported window function: ${type}`)
-    }
   }
 }
