@@ -16,7 +16,8 @@ import type {
 import {
   discoverCubes,
   suggestQuery,
-  aiValidateQuery
+  aiValidateQuery,
+  getActiveQueryModes
 } from '../server'
 import { QUERY_LANGUAGE_REFERENCE } from '../server/ai/query-schema'
 import { DATE_FILTERING_PROMPT } from '../server/ai/mcp-prompts'
@@ -130,26 +131,9 @@ interface DryRunResponseOptions {
 }
 
 function resolveDryRunMode(query: SemanticQuery): DryRunMode {
-  const activeModes: DryRunMode[] = []
-
-  const hasComparison = query.timeDimensions?.some(td =>
-    td.compareDateRange && td.compareDateRange.length >= 2
-  )
-  if (hasComparison) {
-    activeModes.push('comparison')
-  }
-
-  if (query.funnel && query.funnel.steps?.length >= 2) {
-    activeModes.push('funnel')
-  }
-
-  if (query.flow && query.flow.bindingKey && query.flow.eventDimension) {
-    activeModes.push('flow')
-  }
-
-  if (query.retention && query.retention.bindingKey && query.retention.timeDimension) {
-    activeModes.push('retention')
-  }
+  // Uses the shared mode detector so dry-run reporting stays consistent with
+  // execution routing and validation.
+  const activeModes = getActiveQueryModes(query)
 
   if (activeModes.length === 0) {
     return 'regular'

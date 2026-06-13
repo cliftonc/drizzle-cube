@@ -32,6 +32,7 @@ import type {
   LogicalFilter,
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
+import { hasFlowMode } from '../query-modes'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -67,11 +68,7 @@ export class FlowQueryBuilder {
    * Check if query contains flow configuration
    */
   hasFlow(query: SemanticQuery): boolean {
-    return (
-      query.flow !== undefined &&
-      query.flow.startingStep !== undefined &&
-      query.flow.eventDimension !== undefined
-    )
+    return hasFlowMode(query)
   }
 
   /**

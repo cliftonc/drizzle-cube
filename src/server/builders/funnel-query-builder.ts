@@ -24,6 +24,7 @@ import type {
   LogicalFilter
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
+import { hasFunnelMode } from '../query-modes'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 import { JoinPathResolver } from '../resolvers/join-path-resolver'
@@ -72,7 +73,7 @@ export class FunnelQueryBuilder {
    * Check if query contains funnel configuration
    */
   hasFunnel(query: SemanticQuery): boolean {
-    return query.funnel !== undefined && query.funnel.steps.length >= 2
+    return hasFunnelMode(query)
   }
 
   /**

@@ -28,6 +28,7 @@ import { formatSqlString } from '../adapters/utils'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
 import { resolveCubeReference } from './cube-utils'
+import { getActiveQueryModes } from './query-modes'
 import { t } from '../i18n/runtime'
 
 export class SemanticLayerCompiler {
@@ -640,33 +641,7 @@ export class SemanticLayerCompiler {
 type ValidationMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
 function getActiveValidationModes(query: SemanticQuery): Exclude<ValidationMode, 'regular'>[] {
-  const activeModes: Exclude<ValidationMode, 'regular'>[] = []
-
-  if (query.timeDimensions?.some(td => td.compareDateRange && td.compareDateRange.length >= 2)) {
-    activeModes.push('comparison')
-  }
-
-  if (query.funnel !== undefined && query.funnel.steps?.length >= 2) {
-    activeModes.push('funnel')
-  }
-
-  if (query.flow !== undefined && query.flow.startingStep !== undefined && query.flow.eventDimension !== undefined) {
-    activeModes.push('flow')
-  }
-
-  if (
-    query.retention !== undefined &&
-    query.retention.timeDimension != null &&
-    query.retention.bindingKey != null
-  ) {
-    activeModes.push('retention')
-  }
-
-  if (activeModes.length === 0) {
-    return []
-  }
-
-  return activeModes
+  return getActiveQueryModes(query)
 }
 
 /**

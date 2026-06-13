@@ -32,6 +32,7 @@ import type {
   LogicalFilter
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
+import { hasRetentionMode } from '../query-modes'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -67,11 +68,7 @@ export class RetentionQueryBuilder {
    * Check if query contains retention configuration
    */
   hasRetention(query: SemanticQuery): boolean {
-    return (
-      query.retention !== undefined &&
-      query.retention.timeDimension != null &&
-      query.retention.bindingKey != null
-    )
+    return hasRetentionMode(query)
   }
 
   /**
