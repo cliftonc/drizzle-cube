@@ -8,6 +8,13 @@ import type { SemanticQuery, Filter, FilterCondition } from './types/query'
 import type { TimeGranularity } from './types/core'
 import { parseRelativeDateRange } from '../shared/date-utils'
 
+/**
+ * Maximum number of time buckets gap filling will generate. Beyond this, gap
+ * filling is skipped entirely (data is returned unmodified) to avoid both
+ * runaway memory use and silent truncation of real rows.
+ */
+export const MAX_GAP_FILL_BUCKETS = 10000
+
 export interface GapFillerConfig {
   /** The time dimension key (e.g., 'Sales.date') */
   timeDimensionKey: string
@@ -35,10 +42,10 @@ export function generateTimeBuckets(
   let current = alignToGranularity(new Date(startDate), granularity)
   const end = alignToGranularity(new Date(endDate), granularity)
 
-  // Safety: limit to prevent infinite loops (max 10,000 buckets)
-  const maxBuckets = 10000
-
-  while (current <= end && buckets.length < maxBuckets) {
+  // Safety: limit to prevent runaway allocation/infinite loops.
+  // Callers MUST treat hitting this cap as "do not gap fill" rather than
+  // truncating data — see fillTimeSeriesGaps.
+  while (current <= end && buckets.length < MAX_GAP_FILL_BUCKETS) {
     buckets.push(new Date(current))
     current = incrementByGranularity(current, granularity)
   }
@@ -129,20 +136,32 @@ function incrementByGranularity(date: Date, granularity: TimeGranularity): Date 
 }
 
 /**
- * Normalize a date value to ISO string for consistent comparison
+ * Normalize a date value to an aligned ISO bucket key for consistent comparison.
+ *
+ * Real rows carry the time value as produced by the database's time-bucketing
+ * expression, which may not exactly equal the JS-generated bucket boundary
+ * (e.g. a week expression that retains the time-of-day). Aligning the row's date
+ * to the same granularity boundary used to generate buckets ensures real rows
+ * match their bucket instead of being discarded and replaced with fill values.
+ *
+ * Returns null when the value cannot be parsed as a date.
  */
-function normalizeDateKey(value: unknown): string {
+function normalizeDateKey(value: unknown, granularity: TimeGranularity): string | null {
+  let date: Date | null = null
   if (value instanceof Date) {
-    return value.toISOString()
-  }
-  if (typeof value === 'string') {
-    // Parse and re-format for consistency
-    const date = new Date(value)
-    if (!isNaN(date.getTime())) {
-      return date.toISOString()
+    date = value
+  } else if (typeof value === 'string') {
+    const parsed = new Date(value)
+    if (!isNaN(parsed.getTime())) {
+      date = parsed
     }
   }
-  return String(value)
+
+  if (!date || isNaN(date.getTime())) {
+    return null
+  }
+
+  return alignToGranularity(date, granularity).toISOString()
 }
 
 /**
@@ -181,12 +200,31 @@ export function fillTimeSeriesGaps(
     return data
   }
 
-  // Group data by dimension values
+  // If the requested range would exceed the bucket cap, skip gap filling rather
+  // than truncating: filling only the first N buckets would silently drop every
+  // real row that falls after them. Return the data unmodified.
+  if (timeBuckets.length >= MAX_GAP_FILL_BUCKETS) {
+    console.warn(
+      `[drizzle-cube] Skipping gap filling for "${timeDimensionKey}": the ${granularity} ` +
+      `range exceeds the ${MAX_GAP_FILL_BUCKETS}-bucket limit. Returning unfilled data.`
+    )
+    return data
+  }
+
+  // Group data by dimension values, keying each row by its time value aligned to
+  // the same granularity boundary used to generate buckets. Aligning the row key
+  // is what lets real rows match their bucket even when the database's bucketing
+  // expression keeps a time-of-day component (e.g. the MySQL/SingleStore week
+  // expression). Without alignment those rows were discarded and replaced with
+  // fill values (issue #849).
   const dimensionGroups = new Map<string, Map<string, Record<string, unknown>>>()
 
   for (const row of data) {
     const groupKey = createDimensionGroupKey(row, dimensions)
-    const timeKey = normalizeDateKey(row[timeDimensionKey])
+    // Fall back to a stable string for unparseable values so they simply don't
+    // match any bucket (prior behaviour) rather than throwing.
+    const timeKey = normalizeDateKey(row[timeDimensionKey], granularity)
+      ?? String(row[timeDimensionKey])
 
     if (!dimensionGroups.has(groupKey)) {
       dimensionGroups.set(groupKey, new Map())

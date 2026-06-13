@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parsePostgresExplain } from '../explain/postgres-parser'
+import { buildBoundSql } from './explain-utils'
 
 /**
  * Normalize the result of db.execute() across different PostgreSQL drivers.
@@ -147,20 +148,10 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
       throw new Error('PostgreSQL database instance must have an execute method')
     }
 
-    // For postgres.js, we need to pass parameters separately
-    // The sql string already has $1, $2 placeholders from Drizzle
+    // Pass params as real bind parameters (Postgres uses $n placeholders) rather
+    // than re-inlining user values into the SQL string — see explain-utils.
     const result = await this.db.execute(
-      sql`${sql.raw(explainPrefix)} ${sql.raw(sqlString.replace(/\$(\d+)/g, (_, n) => {
-        const paramIndex = parseInt(n, 10) - 1
-        const value = params[paramIndex]
-        // Escape and quote the value appropriately
-        if (value === null) return 'NULL'
-        if (typeof value === 'number') return String(value)
-        if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-        if (value instanceof Date) return `'${value.toISOString()}'`
-        // String: escape single quotes
-        return `'${String(value).replace(/'/g, "''")}'`
-      }))}`
+      sql`${sql.raw(explainPrefix)} ${buildBoundSql(sqlString, params, 'dollar')}`
     )
 
     // PostgreSQL returns EXPLAIN output as rows with 'QUERY PLAN' column

@@ -22,10 +22,11 @@ export interface CacheKeyConfig {
  *
  * Key structure: {prefix}query:{queryHash}:ctx:{securityHash}
  *
- * Uses FNV-1a hash for:
- * - Speed: ~3x faster than SHA-256
- * - Simplicity: No dependencies required
- * - Sufficient collision resistance for cache keys
+ * Uses a 128-bit FNV-1a-based hash (see {@link strongHash}) for both the query
+ * and the security context. A 128-bit digest is required here for correctness,
+ * not just speed: the security-context hash provides tenant isolation, and a
+ * collision serves one tenant's cached result to another. The full input is
+ * hashed (no truncation) so large queries cannot collide on a shared prefix.
  *
  * @param query - The semantic query to cache
  * @param securityContext - Security context for tenant isolation
@@ -41,7 +42,7 @@ export function generateCacheKey(
 
   // Create normalized query representation for consistent hashing
   const normalizedQuery = normalizeQuery(query)
-  const queryHash = fnv1aHash(JSON.stringify(normalizedQuery))
+  const queryHash = strongHash(JSON.stringify(normalizedQuery))
 
   // Include security context in key for tenant isolation
   let key = `${prefix}query:${queryHash}`
@@ -50,7 +51,7 @@ export function generateCacheKey(
     const ctxString = config.securityContextSerializer
       ? config.securityContextSerializer(securityContext)
       : JSON.stringify(sortObject(securityContext))
-    const ctxHash = fnv1aHash(ctxString)
+    const ctxHash = strongHash(ctxString)
     key += `:ctx:${ctxHash}`
   }
 
@@ -251,7 +252,7 @@ export function sortObject<T>(obj: T): T {
 }
 
 /**
- * FNV-1a hash - fast, non-cryptographic hash function
+ * FNV-1a hash - fast, non-cryptographic 32-bit hash function
  * Returns hex string for cache key readability
  *
  * Properties:
@@ -259,19 +260,61 @@ export function sortObject<T>(obj: T): T {
  * - Low collision rate for similar strings
  * - Deterministic across runs
  *
+ * Note: a 32-bit digest is too narrow to isolate tenants by itself — use
+ * {@link strongHash} for cache keys. Retained for backwards compatibility.
+ *
  * @param str - String to hash
  * @returns 8-character hex string
  */
 export function fnv1aHash(str: string): string {
   let hash = 2166136261 // FNV offset basis
 
-  const maxLen = Math.min(str.length, 65536)
-  for (let i = 0; i < maxLen; i++) {
-    hash ^= str.charCodeAt(i)
-    hash = (hash * 16777619) >>> 0 // FNV prime, unsigned 32-bit
+  for (let i = 0; i < str.length; i++) {
+    hash = Math.imul(hash ^ str.charCodeAt(i), 16777619) >>> 0 // FNV prime, unsigned 32-bit
   }
 
   return hash.toString(16).padStart(8, '0')
+}
+
+/**
+ * 128-bit FNV-1a-based hash for cache keys.
+ *
+ * Computes four independent 32-bit FNV-1a lanes (distinct offset bases, each
+ * mixed with the byte position) and concatenates them into a 32-character hex
+ * digest. This widens the key space from 2^32 to 2^128 so security-context and
+ * query collisions are vanishingly unlikely — collisions here are not merely a
+ * cache miss, they are a cross-tenant data-disclosure risk.
+ *
+ * The entire input is hashed (no truncation), and the input length is mixed in
+ * to disambiguate shared prefixes. `Math.imul` performs a true 32-bit multiply.
+ *
+ * @param str - String to hash
+ * @returns 32-character hex string (128 bits)
+ */
+export function strongHash(str: string): string {
+  let h1 = 2166136261 // standard FNV offset basis
+  let h2 = 2246822519 // distinct seeds for independent lanes
+  let h3 = 3266489917
+  let h4 = 668265263
+  const prime = 16777619
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, prime) >>> 0
+    h2 = Math.imul(h2 ^ ((c + i) & 0xffff), prime) >>> 0
+    h3 = Math.imul(h3 ^ (c ^ (i & 0xff)), prime) >>> 0
+    h4 = Math.imul(h4 ^ ((c + Math.imul(i, 131)) & 0xffff), prime) >>> 0
+  }
+
+  // Mix the length in so strings that share a prefix diverge
+  h1 = (h1 ^ str.length) >>> 0
+
+  return (
+    h1.toString(16).padStart(8, '0') +
+    h2.toString(16).padStart(8, '0') +
+    h3.toString(16).padStart(8, '0') +
+    h4.toString(16).padStart(8, '0')
+  )
 }
 
 /**

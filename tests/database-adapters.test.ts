@@ -60,6 +60,16 @@ describe('Database Adapters', () => {
         expect(sqlStr).toContain('WEEKDAY')
       })
 
+      it('should zero the time-of-day for week granularity (issue #849)', () => {
+        // Retaining the time component breaks GROUP BY (one row per distinct
+        // timestamp) and prevents gap filling from matching real rows to the
+        // generated Monday-00:00 week buckets.
+        const result = adapter.buildTimeDimension('week', mockField)
+        const sqlStr = getSqlString(result)
+        expect(sqlStr).toContain('00:00:00')
+        expect(sqlStr).toContain('STR_TO_DATE')
+      })
+
       it('should handle day granularity', () => {
         const result = adapter.buildTimeDimension('day', mockField)
         expect(result).toBeDefined()

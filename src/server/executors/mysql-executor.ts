@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseMySQLExplain } from '../explain/mysql-parser'
+import { buildBoundSql } from './explain-utils'
 
 export class MySQLExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -89,19 +90,6 @@ export class MySQLExecutor extends BaseDatabaseExecutor {
     params: unknown[],
     options?: ExplainOptions
   ): Promise<ExplainResult> {
-    // MySQL uses ? placeholders, replace with values
-    let queryWithValues = sqlString
-    let paramIndex = 0
-    queryWithValues = queryWithValues.replace(/\?/g, () => {
-      const value = params[paramIndex++]
-      if (value === null) return 'NULL'
-      if (typeof value === 'number') return String(value)
-      if (typeof value === 'boolean') return value ? '1' : '0'
-      if (value instanceof Date) return `'${value.toISOString().slice(0, 19).replace('T', ' ')}'`
-      // String: escape single quotes
-      return `'${String(value).replace(/'/g, "''")}'`
-    })
-
     // Build EXPLAIN command
     // Note: EXPLAIN ANALYZE is only available in MySQL 8.0.18+
     const explainPrefix = options?.analyze ? 'EXPLAIN ANALYZE' : 'EXPLAIN'
@@ -110,9 +98,10 @@ export class MySQLExecutor extends BaseDatabaseExecutor {
       throw new Error('MySQL database instance must have an execute method')
     }
 
-    // Execute EXPLAIN
+    // Pass params as real bind parameters (MySQL uses ? placeholders) rather than
+    // re-inlining user values into the SQL string — see explain-utils.
     const result = await this.db.execute(
-      sql.raw(`${explainPrefix} ${queryWithValues}`)
+      sql`${sql.raw(explainPrefix)} ${buildBoundSql(sqlString, params, 'question')}`
     )
 
     // MySQL returns EXPLAIN output as rows with specific columns

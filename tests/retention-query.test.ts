@@ -27,6 +27,7 @@ import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { MySQLAdapter } from '../src/server/adapters/mysql-adapter'
 import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'
 import { DuckDBAdapter } from '../src/server/adapters/duckdb-adapter'
+import { SingleStoreAdapter } from '../src/server/adapters/singlestore-adapter'
 
 // Helper functions to skip tests for unsupported databases
 // Retention is only supported on PostgreSQL and DuckDB initially
@@ -146,7 +147,10 @@ describe('Server-Side Retention Queries', () => {
     })
 
     it('should validate retention configuration', async () => {
-      const adapter = getAdapter()
+      // Use a supported adapter so the engine guard (issue #849) doesn't flag the
+      // "valid config" assertions when the test suite runs on MySQL/SQLite. The
+      // guard itself is covered separately below.
+      const adapter = new PostgresAdapter()
       const builder = new RetentionQueryBuilder(adapter)
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -218,7 +222,8 @@ describe('Server-Side Retention Queries', () => {
     })
 
     it('should validate multi-cube binding key configuration', async () => {
-      const adapter = getAdapter()
+      // Supported adapter — see note in 'should validate retention configuration'.
+      const adapter = new PostgresAdapter()
       const builder = new RetentionQueryBuilder(adapter)
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)
@@ -252,6 +257,52 @@ describe('Server-Side Retention Queries', () => {
       expect(badMultiResult.isValid).toBe(false)
       expect(badMultiResult.errors.some(e => e.includes('Binding key mapping cube not found'))).toBe(true)
     })
+
+    // Engine guard — issue #849, item 4. Retention SQL relies on cast/interval
+    // syntax not exercised on every engine; validateConfig must reject the
+    // unsupported engines instead of letting a raw DB syntax error escape.
+    it('rejects retention on unsupported engines (sqlite/mysql/singlestore)', () => {
+      const cubes = new Map<string, Cube>()
+      cubes.set('Events', eventsCube)
+
+      const validConfig: RetentionQueryConfig = {
+        timeDimension: 'Events.timestamp',
+        bindingKey: 'Events.userId',
+        dateRange: defaultDateRange,
+        granularity: 'month',
+        periods: 6,
+        retentionType: 'classic'
+      }
+
+      for (const adapter of [new SQLiteAdapter(), new MySQLAdapter(), new SingleStoreAdapter()]) {
+        const builder = new RetentionQueryBuilder(adapter)
+        const result = builder.validateConfig(validConfig, cubes)
+        expect(result.isValid).toBe(false)
+        expect(result.errors.some(e => e.includes('not supported on'))).toBe(true)
+      }
+    })
+
+    it('allows retention on supported engines (postgres/duckdb)', () => {
+      const cubes = new Map<string, Cube>()
+      cubes.set('Events', eventsCube)
+
+      const validConfig: RetentionQueryConfig = {
+        timeDimension: 'Events.timestamp',
+        bindingKey: 'Events.userId',
+        dateRange: defaultDateRange,
+        granularity: 'month',
+        periods: 6,
+        retentionType: 'classic'
+      }
+
+      for (const adapter of [new PostgresAdapter(), new DuckDBAdapter()]) {
+        const builder = new RetentionQueryBuilder(adapter)
+        const result = builder.validateConfig(validConfig, cubes)
+        expect(result.errors.some(e => e.includes('not supported on'))).toBe(false)
+        expect(result.isValid).toBe(true)
+      }
+    })
+
 
     it('should transform results correctly', () => {
       const adapter = getAdapter()
@@ -361,6 +412,27 @@ describe('Server-Side Retention Queries', () => {
 
   // Skip execution tests for MySQL and SQLite (only PostgreSQL and DuckDB supported initially)
   describe.skipIf(skipIfMySQL() || skipIfSQLite())('Retention Query Execution', () => {
+    // Issue #849, item 4 — date-range bounds must be produced via adapter
+    // cast/interval methods, not hard-coded PostgreSQL `::date` literals.
+    it('routes date-range bounds through the adapter (no ::date literal in SQL)', async () => {
+      const cubes = new Map<string, Cube>()
+      cubes.set('Events', eventsCube)
+
+      const query: SemanticQuery = {
+        retention: {
+          timeDimension: 'Events.timestamp',
+          bindingKey: 'Events.userId',
+          dateRange: defaultDateRange,
+          granularity: 'month',
+          periods: 3,
+          retentionType: 'classic'
+        }
+      }
+
+      const { sql: sqlString } = await executor.dryRunSQL(cubes, query, testSecurityContexts.org1)
+      expect(sqlString).not.toContain('::date')
+    })
+
     it('should execute a simple single-cube retention query', async () => {
       const cubes = new Map<string, Cube>()
       cubes.set('Events', eventsCube)

@@ -83,6 +83,15 @@ export class RetentionQueryBuilder {
   ): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
+    // Engine guard: retention SQL relies on cast/interval syntax that is only
+    // exercised and verified on the `::`-cast engines. Reject engines that are
+    // known not to support it (rather than emitting a raw DB syntax error at
+    // execution time) until they are properly covered. See issue #849.
+    const engine = this.databaseAdapter.getEngineType()
+    if (engine === 'sqlite' || engine === 'mysql' || engine === 'singlestore') {
+      errors.push(t('server.validation.retention.engineNotSupported', { engine }))
+    }
+
     // Validate time dimension (used for both cohort entry and activity)
     try {
       const cubeName = extractCubeFromTimeDimension(config.timeDimension)
@@ -557,8 +566,14 @@ export class RetentionQueryBuilder {
     timeExpr: SQL,
     dateRange: RetentionDateRange
   ): SQL {
-    // Use database adapter for date comparison
-    return sql`${timeExpr} >= ${dateRange.start}::date AND ${timeExpr} < (${dateRange.end}::date + interval '1 day')`
+    // Route through the database adapter so casts/intervals use engine-specific
+    // syntax rather than hard-coded PostgreSQL `::date` / `interval '1 day'`.
+    const start = this.databaseAdapter.castToType(sql`${dateRange.start}`, 'timestamp')
+    const endNextDay = this.databaseAdapter.buildDateAddInterval(
+      this.databaseAdapter.castToType(sql`${dateRange.end}`, 'timestamp'),
+      'P1D'
+    )
+    return sql`${timeExpr} >= ${start} AND ${timeExpr} < ${endNextDay}`
   }
 
   /**
@@ -569,7 +584,13 @@ export class RetentionQueryBuilder {
     truncatedDate: SQL,
     dateRange: RetentionDateRange
   ): SQL {
-    return sql`MIN(${truncatedDate}) >= ${dateRange.start}::date AND MIN(${truncatedDate}) < (${dateRange.end}::date + interval '1 day')`
+    // Route through the database adapter (see buildDateRangeCondition).
+    const start = this.databaseAdapter.castToType(sql`${dateRange.start}`, 'timestamp')
+    const endNextDay = this.databaseAdapter.buildDateAddInterval(
+      this.databaseAdapter.castToType(sql`${dateRange.end}`, 'timestamp'),
+      'P1D'
+    )
+    return sql`MIN(${truncatedDate}) >= ${start} AND MIN(${truncatedDate}) < ${endNextDay}`
   }
 
   /**
@@ -751,6 +772,10 @@ export class RetentionQueryBuilder {
       ? `, ${breakdownColumns.join(', ')}`
       : ''
 
+    // Clamp periods to the 52 performance limit (matches the classic path and
+    // validateConfig) so an unvalidated config can't generate an unbounded series.
+    const maxPeriods = Math.min(config.periods, 52)
+
     // Get the max period each user reached (grouped by breakdown if applicable)
     const userMaxPeriods = sql`(
       SELECT
@@ -758,12 +783,12 @@ export class RetentionQueryBuilder {
         ${sql.raw(breakdownColumns.map(c => `${c}`).join(', ') + (breakdownColumns.length > 0 ? ',' : ''))}
         MAX(period_number) as max_period
       FROM activity_periods
-      WHERE period_number >= 0 AND period_number <= ${config.periods}
+      WHERE period_number >= 0 AND period_number <= ${maxPeriods}
       GROUP BY binding_key${sql.raw(breakdownGroupBy)}
     )`
 
-    // Generate period numbers (0 to config.periods) using database-specific method
-    const periodSeriesSubquery = this.databaseAdapter.buildPeriodSeriesSubquery(config.periods)
+    // Generate period numbers (0 to maxPeriods) using database-specific method
+    const periodSeriesSubquery = this.databaseAdapter.buildPeriodSeriesSubquery(maxPeriods)
 
     // Build SELECT fields
     const selectFields: Record<string, any> = {

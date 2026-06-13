@@ -829,6 +829,7 @@
   "server.validation.retention.dateRangeRequired": "Date range is required",
   "server.validation.retention.dateRangeStartBeforeEnd": "Date range start must be before or equal to end",
   "server.validation.retention.dateRangeStartRequired": "Date range start is required",
+  "server.validation.retention.engineNotSupported": "Retention queries are not supported on {engine}. Use PostgreSQL or DuckDB for retention analysis.",
   "server.validation.retention.invalidBindingKeyFormat": "Invalid binding key format: {bindingKey}. Expected 'CubeName.dimensionName'",
   "server.validation.retention.invalidBreakdownDimFormat": "Invalid breakdown dimension format: {dimension}. Expected 'CubeName.dimensionName'",
   "server.validation.retention.invalidGranularity": "Invalid granularity: {granularity}",

@@ -797,6 +797,7 @@
   "server.validation.retention.dateRangeRequired": "Datum range is vereist",
   "server.validation.retention.dateRangeStartBeforeEnd": "Datum range start moet be voor of equal naar end",
   "server.validation.retention.dateRangeStartRequired": "Datum range start is vereist",
+  "server.validation.retention.engineNotSupported": "Retentie queries worden niet ondersteund op {engine}. Gebruik PostgreSQL of DuckDB voor retentie analyse.",
   "server.validation.retention.invalidBindingKeyFormat": "Ongeldig binding key format: {bindingKey}. Expected 'CubeName.dimensionName'",
   "server.validation.retention.invalidBreakdownDimFormat": "Ongeldig breakdown dimensie format: {dimension}. Expected 'CubeName.dimensionName'",
   "server.validation.retention.invalidGranularity": "Ongeldig granularity: {granularity}",
