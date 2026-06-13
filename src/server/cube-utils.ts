@@ -8,6 +8,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import type {
   Cube,
   CubeJoin,
+  Dimension,
   QueryContext,
   MultiCubeQueryContext,
   SqlExpression,
@@ -173,6 +174,26 @@ export function resolveSqlExpression(
 ): AnyColumn | SQL {
   const result = typeof expr === 'function' ? expr(ctx) : expr
   return isolateSqlExpression(result)
+}
+
+/**
+ * Resolve a dimension's SQL expression for use in a filter condition.
+ *
+ * For non-time dimensions, use the raw column so Drizzle preserves column type
+ * metadata for proper parameter binding (e.g. UUID columns need type info) — this
+ * deliberately bypasses isolateSqlExpression. For time dimensions, keep isolated
+ * SQL because normalizeDate() returns strings.
+ *
+ * Centralises the filter-field resolution that was previously copy-pasted across
+ * the filter builder, executor, and funnel/flow/retention builders.
+ */
+export function resolveFilterFieldExpr(
+  dimension: Dimension,
+  ctx: QueryContext
+): AnyColumn | SQL {
+  return dimension.type === 'time'
+    ? resolveSqlExpression(dimension.sql, ctx)
+    : (typeof dimension.sql === 'function' ? dimension.sql(ctx) : dimension.sql)
 }
 
 /**

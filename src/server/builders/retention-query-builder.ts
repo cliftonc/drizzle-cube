@@ -31,7 +31,7 @@ import type {
   FilterCondition,
   LogicalFilter
 } from '../types'
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -462,12 +462,7 @@ export class RetentionQueryBuilder {
     const dimension = filterCube.dimensions?.[dimName]
     if (!dimension) return null
 
-    // For non-time dimensions, use raw column so Drizzle preserves column type
-    // metadata for proper parameter binding (e.g., UUID columns need type info).
-    // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
-    const fieldExpr = dimension.type === 'time'
-      ? resolveSqlExpression(dimension.sql, context)
-      : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+    const fieldExpr = resolveFilterFieldExpr(dimension, context)
 
     return this.filterBuilder.buildFilterCondition(
       fieldExpr,

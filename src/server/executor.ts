@@ -25,7 +25,7 @@ import type {
   RLSSetupFn
 } from './types'
 
-import { resolveSqlExpression, safeKey } from './cube-utils'
+import { resolveSqlExpression, resolveFilterFieldExpr, safeKey } from './cube-utils'
 import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
 import { generateCacheKey } from './cache-utils'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
@@ -1339,12 +1339,7 @@ export class QueryExecutor {
           continue
         }
 
-        // For non-time dimensions, use raw column so Drizzle preserves column type
-        // metadata for proper parameter binding (e.g., UUID columns need type info).
-        // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
-        const fieldExpr = dimension.type === 'time'
-          ? resolveSqlExpression(dimension.sql, context)
-          : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+        const fieldExpr = resolveFilterFieldExpr(dimension, context)
         const filterSQL = this.queryBuilder.buildFilterConditionPublic(
           fieldExpr,
           filter.operator,
