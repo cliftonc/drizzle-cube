@@ -88,6 +88,22 @@ const SEEDED_TABLES = [
 ]
 
 /**
+ * The functional-test migrations create no index beyond the primary keys. The
+ * flow/funnel/retention analysis modes run over the productivity table per
+ * entity ordered by time — the flow builder's LATERAL steps issue one
+ * `WHERE employee_id = ? AND date < ? ORDER BY date DESC LIMIT 1` per entity
+ * per step. Without a composite (employee_id, date) index each becomes a full
+ * seq scan, turning the flow benchmark from ~20ms into ~37s (and forcing the
+ * funnel/retention window sorts to spill). This is the only index the planner
+ * actually uses in the suite — every other benchmark is a full-table
+ * aggregation or hash join where a seq scan is already optimal, so we add
+ * nothing else. Idempotent so pre-seeded perf DBs get backfilled without a reseed.
+ */
+async function ensurePerfIndexes(db: PerfConnection['db']): Promise<void> {
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_perf_productivity_emp_date ON productivity (employee_id, date)`)
+}
+
+/**
  * Seed the perf dataset unless the stored data version already matches.
  * A `perf_meta` key/value table stamps the seeded version and row counts,
  * so generator/schema changes (bump PERF_DATA_VERSION) trigger a reseed.
@@ -106,6 +122,8 @@ export async function ensureSeeded(
     const rowCounts = countRows.length > 0
       ? JSON.parse((countRows[0] as { value: string }).value) as Record<string, number>
       : {}
+    // Backfill perf indexes for DBs seeded before they were introduced.
+    await ensurePerfIndexes(db)
     console.log(`Perf data version ${PERF_DATA_VERSION} already seeded — skipping (use --force-reseed to rebuild)`)
     return rowCounts
   }
@@ -118,6 +136,9 @@ export async function ensureSeeded(
   await db.execute(sql.raw(`TRUNCATE ${SEEDED_TABLES.join(', ')} RESTART IDENTITY CASCADE`))
 
   const rowCounts = await seedPerfData(db)
+
+  // Build indexes after the bulk insert so the load isn't slowed by index maintenance.
+  await ensurePerfIndexes(db)
 
   await db.execute(sql`
     INSERT INTO perf_meta (key, value) VALUES ('data_version', ${String(PERF_DATA_VERSION)})
