@@ -143,8 +143,11 @@ export class MySQLAdapter extends BaseDatabaseAdapter {
         // Calculate quarter start date using QUARTER() function
         return sql`DATE_ADD(MAKEDATE(YEAR(${fieldExpr}), 1), INTERVAL (QUARTER(${fieldExpr}) - 1) * 3 MONTH)`
       case 'week':
-        // Get start of week (Monday) using MySQL's week functions
-        return sql`DATE_SUB(${fieldExpr}, INTERVAL WEEKDAY(${fieldExpr}) DAY)`
+        // Get start of week (Monday), zeroing the time-of-day so all rows in a
+        // week collapse to a single bucket. Keeping the original time component
+        // would break GROUP BY (one row per distinct timestamp) and prevent gap
+        // filling from matching real rows to generated week buckets.
+        return sql`STR_TO_DATE(DATE_FORMAT(DATE_SUB(${fieldExpr}, INTERVAL WEEKDAY(${fieldExpr}) DAY), '%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%i:%s')`
       default: {
         const format = formatMap[granularity]
         if (!format) {

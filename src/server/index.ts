@@ -78,6 +78,7 @@ export {
   generateCacheKey,
   normalizeQuery,
   fnv1aHash,
+  strongHash,
   getCubeInvalidationPattern
 } from './cache-utils'
 

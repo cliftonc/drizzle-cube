@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseDatabendExplain } from '../explain/databend-parser'
+import { buildBoundSql } from './explain-utils'
 
 export class DatabendExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -144,17 +145,10 @@ export class DatabendExecutor extends BaseDatabaseExecutor {
       throw new Error('Databend database instance must have an execute method')
     }
 
-    // Replace $1, $2 style placeholders with actual values for EXPLAIN
+    // Pass params as real bind parameters (Databend uses $n placeholders) rather
+    // than re-inlining user values into the SQL string — see explain-utils.
     const result = await this.db.execute(
-      sql`${sql.raw(explainPrefix)} ${sql.raw(sqlString.replace(/\$(\d+)/g, (_, n) => {
-        const paramIndex = parseInt(n, 10) - 1
-        const value = params[paramIndex]
-        if (value === null) return 'NULL'
-        if (typeof value === 'number') return String(value)
-        if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-        if (value instanceof Date) return `'${value.toISOString()}'`
-        return `'${String(value).replace(/'/g, "''")}'`
-      }))}`
+      sql`${sql.raw(explainPrefix)} ${buildBoundSql(sqlString, params, 'dollar')}`
     )
 
     const rawLines: string[] = []

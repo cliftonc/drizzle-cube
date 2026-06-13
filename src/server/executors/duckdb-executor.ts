@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseDuckDBExplain } from '../explain/duckdb-parser'
+import { buildBoundSql } from './explain-utils'
 
 export class DuckDBExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -169,20 +170,10 @@ export class DuckDBExecutor extends BaseDatabaseExecutor {
       throw new Error('DuckDB database instance must have an execute method')
     }
 
-    // For DuckDB, we need to replace parameters with values
-    // DuckDB uses $1, $2 style placeholders like PostgreSQL
+    // Pass params as real bind parameters (DuckDB uses $n placeholders) rather
+    // than re-inlining user values into the SQL string — see explain-utils.
     const result = await this.db.execute(
-      sql`${sql.raw(explainPrefix)} ${sql.raw(sqlString.replace(/\$(\d+)/g, (_, n) => {
-        const paramIndex = parseInt(n, 10) - 1
-        const value = params[paramIndex]
-        // Escape and quote the value appropriately
-        if (value === null) return 'NULL'
-        if (typeof value === 'number') return String(value)
-        if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
-        if (value instanceof Date) return `'${value.toISOString()}'`
-        // String: escape single quotes
-        return `'${String(value).replace(/'/g, "''")}'`
-      }))}`
+      sql`${sql.raw(explainPrefix)} ${buildBoundSql(sqlString, params, 'dollar')}`
     )
 
     // DuckDB returns EXPLAIN output as rows

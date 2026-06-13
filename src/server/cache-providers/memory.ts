@@ -6,6 +6,20 @@
 import type { CacheProvider, CacheGetResult } from '../types'
 
 /**
+ * Deep-clone a cached value so cache entries are isolated from external mutation.
+ * Falls back to the original reference for values structuredClone cannot handle
+ * (e.g. those containing functions), which is the prior behaviour.
+ */
+function cloneValue<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value
+  try {
+    return structuredClone(value)
+  } catch {
+    return value
+  }
+}
+
+/**
  * Internal cache entry structure with TTL tracking
  */
 interface CacheEntry<T> {
@@ -99,7 +113,9 @@ export class MemoryCacheProvider implements CacheProvider {
     this.touchAccessOrder(key)
 
     return {
-      value: entry.value as T,
+      // Return a clone so a consumer mutating the result (e.g. result.data)
+      // cannot corrupt the cached entry for subsequent hits.
+      value: cloneValue(entry.value) as T,
       metadata: {
         cachedAt: entry.cachedAt,
         ttlMs: entry.ttlMs,
@@ -122,7 +138,9 @@ export class MemoryCacheProvider implements CacheProvider {
     }
 
     this.cache.set(key, {
-      value,
+      // Store a clone so the caller retaining a reference and mutating it later
+      // cannot retroactively change the cached entry.
+      value: cloneValue(value),
       cachedAt: now,
       ttlMs: ttl,
       expiresAt: now + ttl

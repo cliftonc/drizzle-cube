@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseSQLiteExplain } from '../explain/sqlite-parser'
+import { buildBoundSql } from './explain-utils'
 
 export class SQLiteExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -102,26 +103,14 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
     params: unknown[],
     _options?: ExplainOptions
   ): Promise<ExplainResult> {
-    // SQLite uses ? placeholders, replace with values
-    let queryWithValues = sqlString
-    let paramIndex = 0
-    queryWithValues = queryWithValues.replace(/\?/g, () => {
-      const value = params[paramIndex++]
-      if (value === null) return 'NULL'
-      if (typeof value === 'number') return String(value)
-      if (typeof value === 'boolean') return value ? '1' : '0'
-      if (value instanceof Date) return `'${value.toISOString()}'`
-      // String: escape single quotes
-      return `'${String(value).replace(/'/g, "''")}'`
-    })
-
-    // SQLite uses EXPLAIN QUERY PLAN (not EXPLAIN ANALYZE)
-    const explainSql = `EXPLAIN QUERY PLAN ${queryWithValues}`
-
-    // Execute through the database
+    // SQLite uses EXPLAIN QUERY PLAN (not EXPLAIN ANALYZE).
+    // Pass params as real bind parameters (SQLite uses ? placeholders) rather than
+    // re-inlining user values into the SQL string — see explain-utils.
     let result: any[]
     if (this.db.all) {
-      result = this.db.all(sql.raw(explainSql))
+      result = this.db.all(
+        sql`EXPLAIN QUERY PLAN ${buildBoundSql(sqlString, params, 'question')}`
+      )
     } else {
       throw new Error('SQLite database instance must have an all() method for EXPLAIN')
     }

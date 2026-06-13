@@ -249,6 +249,57 @@ describe('Gap Filling', () => {
       expect(result).toHaveLength(3)
       expect(result[0]['Sales.revenue']).toBe(0)
     })
+
+    // Regression tests for issue #849, item 3 — gap filling must not drop real data.
+    it('should keep real rows whose time carries a time-of-day (MySQL/SingleStore week)', () => {
+      // MySQL/SingleStore previously produced a week bucket that retained the
+      // time component (e.g. Monday 14:30) which never matched the JS-generated
+      // Monday 00:00 bucket — so real data was replaced with fill values.
+      const data = [
+        { 'Sales.date': '2024-06-03T14:30:00.000Z', 'Sales.revenue': 100 }, // Mon
+        { 'Sales.date': '2024-06-10T09:15:00.000Z', 'Sales.revenue': 200 }  // Mon
+      ]
+
+      const result = fillTimeSeriesGaps(data, {
+        timeDimensionKey: 'Sales.date',
+        granularity: 'week',
+        dateRange: [new Date('2024-06-03'), new Date('2024-06-10')],
+        fillValue: 0,
+        measures: ['Sales.revenue'],
+        dimensions: []
+      })
+
+      // Exactly the two real weeks — no spurious fill rows replacing real data
+      expect(result).toHaveLength(2)
+      // Real values must survive (not be replaced by the 0 fill value): the
+      // time-of-day-bearing rows align to their week bucket and are kept.
+      const revenues = result.map(r => r['Sales.revenue']).sort()
+      expect(revenues).toEqual([100, 200])
+      expect(revenues).not.toContain(0)
+    })
+
+    it('should return data unmodified (not truncate) when the range exceeds the bucket cap', () => {
+      // 30 days at minute granularity = 43,200 buckets, well over the 10,000 cap.
+      // Real rows spread across the whole range must all survive.
+      const data = [
+        { 'Sales.date': '2024-01-01T00:00:00.000Z', 'Sales.revenue': 1 },
+        { 'Sales.date': '2024-01-20T12:00:00.000Z', 'Sales.revenue': 2 },
+        { 'Sales.date': '2024-01-30T23:59:00.000Z', 'Sales.revenue': 3 }
+      ]
+
+      const result = fillTimeSeriesGaps(data, {
+        timeDimensionKey: 'Sales.date',
+        granularity: 'minute',
+        dateRange: [new Date('2024-01-01T00:00:00Z'), new Date('2024-01-31T00:00:00Z')],
+        fillValue: 0,
+        measures: ['Sales.revenue'],
+        dimensions: []
+      })
+
+      // Data returned unchanged — no fill, no truncation
+      expect(result).toHaveLength(3)
+      expect(result).toEqual(data)
+    })
   })
 
   describe('Unit Tests - applyGapFilling', () => {
@@ -615,6 +666,15 @@ describe('Gap Filling', () => {
 
       // Should have 4 weeks
       expect(result.data).toHaveLength(4)
+
+      // Real values must survive gap filling (issue #849). Before the fix, the
+      // MySQL/SingleStore week expression kept the time-of-day so no real row
+      // matched a week bucket and every value was replaced with the 0 fill.
+      const totalRecords = result.data.reduce(
+        (sum, row) => sum + Number(row['Productivity.recordCount'] ?? 0),
+        0
+      )
+      expect(totalRecords).toBeGreaterThan(0)
     })
 
     it('should handle yearly granularity gap filling', async () => {
