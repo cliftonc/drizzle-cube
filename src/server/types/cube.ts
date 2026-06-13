@@ -13,7 +13,21 @@ import type {
   TimeGranularity
 } from './core'
 import type { SemanticQuery } from './query'
-import type { FilterCacheManager } from '../filter-cache'
+
+/**
+ * Filter SQL cache used for parameter deduplication across CTEs and the main
+ * query. Defined here (rather than imported from the runtime filter-cache
+ * module) so the types package has no dependency on runtime modules.
+ * Implemented by `FilterCacheManager`.
+ */
+export interface FilterCache {
+  getOrBuild(key: string, builder: () => SQL | null): SQL | null
+  has(key: string): boolean
+  get(key: string): SQL | undefined
+  preload(entries: Array<{ key: string; sql: SQL }>): void
+  set(key: string, sql: SQL): void
+  clear(): void
+}
 
 /**
  * Any queryable relation that can be used in FROM/JOIN clauses
@@ -57,7 +71,7 @@ export interface QueryContext {
    * Filter cache for parameter deduplication across CTEs
    * Created at query start and used throughout query building
    */
-  filterCache?: FilterCacheManager
+  filterCache?: FilterCache
   /**
    * When true, measures should be rendered as raw column expressions
    * without aggregation wrappers. Set from SemanticQuery.ungrouped.

@@ -9,7 +9,7 @@
  */
 
 import type { SQL } from 'drizzle-orm'
-import type { Filter, FilterCondition } from './types'
+import type { Filter, FilterCondition, FilterCache } from './types'
 
 /**
  * Generates a deterministic cache key for a filter
@@ -63,7 +63,7 @@ export interface FilterCacheStats {
  * - Key by content: Filters with same member/operator/values share SQL
  * - Thread-safe: No shared mutable state between queries
  */
-export class FilterCacheManager {
+export class FilterCacheManager implements FilterCache {
   private cache = new Map<string, SQL>()
   private stats = { hits: 0, misses: 0 }
 
