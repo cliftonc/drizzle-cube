@@ -260,6 +260,8 @@ Three built-in themes (light, dark, neon) with semantic CSS variables. Add custo
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md).
 
+Query performance is benchmarked on every push to `main` — browse the historical trends at the **[Performance Dashboard](https://cliftonc.github.io/drizzle-cube/dev/bench/)**.
+
 ## Roadmap
 
 View and contribute to the roadmap on [GitHub Projects](https://github.com/users/cliftonc/projects/2).
