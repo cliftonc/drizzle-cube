@@ -33,13 +33,9 @@ import type {
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasFlowMode } from '../query-modes'
+import { combineWhere, resolveBindingKeyExpr, resolveTimeDimensionExpr, type WithSubquery } from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
-
-/**
- * Type for CTE objects created by db.$with()
- */
-type WithSubquery = ReturnType<ReturnType<any['$with']>['as']>
 
 /**
  * Resolved flow configuration with SQL expressions
@@ -240,14 +236,14 @@ export class FlowQueryBuilder {
 
     // 2. Before step CTEs - walk backwards from starting step
     const beforeCTEs = useLateral
-      ? this.buildBeforeCTEsLateral(effectiveConfig, resolved, context)
-      : this.buildBeforeCTEsWindow(effectiveConfig, resolved, context)
+      ? this.buildDirectionalCTEsLateral('before', effectiveConfig, resolved, context)
+      : this.buildDirectionalCTEsWindow('before', effectiveConfig, resolved, context)
     ctes.push(...beforeCTEs)
 
     // 3. After step CTEs - walk forwards from starting step
     const afterCTEs = useLateral
-      ? this.buildAfterCTEsLateral(effectiveConfig, resolved, context)
-      : this.buildAfterCTEsWindow(effectiveConfig, resolved, context)
+      ? this.buildDirectionalCTEsLateral('after', effectiveConfig, resolved, context)
+      : this.buildDirectionalCTEsWindow('after', effectiveConfig, resolved, context)
     ctes.push(...afterCTEs)
 
     // 4. Nodes aggregation CTE - count entities per (layer, event_type)
@@ -357,25 +353,7 @@ export class FlowQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    if (typeof config.bindingKey === 'string') {
-      const [, dimName] = config.bindingKey.split('.')
-      const dimension = cube.dimensions?.[dimName]
-      if (!dimension) {
-        throw new Error(t('server.errors.flow.bindingKeyDimNotFound', { bindingKey: config.bindingKey }))
-      }
-      return resolveSqlExpression(dimension.sql, context) as SQL
-    }
-
-    const mapping = config.bindingKey.find((m) => m.cube === cube.name)
-    if (!mapping) {
-      throw new Error(t('server.errors.flow.noBindingKeyMapping', { cubeName: cube.name }))
-    }
-    const [, dimName] = mapping.dimension.split('.')
-    const dimension = cube.dimensions?.[dimName]
-    if (!dimension) {
-      throw new Error(t('server.errors.flow.bindingKeyMappingDimNotFound', { dimension: mapping.dimension }))
-    }
-    return resolveSqlExpression(dimension.sql, context) as SQL
+    return resolveBindingKeyExpr(config.bindingKey, cube, context, 'server.errors.flow')
   }
 
   /**
@@ -386,25 +364,7 @@ export class FlowQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    if (typeof config.timeDimension === 'string') {
-      const [, dimName] = config.timeDimension.split('.')
-      const dimension = cube.dimensions?.[dimName]
-      if (!dimension) {
-        throw new Error(t('server.errors.flow.timeDimNotFound', { timeDimension: config.timeDimension }))
-      }
-      return resolveSqlExpression(dimension.sql, context) as SQL
-    }
-
-    const mapping = config.timeDimension.find((m) => m.cube === cube.name)
-    if (!mapping) {
-      throw new Error(t('server.errors.flow.noTimeDimMapping', { cubeName: cube.name }))
-    }
-    const [, dimName] = mapping.dimension.split('.')
-    const dimension = cube.dimensions?.[dimName]
-    if (!dimension) {
-      throw new Error(t('server.errors.flow.timeDimMappingNotFound', { dimension: mapping.dimension }))
-    }
-    return resolveSqlExpression(dimension.sql, context) as SQL
+    return resolveTimeDimensionExpr(config.timeDimension, cube, context, 'server.errors.flow')
   }
 
   /**
@@ -559,11 +519,7 @@ export class FlowQueryBuilder {
 
     // Apply WHERE conditions
     if (whereConditions.length > 0) {
-      const combinedWhere =
-        whereConditions.length === 1
-          ? whereConditions[0]
-          : (and(...whereConditions) as SQL)
-      query = query.where(combinedWhere)
+      query = query.where(combineWhere(whereConditions))
     }
 
     // Group by binding key and event type
@@ -578,10 +534,15 @@ export class FlowQueryBuilder {
   }
 
   /**
-   * Build CTEs for steps BEFORE the starting point using LATERAL joins
-   * Uses ORDER BY ... DESC LIMIT 1 to fetch immediate predecessor via index
+   * Build CTEs for steps BEFORE/AFTER the starting point using LATERAL joins
+   *
+   * Direction-parameterised: 'before' walks backwards (time `<` reference,
+   * ORDER BY DESC, `before_step_N` aliases, bounded by `stepsBefore`); 'after'
+   * walks forwards (time `>`, ORDER BY ASC, `after_step_N`, `stepsAfter`).
+   * Uses ORDER BY ... LIMIT 1 to fetch the immediate predecessor/successor via index.
    */
-  private buildBeforeCTEsLateral(
+  private buildDirectionalCTEsLateral(
+    direction: 'before' | 'after',
     config: FlowQueryConfig,
     resolved: ResolvedFlowConfig,
     context: QueryContext
@@ -590,10 +551,15 @@ export class FlowQueryBuilder {
     const ctes: WithSubquery[] = []
     const isSunburst = config.outputMode === 'sunburst'
 
-    for (let depth = 1; depth <= config.stepsBefore; depth++) {
-      const prevAlias = depth === 1 ? 'starting_entities' : `before_step_${depth - 1}`
+    const isBefore = direction === 'before'
+    const stepBound = isBefore ? config.stepsBefore : config.stepsAfter
+    const timeOp = isBefore ? sql`<` : sql`>`
+    const orderDir = isBefore ? sql`DESC` : sql`ASC`
+
+    for (let depth = 1; depth <= stepBound; depth++) {
+      const prevAlias = depth === 1 ? 'starting_entities' : `${direction}_step_${depth - 1}`
       const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
-      const alias = `before_step_${depth}`
+      const alias = `${direction}_step_${depth}`
 
       const whereConditions: SQL[] = []
       if (cubeBase.where) {
@@ -601,15 +567,14 @@ export class FlowQueryBuilder {
       }
       whereConditions.push(
         sql`${bindingKeyExpr} = ${sql.identifier(prevAlias)}.binding_key`,
-        sql`${timeExpr} < ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
+        sql`${timeExpr} ${timeOp} ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
       )
-      const combinedWhere =
-        whereConditions.length === 1
-          ? whereConditions[0]
-          : (and(...whereConditions) as SQL)
+      const combinedWhere = combineWhere(whereConditions)
 
       const eventPathExpr = isSunburst
-        ? sql`${eventExpr} || ${'→'} || ${sql.identifier(prevAlias)}.event_path`
+        ? (isBefore
+            ? sql`${eventExpr} || ${'→'} || ${sql.identifier(prevAlias)}.event_path`
+            : sql`${sql.identifier(prevAlias)}.event_path || ${'→'} || ${eventExpr}`)
         : sql`${eventExpr}`
 
       const lateralSubquery = context.db
@@ -621,7 +586,7 @@ export class FlowQueryBuilder {
         })
         .from(cubeBase.from)
         .where(combinedWhere)
-        .orderBy(sql`${timeExpr} DESC`)
+        .orderBy(sql`${timeExpr} ${orderDir}`)
         .limit(1)
 
       const cte = context.db.$with(alias).as(
@@ -643,78 +608,16 @@ export class FlowQueryBuilder {
   }
 
   /**
-   * Build CTEs for steps AFTER the starting point using LATERAL joins
-   * Uses ORDER BY ... ASC LIMIT 1 to fetch immediate successor via index
-   */
-  private buildAfterCTEsLateral(
-    config: FlowQueryConfig,
-    resolved: ResolvedFlowConfig,
-    context: QueryContext
-  ): WithSubquery[] {
-    const { cubeBase, bindingKeyExpr, timeExpr, eventExpr } = resolved
-    const ctes: WithSubquery[] = []
-    const isSunburst = config.outputMode === 'sunburst'
-
-    for (let depth = 1; depth <= config.stepsAfter; depth++) {
-      const prevAlias = depth === 1 ? 'starting_entities' : `after_step_${depth - 1}`
-      const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
-      const alias = `after_step_${depth}`
-
-      const whereConditions: SQL[] = []
-      if (cubeBase.where) {
-        whereConditions.push(cubeBase.where)
-      }
-      whereConditions.push(
-        sql`${bindingKeyExpr} = ${sql.identifier(prevAlias)}.binding_key`,
-        sql`${timeExpr} > ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
-      )
-      const combinedWhere =
-        whereConditions.length === 1
-          ? whereConditions[0]
-          : (and(...whereConditions) as SQL)
-
-      const eventPathExpr = isSunburst
-        ? sql`${sql.identifier(prevAlias)}.event_path || ${'→'} || ${eventExpr}`
-        : sql`${eventExpr}`
-
-      const lateralSubquery = context.db
-        .select({
-          binding_key: sql`${bindingKeyExpr}`.as('binding_key'),
-          step_time: sql`${timeExpr}`.as('step_time'),
-          event_type: sql`${eventExpr}`.as('event_type'),
-          event_path: eventPathExpr.as('event_path'),
-        })
-        .from(cubeBase.from)
-        .where(combinedWhere)
-        .orderBy(sql`${timeExpr} ASC`)
-        .limit(1)
-
-      const cte = context.db.$with(alias).as(
-        context.db
-          .select({
-            binding_key: sql`e.binding_key`.as('binding_key'),
-            step_time: sql`e.step_time`.as('step_time'),
-            event_type: sql`e.event_type`.as('event_type'),
-            event_path: sql`e.event_path`.as('event_path'),
-          })
-          .from(sql`${sql.identifier(prevAlias)}`)
-          .crossJoinLateral(lateralSubquery.as('e'))
-      )
-
-      ctes.push(cte)
-    }
-
-    return ctes
-  }
-
-  /**
-   * Build CTEs for steps BEFORE the starting point
-   * Each CTE finds the immediate predecessor event for entities from the previous CTE
+   * Build CTEs for steps BEFORE/AFTER the starting point using ROW_NUMBER()
    *
-   * Uses ROW_NUMBER() window function to get exactly the Nth previous event
-   * For sunburst mode, accumulates event_path by prepending to previous path
+   * Direction-parameterised: 'before' finds the immediate predecessor (time `<`
+   * reference, ROW_NUMBER ORDER BY DESC, `before_step_N` aliases, bounded by
+   * `stepsBefore`); 'after' finds the immediate successor (time `>`, ORDER BY ASC,
+   * `after_step_N`, `stepsAfter`). For sunburst mode, accumulates event_path
+   * (prepend for before, append for after).
    */
-  private buildBeforeCTEsWindow(
+  private buildDirectionalCTEsWindow(
+    direction: 'before' | 'after',
     config: FlowQueryConfig,
     resolved: ResolvedFlowConfig,
     context: QueryContext
@@ -723,10 +626,15 @@ export class FlowQueryBuilder {
     const ctes: WithSubquery[] = []
     const isSunburst = config.outputMode === 'sunburst'
 
-    for (let depth = 1; depth <= config.stepsBefore; depth++) {
-      const prevAlias = depth === 1 ? 'starting_entities' : `before_step_${depth - 1}`
+    const isBefore = direction === 'before'
+    const stepBound = isBefore ? config.stepsBefore : config.stepsAfter
+    const timeOp = isBefore ? sql`<` : sql`>`
+    const orderDir = isBefore ? sql`DESC` : sql`ASC`
+
+    for (let depth = 1; depth <= stepBound; depth++) {
+      const prevAlias = depth === 1 ? 'starting_entities' : `${direction}_step_${depth - 1}`
       const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
-      const alias = `before_step_${depth}`
+      const alias = `${direction}_step_${depth}`
 
       // Build WHERE conditions
       const whereConditions: SQL[] = []
@@ -734,31 +642,31 @@ export class FlowQueryBuilder {
         whereConditions.push(cubeBase.where)
       }
 
-      // Time constraint: event must be BEFORE the reference time
+      // Time constraint: event must be BEFORE/AFTER the reference time
       whereConditions.push(
-        sql`${timeExpr} < ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
+        sql`${timeExpr} ${timeOp} ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
       )
 
-      const combinedWhere =
-        whereConditions.length === 1
-          ? whereConditions[0]
-          : (and(...whereConditions) as SQL)
+      const combinedWhere = combineWhere(whereConditions)
 
       // Build event_path expression for sunburst mode
-      // For before steps, prepend current event to previous path (reverse order)
+      // For before steps, prepend current event to previous path (reverse order);
+      // for after steps, append current event to previous path
       const eventPathExpr = isSunburst
-        ? sql`${eventExpr} || ${'→'} || ${sql.identifier(prevAlias)}.event_path`
+        ? (isBefore
+            ? sql`${eventExpr} || ${'→'} || ${sql.identifier(prevAlias)}.event_path`
+            : sql`${sql.identifier(prevAlias)}.event_path || ${'→'} || ${eventExpr}`)
         : sql`${eventExpr}` // For sankey mode, just use event_type as path
 
       // Build the CTE using a subquery with ROW_NUMBER window function
-      // ROW_NUMBER() OVER (PARTITION BY binding_key ORDER BY time DESC) gives us the Nth previous event
+      // ROW_NUMBER() OVER (PARTITION BY binding_key ORDER BY time DESC/ASC) gives us the Nth previous/following event
       const rankedQuery = context.db
         .select({
           binding_key: sql`${bindingKeyExpr}`.as('binding_key'),
           step_time: sql`${timeExpr}`.as('step_time'),
           event_type: sql`${eventExpr}`.as('event_type'),
           event_path: eventPathExpr.as('event_path'),
-          rn: sql`ROW_NUMBER() OVER (PARTITION BY ${bindingKeyExpr} ORDER BY ${timeExpr} DESC)`.as('rn'),
+          rn: sql`ROW_NUMBER() OVER (PARTITION BY ${bindingKeyExpr} ORDER BY ${timeExpr} ${orderDir})`.as('rn'),
         })
         .from(cubeBase.from)
         .innerJoin(
@@ -767,84 +675,7 @@ export class FlowQueryBuilder {
         )
         .where(combinedWhere)
 
-      // Wrap to filter for rn = 1 (immediate predecessor)
-      const filteredQuery = context.db
-        .select({
-          binding_key: sql`binding_key`.as('binding_key'),
-          step_time: sql`step_time`.as('step_time'),
-          event_type: sql`event_type`.as('event_type'),
-          event_path: sql`event_path`.as('event_path'),
-        })
-        .from(rankedQuery.as('ranked'))
-        .where(sql`rn = 1`)
-
-      ctes.push(context.db.$with(alias).as(filteredQuery))
-    }
-
-    return ctes
-  }
-
-  /**
-   * Build CTEs for steps AFTER the starting point
-   * Each CTE finds the immediate successor event for entities from the previous CTE
-   *
-   * Uses ROW_NUMBER() window function to get exactly the Nth following event
-   * For sunburst mode, accumulates event_path by concatenating with previous path
-   */
-  private buildAfterCTEsWindow(
-    config: FlowQueryConfig,
-    resolved: ResolvedFlowConfig,
-    context: QueryContext
-  ): WithSubquery[] {
-    const { cubeBase, bindingKeyExpr, timeExpr, eventExpr } = resolved
-    const ctes: WithSubquery[] = []
-    const isSunburst = config.outputMode === 'sunburst'
-
-    for (let depth = 1; depth <= config.stepsAfter; depth++) {
-      const prevAlias = depth === 1 ? 'starting_entities' : `after_step_${depth - 1}`
-      const prevTimeColumn = depth === 1 ? 'start_time' : 'step_time'
-      const alias = `after_step_${depth}`
-
-      // Build WHERE conditions
-      const whereConditions: SQL[] = []
-      if (cubeBase.where) {
-        whereConditions.push(cubeBase.where)
-      }
-
-      // Time constraint: event must be AFTER the reference time
-      whereConditions.push(
-        sql`${timeExpr} > ${sql.identifier(prevAlias)}.${sql.identifier(prevTimeColumn)}`
-      )
-
-      const combinedWhere =
-        whereConditions.length === 1
-          ? whereConditions[0]
-          : (and(...whereConditions) as SQL)
-
-      // Build event_path expression for sunburst mode
-      // Concatenates previous path with current event type using arrow separator
-      const eventPathExpr = isSunburst
-        ? sql`${sql.identifier(prevAlias)}.event_path || ${'→'} || ${eventExpr}`
-        : sql`${eventExpr}` // For sankey mode, just use event_type as path
-
-      // Build the CTE using a subquery with ROW_NUMBER window function
-      // ROW_NUMBER() OVER (PARTITION BY binding_key ORDER BY time ASC) gives us the Nth following event
-      const rankedQuery = context.db
-        .select({
-          binding_key: sql`${bindingKeyExpr}`.as('binding_key'),
-          step_time: sql`${timeExpr}`.as('step_time'),
-          event_type: sql`${eventExpr}`.as('event_type'),
-          event_path: eventPathExpr.as('event_path'),
-          rn: sql`ROW_NUMBER() OVER (PARTITION BY ${bindingKeyExpr} ORDER BY ${timeExpr} ASC)`.as('rn'),
-        })
-        .from(cubeBase.from)
-        .innerJoin(
-          sql`${sql.identifier(prevAlias)}`,
-          sql`${bindingKeyExpr} = ${sql.identifier(prevAlias)}.binding_key`
-        )
-        .where(combinedWhere)
-
-      // Wrap to filter for rn = 1 (immediate successor)
+      // Wrap to filter for rn = 1 (immediate predecessor/successor)
       const filteredQuery = context.db
         .select({
           binding_key: sql`binding_key`.as('binding_key'),

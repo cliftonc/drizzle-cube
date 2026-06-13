@@ -34,6 +34,7 @@ import type {
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasRetentionMode } from '../query-modes'
+import { combineWhere, type WithSubquery } from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 
@@ -50,11 +51,6 @@ interface ResolvedRetentionConfig {
   /** Resolved breakdown expressions with their dimension names */
   breakdowns: Array<{ dimension: string; expr: SQL }>
 }
-
-/**
- * Type for CTE objects created by db.$with()
- */
-type WithSubquery = ReturnType<ReturnType<any['$with']>['as']>
 
 export class RetentionQueryBuilder {
   private filterBuilder: FilterBuilder
@@ -355,6 +351,13 @@ export class RetentionQueryBuilder {
 
   /**
    * Resolve binding key expression for a cube
+   *
+   * TODO(#850): Not unified with the shared resolveBindingKeyExpr used by
+   * funnel/flow. Retention's variant uses a different i18n leaf-key set
+   * (`server.validation.retention.bindingKeyCubeNotFound` etc., not the
+   * `server.errors.*` keys funnel/flow share), takes an extra `cubes` map for
+   * multi-cube binding-key resolution, and uses `isRetentionMultiCubeBindingKey`
+   * / `extractDimensionName`. Kept separate to preserve exact error messages.
    */
   private resolveBindingKey(
     bindingKey: string | RetentionBindingKeyMapping[],
@@ -525,10 +528,7 @@ export class RetentionQueryBuilder {
 
     // Apply WHERE conditions
     if (whereConditions.length > 0) {
-      const combinedWhere = whereConditions.length === 1
-        ? whereConditions[0]
-        : and(...whereConditions) as SQL
-      groupedQuery = groupedQuery.where(combinedWhere)
+      groupedQuery = groupedQuery.where(combineWhere(whereConditions))
     }
 
     // Group by binding key AND all breakdown dimensions
@@ -644,10 +644,7 @@ export class RetentionQueryBuilder {
 
     // Apply WHERE conditions
     if (whereConditions.length > 0) {
-      const combinedWhere = whereConditions.length === 1
-        ? whereConditions[0]
-        : and(...whereConditions) as SQL
-      query = query.where(combinedWhere)
+      query = query.where(combineWhere(whereConditions))
     }
 
     // Group by to get distinct binding_key/period_number (and breakdown columns) combinations
