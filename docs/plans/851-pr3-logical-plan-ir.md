@@ -3,7 +3,17 @@
 **Issue:** [#851](https://github.com/cliftonc/drizzle-cube/issues/851) — _Semantic layer: make the logical plan a real IR, or remove it_
 **Branch:** `refactor/851-logical-plan-ir` (continue on the same branch — single PR per the maintainer's instruction)
 **Decision:** Option 1 (make it a real IR), chosen over Option 2 (remove the layer).
-**Status:** Not started. PR1 + PR2 (a/b/c) are landed; this file captures the remaining PR3 work.
+**Status:** ✅ Done. Landed on this branch as stages 1, 2, 3a, 3b, 3c (plus a junction-security
+regression guard). typecheck clean; test:postgres / test:mysql / test:sqlite all green (2352).
+
+| Stage | Commit | What |
+|-------|--------|------|
+| 1 | `0ba572d` | Injectable `PlanOptimiser` + 7-engine `OptimiserEngineType`; no unsafe cast. |
+| guard | `1995e20` | Regression test: junction-table tenant security WHERE present + context-scoped. |
+| 2 | `5a5a50b` | `build()` derives clauses from the optimised plan via public `toSemanticQuery` (+ `QueryNode.ungrouped`). |
+| 3a | `ea655bf` | Symbolic `JoinRef` (`joinDef`, no SQL); join SQL materialized in `DrizzlePlanBuilder.materializeJoin`. SQL byte-identical (snapshot diff). |
+| 3b | `39198a4` | `IntermediateJoinInfo` carries no `securityFilter`; CTE intermediate security materialized at build. |
+| 3c | `ef41eda` | Planning no longer imports `builders/` (→ `measure-classification.ts`); CLAUDE.md docs updated. |
 
 ---
 
@@ -99,15 +109,15 @@ This is the riskiest change and touches the most intricate code (CTE fan-out abs
 
 ## Definition of done
 
-- [ ] `OptimiserContext.engineType` covers all 7 engines; `getOptimiserEngineType` has no unsafe cast.
-- [ ] `QueryExecutor` and `SemanticLayerCompiler` accept an injectable `PlanOptimiser`.
-- [ ] An injected optimiser that rewrites `measures`/`filters`/`limit` provably changes generated SQL (test).
-- [ ] `JoinRef`/`IntermediateJoinInfo` carry no `SQL` and no baked `securityContext`; planning emits symbolic refs only.
-- [ ] All Drizzle SQL (join conditions, junction joins, CTE security WHERE) is materialized in `DrizzlePlanBuilder`.
-- [ ] Planning layer no longer imports `builders/` (`MeasureBuilder` dependency resolved).
-- [ ] `logical-plan/CLAUDE.md` guard rail #1 is accurate; `src/server/CLAUDE.md` pipeline description updated.
-- [ ] Security `WHERE` verified present on primary/join/CTE/junction cubes across postgres, mysql, sqlite.
-- [ ] typecheck clean; full `test:postgres` (2348+), plus `test:mysql` and `test:sqlite` green.
+- [x] `OptimiserContext.engineType` covers all 7 engines; `getOptimiserEngineType` has no unsafe cast.
+- [x] `QueryExecutor` and `SemanticLayerCompiler` accept an injectable `PlanOptimiser`.
+- [x] An injected optimiser that rewrites `measures`/`filters`/`limit` provably changes generated SQL (test).
+- [x] `JoinRef`/`IntermediateJoinInfo` carry no `SQL` and no baked `securityContext`; planning emits symbolic refs only.
+- [x] All Drizzle SQL (join conditions, junction joins, CTE security WHERE) is materialized in `DrizzlePlanBuilder`.
+- [x] Planning layer no longer imports `builders/` (`MeasureBuilder` dependency resolved).
+- [x] `logical-plan/CLAUDE.md` guard rail #1 is accurate; `src/server/CLAUDE.md` pipeline description updated.
+- [x] Security `WHERE` verified present on primary/join/CTE/junction cubes across postgres, mysql, sqlite.
+- [x] typecheck clean; full `test:postgres` (2352), plus `test:mysql` and `test:sqlite` green.
 
 ## Key files
 
