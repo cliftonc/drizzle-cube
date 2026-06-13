@@ -42,6 +42,8 @@ import { RetentionQueryBuilder } from './builders/retention-query-builder'
 import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan'
 import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
+import { createDynamicMeasureAnnotation, evaluateDynamicMeasures } from './dynamic-measures'
+import { getDynamicMeasures, getStaticMeasureNames, stripDynamicMeasures } from './query-measures'
 import { t } from '../i18n/runtime'
 
 type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
@@ -250,10 +252,11 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): import('./logical-plan').QueryNode {
+    const sqlQuery = stripDynamicMeasures(query)
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
-    return this.buildRegularQueryArtifacts(cubes, query, context).optimisedPlan
+    const context = this.createQueryContext(securityContext, filterCache, sqlQuery)
+    this.preloadFilterCache(sqlQuery, filterCache, cubes, context)
+    return this.buildRegularQueryArtifacts(cubes, sqlQuery, context).optimisedPlan
   }
 
   /**
@@ -265,10 +268,11 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): QueryAnalysis {
+    const sqlQuery = stripDynamicMeasures(query)
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
-    return this.buildRegularQueryArtifacts(cubes, query, context).analysis
+    const context = this.createQueryContext(securityContext, filterCache, sqlQuery)
+    this.preloadFilterCache(sqlQuery, filterCache, cubes, context)
+    return this.buildRegularQueryArtifacts(cubes, sqlQuery, context).analysis
   }
 
   /**
@@ -615,33 +619,34 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<QueryResult> {
+    const sqlQuery = stripDynamicMeasures(query)
     // Create filter cache for parameter deduplication across CTEs
     const filterCache = new FilterCacheManager()
 
     // Create query context with filter cache
-    const context = this.createQueryContext(securityContext, filterCache, query)
+    const context = this.createQueryContext(securityContext, filterCache, sqlQuery)
 
     // Pre-build filter SQL for reuse across CTEs and main query
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.preloadFilterCache(sqlQuery, filterCache, cubes, context)
 
     // Create unified query plan via shared logical pipeline
-    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
+    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, sqlQuery, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
 
     // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, sqlQuery, context)
 
     debugSql('query', builtQuery)
 
     // Execute query - pass numeric field names for selective conversion
-    const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
+    const numericFields = this.queryBuilder.collectNumericFields(cubes, sqlQuery)
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
     // Process time dimension results
     const mappedData = Array.isArray(data) ? data.map(row => {
       const mappedRow = { ...row }
-      if (query.timeDimensions) {
-        for (const timeDim of query.timeDimensions) {
+      if (sqlQuery.timeDimensions) {
+        for (const timeDim of sqlQuery.timeDimensions) {
           if (timeDim.dimension in mappedRow) {
             let dateValue = mappedRow[timeDim.dimension]
 
@@ -664,14 +669,16 @@ export class QueryExecutor {
     }) : [data]
 
     // Apply gap filling for time series if requested
-    const measureNames = query.measures || []
-    const filledData = applyGapFilling(mappedData, query, measureNames)
+    const measureNames = getStaticMeasureNames(query.measures)
+    const filledData = applyGapFilling(mappedData, sqlQuery, measureNames)
+    const resultData = evaluateDynamicMeasures(filledData, query.measures)
 
     // Generate annotations for UI
-    const annotation = this.generateAnnotations(physicalPlan, query)
+    const annotation = this.generateAnnotations(physicalPlan, sqlQuery)
+    this.appendDynamicMeasureAnnotations(annotation.measures, query)
 
     return {
-      data: filledData,
+      data: resultData,
       annotation
     }
   }
@@ -988,16 +995,17 @@ export class QueryExecutor {
     query: SemanticQuery, 
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
+    const sqlQuery = stripDynamicMeasures(query)
     const filterCache = new FilterCacheManager()
-    const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    const context = this.createQueryContext(securityContext, filterCache, sqlQuery)
+    this.preloadFilterCache(sqlQuery, filterCache, cubes, context)
 
     // Create unified query plan from shared logical planning pipeline
-    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
+    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, sqlQuery, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
     
     // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, sqlQuery, context)
     
     // Extract SQL from the built query
     const sqlObj = builtQuery.toSQL()
@@ -1097,36 +1105,37 @@ export class QueryExecutor {
     securityContext: SecurityContext,
     cacheKey: string | undefined
   ): Promise<QueryResult> {
+    const sqlQuery = stripDynamicMeasures(query)
     // Create filter cache for parameter deduplication across CTEs
     const filterCache = new FilterCacheManager()
 
     // Create query context with filter cache
-    const context = this.createQueryContext(securityContext, filterCache, query)
+    const context = this.createQueryContext(securityContext, filterCache, sqlQuery)
 
     // Pre-build filter SQL for reuse across CTEs and main query
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.preloadFilterCache(sqlQuery, filterCache, cubes, context)
 
     // Create query plan via shared logical plan pipeline
-    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
+    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, sqlQuery, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
 
     // Validate security context is applied to all cubes in the query plan
     this.validateSecurityContext(physicalPlan, context)
 
     // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
+    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, sqlQuery, context)
 
     debugSql('query', builtQuery)
 
     // Execute query - pass numeric field names for selective conversion
-    const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
+    const numericFields = this.queryBuilder.collectNumericFields(cubes, sqlQuery)
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
     // Process time dimension results
     const mappedData = Array.isArray(data) ? data.map(row => {
       const mappedRow = { ...row }
-      if (query.timeDimensions) {
-        for (const timeDim of query.timeDimensions) {
+      if (sqlQuery.timeDimensions) {
+        for (const timeDim of sqlQuery.timeDimensions) {
           if (timeDim.dimension in mappedRow) {
             let dateValue = mappedRow[timeDim.dimension]
 
@@ -1149,14 +1158,16 @@ export class QueryExecutor {
     }) : [data]
 
     // Apply gap filling for time series if requested
-    const measureNames = query.measures || []
-    const filledData = applyGapFilling(mappedData, query, measureNames)
+    const measureNames = getStaticMeasureNames(query.measures)
+    const filledData = applyGapFilling(mappedData, sqlQuery, measureNames)
+    const resultData = evaluateDynamicMeasures(filledData, query.measures)
 
     // Generate annotations for UI
-    const annotation = this.generateAnnotations(physicalPlan, query)
+    const annotation = this.generateAnnotations(physicalPlan, sqlQuery)
+    this.appendDynamicMeasureAnnotations(annotation.measures, query)
 
     const result: QueryResult = {
-      data: filledData,
+      data: resultData,
       annotation,
       // Include warnings from query planning (e.g., fan-out without dimensions)
       warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
@@ -1245,7 +1256,7 @@ export class QueryExecutor {
 
     // Generate measure annotations from all cubes
     if (query.measures) {
-      for (const measureName of query.measures) {
+      for (const measureName of getStaticMeasureNames(query.measures)) {
         const [cubeName, fieldName] = measureName.split('.')
         const cube = allCubes.find(c => c?.name === cubeName)
         if (cube && cube.measures[fieldName]) {
@@ -1297,6 +1308,15 @@ export class QueryExecutor {
       dimensions,
       segments: {},
       timeDimensions
+    }
+  }
+
+  private appendDynamicMeasureAnnotations(
+    measures: Record<string, MeasureAnnotation>,
+    query: SemanticQuery
+  ): void {
+    for (const dynamicMeasure of getDynamicMeasures(query.measures)) {
+      measures[dynamicMeasure.name] = createDynamicMeasureAnnotation(dynamicMeasure)
     }
   }
 

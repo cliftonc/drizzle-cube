@@ -3,16 +3,25 @@
  * Includes query definitions, filters, and time dimensions
  */
 
-import type { TimeGranularity } from './core'
+import type { MeasureFormat, TimeGranularity } from './core'
 import type { FunnelQueryConfig } from './funnel'
 import type { FlowQueryConfig } from './flow'
 import type { RetentionQueryConfig } from './retention'
+
+export interface DynamicMeasure {
+  name: string
+  formula: string
+  title?: string
+  format?: MeasureFormat
+}
+
+export type QueryMeasure = string | DynamicMeasure
 
 /**
  * Semantic query structure (Cube.js compatible)
  */
 export interface SemanticQuery {
-  measures?: string[]
+  measures?: QueryMeasure[]
   dimensions?: string[]
   filters?: Array<Filter>
   timeDimensions?: Array<TimeDimension>

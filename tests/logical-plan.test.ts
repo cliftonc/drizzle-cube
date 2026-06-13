@@ -282,7 +282,7 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
 
           // Verify expected measures/dimensions in annotations
           for (const m of query.measures ?? []) {
-            expect(result.annotation.measures).toHaveProperty(m)
+            expect(result.annotation.measures).toHaveProperty(typeof m === 'string' ? m : m.name)
           }
           for (const d of query.dimensions ?? []) {
             expect(result.annotation.dimensions).toHaveProperty(d)

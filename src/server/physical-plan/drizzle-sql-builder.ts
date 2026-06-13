@@ -33,6 +33,7 @@ import { FilterBuilder } from '../builders/filter-builder'
 import { GroupByBuilder } from '../builders/group-by-builder'
 import { MeasureBuilder } from '../builders/measure-builder'
 import type { ResolvedMeasures } from '../template-substitution'
+import { getStaticMeasureNames } from '../query-measures'
 
 export class DrizzleSqlBuilder {
   private dateTimeBuilder: DateTimeBuilder
@@ -90,15 +91,16 @@ export class DrizzleSqlBuilder {
     }
 
     // Add measures with aggregations using the centralized helper
-    if (query.measures) {
+    const staticMeasures = getStaticMeasureNames(query.measures)
+    if (staticMeasures.length > 0) {
       const resolvedMeasures = this.buildResolvedMeasures(
-        query.measures,
+        staticMeasures,
         cubeMap,
         context
       )
 
       // Add user-requested measures to selections
-      for (const measureName of query.measures) {
+      for (const measureName of staticMeasures) {
         const measureBuilder = resolvedMeasures.get(measureName)
         if (measureBuilder && typeof measureBuilder === 'function') {
           const measureExpr = measureBuilder()
@@ -484,7 +486,7 @@ export class DrizzleSqlBuilder {
     
     // Get all selected fields (measures + dimensions + timeDimensions)
     const allSelectedFields = selectedFields || [
-      ...(query.measures || []),
+      ...getStaticMeasureNames(query.measures),
       ...(query.dimensions || []),
       ...(query.timeDimensions?.map(td => td.dimension) || [])
     ]
@@ -534,9 +536,7 @@ export class DrizzleSqlBuilder {
     const cubeMap = cubes instanceof Map ? cubes : new Map([[cubes.name, cubes]])
     
     // Add all measure fields (they are always numeric)
-    if (query.measures) {
-      numericFields.push(...query.measures)
-    }
+    numericFields.push(...getStaticMeasureNames(query.measures))
     
     // Add numeric dimension fields
     if (query.dimensions) {

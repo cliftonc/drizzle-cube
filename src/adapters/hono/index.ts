@@ -372,7 +372,8 @@ export function createCubeRoutes(
       }
 
       // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
+      const firstMeasure = query.measures?.find((measure): measure is string => typeof measure === 'string')
+      const firstMember = firstMeasure || query.dimensions?.[0]
       if (!firstMember) {
         return c.json({
           error: 'No measures or dimensions specified'
@@ -418,7 +419,8 @@ export function createCubeRoutes(
       }
 
       // For SQL generation, we need at least one cube referenced
-      const firstMember = query.measures?.[0] || query.dimensions?.[0]
+      const firstMeasure = query.measures?.find((measure): measure is string => typeof measure === 'string')
+      const firstMember = firstMeasure || query.dimensions?.[0]
       if (!firstMember) {
         return c.json({
           error: 'No measures or dimensions specified'
@@ -875,5 +877,4 @@ export function createCubeApp(
 
 // Re-export types for convenience
 export type { SecurityContext, DatabaseExecutor, SemanticQuery, DrizzleDatabase }
-
 

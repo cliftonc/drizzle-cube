@@ -448,8 +448,25 @@ export interface DashboardFilterMappingEntry {
 export type DashboardFilterMapping = Array<string | DashboardFilterMappingEntry>
 
 // Cube query types
+export interface DynamicMeasure {
+  name: string
+  formula: string
+  title?: string
+  format?: 'currency' | 'percent' | 'number' | 'integer'
+}
+
+export type QueryMeasure = string | DynamicMeasure
+
+export function getQueryMeasureField(measure: QueryMeasure): string {
+  return typeof measure === 'string' ? measure : measure.name
+}
+
+export function getQueryMeasureFields(measures?: QueryMeasure[]): string[] {
+  return measures?.map(getQueryMeasureField) || []
+}
+
 export interface CubeQuery {
-  measures?: string[]
+  measures?: QueryMeasure[]
   dimensions?: string[]
   timeDimensions?: Array<{
     dimension: string

@@ -74,7 +74,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
 
     // Check if any measures have drillMembers
     const hasDrillMembers = query.measures?.some(measure =>
-      getMeasureDrillMembers(measure, metadata) !== null
+      typeof measure === 'string' && getMeasureDrillMembers(measure, metadata) !== null
     ) ?? false
 
     return hasTimeDimensions || hasDimensions || hasDrillMembers

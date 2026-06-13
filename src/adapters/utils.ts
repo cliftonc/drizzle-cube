@@ -20,6 +20,7 @@ import {
 } from '../server'
 import { QUERY_LANGUAGE_REFERENCE } from '../server/ai/query-schema'
 import { DATE_FILTERING_PROMPT } from '../server/ai/mcp-prompts'
+import { getStaticMeasureNames } from '../server/query-measures'
 import type {
   MCPPromptResolver,
   MCPResourceResolver,
@@ -77,7 +78,7 @@ export function generateRequestId(): string {
 export function buildTransformedQuery(query: SemanticQuery): any {
   const sortedDimensions = query.dimensions || []
   const sortedTimeDimensions = query.timeDimensions || []
-  const measures = query.measures || []
+  const measures = getStaticMeasureNames(query.measures)
 
   return {
     sortedDimensions,
@@ -215,7 +216,7 @@ function addCubesFromMappings(
 function collectRegularReferencedCubes(query: SemanticQuery): string[] {
   const referencedCubes = new Set<string>()
 
-  query.measures?.forEach(measure => addCubeFromMember(measure, referencedCubes))
+  getStaticMeasureNames(query.measures).forEach(measure => addCubeFromMember(measure, referencedCubes))
   query.dimensions?.forEach(dimension => addCubeFromMember(dimension, referencedCubes))
   query.timeDimensions?.forEach(timeDimension => addCubeFromMember(timeDimension.dimension, referencedCubes))
 
@@ -357,7 +358,7 @@ async function handleRegularDryRun(
   const normalizedQueries = cubesUsed.map(cubeName => ({
     cube: cubeName,
     query: {
-      measures: query.measures?.filter(m => m.startsWith(cubeName + '.')) || [],
+      measures: getStaticMeasureNames(query.measures).filter(m => m.startsWith(cubeName + '.')),
       dimensions: query.dimensions?.filter(d => d.startsWith(cubeName + '.')) || [],
       filters: query.filters || [],
       timeDimensions: query.timeDimensions || [],
@@ -1035,7 +1036,7 @@ export function normalizeQueryFields(query: Record<string, unknown>): Record<str
   // Fix order keys: double-prefix, underscore->dot, drop invalid
   if (query.order && typeof query.order === 'object' && !Array.isArray(query.order)) {
     const queryFields = new Set([
-      ...(Array.isArray(query.measures) ? query.measures as string[] : []),
+      ...(Array.isArray(query.measures) ? (query.measures as unknown[]).filter((measure): measure is string => typeof measure === 'string') : []),
       ...(Array.isArray(query.dimensions) ? query.dimensions as string[] : []),
     ])
 
@@ -1076,7 +1077,9 @@ export function normalizeQueryFields(query: Record<string, unknown>): Record<str
 
     // Default to first measure desc if all keys were dropped
     if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
-      const firstMeasure = Array.isArray(query.measures) ? (query.measures as string[])[0] : undefined
+      const firstMeasure = Array.isArray(query.measures)
+        ? (query.measures as unknown[]).find((measure): measure is string => typeof measure === 'string')
+        : undefined
       if (firstMeasure) {
         fixedOrder[firstMeasure] = 'desc'
       }
@@ -1119,5 +1122,3 @@ export async function handleLoad(
     query
   }
 }
-
-

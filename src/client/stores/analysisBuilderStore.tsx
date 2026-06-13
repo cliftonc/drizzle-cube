@@ -673,9 +673,9 @@ function queryToState(query: CubeQuery): AnalysisBuilderState {
 
   return {
     ...createInitialState(),
-    metrics: (query.measures || []).map((field, index) => ({
+    metrics: (query.measures || []).map((measure, index) => ({
       id: generateId(),
-      field,
+      field: typeof measure === 'string' ? measure : measure.name,
       label: generateMetricLabel(index),
     })),
     breakdowns,

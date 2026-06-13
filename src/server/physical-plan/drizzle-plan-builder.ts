@@ -31,6 +31,7 @@ import {
   getCubesFromPlan
 } from './processors'
 import type { PhysicalBuildDependencies } from './processors'
+import { getStaticMeasureNames } from '../query-measures'
 
 /**
  * Converts optimised logical plans into runtime physical query plans,
@@ -104,7 +105,7 @@ export class DrizzlePlanBuilder {
           alias: `mf_group_${index + 1}`,
           query: groupQuery,
           queryPlan: groupPhysicalPlan,
-          measures: groupQuery.measures ?? []
+          measures: getStaticMeasureNames(groupQuery.measures)
         }
       })
       .filter((group): group is NonNullable<typeof group> => Boolean(group))
@@ -145,7 +146,7 @@ export class DrizzlePlanBuilder {
         alias: `fka_group_${index + 1}`,
         query: groupQuery,
         queryPlan: groupPhysicalPlan,
-        measures: groupQuery.measures ?? []
+        measures: getStaticMeasureNames(groupQuery.measures)
       }
     })
 
@@ -408,7 +409,7 @@ export class DrizzlePlanBuilder {
     // Split measures into multiplied (agg CTE) and regular (keys CTE)
     const regularMeasureNames = dedup.regularMeasures ?? []
     const regularMeasureSet = new Set(regularMeasureNames)
-    const multipliedMeasures = query.measures.filter(m => !regularMeasureSet.has(m))
+    const multipliedMeasures = getStaticMeasureNames(query.measures).filter(m => !regularMeasureSet.has(m))
 
     // Pre-aggregate regular measures in the keys CTE
     if (regularMeasureNames.length > 0) {
@@ -898,12 +899,13 @@ export class DrizzlePlanBuilder {
     multipliedCube: Cube,
     multipliedCubeName: string
   ): boolean {
-    if (!query.measures?.length) {
+    const staticMeasures = getStaticMeasureNames(query.measures)
+    if (staticMeasures.length === 0) {
       return false
     }
 
     // Validate multiplied cube measures are supported types
-    for (const measureName of query.measures) {
+    for (const measureName of staticMeasures) {
       const [cubeName, localName] = measureName.split('.')
       if (cubeName !== multipliedCubeName) {
         // Regular measures are validated by the logical planner

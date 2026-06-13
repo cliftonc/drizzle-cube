@@ -9,6 +9,7 @@ import type {
   SemanticQuery
 } from '../../types'
 import type { PhysicalBuildDependencies, SelectionMap } from './shared'
+import { getStaticMeasureNames } from '../../query-measures'
 
 /**
  * Applies post-aggregation window measures to the selection map.
@@ -21,11 +22,12 @@ export function applyPostAggregationWindows(
   allCubes: Map<string, Cube>,
   deps: Pick<PhysicalBuildDependencies, 'queryBuilder' | 'databaseAdapter'>
 ): void {
-  if (!query.measures) {
+  const staticMeasures = getStaticMeasureNames(query.measures)
+  if (staticMeasures.length === 0) {
     return
   }
 
-  for (const measureName of query.measures) {
+  for (const measureName of staticMeasures) {
     const [cubeName, fieldName] = measureName.split('.')
     const cube = allCubes.get(cubeName)
 

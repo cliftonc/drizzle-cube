@@ -4,6 +4,7 @@
  */
 
 import type { SemanticQuery, Filter, TimeDimension, SecurityContext } from './types'
+import { getDynamicMeasures, getStaticMeasureNames, normalizeQueryMeasure } from './query-measures'
 
 /**
  * Configuration for cache key generation
@@ -67,7 +68,7 @@ export function generateCacheKey(
  */
 export function normalizeQuery(query: SemanticQuery): SemanticQuery {
   return {
-    measures: query.measures ? [...query.measures].sort() : undefined,
+    measures: query.measures ? normalizeMeasures(query.measures) : undefined,
     dimensions: query.dimensions ? [...query.dimensions].sort() : undefined,
     filters: query.filters ? sortFilters(query.filters) : undefined,
     timeDimensions: query.timeDimensions
@@ -84,6 +85,13 @@ export function normalizeQuery(query: SemanticQuery): SemanticQuery {
     // Include retention config in cache key for proper cache invalidation
     retention: query.retention ? normalizeRetentionConfig(query.retention) : undefined
   }
+}
+
+function normalizeMeasures(measures: NonNullable<SemanticQuery['measures']>): NonNullable<SemanticQuery['measures']> {
+  return [
+    ...getStaticMeasureNames(measures).sort(),
+    ...getDynamicMeasures(measures).map(normalizeQueryMeasure)
+  ]
 }
 
 /**

@@ -6,6 +6,7 @@
  */
 
 import type { CubeQuery, CubeMeta } from '../types'
+import { getQueryMeasureFields } from '../types'
 import { formatTimeValue } from './chartUtils'
 
 /**
@@ -36,7 +37,7 @@ export function getOrderedColumnsFromQuery(queryObject?: CubeQuery): string[] {
 
   // Add measures last
   if (queryObject.measures) {
-    columns.push(...queryObject.measures)
+    columns.push(...getQueryMeasureFields(queryObject.measures))
   }
 
   return columns
@@ -127,19 +128,19 @@ export function hasTimeDimensionForPivot(
       // Exclude the time dimension being pivoted (it becomes columns)
       if (field === timeDim.dimension) return false
       // Exclude measures (they become row values, not dimension columns)
-      if (queryObject.measures?.includes(field)) return false
+      if (getQueryMeasureFields(queryObject.measures).includes(field)) return false
       return true
     })
 
     // Filter measures from xAxisOverride - only show measures that are in xAxis
     const measuresInXAxis = xAxisOverride.filter(field =>
-      queryObject.measures?.includes(field)
+      getQueryMeasureFields(queryObject.measures).includes(field)
     )
     // If xAxis contains measures, use only those; otherwise fall back to all measures
-    measures = measuresInXAxis.length > 0 ? measuresInXAxis : queryObject.measures
+    measures = measuresInXAxis.length > 0 ? measuresInXAxis : getQueryMeasureFields(queryObject.measures)
   } else {
     dimensions = queryObject.dimensions || []
-    measures = queryObject.measures
+    measures = getQueryMeasureFields(queryObject.measures)
   }
 
   // Must have at least one measure after filtering

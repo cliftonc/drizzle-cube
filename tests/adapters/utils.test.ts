@@ -129,6 +129,15 @@ describe('Adapter Utils', () => {
       expect(result).toHaveProperty('hasCumulativeMeasures', false)
       expect(result).toHaveProperty('hasMultiStage', false)
     })
+
+    it('should expose only static measure strings for Cube.js compatibility', () => {
+      const result = buildTransformedQuery({
+        measures: ['Cube.count', { name: 'countPlusOne', formula: 'Cube.count + 1' }]
+      })
+
+      expect(result.measures).toEqual(['Cube.count'])
+      expect(result.leafMeasures).toEqual(['Cube.count'])
+    })
   })
 
   describe('formatSqlString', () => {
