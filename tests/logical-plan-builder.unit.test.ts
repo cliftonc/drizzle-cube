@@ -99,10 +99,11 @@ describe('LogicalPlanBuilder (unit)', () => {
       })),
       buildJoinPlanForPrimary: vi.fn(() => [
         {
-          cube: departmentsCube,
+          target: { name: 'Departments', cube: departmentsCube },
           alias: 'departments_cube',
           joinType: 'left' as const,
-          joinCondition: {} as any
+          joinDef: {} as any,
+          relationship: 'belongsTo' as const
         }
       ]),
       buildPreAggregationCTEs: vi.fn(() => []),

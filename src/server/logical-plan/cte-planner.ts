@@ -23,6 +23,7 @@ import {
 import { MeasureBuilder } from '../builders/measure-builder'
 import { ResolverCache, analyzeCubeUsage, extractCubeNamesFromFilter } from './planner-utils'
 import { FilterPropagation } from './filter-propagation'
+import type { JoinRef } from './types'
 
 export class CTEPlanner {
   constructor(
@@ -48,7 +49,7 @@ export class CTEPlanner {
   planPreAggregationCTEs(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes'],
+    joinCubes: JoinRef[],
     query: SemanticQuery,
     ctx: QueryContext
   ): PhysicalQueryPlan['preAggregationCTEs'] {
@@ -68,10 +69,10 @@ export class CTEPlanner {
 
     // Step 3: For each join cube that needs a CTE, build it
     for (const joinCubeEntry of joinCubes) {
-      const cteReason = cteReasons.get(joinCubeEntry.cube.name)
+      const cteReason = cteReasons.get(joinCubeEntry.target.name)
       if (!cteReason) continue
 
-      const cube = joinCubeEntry.cube
+      const cube = joinCubeEntry.target.cube
       const alias = joinCubeEntry.alias
 
       // Get measures from this cube
@@ -369,7 +370,7 @@ export class CTEPlanner {
    */
   private computeCTEReasons(
     _primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes'],
+    joinCubes: JoinRef[],
     query: SemanticQuery
   ): Map<string, 'hasMany' | 'fanOutPrevention'> {
     const reasons = new Map<string, 'hasMany' | 'fanOutPrevention'>()
@@ -400,11 +401,11 @@ export class CTEPlanner {
 
     for (const jc of joinCubes) {
       if (jc.relationship === 'hasMany' || jc.relationship === 'belongsToMany') {
-        hasManyTargets.add(jc.cube.name)
-      } else if (jc.relationship === 'belongsTo' && cubesWithMeasures.has(jc.cube.name)) {
+        hasManyTargets.add(jc.target.name)
+      } else if (jc.relationship === 'belongsTo' && cubesWithMeasures.has(jc.target.name)) {
         // belongsTo from primary → primary has many rows per joined row
         // The joined cube's measures are at risk of inflation
-        belongsToTargetsWithMeasures.add(jc.cube.name)
+        belongsToTargetsWithMeasures.add(jc.target.name)
       }
     }
 
@@ -415,18 +416,18 @@ export class CTEPlanner {
 
     // Step 3: Assign CTE reasons
     for (const jc of joinCubes) {
-      if (!cubesWithMeasures.has(jc.cube.name)) continue
+      if (!cubesWithMeasures.has(jc.target.name)) continue
 
-      if (hasManyTargets.has(jc.cube.name)) {
+      if (hasManyTargets.has(jc.target.name)) {
         // Direct hasMany/belongsToMany target → 'hasMany' (SUM in outer query)
-        reasons.set(jc.cube.name, 'hasMany')
-      } else if (belongsToTargetsWithMeasures.has(jc.cube.name)) {
+        reasons.set(jc.target.name, 'hasMany')
+      } else if (belongsToTargetsWithMeasures.has(jc.target.name)) {
         // belongsTo join with measures → grain mismatch with primary
-        reasons.set(jc.cube.name, 'fanOutPrevention')
+        reasons.set(jc.target.name, 'fanOutPrevention')
       } else if (hasManyTargets.size > 0) {
         // There's a hasMany elsewhere that multiplies rows.
         // This cube has measures and is not the hasMany target → fanOutPrevention.
-        reasons.set(jc.cube.name, 'fanOutPrevention')
+        reasons.set(jc.target.name, 'fanOutPrevention')
       }
     }
 

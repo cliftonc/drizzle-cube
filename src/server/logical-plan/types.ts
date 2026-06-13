@@ -12,16 +12,17 @@
  *           └── (future) KeysDeduplication
  */
 
-import type { SQL, AnyColumn, Table } from 'drizzle-orm'
+import type { AnyColumn, Table } from 'drizzle-orm'
 import type {
   Cube,
+  CubeJoin,
   JoinKeyInfo,
   PropagatingFilter,
   IntermediateJoinInfo,
   DownstreamJoinKeyInfo
 } from '../types/cube'
 import type { Filter } from '../types/query'
-import type { SecurityContext, QueryWarning, TimeGranularity } from '../types/core'
+import type { QueryWarning, TimeGranularity } from '../types/core'
 
 // ---------------------------------------------------------------------------
 // References — lightweight pointers into the cube registry
@@ -99,19 +100,25 @@ export interface JoinRef {
   target: CubeRef
   /** Table alias in the generated SQL */
   alias: string
-  /** SQL join type */
+  /** SQL join type (already resolved from the effective relationship) */
   joinType: 'inner' | 'left' | 'right' | 'full'
-  /** Drizzle SQL join condition (pre-built by the planner) */
-  joinCondition: SQL
+  /**
+   * Symbolic join definition. The Drizzle join condition is materialized from
+   * this by DrizzlePlanBuilder — the logical plan itself holds no SQL and no
+   * baked security context.
+   */
+  joinDef: CubeJoin
   /** Relationship type from the join definition */
   relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
-  /** Junction table for belongsToMany relationships */
+  /**
+   * Junction table for belongsToMany relationships (symbolic).
+   * The junction join condition and security WHERE are materialized from
+   * `joinDef.through` by DrizzlePlanBuilder at physical-plan time.
+   */
   junctionTable?: {
     table: Table
     alias: string
     joinType: 'inner' | 'left' | 'right' | 'full'
-    joinCondition: SQL
-    securitySql?: (securityContext: SecurityContext) => SQL | SQL[]
     sourceCubeName?: string
   }
 }

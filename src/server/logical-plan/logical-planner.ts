@@ -28,6 +28,7 @@ import { JoinPlanner } from './join-planner'
 import { CTEPlanner } from './cte-planner'
 import { FilterPropagation } from './filter-propagation'
 import { PlanAnalysisReporter } from './plan-analysis-reporter'
+import type { JoinRef } from './types'
 
 export class LogicalPlanner {
   // Shared resolver cache, reused across all planning phases for a cubes map.
@@ -81,7 +82,7 @@ export class LogicalPlanner {
     cubeNames: string[],
     ctx: QueryContext,
     query: SemanticQuery
-  ): PhysicalQueryPlan['joinCubes'] {
+  ): JoinRef[] {
     return this.joinPlanner.buildJoinPlan(cubes, primaryCube, cubeNames, ctx, query)
   }
 
@@ -92,7 +93,7 @@ export class LogicalPlanner {
   buildPreAggregationCTEs(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes'],
+    joinCubes: JoinRef[],
     query: SemanticQuery,
     ctx: QueryContext
   ): PhysicalQueryPlan['preAggregationCTEs'] {

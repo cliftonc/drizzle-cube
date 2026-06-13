@@ -181,7 +181,7 @@ export class LogicalPlanBuilder {
             decision: `Planned ${joinCubes.length} join${joinCubes.length === 1 ? '' : 's'}`,
             details: {
               joinCount: joinCubes.length,
-              joinTargets: joinCubes.map(join => join.cube.name),
+              joinTargets: joinCubes.map(join => join.target.name),
               pathSelection: joinPaths.map(path => ({
                 targetCube: path.targetCube,
                 strategy: path.selection?.strategy,
@@ -231,7 +231,7 @@ export class LogicalPlanBuilder {
 
   private buildSourceFromPhases(
     primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes'],
+    joinCubes: JoinRef[],
     preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>,
     cubes: Map<string, Cube>,
     query: SemanticQuery,
@@ -283,7 +283,7 @@ export class LogicalPlanBuilder {
 
   private buildSimpleSourceFromPhases(
     primaryCube: Cube,
-    joinCubes: PhysicalQueryPlan['joinCubes'],
+    joinCubes: JoinRef[],
     preAggregationCTEs: NonNullable<PhysicalQueryPlan['preAggregationCTEs']>,
     cubes: Map<string, Cube>,
     query: SemanticQuery
@@ -294,15 +294,8 @@ export class LogicalPlanBuilder {
 
     const primaryCubeRef = this.toCubeRef(primaryCube)
 
-    // Convert join cubes to JoinRefs
-    const joins: JoinRef[] = joinCubes.map(jc => ({
-      target: this.toCubeRef(jc.cube),
-      alias: jc.alias,
-      joinType: jc.joinType,
-      joinCondition: jc.joinCondition,
-      relationship: jc.relationship,
-      junctionTable: jc.junctionTable
-    }))
+    // Join cubes are already symbolic JoinRefs (emitted by JoinPlanner).
+    const joins: JoinRef[] = joinCubes
 
     // Convert pre-aggregation CTEs
     const ctes: CTEPreAggregate[] = preAggregationCTEs.map(cteInfo => {

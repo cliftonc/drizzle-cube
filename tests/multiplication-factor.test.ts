@@ -15,9 +15,9 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { sql } from 'drizzle-orm'
 import { LogicalPlanner } from '../src/server/logical-plan/logical-planner'
-import type { Cube, PhysicalQueryPlan, QueryContext, SemanticQuery } from '../src/server/types'
+import type { Cube, QueryContext, SemanticQuery } from '../src/server/types'
+import type { JoinRef } from '../src/server/logical-plan'
 
 // Helper to create minimal cube definitions for unit testing
 function createTestCube(
@@ -53,12 +53,14 @@ function createContext(): QueryContext {
 function createJoinEntry(
   cube: Cube,
   relationship?: 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
-): PhysicalQueryPlan['joinCubes'][number] {
+): JoinRef {
   return {
-    cube,
+    target: { name: cube.name, cube },
     alias: `${cube.name.toLowerCase()}_cube`,
     joinType: relationship === 'belongsTo' ? 'inner' : 'left',
-    joinCondition: sql`1=1`,
+    // Symbolic join definition; CTE planning reads target/alias/relationship,
+    // not the joinDef, so a minimal stub suffices for these unit tests.
+    joinDef: { targetCube: cube, relationship: relationship ?? 'belongsTo', on: [] } as any,
     relationship
   }
 }

@@ -8,19 +8,17 @@
 
 import type {
   Cube,
-  QueryContext,
-  PhysicalQueryPlan,
   CubeJoin,
   SemanticQuery
 } from '../types'
 import {
   resolveCubeReference,
   getJoinType,
-  reverseRelationship,
-  expandBelongsToManyJoin
+  reverseRelationship
 } from '../cube-utils'
 import { t } from '../../i18n/runtime'
 import { ResolverCache, analyzeCubeUsage } from './planner-utils'
+import type { JoinRef } from './types'
 
 export class JoinPlanner {
   constructor(private readonly resolverCache: ResolverCache) {}
@@ -37,11 +35,11 @@ export class JoinPlanner {
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     cubeNames: string[],
-    ctx: QueryContext,
+    _ctx: unknown,
     query: SemanticQuery
-  ): PhysicalQueryPlan['joinCubes'] {
+  ): JoinRef[] {
     const resolver = this.resolverCache.get(cubes)
-    const joinCubes: PhysicalQueryPlan['joinCubes'] = []
+    const joinCubes: JoinRef[] = []
     const processedCubes = new Set([primaryCube.name])
 
     // Cubes with measures are still needed for CTE pre-detection.
@@ -119,44 +117,36 @@ export class JoinPlanner {
 
         // Check if this is a belongsToMany relationship
         if (effectiveRelationship === 'belongsToMany' && joinDef.through) {
-          // Expand the belongsToMany join into junction table joins
-          const expanded = expandBelongsToManyJoin(joinDef, ctx.securityContext)
+          // Emit a symbolic junction join. The junction/target join conditions
+          // and junction security WHERE are materialized from joinDef.through by
+          // DrizzlePlanBuilder. belongsToMany uses a single resolved join type.
+          const junctionJoinType = getJoinType('belongsToMany', joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
-          // Add the join with junction table information
           joinCubes.push({
-            cube,
+            target: { name: cube.name, cube },
             alias: `${toCube.toLowerCase()}_cube`,
-            joinType: expanded.junctionJoins[1].joinType, // Use the target join type
-            joinCondition: expanded.junctionJoins[1].condition, // Target join condition
+            joinType: junctionJoinType,
+            joinDef: joinDef as CubeJoin,
             relationship: 'belongsToMany',
             junctionTable: {
               table: joinDef.through.table,
               alias: `junction_${toCube.toLowerCase()}`,
-              joinType: expanded.junctionJoins[0].joinType,
-              joinCondition: expanded.junctionJoins[0].condition,
-              securitySql: joinDef.through.securitySql,
+              joinType: junctionJoinType,
               sourceCubeName: pathFromCube
             }
           })
         } else {
-          // Regular join (belongsTo, hasOne, hasMany)
-          // Build join condition using new array-based format
-          // For regular table joins, we don't use artificial aliases - use actual table references
-          // Join condition is symmetric (eq(a,b) = eq(b,a)) so no change needed for reversed joins
-          const joinCondition = resolver.buildJoinCondition(
-            joinDef as CubeJoin,
-            null, // No source alias needed - use the actual column
-            null // No target alias needed - use the actual column
-          )
-
-          // Derive join type from effective (possibly reversed) relationship
+          // Regular join (belongsTo, hasOne, hasMany).
+          // The join condition (symmetric for reversed joins) is materialized
+          // from joinDef by DrizzlePlanBuilder. We only resolve the join type
+          // here, since it depends on the effective (reversed-aware) relationship.
           const joinType = getJoinType(effectiveRelationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
 
           joinCubes.push({
-            cube,
+            target: { name: cube.name, cube },
             alias: `${toCube.toLowerCase()}_cube`,
             joinType,
-            joinCondition,
+            joinDef: joinDef as CubeJoin,
             relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
           })
         }
