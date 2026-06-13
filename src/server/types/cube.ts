@@ -454,8 +454,6 @@ export interface IntermediateJoinInfo {
   cube: Cube
   /** The join definition from the intermediate cube to this CTE cube */
   joinDef: CubeJoin
-  /** Security filter to apply to the intermediate table within the CTE */
-  securityFilter?: SQL
   /** The column on the intermediate table that connects to the primary cube */
   primaryJoinColumn: AnyColumn
   /** The column on the intermediate table that connects to the CTE cube */

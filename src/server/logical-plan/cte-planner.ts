@@ -51,7 +51,7 @@ export class CTEPlanner {
     primaryCube: Cube,
     joinCubes: JoinRef[],
     query: SemanticQuery,
-    ctx: QueryContext
+    _ctx: QueryContext
   ): PhysicalQueryPlan['preAggregationCTEs'] {
     const preAggCTEs: PhysicalQueryPlan['preAggregationCTEs'] = []
 
@@ -90,7 +90,7 @@ export class CTEPlanner {
       // Example: Departments → Employees → EmployeeTeams
       // If there's a hasMany on the intermediate path, we need to absorb
       // intermediate tables into the CTE
-      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, ctx, query)
+      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, query)
 
       let joinKeys: Array<{
         sourceColumn: string
@@ -240,13 +240,12 @@ export class CTEPlanner {
    * @param cubes Map of all registered cubes
    * @param primaryCube The primary cube (FROM clause)
    * @param targetCubeName The CTE cube we're analyzing the path to
-   * @param ctx Query context for security filtering
+   * @param query The semantic query (drives query-aware path selection)
    */
   private analyzeJoinPathToPrimary(
     cubes: Map<string, Cube>,
     primaryCube: Cube,
     targetCubeName: string,
-    ctx: QueryContext,
     query: SemanticQuery
   ): {
     path: { fromCube: string; toCube: string; joinDef: CubeJoin; reversed?: boolean }[]
@@ -313,9 +312,9 @@ export class CTEPlanner {
 
       if (!intermediateCube) continue
 
-      // Get the security filter for this intermediate cube
-      const cubeBase = intermediateCube.sql(ctx)
-      const securityFilter = cubeBase.where
+      // The intermediate cube's security WHERE is materialized symbolically:
+      // the physical builder calls intermediateCube.sql(context) when it
+      // absorbs this join into the CTE, so no SQL is baked into the plan here.
 
       // Find the join column from this intermediate to the NEXT step
       // This is the column that connects to the CTE cube (or next intermediate)
@@ -328,7 +327,6 @@ export class CTEPlanner {
       intermediateJoins.push({
         cube: intermediateCube,
         joinDef: nextStep.joinDef as CubeJoin,
-        securityFilter,
         primaryJoinColumn,
         cteJoinColumn
       })
