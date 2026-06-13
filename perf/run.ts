@@ -27,6 +27,7 @@ import { PERF_DATA_VERSION } from './perf-data'
 import { getPerfCubes } from './perf-cubes'
 import { buildHtmlReport } from './report/html'
 import { buildMarkdownSummary } from './report/markdown'
+import { buildBenchmarkJson } from './report/benchmark'
 import { printConsoleSummary } from './report/console'
 import { runBenchmark } from './runner'
 import type { BenchmarkResult, PerfReport } from './types'
@@ -125,6 +126,7 @@ async function main(): Promise<void> {
     writeFileSync(join(OUTPUT_DIR, 'results.json'), JSON.stringify(report, null, 2))
     writeFileSync(join(OUTPUT_DIR, 'index.html'), buildHtmlReport(report))
     writeFileSync(join(OUTPUT_DIR, 'summary.md'), buildMarkdownSummary(report))
+    writeFileSync(join(OUTPUT_DIR, 'benchmark.json'), JSON.stringify(buildBenchmarkJson(report), null, 2))
 
     printConsoleSummary(report)
     console.log(`Reports written to ${OUTPUT_DIR}/ (index.html, summary.md, results.json)`)

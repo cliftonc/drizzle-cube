@@ -10,7 +10,8 @@ jobs:
   performance:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write needed so the benchmark action can push history to the gh-pages branch
+      contents: write
       pull-requests: write
 
     services:
@@ -72,3 +73,24 @@ jobs:
         with:
           header: perf-benchmarks
           path: perf-results/summary.md
+
+      # Persist history to the gh-pages branch (dev/bench/) on pushes to main only,
+      # so trends accumulate outside the code branches — no circular commits to source.
+      # PRs deliberately skip this: forks can't push, and we don't want PR runs in history.
+      - name: Store benchmark history
+        if: github.event_name == 'push'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: drizzle-cube
+          tool: customSmallerIsBetter
+          output-file-path: perf-results/benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          auto-push: true
+          # CI runners vary 2-3x run-to-run, so alert only on a sustained 2x+ regression
+          # and never fail the build — this suite is report-only.
+          alert-threshold: '200%'
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
