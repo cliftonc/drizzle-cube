@@ -7,6 +7,18 @@
 export { SemanticLayerCompiler } from './compiler'
 export { QueryExecutor } from './executor'
 
+// Query-mode detection (single source of truth for comparison/funnel/flow/retention)
+export {
+  detectQueryMode,
+  detectQueryModes,
+  getActiveQueryModes,
+  hasComparisonMode,
+  hasFunnelMode,
+  hasFlowMode,
+  hasRetentionMode
+} from './query-modes'
+export type { QueryMode, QueryModeFlags } from './query-modes'
+
 // Export unified query building
 export { LogicalPlanner } from './logical-plan'
 export { DrizzleSqlBuilder } from './physical-plan'

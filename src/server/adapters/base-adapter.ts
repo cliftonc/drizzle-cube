@@ -4,7 +4,7 @@
  * Each database adapter must implement these methods to handle SQL dialect differences
  */
 
-import type { SQL, AnyColumn } from 'drizzle-orm'
+import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
 
 /**
@@ -280,38 +280,32 @@ export interface DatabaseAdapter {
  * Provides common functionality that can be shared across database implementations
  */
 export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
+  // ============================================
+  // Engine-specific methods (must be implemented per engine)
+  // ============================================
+
   abstract getEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'singlestore' | 'duckdb' | 'databend' | 'snowflake'
   abstract supportsLateralJoins(): boolean
 
-  // Funnel analysis methods
+  // Funnel analysis methods — interval/date arithmetic differs per engine
   abstract buildIntervalFromISO(duration: string): SQL
   abstract buildTimeDifferenceSeconds(end: SQL, start: SQL): SQL
   abstract buildDateAddInterval(timestamp: SQL, duration: string): SQL
-  abstract buildConditionalAggregation(aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum', expr: SQL | null, condition: SQL): SQL
   abstract buildDateDiffPeriods(startDate: SQL, endDate: SQL, unit: 'day' | 'week' | 'month'): SQL
   abstract buildPeriodSeriesSubquery(maxPeriod: number): SQL
 
+  // Time-dimension truncation (DATE_TRUNC vs DATE_FORMAT vs date() modifiers)
   abstract buildTimeDimension(granularity: TimeGranularity, fieldExpr: AnyColumn | SQL): SQL
-  abstract buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL
+  // Type casting (::type vs CAST(...))
   abstract castToType(fieldExpr: AnyColumn | SQL, targetType: 'timestamp' | 'decimal' | 'integer'): SQL
-  abstract buildAvg(fieldExpr: AnyColumn | SQL): SQL
-  abstract buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL
-  abstract buildBooleanLiteral(value: boolean): SQL
-  abstract convertFilterValue(value: any): any
-  abstract prepareDateValue(date: Date): any
-  abstract isTimestampInteger(): boolean
-  abstract convertTimeDimensionResult(value: any): any
+  // Feature flags per engine
   abstract getCapabilities(): DatabaseCapabilities
-  abstract buildStddev(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
-  abstract buildVariance(fieldExpr: AnyColumn | SQL, useSample?: boolean): SQL | null
+  // Percentile support varies widely (PERCENTILE_CONT / QUANTILE_CONT / unsupported)
   abstract buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL | null
-  abstract buildWindowFunction(
-    type: WindowFunctionType,
-    fieldExpr: AnyColumn | SQL | null,
-    partitionBy?: (AnyColumn | SQL)[],
-    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
-    config?: WindowFunctionConfig
-  ): SQL | null
+
+  // ============================================
+  // Shared default implementations (override only where the engine differs)
+  // ============================================
 
   /**
    * Default implementation returns template unchanged
@@ -319,6 +313,237 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
    */
   preprocessCalculatedTemplate(calculatedSql: string): string {
     return calculatedSql
+  }
+
+  /**
+   * Wrap an aggregate so NULL (empty set) becomes 0.
+   * Default uses COALESCE; engines without COALESCE (MySQL/SQLite) override with IFNULL.
+   */
+  protected nullToZero(expr: SQL): SQL {
+    return sql`COALESCE(${expr}, 0)`
+  }
+
+  /**
+   * Case-insensitive LIKE matching for contains/startsWith/endsWith/ilike.
+   * Default uses native ILIKE (PostgreSQL/DuckDB/Snowflake); engines without ILIKE
+   * (MySQL/SQLite/Databend) override with LOWER()+LIKE.
+   * @param pattern - the LIKE pattern in its original case (already wrapped with % as needed)
+   */
+  protected caseInsensitiveLike(fieldExpr: AnyColumn | SQL, pattern: string, negated: boolean): SQL {
+    return negated
+      ? sql`${fieldExpr} NOT ILIKE ${pattern}`
+      : sql`${fieldExpr} ILIKE ${pattern}`
+  }
+
+  /**
+   * Regular-expression matching. Default uses PostgreSQL's ~* / !~* operators;
+   * each other engine overrides with its own regex syntax (REGEXP, GLOB, regexp_matches, REGEXP_LIKE).
+   */
+  protected regexCondition(fieldExpr: AnyColumn | SQL, value: string, negated: boolean): SQL {
+    return negated
+      ? sql`${fieldExpr} !~* ${value}`
+      : sql`${fieldExpr} ~* ${value}`
+  }
+
+  /**
+   * Build a string matching condition. The case-insensitive and regex families are
+   * delegated to the caseInsensitiveLike()/regexCondition() hooks; plain LIKE/NOT LIKE
+   * are identical across all engines.
+   */
+  buildStringCondition(
+    fieldExpr: AnyColumn | SQL,
+    operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex',
+    value: string
+  ): SQL {
+    switch (operator) {
+      case 'contains':
+        return this.caseInsensitiveLike(fieldExpr, `%${value}%`, false)
+      case 'notContains':
+        return this.caseInsensitiveLike(fieldExpr, `%${value}%`, true)
+      case 'startsWith':
+        return this.caseInsensitiveLike(fieldExpr, `${value}%`, false)
+      case 'endsWith':
+        return this.caseInsensitiveLike(fieldExpr, `%${value}`, false)
+      case 'like':
+        return sql`${fieldExpr} LIKE ${value}`
+      case 'notLike':
+        return sql`${fieldExpr} NOT LIKE ${value}`
+      case 'ilike':
+        return this.caseInsensitiveLike(fieldExpr, value, false)
+      case 'regex':
+        return this.regexCondition(fieldExpr, value, false)
+      case 'notRegex':
+        return this.regexCondition(fieldExpr, value, true)
+      default:
+        throw new Error(`Unsupported string operator: ${operator}`)
+    }
+  }
+
+  /**
+   * Build conditional aggregation. Default uses portable CASE WHEN
+   * (MySQL/SQLite/Databend/Snowflake); PostgreSQL/DuckDB override with the FILTER clause.
+   */
+  buildConditionalAggregation(
+    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
+    expr: SQL | null,
+    condition: SQL
+  ): SQL {
+    const fnName = aggFn.toUpperCase()
+    if (aggFn === 'count' && !expr) {
+      return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN 1 END)`
+    }
+    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
+  }
+
+  /**
+   * Build AVG with null-to-zero handling (COALESCE/IFNULL via nullToZero()).
+   */
+  buildAvg(fieldExpr: AnyColumn | SQL): SQL {
+    return this.nullToZero(sql`AVG(${fieldExpr})`)
+  }
+
+  /**
+   * Build CASE WHEN conditional expression.
+   * SQLite overrides this to handle embedded SQL objects in THEN/ELSE.
+   */
+  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
+    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
+
+    if (elseValue !== undefined) {
+      return sql`CASE ${cases} ELSE ${elseValue} END`
+    }
+    return sql`CASE ${cases} END`
+  }
+
+  /**
+   * Build boolean literal. Default uses TRUE/FALSE keywords; SQLite overrides with 1/0.
+   */
+  buildBooleanLiteral(value: boolean): SQL {
+    return value ? sql`TRUE` : sql`FALSE`
+  }
+
+  /**
+   * Convert filter values to database-compatible types.
+   * Default is a pass-through; SQLite overrides to handle booleans/dates as integers.
+   */
+  convertFilterValue(value: any): any {
+    return value
+  }
+
+  /**
+   * Prepare a Date for storage. Default passes the Date through (native timestamps);
+   * SQLite overrides to convert to integer milliseconds.
+   */
+  prepareDateValue(date: Date): any {
+    return date
+  }
+
+  /**
+   * Whether timestamps are stored as integers. Default false; SQLite overrides to true.
+   */
+  isTimestampInteger(): boolean {
+    return false
+  }
+
+  /**
+   * Convert a time-dimension result value. Default is a pass-through.
+   */
+  convertTimeDimensionResult(value: any): any {
+    return value
+  }
+
+  /**
+   * Build STDDEV aggregation. Default uses STDDEV_POP/STDDEV_SAMP with null-to-zero.
+   * Engines without native STDDEV (SQLite) override to return null.
+   */
+  buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL | null {
+    const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
+    return this.nullToZero(sql`${sql.raw(fn)}(${fieldExpr})`)
+  }
+
+  /**
+   * Build VARIANCE aggregation. Default uses VAR_POP/VAR_SAMP with null-to-zero.
+   * SQLite overrides to null; Databend overrides to a COVAR-based workaround.
+   */
+  buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL | null {
+    const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
+    return this.nullToZero(sql`${sql.raw(fn)}(${fieldExpr})`)
+  }
+
+  /**
+   * Build a window function expression. Identical across all supported engines
+   * (standard SQL:2003 window syntax), so it lives here as a shared default.
+   */
+  buildWindowFunction(
+    type: WindowFunctionType,
+    fieldExpr: AnyColumn | SQL | null,
+    partitionBy?: (AnyColumn | SQL)[],
+    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
+    config?: WindowFunctionConfig
+  ): SQL | null {
+    // Build OVER clause components
+    const partitionClause = partitionBy && partitionBy.length > 0
+      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
+      : sql``
+
+    const orderClause = orderBy && orderBy.length > 0
+      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
+          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
+        ), sql`, `)}`
+      : sql``
+
+    // Build frame clause if specified
+    let frameClause = sql``
+    if (config?.frame) {
+      const { type: frameType, start, end } = config.frame
+      const frameTypeStr = frameType.toUpperCase()
+
+      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
+        : typeof start === 'number' ? `${start} PRECEDING`
+        : 'CURRENT ROW'
+
+      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
+        : end === 'current' ? 'CURRENT ROW'
+        : typeof end === 'number' ? `${end} FOLLOWING`
+        : 'CURRENT ROW'
+
+      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
+    }
+
+    // Combine OVER clause
+    const overParts: SQL[] = []
+    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
+    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
+    if (config?.frame) overParts.push(frameClause)
+
+    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
+    const over = sql`OVER (${overContent})`
+
+    // Build the window function based on type
+    switch (type) {
+      case 'lag':
+        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
+      case 'lead':
+        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
+      case 'rank':
+        return sql`RANK() ${over}`
+      case 'denseRank':
+        return sql`DENSE_RANK() ${over}`
+      case 'rowNumber':
+        return sql`ROW_NUMBER() ${over}`
+      case 'ntile':
+        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
+      case 'firstValue':
+        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
+      case 'lastValue':
+        return sql`LAST_VALUE(${fieldExpr}) ${over}`
+      case 'movingAvg':
+        return sql`AVG(${fieldExpr}) ${over}`
+      case 'movingSum':
+        return sql`SUM(${fieldExpr}) ${over}`
+      default:
+        throw new Error(`Unsupported window function: ${type}`)
+    }
   }
 
   /**

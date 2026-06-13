@@ -2,11 +2,15 @@
  * SQLite Database Adapter
  * Implements SQLite-specific SQL generation for time dimensions, string matching, and type casting
  * Supports local SQLite with better-sqlite3 driver
+ *
+ * SQLite is the biggest outlier: timestamps are stored as integer milliseconds, there is no
+ * native ILIKE/STDDEV/VARIANCE, booleans are 1/0, and CASE WHEN must handle embedded SQL objects.
+ * It therefore overrides more of BaseDatabaseAdapter's shared defaults than any other engine.
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
-import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
+import { BaseDatabaseAdapter, type DatabaseCapabilities } from './base-adapter'
 
 export class SQLiteAdapter extends BaseDatabaseAdapter {
   getEngineType(): 'sqlite' {
@@ -51,25 +55,6 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   buildDateAddInterval(timestamp: SQL, duration: string): SQL {
     const totalSeconds = this.durationToSeconds(duration)
     return sql`(${timestamp} + ${totalSeconds})`
-  }
-
-  /**
-   * Build SQLite conditional aggregation using CASE WHEN
-   * SQLite doesn't support FILTER clause, so we use CASE WHEN pattern
-   * Example: AVG(CASE WHEN step_1_time IS NOT NULL THEN time_diff END)
-   */
-  buildConditionalAggregation(
-    aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
-    expr: SQL | null,
-    condition: SQL
-  ): SQL {
-    const fnName = aggFn.toUpperCase()
-    if (aggFn === 'count' && !expr) {
-      // COUNT(*) with condition -> COUNT(CASE WHEN condition THEN 1 END)
-      return sql`COUNT(CASE WHEN ${condition} THEN 1 END)`
-    }
-    // AVG/MIN/MAX/SUM -> AGG(CASE WHEN condition THEN expr END)
-    return sql`${sql.raw(fnName)}(CASE WHEN ${condition} THEN ${expr} END)`
   }
 
   /**
@@ -163,35 +148,22 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build SQLite string matching conditions using LOWER() + LIKE for case-insensitive matching
-   * SQLite LIKE is case-insensitive by default, but LOWER() ensures consistency
+   * SQLite has no ILIKE — use LOWER()+LIKE with the pattern lowercased in JS.
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
-    switch (operator) {
-      case 'contains':
-        return sql`LOWER(${fieldExpr}) LIKE ${`%${value.toLowerCase()}%`}`
-      case 'notContains':
-        return sql`LOWER(${fieldExpr}) NOT LIKE ${`%${value.toLowerCase()}%`}`
-      case 'startsWith':
-        return sql`LOWER(${fieldExpr}) LIKE ${`${value.toLowerCase()}%`}`
-      case 'endsWith':
-        return sql`LOWER(${fieldExpr}) LIKE ${`%${value.toLowerCase()}`}`
-      case 'like':
-        return sql`${fieldExpr} LIKE ${value}`
-      case 'notLike':
-        return sql`${fieldExpr} NOT LIKE ${value}`
-      case 'ilike':
-        // SQLite doesn't have ILIKE, use LOWER() + LIKE for case-insensitive
-        return sql`LOWER(${fieldExpr}) LIKE ${value.toLowerCase()}`
-      case 'regex':
-        // SQLite regex requires loading extension, use GLOB as fallback
-        return sql`${fieldExpr} GLOB ${value}`
-      case 'notRegex':
-        // SQLite regex requires loading extension, use NOT GLOB as fallback
-        return sql`${fieldExpr} NOT GLOB ${value}`
-      default:
-        throw new Error(`Unsupported string operator: ${operator}`)
-    }
+  protected caseInsensitiveLike(fieldExpr: AnyColumn | SQL, pattern: string, negated: boolean): SQL {
+    const lowered = pattern.toLowerCase()
+    return negated
+      ? sql`LOWER(${fieldExpr}) NOT LIKE ${lowered}`
+      : sql`LOWER(${fieldExpr}) LIKE ${lowered}`
+  }
+
+  /**
+   * SQLite regex requires loading an extension, so GLOB is used as a fallback.
+   */
+  protected regexCondition(fieldExpr: AnyColumn | SQL, value: string, negated: boolean): SQL {
+    return negated
+      ? sql`${fieldExpr} NOT GLOB ${value}`
+      : sql`${fieldExpr} GLOB ${value}`
   }
 
   /**
@@ -214,27 +186,26 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     }
   }
 
-
   /**
-   * Build SQLite AVG aggregation with IFNULL for NULL handling
-   * SQLite AVG returns NULL for empty sets, using IFNULL for consistency
+   * SQLite AVG uses IFNULL rather than COALESCE for null-to-zero handling.
    */
-  buildAvg(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`IFNULL(AVG(${fieldExpr}), 0)`
+  protected nullToZero(expr: SQL): SQL {
+    return sql`IFNULL(${expr}, 0)`
   }
 
-
   /**
-   * Build SQLite CASE WHEN conditional expression
+   * Build SQLite CASE WHEN conditional expression.
+   * Unlike the base implementation, SQLite must detect embedded SQL objects in THEN/ELSE
+   * and inline them rather than binding them as parameters.
    */
   buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
     // Check if 'then' values are SQL objects (they have queryChunks property)
     // If so, we need to treat them as SQL expressions, not bound parameters
     const cases = conditions.map(c => {
       // Check if it's a SQL object by checking for SQL-like properties
-      const isSqlObject = c.then && typeof c.then === 'object' && 
+      const isSqlObject = c.then && typeof c.then === 'object' &&
                          (c.then.queryChunks || c.then._ || c.then.sql);
-      
+
       if (isSqlObject) {
         // It's a SQL expression, embed it directly without parameterization
         return sql`WHEN ${c.when} THEN ${sql.raw('(') }${c.then}${sql.raw(')')}`
@@ -243,9 +214,9 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
         return sql`WHEN ${c.when} THEN ${c.then}`
       }
     }).reduce((acc, curr) => sql`${acc} ${curr}`)
-    
+
     if (elseValue !== undefined) {
-      const isElseSqlObject = elseValue && typeof elseValue === 'object' && 
+      const isElseSqlObject = elseValue && typeof elseValue === 'object' &&
                               (elseValue.queryChunks || elseValue._ || elseValue.sql);
       if (isElseSqlObject) {
         return sql`CASE ${cases} ELSE ${sql.raw('(')}${elseValue}${sql.raw(')')} END`
@@ -291,7 +262,6 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     })
   }
 
-
   /**
    * Convert filter values to SQLite-compatible types
    * SQLite doesn't support boolean types - convert boolean to integer (1/0)
@@ -310,7 +280,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     // If it's already a number (likely already converted timestamp), return as-is
     if (typeof value === 'number') {
       return value
-    }    
+    }
     return value
   }
 
@@ -334,14 +304,6 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
    */
   isTimestampInteger(): boolean {
     return true
-  }
-
-  /**
-   * Convert SQLite time dimension results back to Date objects
-   * SQLite time dimensions return datetime strings, but clients expect Date objects
-   */
-  convertTimeDimensionResult(value: any): any {
-    return value
   }
 
   // ============================================
@@ -394,81 +356,5 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     // SQLite doesn't have native PERCENTILE functions
     // Return null to trigger graceful degradation
     return null
-  }
-
-  /**
-   * Build SQLite window function expression
-   * SQLite 3.25+ supports window functions
-   */
-  buildWindowFunction(
-    type: WindowFunctionType,
-    fieldExpr: AnyColumn | SQL | null,
-    partitionBy?: (AnyColumn | SQL)[],
-    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
-    config?: WindowFunctionConfig
-  ): SQL {
-    // Build OVER clause components
-    const partitionClause = partitionBy && partitionBy.length > 0
-      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
-      : sql``
-
-    const orderClause = orderBy && orderBy.length > 0
-      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
-          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
-        ), sql`, `)}`
-      : sql``
-
-    // Build frame clause if specified
-    let frameClause = sql``
-    if (config?.frame) {
-      const { type: frameType, start, end } = config.frame
-      const frameTypeStr = frameType.toUpperCase()
-
-      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
-        : typeof start === 'number' ? `${start} PRECEDING`
-        : 'CURRENT ROW'
-
-      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
-        : end === 'current' ? 'CURRENT ROW'
-        : typeof end === 'number' ? `${end} FOLLOWING`
-        : 'CURRENT ROW'
-
-      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
-    }
-
-    // Combine OVER clause
-    const overParts: SQL[] = []
-    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
-    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
-    if (config?.frame) overParts.push(frameClause)
-
-    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
-    const over = sql`OVER (${overContent})`
-
-    // Build the window function based on type
-    switch (type) {
-      case 'lag':
-        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'lead':
-        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'rank':
-        return sql`RANK() ${over}`
-      case 'denseRank':
-        return sql`DENSE_RANK() ${over}`
-      case 'rowNumber':
-        return sql`ROW_NUMBER() ${over}`
-      case 'ntile':
-        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
-      case 'firstValue':
-        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
-      case 'lastValue':
-        return sql`LAST_VALUE(${fieldExpr}) ${over}`
-      case 'movingAvg':
-        return sql`AVG(${fieldExpr}) ${over}`
-      case 'movingSum':
-        return sql`SUM(${fieldExpr}) ${over}`
-      default:
-        throw new Error(`Unsupported window function: ${type}`)
-    }
   }
 }

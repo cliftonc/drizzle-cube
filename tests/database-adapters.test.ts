@@ -9,16 +9,20 @@ import { SQLiteAdapter } from '../src/server/adapters/sqlite-adapter'
 import { PostgresAdapter } from '../src/server/adapters/postgres-adapter'
 import { SingleStoreAdapter } from '../src/server/adapters/singlestore-adapter'
 
-// Helper to get SQL string from SQL object
+// Helper to get SQL string from SQL object.
+// Recurses into nested SQL objects (e.g. COALESCE(AVG(x), 0) where AVG(x) is its
+// own SQL fragment) so the rendered text reflects the full expression.
 function getSqlString(sqlObj: any): string {
-  if (sqlObj.toSQL) {
-    return sqlObj.toSQL().sql
-  }
+  if (sqlObj == null) return ''
+  if (typeof sqlObj === 'string') return sqlObj
   if (sqlObj.queryChunks) {
-    return sqlObj.queryChunks.map((c: any) =>
-      typeof c === 'string' ? c : c.value?.toString() || ''
-    ).join('')
+    return sqlObj.queryChunks.map((c: any) => {
+      if (typeof c === 'string') return c
+      if (c?.queryChunks) return getSqlString(c) // nested SQL fragment
+      return c?.value?.toString() || ''
+    }).join('')
   }
+  if (sqlObj.value !== undefined) return sqlObj.value.toString()
   return String(sqlObj)
 }
 

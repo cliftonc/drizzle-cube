@@ -320,7 +320,7 @@ describe('Server-Side Flow Queries', () => {
       }
       const highDepthResult = builder.validateConfig(highDepth, cubes)
       expect(highDepthResult.isValid).toBe(true)
-      expect(highDepthResult.warnings.some(w => w.includes('High step depth'))).toBe(true)
+      expect(highDepthResult.warnings?.some(w => w.includes('High step depth'))).toBe(true)
     })
 
     it('should transform results correctly', () => {

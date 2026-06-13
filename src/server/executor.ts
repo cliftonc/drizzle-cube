@@ -25,7 +25,7 @@ import type {
   RLSSetupFn
 } from './types'
 
-import { resolveSqlExpression, safeKey } from './cube-utils'
+import { resolveSqlExpression, resolveFilterFieldExpr, safeKey } from './cube-utils'
 import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
 import { generateCacheKey } from './cache-utils'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
@@ -43,6 +43,7 @@ import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan'
 import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
 import { t } from '../i18n/runtime'
+import type { TranslationKey } from '../i18n/types'
 
 type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
@@ -366,24 +367,22 @@ export class QueryExecutor {
   }
 
   /**
-   * Execute a funnel query with caching support
+   * Execute an analysis query (funnel/flow/retention) with caching support.
+   * Wraps the inner execute callback with cache-set logic; the three analysis
+   * modes share identical wrapper behaviour, differing only in which inner
+   * execute method they invoke.
+   *
+   * Cache metadata is intentionally NOT attached here: fresh results across all
+   * query modes (regular, comparison, and analysis) uniformly carry no `cache`
+   * field — only cache *hits* (handled in execute()) carry cache metadata.
    */
-  private async executeFunnelQueryWithCache(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    securityContext: SecurityContext,
+  private async executeAnalysisQueryWithCache(
+    innerExecute: () => Promise<QueryResult>,
     cacheKey: string | undefined
   ): Promise<QueryResult> {
-    const result = await this.executeFunnelQuery(cubes, query, securityContext)
+    const result = await innerExecute()
     await this.cacheResult(cacheKey, result)
-
-    // Return result with cache metadata (miss - freshly computed)
-    return {
-      ...result,
-      cache: {
-        hit: false
-      }
-    }
+    return result
   }
 
   /**
@@ -396,11 +395,7 @@ export class QueryExecutor {
   ): Promise<QueryResult> {
     const config = query.funnel!
 
-    // Validate funnel configuration
-    const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
-    if (!validation.isValid) {
-      throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
-    }
+    // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
     const context: QueryContext = {
@@ -448,27 +443,6 @@ export class QueryExecutor {
   }
 
   /**
-   * Execute a flow query with caching support
-   */
-  private async executeFlowQueryWithCache(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    securityContext: SecurityContext,
-    cacheKey: string | undefined
-  ): Promise<QueryResult> {
-    const result = await this.executeFlowQuery(cubes, query, securityContext)
-    await this.cacheResult(cacheKey, result)
-
-    // Return result with cache metadata (miss - freshly computed)
-    return {
-      ...result,
-      cache: {
-        hit: false
-      }
-    }
-  }
-
-  /**
    * Execute a flow analysis query
    * Produces Sankey diagram data (nodes and links)
    */
@@ -479,11 +453,7 @@ export class QueryExecutor {
   ): Promise<QueryResult> {
     const config = query.flow!
 
-    // Validate flow configuration
-    const validation = this.flowQueryBuilder.validateConfig(config, cubes)
-    if (!validation.isValid) {
-      throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
-    }
+    // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
     const context: QueryContext = {
@@ -528,27 +498,6 @@ export class QueryExecutor {
   }
 
   /**
-   * Execute a retention query with caching support
-   */
-  private async executeRetentionQueryWithCache(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    securityContext: SecurityContext,
-    cacheKey: string | undefined
-  ): Promise<QueryResult> {
-    const result = await this.executeRetentionQuery(cubes, query, securityContext)
-    await this.cacheResult(cacheKey, result)
-
-    // Return result with cache metadata (miss - freshly computed)
-    return {
-      ...result,
-      cache: {
-        hit: false
-      }
-    }
-  }
-
-  /**
    * Execute a retention analysis query
    * Calculates cohort-based retention rates
    */
@@ -559,11 +508,7 @@ export class QueryExecutor {
   ): Promise<QueryResult> {
     const config = query.retention!
 
-    // Validate retention configuration
-    const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
-    if (!validation.isValid) {
-      throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
-    }
+    // Config already validated once on the execute path via validateQueryForMode.
 
     // Create query context
     const context: QueryContext = {
@@ -607,13 +552,22 @@ export class QueryExecutor {
   }
 
   /**
-   * Standard query execution (non-comparison)
-   * This is the core execution logic extracted for use by comparison queries
+   * Standard (regular/non-comparison) query execution.
+   *
+   * This is the single core execution path used by both the regular query mode
+   * and comparison-mode period sub-queries. It always runs the dev-time
+   * security-context validation and propagates planner warnings; the optional
+   * `cacheKey` controls whether the fresh result is written to the cache.
+   *
+   * @param cacheKey - When provided (and a cache provider is configured), the
+   *   fresh result is written to the cache. Pass `undefined` to skip caching
+   *   (e.g. comparison period sub-queries cache at the comparison level).
    */
   private async executeStandardQuery(
     cubes: Map<string, Cube>,
     query: SemanticQuery,
-    securityContext: SecurityContext
+    securityContext: SecurityContext,
+    cacheKey?: string | undefined
   ): Promise<QueryResult> {
     // Create filter cache for parameter deduplication across CTEs
     const filterCache = new FilterCacheManager()
@@ -627,6 +581,12 @@ export class QueryExecutor {
     // Create unified query plan via shared logical pipeline
     const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
     const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
+
+    // Validate security context is applied to all cubes in the query plan.
+    // This is a dev-time warning only (no-op outside development unless
+    // DRIZZLE_CUBE_WARN_SECURITY is set), so it is safe to run on every path,
+    // including comparison-mode period sub-queries.
+    this.validateSecurityContext(physicalPlan, context)
 
     // Build the query using unified approach
     const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
@@ -670,10 +630,15 @@ export class QueryExecutor {
     // Generate annotations for UI
     const annotation = this.generateAnnotations(physicalPlan, query)
 
-    return {
+    const result: QueryResult = {
       data: filledData,
-      annotation
+      annotation,
+      // Include warnings from query planning (e.g., fan-out without dimensions)
+      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
     }
+
+    await this.cacheResult(cacheKey, result)
+    return result
   }
 
   /**
@@ -827,38 +792,14 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    // Validate funnel query
-    if (!this.funnelQueryBuilder.hasFunnel(query)) {
-      throw new Error(t('server.errors.invalidFunnelConfig'))
-    }
-
-    const config = query.funnel!
-
-    // Validate funnel configuration
-    const validation = this.funnelQueryBuilder.validateConfig(config, cubes)
-    if (!validation.isValid) {
-      throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
-    }
-
-    // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
-
-    // Build funnel query using Drizzle query builder
-    // The refactored buildFunnelQuery returns a query builder with .toSQL() support
-    const funnelQuery = this.funnelQueryBuilder.buildFunnelQuery(config, cubes, context)
-
-    // Use .toSQL() to get the SQL string and parameters
-    // This now works because buildFunnelQuery returns a Drizzle query builder
-    const sqlObj = funnelQuery.toSQL()
-
-    return {
-      sql: sqlObj.sql,
-      params: sqlObj.params
-    }
+    return this.dryRunAnalysis(query, securityContext, {
+      has: q => this.funnelQueryBuilder.hasFunnel(q),
+      invalidConfigKey: 'server.errors.invalidFunnelConfig',
+      getConfig: q => q.funnel!,
+      validate: config => this.funnelQueryBuilder.validateConfig(config, cubes),
+      validationFailedKey: 'server.errors.funnelValidationFailed',
+      build: (config, context) => this.funnelQueryBuilder.buildFunnelQuery(config, cubes, context)
+    })
   }
 
   /**
@@ -870,36 +811,14 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    // Validate flow query
-    if (!this.flowQueryBuilder.hasFlow(query)) {
-      throw new Error(t('server.errors.invalidFlowConfig'))
-    }
-
-    const config = query.flow!
-
-    // Validate flow configuration
-    const validation = this.flowQueryBuilder.validateConfig(config, cubes)
-    if (!validation.isValid) {
-      throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
-    }
-
-    // Create query context
-    const context: QueryContext = {
-      db: this.dbExecutor.db,
-      schema: this.dbExecutor.schema,
-      securityContext
-    }
-
-    // Build flow query using Drizzle query builder
-    const flowQuery = this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
-
-    // Use .toSQL() to get the SQL string and parameters
-    const sqlObj = flowQuery.toSQL()
-
-    return {
-      sql: sqlObj.sql,
-      params: sqlObj.params
-    }
+    return this.dryRunAnalysis(query, securityContext, {
+      has: q => this.flowQueryBuilder.hasFlow(q),
+      invalidConfigKey: 'server.errors.invalidFlowConfig',
+      getConfig: q => q.flow!,
+      validate: config => this.flowQueryBuilder.validateConfig(config, cubes),
+      validationFailedKey: 'server.errors.flowValidationFailed',
+      build: (config, context) => this.flowQueryBuilder.buildFlowQuery(config, cubes, context)
+    })
   }
 
   /**
@@ -911,17 +830,44 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    // Validate retention query
-    if (!this.retentionQueryBuilder.hasRetention(query)) {
-      throw new Error(t('server.errors.invalidRetentionConfig'))
+    return this.dryRunAnalysis(query, securityContext, {
+      has: q => this.retentionQueryBuilder.hasRetention(q),
+      invalidConfigKey: 'server.errors.invalidRetentionConfig',
+      getConfig: q => q.retention!,
+      validate: config => this.retentionQueryBuilder.validateConfig(config, cubes),
+      validationFailedKey: 'server.errors.retentionValidationFailed',
+      build: (config, context) => this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
+    })
+  }
+
+  /**
+   * Generic dry-run SQL generator for analysis modes (funnel/flow/retention).
+   * The three modes share an identical shape (mode guard → config validation →
+   * build query → toSQL()), differing only in which builder/config they use.
+   */
+  private async dryRunAnalysis<TConfig>(
+    query: SemanticQuery,
+    securityContext: SecurityContext,
+    handlers: {
+      has: (query: SemanticQuery) => boolean
+      invalidConfigKey: TranslationKey
+      getConfig: (query: SemanticQuery) => TConfig
+      validate: (config: TConfig) => { isValid: boolean; errors: string[] }
+      validationFailedKey: TranslationKey
+      build: (config: TConfig, context: QueryContext) => { toSQL(): { sql: string; params: unknown[] } }
+    }
+  ): Promise<{ sql: string; params?: any[] }> {
+    // Validate the query has the expected analysis config
+    if (!handlers.has(query)) {
+      throw new Error(t(handlers.invalidConfigKey))
     }
 
-    const config = query.retention!
+    const config = handlers.getConfig(query)
 
-    // Validate retention configuration
-    const validation = this.retentionQueryBuilder.validateConfig(config, cubes)
+    // Validate the analysis configuration
+    const validation = handlers.validate(config)
     if (!validation.isValid) {
-      throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
+      throw new Error(t(handlers.validationFailedKey, { errors: validation.errors.join(', ') }))
     }
 
     // Create query context
@@ -931,11 +877,10 @@ export class QueryExecutor {
       securityContext
     }
 
-    // Build retention query using Drizzle query builder
-    const retentionQuery = this.retentionQueryBuilder.buildRetentionQuery(config, cubes, context)
-
-    // Use .toSQL() to get the SQL string and parameters
-    const sqlObj = retentionQuery.toSQL()
+    // Build the analysis query using its Drizzle query builder, then extract
+    // the SQL string and parameters via .toSQL().
+    const builtQuery = handlers.build(config, context)
+    const sqlObj = builtQuery.toSQL()
 
     return {
       sql: sqlObj.sql,
@@ -1081,89 +1026,17 @@ export class QueryExecutor {
     cacheKey: string | undefined
   ): Promise<QueryResult> {
     const executors: Record<QueryExecutionMode, () => Promise<QueryResult>> = {
-      regular: () => this.executeRegularQueryWithCache(cubes, query, securityContext, cacheKey),
+      regular: () => this.executeStandardQuery(cubes, query, securityContext, cacheKey),
       comparison: () => this.executeComparisonQueryWithCache(cubes, query, securityContext, cacheKey),
-      funnel: () => this.executeFunnelQueryWithCache(cubes, query, securityContext, cacheKey),
-      flow: () => this.executeFlowQueryWithCache(cubes, query, securityContext, cacheKey),
-      retention: () => this.executeRetentionQueryWithCache(cubes, query, securityContext, cacheKey)
+      funnel: () => this.executeAnalysisQueryWithCache(
+        () => this.executeFunnelQuery(cubes, query, securityContext), cacheKey),
+      flow: () => this.executeAnalysisQueryWithCache(
+        () => this.executeFlowQuery(cubes, query, securityContext), cacheKey),
+      retention: () => this.executeAnalysisQueryWithCache(
+        () => this.executeRetentionQuery(cubes, query, securityContext), cacheKey)
     }
 
     return executors[safeKey(mode) as QueryExecutionMode]()
-  }
-
-  private async executeRegularQueryWithCache(
-    cubes: Map<string, Cube>,
-    query: SemanticQuery,
-    securityContext: SecurityContext,
-    cacheKey: string | undefined
-  ): Promise<QueryResult> {
-    // Create filter cache for parameter deduplication across CTEs
-    const filterCache = new FilterCacheManager()
-
-    // Create query context with filter cache
-    const context = this.createQueryContext(securityContext, filterCache, query)
-
-    // Pre-build filter SQL for reuse across CTEs and main query
-    this.preloadFilterCache(query, filterCache, cubes, context)
-
-    // Create query plan via shared logical plan pipeline
-    const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
-    const physicalPlan = this.drizzlePlanBuilder.derivePhysicalPlanContext(optimisedPlan)
-
-    // Validate security context is applied to all cubes in the query plan
-    this.validateSecurityContext(physicalPlan, context)
-
-    // Build the query using unified approach
-    const builtQuery = this.drizzlePlanBuilder.build(physicalPlan, query, context)
-
-    debugSql('query', builtQuery)
-
-    // Execute query - pass numeric field names for selective conversion
-    const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
-    const data = await this.dbExecutor.execute(builtQuery, numericFields)
-
-    // Process time dimension results
-    const mappedData = Array.isArray(data) ? data.map(row => {
-      const mappedRow = { ...row }
-      if (query.timeDimensions) {
-        for (const timeDim of query.timeDimensions) {
-          if (timeDim.dimension in mappedRow) {
-            let dateValue = mappedRow[timeDim.dimension]
-
-            // If we have a date that is not 'T' in the center and Z at the end, we need to fix it
-            if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
-              const isoString = dateValue.replace(' ', 'T')
-              const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+')
-                ? isoString + 'Z'
-                : isoString
-              dateValue = new Date(finalIsoString)
-            }
-
-            // Convert time dimension result using database adapter if required
-            dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)
-            mappedRow[timeDim.dimension] = dateValue
-          }
-        }
-      }
-      return mappedRow
-    }) : [data]
-
-    // Apply gap filling for time series if requested
-    const measureNames = query.measures || []
-    const filledData = applyGapFilling(mappedData, query, measureNames)
-
-    // Generate annotations for UI
-    const annotation = this.generateAnnotations(physicalPlan, query)
-
-    const result: QueryResult = {
-      data: filledData,
-      annotation,
-      // Include warnings from query planning (e.g., fan-out without dimensions)
-      warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
-    }
-
-    await this.cacheResult(cacheKey, result)
-    return result
   }
 
   private async cacheResult(cacheKey: string | undefined, result: QueryResult): Promise<void> {
@@ -1339,12 +1212,7 @@ export class QueryExecutor {
           continue
         }
 
-        // For non-time dimensions, use raw column so Drizzle preserves column type
-        // metadata for proper parameter binding (e.g., UUID columns need type info).
-        // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
-        const fieldExpr = dimension.type === 'time'
-          ? resolveSqlExpression(dimension.sql, context)
-          : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+        const fieldExpr = resolveFilterFieldExpr(dimension, context)
         const filterSQL = this.queryBuilder.buildFilterConditionPublic(
           fieldExpr,
           filter.operator,

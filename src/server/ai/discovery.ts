@@ -66,7 +66,7 @@ export interface DiscoveryOptions {
 /**
  * Calculate Levenshtein distance between two strings
  */
-function levenshteinDistance(a: string, b: string): number {
+export function levenshteinDistance(a: string, b: string): number {
   if (a.length > 500 || b.length > 500) return a.length + b.length
   const matrix: number[][] = []
 

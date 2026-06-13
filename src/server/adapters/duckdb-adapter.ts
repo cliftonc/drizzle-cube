@@ -2,11 +2,14 @@
  * DuckDB Database Adapter
  * Implements DuckDB-specific SQL generation for time dimensions, string matching, and type casting
  * DuckDB is largely PostgreSQL-compatible but has some differences in funnel functions and advanced features
+ *
+ * Inherits shared defaults from BaseDatabaseAdapter (ILIKE string matching, COALESCE
+ * null-handling, standard window functions, etc.). Only DuckDB-specific SQL is here.
  */
 
 import { sql, type SQL, type AnyColumn } from 'drizzle-orm'
 import type { TimeGranularity } from '../types'
-import { BaseDatabaseAdapter, type DatabaseCapabilities, type WindowFunctionType, type WindowFunctionConfig } from './base-adapter'
+import { BaseDatabaseAdapter, type DatabaseCapabilities } from './base-adapter'
 
 export class DuckDBAdapter extends BaseDatabaseAdapter {
   getEngineType(): 'duckdb' {
@@ -63,9 +66,8 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB conditional aggregation using CASE WHEN
-   * DuckDB supports FILTER clause, but CASE WHEN provides broader compatibility
-   * Using FILTER clause as DuckDB does support it
+   * Build DuckDB conditional aggregation using the FILTER clause
+   * DuckDB supports the standard SQL FILTER clause like PostgreSQL
    */
   buildConditionalAggregation(
     aggFn: 'count' | 'avg' | 'min' | 'max' | 'sum',
@@ -124,32 +126,12 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB string matching conditions using ILIKE (case-insensitive)
-   * DuckDB supports ILIKE like PostgreSQL
+   * DuckDB uses function-style regex matching: regexp_matches(field, pattern)
    */
-  buildStringCondition(fieldExpr: AnyColumn | SQL, operator: 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'like' | 'notLike' | 'ilike' | 'regex' | 'notRegex', value: string): SQL {
-    switch (operator) {
-      case 'contains':
-        return sql`${fieldExpr} ILIKE ${`%${value}%`}`
-      case 'notContains':
-        return sql`${fieldExpr} NOT ILIKE ${`%${value}%`}`
-      case 'startsWith':
-        return sql`${fieldExpr} ILIKE ${`${value}%`}`
-      case 'endsWith':
-        return sql`${fieldExpr} ILIKE ${`%${value}`}`
-      case 'like':
-        return sql`${fieldExpr} LIKE ${value}`
-      case 'notLike':
-        return sql`${fieldExpr} NOT LIKE ${value}`
-      case 'ilike':
-        return sql`${fieldExpr} ILIKE ${value}`
-      case 'regex':
-        return sql`regexp_matches(${fieldExpr}, ${value})`
-      case 'notRegex':
-        return sql`NOT regexp_matches(${fieldExpr}, ${value})`
-      default:
-        throw new Error(`Unsupported string operator: ${operator}`)
-    }
+  protected regexCondition(fieldExpr: AnyColumn | SQL, value: string, negated: boolean): SQL {
+    return negated
+      ? sql`NOT regexp_matches(${fieldExpr}, ${value})`
+      : sql`regexp_matches(${fieldExpr}, ${value})`
   }
 
   /**
@@ -167,62 +149,6 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
       default:
         throw new Error(`Unsupported cast type: ${targetType}`)
     }
-  }
-
-  /**
-   * Build DuckDB AVG aggregation with COALESCE for NULL handling
-   */
-  buildAvg(fieldExpr: AnyColumn | SQL): SQL {
-    return sql`COALESCE(AVG(${fieldExpr}), 0)`
-  }
-
-  /**
-   * Build DuckDB CASE WHEN conditional expression
-   */
-  buildCaseWhen(conditions: Array<{ when: SQL; then: any }>, elseValue?: any): SQL {
-    const cases = conditions.map(c => sql`WHEN ${c.when} THEN ${c.then}`).reduce((acc, curr) => sql`${acc} ${curr}`)
-
-    if (elseValue !== undefined) {
-      return sql`CASE ${cases} ELSE ${elseValue} END`
-    }
-    return sql`CASE ${cases} END`
-  }
-
-  /**
-   * Build DuckDB boolean literal
-   * DuckDB uses TRUE/FALSE keywords
-   */
-  buildBooleanLiteral(value: boolean): SQL {
-    return value ? sql`TRUE` : sql`FALSE`
-  }
-
-  /**
-   * Convert filter values - DuckDB uses native types
-   */
-  convertFilterValue(value: any): any {
-    return value
-  }
-
-  /**
-   * Prepare date value for DuckDB
-   * DuckDB accepts Date objects directly
-   */
-  prepareDateValue(date: Date): any {
-    return date
-  }
-
-  /**
-   * DuckDB stores timestamps as native timestamp types
-   */
-  isTimestampInteger(): boolean {
-    return false
-  }
-
-  /**
-   * DuckDB time dimensions already return proper values
-   */
-  convertTimeDimensionResult(value: any): any {
-    return value
   }
 
   // ============================================
@@ -251,105 +177,11 @@ export class DuckDBAdapter extends BaseDatabaseAdapter {
   }
 
   /**
-   * Build DuckDB STDDEV aggregation
-   * Uses STDDEV_POP for population, STDDEV_SAMP for sample
-   */
-  buildStddev(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
-    const fn = useSample ? 'STDDEV_SAMP' : 'STDDEV_POP'
-    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
-  }
-
-  /**
-   * Build DuckDB VARIANCE aggregation
-   * Uses VAR_POP for population, VAR_SAMP for sample
-   */
-  buildVariance(fieldExpr: AnyColumn | SQL, useSample = false): SQL {
-    const fn = useSample ? 'VAR_SAMP' : 'VAR_POP'
-    return sql`COALESCE(${sql.raw(fn)}(${fieldExpr}), 0)`
-  }
-
-  /**
    * Build DuckDB PERCENTILE aggregation
    * DuckDB uses QUANTILE_CONT instead of PERCENTILE_CONT
    */
   buildPercentile(fieldExpr: AnyColumn | SQL, percentile: number): SQL {
     const pct = percentile / 100
     return sql`QUANTILE_CONT(${fieldExpr}, ${pct})`
-  }
-
-  /**
-   * Build DuckDB window function expression
-   * DuckDB has full window function support
-   */
-  buildWindowFunction(
-    type: WindowFunctionType,
-    fieldExpr: AnyColumn | SQL | null,
-    partitionBy?: (AnyColumn | SQL)[],
-    orderBy?: Array<{ field: AnyColumn | SQL; direction: 'asc' | 'desc' }>,
-    config?: WindowFunctionConfig
-  ): SQL {
-    // Build OVER clause components
-    const partitionClause = partitionBy && partitionBy.length > 0
-      ? sql`PARTITION BY ${sql.join(partitionBy, sql`, `)}`
-      : sql``
-
-    const orderClause = orderBy && orderBy.length > 0
-      ? sql`ORDER BY ${sql.join(orderBy.map(o =>
-          o.direction === 'desc' ? sql`${o.field} DESC` : sql`${o.field} ASC`
-        ), sql`, `)}`
-      : sql``
-
-    // Build frame clause if specified
-    let frameClause = sql``
-    if (config?.frame) {
-      const { type: frameType, start, end } = config.frame
-      const frameTypeStr = frameType.toUpperCase()
-
-      const startStr = start === 'unbounded' ? 'UNBOUNDED PRECEDING'
-        : typeof start === 'number' ? `${start} PRECEDING`
-        : 'CURRENT ROW'
-
-      const endStr = end === 'unbounded' ? 'UNBOUNDED FOLLOWING'
-        : end === 'current' ? 'CURRENT ROW'
-        : typeof end === 'number' ? `${end} FOLLOWING`
-        : 'CURRENT ROW'
-
-      frameClause = sql`${sql.raw(frameTypeStr)} BETWEEN ${sql.raw(startStr)} AND ${sql.raw(endStr)}`
-    }
-
-    // Combine OVER clause
-    const overParts: SQL[] = []
-    if (partitionBy && partitionBy.length > 0) overParts.push(partitionClause)
-    if (orderBy && orderBy.length > 0) overParts.push(orderClause)
-    if (config?.frame) overParts.push(frameClause)
-
-    const overContent = overParts.length > 0 ? sql.join(overParts, sql` `) : sql``
-    const over = sql`OVER (${overContent})`
-
-    // Build the window function based on type
-    switch (type) {
-      case 'lag':
-        return sql`LAG(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'lead':
-        return sql`LEAD(${fieldExpr}, ${config?.offset ?? 1}${config?.defaultValue !== undefined ? sql`, ${config.defaultValue}` : sql``}) ${over}`
-      case 'rank':
-        return sql`RANK() ${over}`
-      case 'denseRank':
-        return sql`DENSE_RANK() ${over}`
-      case 'rowNumber':
-        return sql`ROW_NUMBER() ${over}`
-      case 'ntile':
-        return sql`NTILE(${config?.nTile ?? 4}) ${over}`
-      case 'firstValue':
-        return sql`FIRST_VALUE(${fieldExpr}) ${over}`
-      case 'lastValue':
-        return sql`LAST_VALUE(${fieldExpr}) ${over}`
-      case 'movingAvg':
-        return sql`AVG(${fieldExpr}) ${over}`
-      case 'movingSum':
-        return sql`SUM(${fieldExpr}) ${over}`
-      default:
-        throw new Error(`Unsupported window function: ${type}`)
-    }
   }
 }

@@ -17,6 +17,7 @@ import type {
   PeriodComparisonMetadata
 } from '../types'
 import { DateTimeBuilder } from './date-time-builder'
+import { hasComparisonMode } from '../query-modes'
 import type { DatabaseAdapter } from '../adapters/base-adapter'
 
 /**
@@ -56,9 +57,7 @@ export class ComparisonQueryBuilder {
    * Check if a query contains compareDateRange
    */
   hasComparison(query: SemanticQuery): boolean {
-    return query.timeDimensions?.some(td =>
-      td.compareDateRange && td.compareDateRange.length >= 2
-    ) ?? false
+    return hasComparisonMode(query)
   }
 
   /**

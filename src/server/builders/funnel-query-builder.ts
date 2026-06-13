@@ -21,9 +21,12 @@ import type {
   SemanticQuery,
   Filter,
   FilterCondition,
-  LogicalFilter
+  LogicalFilter,
+  AnalysisConfigValidationResult
 } from '../types'
-import { resolveSqlExpression } from '../cube-utils'
+import { resolveFilterFieldExpr } from '../cube-utils'
+import { hasFunnelMode } from '../query-modes'
+import { combineWhere, resolveBindingKeyExpr, resolveTimeDimensionExpr, type WithSubquery } from './analysis-utils'
 import { FilterBuilder } from './filter-builder'
 import { DateTimeBuilder } from './date-time-builder'
 import { JoinPathResolver } from '../resolvers/join-path-resolver'
@@ -53,12 +56,6 @@ interface ResolvedStep {
   joinedCubes: JoinedCubeInfo[]
 }
 
-/**
- * Type for CTE objects created by db.$with()
- * These can be used with db.with(...ctes).select().from(cte)
- */
-type WithSubquery = ReturnType<ReturnType<any['$with']>['as']>
-
 export class FunnelQueryBuilder {
   private filterBuilder: FilterBuilder
   private dateTimeBuilder: DateTimeBuilder
@@ -72,7 +69,7 @@ export class FunnelQueryBuilder {
    * Check if query contains funnel configuration
    */
   hasFunnel(query: SemanticQuery): boolean {
-    return query.funnel !== undefined && query.funnel.steps.length >= 2
+    return hasFunnelMode(query)
   }
 
   /**
@@ -81,7 +78,7 @@ export class FunnelQueryBuilder {
   validateConfig(
     config: FunnelQueryConfig,
     cubes: Map<string, Cube>
-  ): { isValid: boolean; errors: string[] } {
+  ): AnalysisConfigValidationResult {
     const errors: string[] = []
 
     // Check minimum steps
@@ -427,26 +424,7 @@ export class FunnelQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    if (typeof config.bindingKey === 'string') {
-      const [, dimName] = config.bindingKey.split('.')
-      const dimension = cube.dimensions?.[dimName]
-      if (!dimension) {
-        throw new Error(t('server.errors.funnel.bindingKeyDimNotFound', { bindingKey: config.bindingKey }))
-      }
-      return resolveSqlExpression(dimension.sql, context) as SQL
-    }
-
-    // Multi-cube binding key - find the mapping for this cube
-    const mapping = config.bindingKey.find(m => m.cube === cube.name)
-    if (!mapping) {
-      throw new Error(t('server.errors.funnel.noBindingKeyMapping', { cubeName: cube.name }))
-    }
-    const [, dimName] = mapping.dimension.split('.')
-    const dimension = cube.dimensions?.[dimName]
-    if (!dimension) {
-      throw new Error(t('server.errors.funnel.bindingKeyMappingDimNotFound', { dimension: mapping.dimension }))
-    }
-    return resolveSqlExpression(dimension.sql, context) as SQL
+    return resolveBindingKeyExpr(config.bindingKey, cube, context, 'server.errors.funnel')
   }
 
   /**
@@ -457,26 +435,7 @@ export class FunnelQueryBuilder {
     cube: Cube,
     context: QueryContext
   ): SQL {
-    if (typeof config.timeDimension === 'string') {
-      const [, dimName] = config.timeDimension.split('.')
-      const dimension = cube.dimensions?.[dimName]
-      if (!dimension) {
-        throw new Error(t('server.errors.funnel.timeDimNotFound', { timeDimension: config.timeDimension }))
-      }
-      return resolveSqlExpression(dimension.sql, context) as SQL
-    }
-
-    // Multi-cube time dimension - find the mapping for this cube
-    const mapping = config.timeDimension.find(m => m.cube === cube.name)
-    if (!mapping) {
-      throw new Error(t('server.errors.funnel.noTimeDimMapping', { cubeName: cube.name }))
-    }
-    const [, dimName] = mapping.dimension.split('.')
-    const dimension = cube.dimensions?.[dimName]
-    if (!dimension) {
-      throw new Error(t('server.errors.funnel.timeDimMappingNotFound', { dimension: mapping.dimension }))
-    }
-    return resolveSqlExpression(dimension.sql, context) as SQL
+    return resolveTimeDimensionExpr(config.timeDimension, cube, context, 'server.errors.funnel')
   }
 
   /**
@@ -590,11 +549,8 @@ export class FunnelQueryBuilder {
       const resolver = new JoinPathResolver(cubes)
       const joinPath = resolver.findPath(baseCube.name, filterCubeName)
       if (!joinPath || joinPath.length === 0) {
-        // No join path exists - cannot filter on this cube
-        console.warn(
-          `Funnel filter: Cannot filter by '${String(filterCubeName).replace(/\n|\r/g, '')}.${String(dimName).replace(/\n|\r/g, '')}' in step using '${String(baseCube.name).replace(/\n|\r/g, '')}'. ` +
-          `No join path found. Filter will be skipped.`
-        )
+        // No join path exists - cannot filter on this cube.
+        // Match flow/retention: silently drop this filter condition by returning null.
         return null
       }
       // Note: The actual JOIN for cross-cube filters is handled in buildStepCTE
@@ -603,12 +559,7 @@ export class FunnelQueryBuilder {
     const dimension = filterCube.dimensions?.[dimName]
     if (!dimension) return null
 
-    // For non-time dimensions, use raw column so Drizzle preserves column type
-    // metadata for proper parameter binding (e.g., UUID columns need type info).
-    // For time dimensions, keep isolated SQL because normalizeDate() returns strings.
-    const fieldExpr = dimension.type === 'time'
-      ? resolveSqlExpression(dimension.sql, context)
-      : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+    const fieldExpr = resolveFilterFieldExpr(dimension, context)
 
     // Delegate to FilterBuilder which handles all filter operators including date ranges
     return this.filterBuilder.buildFilterCondition(
@@ -682,10 +633,7 @@ export class FunnelQueryBuilder {
 
     // Apply WHERE conditions
     if (whereConditions.length > 0) {
-      const combinedWhere = whereConditions.length === 1
-        ? whereConditions[0]
-        : and(...whereConditions) as SQL
-      stepQuery = stepQuery.where(combinedWhere)
+      stepQuery = stepQuery.where(combineWhere(whereConditions))
     }
 
     // Group by binding key
@@ -753,10 +701,7 @@ export class FunnelQueryBuilder {
 
     // Apply WHERE conditions
     if (whereConditions.length > 0) {
-      const combinedWhere = whereConditions.length === 1
-        ? whereConditions[0]
-        : and(...whereConditions) as SQL
-      stepQuery = stepQuery.where(combinedWhere)
+      stepQuery = stepQuery.where(combineWhere(whereConditions))
     }
 
     // Group by binding key
@@ -796,9 +741,8 @@ export class FunnelQueryBuilder {
           }
         }
 
-        const joinCondition = joinConditions.length === 1
-          ? joinConditions[0]
-          : and(...joinConditions) as SQL
+        // joinConditions always has at least one element here
+        const joinCondition = combineWhere(joinConditions)!
 
         // Get the target cube's table
         const targetCube = joinedCubeInfo.cube
