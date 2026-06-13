@@ -21,8 +21,8 @@ import type {
   FlowResultRow,
   SankeyNode,
   SankeyLink,
-  FlowValidationResult,
 } from '../types/flow'
+import type { AnalysisConfigValidationResult } from '../types/validation'
 import type {
   Cube,
   QueryContext,
@@ -77,7 +77,7 @@ export class FlowQueryBuilder {
   validateConfig(
     config: FlowQueryConfig,
     cubes: Map<string, Cube>
-  ): FlowValidationResult {
+  ): AnalysisConfigValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
     const engine = this.databaseAdapter.getEngineType()

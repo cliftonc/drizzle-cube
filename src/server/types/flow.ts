@@ -6,6 +6,7 @@
  */
 
 import type { Filter } from './query'
+import type { AnalysisConfigValidationResult } from './validation'
 
 // ============================================================================
 // Flow Query Configuration
@@ -171,12 +172,12 @@ export interface RawFlowLinkRow {
 
 /**
  * Flow validation result
+ *
+ * Alias of the shared {@link AnalysisConfigValidationResult} used by all
+ * analysis-mode builders. Kept as a named export for backwards compatibility
+ * with existing consumers.
  */
-export interface FlowValidationResult {
-  isValid: boolean
-  errors: string[]
-  warnings: string[]
-}
+export type FlowValidationResult = AnalysisConfigValidationResult
 
 // ============================================================================
 // Constants

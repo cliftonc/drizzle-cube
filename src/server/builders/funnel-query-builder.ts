@@ -21,7 +21,8 @@ import type {
   SemanticQuery,
   Filter,
   FilterCondition,
-  LogicalFilter
+  LogicalFilter,
+  AnalysisConfigValidationResult
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasFunnelMode } from '../query-modes'
@@ -82,7 +83,7 @@ export class FunnelQueryBuilder {
   validateConfig(
     config: FunnelQueryConfig,
     cubes: Map<string, Cube>
-  ): { isValid: boolean; errors: string[] } {
+  ): AnalysisConfigValidationResult {
     const errors: string[] = []
 
     // Check minimum steps
@@ -591,11 +592,8 @@ export class FunnelQueryBuilder {
       const resolver = new JoinPathResolver(cubes)
       const joinPath = resolver.findPath(baseCube.name, filterCubeName)
       if (!joinPath || joinPath.length === 0) {
-        // No join path exists - cannot filter on this cube
-        console.warn(
-          `Funnel filter: Cannot filter by '${String(filterCubeName).replace(/\n|\r/g, '')}.${String(dimName).replace(/\n|\r/g, '')}' in step using '${String(baseCube.name).replace(/\n|\r/g, '')}'. ` +
-          `No join path found. Filter will be skipped.`
-        )
+        // No join path exists - cannot filter on this cube.
+        // Match flow/retention: silently drop this filter condition by returning null.
         return null
       }
       // Note: The actual JOIN for cross-cube filters is handled in buildStepCTE

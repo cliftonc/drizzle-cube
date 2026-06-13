@@ -24,6 +24,9 @@ export * from './metadata'
 // Query analysis types
 export * from './analysis'
 
+// Analysis-mode config validation types
+export * from './validation'
+
 // Utility functions and helpers
 export * from './utils'
 

@@ -29,7 +29,8 @@ import type {
   SemanticQuery,
   Filter,
   FilterCondition,
-  LogicalFilter
+  LogicalFilter,
+  AnalysisConfigValidationResult
 } from '../types'
 import { resolveSqlExpression, resolveFilterFieldExpr } from '../cube-utils'
 import { hasRetentionMode } from '../query-modes'
@@ -77,7 +78,7 @@ export class RetentionQueryBuilder {
   validateConfig(
     config: RetentionQueryConfig,
     cubes: Map<string, Cube>
-  ): { isValid: boolean; errors: string[] } {
+  ): AnalysisConfigValidationResult {
     const errors: string[] = []
 
     // Engine guard: retention SQL relies on cast/interval syntax that is only
