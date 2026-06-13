@@ -341,7 +341,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
-    "fallow": "2.95.0",
+    "fallow": "2.96.0",
     "fastify": "^5.6.2",
     "globals": "^17.0.0",
     "hono": "^4.0.0",
