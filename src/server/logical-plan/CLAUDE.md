@@ -16,11 +16,16 @@ SemanticQuery
 
 ```
 src/server/logical-plan/
-├── index.ts                  Barrel exports — types, builders, optimisers
-├── logical-plan-builder.ts   LogicalPlanBuilder — plan composition + analysis trace
-├── logical-planner.ts        LogicalPlanner — multi-phase planning pipeline
-├── optimiser.ts              PlanOptimiser interface, OptimiserPipeline, IdentityOptimiser
-└── types.ts                  LogicalNode variants and reference types
+├── index.ts                    Barrel exports — types, builders, optimisers
+├── logical-plan-builder.ts     LogicalPlanBuilder — plan composition + analysis trace
+├── logical-planner.ts          LogicalPlanner — thin facade composing the planning phases
+├── join-planner.ts             JoinPlanner — join-plan construction
+├── cte-planner.ts              CTEPlanner — pre-aggregation CTE decisions (fan-out prevention)
+├── filter-propagation.ts       FilterPropagation — filter propagation into CTEs
+├── plan-analysis-reporter.ts   PlanAnalysisReporter — dry-run/EXPLAIN trace + warnings
+├── planner-utils.ts            ResolverCache + shared cube-usage helpers
+├── optimiser.ts                PlanOptimiser interface, OptimiserPipeline, IdentityOptimiser
+└── types.ts                    LogicalNode variants and reference types
 ```
 
 ## Key Components
@@ -28,7 +33,11 @@ src/server/logical-plan/
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | `LogicalPlanBuilder` | `logical-plan-builder.ts` | Builds `LogicalNode` tree from semantic query; produces `LogicalPlanWithAnalysis` (plan + trace) |
-| `LogicalPlanner` | `logical-planner.ts` | Orchestrates planning phases: cube usage, primary cube selection, join path resolution, CTE decisions |
+| `LogicalPlanner` | `logical-planner.ts` | Facade composing the planning phases: cube usage, primary cube selection, join path resolution, CTE decisions |
+| `JoinPlanner` | `join-planner.ts` | Builds the join plan (path resolution, belongsToMany expansion) |
+| `CTEPlanner` | `cte-planner.ts` | Decides pre-aggregation CTEs to prevent fan-out; multi-hop absorption |
+| `FilterPropagation` | `filter-propagation.ts` | Propagates related-cube filters into CTEs |
+| `PlanAnalysisReporter` | `plan-analysis-reporter.ts` | Primary-cube/join-path trace + query warnings (dry-run/EXPLAIN) |
 | `OptimiserPipeline` | `optimiser.ts` | Chains multiple `PlanOptimiser` passes; applies them sequentially to a plan |
 | `IdentityOptimiser` | `optimiser.ts` | No-op pass-through optimiser (Phase 1 default) |
 
@@ -47,7 +56,18 @@ Reference types: `CubeRef`, `MeasureRef`, `DimensionRef`, `TimeDimensionRef`, `C
 
 ## Guard Rails
 
-1. The logical plan is a pure data structure — no SQL generation happens here
-2. `LogicalPlanWithAnalysis` always includes an analysis trace for dry-run/explain output
-3. Optimiser passes must be side-effect-free; they receive and return `LogicalNode` trees
-4. Node types use a discriminated union on `type` field for exhaustive pattern matching
+1. The logical plan is a pure, symbolic data structure — **no Drizzle SQL and no
+   baked security context**. `JoinRef` carries a `joinDef` (CubeJoin), not a
+   pre-built `joinCondition`; `IntermediateJoinInfo` carries a cube ref, not a
+   `securityFilter` SQL. All join conditions and the security WHERE are
+   materialized by `DrizzlePlanBuilder` (the `derivePhysicalPlanContext` /
+   `materializeJoin` seam and the CTE builder), using the request's security
+   context at build time.
+2. Planning must not import `builders/` (the SQL-generation layer). Pure measure
+   classification used by planning lives in `../measure-classification.ts`.
+3. `LogicalPlanWithAnalysis` always includes an analysis trace for dry-run/explain output
+4. Optimiser passes must be side-effect-free; they receive and return `LogicalNode`
+   trees. The executor derives the `SemanticQuery` the physical builder consumes
+   from the **optimised** plan (`DrizzlePlanBuilder.toSemanticQuery`), so optimiser
+   rewrites of measures/filters/limit/etc. take effect in the generated SQL.
+5. Node types use a discriminated union on `type` field for exhaustive pattern matching

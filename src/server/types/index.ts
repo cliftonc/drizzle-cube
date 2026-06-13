@@ -33,5 +33,7 @@ export * from './utils'
 // Cache types
 export * from './cache'
 
-// Re-export defineCube helper
-export { defineCube } from '../cube-utils'
+// NOTE: defineCube (a runtime helper) is intentionally NOT re-exported here.
+// The types package must not import runtime modules — doing so created a
+// types/index.ts → cube-utils.ts → types cycle. Import defineCube from
+// 'drizzle-cube/server' (src/server/index.ts) or './cube-utils' directly.

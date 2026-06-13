@@ -216,10 +216,12 @@ export class CTEBuilder {
         const intermediateCubeBase = intermediate.cube.sql(context)
         const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
 
-        // Add JOIN with security context for the intermediate table
+        // Add JOIN with security context for the intermediate table. The
+        // security WHERE is materialized here (not baked into the plan) from
+        // the intermediate cube's sql(context).where.
         const intermediateConditions = [joinCondition]
-        if (intermediate.securityFilter) {
-          intermediateConditions.push(intermediate.securityFilter)
+        if (intermediateCubeBase.where) {
+          intermediateConditions.push(intermediateCubeBase.where)
         }
 
         cteQuery = cteQuery.leftJoin(

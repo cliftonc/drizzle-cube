@@ -10,6 +10,7 @@ import type { DrizzleSqlBuilder } from './drizzle-sql-builder'
 import type { CTEBuilder } from '../builders/cte-builder'
 import type {
   Cube,
+  JoinCubePlanEntry,
   PhysicalQueryPlan,
   QueryContext,
   SemanticQuery
@@ -20,9 +21,14 @@ import type {
   SimpleSource,
   FullKeyAggregate,
   KeysDeduplication,
-  MultiFactMerge
+  MultiFactMerge,
+  JoinRef
 } from '../logical-plan'
-import { resolveSqlExpression } from '../cube-utils'
+import {
+  resolveSqlExpression,
+  buildRegularJoinCondition,
+  expandBelongsToManyJoin
+} from '../cube-utils'
 import {
   buildCTEState,
   buildModifiedSelections,
@@ -62,13 +68,7 @@ export class DrizzlePlanBuilder {
 
     return {
       primaryCube: simpleSource.primaryCube.cube,
-      joinCubes: simpleSource.joins.map(join => ({
-        cube: join.target.cube,
-        alias: join.alias,
-        joinType: join.joinType,
-        joinCondition: join.joinCondition,
-        junctionTable: join.junctionTable
-      })),
+      joinCubes: simpleSource.joins.map(join => this.materializeJoin(join)),
       preAggregationCTEs: simpleSource.ctes.map(cte => ({
         cube: cte.cube.cube,
         alias: cte.alias,
@@ -83,6 +83,47 @@ export class DrizzlePlanBuilder {
       })),
       keysDeduplication: keysDeduplicationMeta,
       warnings: plan.warnings.length > 0 ? plan.warnings : undefined
+    }
+  }
+
+  /**
+   * Materialize a symbolic JoinRef into a runtime JoinCubePlanEntry, building
+   * the Drizzle join condition(s) from the join definition. This is the seam
+   * where the logical plan's symbolic join refs become executable SQL — the
+   * planner no longer pre-builds any join SQL.
+   *
+   * Junction-table security is NOT materialized here: the stored
+   * `through.securitySql` function is carried forward and applied (in the WHERE
+   * clause) at build time with the request's security context.
+   */
+  private materializeJoin(join: JoinRef): JoinCubePlanEntry {
+    if (join.junctionTable) {
+      const expanded = expandBelongsToManyJoin(join.joinDef)
+      return {
+        cube: join.target.cube,
+        alias: join.alias,
+        joinType: join.joinType,
+        // junctionJoins[1] = junction -> target cube condition
+        joinCondition: expanded.junctionJoins[1].condition,
+        relationship: join.relationship,
+        junctionTable: {
+          table: join.junctionTable.table,
+          alias: join.junctionTable.alias,
+          joinType: join.junctionTable.joinType,
+          // junctionJoins[0] = source -> junction condition
+          joinCondition: expanded.junctionJoins[0].condition,
+          securitySql: join.joinDef.through?.securitySql,
+          sourceCubeName: join.junctionTable.sourceCubeName
+        }
+      }
+    }
+
+    return {
+      cube: join.target.cube,
+      alias: join.alias,
+      joinType: join.joinType,
+      joinCondition: buildRegularJoinCondition(join.joinDef),
+      relationship: join.relationship
     }
   }
 
@@ -167,7 +208,16 @@ export class DrizzlePlanBuilder {
     }
   }
 
-  private toSemanticQuery(node: QueryNode): SemanticQuery {
+  /**
+   * Reconstruct a SemanticQuery from a (possibly optimised) QueryNode.
+   *
+   * This is the materialization seam that makes the logical plan a real IR:
+   * the executor derives the query the physical builder consumes from the
+   * optimised plan, so optimiser rewrites of measures/filters/limit/etc. take
+   * effect in the generated SQL. Must faithfully round-trip every field the
+   * physical builder and processors read off a SemanticQuery.
+   */
+  toSemanticQuery(node: QueryNode): SemanticQuery {
     const order =
       node.orderBy.length > 0
         ? Object.fromEntries(node.orderBy.map(entry => [entry.name, entry.direction]))
@@ -186,7 +236,8 @@ export class DrizzlePlanBuilder {
       filters: node.filters,
       order,
       limit: node.limit,
-      offset: node.offset
+      offset: node.offset,
+      ungrouped: node.ungrouped
     }
   }
 

@@ -9,13 +9,21 @@ SemanticQuery
   → SemanticLayerCompiler        (cube registry, validation, metadata cache)
   → QueryExecutor                (mode routing: regular | comparison | funnel | flow | retention)
   → LogicalPlanBuilder           (cube usage, primary-cube selection, joins, CTE decisions)
-  → LogicalPlanner               (planning phases)
-  → OptimiserPipeline            (optional plan transformations)
-  → DrizzlePlanBuilder           (logical → physical plan conversion)
+  → LogicalPlanner               (planning phases — emits a symbolic logical plan)
+  → PlanOptimiser                (injectable; default IdentityOptimiser — rewrites the plan)
+  → DrizzlePlanBuilder           (materializes symbolic refs → physical plan + Drizzle SQL)
   → DrizzleSqlBuilder            (SQL clause assembly)
   → DatabaseExecutor             (engine-specific execution via adapter)
   → SQL Result
 ```
+
+The logical plan is a real IR: it carries **symbolic** join/CTE references (no
+Drizzle SQL, no baked security context). `DrizzlePlanBuilder` is the
+materialization seam — it builds all join conditions and the security WHERE from
+the plan's symbolic refs using the request's security context, and derives the
+clauses it assembles from the **optimised** plan (`toSemanticQuery`), so an
+injected `PlanOptimiser` actually changes the generated SQL. The optimiser is
+injectable via `SemanticLayerCompiler`/`QueryExecutor` and covers all 7 engines.
 
 Comparison/funnel/flow/retention queries use dedicated builders that bypass the logical plan and go directly through their own SQL generation.
 
@@ -23,9 +31,17 @@ Comparison/funnel/flow/retention queries use dedicated builders that bypass the 
 
 ```
 src/server/
-├── compiler.ts              SemanticLayerCompiler, validateQueryAgainstCubes
+├── compiler.ts              SemanticLayerCompiler (re-exports validateQueryAgainstCubes)
 ├── executor.ts              QueryExecutor — unified query orchestrator
-├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression
+├── query-validator.ts       validateQueryAgainstCubes (standalone; breaks compiler↔executor cycle)
+├── execution/               Execution-phase helpers extracted from QueryExecutor
+│   ├── mode-router.ts          ModeRouter — resolve + validate query mode
+│   ├── query-result-cache.ts   QueryResultCache — key/lookup/store
+│   ├── filter-cache-preloader.ts FilterCachePreloader — pre-build filter SQL
+│   ├── annotation-builder.ts   buildAnnotations — UI metadata
+│   └── result-post-processor.ts postProcessResultRows — time-dim normalise + gap fill
+├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression, buildRegularJoinCondition, expandBelongsToManyJoin
+├── measure-classification.ts SQL-free measure window-function classification (used by planning)
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
 ├── cache-utils.ts           generateCacheKey, normalizeQuery, fnv1aHash
 ├── filter-cache.ts          FilterCacheManager, flattenFilters

@@ -16,7 +16,8 @@ import {
   LogicalPlanBuilder,
   IdentityOptimiser,
   OptimiserPipeline,
-  LogicalPlanner
+  LogicalPlanner,
+  QueryExecutor
 } from '../src/server'
 import type {
   SimpleSource,
@@ -24,7 +25,10 @@ import type {
   QueryContext,
   SecurityContext,
   DatabaseExecutor,
-  SemanticQuery
+  SemanticQuery,
+  PlanOptimiser,
+  OptimiserContext,
+  QueryNode
 } from '../src/server'
 
 const dbType = getTestDatabaseType()
@@ -219,6 +223,76 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
       const optimised = pipeline.optimise(plan, { engineType: 'postgres' })
       // After two identity passes, should still equal the original
       expect(optimised).toBe(plan)
+    })
+
+    it('an injected PlanOptimiser is used by the executor pipeline', () => {
+      // A custom optimiser that rewrites the root QueryNode: drop the last
+      // measure and force a limit. This proves the executor threads the
+      // injected optimiser into its planning pipeline (Stage 1).
+      const seenEngines: string[] = []
+      const customOptimiser: PlanOptimiser = {
+        name: 'test-rewrite',
+        optimise(plan, context: OptimiserContext) {
+          seenEngines.push(context.engineType)
+          const node = plan as QueryNode
+          if (node.type !== 'query') return plan
+          return {
+            ...node,
+            measures: node.measures.slice(0, 1),
+            limit: 42
+          }
+        }
+      }
+
+      const executor = new QueryExecutor(dbExecutor, undefined, undefined, customOptimiser)
+      const query: SemanticQuery = {
+        measures: ['Employees.count', 'Employees.avgSalary'],
+        dimensions: ['Employees.name']
+      }
+
+      const optimisedPlan = executor.buildLogicalPlan(cubes, query, securityContext)
+
+      // The optimiser's rewrites are reflected in the plan the executor uses.
+      expect(optimisedPlan.measures).toHaveLength(1)
+      expect(optimisedPlan.limit).toBe(42)
+      // The real engine type was passed through (no collapsing to a subset).
+      expect(seenEngines).toContain(dbType === 'both' ? 'postgres' : dbType)
+    })
+
+    it('an optimiser rewrite changes the generated SQL (Stage 2)', async () => {
+      const query: SemanticQuery = {
+        measures: ['Employees.count', 'Employees.avgSalary'],
+        dimensions: ['Employees.name']
+      }
+
+      // Baseline: no optimiser rewrites (IdentityOptimiser).
+      const baseExecutor = new QueryExecutor(dbExecutor)
+      const baseSql = await baseExecutor.generateMultiCubeSQL(cubes, query, securityContext)
+
+      // Optimiser that drops the second measure and forces a limit. Because
+      // build() now derives its clauses from the optimised plan, these rewrites
+      // must surface in the generated SQL.
+      const rewriteOptimiser: PlanOptimiser = {
+        name: 'test-sql-rewrite',
+        optimise(plan) {
+          const node = plan as QueryNode
+          if (node.type !== 'query') return plan
+          return { ...node, measures: node.measures.slice(0, 1), limit: 7 }
+        }
+      }
+      const rewriteExecutor = new QueryExecutor(dbExecutor, undefined, undefined, rewriteOptimiser)
+      const rewriteSql = await rewriteExecutor.generateMultiCubeSQL(cubes, query, securityContext)
+
+      // The optimised SQL differs from the baseline.
+      expect(rewriteSql.sql).not.toBe(baseSql.sql)
+      // The dropped measure's alias is gone from the optimised SQL.
+      expect(baseSql.sql).toContain('Employees.avgSalary')
+      expect(rewriteSql.sql).not.toContain('Employees.avgSalary')
+      // The forced limit is applied (inline or parameterised).
+      const limitApplied =
+        /limit/i.test(rewriteSql.sql) &&
+        (/\b7\b/.test(rewriteSql.sql) || (rewriteSql.params ?? []).includes(7))
+      expect(limitApplied).toBe(true)
     })
   })
 

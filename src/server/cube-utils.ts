@@ -11,8 +11,7 @@ import type {
   Dimension,
   QueryContext,
   MultiCubeQueryContext,
-  SqlExpression,
-  SecurityContext
+  SqlExpression
 } from './types'
 
 /**
@@ -234,6 +233,26 @@ export function defineCube(
 }
 
 /**
+ * Build the Drizzle join condition for a regular (belongsTo/hasOne/hasMany)
+ * join from its symbolic CubeJoin definition. Columns are isolated to prevent
+ * Drizzle's mutable queryChunks from corrupting reused expressions. The
+ * condition is symmetric, so it is correct for reversed joins as-is.
+ *
+ * This is the materialization counterpart used by DrizzlePlanBuilder; it
+ * mirrors JoinPathResolver.buildJoinCondition(joinDef, null, null).
+ */
+export function buildRegularJoinCondition(joinDef: CubeJoin): SQL {
+  const conditions: SQL[] = []
+  for (const joinOn of joinDef.on) {
+    const sourceCol = isolateSqlExpression(joinOn.source)
+    const targetCol = isolateSqlExpression(joinOn.target)
+    const comparator = joinOn.as || eq
+    conditions.push(comparator(sourceCol as any, targetCol as any))
+  }
+  return and(...conditions)!
+}
+
+/**
  * Expanded join information for belongsToMany relationships
  */
 export interface ExpandedBelongsToManyJoin {
@@ -243,8 +262,6 @@ export interface ExpandedBelongsToManyJoin {
     table: any
     condition: SQL
   }>
-  /** Security conditions for junction table (if any) */
-  junctionSecurityConditions?: SQL[]
 }
 
 /**
@@ -252,16 +269,20 @@ export interface ExpandedBelongsToManyJoin {
  * This converts a many-to-many relationship into two separate joins:
  * 1. Source cube -> Junction table
  * 2. Junction table -> Target cube
+ *
+ * Junction-table security is intentionally NOT materialized here: it must be
+ * applied (in the WHERE clause) at physical-build time from the stored
+ * `through.securitySql` function with the request's security context, so the
+ * join conditions here are a pure function of the join definition.
  */
 export function expandBelongsToManyJoin(
-  joinDef: CubeJoin,
-  securityContext: SecurityContext
+  joinDef: CubeJoin
 ): ExpandedBelongsToManyJoin {
   if (joinDef.relationship !== 'belongsToMany' || !joinDef.through) {
     throw new Error('expandBelongsToManyJoin can only be called on belongsToMany relationships with through configuration')
   }
 
-  const { table, sourceKey, targetKey, securitySql } = joinDef.through
+  const { table, sourceKey, targetKey } = joinDef.through
 
   // Build join conditions
   const sourceConditions: SQL[] = []
@@ -274,13 +295,6 @@ export function expandBelongsToManyJoin(
   for (const joinOn of targetKey) {
     const comparator = joinOn.as || eq
     targetConditions.push(comparator(joinOn.source as any, joinOn.target as any))
-  }
-
-  // Get security conditions for junction table
-  let junctionSecurityConditions: SQL[] | undefined
-  if (securitySql) {
-    const securityResult = securitySql(securityContext)
-    junctionSecurityConditions = Array.isArray(securityResult) ? securityResult : [securityResult]
   }
 
   // Derive join type (belongsToMany uses LEFT joins)
@@ -298,7 +312,6 @@ export function expandBelongsToManyJoin(
         table, // This will be replaced with target cube table in query planner
         condition: and(...targetConditions)!
       }
-    ],
-    junctionSecurityConditions
+    ]
   }
 }

@@ -35,6 +35,13 @@ export { LogicalPlanner } from './logical-planner'
 export { LogicalPlanBuilder } from './logical-plan-builder'
 export type { LogicalPlanWithAnalysis } from './logical-plan-builder'
 
+// Planning phases (composed by LogicalPlanner)
+export { JoinPlanner } from './join-planner'
+export { CTEPlanner } from './cte-planner'
+export { FilterPropagation } from './filter-propagation'
+export { PlanAnalysisReporter } from './plan-analysis-reporter'
+export { ResolverCache, analyzeCubeUsage, extractCubeNamesFromFilter } from './planner-utils'
+
 // Optimisers
-export type { PlanOptimiser, OptimiserContext } from './optimiser'
+export type { PlanOptimiser, OptimiserContext, OptimiserEngineType } from './optimiser'
 export { IdentityOptimiser, OptimiserPipeline } from './optimiser'
