@@ -8,7 +8,7 @@ import type { SemanticLayerCompiler } from '../compiler'
 import type { SecurityContext } from '../types'
 import type { AgentSSEEvent } from './types'
 import type { ToolDefinition } from './providers/types'
-import { handleDiscover, handleLoad, normalizeQueryFields } from '../../adapters/utils'
+import { handleDiscover, handleLoad, normalizeQueryFields } from '../query-handlers'
 import { validateChartConfig, inferChartConfig, buildChartRequirementsDescription } from './chart-validation'
 import { QUERY_PARAMS_SCHEMA } from '../ai/query-schema'
 

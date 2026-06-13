@@ -22,7 +22,7 @@ import type { ChartTypeConfig } from './chartConfigs'
 import type { IconProps } from '../icons/types'
 import { registerChartConfig, unregisterChartConfig, chartConfigRegistry } from './chartConfigRegistry'
 import { registerConfigToCache, unregisterConfigFromCache } from './lazyChartConfigRegistry'
-import { registerChartComponent, unregisterChartComponent } from './ChartLoader'
+import { registerChartComponent, unregisterChartComponent } from './chartComponentRegistry'
 import { setCustomChartIconResolver } from '../icons/registry'
 
 /**

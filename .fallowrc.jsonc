@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.fallow.tools/schema/config.json",
+  // The published library lives in src/ (entry points come from package.json exports).
+  // dev/ is the local example app (Vite client + tsx server) with its own entry points
+  // that fallow can't infer from package.json. Register them so dev/ code is reachable
+  // and not reported as false-positive dead code.
+  "entry": [
+    "dev/server/index.ts",
+    "dev/client/src/main.tsx",
+    // tsx-invoked maintenance scripts (see package.json dev:db:migrate / dev:db:seed)
+    "dev/scripts/migrate.ts",
+    "dev/scripts/seed.ts"
+  ]
+}

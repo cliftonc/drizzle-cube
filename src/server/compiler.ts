@@ -24,7 +24,7 @@ import type {
 } from './types'
 import { createDatabaseExecutor } from './executors'
 import { QueryExecutor } from './executor'
-import { formatSqlString } from '../adapters/utils'
+import { formatSqlString } from './sql-format'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
 import { resolveCubeReference } from './cube-utils'
