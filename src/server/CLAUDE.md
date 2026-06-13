@@ -23,8 +23,15 @@ Comparison/funnel/flow/retention queries use dedicated builders that bypass the 
 
 ```
 src/server/
-├── compiler.ts              SemanticLayerCompiler, validateQueryAgainstCubes
+├── compiler.ts              SemanticLayerCompiler (re-exports validateQueryAgainstCubes)
 ├── executor.ts              QueryExecutor — unified query orchestrator
+├── query-validator.ts       validateQueryAgainstCubes (standalone; breaks compiler↔executor cycle)
+├── execution/               Execution-phase helpers extracted from QueryExecutor
+│   ├── mode-router.ts          ModeRouter — resolve + validate query mode
+│   ├── query-result-cache.ts   QueryResultCache — key/lookup/store
+│   ├── filter-cache-preloader.ts FilterCachePreloader — pre-build filter SQL
+│   ├── annotation-builder.ts   buildAnnotations — UI metadata
+│   └── result-post-processor.ts postProcessResultRows — time-dim normalise + gap fill
 ├── cube-utils.ts            defineCube, isolateSqlExpression, resolveSqlExpression
 ├── database-utils.ts        createDatabaseAdapter, getSupportedEngines
 ├── cache-utils.ts           generateCacheKey, normalizeQuery, fnv1aHash

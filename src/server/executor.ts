@@ -25,15 +25,18 @@ import type {
   RLSSetupFn
 } from './types'
 
-import { resolveSqlExpression, resolveFilterFieldExpr, safeKey } from './cube-utils'
-import { FilterCacheManager, getFilterKey, getTimeDimensionFilterKey, flattenFilters } from './filter-cache'
-import { generateCacheKey } from './cache-utils'
+import { safeKey } from './cube-utils'
+import { FilterCacheManager } from './filter-cache'
 import { DrizzleSqlBuilder } from './physical-plan/drizzle-sql-builder'
 import { LogicalPlanner } from './logical-plan/logical-planner'
 import { CTEBuilder } from './builders/cte-builder'
-import { validateQueryAgainstCubes } from './query-validator'
-import { applyGapFilling } from './gap-filler'
 import type { DatabaseAdapter } from './adapters/base-adapter'
+import { buildAnnotations } from './execution/annotation-builder'
+import { postProcessResultRows } from './execution/result-post-processor'
+import { FilterCachePreloader } from './execution/filter-cache-preloader'
+import { ModeRouter } from './execution/mode-router'
+import type { QueryExecutionMode } from './execution/mode-router'
+import { QueryResultCache } from './execution/query-result-cache'
 import { ComparisonQueryBuilder } from './builders/comparison-query-builder'
 import type { NormalizedPeriod } from './builders/comparison-query-builder'
 import { FunnelQueryBuilder } from './builders/funnel-query-builder'
@@ -44,8 +47,6 @@ import type { PlanOptimiser, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
 import { t } from '../i18n/runtime'
 import type { TranslationKey } from '../i18n/types'
-
-type QueryExecutionMode = 'regular' | 'comparison' | 'funnel' | 'flow' | 'retention'
 
 /** Log SQL when DC_DEBUG=true or DC_DEBUG=sql */
 function debugSql(label: string, query: { toSQL(): { sql: string; params: unknown[] } }) {
@@ -78,9 +79,11 @@ export class QueryExecutor {
   private funnelQueryBuilder: FunnelQueryBuilder
   private flowQueryBuilder: FlowQueryBuilder
   private retentionQueryBuilder: RetentionQueryBuilder
-  private cacheConfig?: CacheConfig
   private logicalPlanBuilder: LogicalPlanBuilder
   private planOptimiser: PlanOptimiser
+  private modeRouter: ModeRouter
+  private resultCache: QueryResultCache
+  private filterCachePreloader: FilterCachePreloader
 
   private rlsSetup?: RLSSetupFn
 
@@ -100,8 +103,15 @@ export class QueryExecutor {
     this.retentionQueryBuilder = new RetentionQueryBuilder(this.databaseAdapter)
     this.logicalPlanBuilder = new LogicalPlanBuilder(queryPlanner)
     this.planOptimiser = new IdentityOptimiser()
-    this.cacheConfig = cacheConfig
     this.rlsSetup = rlsSetup
+    this.modeRouter = new ModeRouter({
+      comparison: this.comparisonQueryBuilder,
+      funnel: this.funnelQueryBuilder,
+      flow: this.flowQueryBuilder,
+      retention: this.retentionQueryBuilder
+    })
+    this.resultCache = new QueryResultCache(cacheConfig)
+    this.filterCachePreloader = new FilterCachePreloader(this.queryBuilder)
   }
 
   /**
@@ -152,62 +162,15 @@ export class QueryExecutor {
     options?: ExecutionOptions
   ): Promise<QueryResult> {
     try {
-      const mode = this.resolveQueryMode(query)
-      this.validateQueryForMode(mode, cubes, query)
+      const mode = this.modeRouter.resolveMode(query)
+      this.modeRouter.validateForMode(mode, cubes, query)
 
       // Check cache BEFORE expensive operations (after validation, includes security context)
       // Skip cache lookup if options.skipCache is true (but still cache the result later)
-      let cacheKey: string | undefined
-      if (this.cacheConfig?.enabled !== false && this.cacheConfig?.provider) {
-        cacheKey = generateCacheKey(query, securityContext, this.cacheConfig)
-
-        // Only do cache lookup if not explicitly bypassing cache
-        if (!options?.skipCache) {
-          try {
-            const startTime = Date.now()
-            const cacheResult = await this.cacheConfig.provider.get<QueryResult>(cacheKey)
-            if (cacheResult) {
-              this.cacheConfig.onCacheEvent?.({
-                type: 'hit',
-                key: cacheKey,
-                durationMs: Date.now() - startTime
-              })
-
-              // Return cached result WITH cache metadata
-              return {
-                ...cacheResult.value,
-                cache: cacheResult.metadata
-                  ? {
-                      hit: true,
-                      cachedAt: new Date(cacheResult.metadata.cachedAt).toISOString(),
-                      ttlMs: cacheResult.metadata.ttlMs,
-                      ttlRemainingMs: cacheResult.metadata.ttlRemainingMs
-                    }
-                  : {
-                      hit: true,
-                      cachedAt: new Date().toISOString(),
-                      ttlMs: 0,
-                      ttlRemainingMs: 0
-                    }
-              }
-            }
-            this.cacheConfig.onCacheEvent?.({
-              type: 'miss',
-              key: cacheKey,
-              durationMs: Date.now() - startTime
-            })
-          } catch (error) {
-            this.cacheConfig.onError?.(error as Error, 'get')
-            // Continue without cache - failures are non-fatal
-          }
-        } else {
-          // skipCache requested - emit a bypass event if handler exists
-          this.cacheConfig.onCacheEvent?.({
-            type: 'miss',
-            key: cacheKey,
-            durationMs: 0
-          })
-        }
+      const cacheKey = this.resultCache.generateKey(query, securityContext)
+      const cached = await this.resultCache.lookup(cacheKey, options?.skipCache ?? false)
+      if (cached) {
+        return cached
       }
 
       // Execute inside RLS transaction context if configured.
@@ -253,7 +216,7 @@ export class QueryExecutor {
   ): import('./logical-plan').QueryNode {
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.filterCachePreloader.preload(query, filterCache, cubes, context)
     return this.buildRegularQueryArtifacts(cubes, query, context).optimisedPlan
   }
 
@@ -268,7 +231,7 @@ export class QueryExecutor {
   ): QueryAnalysis {
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.filterCachePreloader.preload(query, filterCache, cubes, context)
     return this.buildRegularQueryArtifacts(cubes, query, context).analysis
   }
 
@@ -297,7 +260,7 @@ export class QueryExecutor {
     cacheKey: string | undefined
   ): Promise<QueryResult> {
     const result = await this.executeComparisonQuery(cubes, query, securityContext)
-    await this.cacheResult(cacheKey, result)
+    await this.resultCache.store(cacheKey, result)
     return result
   }
 
@@ -381,7 +344,7 @@ export class QueryExecutor {
     cacheKey: string | undefined
   ): Promise<QueryResult> {
     const result = await innerExecute()
-    await this.cacheResult(cacheKey, result)
+    await this.resultCache.store(cacheKey, result)
     return result
   }
 
@@ -576,7 +539,7 @@ export class QueryExecutor {
     const context = this.createQueryContext(securityContext, filterCache, query)
 
     // Pre-build filter SQL for reuse across CTEs and main query
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.filterCachePreloader.preload(query, filterCache, cubes, context)
 
     // Create unified query plan via shared logical pipeline
     const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
@@ -597,38 +560,11 @@ export class QueryExecutor {
     const numericFields = this.queryBuilder.collectNumericFields(cubes, query)
     const data = await this.dbExecutor.execute(builtQuery, numericFields)
 
-    // Process time dimension results
-    const mappedData = Array.isArray(data) ? data.map(row => {
-      const mappedRow = { ...row }
-      if (query.timeDimensions) {
-        for (const timeDim of query.timeDimensions) {
-          if (timeDim.dimension in mappedRow) {
-            let dateValue = mappedRow[timeDim.dimension]
-
-            // If we have a date that is not 'T' in the center and Z at the end, we need to fix it
-            if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
-              const isoString = dateValue.replace(' ', 'T')
-              const finalIsoString = !isoString.endsWith('Z') && !isoString.includes('+')
-                ? isoString + 'Z'
-                : isoString
-              dateValue = new Date(finalIsoString)
-            }
-
-            // Convert time dimension result using database adapter if required
-            dateValue = this.databaseAdapter.convertTimeDimensionResult(dateValue)
-            mappedRow[timeDim.dimension] = dateValue
-          }
-        }
-      }
-      return mappedRow
-    }) : [data]
-
-    // Apply gap filling for time series if requested
-    const measureNames = query.measures || []
-    const filledData = applyGapFilling(mappedData, query, measureNames)
+    // Normalise time-dimension date values (adapter-specific) and apply gap filling
+    const filledData = postProcessResultRows(data, query, this.databaseAdapter)
 
     // Generate annotations for UI
-    const annotation = this.generateAnnotations(physicalPlan, query)
+    const annotation = buildAnnotations(physicalPlan, query)
 
     const result: QueryResult = {
       data: filledData,
@@ -637,7 +573,7 @@ export class QueryExecutor {
       warnings: optimisedPlan.warnings?.length ? optimisedPlan.warnings : undefined
     }
 
-    await this.cacheResult(cacheKey, result)
+    await this.resultCache.store(cacheKey, result)
     return result
   }
 
@@ -920,8 +856,8 @@ export class QueryExecutor {
     query: SemanticQuery,
     securityContext: SecurityContext
   ): Promise<{ sql: string; params?: any[] }> {
-    const mode = this.resolveQueryMode(query)
-    this.validateQueryForMode(mode, cubes, query)
+    const mode = this.modeRouter.resolveMode(query)
+    this.modeRouter.validateForMode(mode, cubes, query)
     return this.generateSqlForMode(mode, cubes, query, securityContext)
   }
 
@@ -935,7 +871,7 @@ export class QueryExecutor {
   ): Promise<{ sql: string; params?: any[] }> {
     const filterCache = new FilterCacheManager()
     const context = this.createQueryContext(securityContext, filterCache, query)
-    this.preloadFilterCache(query, filterCache, cubes, context)
+    this.filterCachePreloader.preload(query, filterCache, cubes, context)
 
     // Create unified query plan from shared logical planning pipeline
     const { optimisedPlan } = this.buildRegularQueryArtifacts(cubes, query, context)
@@ -951,71 +887,6 @@ export class QueryExecutor {
       sql: sqlObj.sql,
       params: sqlObj.params
     }
-  }
-
-  private resolveQueryMode(query: SemanticQuery): QueryExecutionMode {
-    const activeModes: QueryExecutionMode[] = []
-
-    if (this.comparisonQueryBuilder.hasComparison(query)) {
-      activeModes.push('comparison')
-    }
-    if (this.funnelQueryBuilder.hasFunnel(query)) {
-      activeModes.push('funnel')
-    }
-    if (this.flowQueryBuilder.hasFlow(query)) {
-      activeModes.push('flow')
-    }
-    if (this.retentionQueryBuilder.hasRetention(query)) {
-      activeModes.push('retention')
-    }
-
-    if (activeModes.length === 0) {
-      return 'regular'
-    }
-
-    if (activeModes.length > 1) {
-      throw new Error(t('server.errors.queryContainsMultipleModes', { modes: activeModes.join(', ') }))
-    }
-
-    return activeModes[0]
-  }
-
-  private validateQueryForMode(
-    mode: QueryExecutionMode,
-    cubes: Map<string, Cube>,
-    query: SemanticQuery
-  ): void {
-    const validateStandard = () => {
-      const validation = validateQueryAgainstCubes(cubes, query)
-      if (!validation.isValid) {
-        throw new Error(t('server.errors.queryValidationFailed', { errors: validation.errors.join(', ') }))
-      }
-    }
-
-    const validators: Record<QueryExecutionMode, () => void> = {
-      regular: validateStandard,
-      comparison: validateStandard,
-      funnel: () => {
-        const validation = this.funnelQueryBuilder.validateConfig(query.funnel!, cubes)
-        if (!validation.isValid) {
-          throw new Error(t('server.errors.funnelValidationFailed', { errors: validation.errors.join(', ') }))
-        }
-      },
-      flow: () => {
-        const validation = this.flowQueryBuilder.validateConfig(query.flow!, cubes)
-        if (!validation.isValid) {
-          throw new Error(t('server.errors.flowValidationFailed', { errors: validation.errors.join(', ') }))
-        }
-      },
-      retention: () => {
-        const validation = this.retentionQueryBuilder.validateConfig(query.retention!, cubes)
-        if (!validation.isValid) {
-          throw new Error(t('server.errors.retentionValidationFailed', { errors: validation.errors.join(', ') }))
-        }
-      }
-    }
-
-    validators[safeKey(mode) as QueryExecutionMode]()
   }
 
   private async executeQueryByModeWithCache(
@@ -1037,29 +908,6 @@ export class QueryExecutor {
     }
 
     return executors[safeKey(mode) as QueryExecutionMode]()
-  }
-
-  private async cacheResult(cacheKey: string | undefined, result: QueryResult): Promise<void> {
-    if (!cacheKey || !this.cacheConfig?.provider) {
-      return
-    }
-
-    try {
-      const startTime = Date.now()
-      await this.cacheConfig.provider.set(
-        cacheKey,
-        result,
-        this.cacheConfig.defaultTtlMs ?? 300000
-      )
-      this.cacheConfig.onCacheEvent?.({
-        type: 'set',
-        key: cacheKey,
-        durationMs: Date.now() - startTime
-      })
-    } catch (error) {
-      this.cacheConfig.onError?.(error as Error, 'set')
-      // Continue without caching - failures are non-fatal
-    }
   }
 
   private async generateSqlForMode(
@@ -1088,177 +936,4 @@ export class QueryExecutor {
     const firstPeriodQuery = comparisonPlan.periodQueries[0]
     return this.generateUnifiedSQL(cubes, firstPeriodQuery, securityContext)
   }
-
-  /**
-   * Generate annotations for UI metadata - unified approach
-   */
-  private generateAnnotations(
-    queryPlan: PhysicalQueryPlan,
-    query: SemanticQuery
-  ) {
-    const measures: Record<string, MeasureAnnotation> = {}
-    const dimensions: Record<string, DimensionAnnotation> = {}
-    const timeDimensions: Record<string, TimeDimensionAnnotation> = {}
-    
-    // Get all cubes involved (primary + join cubes)
-    const allCubes = [queryPlan.primaryCube].filter(Boolean)
-    if (queryPlan.joinCubes && queryPlan.joinCubes.length > 0) {
-      allCubes.push(...queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
-    }
-    if (queryPlan.multiFactMerge?.groups?.length) {
-      for (const group of queryPlan.multiFactMerge.groups) {
-        if (group.queryPlan.primaryCube) {
-          allCubes.push(group.queryPlan.primaryCube)
-        }
-        if (group.queryPlan.joinCubes?.length) {
-          allCubes.push(...group.queryPlan.joinCubes.map((jc: any) => jc.cube).filter(Boolean))
-        }
-      }
-    }
-
-    // Generate measure annotations from all cubes
-    if (query.measures) {
-      for (const measureName of query.measures) {
-        const [cubeName, fieldName] = measureName.split('.')
-        const cube = allCubes.find(c => c?.name === cubeName)
-        if (cube && cube.measures[fieldName]) {
-          const measure = cube.measures[fieldName]
-          measures[measureName] = {
-            title: measure.title || fieldName,
-            shortTitle: measure.title || fieldName,
-            type: measure.type
-          }
-        }
-      }
-    }
-    
-    // Generate dimension annotations from all cubes
-    if (query.dimensions) {
-      for (const dimensionName of query.dimensions) {
-        const [cubeName, fieldName] = dimensionName.split('.')
-        const cube = allCubes.find(c => c?.name === cubeName)
-        if (cube && cube.dimensions?.[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          dimensions[dimensionName] = {
-            title: dimension.title || fieldName,
-            shortTitle: dimension.title || fieldName,
-            type: dimension.type
-          }
-        }
-      }
-    }
-
-    // Generate time dimension annotations from all cubes
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [cubeName, fieldName] = timeDim.dimension.split('.')
-        const cube = allCubes.find(c => c?.name === cubeName)
-        if (cube && cube.dimensions?.[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          timeDimensions[timeDim.dimension] = {
-            title: dimension.title || fieldName,
-            shortTitle: dimension.title || fieldName,
-            type: dimension.type,
-            granularity: timeDim.granularity
-          }
-        }
-      }
-    }
-    
-    return {
-      measures,
-      dimensions,
-      segments: {},
-      timeDimensions
-    }
-  }
-
-  /**
-   * Pre-build filter SQL and store in cache for reuse across CTEs and main query
-   * This enables parameter deduplication - the same filter values are shared
-   * rather than appearing as separate parameters in different parts of the query
-   */
-  private preloadFilterCache(
-    query: SemanticQuery,
-    filterCache: FilterCacheManager,
-    cubes: Map<string, Cube>,
-    context: QueryContext
-  ): void {
-    // Pre-build regular filters
-    if (query.filters && query.filters.length > 0) {
-      // Flatten nested AND/OR filters to get individual conditions
-      const flatFilters = flattenFilters(query.filters)
-
-      for (const filter of flatFilters) {
-        const key = getFilterKey(filter)
-
-        // Skip if already cached (from a previous filter in the same query)
-        if (filterCache.has(key)) continue
-
-        // Find the cube for this filter's member
-        const [cubeName, fieldName] = filter.member.split('.')
-        const cube = cubes.get(cubeName)
-        if (!cube) continue
-
-        const dimension = cube.dimensions?.[fieldName]
-        if (!dimension) continue
-
-        // For array operators, we need the raw column (not isolated SQL)
-        // because Drizzle's array functions need column type metadata for proper encoding
-        const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filter.operator)
-        if (isArrayOperator) {
-          // Skip caching array operator filters - they require special column handling
-          // and will be built fresh each time to ensure proper array encoding
-          continue
-        }
-
-        const fieldExpr = resolveFilterFieldExpr(dimension, context)
-        const filterSQL = this.queryBuilder.buildFilterConditionPublic(
-          fieldExpr,
-          filter.operator,
-          filter.values,
-          dimension,
-          filter.dateRange
-        )
-
-        if (filterSQL) {
-          filterCache.set(key, filterSQL)
-        }
-      }
-
-      // NOTE: We do NOT cache logical filters (AND/OR) because they can contain
-      // mixed cube references. When some cubes are in CTEs, the cached version
-      // would reference wrong table contexts. Individual simple filters within
-      // logical filters are still cached for deduplication.
-    }
-
-    // Pre-build time dimension date range filters
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        if (timeDim.dateRange) {
-          const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
-
-          // Skip if already cached
-          if (filterCache.has(key)) continue
-
-          const [cubeName, fieldName] = timeDim.dimension.split('.')
-          const cube = cubes.get(cubeName)
-          if (!cube) continue
-
-          const dimension = cube.dimensions?.[fieldName]
-          if (!dimension) continue
-
-          // Time dimension date ranges always use isolated SQL because
-          // normalizeDate() returns ISO strings, not Date objects
-          const fieldExpr = resolveSqlExpression(dimension.sql, context)
-          const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
-
-          if (dateCondition) {
-            filterCache.set(key, dateCondition)
-          }
-        }
-      }
-    }
-  }
-
 }
