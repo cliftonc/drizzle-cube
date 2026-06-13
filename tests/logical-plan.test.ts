@@ -16,7 +16,8 @@ import {
   LogicalPlanBuilder,
   IdentityOptimiser,
   OptimiserPipeline,
-  LogicalPlanner
+  LogicalPlanner,
+  QueryExecutor
 } from '../src/server'
 import type {
   SimpleSource,
@@ -24,7 +25,10 @@ import type {
   QueryContext,
   SecurityContext,
   DatabaseExecutor,
-  SemanticQuery
+  SemanticQuery,
+  PlanOptimiser,
+  OptimiserContext,
+  QueryNode
 } from '../src/server'
 
 const dbType = getTestDatabaseType()
@@ -219,6 +223,40 @@ describe(`Logical Plan Pipeline (${dbType})`, () => {
       const optimised = pipeline.optimise(plan, { engineType: 'postgres' })
       // After two identity passes, should still equal the original
       expect(optimised).toBe(plan)
+    })
+
+    it('an injected PlanOptimiser is used by the executor pipeline', () => {
+      // A custom optimiser that rewrites the root QueryNode: drop the last
+      // measure and force a limit. This proves the executor threads the
+      // injected optimiser into its planning pipeline (Stage 1).
+      const seenEngines: string[] = []
+      const customOptimiser: PlanOptimiser = {
+        name: 'test-rewrite',
+        optimise(plan, context: OptimiserContext) {
+          seenEngines.push(context.engineType)
+          const node = plan as QueryNode
+          if (node.type !== 'query') return plan
+          return {
+            ...node,
+            measures: node.measures.slice(0, 1),
+            limit: 42
+          }
+        }
+      }
+
+      const executor = new QueryExecutor(dbExecutor, undefined, undefined, customOptimiser)
+      const query: SemanticQuery = {
+        measures: ['Employees.count', 'Employees.avgSalary'],
+        dimensions: ['Employees.name']
+      }
+
+      const optimisedPlan = executor.buildLogicalPlan(cubes, query, securityContext)
+
+      // The optimiser's rewrites are reflected in the plan the executor uses.
+      expect(optimisedPlan.measures).toHaveLength(1)
+      expect(optimisedPlan.limit).toBe(42)
+      // The real engine type was passed through (no collapsing to a subset).
+      expect(seenEngines).toContain(dbType === 'both' ? 'postgres' : dbType)
     })
   })
 

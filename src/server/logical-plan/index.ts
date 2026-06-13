@@ -43,5 +43,5 @@ export { PlanAnalysisReporter } from './plan-analysis-reporter'
 export { ResolverCache, analyzeCubeUsage, extractCubeNamesFromFilter } from './planner-utils'
 
 // Optimisers
-export type { PlanOptimiser, OptimiserContext } from './optimiser'
+export type { PlanOptimiser, OptimiserContext, OptimiserEngineType } from './optimiser'
 export { IdentityOptimiser, OptimiserPipeline } from './optimiser'

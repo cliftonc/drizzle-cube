@@ -43,7 +43,7 @@ import { FunnelQueryBuilder } from './builders/funnel-query-builder'
 import { FlowQueryBuilder } from './builders/flow-query-builder'
 import { RetentionQueryBuilder } from './builders/retention-query-builder'
 import { LogicalPlanBuilder, IdentityOptimiser } from './logical-plan'
-import type { PlanOptimiser, QueryNode } from './logical-plan'
+import type { PlanOptimiser, OptimiserEngineType, QueryNode } from './logical-plan'
 import { DrizzlePlanBuilder } from './physical-plan'
 import { t } from '../i18n/runtime'
 import type { TranslationKey } from '../i18n/types'
@@ -87,7 +87,12 @@ export class QueryExecutor {
 
   private rlsSetup?: RLSSetupFn
 
-  constructor(private dbExecutor: DatabaseExecutor, cacheConfig?: CacheConfig, rlsSetup?: RLSSetupFn) {
+  constructor(
+    private dbExecutor: DatabaseExecutor,
+    cacheConfig?: CacheConfig,
+    rlsSetup?: RLSSetupFn,
+    planOptimiser?: PlanOptimiser
+  ) {
     // Get the database adapter from the executor
     this.databaseAdapter = dbExecutor.databaseAdapter
     if (!this.databaseAdapter) {
@@ -102,7 +107,7 @@ export class QueryExecutor {
     this.flowQueryBuilder = new FlowQueryBuilder(this.databaseAdapter)
     this.retentionQueryBuilder = new RetentionQueryBuilder(this.databaseAdapter)
     this.logicalPlanBuilder = new LogicalPlanBuilder(queryPlanner)
-    this.planOptimiser = new IdentityOptimiser()
+    this.planOptimiser = planOptimiser ?? new IdentityOptimiser()
     this.rlsSetup = rlsSetup
     this.modeRouter = new ModeRouter({
       comparison: this.comparisonQueryBuilder,
@@ -595,15 +600,12 @@ export class QueryExecutor {
   }
 
   /**
-   * Normalize engine type for optimiser passes.
-   * SingleStore follows MySQL SQL semantics for planner choices.
+   * Resolve the real database engine type for optimiser passes.
+   * Returns the true engine for all 7 supported engines (no collapsing);
+   * passes decide for themselves whether to treat e.g. SingleStore like MySQL.
    */
-  private getOptimiserEngineType(): 'postgres' | 'mysql' | 'sqlite' | 'duckdb' {
-    const engine = this.dbExecutor.getEngineType?.()
-    if (engine === 'singlestore') {
-      return 'mysql'
-    }
-    return (engine ?? 'postgres') as 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
+  private getOptimiserEngineType(): OptimiserEngineType {
+    return this.dbExecutor.getEngineType?.() ?? 'postgres'
   }
 
   /**

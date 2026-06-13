@@ -8,10 +8,20 @@
 
 import type { LogicalNode } from './types'
 
+/** Database engine the optimiser is targeting (all 7 supported engines). */
+export type OptimiserEngineType =
+  | 'postgres'
+  | 'mysql'
+  | 'sqlite'
+  | 'singlestore'
+  | 'duckdb'
+  | 'databend'
+  | 'snowflake'
+
 /** Context available to optimiser passes */
 export interface OptimiserContext {
   /** Database engine type for engine-specific rewrites */
-  engineType: 'postgres' | 'mysql' | 'sqlite' | 'duckdb'
+  engineType: OptimiserEngineType
 }
 
 /** A single optimiser pass that rewrites a logical plan */

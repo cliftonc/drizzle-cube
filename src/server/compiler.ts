@@ -29,6 +29,7 @@ import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolv
 import { validateTemplateSyntax } from './template-substitution'
 import { resolveCubeReference } from './cube-utils'
 import { validateQueryAgainstCubes } from './query-validator'
+import type { PlanOptimiser } from './logical-plan'
 import { t } from '../i18n/runtime'
 
 // Re-exported for backward compatibility — the implementation now lives in
@@ -41,6 +42,7 @@ export class SemanticLayerCompiler {
   private metadataCache?: CubeMetadata[]
   private cacheConfig?: CacheConfig
   private rlsSetup?: RLSSetupFn
+  private planOptimiser?: PlanOptimiser
 
   // Database ingredients — stored so we can create a fresh executor per request.
   // This avoids sharing mutable state between concurrent requests, which is
@@ -63,6 +65,11 @@ export class SemanticLayerCompiler {
      * Dry-run/SQL generation is NOT wrapped in a transaction.
      */
     rlsSetup?: RLSSetupFn
+    /**
+     * Optional logical-plan optimiser injected into every QueryExecutor.
+     * Defaults to a no-op IdentityOptimiser when omitted.
+     */
+    planOptimiser?: PlanOptimiser
   }) {
     if (options?.databaseExecutor) {
       // Extract ingredients from pre-built executor
@@ -76,6 +83,7 @@ export class SemanticLayerCompiler {
     }
     this.cacheConfig = options?.cache
     this.rlsSetup = options?.rlsSetup
+    this.planOptimiser = options?.planOptimiser
   }
 
   /**
@@ -127,7 +135,12 @@ export class SemanticLayerCompiler {
    */
   private createQueryExecutor(withCache: boolean = false): QueryExecutor {
     const dbExecutor = this.createDbExecutor()
-    return new QueryExecutor(dbExecutor, withCache ? this.cacheConfig : undefined, this.rlsSetup)
+    return new QueryExecutor(
+      dbExecutor,
+      withCache ? this.cacheConfig : undefined,
+      this.rlsSetup,
+      this.planOptimiser
+    )
   }
 
   /**
