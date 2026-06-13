@@ -118,15 +118,6 @@ export class LogicalPlanner {
   }
 
   /**
-   * Build query-level path hints (Cube-style) from all query members:
-   * measures, dimensions, time dimensions, filters, and order-by.
-   * These hints guide path selection toward the semantic query grain.
-   */
-  private collectPathHintCubes(query: SemanticQuery): Set<string> {
-    return this.analyzeCubeUsage(query)
-  }
-
-  /**
    * Recursively extract cube names from filters (handles logical filters)
    */
   private extractCubeNamesFromFilter(filter: any, cubesUsed: Set<string>): void {
@@ -193,29 +184,6 @@ export class LogicalPlanner {
         // and shouldn't trigger pre-aggregation CTEs
       }
     }
-  }
-
-  /**
-   * Choose the primary cube based on query analysis
-   * Uses a consistent strategy to avoid measure order dependencies
-   *
-   * Delegates to analyzePrimaryCubeSelection() for the actual logic,
-   * ensuring a single source of truth for primary cube selection.
-   */
-  choosePrimaryCube(cubeNames: string[], query: SemanticQuery, cubes?: Map<string, Cube>): string {
-    // For single cube, return immediately
-    if (cubeNames.length === 1) {
-      return cubeNames[0]
-    }
-
-    // Without cubes map, fall back to alphabetical
-    if (!cubes) {
-      return [...cubeNames].sort()[0]
-    }
-
-    // Use the detailed analysis method and extract just the selected cube
-    const analysis = this.analyzePrimaryCubeSelection(cubeNames, query, cubes)
-    return analysis.selectedCube
   }
 
   /**
@@ -313,7 +281,7 @@ export class LogicalPlanner {
     }
 
     // Rust-style hinting: include all query member cubes to drive path selection.
-    const preferredPathCubes = this.collectPathHintCubes(query)
+    const preferredPathCubes = this.analyzeCubeUsage(query)
 
     // Pre-identify cubes that will become CTEs (hasMany relationships with measures)
     // IMPORTANT: We must NOT give "already processed" preference to CTE'd cubes because
@@ -684,7 +652,7 @@ export class LogicalPlanner {
     }>
   } | null {
     const resolver = this.getResolver(cubes)
-    const preferredPathCubes = this.collectPathHintCubes(query)
+    const preferredPathCubes = this.analyzeCubeUsage(query)
 
     const joinPath = preferredPathCubes.size > 0
       ? resolver.findPathPreferring(primaryCube.name, targetCubeName, preferredPathCubes, new Set())
@@ -1404,7 +1372,7 @@ export class LogicalPlanner {
   ): JoinPathAnalysis {
     // Use the resolver for BFS path finding (cached, optimized)
     const resolver = this.getResolver(cubes)
-    const preferredPathCubes = query ? this.collectPathHintCubes(query) : new Set<string>()
+    const preferredPathCubes = query ? this.analyzeCubeUsage(query) : new Set<string>()
     const preferredSelection: PreferredPathSelection | null = preferredPathCubes.size > 0
       ? resolver.findPathPreferringDetailed(fromCube, toCube, preferredPathCubes)
       : null
