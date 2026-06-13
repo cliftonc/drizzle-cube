@@ -6,9 +6,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getToolDefinitions, createToolExecutor } from '../../src/server/agent/tools'
 
-// Mock the adapter utils
-vi.mock('../../src/adapters/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/adapters/utils')>()
+// Mock the shared query handlers (used directly by the agent tools)
+vi.mock('../../src/server/query-handlers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/server/query-handlers')>()
   return {
     handleDiscover: vi.fn(),
     handleLoad: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('../../src/adapters/utils', async (importOriginal) => {
   }
 })
 
-import { handleDiscover, handleLoad } from '../../src/adapters/utils'
+import { handleDiscover, handleLoad } from '../../src/server/query-handlers'
 
 const mockHandleDiscover = vi.mocked(handleDiscover)
 const mockHandleLoad = vi.mocked(handleLoad)

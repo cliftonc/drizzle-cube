@@ -26,9 +26,9 @@ vi.mock('@anthropic-ai/sdk', () => {
 
 import { handleAgentChat } from '../../src/server/agent/handler'
 
-// Also mock adapter utils used by tools.ts (which is called inside handler)
-vi.mock('../../src/adapters/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/adapters/utils')>()
+// Also mock the shared query handlers used by tools.ts (which is called inside handler)
+vi.mock('../../src/server/query-handlers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/server/query-handlers')>()
   return {
     handleDiscover: vi.fn().mockResolvedValue({ cubes: [] }),
     handleLoad: vi.fn().mockResolvedValue({ data: [], annotation: {} }),

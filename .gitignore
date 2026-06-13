@@ -10,6 +10,8 @@ coverage/
 playwright-report/
 test-results/
 perf-results/
+dependency-graph.svg
+.fallow/
 
 # ── GSD baseline (auto-generated) ──
 .gsd
