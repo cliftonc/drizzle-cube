@@ -68,7 +68,7 @@ jobs:
       # to same-repo PRs; fork contributors still get the job summary + artifact.
       - name: Post sticky PR comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3.0.4
         with:
           header: perf-benchmarks
           path: perf-results/summary.md
