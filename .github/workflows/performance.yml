@@ -1,0 +1,74 @@
+name: Performance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: drizzle_cube_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for PostgreSQL
+        run: timeout 60 bash -c 'until nc -z localhost 5433; do echo "Waiting for PostgreSQL..."; sleep 1; done'
+
+      - name: Run performance benchmarks
+        run: npm run perf
+        env:
+          TEST_DB_TYPE: postgres
+          TEST_DATABASE_URL: postgres://test:test@localhost:5433/drizzle_cube_test
+          PERF_DATABASE_URL: postgres://test:test@localhost:5433/drizzle_cube_perf_test
+          PERF_ITERATIONS: '5'
+          PERF_WARMUP: '2'
+
+      - name: Publish job summary
+        if: always()
+        run: cat perf-results/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-results
+          path: perf-results/
+
+      # Fork PRs run with a read-only token, so the sticky comment is limited
+      # to same-repo PRs; fork contributors still get the job summary + artifact.
+      - name: Post sticky PR comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: perf-benchmarks
+          path: perf-results/summary.md

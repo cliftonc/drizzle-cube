@@ -8,7 +8,8 @@
   },
   "include": [
     "src/server/**/*.ts",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "perf/**/*.ts"
   ],
   "exclude": [
     "tests/client/**/*.ts",
