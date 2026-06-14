@@ -46,76 +46,101 @@ export class PlanAnalysisReporter {
       }
     }
 
-    // Build candidates list
-    const candidates: PrimaryCubeCandidate[] = []
-    const dimensionCubes = (query.dimensions || []).map(d => d.split('.')[0])
-    const cubeDimensionCount = new Map<string, number>()
+    const candidates = this.buildPrimaryCubeCandidates(cubeNames, query, cubes)
 
-    for (const cube of dimensionCubes) {
+    // Tier 1: dimension-based selection
+    const byDimensions = this.selectByDimensions(query, candidates)
+    if (byDimensions) return byDimensions
+
+    // Tier 2: connectivity-based selection
+    const byConnectivity = this.selectByConnectivity(candidates)
+    if (byConnectivity) return byConnectivity
+
+    // Tier 3: alphabetical fallback
+    return {
+      selectedCube: [...cubeNames].sort()[0],
+      reason: 'alphabetical_fallback',
+      explanation: 'Selected alphabetically as fallback (no cube could reach all others)',
+      candidates
+    }
+  }
+
+  /**
+   * Build the scored candidate list (dimension count, join count, reachability).
+   */
+  private buildPrimaryCubeCandidates(
+    cubeNames: string[],
+    query: SemanticQuery,
+    cubes: Map<string, Cube>
+  ): PrimaryCubeCandidate[] {
+    const cubeDimensionCount = new Map<string, number>()
+    for (const dim of query.dimensions || []) {
+      const cube = dim.split('.')[0]
       cubeDimensionCount.set(cube, (cubeDimensionCount.get(cube) || 0) + 1)
     }
 
     const resolver = this.resolverCache.get(cubes)
-    for (const cubeName of cubeNames) {
+    return cubeNames.map(cubeName => {
       const cube = cubes.get(cubeName)
-      const dimensionCount = cubeDimensionCount.get(cubeName) || 0
-      const joinCount = cube?.joins ? Object.keys(cube.joins).length : 0
-      const canReachAll = resolver.canReachAll(cubeName, cubeNames)
-
-      candidates.push({
+      return {
         cubeName,
-        dimensionCount,
-        joinCount,
-        canReachAll
-      })
-    }
+        dimensionCount: cubeDimensionCount.get(cubeName) || 0,
+        joinCount: cube?.joins ? Object.keys(cube.joins).length : 0,
+        canReachAll: resolver.canReachAll(cubeName, cubeNames)
+      }
+    })
+  }
 
-    // Tier 1: Check for dimension-based selection
-    if (query.dimensions && query.dimensions.length > 0) {
-      const maxDimensions = Math.max(...candidates.map(c => c.dimensionCount))
+  /**
+   * Tier 1: select the cube with the most query dimensions that can reach all
+   * others. Returns null when no dimension-based winner applies.
+   */
+  private selectByDimensions(
+    query: SemanticQuery,
+    candidates: PrimaryCubeCandidate[]
+  ): PrimaryCubeAnalysis | null {
+    if (!query.dimensions || query.dimensions.length === 0) return null
 
-      if (maxDimensions > 0) {
-        const primaryCandidates = candidates
-          .filter(c => c.dimensionCount === maxDimensions)
-          .sort((a, b) => a.cubeName.localeCompare(b.cubeName))
+    const maxDimensions = Math.max(...candidates.map(c => c.dimensionCount))
+    if (maxDimensions === 0) return null
 
-        // Check if candidate can reach all other cubes
-        for (const candidate of primaryCandidates) {
-          if (candidate.canReachAll) {
-            return {
-              selectedCube: candidate.cubeName,
-              reason: 'most_dimensions',
-              explanation: `Selected because it has ${candidate.dimensionCount} dimension${candidate.dimensionCount !== 1 ? 's' : ''} in the query (defines the analytical grain)`,
-              candidates
-            }
-          }
+    const primaryCandidates = candidates
+      .filter(c => c.dimensionCount === maxDimensions)
+      .sort((a, b) => a.cubeName.localeCompare(b.cubeName))
+
+    for (const candidate of primaryCandidates) {
+      if (candidate.canReachAll) {
+        return {
+          selectedCube: candidate.cubeName,
+          reason: 'most_dimensions',
+          explanation: `Selected because it has ${candidate.dimensionCount} dimension${candidate.dimensionCount !== 1 ? 's' : ''} in the query (defines the analytical grain)`,
+          candidates
         }
       }
     }
 
-    // Tier 2: Connectivity-based selection
+    return null
+  }
+
+  /**
+   * Tier 2: among cubes that can reach all others, select the most connected.
+   * Returns null when no candidate can reach all others.
+   */
+  private selectByConnectivity(
+    candidates: PrimaryCubeCandidate[]
+  ): PrimaryCubeAnalysis | null {
     const reachableCandidates = candidates.filter(c => c.canReachAll)
+    if (reachableCandidates.length === 0) return null
 
-    if (reachableCandidates.length > 0) {
-      const maxConnectivity = Math.max(...reachableCandidates.map(c => c.joinCount))
-      const mostConnected = reachableCandidates
-        .filter(c => c.joinCount === maxConnectivity)
-        .sort((a, b) => a.cubeName.localeCompare(b.cubeName))[0]
+    const maxConnectivity = Math.max(...reachableCandidates.map(c => c.joinCount))
+    const mostConnected = reachableCandidates
+      .filter(c => c.joinCount === maxConnectivity)
+      .sort((a, b) => a.cubeName.localeCompare(b.cubeName))[0]
 
-      return {
-        selectedCube: mostConnected.cubeName,
-        reason: 'most_connected',
-        explanation: `Selected because it has ${mostConnected.joinCount} join relationship${mostConnected.joinCount !== 1 ? 's' : ''} and can reach all other cubes`,
-        candidates
-      }
-    }
-
-    // Tier 3: Alphabetical fallback
-    const fallback = [...cubeNames].sort()[0]
     return {
-      selectedCube: fallback,
-      reason: 'alphabetical_fallback',
-      explanation: 'Selected alphabetically as fallback (no cube could reach all others)',
+      selectedCube: mostConnected.cubeName,
+      reason: 'most_connected',
+      explanation: `Selected because it has ${mostConnected.joinCount} join relationship${mostConnected.joinCount !== 1 ? 's' : ''} and can reach all other cubes`,
       candidates
     }
   }

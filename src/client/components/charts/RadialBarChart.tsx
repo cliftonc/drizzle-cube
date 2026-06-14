@@ -3,8 +3,9 @@ import { useTranslation } from '../../hooks/useTranslation'
 import { RadialBarChart as RechartsRadialBarChart, RadialBar, Legend, Cell } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
-import { CHART_COLORS } from '../../utils/chartConstants'
-import { formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
+import { buildRadialData } from './radialBarChartHelpers'
+import { formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
 const RadialBarChart = React.memo(function RadialBarChart({
@@ -17,7 +18,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
 }: ChartProps) {
   const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  
+
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
@@ -26,95 +27,26 @@ const RadialBarChart = React.memo(function RadialBarChart({
     }
 
     if (!data || data.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.radialBar')}</div>
-          </div>
-        </div>
-      )
+      return <ChartEmptyState height={height} hint={t('chart.runtime.noDataHint.radialBar')} />
     }
 
-    let radialData: Array<{name: string, value: number, fill?: string}>
+    const { radialData, noValueField } = buildRadialData(data, chartConfig, queryObject, colorPalette)
 
-    if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format - use chart config
-      const xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis // Name/category field
-      const yAxisField = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis[0] : chartConfig.yAxis // Value field
-
-      const granularity = getFieldGranularity(queryObject, xAxisField)
-      radialData = data.map((item, index) => ({
-        name: formatTimeValue(item[xAxisField], granularity) || String(item[xAxisField]) || 'Unknown',
-        value: typeof item[yAxisField] === 'string' 
-          ? parseFloat(item[yAxisField]) 
-          : (item[yAxisField] || 0),
-        fill: (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]
-      }))
-    } else {
-      // Legacy format or auto-detection
-      const firstRow = data[0]
-      const keys = Object.keys(firstRow)
-      
-      // Try to find name/label field
-      const nameField = keys.find(key => 
-        typeof firstRow[key] === 'string' ||
-        key.toLowerCase().includes('name') ||
-        key.toLowerCase().includes('label') ||
-        key.toLowerCase().includes('category')
-      ) || keys[0]
-
-      // Find a numeric field for values
-      const valueField = keys.find(key => 
-        typeof firstRow[key] === 'number' && key !== nameField
-      ) || keys[1]
-
-      if (!valueField) {
-        return (
-          <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-            <div className="dc:text-center">
-              <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-              <div className="dc:text-xs">{t('chart.runtime.configErrorHint.radialBarNumeric')}</div>
-            </div>
-          </div>
-        )
-      }
-
-      // Transform data for radial bar chart
-      radialData = data.map((item, index) => {
-        let name = item[nameField]
-        // Handle boolean values with better labels
-        if (typeof name === 'boolean') {
-          name = name ? 'Active' : 'Inactive'
-        } else if (name === 'true' || name === 'false') {
-          name = name === 'true' ? 'Active' : 'Inactive'
-        } else {
-          name = String(name)
-        }
-        return {
-          name,
-          value: typeof item[valueField] === 'string' 
-            ? parseFloat(item[valueField]) 
-            : (item[valueField] || 0),
-          fill: (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]
-        }
-      })
+    if (noValueField) {
+      return <ChartConfigError height={height} hint={t('chart.runtime.configErrorHint.radialBarNumeric')} />
     }
 
-    // Filter out zero/null values
-    radialData = radialData.filter(item => item.value != null && item.value !== 0)
-    
     if (radialData.length === 0) {
       return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">No valid data points for radial bar chart after transformation</div>
-          </div>
-        </div>
+        <ChartEmptyState
+          height={height}
+          titleKey="chart.runtime.noValidData"
+          hint="No valid data points for radial bar chart after transformation"
+        />
       )
     }
 
+    const { leftYAxisFormat } = safeDisplayConfig
     return (
       <ChartContainer height={height}>
         <RechartsRadialBarChart
@@ -126,14 +58,14 @@ const RadialBarChart = React.memo(function RadialBarChart({
         >
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
-              formatter={safeDisplayConfig.leftYAxisFormat
-                ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+              formatter={leftYAxisFormat
+                ? (value: any, name: string) => [formatAxisValue(value, leftYAxisFormat), name]
                 : undefined
               }
             />
           )}
           {safeDisplayConfig.showLegend && (
-            <Legend 
+            <Legend
               wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
               iconType="circle"
               iconSize={8}
@@ -151,14 +83,14 @@ const RadialBarChart = React.memo(function RadialBarChart({
               position: 'insideStart',
               fill: '#fff',
               fontSize: 12,
-              formatter: safeDisplayConfig.leftYAxisFormat
-                ? (value: any) => formatAxisValue(value, safeDisplayConfig.leftYAxisFormat)
+              formatter: leftYAxisFormat
+                ? (value: any) => formatAxisValue(value, leftYAxisFormat)
                 : undefined
             }}
           >
             {radialData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
+              <Cell
+                key={`cell-${index}`}
                 fill={entry.fill}
                 fillOpacity={hoveredLegend ? (hoveredLegend === entry.name ? 1 : 0.3) : 1}
               />
@@ -168,16 +100,7 @@ const RadialBarChart = React.memo(function RadialBarChart({
       </ChartContainer>
     )
   } catch (error) {
-    // 'RadialBarChart rendering error
-    return (
-      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Radial Bar Chart' })}</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
-          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
-        </div>
-      </div>
-    )
+    return <ChartRenderError height={height} chartType="Radial Bar Chart" error={error} />
   }
 })
 

@@ -155,67 +155,63 @@ export class JoinPathResolver {
     while (queue.length > 0) {
       const { cube: currentCube, path } = queue.shift()!
 
-      // --- Forward edges: outgoing joins from currentCube ---
-      const cubeDefinition = this.cubes.get(currentCube)
-      if (cubeDefinition?.joins) {
-        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
-          if (!resolvedTargetCube) continue
-          const actualTargetName = resolvedTargetCube.name
+      for (const { nextCube, step } of this.neighbourSteps(currentCube, false)) {
+        if (visited.has(nextCube)) continue
 
-          if (visited.has(actualTargetName)) {
-            continue
-          }
+        const newPath: InternalJoinPathStep[] = [...path, step]
 
-          const newPath: InternalJoinPathStep[] = [
-            ...path,
-            {
-              fromCube: currentCube,
-              toCube: actualTargetName,
-              joinDef
-            }
-          ]
-
-          if (actualTargetName === toCube) {
-            this.setInCache(cacheKey, newPath)
-            return newPath
-          }
-
-          visited.add(actualTargetName)
-          queue.push({ cube: actualTargetName, path: newPath })
-        }
-      }
-
-      // --- Reverse edges: incoming joins that target currentCube ---
-      const incomingJoins = this.reverseIndex.get(currentCube) || []
-      for (const { definingCube, joinDef } of incomingJoins) {
-        if (visited.has(definingCube)) {
-          continue
-        }
-
-        const newPath: InternalJoinPathStep[] = [
-          ...path,
-          {
-            fromCube: currentCube,
-            toCube: definingCube,
-            joinDef,
-            reversed: true
-          }
-        ]
-
-        if (definingCube === toCube) {
+        if (nextCube === toCube) {
           this.setInCache(cacheKey, newPath)
           return newPath
         }
 
-        visited.add(definingCube)
-        queue.push({ cube: definingCube, path: newPath })
+        visited.add(nextCube)
+        queue.push({ cube: nextCube, path: newPath })
       }
     }
 
     // No path found - cache the negative result
     this.setInCache(cacheKey, null)
     return null
+  }
+
+  /**
+   * Enumerate the neighbouring cubes reachable from `currentCube` in one hop,
+   * yielding the resulting join step. Forward edges (outgoing joins) come first,
+   * then reverse edges (incoming joins) unless `forwardOnly` is set.
+   */
+  private neighbourSteps(
+    currentCube: string,
+    forwardOnly: boolean
+  ): Array<{ nextCube: string; step: InternalJoinPathStep }> {
+    const result: Array<{ nextCube: string; step: InternalJoinPathStep }> = []
+
+    // --- Forward edges: outgoing joins from currentCube ---
+    const cubeDefinition = this.cubes.get(currentCube)
+    if (cubeDefinition?.joins) {
+      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
+        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
+        if (!resolvedTargetCube) continue
+        const actualTargetName = resolvedTargetCube.name
+        result.push({
+          nextCube: actualTargetName,
+          step: { fromCube: currentCube, toCube: actualTargetName, joinDef }
+        })
+      }
+    }
+
+    if (forwardOnly) return result
+
+    // --- Reverse edges: incoming joins that target currentCube ---
+    const incomingJoins = this.reverseIndex.get(currentCube) || []
+    for (const { definingCube, joinDef } of incomingJoins) {
+      result.push({
+        nextCube: definingCube,
+        step: { fromCube: currentCube, toCube: definingCube, joinDef, reversed: true }
+      })
+    }
+
+    return result
   }
 
   /**
@@ -394,60 +390,17 @@ export class JoinPathResolver {
         continue
       }
 
-      // --- Forward edges ---
-      const cubeDefinition = this.cubes.get(currentCube)
-      if (cubeDefinition?.joins) {
-        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
-          if (!resolvedTargetCube) continue
-          const actualTargetName = resolvedTargetCube.name
+      for (const { nextCube, step } of this.neighbourSteps(currentCube, false)) {
+        if (visited.has(nextCube)) continue
 
-          if (visited.has(actualTargetName)) {
-            continue
-          }
+        const newPath: InternalJoinPathStep[] = [...path, step]
 
-          const newPath: InternalJoinPathStep[] = [
-            ...path,
-            {
-              fromCube: currentCube,
-              toCube: actualTargetName,
-              joinDef
-            }
-          ]
-
-          if (actualTargetName === toCube) {
-            allPaths.push(newPath)
-          } else {
-            const newVisited = new Set(visited)
-            newVisited.add(actualTargetName)
-            queue.push({ cube: actualTargetName, path: newPath, visited: newVisited })
-          }
-        }
-      }
-
-      // --- Reverse edges ---
-      const incomingJoins = this.reverseIndex.get(currentCube) || []
-      for (const { definingCube, joinDef } of incomingJoins) {
-        if (visited.has(definingCube)) {
-          continue
-        }
-
-        const newPath: InternalJoinPathStep[] = [
-          ...path,
-          {
-            fromCube: currentCube,
-            toCube: definingCube,
-            joinDef,
-            reversed: true
-          }
-        ]
-
-        if (definingCube === toCube) {
+        if (nextCube === toCube) {
           allPaths.push(newPath)
         } else {
           const newVisited = new Set(visited)
-          newVisited.add(definingCube)
-          queue.push({ cube: definingCube, path: newPath, visited: newVisited })
+          newVisited.add(nextCube)
+          queue.push({ cube: nextCube, path: newPath, visited: newVisited })
         }
       }
     }
@@ -497,26 +450,16 @@ export class JoinPathResolver {
 
     while (queue.length > 0) {
       const { cube: currentCube, path } = queue.shift()!
-      const cubeDefinition = this.cubes.get(currentCube)
 
-      if (!cubeDefinition?.joins) continue
+      for (const { nextCube, step } of this.neighbourSteps(currentCube, true)) {
+        if (visited.has(nextCube)) continue
 
-      for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-        const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
-        if (!resolvedTargetCube) continue
-        const actualTargetName = resolvedTargetCube.name
+        const newPath: InternalJoinPathStep[] = [...path, step]
 
-        if (visited.has(actualTargetName)) continue
+        if (nextCube === toCube) return newPath
 
-        const newPath: InternalJoinPathStep[] = [
-          ...path,
-          { fromCube: currentCube, toCube: actualTargetName, joinDef }
-        ]
-
-        if (actualTargetName === toCube) return newPath
-
-        visited.add(actualTargetName)
-        queue.push({ cube: actualTargetName, path: newPath })
+        visited.add(nextCube)
+        queue.push({ cube: nextCube, path: newPath })
       }
     }
 
@@ -573,27 +516,10 @@ export class JoinPathResolver {
     while (queue.length > 0) {
       const currentCube = queue.shift()!
 
-      // Forward edges
-      const cubeDefinition = this.cubes.get(currentCube)
-      if (cubeDefinition?.joins) {
-        for (const [, joinDef] of Object.entries(cubeDefinition.joins)) {
-          const resolvedTargetCube = resolveCubeReference(joinDef.targetCube, this.cubes)
-          if (!resolvedTargetCube) continue
-          const targetName = resolvedTargetCube.name
-
-          if (!reachable.has(targetName)) {
-            reachable.add(targetName)
-            queue.push(targetName)
-          }
-        }
-      }
-
-      // Reverse edges
-      const incomingJoins = this.reverseIndex.get(currentCube) || []
-      for (const { definingCube } of incomingJoins) {
-        if (!reachable.has(definingCube)) {
-          reachable.add(definingCube)
-          queue.push(definingCube)
+      for (const { nextCube } of this.neighbourSteps(currentCube, false)) {
+        if (!reachable.has(nextCube)) {
+          reachable.add(nextCube)
+          queue.push(nextCube)
         }
       }
     }

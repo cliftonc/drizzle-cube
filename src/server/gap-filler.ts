@@ -191,7 +191,7 @@ export function fillTimeSeriesGaps(
   data: Record<string, unknown>[],
   config: GapFillerConfig
 ): Record<string, unknown>[] {
-  const { timeDimensionKey, granularity, dateRange, fillValue, measures, dimensions } = config
+  const { timeDimensionKey, granularity, dateRange, dimensions } = config
 
   // Generate all expected time buckets
   const timeBuckets = generateTimeBuckets(dateRange[0], dateRange[1], granularity)
@@ -217,25 +217,7 @@ export function fillTimeSeriesGaps(
   // expression keeps a time-of-day component (e.g. the MySQL/SingleStore week
   // expression). Without alignment those rows were discarded and replaced with
   // fill values (issue #849).
-  const dimensionGroups = new Map<string, Map<string, Record<string, unknown>>>()
-
-  for (const row of data) {
-    const groupKey = createDimensionGroupKey(row, dimensions)
-    // Fall back to a stable string for unparseable values so they simply don't
-    // match any bucket (prior behaviour) rather than throwing.
-    const timeKey = normalizeDateKey(row[timeDimensionKey], granularity)
-      ?? String(row[timeDimensionKey])
-
-    if (!dimensionGroups.has(groupKey)) {
-      dimensionGroups.set(groupKey, new Map())
-    }
-    dimensionGroups.get(groupKey)!.set(timeKey, row)
-  }
-
-  // If no data at all, create one group with no dimensions
-  if (dimensionGroups.size === 0 && dimensions.length === 0) {
-    dimensionGroups.set('__all__', new Map())
-  }
+  const dimensionGroups = groupRowsForGapFill(data, timeDimensionKey, granularity, dimensions)
 
   // Build filled result
   const result: Record<string, unknown>[] = []
@@ -250,33 +232,78 @@ export function fillTimeSeriesGaps(
       const bucketKey = bucket.toISOString()
       const existingRow = timeMap.get(bucketKey)
 
-      if (existingRow) {
-        // Use existing row
-        result.push(existingRow)
-      } else {
-        // Create filled row
-        const filledRow: Record<string, unknown> = {
-          [timeDimensionKey]: bucketKey
-        }
-
-        // Copy dimension values from sample row
-        if (sampleRow) {
-          for (const dim of dimensions) {
-            filledRow[dim] = sampleRow[dim]
-          }
-        }
-
-        // Fill measures with fill value
-        for (const measure of measures) {
-          filledRow[measure] = fillValue
-        }
-
-        result.push(filledRow)
-      }
+      result.push(
+        existingRow ?? buildFilledRow(bucketKey, sampleRow ?? null, config)
+      )
     }
   }
 
   return result
+}
+
+/**
+ * Group rows by their dimension-value key, mapping each to an inner map keyed by
+ * the row's granularity-aligned time value. Extracted from fillTimeSeriesGaps.
+ */
+function groupRowsForGapFill(
+  data: Record<string, unknown>[],
+  timeDimensionKey: string,
+  granularity: TimeGranularity,
+  dimensions: string[]
+): Map<string, Map<string, Record<string, unknown>>> {
+  const dimensionGroups = new Map<string, Map<string, Record<string, unknown>>>()
+
+  for (const row of data) {
+    const groupKey = createDimensionGroupKey(row, dimensions)
+    // Fall back to a stable string for unparseable values so they simply don't
+    // match any bucket (prior behaviour) rather than throwing.
+    const timeKey = normalizeDateKey(row[timeDimensionKey], granularity)
+      ?? String(row[timeDimensionKey])
+
+    let timeMap = dimensionGroups.get(groupKey)
+    if (!timeMap) {
+      timeMap = new Map()
+      dimensionGroups.set(groupKey, timeMap)
+    }
+    timeMap.set(timeKey, row)
+  }
+
+  // If no data at all, create one group with no dimensions
+  if (dimensionGroups.size === 0 && dimensions.length === 0) {
+    dimensionGroups.set('__all__', new Map())
+  }
+
+  return dimensionGroups
+}
+
+/**
+ * Build a single filled row for a missing bucket: the time key, dimension values
+ * copied from a sample row, and the fill value for every measure. Extracted from
+ * fillTimeSeriesGaps.
+ */
+function buildFilledRow(
+  bucketKey: string,
+  sampleRow: Record<string, unknown> | null,
+  config: GapFillerConfig
+): Record<string, unknown> {
+  const { timeDimensionKey, fillValue, measures, dimensions } = config
+  const filledRow: Record<string, unknown> = {
+    [timeDimensionKey]: bucketKey
+  }
+
+  // Copy dimension values from sample row
+  if (sampleRow) {
+    for (const dim of dimensions) {
+      filledRow[dim] = sampleRow[dim]
+    }
+  }
+
+  // Fill measures with fill value
+  for (const measure of measures) {
+    filledRow[measure] = fillValue
+  }
+
+  return filledRow
 }
 
 /**

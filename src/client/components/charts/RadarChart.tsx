@@ -3,8 +3,10 @@ import { useTranslation } from '../../hooks/useTranslation'
 import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts'
 import ChartContainer from './ChartContainer'
 import ChartTooltip from './ChartTooltip'
+import { ChartEmptyState, ChartConfigError, ChartRenderError } from './ChartStates'
+import { buildRadarData } from './radarChartHelpers'
 import { CHART_COLORS } from '../../utils/chartConstants'
-import { transformChartDataWithSeries, formatTimeValue, getFieldGranularity, formatAxisValue } from '../../utils/chartUtils'
+import { formatAxisValue } from '../../utils/chartUtils'
 import type { ChartProps } from '../../types'
 
 const RadarChart = React.memo(function RadarChart({
@@ -17,7 +19,7 @@ const RadarChart = React.memo(function RadarChart({
 }: ChartProps) {
   const { t } = useTranslation()
   const [hoveredLegend, setHoveredLegend] = useState<string | null>(null)
-  
+
   try {
     const safeDisplayConfig = {
       showLegend: displayConfig?.showLegend ?? true,
@@ -27,109 +29,27 @@ const RadarChart = React.memo(function RadarChart({
     }
 
     if (!data || data.length === 0) {
-      return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">{t('chart.runtime.noDataHint.radar')}</div>
-          </div>
-        </div>
-      )
+      return <ChartEmptyState height={height} hint={t('chart.runtime.noDataHint.radar')} />
     }
 
-    let radarData: any[]
-    let seriesKeys: string[] = []
+    const { radarData, seriesKeys, noNumericFields } = buildRadarData(data, chartConfig, queryObject)
 
-    if (chartConfig?.xAxis && chartConfig?.yAxis) {
-      // New format - use chart config
-      const xAxisField = Array.isArray(chartConfig.xAxis) ? chartConfig.xAxis[0] : chartConfig.xAxis // Subject/category field
-      const yAxisFields = Array.isArray(chartConfig.yAxis) ? chartConfig.yAxis : [chartConfig.yAxis]   // Value fields
-      const seriesFields = chartConfig.series || []
-
-      // Use shared function to transform data and handle series
-      const { data: chartData, seriesKeys: transformedSeriesKeys } = transformChartDataWithSeries(
-        data, 
-        xAxisField, 
-        yAxisFields, 
-        queryObject,
-        seriesFields
-      )
-      
-      radarData = chartData
-      seriesKeys = transformedSeriesKeys
-    } else {
-      // Legacy format or auto-detection - try to find suitable fields
-      const firstRow = data[0]
-      const keys = Object.keys(firstRow)
-      
-      // Try to find subject/category field
-      const subjectField = keys.find(key => 
-        typeof firstRow[key] === 'string' ||
-        key.toLowerCase().includes('subject') ||
-        key.toLowerCase().includes('name') ||
-        key.toLowerCase().includes('category')
-      ) || keys[0]
-
-      // Find numeric fields for values
-      const valueFields = keys.filter(key => 
-        typeof firstRow[key] === 'number' && key !== subjectField
-      )
-
-      if (valueFields.length === 0) {
-        return (
-          <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-warning" style={{ height }}>
-            <div className="dc:text-center">
-              <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-              <div className="dc:text-xs">{t('chart.runtime.configErrorHint.radarNumeric')}</div>
-            </div>
-          </div>
-        )
-      }
-
-      // Transform data for radar chart
-      if (subjectField) {
-        // Use subject field for radar categories
-        const granularity = getFieldGranularity(queryObject, subjectField)
-        radarData = data.map(item => {
-          const transformedItem: any = {
-            name: formatTimeValue(item[subjectField], granularity) || String(item[subjectField]) || 'Unknown'
-          }
-          
-          valueFields.forEach(field => {
-            const displayName = field.split('.').pop() || field
-            transformedItem[displayName] = typeof item[field] === 'string' 
-              ? parseFloat(item[field]) 
-              : (item[field] || 0)
-          })
-          
-          return transformedItem
-        })
-        
-        seriesKeys = valueFields.map(field => field.split('.').pop() || field)
-      } else {
-        // Fallback - use first value field only
-        radarData = data.map(item => ({
-          name: String(item[keys[0]] || 'Unknown'),
-          value: typeof item[valueFields[0]] === 'string' 
-            ? parseFloat(item[valueFields[0]]) 
-            : (item[valueFields[0]] || 0)
-        }))
-        seriesKeys = ['value']
-      }
+    if (noNumericFields) {
+      return <ChartConfigError height={height} hint={t('chart.runtime.configErrorHint.radarNumeric')} />
     }
-    
+
     // Validate transformed data
     if (!radarData || radarData.length === 0) {
       return (
-        <div className="dc:flex dc:items-center dc:justify-center dc:w-full text-dc-text-muted" style={{ height }}>
-          <div className="dc:text-center">
-            <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noValidData')}</div>
-            <div className="dc:text-xs text-dc-text-secondary">No valid data points for radar chart after transformation</div>
-          </div>
-        </div>
+        <ChartEmptyState
+          height={height}
+          titleKey="chart.runtime.noValidData"
+          hint="No valid data points for radar chart after transformation"
+        />
       )
     }
 
+    const { leftYAxisFormat } = safeDisplayConfig
     return (
       <ChartContainer height={height}>
         <RechartsRadarChart data={radarData} margin={{ top: 20, right: 80, bottom: 20, left: 80 }} accessibilityLayer={false}>
@@ -144,21 +64,21 @@ const RadarChart = React.memo(function RadarChart({
           <PolarRadiusAxis
             tick={{ fontSize: 10 }}
             className="text-dc-text-muted"
-            tickFormatter={safeDisplayConfig.leftYAxisFormat
-              ? (value: any) => formatAxisValue(value, safeDisplayConfig.leftYAxisFormat)
+            tickFormatter={leftYAxisFormat
+              ? (value: any) => formatAxisValue(value, leftYAxisFormat)
               : undefined
             }
           />
           {safeDisplayConfig.showTooltip && (
             <ChartTooltip
-              formatter={safeDisplayConfig.leftYAxisFormat
-                ? (value: any, name: string) => [formatAxisValue(value, safeDisplayConfig.leftYAxisFormat), name]
+              formatter={leftYAxisFormat
+                ? (value: any, name: string) => [formatAxisValue(value, leftYAxisFormat), name]
                 : undefined
               }
             />
           )}
           {(safeDisplayConfig.showLegend && seriesKeys.length > 1) && (
-            <Legend 
+            <Legend
               wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
               iconType="rect"
               iconSize={8}
@@ -169,32 +89,26 @@ const RadarChart = React.memo(function RadarChart({
               onMouseLeave={() => setHoveredLegend(null)}
             />
           )}
-          {seriesKeys.map((seriesKey, index) => (
-            <Radar
-              key={seriesKey}
-              name={seriesKey}
-              dataKey={seriesKey}
-              stroke={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
-              fill={(colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]}
-              fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
-              strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
-              strokeWidth={2}
-            />
-          ))}
+          {seriesKeys.map((seriesKey, index) => {
+            const color = (colorPalette?.colors && colorPalette.colors[index % colorPalette.colors.length]) || CHART_COLORS[index % CHART_COLORS.length]
+            return (
+              <Radar
+                key={seriesKey}
+                name={seriesKey}
+                dataKey={seriesKey}
+                stroke={color}
+                fill={color}
+                fillOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 0.6 : 0.1) : 0.3}
+                strokeOpacity={hoveredLegend ? (hoveredLegend === seriesKey ? 1 : 0.3) : 1}
+                strokeWidth={2}
+              />
+            )
+          })}
         </RechartsRadarChart>
       </ChartContainer>
     )
   } catch (error) {
-    // 'RadarChart rendering error
-    return (
-      <div className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full text-dc-error dc:p-4" style={{ height }}>
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.chartError', { chartType: 'Radar Chart' })}</div>
-          <div className="dc:text-xs dc:mb-2">{error instanceof Error ? error.message : t('chart.runtime.unknownError')}</div>
-          <div className="dc:text-xs text-dc-text-muted">{t('chart.runtime.checkConfig')}</div>
-        </div>
-      </div>
-    )
+    return <ChartRenderError height={height} chartType="Radar Chart" error={error} />
   }
 })
 

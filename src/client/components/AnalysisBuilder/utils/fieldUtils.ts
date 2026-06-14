@@ -76,7 +76,42 @@ export function getFieldType(field: MetaField): FieldType {
 }
 
 /**
+ * Build a measure field option from cube + measure metadata
+ */
+function measureToOption(cubeName: string, measure: MetaField): FieldOption {
+  return {
+    name: measure.name,
+    title: measure.title || measure.shortTitle || measure.name,
+    shortTitle: measure.shortTitle || measure.title || measure.name,
+    type: measure.type,
+    description: measure.description,
+    cubeName,
+    fieldType: 'measure'
+  }
+}
+
+/**
+ * Build a dimension field option from cube + dimension metadata
+ */
+function dimensionToOption(cubeName: string, dimension: MetaField): FieldOption {
+  return {
+    name: dimension.name,
+    title: dimension.title || dimension.shortTitle || dimension.name,
+    shortTitle: dimension.shortTitle || dimension.title || dimension.name,
+    type: dimension.type,
+    description: dimension.description,
+    cubeName,
+    fieldType: dimension.type === 'time' ? 'timeDimension' : 'dimension'
+  }
+}
+
+/**
  * Convert schema to flat list of field options
+ *
+ * - 'metrics': measures only
+ * - 'breakdown' / 'dimensionFilter': dimensions only ('dimensionFilter' is used
+ *   for funnel step filters where measures don't work)
+ * - 'filter': both measures and dimensions
  */
 export function schemaToFieldOptions(
   schema: MetaResponse | null,
@@ -84,63 +119,20 @@ export function schemaToFieldOptions(
 ): FieldOption[] {
   if (!schema) return []
 
+  const includeMeasures = mode === 'metrics' || mode === 'filter'
+  const includeDimensions = mode !== 'metrics'
+
   const options: FieldOption[] = []
 
   for (const cube of schema.cubes) {
-    if (mode === 'metrics') {
-      // Add measures only
+    if (includeMeasures) {
       for (const measure of cube.measures) {
-        options.push({
-          name: measure.name,
-          title: measure.title || measure.shortTitle || measure.name,
-          shortTitle: measure.shortTitle || measure.title || measure.name,
-          type: measure.type,
-          description: measure.description,
-          cubeName: cube.name,
-          fieldType: 'measure'
-        })
+        options.push(measureToOption(cube.name, measure))
       }
-    } else if (mode === 'breakdown' || mode === 'dimensionFilter') {
-      // Add dimensions only (both regular and time)
-      // 'dimensionFilter' is used for funnel step filters where measures don't work
+    }
+    if (includeDimensions) {
       for (const dimension of cube.dimensions) {
-        const isTime = dimension.type === 'time'
-        options.push({
-          name: dimension.name,
-          title: dimension.title || dimension.shortTitle || dimension.name,
-          shortTitle: dimension.shortTitle || dimension.title || dimension.name,
-          type: dimension.type,
-          description: dimension.description,
-          cubeName: cube.name,
-          fieldType: isTime ? 'timeDimension' : 'dimension'
-        })
-      }
-    } else {
-      // 'filter' mode - add BOTH measures AND dimensions
-      // Add measures first
-      for (const measure of cube.measures) {
-        options.push({
-          name: measure.name,
-          title: measure.title || measure.shortTitle || measure.name,
-          shortTitle: measure.shortTitle || measure.title || measure.name,
-          type: measure.type,
-          description: measure.description,
-          cubeName: cube.name,
-          fieldType: 'measure'
-        })
-      }
-      // Add dimensions (both regular and time)
-      for (const dimension of cube.dimensions) {
-        const isTime = dimension.type === 'time'
-        options.push({
-          name: dimension.name,
-          title: dimension.title || dimension.shortTitle || dimension.name,
-          shortTitle: dimension.shortTitle || dimension.title || dimension.name,
-          type: dimension.type,
-          description: dimension.description,
-          cubeName: cube.name,
-          fieldType: isTime ? 'timeDimension' : 'dimension'
-        })
+        options.push(dimensionToOption(cube.name, dimension))
       }
     }
   }

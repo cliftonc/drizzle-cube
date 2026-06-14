@@ -549,45 +549,45 @@ function extractTimeDimensionFromQueries(
   bindingKey: FunnelBindingKey
 ): string | Array<{ cube: string; dimension: string }> {
   // Check if this is a cross-cube funnel
-  const isCrossCube = Array.isArray(bindingKey.dimension)
-
-  if (!isCrossCube) {
-    // Single-cube: find first time dimension
-    for (const query of queries) {
-      if (query.timeDimensions?.length) {
-        return query.timeDimensions[0].dimension
-      }
-    }
-    // Fallback: try to infer from measures/dimensions
-    const cubeName = getCubeNameFromQuery(queries[0])
-    if (cubeName) {
-      return `${cubeName}.createdAt` // Common convention
-    }
-    throw new Error('Funnel requires at least one time dimension in step queries')
+  if (Array.isArray(bindingKey.dimension)) {
+    return extractCrossCubeTimeDimensions(queries, bindingKey.dimension as FunnelBindingKeyMapping[])
   }
+  return extractSingleCubeTimeDimension(queries)
+}
 
-  // Cross-cube: build mapping for each cube
-  const mappings: Array<{ cube: string; dimension: string }> = []
-  const bindingMappings = bindingKey.dimension as FunnelBindingKeyMapping[]
+/**
+ * Single-cube: return the first explicit time dimension, falling back to the
+ * common `<cube>.createdAt` convention.
+ */
+function extractSingleCubeTimeDimension(queries: CubeQuery[]): string {
+  for (const query of queries) {
+    if (query.timeDimensions?.length) {
+      return query.timeDimensions[0].dimension
+    }
+  }
+  // Fallback: try to infer from measures/dimensions
+  const cubeName = getCubeNameFromQuery(queries[0])
+  if (cubeName) {
+    return `${cubeName}.createdAt` // Common convention
+  }
+  throw new Error('Funnel requires at least one time dimension in step queries')
+}
 
-  for (const mapping of bindingMappings) {
-    // Find time dimension for this cube from queries
+/**
+ * Cross-cube: build a time-dimension mapping per cube, falling back to the
+ * common `<cube>.createdAt` convention when none is present.
+ */
+function extractCrossCubeTimeDimensions(
+  queries: CubeQuery[],
+  bindingMappings: FunnelBindingKeyMapping[]
+): Array<{ cube: string; dimension: string }> {
+  return bindingMappings.map(mapping => {
     const cubeQuery = queries.find(q => getCubeNameFromQuery(q) === mapping.cube)
-    if (cubeQuery?.timeDimensions?.length) {
-      mappings.push({
-        cube: mapping.cube,
-        dimension: cubeQuery.timeDimensions[0].dimension,
-      })
-    } else {
-      // Fallback to common convention
-      mappings.push({
-        cube: mapping.cube,
-        dimension: `${mapping.cube}.createdAt`,
-      })
-    }
-  }
-
-  return mappings
+    const dimension = cubeQuery?.timeDimensions?.length
+      ? cubeQuery.timeDimensions[0].dimension
+      : `${mapping.cube}.createdAt` // Fallback to common convention
+    return { cube: mapping.cube, dimension }
+  })
 }
 
 /**

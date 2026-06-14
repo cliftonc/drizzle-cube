@@ -28,43 +28,8 @@ export class FilterCachePreloader {
     // Pre-build regular filters
     if (query.filters && query.filters.length > 0) {
       // Flatten nested AND/OR filters to get individual conditions
-      const flatFilters = flattenFilters(query.filters)
-
-      for (const filter of flatFilters) {
-        const key = getFilterKey(filter)
-
-        // Skip if already cached (from a previous filter in the same query)
-        if (filterCache.has(key)) continue
-
-        // Find the cube for this filter's member
-        const [cubeName, fieldName] = filter.member.split('.')
-        const cube = cubes.get(cubeName)
-        if (!cube) continue
-
-        const dimension = cube.dimensions?.[fieldName]
-        if (!dimension) continue
-
-        // For array operators, we need the raw column (not isolated SQL)
-        // because Drizzle's array functions need column type metadata for proper encoding
-        const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filter.operator)
-        if (isArrayOperator) {
-          // Skip caching array operator filters - they require special column handling
-          // and will be built fresh each time to ensure proper array encoding
-          continue
-        }
-
-        const fieldExpr = resolveFilterFieldExpr(dimension, context)
-        const filterSQL = this.queryBuilder.buildFilterConditionPublic(
-          fieldExpr,
-          filter.operator,
-          filter.values,
-          dimension,
-          filter.dateRange
-        )
-
-        if (filterSQL) {
-          filterCache.set(key, filterSQL)
-        }
+      for (const filter of flattenFilters(query.filters)) {
+        this.preloadRegularFilter(filter, filterCache, cubes, context)
       }
 
       // NOTE: We do NOT cache logical filters (AND/OR) because they can contain
@@ -76,29 +41,82 @@ export class FilterCachePreloader {
     // Pre-build time dimension date range filters
     if (query.timeDimensions) {
       for (const timeDim of query.timeDimensions) {
-        if (timeDim.dateRange) {
-          const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
-
-          // Skip if already cached
-          if (filterCache.has(key)) continue
-
-          const [cubeName, fieldName] = timeDim.dimension.split('.')
-          const cube = cubes.get(cubeName)
-          if (!cube) continue
-
-          const dimension = cube.dimensions?.[fieldName]
-          if (!dimension) continue
-
-          // Time dimension date ranges always use isolated SQL because
-          // normalizeDate() returns ISO strings, not Date objects
-          const fieldExpr = resolveSqlExpression(dimension.sql, context)
-          const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
-
-          if (dateCondition) {
-            filterCache.set(key, dateCondition)
-          }
-        }
+        this.preloadTimeDimensionFilter(timeDim, filterCache, cubes, context)
       }
+    }
+  }
+
+  /** Resolve the dimension a filter/time-dimension member refers to, or null. */
+  private resolveMemberDimension(
+    member: string,
+    cubes: Map<string, Cube>
+  ): NonNullable<Cube['dimensions']>[string] | null {
+    const [cubeName, fieldName] = member.split('.')
+    const cube = cubes.get(cubeName)
+    if (!cube) return null
+    return cube.dimensions?.[fieldName] ?? null
+  }
+
+  /** Pre-build and cache the SQL for a single simple (non-logical) filter. */
+  private preloadRegularFilter(
+    filter: ReturnType<typeof flattenFilters>[number],
+    filterCache: FilterCacheManager,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): void {
+    const key = getFilterKey(filter)
+
+    // Skip if already cached (from a previous filter in the same query)
+    if (filterCache.has(key)) return
+
+    const dimension = this.resolveMemberDimension(filter.member, cubes)
+    if (!dimension) return
+
+    // For array operators, we need the raw column (not isolated SQL) because
+    // Drizzle's array functions need column type metadata for proper encoding.
+    // Skip caching them - they require special column handling and are built
+    // fresh each time to ensure proper array encoding.
+    const isArrayOperator = ['arrayContains', 'arrayOverlaps', 'arrayContained'].includes(filter.operator)
+    if (isArrayOperator) return
+
+    const fieldExpr = resolveFilterFieldExpr(dimension, context)
+    const filterSQL = this.queryBuilder.buildFilterConditionPublic(
+      fieldExpr,
+      filter.operator,
+      filter.values,
+      dimension,
+      filter.dateRange
+    )
+
+    if (filterSQL) {
+      filterCache.set(key, filterSQL)
+    }
+  }
+
+  /** Pre-build and cache the date-range SQL for a single time dimension. */
+  private preloadTimeDimensionFilter(
+    timeDim: NonNullable<SemanticQuery['timeDimensions']>[number],
+    filterCache: FilterCacheManager,
+    cubes: Map<string, Cube>,
+    context: QueryContext
+  ): void {
+    if (!timeDim.dateRange) return
+
+    const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
+
+    // Skip if already cached
+    if (filterCache.has(key)) return
+
+    const dimension = this.resolveMemberDimension(timeDim.dimension, cubes)
+    if (!dimension) return
+
+    // Time dimension date ranges always use isolated SQL because
+    // normalizeDate() returns ISO strings, not Date objects
+    const fieldExpr = resolveSqlExpression(dimension.sql, context)
+    const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+
+    if (dateCondition) {
+      filterCache.set(key, dateCondition)
     }
   }
 }

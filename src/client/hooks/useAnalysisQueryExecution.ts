@@ -23,6 +23,7 @@ import type { ServerFunnelQuery } from '../types/funnel'
 import type { ServerFlowQuery, FlowChartData } from '../types/flow'
 import type { ServerRetentionQuery, RetentionChartData } from '../types/retention'
 import { buildFunnelConfigFromQueries } from '../utils/funnelExecution'
+import { resolveActiveMode, pickByMode, computeExecutionResults, deriveModeOutputs, computeSkipFlags, computeExecutionStatus } from './analysisQueryExecutionModes'
 
 export interface UseAnalysisQueryExecutionOptions {
   /** Current query (for single-query mode) */
@@ -196,6 +197,10 @@ export function useAnalysisQueryExecution(
   // Check if we're using the new dedicated funnel mode (with serverFunnelQuery)
   const isNewFunnelMode = analysisType === 'funnel' && !!serverFunnelQuery
 
+  // Resolve the single active mode once (precedence: retention > flow > funnel > multi > single).
+  // Used to collapse the repeated per-mode ternary chains below.
+  const activeMode = resolveActiveMode({ isRetentionMode, isFlowMode, isFunnelMode, isMultiMode })
+
   // Build funnel config when in funnel mode (legacy - from queryStates)
   // Skip when using new dedicated funnel mode with serverFunnelQuery
   const funnelConfig = useMemo(() => {
@@ -205,35 +210,50 @@ export function useAnalysisQueryExecution(
     return buildFunnelConfigFromQueries(allQueries, funnelBindingKey)
   }, [isNewFunnelMode, isFunnelMode, funnelBindingKey, allQueries])
 
+  // Precompute the `skip` flag for each query hook (keeps the calls below flat).
+  const skipFlags = computeSkipFlags({
+    isValidQuery,
+    isSingleMode,
+    isMultiMode,
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode,
+    hasMultiQueryConfig: !!multiQueryConfig,
+    hasFunnelConfig: !!funnelConfig,
+    hasServerFunnelQuery: !!serverFunnelQuery,
+    hasServerFlowQuery: !!serverFlowQuery,
+    hasServerRetentionQuery: !!serverRetentionQuery,
+  })
+
   // Single query execution (only when analysisType is 'query' or legacy single mode)
   const singleQueryResult = useCubeLoadQuery(currentQuery, {
-    skip: !isValidQuery || !isSingleMode,
+    skip: skipFlags.single,
     debounceMs: 300,
   })
 
   // Multi-query execution (only when analysisType is 'multi' or legacy multi mode)
   const multiQueryResult = useMultiCubeLoadQuery(multiQueryConfig, {
-    skip: !multiQueryConfig || !isMultiMode,
+    skip: skipFlags.multi,
     debounceMs: 300,
   })
 
   // Funnel query execution
   // Use prebuiltServerQuery when in new funnel mode, otherwise use funnelConfig
   const funnelQueryResult = useFunnelQuery(funnelConfig, {
-    skip: !isFunnelMode || (!funnelConfig && !serverFunnelQuery),
+    skip: skipFlags.funnel,
     debounceMs: 300,
     prebuiltServerQuery: isNewFunnelMode ? serverFunnelQuery : undefined,
   })
 
   // Flow query execution
   const flowQueryResult = useFlowQuery(serverFlowQuery ?? null, {
-    skip: !isFlowMode || !serverFlowQuery,
+    skip: skipFlags.flow,
     debounceMs: 300,
   })
 
   // Retention query execution
   const retentionQueryResult = useRetentionQuery(serverRetentionQuery ?? null, {
-    skip: !isRetentionMode || !serverRetentionQuery,
+    skip: skipFlags.retention,
     debounceMs: 300,
     getFieldLabel, // Pass label resolver for human-readable binding key display
   })
@@ -242,7 +262,7 @@ export function useAnalysisQueryExecution(
   const dryRunResult = useDryRunQueries({
     queries: isMultiQueryMode ? allQueries : [currentQuery],
     isMultiQueryMode,
-    skip: !isValidQuery || isFunnelMode || isFlowMode || isRetentionMode,
+    skip: skipFlags.dryRun,
   })
 
   // Funnel dry-run query (only in funnel mode)
@@ -267,33 +287,27 @@ export function useAnalysisQueryExecution(
   )
 
   // Unify results based on mode
-  const isLoading = isRetentionMode
-    ? retentionQueryResult.isLoading || retentionQueryResult.isDebouncing
-    : isFlowMode
-      ? flowQueryResult.isLoading || flowQueryResult.isDebouncing
-      : isFunnelMode
-        ? funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing
-        : isMultiMode
-          ? multiQueryResult.isLoading
-          : singleQueryResult.isLoading
-  const isFetching = isRetentionMode
-    ? retentionQueryResult.isFetching
-    : isFlowMode
-      ? flowQueryResult.isFetching
-      : isFunnelMode
-        ? funnelQueryResult.isExecuting
-        : isMultiMode
-          ? multiQueryResult.isFetching
-          : singleQueryResult.isFetching
-  const error = isRetentionMode
-    ? retentionQueryResult.error
-    : isFlowMode
-      ? flowQueryResult.error
-      : isFunnelMode
-        ? funnelQueryResult.error
-        : isMultiMode
-          ? multiQueryResult.error
-          : singleQueryResult.error
+  const isLoading = pickByMode(activeMode, {
+    retention: retentionQueryResult.isLoading || retentionQueryResult.isDebouncing,
+    flow: flowQueryResult.isLoading || flowQueryResult.isDebouncing,
+    funnel: funnelQueryResult.isExecuting || funnelQueryResult.isDebouncing,
+    multi: multiQueryResult.isLoading,
+    single: singleQueryResult.isLoading,
+  })
+  const isFetching = pickByMode(activeMode, {
+    retention: retentionQueryResult.isFetching,
+    flow: flowQueryResult.isFetching,
+    funnel: funnelQueryResult.isExecuting,
+    multi: multiQueryResult.isFetching,
+    single: singleQueryResult.isFetching,
+  })
+  const error = pickByMode(activeMode, {
+    retention: retentionQueryResult.error,
+    flow: flowQueryResult.error,
+    funnel: funnelQueryResult.error,
+    multi: multiQueryResult.error,
+    single: singleQueryResult.error,
+  })
 
   // Has debounced (for smart defaults trigger)
   const hasDebounced = Boolean(
@@ -307,74 +321,50 @@ export function useAnalysisQueryExecution(
   // Unified refetch function
   // Pass options (including bustCache) through to underlying hooks
   const refetch = useCallback((options?: { bustCache?: boolean }) => {
-    if (isRetentionMode) {
-      // Retention uses execute for bustCache support
-      retentionQueryResult.execute(options)
-    } else if (isFlowMode) {
-      flowQueryResult.refetch(options)
-    } else if (isFunnelMode) {
-      funnelQueryResult.execute(options)
-    } else if (isMultiMode) {
-      multiQueryResult.refetch(options)
-    } else {
-      singleQueryResult.refetch(options)
+    switch (activeMode) {
+      case 'retention':
+        // Retention uses execute for bustCache support
+        retentionQueryResult.execute(options)
+        break
+      case 'flow':
+        flowQueryResult.refetch(options)
+        break
+      case 'funnel':
+        funnelQueryResult.execute(options)
+        break
+      case 'multi':
+        multiQueryResult.refetch(options)
+        break
+      default:
+        singleQueryResult.refetch(options)
     }
-  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiMode, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
+  }, [activeMode, retentionQueryResult, flowQueryResult, funnelQueryResult, multiQueryResult, singleQueryResult])
 
   // Execution status
   const executionStatus: ExecutionStatus = useMemo(() => {
-    const hasResults = isRetentionMode
-      ? retentionQueryResult.chartData
-      : isFlowMode
-        ? flowQueryResult.data
-        : isFunnelMode
-          ? funnelQueryResult.chartData
-          : isMultiMode
-            ? multiQueryResult.data
-            : singleQueryResult.rawData
-    if (initialData && initialData.length > 0 && !hasResults) return 'success'
-    if (!isValidQuery) return 'idle'
-    if (isLoading && !hasResults) return 'loading'
-    if (isFetching && hasResults) return 'refreshing'
-    if (error) return 'error'
-    if (hasResults) return 'success'
-    return 'idle'
-  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, retentionQueryResult.chartData, initialData, isMultiMode, isFunnelMode, isFlowMode, isRetentionMode])
+    const hasResults = pickByMode(activeMode, {
+      retention: retentionQueryResult.chartData,
+      flow: flowQueryResult.data,
+      funnel: funnelQueryResult.chartData,
+      multi: multiQueryResult.data,
+      single: singleQueryResult.rawData,
+    })
+    return computeExecutionStatus({ hasResults, initialData, isValidQuery, isLoading, isFetching, error })
+  }, [isValidQuery, isLoading, isFetching, error, singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, retentionQueryResult.chartData, initialData, activeMode])
 
   // Execution results
-  const executionResults = useMemo(() => {
-    // Retention mode returns transformed flat data for chart compatibility
-    if (isRetentionMode && retentionQueryResult.chartData) {
-      // Transform RetentionChartData to flat rows
-      // Format: [{ "Retention.period": "P0", "Retention.rate": 0.45, "Retention.segment": "US", ... }]
-      return retentionQueryResult.chartData.rows.map(row => ({
-        'Retention.period': `P${row.period}`,
-        'Retention.rate': row.retentionRate,
-        'Retention.retained': row.retainedUsers,
-        'Retention.cohortSize': row.cohortSize,
-        'Retention.segment': row.breakdownValue || 'All Users',
-      })) as unknown[]
-    }
-    // Flow mode returns Sankey chart data directly
-    if (isFlowMode && flowQueryResult.data) {
-      // Wrap in array for consistency with other modes
-      return [flowQueryResult.data] as unknown[]
-    }
-    // Funnel mode returns chart data directly
-    if (isFunnelMode && funnelQueryResult.chartData) {
-      return funnelQueryResult.chartData as unknown[]
-    }
-    if (isMultiMode && multiQueryResult.data) {
-      return multiQueryResult.data as unknown[]
-    }
-    if (singleQueryResult.rawData) {
-      return singleQueryResult.rawData
-    }
-    if (initialData && initialData.length > 0) {
-      return initialData
-    }
-    return null
-  }, [singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, retentionQueryResult.chartData, initialData, isMultiMode, isFunnelMode, isFlowMode, isRetentionMode])
+  const executionResults = useMemo(() => computeExecutionResults({
+    isRetentionMode,
+    isFlowMode,
+    isFunnelMode,
+    isMultiMode,
+    retentionChartData: retentionQueryResult.chartData,
+    flowData: flowQueryResult.data,
+    funnelChartData: funnelQueryResult.chartData,
+    multiData: multiQueryResult.data,
+    singleRawData: singleQueryResult.rawData,
+    initialData,
+  }), [singleQueryResult.rawData, multiQueryResult.data, funnelQueryResult.chartData, flowQueryResult.data, retentionQueryResult.chartData, initialData, isMultiMode, isFunnelMode, isFlowMode, isRetentionMode])
 
   // Per-query results for table view (or per-step for funnel)
   const perQueryResults = useMemo(() => {
@@ -386,41 +376,44 @@ export function useAnalysisQueryExecution(
     return multiQueryResult.perQueryData
   }, [isMultiMode, isFunnelMode, multiQueryResult.perQueryData, funnelQueryResult.stepResults])
 
-  // In funnel mode, provide the executed queries for debug display (legacy)
-  const funnelExecutedQueries = isFunnelMode && funnelQueryResult.executedQueries?.length > 0
-    ? funnelQueryResult.executedQueries
-    : null
-
-  // The actual server funnel query (new, preferred)
-  const funnelServerQuery = isFunnelMode ? funnelQueryResult.serverQuery : null
-
-  // Funnel debug data (unified SQL for funnel mode)
-  const funnelDebugData = isFunnelMode ? funnelDryRunResult.debugData : null
-
-  // Flow-related values
-  const flowServerQuery = isFlowMode ? flowQueryResult.serverQuery : null
-  const flowChartData = isFlowMode ? flowQueryResult.data : null
-
-  // Flow debug data (unified SQL for flow mode)
-  const flowDebugData = isFlowMode ? flowDryRunResult.debugData : null
-
-  // Retention-related values
-  const retentionServerQuery = isRetentionMode ? (serverRetentionQuery ?? null) : null
-  const retentionChartData = isRetentionMode ? retentionQueryResult.chartData : null
-
-  // Retention debug data (unified SQL for retention mode)
-  const retentionDebugData = isRetentionMode ? retentionDryRunResult.debugData : null
+  // Derive all per-mode debug / server-query / chart-data outputs in one pass.
+  // Each value is gated on its mode flag (null otherwise), matching the original
+  // inline `isXMode ? value : null` expressions exactly.
+  const {
+    funnelExecutedQueries,
+    funnelServerQuery,
+    funnelDebugData,
+    flowServerQuery,
+    flowChartData,
+    flowDebugData,
+    retentionServerQuery,
+    retentionChartData,
+    retentionDebugData,
+  } = deriveModeOutputs({
+    isFunnelMode,
+    isFlowMode,
+    isRetentionMode,
+    funnelExecutedQueries: funnelQueryResult.executedQueries,
+    funnelServerQuery: funnelQueryResult.serverQuery,
+    funnelDebugData: funnelDryRunResult.debugData,
+    flowServerQuery: flowQueryResult.serverQuery,
+    flowData: flowQueryResult.data,
+    flowDebugData: flowDryRunResult.debugData,
+    retentionServerQuery: serverRetentionQuery ?? null,
+    retentionChartData: retentionQueryResult.chartData,
+    retentionDebugData: retentionDryRunResult.debugData,
+  })
 
   // Aggregate needsRefresh from the appropriate mode hook
   // This determines if the "needs refresh" banner should be shown
   // Note: Multi-query mode doesn't have needsRefresh yet (falls back to false)
-  const needsRefresh = useMemo(() => {
-    if (isRetentionMode) return retentionQueryResult.needsRefresh
-    if (isFlowMode) return flowQueryResult.needsRefresh
-    if (isFunnelMode) return funnelQueryResult.needsRefresh
-    if (isMultiMode) return false // Multi-query mode doesn't support manual refresh yet
-    return singleQueryResult.needsRefresh
-  }, [isRetentionMode, isFlowMode, isFunnelMode, isMultiMode, retentionQueryResult.needsRefresh, flowQueryResult.needsRefresh, funnelQueryResult.needsRefresh, singleQueryResult.needsRefresh])
+  const needsRefresh = useMemo(() => pickByMode(activeMode, {
+    retention: retentionQueryResult.needsRefresh,
+    flow: flowQueryResult.needsRefresh,
+    funnel: funnelQueryResult.needsRefresh,
+    multi: false, // Multi-query mode doesn't support manual refresh yet
+    single: singleQueryResult.needsRefresh,
+  }), [activeMode, retentionQueryResult.needsRefresh, flowQueryResult.needsRefresh, funnelQueryResult.needsRefresh, singleQueryResult.needsRefresh])
 
   // Aggregate warnings from the appropriate mode hook
   // Currently only supported for single-query mode (where useCubeLoadQuery exposes warnings)

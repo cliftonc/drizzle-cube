@@ -8,7 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseMySQLExplain } from '../explain/mysql-parser'
-import { buildBoundSql } from './explain-utils'
+import { buildBoundSql, normalizeMySQLExplainRows } from './explain-utils'
 
 export class MySQLExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -106,27 +106,7 @@ export class MySQLExecutor extends BaseDatabaseExecutor {
 
     // MySQL returns EXPLAIN output as rows with specific columns
     // Standard columns: id, select_type, table, partitions, type, possible_keys, key, key_len, ref, rows, filtered, Extra
-    const rows: any[] = []
-    if (Array.isArray(result)) {
-      for (const row of result) {
-        if (row && typeof row === 'object') {
-          rows.push({
-            id: (row as Record<string, unknown>).id || 1,
-            select_type: (row as Record<string, unknown>).select_type || 'SIMPLE',
-            table: (row as Record<string, unknown>).table || null,
-            partitions: (row as Record<string, unknown>).partitions || null,
-            type: (row as Record<string, unknown>).type || 'ALL',
-            possible_keys: (row as Record<string, unknown>).possible_keys || null,
-            key: (row as Record<string, unknown>).key || null,
-            key_len: (row as Record<string, unknown>).key_len || null,
-            ref: (row as Record<string, unknown>).ref || null,
-            rows: Number((row as Record<string, unknown>).rows) || 0,
-            filtered: Number((row as Record<string, unknown>).filtered) || 100,
-            Extra: (row as Record<string, unknown>).Extra || null,
-          })
-        }
-      }
-    }
+    const rows = normalizeMySQLExplainRows(result)
 
     // Parse the output using the MySQL parser
     return parseMySQLExplain(rows, { sql: sqlString, params })

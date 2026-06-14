@@ -35,6 +35,92 @@ function convertSchemaForGemini(schema: Record<string, unknown>): Record<string,
   return result
 }
 
+/** Map a Gemini finishReason to a normalized stop reason. */
+function mapGeminiFinishReason(finishReason: string): string {
+  if (finishReason === 'STOP') return 'stop'
+  if (finishReason === 'MAX_TOKENS') return 'max_tokens'
+  return finishReason
+}
+
+/** Convert a single Gemini content part into normalized stream events. */
+function* parseGeminiPart(part: any): Generator<NormalizedEvent> {
+  if (part.text && !part.thought) {
+    yield { type: 'text_delta', text: part.text }
+  }
+
+  if (part.functionCall) {
+    const id = `gemini-tc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    // Preserve Gemini thoughtSignature for history replay (required by Gemini 3 models)
+    const metadata: Record<string, unknown> | undefined = part.thoughtSignature
+      ? { thoughtSignature: part.thoughtSignature }
+      : undefined
+    yield { type: 'tool_use_start', id, name: part.functionCall.name, ...(metadata ? { metadata } : {}) }
+    yield { type: 'tool_input_delta', json: JSON.stringify(part.functionCall.args || {}) }
+    yield { type: 'tool_use_end' }
+  }
+}
+
+/** Format a tool_result message into a Gemini 'user' message with functionResponse parts. */
+function formatGeminiToolResult(msg: InternalMessage): unknown {
+  const results = (msg as any)._toolResults as ToolResult[] | undefined
+  if (results && results.length > 0) {
+    return {
+      role: 'user',
+      parts: results.map((r) => ({
+        functionResponse: {
+          name: r.toolName || r.toolUseId,
+          response: { content: r.content, isError: r.isError || false },
+        },
+      })),
+    }
+  }
+  // Fallback for history replay or raw tool_result messages
+  const text = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+  return text ? { role: 'user', parts: [{ text }] } : null
+}
+
+/** Build Gemini 'model' parts from assistant content blocks. */
+function buildGeminiModelParts(blocks: ContentBlock[]): unknown[] {
+  const parts: unknown[] = []
+  for (const block of blocks) {
+    if (block.type === 'text' && block.text) {
+      parts.push({ text: block.text })
+    } else if (block.type === 'tool_use') {
+      const fcPart: Record<string, unknown> = {
+        functionCall: {
+          name: block.name!,
+          args: block.input || {},
+        },
+      }
+      // Preserve Gemini thoughtSignature for history replay (required by Gemini 3 models)
+      if (block.metadata?.thoughtSignature) {
+        fcPart.thoughtSignature = block.metadata.thoughtSignature
+      }
+      parts.push(fcPart)
+    }
+  }
+  return parts
+}
+
+/** Format a single internal message into its Gemini representation (or null to skip). */
+function formatGeminiMessage(msg: InternalMessage): unknown {
+  if (msg.role === 'tool_result') {
+    return formatGeminiToolResult(msg)
+  }
+  if (msg.role === 'user') {
+    const text = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    return { role: 'user', parts: [{ text }] }
+  }
+  if (msg.role === 'assistant') {
+    if (typeof msg.content === 'string') {
+      return { role: 'model', parts: [{ text: msg.content }] }
+    }
+    const parts = buildGeminiModelParts(msg.content as ContentBlock[])
+    return parts.length > 0 ? { role: 'model', parts } : null
+  }
+  return null
+}
+
 export class GoogleProvider implements LLMProvider {
   private apiKey: string
   private sdk: any
@@ -107,29 +193,16 @@ export class GoogleProvider implements LLMProvider {
 
       // Check finish reason
       if (candidate.finishReason) {
-        if (candidate.finishReason === 'STOP') stopReason = 'stop'
-        else if (candidate.finishReason === 'MAX_TOKENS') stopReason = 'max_tokens'
-        else stopReason = candidate.finishReason
+        stopReason = mapGeminiFinishReason(candidate.finishReason)
       }
 
       const parts = candidate.content?.parts
       if (!parts) continue
 
       for (const part of parts) {
-        if (part.text && !part.thought) {
-          yield { type: 'text_delta', text: part.text }
-        }
-
-        if (part.functionCall) {
-          hadFunctionCall = true
-          const id = `gemini-tc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-          // Preserve Gemini thoughtSignature for history replay (required by Gemini 3 models)
-          const metadata: Record<string, unknown> | undefined = part.thoughtSignature
-            ? { thoughtSignature: part.thoughtSignature }
-            : undefined
-          yield { type: 'tool_use_start', id, name: part.functionCall.name, ...(metadata ? { metadata } : {}) }
-          yield { type: 'tool_input_delta', json: JSON.stringify(part.functionCall.args || {}) }
-          yield { type: 'tool_use_end' }
+        for (const event of parseGeminiPart(part)) {
+          if (event.type === 'tool_use_start') hadFunctionCall = true
+          yield event
         }
       }
     }
@@ -155,59 +228,8 @@ export class GoogleProvider implements LLMProvider {
     const formatted: unknown[] = []
 
     for (const msg of messages) {
-      if (msg.role === 'tool_result') {
-        // Tool results stored by formatToolResults() — convert to Gemini functionResponse parts
-        const results = (msg as any)._toolResults as ToolResult[] | undefined
-        if (results && results.length > 0) {
-          formatted.push({
-            role: 'user',
-            parts: results.map((r) => ({
-              functionResponse: {
-                name: r.toolName || r.toolUseId,
-                response: { content: r.content, isError: r.isError || false },
-              },
-            })),
-          })
-        } else {
-          // Fallback for history replay or raw tool_result messages
-          const text = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-          if (text) {
-            formatted.push({ role: 'user', parts: [{ text }] })
-          }
-        }
-      } else if (msg.role === 'user') {
-        const text = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-        formatted.push({ role: 'user', parts: [{ text }] })
-      } else if (msg.role === 'assistant') {
-        if (typeof msg.content === 'string') {
-          formatted.push({ role: 'model', parts: [{ text: msg.content }] })
-        } else {
-          const blocks = msg.content as ContentBlock[]
-          const parts: unknown[] = []
-
-          for (const block of blocks) {
-            if (block.type === 'text' && block.text) {
-              parts.push({ text: block.text })
-            } else if (block.type === 'tool_use') {
-              const fcPart: Record<string, unknown> = {
-                functionCall: {
-                  name: block.name!,
-                  args: block.input || {},
-                },
-              }
-              // Preserve Gemini thoughtSignature for history replay (required by Gemini 3 models)
-              if (block.metadata?.thoughtSignature) {
-                fcPart.thoughtSignature = block.metadata.thoughtSignature
-              }
-              parts.push(fcPart)
-            }
-          }
-
-          if (parts.length > 0) {
-            formatted.push({ role: 'model', parts })
-          }
-        }
-      }
+      const formattedMsg = formatGeminiMessage(msg)
+      if (formattedMsg) formatted.push(formattedMsg)
     }
 
     return { messages: formatted }

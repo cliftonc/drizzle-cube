@@ -6,6 +6,79 @@
 
 import type { LLMProvider, ToolDefinition, InternalMessage, ToolResult, NormalizedEvent, ContentBlock } from './types'
 
+type ActiveToolCalls = Map<number, { id: string; name: string; arguments: string }>
+
+/** Emit normalized events for a single tool_call delta within a streamed chunk. */
+function* parseToolCallDelta(tc: any, activeToolCalls: ActiveToolCalls): Generator<NormalizedEvent> {
+  const idx = tc.index ?? 0
+
+  if (tc.id) {
+    // New tool call starting
+    activeToolCalls.set(idx, { id: tc.id, name: tc.function?.name || '', arguments: '' })
+    yield { type: 'tool_use_start', id: tc.id, name: tc.function?.name || '' }
+  }
+
+  if (tc.function?.name && activeToolCalls.has(idx)) {
+    const entry = activeToolCalls.get(idx)!
+    if (!entry.name) entry.name = tc.function.name
+  }
+
+  if (tc.function?.arguments) {
+    const entry = activeToolCalls.get(idx)
+    if (entry) {
+      entry.arguments += tc.function.arguments
+      yield { type: 'tool_input_delta', json: tc.function.arguments }
+    }
+  }
+}
+
+/** Flush all accumulated tool calls as tool_use_end events plus a stop-reason meta. */
+function* finishOpenAIToolCalls(finishReason: string, activeToolCalls: ActiveToolCalls): Generator<NormalizedEvent> {
+  for (const [idx, entry] of activeToolCalls) {
+    let parsedInput: Record<string, unknown> = {}
+    try { if (entry.arguments) parsedInput = JSON.parse(entry.arguments) } catch { /* ignore */ }
+    yield { type: 'tool_use_end', id: entry.id, input: parsedInput }
+    activeToolCalls.delete(idx)
+  }
+  yield { type: 'message_meta', stopReason: finishReason }
+}
+
+/** Parse a single OpenAI `chat.completion.chunk` into normalized events. */
+function* parseOpenAIChunk(c: any, activeToolCalls: ActiveToolCalls): Generator<NormalizedEvent> {
+  // Usage info comes in the final chunk (when stream_options.include_usage is set)
+  if (c.usage) {
+    yield {
+      type: 'message_meta',
+      inputTokens: c.usage.prompt_tokens,
+      outputTokens: c.usage.completion_tokens,
+      stopReason: '', // stop reason comes from choices
+    }
+  }
+
+  const choice = c.choices?.[0]
+  if (!choice) return
+
+  const delta = choice.delta
+  if (!delta) return
+
+  // Text content
+  if (delta.content) {
+    yield { type: 'text_delta', text: delta.content }
+  }
+
+  // Tool calls — accumulated by index
+  if (delta.tool_calls) {
+    for (const tc of delta.tool_calls) {
+      yield* parseToolCallDelta(tc, activeToolCalls)
+    }
+  }
+
+  // Finish reason — emit tool_use_end for all active tool calls with parsed input
+  if (choice.finish_reason) {
+    yield* finishOpenAIToolCalls(choice.finish_reason, activeToolCalls)
+  }
+}
+
 export class OpenAIProvider implements LLMProvider {
   private client: any
   private apiKey: string
@@ -62,69 +135,7 @@ export class OpenAIProvider implements LLMProvider {
 
     for await (const chunk of stream) {
       const c = chunk as any
-
-      // Usage info comes in the final chunk (when stream_options.include_usage is set)
-      if (c.usage) {
-        yield {
-          type: 'message_meta',
-          inputTokens: c.usage.prompt_tokens,
-          outputTokens: c.usage.completion_tokens,
-          stopReason: '', // stop reason comes from choices
-        }
-      }
-
-      const choice = c.choices?.[0]
-      if (!choice) continue
-
-      const delta = choice.delta
-      if (!delta) continue
-
-      // Text content
-      if (delta.content) {
-        yield { type: 'text_delta', text: delta.content }
-      }
-
-      // Tool calls — accumulated by index
-      if (delta.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0
-
-          if (tc.id) {
-            // New tool call starting
-            activeToolCalls.set(idx, { id: tc.id, name: tc.function?.name || '', arguments: '' })
-            yield { type: 'tool_use_start', id: tc.id, name: tc.function?.name || '' }
-          }
-
-          if (tc.function?.name && activeToolCalls.has(idx)) {
-            const entry = activeToolCalls.get(idx)!
-            if (!entry.name) entry.name = tc.function.name
-          }
-
-          if (tc.function?.arguments) {
-            const entry = activeToolCalls.get(idx)
-            if (entry) {
-              entry.arguments += tc.function.arguments
-              yield { type: 'tool_input_delta', json: tc.function.arguments }
-            }
-          }
-        }
-      }
-
-      // Finish reason
-      if (choice.finish_reason) {
-        // Emit tool_use_end for all active tool calls with parsed input
-        for (const [idx, entry] of activeToolCalls) {
-          let parsedInput: Record<string, unknown> = {}
-          try { if (entry.arguments) parsedInput = JSON.parse(entry.arguments) } catch { /* ignore */ }
-          yield { type: 'tool_use_end', id: entry.id, input: parsedInput }
-          activeToolCalls.delete(idx)
-        }
-
-        yield {
-          type: 'message_meta',
-          stopReason: choice.finish_reason,
-        }
-      }
+      yield* parseOpenAIChunk(c, activeToolCalls)
     }
   }
 

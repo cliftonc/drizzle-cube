@@ -55,3 +55,77 @@ export function buildBoundSql(
 
   return sql.join(chunks)
 }
+
+/** Coerce a result-set value to an object record, or null if it isn't one. */
+function asRecord(row: unknown): Record<string, unknown> | null {
+  if (row && typeof row === 'object') {
+    return row as Record<string, unknown>
+  }
+  return null
+}
+
+/**
+ * Normalize raw MySQL EXPLAIN result rows into the column shape the MySQL parser
+ * expects. Extracted from MySQLExecutor.explainQuery to keep that method simple.
+ */
+export function normalizeMySQLExplainRows(result: unknown): any[] {
+  if (!Array.isArray(result)) return []
+  const rows: Record<string, unknown>[] = []
+  for (const raw of result) {
+    const row = asRecord(raw)
+    if (!row) continue
+    rows.push({
+      id: row.id || 1,
+      select_type: row.select_type || 'SIMPLE',
+      table: row.table || null,
+      partitions: row.partitions || null,
+      type: row.type || 'ALL',
+      possible_keys: row.possible_keys || null,
+      key: row.key || null,
+      key_len: row.key_len || null,
+      ref: row.ref || null,
+      rows: Number(row.rows) || 0,
+      filtered: Number(row.filtered) || 100,
+      Extra: row.Extra || null,
+    })
+  }
+  return rows
+}
+
+/**
+ * Normalize raw SQLite EXPLAIN QUERY PLAN result rows into the column shape the
+ * SQLite parser expects. Extracted from SQLiteExecutor.explainQuery.
+ */
+export function normalizeSQLiteExplainRows(result: unknown): any[] {
+  if (!Array.isArray(result)) return []
+  const rows: Record<string, unknown>[] = []
+  for (const raw of result) {
+    const row = asRecord(raw)
+    if (!row) continue
+    rows.push({
+      id: Number(row.id) || 0,
+      parent: Number(row.parent) || 0,
+      notused: Number(row.notused) || 0,
+      detail: String(row.detail || ''),
+    })
+  }
+  return rows
+}
+
+/**
+ * Extract the textual plan lines from PostgreSQL EXPLAIN result rows. Handles the
+ * differing column-name casing across drivers. Extracted from
+ * PostgresExecutor.explainQuery.
+ */
+export function extractPostgresExplainLines(rows: any[]): string[] {
+  const rawLines: string[] = []
+  for (const raw of rows) {
+    const row = asRecord(raw)
+    if (!row) continue
+    const planLine = row['QUERY PLAN'] || row['query plan'] || row['queryplan']
+    if (typeof planLine === 'string') {
+      rawLines.push(planLine)
+    }
+  }
+  return rawLines
+}

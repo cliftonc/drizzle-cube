@@ -29,24 +29,20 @@ import {
   type MCPOptions
 } from '../utils'
 import {
-  buildJsonRpcError,
-  buildJsonRpcResult,
   buildMcpResources,
-  dispatchMcpMethod,
-  isNotification,
-  negotiateProtocol,
-  parseJsonRpc,
   primeEventId,
   resolveMcpPrompts,
   resolveMcpInstructions,
   serializeSseEvent,
-  wantsEventStream,
-  validateAcceptHeader,
-  validateOriginHeader,
   extractBearerToken,
-  buildWwwAuthenticateChallenge,
-  MCP_SESSION_ID_HEADER
+  buildWwwAuthenticateChallenge
 } from '../mcp-transport'
+import {
+  prepareMcpPostRequest,
+  clientWantsStream,
+  dispatchMcpPost
+} from './mcp-handler'
+import { handleAgentChatRequest } from './agent-handler'
 import { ensureLocaleHeader, resolveRequestLocale, withLocaleInSecurityContext } from '../locale'
 
 export interface HonoAdapterOptions {
@@ -546,93 +542,9 @@ export function createCubeRoutes(
      * Streams SSE events as the agent discovers data, executes queries,
      * and creates visualizations.
      */
-    app.post(`${basePath}/agent/chat`, async (c) => {
-      try {
-        const { handleAgentChat } = await import('../../server/agent/handler')
-
-        const body = await c.req.json()
-        const { message, sessionId, history } = body as { message: string; sessionId?: string; history?: import('../../server/agent/types').AgentHistoryMessage[] }
-
-        if (!message || typeof message !== 'string') {
-          return c.json({ error: 'message is required and must be a string' }, 400)
-        }
-
-        // Resolve API key: server config or client header override
-        let apiKey = (agentConfig.apiKey || '').trim()
-        if (agentConfig.allowClientApiKey) {
-          const clientKey = c.req.header('x-agent-api-key')
-          if (clientKey) {
-            apiKey = clientKey.trim()
-          }
-        }
-
-        if (!apiKey) {
-          return c.json({
-            error: 'No API key configured. Set agent.apiKey in server config or send X-Agent-Api-Key header.'
-          }, 401)
-        }
-
-        // Per-request provider overrides from client headers
-        const providerOverride = agentConfig.allowClientApiKey ? c.req.header('x-agent-provider') : undefined
-        const modelOverride = agentConfig.allowClientApiKey ? c.req.header('x-agent-model') : undefined
-        const baseURLOverride = agentConfig.allowClientApiKey ? c.req.header('x-agent-provider-endpoint') : undefined
-
-        // Extract security context (required for all queries)
-        const securityContext = await extractSecurityContextWithLocale(c)
-
-        // Build per-request system context from the callback (if configured)
-        const systemContext = agentConfig.buildSystemContext?.(securityContext)
-
-        // Create SSE stream
-        const encoder = new TextEncoder()
-        const stream = new ReadableStream({
-          async start(controller) {
-            try {
-              const events = handleAgentChat({
-                message,
-                sessionId,
-                history,
-                semanticLayer,
-                securityContext,
-                agentConfig,
-                apiKey,
-                systemContext,
-                providerOverride,
-                modelOverride,
-                baseURLOverride,
-              })
-
-              for await (const event of events) {
-                const sseData = `data: ${JSON.stringify(event)}\n\n`
-                controller.enqueue(encoder.encode(sseData))
-              }
-            } catch (error) {
-              const errorEvent = {
-                type: 'error',
-                data: { message: error instanceof Error ? error.message : 'Stream failed' }
-              }
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`))
-            } finally {
-              controller.close()
-            }
-          }
-        })
-
-        return new Response(stream, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-          }
-        })
-      } catch (error) {
-        console.error('Agent chat error:', error)
-        return c.json({
-          error: error instanceof Error ? error.message : 'Agent chat failed'
-        }, 500)
-      }
-    })
+    app.post(`${basePath}/agent/chat`, (c) =>
+      handleAgentChatRequest(c, agentConfig, semanticLayer, extractSecurityContextWithLocale)
+    )
   }
 
   // ============================================
@@ -651,136 +563,25 @@ export function createCubeRoutes(
      * Implements MCP 2025-11-25 spec
      */
     app.post(`${mcpBasePath}`, async (c) => {
-      // OAuth 2.1 bearer token check (RFC 9728)
-      if (mcp.resourceMetadataUrl && !extractBearerToken(c.req.header('authorization'))) {
-        c.header('WWW-Authenticate', buildWwwAuthenticateChallenge(mcp.resourceMetadataUrl))
-        return c.json({ error: 'Bearer token required' }, 401)
-      }
+      const prep = await prepareMcpPostRequest(c, mcp)
+      if (prep.response) return prep.response
 
-      // Validate Origin header (MCP 2025-11-25: MUST validate, return 403 if invalid)
-      const originValidation = validateOriginHeader(
-        c.req.header('origin'),
-        mcp.allowedOrigins ? { allowedOrigins: mcp.allowedOrigins } : {}
-      )
-      if (!originValidation.valid) {
-        return c.json(buildJsonRpcError(null, -32600, originValidation.reason), 403)
-      }
+      const rpcRequest = prep.rpcRequest!
+      const wantsStream = clientWantsStream(prep.acceptHeader)
 
-      // Validate Accept header (MCP 2025-11-25: MUST include both application/json and text/event-stream)
-      const acceptHeader = c.req.header('accept')
-      if (!validateAcceptHeader(acceptHeader)) {
-        return c.json(buildJsonRpcError(null, -32600, 'Accept header must include both application/json and text/event-stream'), 400)
-      }
-
-      const protocol = negotiateProtocol(c.req.header() as Record<string, string>)
-      if (!protocol.ok) {
-        return c.json({
-          error: 'Unsupported MCP protocol version',
-          supported: protocol.supported
-        }, 426)
-      }
-
-      const body = await c.req.json().catch(() => null)
-      const rpcRequest = parseJsonRpc(body)
-      if (!rpcRequest) {
-        return c.json(buildJsonRpcError(null, -32600, 'Invalid JSON-RPC 2.0 request'), 400)
-      }
-
-      const wantsStream = wantsEventStream(acceptHeader)
-      const isInitialize = rpcRequest.method === 'initialize'
-
-      try {
-        const result = await dispatchMcpMethod(
-          rpcRequest.method,
-          rpcRequest.params,
-          {
-            semanticLayer,
-            extractSecurityContext: (req: any, _res: any) => extractSecurityContextWithLocale(req),
-            rawRequest: c,
-            rawResponse: null,
-            negotiatedProtocol: protocol.negotiated,
-            resources: mcpResources,
-            prompts: mcpPrompts,
-            instructions: mcpInstructions,
-            appEnabled: !!mcp.app,
-            appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
-            serverName: mcp.serverName
-          }
-        )
-
-        if (isNotification(rpcRequest)) {
-          return c.body(null, 202)
-        }
-
-        const response = buildJsonRpcResult(rpcRequest.id ?? null, result)
-
-        // Extract session ID for header (MCP 2025-11-25: return in MCP-Session-Id header)
-        const sessionId = isInitialize && result && typeof result === 'object' && 'sessionId' in result
-          ? (result as { sessionId?: string }).sessionId
-          : undefined
-
-        const responseHeaders: Record<string, string> = {}
-        if (sessionId) {
-          responseHeaders[MCP_SESSION_ID_HEADER] = sessionId
-        }
-
-        if (wantsStream) {
-          const encoder = new TextEncoder()
-          const eventId = primeEventId()
-          const stream = new ReadableStream({
-            start(controller) {
-              controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
-              controller.enqueue(encoder.encode(serializeSseEvent(response, eventId)))
-              controller.close()
-            }
-          })
-          return new Response(stream, {
-            status: 200,
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              Connection: 'keep-alive',
-              ...responseHeaders
-            }
-          })
-        }
-
-        return c.json(response, 200, responseHeaders)
-      } catch (error) {
-        // Log notification errors before returning 202 (P3 fix)
-        if (isNotification(rpcRequest)) {
-          console.error('MCP notification processing error:', error)
-          return c.body(null, 202)
-        }
-
-        console.error('MCP RPC error:', error)
-        const code = (error as any)?.code ?? -32603
-        const data = (error as any)?.data
-        const message = (error as Error).message || 'MCP request failed'
-        const rpcError = buildJsonRpcError(rpcRequest.id ?? null, code, message, data)
-
-        if (wantsStream) {
-          const encoder = new TextEncoder()
-          const eventId = primeEventId()
-          const stream = new ReadableStream({
-            start(controller) {
-              controller.enqueue(encoder.encode(`id: ${eventId}\n\n`))
-              controller.enqueue(encoder.encode(serializeSseEvent(rpcError, eventId)))
-              controller.close()
-            }
-          })
-          return new Response(stream, {
-            status: 200,
-            headers: {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              Connection: 'keep-alive'
-            }
-          })
-        }
-
-        return c.json(rpcError, 200)
-      }
+      return dispatchMcpPost(c, rpcRequest, wantsStream, {
+        semanticLayer,
+        extractSecurityContext: (req: any, _res: any) => extractSecurityContextWithLocale(req),
+        rawRequest: c,
+        rawResponse: null,
+        negotiatedProtocol: prep.negotiatedProtocol,
+        resources: mcpResources,
+        prompts: mcpPrompts,
+        instructions: mcpInstructions,
+        appEnabled: !!mcp.app,
+        appConfig: typeof mcp.app === 'object' ? mcp.app : undefined,
+        serverName: mcp.serverName
+      })
     })
 
     /**

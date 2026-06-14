@@ -5,6 +5,7 @@
 import type { CubeQuery, Filter, SimpleFilter, GroupFilter } from '../types'
 import type { MetaField, MetaResponse } from './types'
 import { FILTER_OPERATORS } from './types'
+import { transformFilterFromServer, transformQueryForUIImpl } from './queryTransforms'
 
 // ============================================================================
 // Filter type guards
@@ -149,38 +150,9 @@ export function transformFiltersForServer(filters: Filter[]): any[] {
  * Converts {and: [...]} and {or: [...]} to {type: 'and', filters: [...]} format
  */
 export function transformFiltersFromServer(filters: any[]): Filter[] {
-  return filters.map(filter => {
-    if (!filter || typeof filter !== 'object') {
-      return filter
-    }
-
-    // Handle legacy {and: [...]} format
-    if ('and' in filter && Array.isArray(filter.and)) {
-      return {
-        type: 'and',
-        filters: transformFiltersFromServer(filter.and)
-      } as GroupFilter
-    }
-
-    // Handle legacy {or: [...]} format
-    if ('or' in filter && Array.isArray(filter.or)) {
-      return {
-        type: 'or',
-        filters: transformFiltersFromServer(filter.or)
-      } as GroupFilter
-    }
-
-    // Handle new format {type: 'and', filters: [...]} - process recursively
-    if ('type' in filter && 'filters' in filter && Array.isArray(filter.filters)) {
-      return {
-        type: filter.type,
-        filters: transformFiltersFromServer(filter.filters)
-      } as GroupFilter
-    }
-
-    // Simple filter - pass through
-    return filter as SimpleFilter
-  }).filter(Boolean) // Remove any null/undefined values
+  return filters
+    .map(transformFilterFromServer)
+    .filter(Boolean) as Filter[] // Remove any null/undefined values
 }
 
 // ============================================================================
@@ -259,27 +231,7 @@ export function cleanQueryForServer(query: CubeQuery): CubeQuery {
  * This handles format differences between server/API queries and QueryBuilder state
  */
 export function transformQueryForUI(query: any): CubeQuery {
-  if (!query || typeof query !== 'object') {
-    return {}
-  }
-
-  const transformed: CubeQuery = {}
-
-  // Copy simple fields if they exist
-  if (query.measures) transformed.measures = Array.isArray(query.measures) ? query.measures : []
-  if (query.dimensions) transformed.dimensions = Array.isArray(query.dimensions) ? query.dimensions : []
-  if (query.timeDimensions) transformed.timeDimensions = Array.isArray(query.timeDimensions) ? query.timeDimensions : []
-  if (query.order) transformed.order = query.order
-  if (query.limit) transformed.limit = query.limit
-  if (query.offset) transformed.offset = query.offset
-  if (query.segments) transformed.segments = Array.isArray(query.segments) ? query.segments : []
-
-  // Transform filters from server format to UI format
-  if (query.filters && Array.isArray(query.filters)) {
-    transformed.filters = transformFiltersFromServer(query.filters)
-  }
-
-  return cleanQuery(transformed)
+  return transformQueryForUIImpl(query, transformFiltersFromServer)
 }
 
 // ============================================================================
@@ -294,20 +246,25 @@ export function getCubeNameFromField(fieldName: string): string {
 }
 
 /**
+ * Find a field (measure or dimension) by name across all cubes in the schema.
+ */
+function findSchemaField(fieldName: string, schema: MetaResponse): MetaField | undefined {
+  for (const cube of schema.cubes) {
+    const measure = cube.measures.find(m => m.name === fieldName)
+    if (measure) return measure
+
+    const dimension = cube.dimensions.find(d => d.name === fieldName)
+    if (dimension) return dimension
+  }
+
+  return undefined
+}
+
+/**
  * Get field type from schema
  */
 export function getFieldType(fieldName: string, schema: MetaResponse): string {
-  for (const cube of schema.cubes) {
-    // Check measures
-    const measure = cube.measures.find(m => m.name === fieldName)
-    if (measure) return measure.type
-
-    // Check dimensions
-    const dimension = cube.dimensions.find(d => d.name === fieldName)
-    if (dimension) return dimension.type
-  }
-
-  return 'string' // Default fallback
+  return findSchemaField(fieldName, schema)?.type ?? 'string' // Default fallback
 }
 
 /**
@@ -316,17 +273,9 @@ export function getFieldType(fieldName: string, schema: MetaResponse): string {
 export function getFieldTitle(fieldName: string, schema: MetaResponse | null): string {
   if (!schema) return fieldName
 
-  for (const cube of schema.cubes) {
-    // Check measures
-    const measure = cube.measures.find(m => m.name === fieldName)
-    if (measure) return measure.title || measure.shortTitle || fieldName
-
-    // Check dimensions
-    const dimension = cube.dimensions.find(d => d.name === fieldName)
-    if (dimension) return dimension.title || dimension.shortTitle || fieldName
-  }
-
-  return fieldName // Fallback to field name if not found
+  const field = findSchemaField(fieldName, schema)
+  // Fallback to field name if not found
+  return field ? (field.title || field.shortTitle || fieldName) : fieldName
 }
 
 /**

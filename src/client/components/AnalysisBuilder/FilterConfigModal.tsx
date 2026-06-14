@@ -23,6 +23,8 @@ import {
   requiresNumberInput
 } from '../../shared/utils'
 import { findFieldInSchema, getFieldTitle } from './utils'
+import { deriveRangeFromDateRange } from './filterConfigModalUtils'
+import FilterValueInput from './FilterValueInput'
 import { useFilterValues } from '../../hooks/useFilterValues'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useTranslation } from '../../hooks/useTranslation'
@@ -179,44 +181,12 @@ export default function FilterConfigModal({
 
   // Sync rangeType state with filter.dateRange
   useEffect(() => {
-    if (!shouldShowDateRange || !filter.dateRange) return
-
-    if (Array.isArray(filter.dateRange)) {
-      setRangeType('custom')
-    } else {
-      // Find matching range type - prioritize "last N" patterns
-      // Match "last N days/weeks/months/quarters/years"
-      const flexMatch = filter.dateRange.match(/^last (\d+) (days|weeks|months|quarters|years)$/)
-      // Match singular forms: "last day/week/month/quarter/year" (when N=1)
-      const singularMatch = !flexMatch && filter.dateRange.match(/^last (day|week|month|quarter|year)$/)
-
-      if (flexMatch) {
-        const [, num, unit] = flexMatch
-        setRangeType(`last_n_${unit}` as DateRangeType)
-        setNumberValue(parseInt(num) || 1)
-      } else if (singularMatch) {
-        // Handle singular forms as "last_n_*" with value of 1
-        const [, unit] = singularMatch
-        const pluralUnit = unit === 'day' ? 'days' :
-                           unit === 'week' ? 'weeks' :
-                           unit === 'month' ? 'months' :
-                           unit === 'quarter' ? 'quarters' : 'years'
-        setRangeType(`last_n_${pluralUnit}` as DateRangeType)
-        setNumberValue(1)
-      } else {
-        // Check predefined ranges (only if not a "last N" pattern)
-        let found = false
-        for (const option of DATE_RANGE_OPTIONS) {
-          if (option.value !== 'custom' && !requiresNumberInput(option.value)) {
-            if (convertDateRangeTypeToValue(option.value) === filter.dateRange) {
-              setRangeType(option.value)
-              found = true
-              break
-            }
-          }
-        }
-        if (!found) setRangeType('custom')
-      }
+    if (!shouldShowDateRange) return
+    const derived = deriveRangeFromDateRange(filter.dateRange)
+    if (!derived) return
+    setRangeType(derived.rangeType)
+    if (derived.numberValue !== undefined) {
+      setNumberValue(derived.numberValue)
     }
   }, [filter.dateRange, shouldShowDateRange])
 
@@ -379,258 +349,6 @@ export default function FilterConfigModal({
   // Get icon for field type
   const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
 
-  // Render value input based on operator type
-  const renderValueInput = () => {
-    // No value required for set/notSet
-    if (!operatorMeta?.requiresValues) {
-      return (
-        <div className="dc:text-sm text-dc-text-muted dc:italic dc:py-2">
-          {t('filter.modal.noValueRequired')}
-        </div>
-      )
-    }
-
-    // Date range selector for inDateRange on time fields
-    if (shouldShowDateRange) {
-      return (
-        <div className="dc:space-y-2">
-          {/* Range type dropdown */}
-          <div className="dc:relative">
-            <button
-              onClick={() => {
-                setIsOperatorDropdownOpen(false)
-                setIsValueDropdownOpen(false)
-                setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
-              }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
-            >
-              <span className="dc:truncate">{dateRangeLabel}</span>
-              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-                isDateRangeDropdownOpen ? 'dc:rotate-180' : ''
-              }`} />
-            </button>
-
-            {isDateRangeDropdownOpen && (
-              <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
-                {DATE_RANGE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => handleRangeTypeChange(option.value)}
-                    className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
-                      option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
-                    }`}
-                  >
-                    {t(option.label)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Number input for "last N" ranges */}
-          {requiresNumberInput(rangeType) && (
-            <div className="dc:flex dc:items-center dc:gap-2">
-              <input
-                type="number"
-                min="1"
-                max="1000"
-                value={numberValue}
-                onChange={(e) => handleNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
-              />
-              <span className="dc:text-sm text-dc-text-muted">
-                {rangeType.replace('last_n_', '')}
-              </span>
-            </div>
-          )}
-
-          {/* Custom date inputs */}
-          {rangeType === 'custom' && (
-            <div className="dc:flex dc:items-center dc:gap-2">
-              <input
-                type="date"
-                value={Array.isArray(filter.dateRange) ? filter.dateRange[0] : ''}
-                onChange={handleCustomStartDate}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
-              />
-              <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.dateTo')}</span>
-              <input
-                type="date"
-                value={Array.isArray(filter.dateRange) ? filter.dateRange[1] : ''}
-                onChange={handleCustomEndDate}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
-              />
-            </div>
-          )}
-        </div>
-      )
-    }
-
-    // Between/notBetween range inputs
-    if (filter.operator === 'between' || filter.operator === 'notBetween') {
-      return (
-        <div className="dc:flex dc:items-center dc:gap-2">
-          <input
-            type="number"
-            value={filter.values?.[0] ?? ''}
-            onChange={handleBetweenStartInput}
-            placeholder={t('filter.modal.min')}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-          />
-          <span className="dc:text-sm text-dc-text-muted">{t('filter.modal.to')}</span>
-          <input
-            type="number"
-            value={filter.values?.[1] ?? ''}
-            onChange={handleBetweenEndInput}
-            placeholder={t('filter.modal.max')}
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-          />
-        </div>
-      )
-    }
-
-    // Date picker for date operators
-    if (operatorMeta?.valueType === 'date') {
-      return (
-        <input
-          type="date"
-          value={filter.values?.[0] || ''}
-          onChange={handleDateInput}
-          className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-        />
-      )
-    }
-
-    // Number input
-    if (operatorMeta?.valueType === 'number') {
-      return (
-        <input
-          type="number"
-          value={filter.values?.[0] ?? ''}
-          onChange={handleDirectInput}
-          placeholder={t('filter.modal.enterNumber')}
-          className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-        />
-      )
-    }
-
-    // Combo box for equals/notEquals/in/notIn on dimensions
-    if (shouldShowComboBox) {
-      return (
-        <div className="dc:space-y-2">
-          {/* Selected values as tags */}
-          {filter.values && filter.values.length > 0 && (
-            <div className="dc:flex dc:flex-wrap dc:gap-1.5">
-              {filter.values.map((value: unknown, index: number) => (
-                <span
-                  key={index}
-                  className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded"
-                >
-                  <span className="dc:max-w-[150px] dc:truncate">{String(value)}</span>
-                  <button
-                    onClick={() => handleValueRemove(value)}
-                    className="hover:text-dc-danger"
-                  >
-                    <CloseIcon className="dc:w-3.5 dc:h-3.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Dropdown trigger */}
-          <div className="dc:relative">
-            <button
-              onClick={() => {
-                setIsOperatorDropdownOpen(false)
-                setIsDateRangeDropdownOpen(false)
-                setIsValueDropdownOpen(!isValueDropdownOpen)
-              }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
-            >
-              <span className="text-dc-text-muted dc:truncate">
-                {valuesLoading ? t('filter.modal.loading') : t('filter.modal.selectValue')}
-              </span>
-              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-                isValueDropdownOpen ? 'dc:rotate-180' : ''
-              }`} />
-            </button>
-
-            {isValueDropdownOpen && (
-              <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
-                {/* Search input with keyboard navigation */}
-                <div className="dc:p-2 dc:border-b border-dc-border">
-                  <input
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => {
-                      setSearchText(e.target.value)
-                      setHighlightedIndex(-1)
-                    }}
-                    onKeyDown={handleValueKeyDown}
-                    placeholder={t('filter.modal.search')}
-                    className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Values list */}
-                <div ref={valueListRef} className="dc:max-h-40 dc:overflow-y-auto">
-                  {valuesLoading ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.loading')}</div>
-                  ) : valuesError ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('filter.modal.errorPrefix')}{valuesError}</div>
-                  ) : distinctValues.length === 0 ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('filter.modal.noValues')}</div>
-                  ) : (
-                    distinctValues.map((value, index) => {
-                      const isSelected = filter.values?.includes(value)
-                      const isHighlighted = index === highlightedIndex
-                      return (
-                        <button
-                          key={`${value}-${index}`}
-                          onClick={(e) => handleValueSelect(value, e)}
-                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm dc:transition-colors ${
-                            isHighlighted
-                              ? 'bg-dc-surface-hover'
-                              : ''
-                          } ${
-                            isSelected ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text hover:bg-dc-surface-hover'
-                          }`}
-                        >
-                          {String(value)}
-                          {isSelected && <span className="dc:float-right">✓</span>}
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Helper text for multi-select */}
-          {operatorMeta?.supportsMultipleValues && (
-            <p className="dc:text-xs text-dc-text-muted">
-              {t('filter.modal.multiSelectHint')}
-            </p>
-          )}
-        </div>
-      )
-    }
-
-    // Default: text input
-    return (
-      <input
-        type="text"
-        value={filter.values?.[0] ?? ''}
-        onChange={handleDirectInput}
-        placeholder={t('filter.modal.enterValue')}
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
-      />
-    )
-  }
-
   // Determine modal positioning style
   const getModalStyle = (): React.CSSProperties => {
     if (modalPosition) {
@@ -728,7 +446,39 @@ export default function FilterConfigModal({
               <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
                 {t('filter.modal.valueLabel')}
               </label>
-              {renderValueInput()}
+              <FilterValueInput
+                filter={filter}
+                operatorMeta={operatorMeta}
+                shouldShowDateRange={shouldShowDateRange}
+                shouldShowComboBox={shouldShowComboBox}
+                rangeType={rangeType}
+                numberValue={numberValue}
+                dateRangeLabel={dateRangeLabel}
+                isDateRangeDropdownOpen={isDateRangeDropdownOpen}
+                setIsOperatorDropdownOpen={setIsOperatorDropdownOpen}
+                setIsValueDropdownOpen={setIsValueDropdownOpen}
+                setIsDateRangeDropdownOpen={setIsDateRangeDropdownOpen}
+                handleRangeTypeChange={handleRangeTypeChange}
+                handleNumberValueChange={handleNumberValueChange}
+                handleCustomStartDate={handleCustomStartDate}
+                handleCustomEndDate={handleCustomEndDate}
+                handleBetweenStartInput={handleBetweenStartInput}
+                handleBetweenEndInput={handleBetweenEndInput}
+                handleDateInput={handleDateInput}
+                handleDirectInput={handleDirectInput}
+                isValueDropdownOpen={isValueDropdownOpen}
+                distinctValues={distinctValues}
+                valuesLoading={valuesLoading}
+                valuesError={valuesError}
+                searchText={searchText}
+                setSearchText={setSearchText}
+                highlightedIndex={highlightedIndex}
+                setHighlightedIndex={setHighlightedIndex}
+                valueListRef={valueListRef}
+                handleValueSelect={handleValueSelect}
+                handleValueRemove={handleValueRemove}
+                handleValueKeyDown={handleValueKeyDown}
+              />
             </div>
           </div>
 

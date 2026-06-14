@@ -8,7 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parseSQLiteExplain } from '../explain/sqlite-parser'
-import { buildBoundSql } from './explain-utils'
+import { buildBoundSql, normalizeSQLiteExplainRows } from './explain-utils'
 
 export class SQLiteExecutor extends BaseDatabaseExecutor {
   async execute<T = any[]>(query: SQL | any, numericFields?: string[]): Promise<T> {
@@ -116,19 +116,7 @@ export class SQLiteExecutor extends BaseDatabaseExecutor {
     }
 
     // SQLite EXPLAIN QUERY PLAN returns rows with: id, parent, notused, detail
-    const rows: any[] = []
-    if (Array.isArray(result)) {
-      for (const row of result) {
-        if (row && typeof row === 'object') {
-          rows.push({
-            id: Number((row as Record<string, unknown>).id) || 0,
-            parent: Number((row as Record<string, unknown>).parent) || 0,
-            notused: Number((row as Record<string, unknown>).notused) || 0,
-            detail: String((row as Record<string, unknown>).detail || ''),
-          })
-        }
-      }
-    }
+    const rows = normalizeSQLiteExplainRows(result)
 
     // Parse the output using the SQLite parser
     return parseSQLiteExplain(rows, { sql: sqlString, params })

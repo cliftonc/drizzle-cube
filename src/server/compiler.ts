@@ -9,17 +9,12 @@ import type {
   SecurityContext,
   DatabaseExecutor,
   CubeMetadata,
-  MeasureMetadata,
-  DimensionMetadata,
-  CubeRelationshipMetadata,
-  HierarchyMetadata,
   Cube,
   QueryAnalysis,
   CacheConfig,
   ExplainOptions,
   ExplainResult,
   ExecutionOptions,
-  TimeGranularity,
   RLSSetupFn
 } from './types'
 import { createDatabaseExecutor } from './executors'
@@ -27,7 +22,12 @@ import { QueryExecutor } from './executor'
 import { formatSqlString } from './sql-format'
 import { CalculatedMeasureResolver } from './resolvers/calculated-measure-resolver'
 import { validateTemplateSyntax } from './template-substitution'
-import { resolveCubeReference } from './cube-utils'
+import {
+  buildMeasureMetadata,
+  buildDimensionMetadata,
+  buildRelationshipMetadata,
+  buildHierarchyMetadata
+} from './compiler-metadata'
 import { validateQueryAgainstCubes } from './query-validator'
 import type { PlanOptimiser } from './logical-plan'
 import { t } from '../i18n/runtime'
@@ -370,115 +370,14 @@ export class SemanticLayerCompiler {
   }
 
   /**
-   * Default time granularities for time dimensions (ordered from least to most granular)
-   * Used when dimension.granularities is not specified
-   */
-  private static readonly DEFAULT_TIME_GRANULARITIES: TimeGranularity[] = [
-    'year', 'quarter', 'month', 'week', 'day', 'hour'
-  ]
-
-  /**
    * Generate cube metadata for API responses from cubes
-   * Optimized version that minimizes object iterations
    * Includes drill-down support: drillMembers on measures, granularities on time dimensions, hierarchies
    */
   private generateCubeMetadata(cube: Cube): CubeMetadata {
-    // Pre-allocate arrays for better performance
-    const measureKeys = Object.keys(cube.measures)
-    const dimensionKeys = Object.keys(cube.dimensions)
-
-    const measures: MeasureMetadata[] = new Array(measureKeys.length)
-    const dimensions: DimensionMetadata[] = new Array(dimensionKeys.length)
-
-    // Process measures efficiently - include drillMembers for drill-down support
-    for (let i = 0; i < measureKeys.length; i++) {
-      const key = measureKeys[i]
-      const measure = cube.measures[key]
-
-      // Normalize drillMembers to full qualified names (CubeName.fieldName)
-      let drillMembers: string[] | undefined
-      if (measure.drillMembers && measure.drillMembers.length > 0) {
-        drillMembers = measure.drillMembers.map(member => {
-          // If already qualified (contains dot), use as-is
-          if (member.includes('.')) {
-            return member
-          }
-          // Otherwise, prefix with cube name
-          return `${cube.name}.${member}`
-        })
-      }
-
-      measures[i] = {
-        name: `${cube.name}.${key}`,
-        title: measure.title || key,
-        shortTitle: measure.title || key,
-        type: measure.type,
-        format: undefined, // Measure doesn't have format field
-        description: measure.description,
-        synonyms: measure.synonyms,
-        drillMembers
-      }
-    }
-
-    // Process dimensions efficiently - include granularities for time dimensions
-    for (let i = 0; i < dimensionKeys.length; i++) {
-      const key = dimensionKeys[i]
-      const dimension = cube.dimensions[key]
-
-      // For time dimensions, include granularities (use defaults if not specified)
-      let granularities: TimeGranularity[] | undefined
-      if (dimension.type === 'time') {
-        granularities = dimension.granularities || SemanticLayerCompiler.DEFAULT_TIME_GRANULARITIES
-      }
-
-      dimensions[i] = {
-        name: `${cube.name}.${key}`,
-        title: dimension.title || key,
-        shortTitle: dimension.title || key,
-        type: dimension.type,
-        format: undefined, // Dimension doesn't have format field
-        description: dimension.description,
-        synonyms: dimension.synonyms,
-        granularities
-      }
-    }
-
-    // Process relationships if they exist
-    const relationships: CubeRelationshipMetadata[] = []
-    if (cube.joins) {
-      for (const [, join] of Object.entries(cube.joins)) {
-        const targetCube = resolveCubeReference(join.targetCube, this.cubes)
-        if (!targetCube) continue
-
-        relationships.push({
-          targetCube: targetCube.name,
-          relationship: join.relationship,
-          joinFields: join.on.map(condition => ({
-            sourceField: this.getColumnName(condition.source),
-            targetField: this.getColumnName(condition.target)
-          }))
-        })
-      }
-    }
-
-    // Process hierarchies if they exist - convert to full qualified names
-    const hierarchies: HierarchyMetadata[] = []
-    if (cube.hierarchies) {
-      for (const [, hierarchy] of Object.entries(cube.hierarchies)) {
-        hierarchies.push({
-          name: hierarchy.name,
-          title: hierarchy.title || hierarchy.name,
-          cubeName: cube.name,
-          // Convert level names to full qualified names
-          levels: hierarchy.levels.map(level => {
-            if (level.includes('.')) {
-              return level
-            }
-            return `${cube.name}.${level}`
-          })
-        })
-      }
-    }
+    const measures = buildMeasureMetadata(cube)
+    const dimensions = buildDimensionMetadata(cube)
+    const relationships = buildRelationshipMetadata(cube, this.cubes, c => this.getColumnName(c))
+    const hierarchies = buildHierarchyMetadata(cube)
 
     const result: CubeMetadata = {
       name: cube.name,

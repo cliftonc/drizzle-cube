@@ -8,27 +8,18 @@
 import React, { memo, useCallback, useMemo } from 'react'
 import type { AnalysisQueryPanelProps, BreakdownItem } from './types'
 import type { MetaField } from '../../shared/types'
-import type { QueryMergeStrategy, CubeMeta } from '../../types'
-import { getIcon } from '../../icons'
-import MetricsSection from './MetricsSection'
-import BreakdownSection from './BreakdownSection'
-import BreakdownItemCard from './BreakdownItemCard'
-import AnalysisFilterSection from './AnalysisFilterSection'
-import LimitSection from './LimitSection'
-import AnalysisChartConfigPanel from './AnalysisChartConfigPanel'
-import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
-import FunnelBindingKeySelector from './FunnelBindingKeySelector'
+import type { CubeMeta } from '../../types'
 import AnalysisTypeSelector from './AnalysisTypeSelector'
-import FunnelModeContent from './FunnelModeContent'
-import FlowModeContent from './FlowModeContent'
-import RetentionModeContent from './RetentionModeContent'
+import {
+  AnalysisModeContent,
+  shouldRenderModeContent,
+  QueryPanelTabBar,
+  QueryPanelTabContent,
+  MergeStrategyControls,
+  AdapterValidationBanner,
+  MultiQueryValidationBanner,
+} from './AnalysisQueryPanelParts'
 import { useTranslation } from '../../hooks/useTranslation'
-
-const AddIcon = getIcon('add')
-const CloseIcon = getIcon('close')
-const InfoIcon = getIcon('info')
-const WarningIcon = getIcon('warning')
-const LinkIcon = getIcon('link')
 
 /**
  * AnalysisQueryPanel displays the right-side query builder with:
@@ -38,137 +29,38 @@ const LinkIcon = getIcon('link')
  * - Breakdown section (dimensions)
  * - Chart configuration (in Chart tab)
  */
-const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
-  metrics,
-  breakdowns,
-  filters,
-  schema,
-  activeTab,
-  onActiveTabChange,
-  onAddMetric,
-  onRemoveMetric,
-  onReorderMetrics,
-  onAddBreakdown,
-  onRemoveBreakdown,
-  onBreakdownGranularityChange,
-  onBreakdownComparisonToggle,
-  onReorderBreakdowns,
-  onFiltersChange,
-  onDropFieldToFilter,
-  // Sorting
-  order,
-  onOrderChange,
-  // Limit
-  limit,
-  onLimitChange,
-  // Chart configuration
-  chartType,
-  chartConfig,
-  displayConfig,
-  colorPalette,
-  chartAvailability,
-  onChartTypeChange,
-  onChartConfigChange,
-  onDisplayConfigChange,
-  // Validation
-  validationStatus: _validationStatus,
-  validationError: _validationError,
-  // Multi-query props
-  queryCount = 1,
-  activeQueryIndex = 0,
-  mergeStrategy = 'concat',
-  onActiveQueryChange,
-  onAddQuery,
-  onRemoveQuery,
-  onMergeStrategyChange,
-  breakdownsLocked = false,
-  combinedMetrics,
-  combinedBreakdowns,
-  multiQueryValidation,
-  adapterValidation,
-  // Funnel props (legacy - for merge strategy mode)
-  funnelBindingKey,
-  onFunnelBindingKeyChange,
-  // Analysis Type props
-  analysisType = 'query',
-  onAnalysisTypeChange,
-  // Funnel Mode props (new dedicated state)
-  funnelCube = null,
-  funnelSteps = [],
-  activeFunnelStepIndex = 0,
-  funnelTimeDimension,
-  onFunnelCubeChange,
-  onAddFunnelStep,
-  onRemoveFunnelStep,
-  onUpdateFunnelStep,
-  onSelectFunnelStep,
-  onReorderFunnelSteps,
-  onFunnelTimeDimensionChange,
-  // Funnel display config (for Display tab)
-  funnelDisplayConfig,
-  onFunnelDisplayConfigChange,
-  // Flow Mode props
-  flowCube,
-  flowBindingKey,
-  flowTimeDimension,
-  eventDimension,
-  startingStep,
-  stepsBefore = 3,
-  stepsAfter = 3,
-  flowJoinStrategy = 'auto',
-  onFlowCubeChange,
-  onFlowBindingKeyChange,
-  onFlowTimeDimensionChange,
-  onEventDimensionChange,
-  onStartingStepFiltersChange,
-  onStepsBeforeChange,
-  onStepsAfterChange,
-  onFlowJoinStrategyChange,
-  flowDisplayConfig,
-  onFlowDisplayConfigChange,
-  // Retention Mode props (simplified Mixpanel-style)
-  retentionCube,
-  retentionBindingKey,
-  retentionTimeDimension,
-  retentionDateRange,
-  retentionCohortFilters = [],
-  retentionActivityFilters = [],
-  retentionBreakdowns = [],
-  retentionViewGranularity = 'week',
-  retentionPeriods = 12,
-  retentionType = 'classic',
-  onRetentionCubeChange,
-  onRetentionBindingKeyChange,
-  onRetentionTimeDimensionChange,
-  onRetentionDateRangeChange,
-  onRetentionCohortFiltersChange,
-  onRetentionActivityFiltersChange,
-  onRetentionBreakdownsChange,
-  onAddRetentionBreakdown,
-  onRemoveRetentionBreakdown,
-  onRetentionViewGranularityChange,
-  onRetentionPeriodsChange,
-  onRetentionTypeChange,
-  retentionDisplayConfig,
-  onRetentionDisplayConfigChange,
-}: AnalysisQueryPanelProps) {
+const AnalysisQueryPanel = memo(function AnalysisQueryPanel(props: AnalysisQueryPanelProps) {
+  const {
+    breakdowns,
+    schema,
+    activeTab,
+    onActiveTabChange,
+    // Multi-query props
+    queryCount = 1,
+    activeQueryIndex = 0,
+    mergeStrategy = 'concat',
+    onActiveQueryChange,
+    onAddQuery,
+    onRemoveQuery,
+    onMergeStrategyChange,
+    multiQueryValidation,
+    adapterValidation,
+    // Funnel props (legacy - for merge strategy mode)
+    funnelBindingKey,
+    onFunnelBindingKeyChange,
+    // Analysis Type props
+    analysisType = 'query',
+    onAnalysisTypeChange,
+  } = props
+
   const { t } = useTranslation()
 
-  // Mark unused props
-  void _validationStatus
-  void _validationError
-
   const isMultiQuery = queryCount > 1
-  // Note: Legacy mergeStrategy === 'funnel' is no longer supported
   // Funnel mode is determined by analysisType === 'funnel'
   const isFunnelMode = analysisType === 'funnel'
-  // Flow mode is determined by analysisType === 'flow'
-  const isFlowMode = analysisType === 'flow'
-  // Retention mode is determined by analysisType === 'retention'
-  const isRetentionMode = analysisType === 'retention'
 
-  // Alias for clarity - same as isFunnelMode now
-  const isNewFunnelMode = analysisType === 'funnel'
+  // Whether a dedicated mode (funnel/flow/retention) replaces the standard layout.
+  const showModeContent = shouldRenderModeContent(props)
 
   // Helper to find field metadata for a breakdown
   const getFieldMeta = useCallback((breakdown: BreakdownItem): MetaField | null => {
@@ -219,366 +111,55 @@ const AnalysisQueryPanel = memo(function AnalysisQueryPanel({
         />
       )}
 
-      {/* Funnel Mode - dedicated UI when analysisType === 'funnel' */}
-      {isNewFunnelMode && onFunnelCubeChange && onAddFunnelStep && onRemoveFunnelStep && onUpdateFunnelStep && onSelectFunnelStep && onReorderFunnelSteps && onFunnelTimeDimensionChange && onFunnelBindingKeyChange ? (
-        <FunnelModeContent
-          funnelCube={funnelCube}
-          funnelSteps={funnelSteps}
-          activeFunnelStepIndex={activeFunnelStepIndex}
-          funnelTimeDimension={funnelTimeDimension ?? null}
-          funnelBindingKey={funnelBindingKey ?? null}
-          schema={schema as CubeMeta | null}
-          onCubeChange={onFunnelCubeChange}
-          onAddStep={onAddFunnelStep}
-          onRemoveStep={onRemoveFunnelStep}
-          onUpdateStep={onUpdateFunnelStep}
-          onSelectStep={onSelectFunnelStep}
-          onReorderSteps={onReorderFunnelSteps}
-          onTimeDimensionChange={onFunnelTimeDimensionChange}
-          onBindingKeyChange={onFunnelBindingKeyChange}
-          // Display tab props
-          chartType="funnel"
-          displayConfig={funnelDisplayConfig}
-          colorPalette={colorPalette}
-          onDisplayConfigChange={onFunnelDisplayConfigChange}
-        />
-      ) : isFlowMode && onFlowCubeChange && onFlowBindingKeyChange && onFlowTimeDimensionChange && onEventDimensionChange && onStartingStepFiltersChange && onStepsBeforeChange && onStepsAfterChange && startingStep ? (
-        /* Flow Mode - dedicated UI when analysisType === 'flow' */
-        <FlowModeContent
-          flowCube={flowCube ?? null}
-          flowBindingKey={flowBindingKey ?? null}
-          flowTimeDimension={flowTimeDimension ?? null}
-          eventDimension={eventDimension ?? null}
-          startingStep={startingStep}
-          stepsBefore={stepsBefore}
-          stepsAfter={stepsAfter}
-          joinStrategy={flowJoinStrategy}
-          schema={schema as CubeMeta | null}
-          onCubeChange={onFlowCubeChange}
-          onBindingKeyChange={onFlowBindingKeyChange}
-          onTimeDimensionChange={onFlowTimeDimensionChange}
-          onEventDimensionChange={onEventDimensionChange}
-          onStartingStepFiltersChange={onStartingStepFiltersChange}
-          onStepsBeforeChange={onStepsBeforeChange}
-          onStepsAfterChange={onStepsAfterChange}
-          onJoinStrategyChange={onFlowJoinStrategyChange}
-          // Chart type (now core - affects query aggregation)
-          chartType={chartType}
-          onChartTypeChange={onChartTypeChange}
-          // Display tab props
-          displayConfig={flowDisplayConfig}
-          colorPalette={colorPalette}
-          onDisplayConfigChange={onFlowDisplayConfigChange}
-        />
-      ) : isRetentionMode ? (
-        /* Retention Mode - dedicated UI when analysisType === 'retention' (simplified Mixpanel-style) */
-        <RetentionModeContent
-          retentionCube={retentionCube ?? null}
-          retentionBindingKey={retentionBindingKey ?? null}
-          retentionTimeDimension={retentionTimeDimension ?? null}
-          retentionDateRange={retentionDateRange ?? { start: '', end: '' }}
-          retentionCohortFilters={retentionCohortFilters}
-          retentionActivityFilters={retentionActivityFilters}
-          retentionBreakdowns={retentionBreakdowns}
-          retentionViewGranularity={retentionViewGranularity}
-          retentionPeriods={retentionPeriods}
-          retentionType={retentionType}
-          schema={schema as CubeMeta | null}
-          onCubeChange={onRetentionCubeChange ?? (() => {})}
-          onBindingKeyChange={onRetentionBindingKeyChange ?? (() => {})}
-          onTimeDimensionChange={onRetentionTimeDimensionChange ?? (() => {})}
-          onDateRangeChange={onRetentionDateRangeChange ?? (() => {})}
-          onCohortFiltersChange={onRetentionCohortFiltersChange ?? (() => {})}
-          onActivityFiltersChange={onRetentionActivityFiltersChange ?? (() => {})}
-          onBreakdownsChange={onRetentionBreakdownsChange ?? (() => {})}
-          onAddBreakdown={onAddRetentionBreakdown ?? (() => {})}
-          onRemoveBreakdown={onRemoveRetentionBreakdown ?? (() => {})}
-          onGranularityChange={onRetentionViewGranularityChange ?? (() => {})}
-          onPeriodsChange={onRetentionPeriodsChange ?? (() => {})}
-          onRetentionTypeChange={onRetentionTypeChange ?? (() => {})}
-          onOpenFieldModal={onAddBreakdown}
-          // Display tab props
-          chartType={chartType}
-          displayConfig={retentionDisplayConfig}
-          colorPalette={colorPalette}
-          onDisplayConfigChange={onRetentionDisplayConfigChange}
-        />
+      {/* Dedicated mode UI (funnel / flow / retention) replaces the standard layout */}
+      {showModeContent ? (
+        <AnalysisModeContent {...props} />
       ) : (
         <>
-      {/* Tab Bar - only shown when not in new funnel mode */}
-      <div className="dc:border-b border-dc-border dc:flex-shrink-0 dc:overflow-x-auto dc:overflow-y-hidden scrollbar-thin">
-        <div className="dc:flex dc:min-w-max">
-        {/* Query Tabs - show Q1, Q2, etc. when multi-query, or single "Query" tab */}
-        {isMultiQuery ? (
-          <div className="dc:flex dc:min-w-max">
-            {Array.from({ length: queryCount }).map((_, index) => {
-              const isActiveQuery = index === activeQueryIndex && activeTab === 'query'
-              return (
-                <button
-                  key={`q${index}`}
-                  onClick={() => handleQueryTabClick(index)}
-                  className={`dc:flex dc:items-center dc:gap-1 dc:px-3 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
-                    isActiveQuery
-                      ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-                      : 'text-dc-text-secondary hover:text-dc-text'
-                  }`}
-                >
-                  {getQueryTabLabel(index)}
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => handleRemoveQuery(e, index)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleRemoveQuery(e as unknown as React.MouseEvent, index)}
-                    className="dc:p-0.5 dc:rounded hover:bg-dc-danger-bg hover:text-dc-error dc:transition-colors dc:ml-0.5"
-                    title={t('analysis.multiQuery.removeQuery')}
-                    aria-label={`Remove ${getQueryTabLabel(index)}`}
-                  >
-                    <CloseIcon className="dc:w-3 dc:h-3" />
-                  </span>
-                </button>
-              )
-            })}
-            {/* Add Query Button */}
-            <button
-              onClick={onAddQuery}
-              className="dc:flex dc:items-center dc:justify-center dc:px-2 dc:py-3 text-dc-text-secondary hover:text-dc-text dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap"
-              title={t('analysis.multiQuery.addQuery')}
-              aria-label={t('analysis.multiQuery.addQuery')}
-            >
-              <AddIcon className="dc:w-4 dc:h-4" />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => onActiveTabChange('query')}
-            className={`dc:flex-1 dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:whitespace-nowrap ${
-              activeTab === 'query'
-                ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-                : 'text-dc-text-secondary hover:text-dc-text'
-            }`}
-          >
-            {t('analysis.tabs.query')}
-            {/* Add button to convert to multi-query */}
-            {onAddQuery && (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onAddQuery()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.stopPropagation()
-                    onAddQuery()
-                  }
-                }}
-                className="dc:ml-2 dc:p-0.5 dc:rounded hover:bg-dc-surface-hover dc:transition-colors dc:inline-flex dc:items-center"
-                title={t('analysis.multiQuery.addAnother')}
-                aria-label={t('analysis.multiQuery.addAnother')}
-              >
-                <AddIcon className="dc:w-3 dc:h-3" />
-              </span>
-            )}
-          </button>
-        )}
+          {/* Tab Bar - only shown when not in a dedicated mode */}
+          <QueryPanelTabBar
+            activeTab={activeTab}
+            onActiveTabChange={onActiveTabChange}
+            isMultiQuery={isMultiQuery}
+            queryCount={queryCount}
+            activeQueryIndex={activeQueryIndex}
+            onAddQuery={onAddQuery}
+            getQueryTabLabel={getQueryTabLabel}
+            handleQueryTabClick={handleQueryTabClick}
+            handleRemoveQuery={handleRemoveQuery}
+          />
 
-        <button
-          onClick={() => onActiveTabChange('chart')}
-          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
-            isMultiQuery ? '' : 'dc:flex-1'
-          } ${
-            activeTab === 'chart'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-          title={t('analysis.tabs.chartTitle')}
-        >
-          {t('analysis.tabs.chart')}
-        </button>
-        <button
-          onClick={() => onActiveTabChange('display')}
-          className={`dc:px-4 dc:py-3 dc:text-sm dc:font-medium dc:transition-colors dc:flex-shrink-0 dc:whitespace-nowrap ${
-            isMultiQuery ? '' : 'dc:flex-1'
-          } ${
-            activeTab === 'display'
-              ? 'text-dc-primary dc:border-b-2 border-dc-primary'
-              : 'text-dc-text-secondary hover:text-dc-text'
-          }`}
-          title={t('analysis.tabs.displayTitle')}
-        >
-          {t('analysis.tabs.display')}
-        </button>
-        </div>
-      </div>
-
-      {/* Merge Strategy Controls (only shown when multiple queries and on query tab) */}
-      {isMultiQuery && activeTab === 'query' && (
-        <div className="dc:flex dc:items-center dc:gap-2 dc:px-4 dc:py-1.5 dc:text-sm bg-dc-surface-secondary dc:border-b border-dc-border">
-          {LinkIcon && <LinkIcon className="dc:w-3.5 dc:h-3.5 text-dc-text-muted dc:flex-shrink-0" />}
-          <select
-            value={mergeStrategy}
-            onChange={(e) => onMergeStrategyChange?.(e.target.value as QueryMergeStrategy)}
-            className="dc:px-2 dc:py-1 dc:text-xs bg-dc-surface dc:border border-dc-border dc:rounded text-dc-text dc:focus:outline-none dc:focus:ring-1 focus:ring-dc-primary"
-          >
-            <option value="concat">{t('analysis.mergeStrategy.concat')}</option>
-            <option value="merge">{t('analysis.mergeStrategy.merge')}</option>
-            <option value="funnel">{t('analysis.mergeStrategy.funnel')}</option>
-          </select>
-
-          {/* Funnel Binding Key Selector (inline, only shown in funnel mode) */}
-          {isFunnelMode && onFunnelBindingKeyChange && (
-            <FunnelBindingKeySelector
-              bindingKey={funnelBindingKey ?? null}
-              onChange={onFunnelBindingKeyChange}
+          {/* Merge Strategy Controls (only shown when multiple queries and on query tab) */}
+          {isMultiQuery && activeTab === 'query' && (
+            <MergeStrategyControls
+              mergeStrategy={mergeStrategy}
+              onMergeStrategyChange={onMergeStrategyChange}
+              isFunnelMode={isFunnelMode}
+              funnelBindingKey={funnelBindingKey}
+              onFunnelBindingKeyChange={onFunnelBindingKeyChange}
               schema={schema}
-              className="dc:w-[180px] dc:flex-shrink-0"
             />
           )}
-        </div>
-      )}
 
-      {/* Adapter Validation Errors/Warnings (NEW - Phase 5) */}
-      {adapterValidation && (adapterValidation.errors.length > 0 || adapterValidation.warnings.length > 0) && activeTab === 'query' && (
-        <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-warning-bg dc:space-y-1">
-          {adapterValidation.errors.map((error, i) => (
-            <div key={`adapter-error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
-              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{t(error)}</span>
-            </div>
-          ))}
-          {adapterValidation.warnings.map((warning, i) => (
-            <div key={`adapter-warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
-              <InfoIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{t(warning)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+          {/* Adapter Validation Errors/Warnings */}
+          {adapterValidation && (adapterValidation.errors.length > 0 || adapterValidation.warnings.length > 0) && activeTab === 'query' && (
+            <AdapterValidationBanner adapterValidation={adapterValidation} />
+          )}
 
-      {/* Multi-Query Validation Warnings (hidden in funnel mode - funnels can have same metrics) */}
-      {multiQueryValidation && !isFunnelMode && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
-        <div className="dc:px-4 dc:py-2 dc:border-b border-dc-border bg-dc-warning-bg">
-          {multiQueryValidation.errors.map((error, i) => (
-            <div key={`error-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-error">
-              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{t(error.message)}</span>
-            </div>
-          ))}
-          {multiQueryValidation.warnings.map((warning, i) => (
-            <div key={`warning-${i}`} className="dc:flex dc:items-start dc:gap-2 dc:text-xs text-dc-warning">
-              <WarningIcon className="dc:w-3.5 dc:h-3.5 dc:mt-0.5 dc:flex-shrink-0" />
-              <span>{t(warning.message)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+          {/* Multi-Query Validation Warnings (hidden in funnel mode - funnels can have same metrics) */}
+          {multiQueryValidation && !isFunnelMode && (multiQueryValidation.warnings.length > 0 || multiQueryValidation.errors.length > 0) && activeTab === 'query' && (
+            <MultiQueryValidationBanner multiQueryValidation={multiQueryValidation} />
+          )}
 
-      {/* Tab Content */}
-      <div className="dc:flex-1 dc:overflow-auto dc:p-4">
-        {activeTab === 'query' ? (
-          <div className="dc:space-y-6">
-            {/* Metrics Section */}
-            <MetricsSection
-              metrics={metrics}
-              schema={schema}
-              onAdd={onAddMetric}
-              onRemove={onRemoveMetric}
-              order={order}
-              onOrderChange={onOrderChange}
-              onReorder={onReorderMetrics}
+          {/* Tab Content */}
+          <div className="dc:flex-1 dc:overflow-auto dc:p-4">
+            <QueryPanelTabContent
+              {...props}
+              isMultiQuery={isMultiQuery}
+              getFieldMeta={getFieldMeta}
+              comparisonEnabledBreakdown={comparisonEnabledBreakdown}
             />
-
-            {/* Breakdown Section */}
-            {breakdownsLocked ? (
-              <div className="dc:mb-4">
-                <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
-                  <h4 className="dc:text-sm dc:font-medium text-dc-text">{t('analysis.sections.dimensions')}</h4>
-                </div>
-                {/* Explanation with link to switch mode */}
-                <div className="dc:flex dc:items-start dc:gap-2 dc:px-3 dc:py-2 dc:mb-3 bg-dc-surface-secondary dc:rounded dc:border border-dc-border dc:text-xs">
-                  {InfoIcon && <InfoIcon className="dc:w-4 dc:h-4 text-dc-text-muted dc:flex-shrink-0 dc:mt-0.5" />}
-                  <span className="text-dc-text-muted">
-                    {t('analysis.multiQuery.mergeExplanation')}
-                    {onMergeStrategyChange && (
-                      <button
-                        onClick={() => onMergeStrategyChange('concat')}
-                        className="text-dc-primary dc:hover:underline dc:ml-1"
-                      >
-                        {t('analysis.multiQuery.switchToSeparate')}
-                      </button>
-                    )}
-                  </span>
-                </div>
-                {/* Show breakdown cards with granularity controls (but no remove) */}
-                {breakdowns.length > 0 && (
-                  <div className="dc:space-y-1">
-                    {breakdowns.map((breakdown) => (
-                      <BreakdownItemCard
-                        key={breakdown.id}
-                        breakdown={breakdown}
-                        fieldMeta={getFieldMeta(breakdown)}
-                        onRemove={() => {}}  // No-op - can't remove in locked mode
-                        onGranularityChange={breakdown.isTimeDimension ? (granularity) => onBreakdownGranularityChange(breakdown.id, granularity) : undefined}
-                        onComparisonToggle={breakdown.isTimeDimension && onBreakdownComparisonToggle ? () => onBreakdownComparisonToggle(breakdown.id) : undefined}
-                        comparisonDisabled={!!comparisonEnabledBreakdown && comparisonEnabledBreakdown.id !== breakdown.id}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <BreakdownSection
-                breakdowns={breakdowns}
-                schema={schema}
-                onAdd={onAddBreakdown}
-                onRemove={onRemoveBreakdown}
-                onGranularityChange={onBreakdownGranularityChange}
-                onComparisonToggle={onBreakdownComparisonToggle}
-                order={order}
-                onOrderChange={onOrderChange}
-                onReorder={onReorderBreakdowns}
-              />
-            )}
-
-            {/* Filter Section */}
-            <AnalysisFilterSection
-              filters={filters}
-              schema={schema}
-              onFiltersChange={onFiltersChange}
-              onFieldDropped={onDropFieldToFilter}
-            />
-
-            {/* Limit Section */}
-            {onLimitChange && (
-              <LimitSection
-                limit={limit}
-                onLimitChange={onLimitChange}
-              />
-            )}
           </div>
-        ) : activeTab === 'chart' ? (
-          /* Chart Tab Content - use combined metrics/breakdowns in multi-query mode */
-          <AnalysisChartConfigPanel
-            chartType={chartType}
-            chartConfig={chartConfig}
-            metrics={isMultiQuery && combinedMetrics ? combinedMetrics : metrics}
-            breakdowns={isMultiQuery && combinedBreakdowns ? combinedBreakdowns : breakdowns}
-            schema={schema}
-            chartAvailability={chartAvailability}
-            onChartTypeChange={onChartTypeChange}
-            onChartConfigChange={onChartConfigChange}
-          />
-        ) : activeTab === 'display' ? (
-          /* Display Tab Content */
-          <AnalysisDisplayConfigPanel
-            chartType={chartType}
-            displayConfig={displayConfig}
-            colorPalette={colorPalette}
-            onDisplayConfigChange={onDisplayConfigChange}
-          />
-        ) : null}
-      </div>
         </>
       )}
     </div>

@@ -3,23 +3,12 @@ import { useState, useCallback, memo, type ReactNode } from 'react'
 import { getIcon } from '@drizzle-cube/client'
 import DrizzleCubeIcon from './DrizzleCubeIcon'
 import ThemeToggle from './ThemeToggle'
+import { getSourcePath } from './layoutNav'
+import { GitHubIcon, DesktopNavLinks, MobileNavLinks, LanguageSelect } from './LayoutNavParts'
 
 const DocumentTextIcon = getIcon('documentText')
 const Bars3Icon = getIcon('menu')
 const XMarkIcon = getIcon('close')
-const LOCALE_OPTIONS = [
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'nl-NL', label: 'Nederlands' },
-  { value: 'crowdin', label: 'Crowdin In-Context' }
-] as const
-
-// GitHub icon component
-const GitHubIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-  </svg>
-)
 
 /**
  * LogoLink - Memoized logo link component
@@ -43,29 +32,6 @@ const LogoLink = memo(function LogoLink() {
  */
 const FloatingGitHubButton = memo(function FloatingGitHubButton() {
   const location = useLocation()
-  
-  // Map routes to their source files
-  const getSourcePath = (pathname: string) => {
-    const basePath = 'https://github.com/cliftonc/drizzle-cube/blob/main/examples/hono/client/src'
-
-    if (pathname === '/') {
-      return `${basePath}/pages/HomePage.tsx`
-    } else if (pathname.startsWith('/dashboards') && pathname !== '/dashboards') {
-      return `${basePath}/pages/DashboardViewPage.tsx`
-    } else if (pathname === '/dashboards') {
-      return `${basePath}/pages/DashboardListPage.tsx`
-    } else if (pathname === '/analysis-builder') {
-      return `${basePath}/pages/AnalysisBuilderPage.tsx`
-    } else if (pathname.startsWith('/notebooks') && pathname !== '/notebooks') {
-      return `${basePath}/pages/NotebookViewPage.tsx`
-    } else if (pathname === '/notebooks') {
-      return `${basePath}/pages/NotebooksListPage.tsx`
-    } else if (pathname === '/schema') {
-      return `${basePath}/pages/SchemaPage.tsx`
-    }
-
-    return `${basePath}/App.tsx`
-  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -122,86 +88,18 @@ export default function Layout({ children, locale, onLocaleChange }: LayoutProps
                 <LogoLink />
               </div>
               {/* Desktop navigation */}
-              <div className="hidden md:ml-6 md:flex md:space-x-6">
-                <Link
-                  to="/"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/dashboards"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/dashboards')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Dashboards
-                </Link>
-                <Link
-                  to="/analysis-builder"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/analysis-builder')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Analysis Builder
-                </Link>
-                <Link
-                  to="/notebooks"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/notebooks')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Notebooks
-                </Link>
-                <Link
-                  to="/schema"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/schema')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Schema
-                </Link>
-                <Link
-                  to="/data-browser"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors ${
-                    isActive('/data-browser')
-                      ? 'border-dc-primary text-dc-text whitespace-nowrap'
-                      : 'border-transparent text-dc-text-muted hover:text-dc-text-secondary hover:border-dc-border whitespace-nowrap'
-                  }`}
-                >
-                  Data Browser
-                </Link>
-              </div>
+              <DesktopNavLinks isActive={isActive} />
             </div>
-            
+
             {/* Desktop external links */}
             <div className="hidden md:flex md:items-center md:space-x-3">
               <label className="inline-flex items-center gap-2 text-sm text-dc-text-muted">
                 <span className="hidden xl:inline">Language</span>
-                <select
-                  value={locale}
-                  onChange={(event) => onLocaleChange(event.target.value)}
+                <LanguageSelect
+                  locale={locale}
+                  onLocaleChange={onLocaleChange}
                   className="rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary"
-                  aria-label="Select language"
-                >
-                  {LOCALE_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               <a
                 href="https://www.drizzle-cube.dev"
@@ -247,89 +145,17 @@ export default function Layout({ children, locale, onLocaleChange }: LayoutProps
         {isMobileMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-dc-surface border-t border-dc-border">
-              <Link
-                to="/"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Home
-              </Link>
-              <Link
-                to="/dashboards"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/dashboards')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Dashboards
-              </Link>
-              <Link
-                to="/analysis-builder"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/analysis-builder')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Analysis Builder
-              </Link>
-              <Link
-                to="/notebooks"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/notebooks')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Notebooks
-              </Link>
-              <Link
-                to="/schema"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/schema')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Schema
-              </Link>
-              <Link
-                to="/data-browser"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                  isActive('/data-browser')
-                    ? 'text-dc-primary bg-dc-surface-secondary border-l-4 border-dc-primary'
-                    : 'text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-                }`}
-              >
-                Data Browser
-              </Link>
+              <MobileNavLinks isActive={isActive} onNavigate={() => setIsMobileMenuOpen(false)} />
               {/* Mobile external links */}
               <div className="border-t border-dc-border pt-4 pb-3">
                 <div className="space-y-1">
                   <label className="block px-3 py-2 text-sm font-medium text-dc-text-muted">
                     Language
-                    <select
-                      value={locale}
-                      onChange={(event) => onLocaleChange(event.target.value)}
+                    <LanguageSelect
+                      locale={locale}
+                      onLocaleChange={onLocaleChange}
                       className="mt-2 block w-full rounded-md border border-dc-border bg-dc-surface text-dc-text px-2 py-1 text-sm focus:outline-hidden focus:ring-2 focus:ring-dc-primary"
-                      aria-label="Select language"
-                    >
-                      {LOCALE_OPTIONS.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </label>
                   <a
                     href="https://www.drizzle-cube.dev"

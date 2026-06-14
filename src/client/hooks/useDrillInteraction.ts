@@ -18,6 +18,11 @@ import {
   getMeasureDrillMembers
 } from '../utils/drillQueryBuilder'
 import { mappingIncludesFilter } from '../utils/filterUtils'
+import {
+  findNavigateBackToExistingLevel,
+  isDrillBackToRootGranularity,
+  computeOriginalGranularity
+} from './drillNavigation'
 
 /**
  * Hook for managing drill-down interaction
@@ -123,6 +128,36 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
   }, [enabled, metadata, query, dashboardFilters, dashboardFilterMapping])
 
   /**
+   * Restore the complete original query and clear all drill tracking state.
+   * Shared by the granularity drill-back-to-root branch and the breadcrumb
+   * navigation handlers. The setter ordering matches the original inline code.
+   */
+  const restoreToRoot = useCallback(() => {
+    // Restore the complete original query (fully restores dimensions, measures, filters, etc.)
+    const restoredQuery = originalQuery || query
+    setDrillPath([])
+    // Restore original chart config (or clear if none was stored)
+    setCurrentChartConfig(originalChartConfig)
+    setOriginalChartConfig(null)
+    setOriginalGranularity(null)
+    setOriginalQuery(null)
+    onQueryChange(restoredQuery)
+  }, [originalQuery, query, originalChartConfig, onQueryChange])
+
+  /**
+   * Apply a "navigate back to existing level" descriptor (shared between the
+   * granularity and hierarchy-dimension branches of handleOptionSelect).
+   */
+  const applyNavigateBack = useCallback(
+    (nav: { newPath: DrillPathEntry[]; query: CubeQuery; chartConfig: ChartAxisConfig | null }) => {
+      setDrillPath(nav.newPath)
+      onQueryChange(nav.query)
+      setCurrentChartConfig(nav.chartConfig)
+    },
+    [onQueryChange]
+  )
+
+  /**
    * Handle drill option selection
    */
   const handleOptionSelect = useCallback((option: DrillOption) => {
@@ -134,36 +169,20 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
       // For time dimension drilling, check if we should navigate back instead of creating new entries
       if (option.targetGranularity && drillPath.length > 0) {
         // Check if target granularity exists in drill path (navigate back to that level)
-        const existingLevelIndex = drillPath.findIndex(entry =>
-          entry.granularity === option.targetGranularity
+        const nav = findNavigateBackToExistingLevel(
+          drillPath,
+          entry => entry.granularity === option.targetGranularity
         )
-
-        if (existingLevelIndex !== -1) {
-          // Navigate back to the existing level
-          const targetIndex = existingLevelIndex + 1
-          if (targetIndex < drillPath.length) {
-            const newPath = drillPath.slice(0, targetIndex)
-            const targetEntry = newPath[newPath.length - 1]
-            setDrillPath(newPath)
-            onQueryChange(targetEntry.query)
-            setCurrentChartConfig(targetEntry.chartConfig || null)
-          }
+        if (nav) {
+          applyNavigateBack(nav)
           setMenuOpen(false)
           setCurrentClickEvent(null)
           return
         }
 
         // Check if drilling back to the original granularity (return to root)
-        if (originalGranularity && option.targetGranularity === originalGranularity) {
-          // Restore the complete original query
-          const restoredQuery = originalQuery || query
-          setDrillPath([])
-          // Restore original chart config (or clear if none was stored)
-          setCurrentChartConfig(originalChartConfig)
-          setOriginalChartConfig(null)
-          setOriginalGranularity(null)
-          setOriginalQuery(null)
-          onQueryChange(restoredQuery)
+        if (isDrillBackToRootGranularity(option, originalGranularity)) {
+          restoreToRoot()
           setMenuOpen(false)
           setCurrentClickEvent(null)
           return
@@ -172,20 +191,12 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
 
       // For hierarchy dimension drilling, check if we should navigate back
       if (option.targetDimension && drillPath.length > 0) {
-        const existingLevelIndex = drillPath.findIndex(entry =>
-          entry.dimension === option.targetDimension
+        const nav = findNavigateBackToExistingLevel(
+          drillPath,
+          entry => entry.dimension === option.targetDimension
         )
-
-        if (existingLevelIndex !== -1) {
-          // Navigate back to the existing level
-          const targetIndex = existingLevelIndex + 1
-          if (targetIndex < drillPath.length) {
-            const newPath = drillPath.slice(0, targetIndex)
-            const targetEntry = newPath[newPath.length - 1]
-            setDrillPath(newPath)
-            onQueryChange(targetEntry.query)
-            setCurrentChartConfig(targetEntry.chartConfig || null)
-          }
+        if (nav) {
+          applyNavigateBack(nav)
           setMenuOpen(false)
           setCurrentClickEvent(null)
           return
@@ -206,11 +217,9 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
         }
 
         // Track original granularity for detecting drill-back-to-root via time granularity
-        if (option.targetGranularity && query.timeDimensions?.[0]) {
-          const currentGran = query.timeDimensions[0].granularity
-          if (currentGran) {
-            setOriginalGranularity(currentGran)
-          }
+        const currentGran = computeOriginalGranularity(option, query)
+        if (currentGran) {
+          setOriginalGranularity(currentGran)
         }
       }
 
@@ -229,7 +238,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
     // Close menu
     setMenuOpen(false)
     setCurrentClickEvent(null)
-  }, [currentClickEvent, metadata, query, drillPath, originalGranularity, originalQuery, onQueryChange, chartConfig, originalChartConfig])
+  }, [currentClickEvent, metadata, query, drillPath, originalGranularity, onQueryChange, chartConfig, applyNavigateBack, restoreToRoot])
 
   /**
    * Close the drill menu
@@ -251,16 +260,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
 
     if (drillPath.length === 1) {
       // Going back to root - restore the complete original query
-      // Use stored originalQuery to fully restore dimensions, measures, filters, etc.
-      const restoredQuery = originalQuery || query
-
-      setDrillPath([])
-      // Restore original chart config (or clear if none was stored)
-      setCurrentChartConfig(originalChartConfig)
-      setOriginalChartConfig(null)
-      setOriginalGranularity(null)
-      setOriginalQuery(null)
-      onQueryChange(restoredQuery)
+      restoreToRoot()
     } else {
       // Go back to previous level
       const newPath = drillPath.slice(0, -1)
@@ -270,7 +270,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
       // Restore chart config from previous entry
       setCurrentChartConfig(previousEntry.chartConfig || null)
     }
-  }, [drillPath, onQueryChange, originalChartConfig, originalQuery, query])
+  }, [drillPath, onQueryChange, restoreToRoot])
 
   /**
    * Navigate to a specific level in the drill path
@@ -278,16 +278,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
   const navigateToLevel = useCallback((index: number) => {
     if (index <= 0) {
       // Navigate to root - restore the complete original query
-      // Use stored originalQuery to fully restore dimensions, measures, filters, etc.
-      const restoredQuery = originalQuery || query
-
-      setDrillPath([])
-      // Restore original chart config (or clear if none was stored)
-      setCurrentChartConfig(originalChartConfig)
-      setOriginalChartConfig(null)
-      setOriginalGranularity(null)
-      setOriginalQuery(null)
-      onQueryChange(restoredQuery)
+      restoreToRoot()
     } else if (index < drillPath.length) {
       // Navigate to a specific level
       const newPath = drillPath.slice(0, index)
@@ -297,7 +288,7 @@ export function useDrillInteraction(options: UseDrillInteractionOptions): DrillI
       // Restore chart config from target entry
       setCurrentChartConfig(targetEntry.chartConfig || null)
     }
-  }, [drillPath, onQueryChange, originalChartConfig, originalQuery, query])
+  }, [drillPath, onQueryChange, restoreToRoot])
 
   return {
     handleDataPointClick,

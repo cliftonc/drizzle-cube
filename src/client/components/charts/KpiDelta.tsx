@@ -1,9 +1,19 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { useTranslation } from '../../hooks/useTranslation';
 import { Icon } from "@iconify/react";
 import infoCircleIcon from "@iconify-icons/tabler/info-circle";
 import { useCubeFieldLabel } from "../../hooks/useCubeFieldLabel";
 import { filterIncompletePeriod } from "../../utils/periodUtils";
+import { formatKpiNumber, resolveDisplayLabel } from "./KpiNumber.helpers";
+import { useKpiDimensions } from "./useKpiDimensions";
+import { KpiCenteredState, kpiHeightStyle } from "./KpiStates";
+import {
+  toFieldList,
+  sortByDimension,
+  extractNumericValues,
+  computeDelta,
+  resolvePaletteColor,
+} from "./KpiDelta.helpers";
 import type { ChartProps } from "../../types";
 
 interface VarianceHistogramProps {
@@ -141,114 +151,49 @@ const KpiDelta = React.memo(function KpiDelta({
   colorPalette,
 }: ChartProps) {
   const { t } = useTranslation();
-  const [fontSize, setFontSize] = useState(32);
-  const [textWidth, setTextWidth] = useState(250);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const valueRef = useRef<HTMLDivElement>(null);
   // Use specialized hook to avoid re-renders from unrelated context changes
   const getFieldLabel = useCubeFieldLabel();
 
   // Calculate font size and text width based on container dimensions
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const rect = container.getBoundingClientRect();
-        const containerWidth = rect.width;
-        const containerHeight = rect.height;
-
-        if (containerWidth > 0 && containerHeight > 0) {
-          const widthBasedSize = containerWidth / 4;
-          const heightBasedSize = containerHeight / 4;
-          const baseFontSize = Math.min(widthBasedSize, heightBasedSize);
-          const clampedFontSize = Math.max(28, Math.min(baseFontSize, 140));
-          setFontSize(clampedFontSize);
-
-          setTimeout(() => {
-            if (valueRef.current) {
-              const textRect = valueRef.current.getBoundingClientRect();
-              const measuredWidth = textRect.width;
-              // Scale histogram width with container, accounting for labels on the right (~60px)
-              const maxHistogramWidth = containerWidth - 100; // Leave room for padding and labels
-              const effectiveWidth = Math.max(
-                measuredWidth,
-                Math.min(maxHistogramWidth, containerWidth * 0.7),
-              );
-              setTextWidth(Math.max(100, effectiveWidth)); // Minimum 100px
-            }
-          }, 10);
-        }
-      }
-    };
-
-    const timer = setTimeout(updateDimensions, 50);
-
-    const resizeObserver = new ResizeObserver(() => {
-      setTimeout(updateDimensions, 10);
-    });
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      clearTimeout(timer);
-      resizeObserver.disconnect();
-    };
-  }, [data, chartConfig]);
+  const { containerRef, valueRef, fontSize, textWidth } = useKpiDimensions({
+    widthDivisor: 4,
+    heightDivisor: 4,
+    minFontSize: 28,
+    maxFontSize: 140,
+    // Scale histogram width with container, accounting for labels on the right (~60px)
+    measureWidth: (measuredWidth, containerWidth) => {
+      const maxHistogramWidth = containerWidth - 100; // Leave room for padding and labels
+      const effectiveWidth = Math.max(
+        measuredWidth,
+        Math.min(maxHistogramWidth, containerWidth * 0.7),
+      );
+      return Math.max(100, effectiveWidth); // Minimum 100px
+    },
+    deps: [data, chartConfig],
+  });
 
   if (!data || data.length === 0) {
     return (
-      <div
-        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? "200px" : undefined,
-        }}
-      >
-        <div className="dc:text-center text-dc-text-muted">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.noData')}</div>
-          <div className="dc:text-xs text-dc-text-secondary">
-            No data points to display
-          </div>
-        </div>
-      </div>
+      <KpiCenteredState
+        height={height}
+        title={t('chart.runtime.noData')}
+        hint="No data points to display"
+      />
     );
   }
 
   // Extract value and dimension fields from chart config
-  let valueFields: string[] = [];
-  let dimensionFields: string[] = [];
-
-  if (chartConfig?.yAxis) {
-    valueFields = Array.isArray(chartConfig.yAxis)
-      ? chartConfig.yAxis
-      : [chartConfig.yAxis];
-  }
-
-  if (chartConfig?.xAxis) {
-    dimensionFields = Array.isArray(chartConfig.xAxis)
-      ? chartConfig.xAxis
-      : [chartConfig.xAxis];
-  }
+  const valueFields = toFieldList(chartConfig?.yAxis);
+  const dimensionFields = toFieldList(chartConfig?.xAxis);
 
   if (valueFields.length === 0) {
     return (
-      <div
-        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? "200px" : undefined,
-          backgroundColor: "var(--dc-danger-bg)",
-          color: "var(--dc-danger)",
-          borderColor: "var(--dc-danger-border)",
-        }}
-      >
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.configError')}</div>
-          <div className="dc:text-xs">{t('chart.runtime.configErrorHint.noMeasure')}</div>
-        </div>
-      </div>
+      <KpiCenteredState
+        height={height}
+        variant="danger"
+        title={t('chart.runtime.configError')}
+        hint={t('chart.runtime.configErrorHint.noMeasure')}
+      />
     );
   }
 
@@ -256,16 +201,7 @@ const KpiDelta = React.memo(function KpiDelta({
   const dimensionField = dimensionFields[0]; // Optional
 
   // Sort data by dimension if available (for time series)
-  let sortedData = [...data];
-  if (dimensionField) {
-    sortedData = sortedData.sort((a, b) => {
-      const aVal = a[dimensionField];
-      const bVal = b[dimensionField];
-      if (aVal < bVal) return -1;
-      if (aVal > bVal) return 1;
-      return 0;
-    });
-  }
+  const sortedData = sortByDimension(data, dimensionField);
 
   // Filter out incomplete or last period if enabled
   const { useLastCompletePeriod = true, skipLastPeriod = false } =
@@ -287,114 +223,47 @@ const KpiDelta = React.memo(function KpiDelta({
   const dataToUse = filteredData;
 
   // Extract values from filtered data
-  const values = dataToUse
-    .map((row) => row[valueField])
-    .filter((val) => val !== null && val !== undefined && !isNaN(Number(val)))
-    .map((val) => Number(val));
+  const values = extractNumericValues(dataToUse, valueField);
 
   if (values.length < 2) {
     return (
-      <div
-        className="dc:flex dc:items-center dc:justify-center dc:w-full dc:h-full"
-        style={{
-          height: height === "100%" ? "100%" : height,
-          minHeight: height === "100%" ? "200px" : undefined,
-          backgroundColor: "var(--dc-warning-bg)",
-          color: "var(--dc-warning)",
-          borderColor: "var(--dc-warning-border)",
-        }}
+      <KpiCenteredState
+        height={height}
+        variant="warning"
+        title={t('chart.runtime.kpiDelta.insufficientData')}
+        hint={t('chart.runtime.kpiDelta.requiresTwoPoints')}
       >
-        <div className="dc:text-center">
-          <div className="dc:text-sm dc:font-semibold dc:mb-1">{t('chart.runtime.kpiDelta.insufficientData')}</div>
-          <div className="dc:text-xs">
-            {t('chart.runtime.kpiDelta.requiresTwoPoints')}
-          </div>
-          <div className="dc:text-xs">{t('chart.runtime.kpiDelta.currentPoints', { count: values.length })}</div>
-        </div>
-      </div>
+        <div className="dc:text-xs">{t('chart.runtime.kpiDelta.currentPoints', { count: values.length })}</div>
+      </KpiCenteredState>
     );
   }
 
   // Calculate delta between last and second-last values
-  const lastValue = values[values.length - 1];
-  const secondLastValue = values[values.length - 2];
-  const absoluteChange = lastValue - secondLastValue;
-  const percentageChange =
-    secondLastValue !== 0
-      ? (absoluteChange / Math.abs(secondLastValue)) * 100
-      : 0;
-
-  const isPositiveChange = absoluteChange >= 0;
+  const { lastValue, absoluteChange, percentageChange, isPositiveChange } =
+    computeDelta(values);
 
   // Format number with appropriate units and decimals
-  const formatNumber = (value: number | null | undefined): string => {
-    // If custom formatValue is provided, use it exclusively
-    if (displayConfig.formatValue) {
-      return displayConfig.formatValue(value);
-    }
-
-    // Null handling: Show placeholder for missing data
-    if (value === null || value === undefined) {
-      return "—";
-    }
-
-    const decimals = displayConfig.decimals ?? 0;
-    const prefix = displayConfig.prefix ?? "";
-
-    let formattedValue: string;
-
-    if (Math.abs(value) >= 1e9) {
-      formattedValue = (value / 1e9).toFixed(decimals) + "B";
-    } else if (Math.abs(value) >= 1e6) {
-      formattedValue = (value / 1e6).toFixed(decimals) + "M";
-    } else if (Math.abs(value) >= 1e3) {
-      formattedValue = (value / 1e3).toFixed(decimals) + "K";
-    } else {
-      formattedValue = value.toFixed(decimals);
-    }
-
-    return prefix + formattedValue;
-  };
+  const formatNumber = (value: number | null | undefined): string =>
+    formatKpiNumber(value, displayConfig);
 
   // Get colors from palette
-  const getPositiveColor = (): string => {
-    if (
-      displayConfig.positiveColorIndex !== undefined &&
-      colorPalette?.colors
-    ) {
-      const colorIndex = displayConfig.positiveColorIndex;
-      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex];
-      }
-    }
-    return "#10b981"; // Default green
-  };
-
-  const getNegativeColor = (): string => {
-    if (
-      displayConfig.negativeColorIndex !== undefined &&
-      colorPalette?.colors
-    ) {
-      const colorIndex = displayConfig.negativeColorIndex;
-      if (colorIndex >= 0 && colorIndex < colorPalette.colors.length) {
-        return colorPalette.colors[colorIndex];
-      }
-    }
-    return "#ef4444"; // Default red
-  };
-
-  const positiveColor = getPositiveColor();
-  const negativeColor = getNegativeColor();
+  const positiveColor = resolvePaletteColor(
+    displayConfig.positiveColorIndex,
+    colorPalette?.colors,
+    "#10b981", // Default green
+  );
+  const negativeColor = resolvePaletteColor(
+    displayConfig.negativeColorIndex,
+    colorPalette?.colors,
+    "#ef4444", // Default red
+  );
   const currentColor = isPositiveChange ? positiveColor : negativeColor;
 
   return (
     <div
       ref={containerRef}
       className="dc:flex dc:flex-col dc:items-center dc:justify-center dc:w-full dc:h-full dc:p-4"
-      style={{
-        height: height === "100%" ? "100%" : height,
-        minHeight: height === "100%" ? "200px" : undefined,
-      }}
+      style={kpiHeightStyle(height)}
     >
       {/* Field Label */}
       <div
@@ -405,10 +274,7 @@ const KpiDelta = React.memo(function KpiDelta({
         }}
       >
         <span>
-          {(() => {
-            const label = getFieldLabel(valueField);
-            return label && label.length > 1 ? label : valueField;
-          })()}
+          {resolveDisplayLabel(getFieldLabel(valueField), valueField)}
         </span>
         {(excludedIncompletePeriod || skippedLastPeriod) && (
           <span

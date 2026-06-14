@@ -87,105 +87,10 @@ export class CTEBuilder {
     const cubeBase = cube.sql(context) // Gets security filtering!
 
     // Check if this CTE needs to absorb intermediate tables (multi-hop fan-out prevention)
-    const hasIntermediateJoins = cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0
+    const hasIntermediateJoins = !!(cteInfo.intermediateJoins && cteInfo.intermediateJoins.length > 0)
 
-    // Build selections for CTE - include join keys and measures
-    const cteSelections: Record<string, any> = {}
-
-    // For multi-hop paths with intermediate joins:
-    // - The join key needs to come from the INTERMEDIATE table, not the CTE table
-    // - Example: EmployeeTeams CTE joining through Employees to Departments
-    //   → CTE should GROUP BY employees.department_id, not employee_teams.employee_id
-    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      // Use the first intermediate table's connection to primary as the join key
-      const firstIntermediate = cteInfo.intermediateJoins[0]
-      const primaryConnectCol = firstIntermediate.primaryJoinColumn
-
-      // Add the primary-connected column from the intermediate table
-      // This column will be used to join the CTE directly to the primary cube
-      if (primaryConnectCol) {
-        const colName = primaryConnectCol.name
-        cteSelections[colName] = primaryConnectCol
-      }
-    } else {
-      // Standard path: Add join key columns - use the stored column objects
-      for (const joinKey of cteInfo.joinKeys) {
-        // Use the stored Drizzle column object if available
-        if (joinKey.targetColumnObj) {
-
-          cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
-
-          // Also add an aliased version if there's a matching dimension with a different name
-          // This allows the main query to reference it by dimension name
-          for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
-            if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
-              // Add an aliased version: "column_name" as "dimensionName"
-              cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
-            }
-          }
-        }
-      }
-    }
-
-    // Add downstream join keys for cubes that need to be joined through this CTE
-    // Example: If Teams.name is a dimension and EmployeeTeams has a join to Teams,
-    // we need to include team_id in the CTE so Teams can be joined through it
-    if (cteInfo.downstreamJoinKeys) {
-      for (const downstream of cteInfo.downstreamJoinKeys) {
-        for (const joinKey of downstream.joinKeys) {
-          // Add the source column (from CTE cube table) to SELECT
-          // This is the FK column in the CTE cube that points to the downstream cube
-          if (joinKey.sourceColumnObj) {
-            cteSelections[joinKey.sourceColumn] = joinKey.sourceColumnObj
-          }
-        }
-      }
-    }
-
-    // Add measures with aggregation using the centralized helper
-    const cubeName = cube.name
-    const cubeMap = new Map([[cubeName, cube]])
-
-    const resolvedMeasures = this.queryBuilder.buildResolvedMeasures(
-      cteInfo.measures,
-      cubeMap,
-      context
-    )
-
-    // Add all resolved measures to CTE selections
-    for (const measureName of cteInfo.measures) {
-      const [, fieldName] = measureName.split('.')
-      const measureBuilder = resolvedMeasures.get(measureName)
-      if (measureBuilder) {
-        const measureExpr = measureBuilder()
-        // Use just the field name as the column alias (SQL identifiers can't have dots)
-        cteSelections[fieldName] = sql`${measureExpr}`.as(fieldName)
-      }
-    }
-
-    // Add dimensions that are requested in the query from this cube
-    if (query.dimensions) {
-      for (const dimensionName of query.dimensions) {
-        const [dimCubeName, fieldName] = dimensionName.split('.')
-        if (dimCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const dimensionExpr = this.queryBuilder.buildMeasureExpression({ sql: dimension.sql, type: 'number' }, context)
-          cteSelections[fieldName] = sql`${dimensionExpr}`.as(fieldName)
-        }
-      }
-    }
-
-    // Add time dimensions that are requested in the query from this cube
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [timeCubeName, fieldName] = timeDim.dimension.split('.')
-        if (timeCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const timeExpr = this.queryBuilder.buildTimeDimensionExpression(dimension.sql, timeDim.granularity, context)
-          cteSelections[fieldName] = sql`${timeExpr}`.as(fieldName)
-        }
-      }
-    }
+    // Build selections for CTE - include join keys, measures, and requested dimensions
+    const cteSelections = this.buildCTESelections(cteInfo, cube, query, context, hasIntermediateJoins)
 
     // Ensure we have at least one selection
     if (Object.keys(cteSelections).length === 0) {
@@ -205,109 +110,12 @@ export class CTEBuilder {
 
     // If there are intermediate joins (multi-hop fan-out prevention),
     // add JOINs to the intermediate tables inside the CTE
-    // Example: EmployeeTeams CTE needs to JOIN to Employees to get department_id
-    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      // Join intermediate tables from CTE-nearest to primary-nearest.
-      // Example path Teams -> EmployeeTeams -> Employees -> Productivity CTE:
-      // we must join Employees first, then EmployeeTeams, otherwise ON clauses
-      // can reference tables that are not yet in scope.
-      const joinChain = [...cteInfo.intermediateJoins].reverse()
-      for (const intermediate of joinChain) {
-        const intermediateCubeBase = intermediate.cube.sql(context)
-        const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
+    cteQuery = this.applyIntermediateJoins(cteQuery, cteInfo, context, hasIntermediateJoins)
 
-        // Add JOIN with security context for the intermediate table. The
-        // security WHERE is materialized here (not baked into the plan) from
-        // the intermediate cube's sql(context).where.
-        const intermediateConditions = [joinCondition]
-        if (intermediateCubeBase.where) {
-          intermediateConditions.push(intermediateCubeBase.where)
-        }
-
-        cteQuery = cteQuery.leftJoin(
-          intermediateCubeBase.from,
-          and(...intermediateConditions)!
-        )
-      }
-    }
-
-    // Add additional query-specific WHERE conditions for this cube
-    // IMPORTANT: Only apply dimension filters in CTE WHERE clause, not measure filters
-    // Measure filters should only be applied in HAVING clause of the main query
-
-    // Create a modified query plan that doesn't skip filters for the current CTE cube
-    const cteQueryPlan = queryPlan ? {
-      ...queryPlan,
-      preAggregationCTEs: queryPlan.preAggregationCTEs?.filter((cte: any) => cte.cube.name !== cube.name)
-    } : undefined
-
-    const whereConditions = this.queryBuilder.buildWhereConditions(cube, query, context, cteQueryPlan, preBuiltFilterMap)
-
-    // Also add time dimension filters for this cube within the CTE
-    const cteTimeFilters: any[] = []
-
-    // Handle dateRange from timeDimensions property
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [timeCubeName, fieldName] = timeDim.dimension.split('.')
-        if (timeCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName] && timeDim.dateRange) {
-          const dimension = cube.dimensions[fieldName]
-          // Use the raw field expression for date filtering (not the truncated version)
-          const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: dimension.sql, type: 'number' }, context)
-          const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
-          if (dateCondition) {
-            cteTimeFilters.push(dateCondition)
-          }
-        }
-      }
-    }
-
-    // Handle inDateRange filters from filters array for time dimensions of this cube
-    if (query.filters) {
-      for (const filter of query.filters) {
-        // Only handle simple filter conditions (not logical AND/OR)
-        if (!('and' in filter) && !('or' in filter) && 'member' in filter && 'operator' in filter) {
-          const filterCondition = filter as any
-          const [filterCubeName, filterFieldName] = filterCondition.member.split('.')
-
-          // Check if this filter is for a time dimension of this cube
-          if (filterCubeName === cubeName && cube.dimensions && cube.dimensions[filterFieldName]) {
-            const dimension = cube.dimensions[filterFieldName]
-            // Check if this is a time dimension (date/time related) and has inDateRange filter
-            if (filterCondition.operator === 'inDateRange') {
-              const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: dimension.sql, type: 'number' }, context)
-              const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, filterCondition.values)
-              if (dateCondition) {
-                cteTimeFilters.push(dateCondition)
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Handle propagating filters from related cubes
-    // When cube A has filters and hasMany relationship to this CTE cube B,
-    // A's filters should propagate via subquery: B.FK IN (SELECT A.PK FROM A WHERE filters)
-    if (cteInfo.propagatingFilters && cteInfo.propagatingFilters.length > 0) {
-      for (const propFilter of cteInfo.propagatingFilters) {
-        const subqueryCondition = this.buildPropagatingFilterSubquery(
-          propFilter,
-          context
-        )
-        if (subqueryCondition) {
-          cteTimeFilters.push(subqueryCondition)
-        }
-      }
-    }
-
-    // Combine security context, regular WHERE conditions, and time dimension filters into one WHERE clause
-    // IMPORTANT: Must combine all conditions in a single WHERE call to avoid overriding
-    const allCteConditions = []
-    if (cubeBase.where) {
-      allCteConditions.push(cubeBase.where)
-    }
-    allCteConditions.push(...whereConditions, ...cteTimeFilters)
+    // Combine security context, regular WHERE conditions, and time dimension filters
+    const allCteConditions = this.buildCTEWhereConditions(
+      cteInfo, cube, query, context, queryPlan, preBuiltFilterMap, cubeBase
+    )
 
     if (allCteConditions.length > 0) {
       const combinedWhere = allCteConditions.length === 1
@@ -317,34 +125,325 @@ export class CTEBuilder {
     }
 
     // All CTEs now use GROUP BY for pre-aggregation
-    // Post-aggregation window functions are applied in the outer query, not in CTEs
-    // Group by join keys (essential for pre-aggregation) and requested dimensions
+    const groupByFields = this.buildCTEGroupByFields(cteInfo, cube, query, context, hasIntermediateJoins)
+
+    if (groupByFields.length > 0) {
+      cteQuery = cteQuery.groupBy(...groupByFields)
+    }
+
+    return context.db.$with(cteInfo.cteAlias).as(cteQuery)
+  }
+
+  /**
+   * Build the SELECT map for a pre-aggregation CTE: join keys (or the
+   * intermediate primary-connected column), downstream join keys, aggregated
+   * measures, and requested dimensions / time dimensions from this cube.
+   */
+  private buildCTESelections(
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    query: SemanticQuery,
+    context: QueryContext,
+    hasIntermediateJoins: boolean
+  ): Record<string, any> {
+    const cteSelections: Record<string, any> = {}
+
+    this.addJoinKeySelections(cteSelections, cteInfo, cube, hasIntermediateJoins)
+    this.addDownstreamKeySelections(cteSelections, cteInfo)
+    this.addMeasureSelections(cteSelections, cteInfo, cube, context)
+    this.addDimensionSelections(cteSelections, cube, query, context)
+
+    return cteSelections
+  }
+
+  /** Add join-key columns (or the intermediate primary-connected column) to the CTE SELECT. */
+  private addJoinKeySelections(
+    cteSelections: Record<string, any>,
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    hasIntermediateJoins: boolean
+  ): void {
+    // For multi-hop paths with intermediate joins the join key needs to come from
+    // the INTERMEDIATE table, not the CTE table (e.g. employees.department_id).
+    if (hasIntermediateJoins && cteInfo.intermediateJoins) {
+      const primaryConnectCol = cteInfo.intermediateJoins[0].primaryJoinColumn
+      if (primaryConnectCol) {
+        cteSelections[primaryConnectCol.name] = primaryConnectCol
+      }
+      return
+    }
+
+    // Standard path: Add join key columns - use the stored column objects
+    for (const joinKey of cteInfo.joinKeys) {
+      if (!joinKey.targetColumnObj) continue
+      cteSelections[joinKey.targetColumn] = joinKey.targetColumnObj
+
+      // Also add an aliased version if there's a matching dimension with a different name
+      // This allows the main query to reference it by dimension name
+      for (const [dimName, dimension] of Object.entries(cube.dimensions || {}) as Array<[string, any]>) {
+        if (dimension.sql === joinKey.targetColumnObj && dimName !== joinKey.targetColumn) {
+          cteSelections[dimName] = sql`${joinKey.targetColumnObj}`.as(dimName) as unknown as any
+        }
+      }
+    }
+  }
+
+  /** Add downstream join-key columns so downstream cubes can be joined through this CTE. */
+  private addDownstreamKeySelections(
+    cteSelections: Record<string, any>,
+    cteInfo: CTEInfo
+  ): void {
+    if (!cteInfo.downstreamJoinKeys) return
+    for (const downstream of cteInfo.downstreamJoinKeys) {
+      for (const joinKey of downstream.joinKeys) {
+        if (joinKey.sourceColumnObj) {
+          cteSelections[joinKey.sourceColumn] = joinKey.sourceColumnObj
+        }
+      }
+    }
+  }
+
+  /** Add aggregated measure expressions to the CTE SELECT. */
+  private addMeasureSelections(
+    cteSelections: Record<string, any>,
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    context: QueryContext
+  ): void {
+    const cubeMap = new Map([[cube.name, cube]])
+    const resolvedMeasures = this.queryBuilder.buildResolvedMeasures(cteInfo.measures, cubeMap, context)
+    for (const measureName of cteInfo.measures) {
+      const [, fieldName] = measureName.split('.')
+      const measureBuilder = resolvedMeasures.get(measureName)
+      if (measureBuilder) {
+        // Use just the field name as the column alias (SQL identifiers can't have dots)
+        cteSelections[fieldName] = sql`${measureBuilder()}`.as(fieldName)
+      }
+    }
+  }
+
+  /** Add requested dimensions and time dimensions (from this cube) to the CTE SELECT. */
+  private addDimensionSelections(
+    cteSelections: Record<string, any>,
+    cube: CTEInfo['cube'],
+    query: SemanticQuery,
+    context: QueryContext
+  ): void {
+    const cubeName = cube.name
+
+    for (const dimensionName of query.dimensions || []) {
+      const [dimCubeName, fieldName] = dimensionName.split('.')
+      if (dimCubeName === cubeName && cube.dimensions?.[fieldName]) {
+        const dimensionExpr = this.queryBuilder.buildMeasureExpression(
+          { sql: cube.dimensions[fieldName].sql, type: 'number' }, context
+        )
+        cteSelections[fieldName] = sql`${dimensionExpr}`.as(fieldName)
+      }
+    }
+
+    for (const timeDim of query.timeDimensions || []) {
+      const [timeCubeName, fieldName] = timeDim.dimension.split('.')
+      if (timeCubeName === cubeName && cube.dimensions?.[fieldName]) {
+        const timeExpr = this.queryBuilder.buildTimeDimensionExpression(
+          cube.dimensions[fieldName].sql, timeDim.granularity, context
+        )
+        cteSelections[fieldName] = sql`${timeExpr}`.as(fieldName)
+      }
+    }
+  }
+
+  /**
+   * Add JOINs to intermediate tables inside the CTE (multi-hop fan-out
+   * prevention). Joins from CTE-nearest to primary-nearest so each ON clause
+   * only references tables already in scope.
+   */
+  private applyIntermediateJoins(
+    cteQuery: any,
+    cteInfo: CTEInfo,
+    context: QueryContext,
+    hasIntermediateJoins: boolean
+  ): any {
+    if (!hasIntermediateJoins || !cteInfo.intermediateJoins) {
+      return cteQuery
+    }
+
+    const joinChain = [...cteInfo.intermediateJoins].reverse()
+    for (const intermediate of joinChain) {
+      const intermediateCubeBase = intermediate.cube.sql(context)
+      const joinCondition = eq(intermediate.cteJoinColumn, intermediate.joinDef.on[0]?.target)
+
+      // Add JOIN with security context for the intermediate table. The
+      // security WHERE is materialized here (not baked into the plan) from
+      // the intermediate cube's sql(context).where.
+      const intermediateConditions = [joinCondition]
+      if (intermediateCubeBase.where) {
+        intermediateConditions.push(intermediateCubeBase.where)
+      }
+
+      cteQuery = cteQuery.leftJoin(
+        intermediateCubeBase.from,
+        and(...intermediateConditions)!
+      )
+    }
+    return cteQuery
+  }
+
+  /**
+   * Assemble the full WHERE condition list for a pre-aggregation CTE: security
+   * context, regular dimension filters, time-dimension date filters, and
+   * propagating filters from related cubes.
+   *
+   * IMPORTANT: Only dimension filters are applied here; measure filters belong
+   * in the main query's HAVING clause.
+   */
+  private buildCTEWhereConditions(
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    query: SemanticQuery,
+    context: QueryContext,
+    queryPlan: PhysicalQueryPlan,
+    preBuiltFilterMap: Map<string, SQL[]> | undefined,
+    cubeBase: { where?: SQL }
+  ): any[] {
+    // Create a modified query plan that doesn't skip filters for the current CTE cube
+    const cteQueryPlan = queryPlan ? {
+      ...queryPlan,
+      preAggregationCTEs: queryPlan.preAggregationCTEs?.filter((cte: any) => cte.cube.name !== cube.name)
+    } : undefined
+
+    const whereConditions = this.queryBuilder.buildWhereConditions(cube, query, context, cteQueryPlan, preBuiltFilterMap)
+    const cteTimeFilters = this.buildCTETimeFilters(cteInfo, cube, query, context)
+
+    const allCteConditions: any[] = []
+    if (cubeBase.where) {
+      allCteConditions.push(cubeBase.where)
+    }
+    allCteConditions.push(...whereConditions, ...cteTimeFilters)
+    return allCteConditions
+  }
+
+  /**
+   * Build the time-dimension date filters (from `timeDimensions.dateRange` and
+   * `inDateRange` simple filters) plus propagating-filter subqueries for a CTE.
+   */
+  private buildCTETimeFilters(
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    query: SemanticQuery,
+    context: QueryContext
+  ): any[] {
+    const cubeName = cube.name
+    const cteTimeFilters: any[] = []
+
+    // Handle dateRange from timeDimensions property
+    for (const timeDim of query.timeDimensions || []) {
+      const [timeCubeName, fieldName] = timeDim.dimension.split('.')
+      if (timeCubeName === cubeName && cube.dimensions?.[fieldName] && timeDim.dateRange) {
+        // Use the raw field expression for date filtering (not the truncated version)
+        const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: cube.dimensions[fieldName].sql, type: 'number' }, context)
+        const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+        if (dateCondition) {
+          cteTimeFilters.push(dateCondition)
+        }
+      }
+    }
+
+    // Handle inDateRange filters from filters array for time dimensions of this cube
+    for (const filter of query.filters || []) {
+      // Only handle simple filter conditions (not logical AND/OR)
+      if (('and' in filter) || ('or' in filter) || !('member' in filter) || !('operator' in filter)) {
+        continue
+      }
+      const filterCondition = filter as any
+      const [filterCubeName, filterFieldName] = filterCondition.member.split('.')
+      if (filterCubeName === cubeName && cube.dimensions?.[filterFieldName] && filterCondition.operator === 'inDateRange') {
+        const fieldExpr = this.queryBuilder.buildMeasureExpression({ sql: cube.dimensions[filterFieldName].sql, type: 'number' }, context)
+        const dateCondition = this.queryBuilder.buildDateRangeCondition(fieldExpr, filterCondition.values)
+        if (dateCondition) {
+          cteTimeFilters.push(dateCondition)
+        }
+      }
+    }
+
+    // Handle propagating filters from related cubes
+    // When cube A has filters and hasMany relationship to this CTE cube B,
+    // A's filters should propagate via subquery: B.FK IN (SELECT A.PK FROM A WHERE filters)
+    for (const propFilter of cteInfo.propagatingFilters || []) {
+      const subqueryCondition = this.buildPropagatingFilterSubquery(propFilter, context)
+      if (subqueryCondition) {
+        cteTimeFilters.push(subqueryCondition)
+      }
+    }
+
+    return cteTimeFilters
+  }
+
+  /**
+   * Build the GROUP BY fields for a pre-aggregation CTE: join keys (or the
+   * intermediate primary-connected column), downstream join keys, and requested
+   * dimensions / time dimensions. De-dupes named columns.
+   */
+  private buildCTEGroupByFields(
+    cteInfo: CTEInfo,
+    cube: CTEInfo['cube'],
+    query: SemanticQuery,
+    context: QueryContext,
+    hasIntermediateJoins: boolean
+  ): any[] {
+    const cubeName = cube.name
     const groupByFields: any[] = []
     const addedColumnNames = new Set<string>() // Track added columns to avoid duplicates
 
-    // Helper to add column if not already present
+    // Add column if not already present (named columns de-duped; expressions added directly)
     const addGroupByField = (col: any) => {
       const colName = col?.name || (typeof col === 'string' ? col : null)
       if (colName && !addedColumnNames.has(colName)) {
         addedColumnNames.add(colName)
         groupByFields.push(col)
       } else if (!colName) {
-        // For expressions without a name, add directly
         groupByFields.push(col)
       }
     }
 
-    // Add join key columns to GROUP BY
-    // For multi-hop paths with intermediate joins, use the intermediate table's column
-    // that connects to the primary cube (e.g., employees.department_id)
+    this.addJoinKeyGroupBy(addGroupByField, cteInfo, hasIntermediateJoins)
+
+    // Add requested dimensions from this cube to GROUP BY
+    for (const dimensionName of query.dimensions || []) {
+      const [dimCubeName, fieldName] = dimensionName.split('.')
+      if (dimCubeName === cubeName && cube.dimensions?.[fieldName]) {
+        groupByFields.push(resolveSqlExpression(cube.dimensions[fieldName].sql, context))
+      }
+    }
+
+    // Add requested time dimensions from this cube to GROUP BY
+    for (const timeDim of query.timeDimensions || []) {
+      const [timeCubeName, fieldName] = timeDim.dimension.split('.')
+      if (timeCubeName === cubeName && cube.dimensions?.[fieldName]) {
+        groupByFields.push(
+          this.queryBuilder.buildTimeDimensionExpression(cube.dimensions[fieldName].sql, timeDim.granularity, context)
+        )
+      }
+    }
+
+    return groupByFields
+  }
+
+  /**
+   * Add join keys (and downstream join keys) to the CTE GROUP BY via the de-dupe
+   * callback. For multi-hop paths uses the intermediate table's
+   * primary-connected column (e.g. employees.department_id).
+   */
+  private addJoinKeyGroupBy(
+    addGroupByField: (col: any) => void,
+    cteInfo: CTEInfo,
+    hasIntermediateJoins: boolean
+  ): void {
     if (hasIntermediateJoins && cteInfo.intermediateJoins) {
-      // Use the primary-connected column from the first intermediate table
       const firstIntermediate = cteInfo.intermediateJoins[0]
       if (firstIntermediate.primaryJoinColumn) {
         addGroupByField(firstIntermediate.primaryJoinColumn)
       }
     } else {
-      // Standard path: use the direct join keys
       for (const joinKey of cteInfo.joinKeys) {
         if (joinKey.targetColumnObj) {
           addGroupByField(joinKey.targetColumnObj)
@@ -352,8 +451,7 @@ export class CTEBuilder {
       }
     }
 
-    // Add downstream join keys to GROUP BY
-    // These are needed so downstream cubes can be joined through this CTE
+    // Add downstream join keys (so downstream cubes can join through this CTE)
     if (cteInfo.downstreamJoinKeys) {
       for (const downstream of cteInfo.downstreamJoinKeys) {
         for (const joinKey of downstream.joinKeys) {
@@ -363,36 +461,6 @@ export class CTEBuilder {
         }
       }
     }
-
-    // Add dimensions that are requested in the query from this cube to GROUP BY
-    if (query.dimensions) {
-      for (const dimensionName of query.dimensions) {
-        const [dimCubeName, fieldName] = dimensionName.split('.')
-        if (dimCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const dimensionExpr = resolveSqlExpression(dimension.sql, context)
-          groupByFields.push(dimensionExpr)
-        }
-      }
-    }
-
-    // Add time dimensions that are requested in the query from this cube to GROUP BY
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [timeCubeName, fieldName] = timeDim.dimension.split('.')
-        if (timeCubeName === cubeName && cube.dimensions && cube.dimensions[fieldName]) {
-          const dimension = cube.dimensions[fieldName]
-          const timeExpr = this.queryBuilder.buildTimeDimensionExpression(dimension.sql, timeDim.granularity, context)
-          groupByFields.push(timeExpr)
-        }
-      }
-    }
-
-    if (groupByFields.length > 0) {
-      cteQuery = cteQuery.groupBy(...groupByFields)
-    }
-
-    return context.db.$with(cteInfo.cteAlias).as(cteQuery)
   }
 
   /**

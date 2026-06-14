@@ -6,39 +6,13 @@
 import { useRef, useCallback, useState } from 'react'
 import { useCubeApi } from '../providers/CubeProvider'
 import type { PortletBlock, MarkdownBlock } from '../stores/notebookStore'
-
-/** Clean up raw API errors into user-friendly messages */
-function formatUserFacingError(message: string): string {
-  // Detect raw JSON error payloads (e.g. from Anthropic API)
-  if (message.startsWith('{') || message.includes('"type":"error"')) {
-    try {
-      const parsed = JSON.parse(message.replace(/^Error:\s*/, ''))
-      const errorType = parsed.error?.type || parsed.type || ''
-      const friendly: Record<string, string> = {
-        overloaded_error: 'The AI service is temporarily busy. Please try again in a moment.',
-        rate_limit_error: 'Too many requests. Please wait a moment and try again.',
-        api_error: 'The AI service encountered an error. Please try again.',
-        authentication_error: 'Authentication failed. Please check your configuration.',
-      }
-      return friendly[errorType] || 'The AI service encountered an error. Please try again.'
-    } catch {
-      return 'The AI service encountered an error. Please try again.'
-    }
-  }
-  // HTTP status errors
-  if (message.startsWith('Agent request failed:')) {
-    const status = message.match(/\d+/)?.[0]
-    if (status === '429') return 'Too many requests. Please wait a moment and try again.'
-    if (status === '503' || status === '529') return 'The AI service is temporarily busy. Please try again in a moment.'
-    return 'The AI service is temporarily unavailable. Please try again.'
-  }
-  return message
-}
-
-interface AgentSSEEvent {
-  type: 'text_delta' | 'tool_use_start' | 'tool_use_result' | 'add_portlet' | 'add_markdown' | 'dashboard_saved' | 'turn_complete' | 'done' | 'error'
-  data: any
-}
+import {
+  formatUserFacingError,
+  handleAgentEvent,
+  dispatchSSEBlock,
+  buildAgentHeaders,
+  type AgentSSEEvent,
+} from './agentChatStream'
 
 export interface UseAgentChatOptions {
   /** Override default agent endpoint (default: apiUrl + '/agent/chat') */
@@ -110,44 +84,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
   callbacksRef.current = options
 
   const sendMessage = useCallback(async (content: string, sessionId?: string | null, history?: AgentHistoryMessage[]) => {
-    function handleEvent(event: AgentSSEEvent) {
-      const cb = callbacksRef.current
-      switch (event.type) {
-        case 'text_delta':
-          cb.onTextDelta(event.data)
-          break
-        case 'tool_use_start':
-          cb.onToolStart(event.data.id, event.data.name, event.data.input)
-          break
-        case 'tool_use_result':
-          cb.onToolResult(event.data.id, event.data.name, event.data.result, event.data.isError)
-          break
-        case 'add_portlet':
-          cb.onAddPortlet({
-            ...event.data,
-            type: 'portlet',
-          })
-          break
-        case 'add_markdown':
-          cb.onAddMarkdown({
-            ...event.data,
-            type: 'markdown',
-          })
-          break
-        case 'dashboard_saved':
-          cb.onDashboardSaved?.(event.data)
-          break
-        case 'turn_complete':
-          cb.onTurnComplete?.()
-          break
-        case 'done':
-          cb.onDone(event.data.sessionId, event.data.traceId)
-          break
-        case 'error':
-          cb.onError(event.data.message)
-          break
-      }
-    }
+    const handleEvent = (event: AgentSSEEvent) => handleAgentEvent(event, callbacksRef.current)
 
     // Abort any existing stream
     if (abortControllerRef.current) {
@@ -163,25 +100,14 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
       const apiUrl = (cubeApi as any).apiUrl || '/cubejs-api/v1'
       const endpoint = agentEndpoint || `${apiUrl}/agent/chat`
 
-      // Build headers matching CubeClient's auth pattern
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(cubeApi as any).headers,
-      }
-
-      // Add agent API key if provided
-      if (agentApiKey) {
-        headers['X-Agent-Api-Key'] = agentApiKey
-      }
-      if (agentProvider) {
-        headers['X-Agent-Provider'] = agentProvider
-      }
-      if (agentModel) {
-        headers['X-Agent-Model'] = agentModel
-      }
-      if (agentProviderEndpoint) {
-        headers['X-Agent-Provider-Endpoint'] = agentProviderEndpoint
-      }
+      // Build headers matching CubeClient's auth pattern (plus agent overrides)
+      const headers = buildAgentHeaders({
+        baseHeaders: (cubeApi as any).headers,
+        agentApiKey,
+        agentProvider,
+        agentModel,
+        agentProviderEndpoint,
+      })
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -220,33 +146,13 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatResult {
         buffer = events.pop() || '' // Keep incomplete last chunk
 
         for (const eventStr of events) {
-          const lines = eventStr.trim().split('\n')
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const event: AgentSSEEvent = JSON.parse(line.slice(6))
-                handleEvent(event)
-              } catch {
-                // Skip malformed events
-              }
-            }
-          }
+          dispatchSSEBlock(eventStr, handleEvent)
         }
       }
 
       // Process any remaining buffer
       if (buffer.trim()) {
-        const lines = buffer.trim().split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event: AgentSSEEvent = JSON.parse(line.slice(6))
-              handleEvent(event)
-            } catch {
-              // Skip malformed events
-            }
-          }
-        }
+        dispatchSSEBlock(buffer, handleEvent)
       }
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {

@@ -86,7 +86,21 @@ export class RetentionQueryBuilder {
       errors.push(t('server.validation.retention.engineNotSupported', { engine }))
     }
 
-    // Validate time dimension (used for both cohort entry and activity)
+    this.validateTimeDimension(config, cubes, errors)
+    this.validateBindingKey(config, cubes, errors)
+    this.validateBreakdownDimensions(config, cubes, errors)
+    this.validatePeriodsAndEnums(config, errors)
+    this.validateDateRange(config, errors)
+
+    return { isValid: errors.length === 0, errors }
+  }
+
+  /** Validate the retention time dimension (used for cohort entry and activity). */
+  private validateTimeDimension(
+    config: RetentionQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
     try {
       const cubeName = extractCubeFromTimeDimension(config.timeDimension)
       const dimName = extractDimensionFromTimeDimension(config.timeDimension)
@@ -99,53 +113,71 @@ export class RetentionQueryBuilder {
     } catch {
       errors.push(t('server.validation.retention.invalidTimeDimFormat', { timeDimension: config.timeDimension }))
     }
+  }
 
-    // Validate binding key
+  /** Validate the retention binding key (single member or per-cube mappings). */
+  private validateBindingKey(
+    config: RetentionQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
     if (isRetentionMultiCubeBindingKey(config.bindingKey)) {
       for (const mapping of config.bindingKey) {
         const cube = cubes.get(mapping.cube)
         if (!cube) {
           errors.push(t('server.validation.retention.bindingKeyMappingCubeNotFound', { cubeName: mapping.cube }))
-        } else {
-          const dimName = this.extractDimensionName(mapping.dimension)
-          if (!cube.dimensions?.[dimName]) {
-            errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
-          }
+          continue
+        }
+        const dimName = this.extractDimensionName(mapping.dimension)
+        if (!cube.dimensions?.[dimName]) {
+          errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName: mapping.cube }))
         }
       }
-    } else {
-      // Single string format: 'CubeName.dimensionName'
-      const [cubeName, dimName] = config.bindingKey.split('.')
-      if (!cubeName || !dimName) {
-        errors.push(t('server.validation.retention.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
-      } else {
-        const cube = cubes.get(cubeName)
-        if (!cube) {
-          errors.push(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }))
-        } else if (!cube.dimensions?.[dimName]) {
-          errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName }))
-        }
-      }
+      return
     }
 
-    // Validate breakdown dimensions (optional)
-    if (config.breakdownDimensions && config.breakdownDimensions.length > 0) {
-      for (const breakdownDim of config.breakdownDimensions) {
-        const [breakdownCubeName, breakdownDimName] = breakdownDim.split('.')
-        if (!breakdownCubeName || !breakdownDimName) {
-          errors.push(t('server.validation.retention.invalidBreakdownDimFormat', { dimension: breakdownDim }))
-        } else {
-          const cube = cubes.get(breakdownCubeName)
-          if (!cube) {
-            errors.push(t('server.validation.retention.breakdownDimCubeNotFound', { cubeName: breakdownCubeName }))
-          } else if (!cube.dimensions?.[breakdownDimName]) {
-            errors.push(t('server.validation.retention.breakdownDimNotFound', { dimName: breakdownDimName, cubeName: breakdownCubeName }))
-          }
-        }
+    // Single string format: 'CubeName.dimensionName'
+    const [cubeName, dimName] = config.bindingKey.split('.')
+    if (!cubeName || !dimName) {
+      errors.push(t('server.validation.retention.invalidBindingKeyFormat', { bindingKey: config.bindingKey }))
+      return
+    }
+    const cube = cubes.get(cubeName)
+    if (!cube) {
+      errors.push(t('server.validation.retention.bindingKeyCubeNotFound', { cubeName }))
+    } else if (!cube.dimensions?.[dimName]) {
+      errors.push(t('server.validation.retention.bindingKeyDimNotFound', { dimName, cubeName }))
+    }
+  }
+
+  /** Validate optional retention breakdown dimensions. */
+  private validateBreakdownDimensions(
+    config: RetentionQueryConfig,
+    cubes: Map<string, Cube>,
+    errors: string[]
+  ): void {
+    if (!config.breakdownDimensions || config.breakdownDimensions.length === 0) return
+
+    for (const breakdownDim of config.breakdownDimensions) {
+      const [breakdownCubeName, breakdownDimName] = breakdownDim.split('.')
+      if (!breakdownCubeName || !breakdownDimName) {
+        errors.push(t('server.validation.retention.invalidBreakdownDimFormat', { dimension: breakdownDim }))
+        continue
+      }
+      const cube = cubes.get(breakdownCubeName)
+      if (!cube) {
+        errors.push(t('server.validation.retention.breakdownDimCubeNotFound', { cubeName: breakdownCubeName }))
+      } else if (!cube.dimensions?.[breakdownDimName]) {
+        errors.push(t('server.validation.retention.breakdownDimNotFound', { dimName: breakdownDimName, cubeName: breakdownCubeName }))
       }
     }
+  }
 
-    // Validate periods
+  /** Validate retention period bounds, granularity, and retention type. */
+  private validatePeriodsAndEnums(
+    config: RetentionQueryConfig,
+    errors: string[]
+  ): void {
     if (config.periods < 1) {
       errors.push(t('server.validation.retention.periodsMin'))
     }
@@ -153,51 +185,47 @@ export class RetentionQueryBuilder {
       errors.push(t('server.validation.retention.periodsMax'))
     }
 
-    // Validate granularity
     const validGranularities = ['day', 'week', 'month']
     if (!validGranularities.includes(config.granularity)) {
       errors.push(t('server.validation.retention.invalidGranularity', { granularity: config.granularity }))
     }
 
-    // Validate retention type
     const validRetentionTypes = ['classic', 'rolling']
     if (!validRetentionTypes.includes(config.retentionType)) {
       errors.push(t('server.validation.retention.invalidRetentionType', { retentionType: config.retentionType }))
     }
+  }
 
-    // Validate date range (required)
+  /** Validate the (required) retention date range: presence, parseability, ordering. */
+  private validateDateRange(
+    config: RetentionQueryConfig,
+    errors: string[]
+  ): void {
     if (!config.dateRange) {
       errors.push(t('server.validation.retention.dateRangeRequired'))
-    } else {
-      if (!config.dateRange.start) {
-        errors.push(t('server.validation.retention.dateRangeStartRequired'))
-      } else {
-        const start = new Date(config.dateRange.start)
-        if (isNaN(start.getTime())) {
-          errors.push(t('server.validation.retention.dateRangeInvalidStart'))
-        }
-      }
-
-      if (!config.dateRange.end) {
-        errors.push(t('server.validation.retention.dateRangeEndRequired'))
-      } else {
-        const end = new Date(config.dateRange.end)
-        if (isNaN(end.getTime())) {
-          errors.push(t('server.validation.retention.dateRangeInvalidEnd'))
-        }
-      }
-
-      // Validate start is before end
-      if (config.dateRange.start && config.dateRange.end) {
-        const start = new Date(config.dateRange.start)
-        const end = new Date(config.dateRange.end)
-        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start > end) {
-          errors.push(t('server.validation.retention.dateRangeStartBeforeEnd'))
-        }
-      }
+      return
     }
 
-    return { isValid: errors.length === 0, errors }
+    if (!config.dateRange.start) {
+      errors.push(t('server.validation.retention.dateRangeStartRequired'))
+    } else if (isNaN(new Date(config.dateRange.start).getTime())) {
+      errors.push(t('server.validation.retention.dateRangeInvalidStart'))
+    }
+
+    if (!config.dateRange.end) {
+      errors.push(t('server.validation.retention.dateRangeEndRequired'))
+    } else if (isNaN(new Date(config.dateRange.end).getTime())) {
+      errors.push(t('server.validation.retention.dateRangeInvalidEnd'))
+    }
+
+    // Validate start is before end
+    if (config.dateRange.start && config.dateRange.end) {
+      const start = new Date(config.dateRange.start)
+      const end = new Date(config.dateRange.end)
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start > end) {
+        errors.push(t('server.validation.retention.dateRangeStartBeforeEnd'))
+      }
+    }
   }
 
   /**

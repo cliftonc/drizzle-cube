@@ -13,33 +13,22 @@
  * - Clickable field section to change field
  * - "Dashboard fields only" toggle
  * - Delete action
+ *
+ * State, effects, and handlers live in `useDashboardFilterConfigModal`; the
+ * value-input control and field/operator sections are extracted into sibling
+ * components. This file is the layout shell.
  */
 
-import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react'
 import { useTranslation } from '../../hooks/useTranslation'
 import { getIcon } from '../../icons'
-import type { DashboardFilter, SimpleFilter, FilterOperator } from '../../types'
-import type { MetaResponse, DateRangeType, MetaField } from '../../shared/types'
-import type { FieldType } from '../AnalysisBuilder/types'
-import { FILTER_OPERATORS, DATE_RANGE_OPTIONS } from '../../shared/types'
-import {
-  getAvailableOperators,
-  convertDateRangeTypeToValue,
-  requiresNumberInput
-} from '../../shared/utils'
-import { findFieldInSchema, getFieldTitle } from '../AnalysisBuilder/utils'
-import { useFilterValues } from '../../hooks/useFilterValues'
-import { useDebounce } from '../../hooks/useDebounce'
+import type { DashboardFilter } from '../../types'
+import type { MetaResponse } from '../../shared/types'
 import FieldSearchModal from '../AnalysisBuilder/FieldSearchModal'
+import { useDashboardFilterConfigModal } from './useDashboardFilterConfigModal'
+import DashboardFilterValueInput from './DashboardFilterValueInput'
+import { FieldSelectionSection, OperatorSection } from './DashboardFilterConfigModalParts'
 
 const CloseIcon = getIcon('close')
-const ChevronDownIcon = getIcon('chevronDown')
-const DimensionIcon = getIcon('dimension')
-const TimeDimensionIcon = getIcon('timeDimension')
-const MeasureIcon = getIcon('measure')
-const EditIcon = getIcon('edit')
-const EyeIcon = getIcon('eye')
-const EyeOffIcon = getIcon('eyeOff')
 
 interface DashboardFilterConfigModalProps {
   /** The dashboard filter being edited */
@@ -68,530 +57,65 @@ export default function DashboardFilterConfigModal({
   onClose
 }: DashboardFilterConfigModalProps) {
   const { t } = useTranslation()
-  // Local state for editing
-  const [localLabel, setLocalLabel] = useState(initialFilter.label)
-  const [localFilter, setLocalFilter] = useState<SimpleFilter>(initialFilter.filter as SimpleFilter)
-  const [showAllFields, setShowAllFields] = useState(false)
-  const [showFieldSearch, setShowFieldSearch] = useState(false)
-
-  // Dropdown state
-  const [isOperatorDropdownOpen, setIsOperatorDropdownOpen] = useState(false)
-  const [isValueDropdownOpen, setIsValueDropdownOpen] = useState(false)
-  const [isDateRangeDropdownOpen, setIsDateRangeDropdownOpen] = useState(false)
-
-  // Date range state
-  const [rangeType, setRangeType] = useState<DateRangeType>('this_month')
-  const [numberValue, setNumberValue] = useState(1)
-  const [searchText, setSearchText] = useState('')
-
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Schema to use based on toggle
-  const activeSchema = showAllFields ? fullSchema : filteredSchema
-
-  // Sync state when filter changes or modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setLocalLabel(initialFilter.label)
-      setLocalFilter(initialFilter.filter as SimpleFilter)
-    }
-  }, [initialFilter, isOpen])
-
-  // Debounce search text for API calls
-  const debouncedSearchText = useDebounce(searchText, 300)
-
-  // Get field info
-  const fieldInfo = findFieldInSchema(localFilter.member, activeSchema)
-  const fieldType = fieldInfo?.field.type || 'string'
-  const isTimeField = fieldType === 'time'
-  const isMeasureField = fieldInfo?.fieldType === 'measure'
-  const isDimensionField = fieldInfo?.fieldType === 'dimension'
-
-  // Get display title for field
-  const fieldTitle = getFieldTitle(localFilter.member, activeSchema)
-
-  // Get operator metadata
-  const operatorMeta = FILTER_OPERATORS[localFilter.operator as FilterOperator]
-
-  // Get available operators for this field type
-  const availableOperators = getAvailableOperators(fieldType)
-
-  // Should show date range selector
-  const shouldShowDateRange = isTimeField && localFilter.operator === 'inDateRange'
-
-  // Should use combo box for value selection
-  const shouldShowComboBox = (() => {
-    const comboOperators = ['equals', 'notEquals', 'in', 'notIn']
-    return comboOperators.includes(localFilter.operator) && isDimensionField && !isTimeField
-  })()
-
-  // Fetch distinct values for combo box
-  const {
-    values: distinctValues,
-    loading: valuesLoading,
-    error: valuesError,
-    searchValues
-  } = useFilterValues(localFilter.member, shouldShowComboBox)
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOperatorDropdownOpen(false)
-        setIsValueDropdownOpen(false)
-        setIsDateRangeDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Load values when dropdown opens
-  useEffect(() => {
-    if (isValueDropdownOpen && shouldShowComboBox && searchValues) {
-      searchValues('', true)
-    }
-  }, [isValueDropdownOpen, shouldShowComboBox, searchValues])
-
-  // Search when debounced text changes
-  useEffect(() => {
-    if (isValueDropdownOpen && shouldShowComboBox && searchValues && debouncedSearchText !== undefined) {
-      searchValues(debouncedSearchText)
-    }
-  }, [debouncedSearchText, isValueDropdownOpen, shouldShowComboBox, searchValues])
-
-  // Sync rangeType state with filter.dateRange
-  useEffect(() => {
-    if (!shouldShowDateRange || !localFilter.dateRange) return
-
-    if (Array.isArray(localFilter.dateRange)) {
-      setRangeType('custom')
-    } else {
-      const flexMatch = localFilter.dateRange.match(/^last (\d+) (days|weeks|months|quarters|years)$/)
-      const singularMatch = !flexMatch && localFilter.dateRange.match(/^last (day|week|month|quarter|year)$/)
-
-      if (flexMatch) {
-        const [, num, unit] = flexMatch
-        setRangeType(`last_n_${unit}` as DateRangeType)
-        setNumberValue(parseInt(num) || 1)
-      } else if (singularMatch) {
-        const [, unit] = singularMatch
-        const pluralUnit = unit === 'day' ? 'days' :
-                          unit === 'week' ? 'weeks' :
-                          unit === 'month' ? 'months' :
-                          unit === 'quarter' ? 'quarters' : 'years'
-        setRangeType(`last_n_${pluralUnit}` as DateRangeType)
-        setNumberValue(1)
-      } else {
-        let found = false
-        for (const option of DATE_RANGE_OPTIONS) {
-          if (option.value !== 'custom' && !requiresNumberInput(option.value)) {
-            if (convertDateRangeTypeToValue(option.value) === localFilter.dateRange) {
-              setRangeType(option.value)
-              found = true
-              break
-            }
-          }
-        }
-        if (!found) setRangeType('custom')
-      }
-    }
-  }, [localFilter.dateRange, shouldShowDateRange])
-
-  // Handle field selection from FieldSearchModal
-  const handleFieldSelected = useCallback((field: MetaField, _fieldType: FieldType) => {
-    // Reset operator and values when changing field
-    const newFieldType = field.type
-    const newOperators = getAvailableOperators(newFieldType)
-    const defaultOperator = newOperators[0]?.operator || 'equals'
-
-    setLocalFilter({
-      member: field.name,
-      operator: defaultOperator as FilterOperator,
-      values: []
-    })
-    setShowFieldSearch(false)
-  }, [])
-
-  // Handle operator change
-  const handleOperatorChange = useCallback((operator: FilterOperator) => {
-    setLocalFilter({
-      member: localFilter.member,
-      operator,
-      values: []
-    })
-    setIsOperatorDropdownOpen(false)
-  }, [localFilter.member])
-
-  // Handle value selection from combo box
-  const handleValueSelect = useCallback((value: unknown) => {
-    const values = localFilter.values || []
-    if (operatorMeta?.supportsMultipleValues) {
-      if (!values.includes(value)) {
-        setLocalFilter({ ...localFilter, values: [...values, value] })
-      }
-    } else {
-      setLocalFilter({ ...localFilter, values: [value] })
-      setIsValueDropdownOpen(false)
-    }
-    setSearchText('')
-  }, [localFilter, operatorMeta?.supportsMultipleValues])
-
-  // Handle value removal
-  const handleValueRemove = useCallback((valueToRemove: unknown) => {
-    const values = (localFilter.values || []).filter((v: unknown) => v !== valueToRemove)
-    setLocalFilter({ ...localFilter, values })
-  }, [localFilter])
-
-  // Handle direct text/number input
-  const handleDirectInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (operatorMeta?.valueType === 'number') {
-      const numValue = parseFloat(value)
-      if (!isNaN(numValue)) {
-        setLocalFilter({ ...localFilter, values: [numValue] })
-      } else if (value === '' || value === '-') {
-        setLocalFilter({ ...localFilter, values: [] })
-      }
-    } else {
-      setLocalFilter({ ...localFilter, values: value ? [value] : [] })
-    }
-  }, [localFilter, operatorMeta?.valueType])
-
-  // Handle between range inputs
-  const handleBetweenStartInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value)
-    const currentValues = localFilter.values?.length >= 2 ? localFilter.values : ['', '']
-    const newValues = [!isNaN(value) ? value : '', currentValues[1]].filter(v => v !== '')
-    setLocalFilter({ ...localFilter, values: newValues })
-  }, [localFilter])
-
-  const handleBetweenEndInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value)
-    const currentValues = localFilter.values?.length >= 2 ? localFilter.values : ['', '']
-    const newValues = [currentValues[0], !isNaN(value) ? value : ''].filter(v => v !== '')
-    setLocalFilter({ ...localFilter, values: newValues })
-  }, [localFilter])
-
-  // Handle date input
-  const handleDateInput = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setLocalFilter({ ...localFilter, values: value ? [value] : [] })
-  }, [localFilter])
-
-  // Handle date range type change
-  const handleRangeTypeChange = useCallback((newRangeType: DateRangeType) => {
-    setRangeType(newRangeType)
-    setIsDateRangeDropdownOpen(false)
-
-    let dateRange: string | string[]
-    if (newRangeType === 'custom') {
-      const today = new Date().toISOString().split('T')[0]
-      dateRange = [today, today]
-    } else if (requiresNumberInput(newRangeType)) {
-      dateRange = convertDateRangeTypeToValue(newRangeType, numberValue)
-    } else {
-      dateRange = convertDateRangeTypeToValue(newRangeType)
-    }
-
-    setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
-  }, [localFilter, numberValue])
-
-  // Handle number value change for "last N days/weeks/etc"
-  const handleNumberValueChange = useCallback((value: number) => {
-    setNumberValue(value)
-    if (requiresNumberInput(rangeType)) {
-      const dateRange = convertDateRangeTypeToValue(rangeType, value)
-      setLocalFilter({ ...localFilter, dateRange } as SimpleFilter)
-    }
-  }, [localFilter, rangeType])
-
-  // Handle custom date range inputs
-  const handleCustomStartDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const start = e.target.value
-    const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : [localFilter.dateRange || '', '']
-    const end = currentRange[1] || start
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter])
-
-  const handleCustomEndDate = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const end = e.target.value
-    const currentRange = Array.isArray(localFilter.dateRange) ? localFilter.dateRange : ['', localFilter.dateRange || '']
-    const start = currentRange[0] || end
-    setLocalFilter({ ...localFilter, dateRange: [start, end] } as SimpleFilter)
-  }, [localFilter])
-
-  // Handle save
-  const handleSave = useCallback(() => {
-    if (!localLabel.trim()) {
-      alert(t('dashboardFilter.filterLabelRequired'))
-      return
-    }
-
-    // Don't require field selection for universal time filters
-    if (!initialFilter.isUniversalTime && !localFilter.member) {
-      alert(t('dashboardFilter.selectFieldRequired'))
-      return
-    }
-
-    const updatedFilter: DashboardFilter = {
-      id: initialFilter.id,
-      label: localLabel,
-      filter: localFilter,
-      ...(initialFilter.isUniversalTime && { isUniversalTime: true })
-    }
-
-    onSave(updatedFilter)
-  }, [initialFilter.id, initialFilter.isUniversalTime, localLabel, localFilter, onSave, t])
-
-  // Get current operator label
-  const operatorLabel = t(availableOperators.find(op => op.operator === localFilter.operator)?.label || localFilter.operator)
-
-  // Get current date range label
-  const dateRangeLabel = t(DATE_RANGE_OPTIONS.find(opt => opt.value === rangeType)?.label || 'filter.modal.selectRange')
-
-  // Get icon for field type
-  const FieldIcon = isTimeField ? TimeDimensionIcon : isMeasureField ? MeasureIcon : DimensionIcon
-  const iconBgClass = isTimeField ? 'bg-dc-time-dimension' : isMeasureField ? 'bg-dc-measure' : 'bg-dc-dimension'
-  const iconTextClass = isTimeField ? 'text-dc-time-dimension-text' : isMeasureField ? 'text-dc-measure-text' : 'text-dc-dimension-text'
+  const modal = useDashboardFilterConfigModal({
+    initialFilter,
+    fullSchema,
+    filteredSchema,
+    isOpen,
+    onSave
+  })
 
   if (!isOpen) return null
 
-  // Render value input based on operator type
-  const renderValueInput = () => {
-    // No value required for set/notSet
-    if (!operatorMeta?.requiresValues) {
-      return (
-        <div className="dc:text-sm text-dc-text-muted dc:italic dc:py-2">
-          {t('dashboardFilter.noValueRequired')}
-        </div>
-      )
-    }
+  const {
+    containerRef,
+    localLabel,
+    setLocalLabel,
+    localFilter,
+    showAllFields,
+    setShowAllFields,
+    showFieldSearch,
+    setShowFieldSearch,
+    isOperatorDropdownOpen,
+    setIsOperatorDropdownOpen,
+    isValueDropdownOpen,
+    setIsValueDropdownOpen,
+    isDateRangeDropdownOpen,
+    setIsDateRangeDropdownOpen,
+    rangeType,
+    numberValue,
+    searchText,
+    setSearchText,
+    activeSchema,
+    isTimeField,
+    isMeasureField,
+    operatorMeta,
+    availableOperators,
+    shouldShowDateRange,
+    shouldShowComboBox,
+    distinctValues,
+    valuesLoading,
+    valuesError,
+    operatorLabel,
+    dateRangeLabel,
+    handleFieldSelected,
+    handleOperatorChange,
+    handleValueSelect,
+    handleValueRemove,
+    handleDirectInput,
+    handleBetweenStartInput,
+    handleBetweenEndInput,
+    handleDateInput,
+    handleRangeTypeChange,
+    handleNumberValueChange,
+    handleCustomStartDate,
+    handleCustomEndDate,
+    handleSave
+  } = modal
 
-    // Date range selector for inDateRange on time fields
-    if (shouldShowDateRange) {
-      return (
-        <div className="dc:space-y-2">
-          {/* Range type dropdown */}
-          <div className="dc:relative">
-            <button
-              onClick={() => {
-                setIsOperatorDropdownOpen(false)
-                setIsValueDropdownOpen(false)
-                setIsDateRangeDropdownOpen(!isDateRangeDropdownOpen)
-              }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
-            >
-              <span className="dc:truncate">{dateRangeLabel}</span>
-              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-                isDateRangeDropdownOpen ? 'dc:rotate-180' : ''
-              }`} />
-            </button>
-
-            {isDateRangeDropdownOpen && (
-              <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
-                {DATE_RANGE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => handleRangeTypeChange(option.value)}
-                    className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
-                      option.value === rangeType ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
-                    }`}
-                  >
-                    {t(option.label)}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Number input for "last N" ranges */}
-          {requiresNumberInput(rangeType) && (
-            <div className="dc:flex dc:items-center dc:gap-2">
-              <input
-                type="number"
-                min="1"
-                max="1000"
-                value={numberValue}
-                onChange={(e) => handleNumberValueChange(Math.max(1, parseInt(e.target.value) || 1))}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text dc:w-20"
-              />
-              <span className="dc:text-sm text-dc-text-muted">
-                {rangeType.replace('last_n_', '')}
-              </span>
-            </div>
-          )}
-
-          {/* Custom date inputs */}
-          {rangeType === 'custom' && (
-            <div className="dc:flex dc:items-center dc:gap-2">
-              <input
-                type="date"
-                value={Array.isArray(localFilter.dateRange) ? localFilter.dateRange[0] : ''}
-                onChange={handleCustomStartDate}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
-              />
-              <span className="dc:text-sm text-dc-text-muted">to</span>
-              <input
-                type="date"
-                value={Array.isArray(localFilter.dateRange) ? localFilter.dateRange[1] : ''}
-                onChange={handleCustomEndDate}
-                className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-2 dc:py-2 bg-dc-surface text-dc-text"
-              />
-            </div>
-          )}
-        </div>
-      )
-    }
-
-    // Between/notBetween range inputs
-    if (localFilter.operator === 'between' || localFilter.operator === 'notBetween') {
-      return (
-        <div className="dc:flex dc:items-center dc:gap-2">
-          <input
-            type="number"
-            value={localFilter.values?.[0] ?? ''}
-            onChange={handleBetweenStartInput}
-            placeholder="Min"
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-          />
-          <span className="dc:text-sm text-dc-text-muted">to</span>
-          <input
-            type="number"
-            value={localFilter.values?.[1] ?? ''}
-            onChange={handleBetweenEndInput}
-            placeholder="Max"
-            className="dc:flex-1 dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-          />
-        </div>
-      )
-    }
-
-    // Date picker for date operators
-    if (operatorMeta?.valueType === 'date') {
-      return (
-        <input
-          type="date"
-          value={localFilter.values?.[0] || ''}
-          onChange={handleDateInput}
-          className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-        />
-      )
-    }
-
-    // Number input
-    if (operatorMeta?.valueType === 'number') {
-      return (
-        <input
-          type="number"
-          value={localFilter.values?.[0] ?? ''}
-          onChange={handleDirectInput}
-          placeholder="Enter number"
-          className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-        />
-      )
-    }
-
-    // Combo box for equals/notEquals/in/notIn on dimensions
-    if (shouldShowComboBox) {
-      return (
-        <div className="dc:space-y-2">
-          {/* Selected values as tags */}
-          {localFilter.values && localFilter.values.length > 0 && (
-            <div className="dc:flex dc:flex-wrap dc:gap-1.5">
-              {localFilter.values.map((value: unknown, index: number) => (
-                <span
-                  key={index}
-                  className="dc:inline-flex dc:items-center dc:gap-1 bg-dc-primary/10 text-dc-primary dc:text-sm dc:px-2 dc:py-1 dc:rounded"
-                >
-                  <span className="dc:max-w-[150px] dc:truncate">{String(value)}</span>
-                  <button
-                    onClick={() => handleValueRemove(value)}
-                    className="hover:text-dc-danger"
-                  >
-                    <CloseIcon className="dc:w-3.5 dc:h-3.5" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Dropdown trigger */}
-          <div className="dc:relative">
-            <button
-              onClick={() => {
-                setIsOperatorDropdownOpen(false)
-                setIsDateRangeDropdownOpen(false)
-                setIsValueDropdownOpen(!isValueDropdownOpen)
-              }}
-              className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
-            >
-              <span className="text-dc-text-muted dc:truncate">
-                {valuesLoading ? 'Loading...' : 'Select value...'}
-              </span>
-              <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-                isValueDropdownOpen ? 'dc:rotate-180' : ''
-              }`} />
-            </button>
-
-            {isValueDropdownOpen && (
-              <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-56 dc:overflow-hidden">
-                {/* Search input */}
-                <div className="dc:p-2 dc:border-b border-dc-border">
-                  <input
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder={t('dashboardFilter.search')}
-                    className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text"
-                    autoFocus
-                  />
-                </div>
-
-                {/* Values list */}
-                <div className="dc:max-h-40 dc:overflow-y-auto">
-                  {valuesLoading ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('common.loading')}</div>
-                  ) : valuesError ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-error">{t('dashboardFilter.errorPrefix')}{valuesError}</div>
-                  ) : distinctValues.length === 0 ? (
-                    <div className="dc:px-3 dc:py-2 dc:text-sm text-dc-text-muted">{t('dashboardFilter.noValuesFound')}</div>
-                  ) : (
-                    distinctValues.map((value, index) => {
-                      const isSelected = localFilter.values?.includes(value)
-                      return (
-                        <button
-                          key={`${value}-${index}`}
-                          onClick={() => handleValueSelect(value)}
-                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
-                            isSelected ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
-                          }`}
-                        >
-                          {String(value)}
-                          {isSelected && <span className="dc:float-right">✓</span>}
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )
-    }
-
-    // Default: text input
-    return (
-      <input
-        type="text"
-        value={localFilter.values?.[0] ?? ''}
-        onChange={handleDirectInput}
-        placeholder="Enter value..."
-        className="dc:w-full dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text placeholder-dc-text-muted"
-      />
-    )
-  }
+  const showFieldSection = !initialFilter.isUniversalTime
+  const showOperatorSection = localFilter.member && !initialFilter.isUniversalTime
+  const showValueSection = localFilter.member && !initialFilter.isUniversalTime
 
   return (
     <>
@@ -647,101 +171,67 @@ export default function DashboardFilterConfigModal({
             )}
 
             {/* Field selection (not for universal time filters) */}
-            {!initialFilter.isUniversalTime && (
-              <div>
-                <div className="dc:flex dc:items-center dc:justify-between dc:mb-2">
-                  <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary">
-                    {t('dashboardFilter.field')}
-                  </label>
-                  <button
-                    onClick={() => setShowAllFields(!showAllFields)}
-                    className="dc:flex dc:items-center dc:gap-1 dc:text-xs dc:px-2 dc:py-1 dc:rounded hover:bg-dc-surface-hover text-dc-text-muted"
-                    title={showAllFields ? 'Show dashboard fields only' : 'Show all fields'}
-                  >
-                    {showAllFields ? (
-                      <>
-                        <EyeOffIcon className="dc:w-3.5 dc:h-3.5" />
-                        <span>{t('dashboardFilter.dashboard')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <EyeIcon className="dc:w-3.5 dc:h-3.5" />
-                        <span>{t('dashboardFilter.all')}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowFieldSearch(true)}
-                  className="dc:w-full dc:flex dc:items-center dc:gap-2 dc:p-3 bg-dc-surface-secondary dc:rounded hover:bg-dc-surface-tertiary dc:transition-colors"
-                >
-                  {localFilter.member ? (
-                    <>
-                      <span className={`dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded ${iconBgClass} ${iconTextClass}`}>
-                        {FieldIcon && <FieldIcon className="dc:w-4 dc:h-4" />}
-                      </span>
-                      <span className="dc:flex-1 dc:text-sm dc:font-medium text-dc-text dc:text-left">{fieldTitle}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="dc:w-6 dc:h-6 dc:flex dc:items-center dc:justify-center dc:rounded bg-dc-surface-tertiary text-dc-text-muted">
-                        <DimensionIcon className="dc:w-4 dc:h-4" />
-                      </span>
-                      <span className="dc:flex-1 dc:text-sm text-dc-text-muted dc:text-left">{t('dashboardFilter.clickToSelectField')}</span>
-                    </>
-                  )}
-                  <EditIcon className="dc:w-4 dc:h-4 text-dc-text-muted" />
-                </button>
-              </div>
+            {showFieldSection && (
+              <FieldSelectionSection
+                localFilter={localFilter}
+                activeSchema={activeSchema}
+                isTimeField={isTimeField}
+                isMeasureField={isMeasureField}
+                showAllFields={showAllFields}
+                setShowAllFields={setShowAllFields}
+                setShowFieldSearch={setShowFieldSearch}
+              />
             )}
 
             {/* Operator selector (only if field is selected) */}
-            {(localFilter.member || initialFilter.isUniversalTime) && !initialFilter.isUniversalTime && (
-              <div>
-                <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
-                  {t('dashboardFilter.operator')}
-                </label>
-                <div className="dc:relative">
-                  <button
-                    onClick={() => {
-                      setIsValueDropdownOpen(false)
-                      setIsDateRangeDropdownOpen(false)
-                      setIsOperatorDropdownOpen(!isOperatorDropdownOpen)
-                    }}
-                    className="dc:w-full dc:flex dc:items-center dc:justify-between dc:text-left dc:text-sm dc:border border-dc-border dc:rounded dc:px-3 dc:py-2 bg-dc-surface text-dc-text hover:bg-dc-surface-hover"
-                  >
-                    <span className="dc:truncate">{operatorLabel}</span>
-                    <ChevronDownIcon className={`dc:w-4 dc:h-4 text-dc-text-muted dc:shrink-0 dc:ml-2 dc:transition-transform ${
-                      isOperatorDropdownOpen ? 'dc:rotate-180' : ''
-                    }`} />
-                  </button>
-
-                  {isOperatorDropdownOpen && (
-                    <div className="dc:absolute dc:z-[60] dc:left-0 dc:right-0 dc:mt-1 bg-dc-surface dc:border border-dc-border dc:rounded dc:shadow-lg dc:max-h-48 dc:overflow-y-auto">
-                      {availableOperators.map((op) => (
-                        <button
-                          key={op.operator}
-                          onClick={() => handleOperatorChange(op.operator as FilterOperator)}
-                          className={`dc:w-full dc:text-left dc:px-3 dc:py-2 dc:text-sm hover:bg-dc-surface-hover ${
-                            op.operator === localFilter.operator ? 'bg-dc-primary/10 text-dc-primary' : 'text-dc-text'
-                          }`}
-                        >
-                          {t(op.label)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+            {showOperatorSection && (
+              <OperatorSection
+                localFilter={localFilter}
+                operatorLabel={operatorLabel}
+                availableOperators={availableOperators}
+                isOperatorDropdownOpen={isOperatorDropdownOpen}
+                setIsOperatorDropdownOpen={setIsOperatorDropdownOpen}
+                setIsValueDropdownOpen={setIsValueDropdownOpen}
+                setIsDateRangeDropdownOpen={setIsDateRangeDropdownOpen}
+                handleOperatorChange={handleOperatorChange}
+              />
             )}
 
             {/* Value input (only if field is selected, not for universal time filters) */}
-            {localFilter.member && !initialFilter.isUniversalTime && (
+            {showValueSection && (
               <div>
                 <label className="dc:block dc:text-sm dc:font-medium text-dc-text-secondary dc:mb-2">
                   {t('dashboardFilter.defaultValue')}
                 </label>
-                {renderValueInput()}
+                <DashboardFilterValueInput
+                  filter={localFilter}
+                  operatorMeta={operatorMeta}
+                  shouldShowDateRange={shouldShowDateRange}
+                  shouldShowComboBox={shouldShowComboBox}
+                  rangeType={rangeType}
+                  numberValue={numberValue}
+                  dateRangeLabel={dateRangeLabel}
+                  isDateRangeDropdownOpen={isDateRangeDropdownOpen}
+                  setIsOperatorDropdownOpen={setIsOperatorDropdownOpen}
+                  setIsValueDropdownOpen={setIsValueDropdownOpen}
+                  setIsDateRangeDropdownOpen={setIsDateRangeDropdownOpen}
+                  handleRangeTypeChange={handleRangeTypeChange}
+                  handleNumberValueChange={handleNumberValueChange}
+                  handleCustomStartDate={handleCustomStartDate}
+                  handleCustomEndDate={handleCustomEndDate}
+                  handleBetweenStartInput={handleBetweenStartInput}
+                  handleBetweenEndInput={handleBetweenEndInput}
+                  handleDateInput={handleDateInput}
+                  handleDirectInput={handleDirectInput}
+                  isValueDropdownOpen={isValueDropdownOpen}
+                  distinctValues={distinctValues}
+                  valuesLoading={valuesLoading}
+                  valuesError={valuesError}
+                  searchText={searchText}
+                  setSearchText={setSearchText}
+                  handleValueSelect={handleValueSelect}
+                  handleValueRemove={handleValueRemove}
+                />
               </div>
             )}
           </div>

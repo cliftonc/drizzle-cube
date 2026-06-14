@@ -5,6 +5,12 @@
 
 import type { CubeMetadata } from '../types/metadata'
 import { QUERY_SCHEMAS } from './schemas'
+import {
+  accumulateFieldScores,
+  topScoredFields,
+  scoreFieldForBestMatch,
+  type ScoreFns,
+} from './discovery-helpers'
 
 /**
  * Discovery result for a cube
@@ -162,6 +168,53 @@ function extractKeywords(text: string): string[] {
     .filter(word => word.length > 2 && !stopWords.has(word))
 }
 
+const SCORE_FNS: ScoreFns = { fuzzyMatchScore, matchAgainstArray }
+
+/** Score a cube's identity fields (name/title/description/exampleQuestions) for one keyword. */
+function scoreCubeIdentity(
+  keyword: string,
+  cube: CubeMetadata,
+  matchedOn: CubeDiscoveryResult['matchedOn']
+): number {
+  let added = 0
+
+  // Match cube name
+  const nameScore = fuzzyMatchScore(keyword, cube.name)
+  if (nameScore > 0.5) {
+    added += nameScore * 2 // Weight cube name matches higher
+    if (!matchedOn.includes('name')) matchedOn.push('name')
+  }
+
+  // Match cube title
+  const titleScore = fuzzyMatchScore(keyword, cube.title)
+  if (titleScore > 0.5) {
+    added += titleScore * 1.5
+    if (!matchedOn.includes('title')) matchedOn.push('title')
+  }
+
+  // Match cube description
+  if (cube.description) {
+    const descScore = fuzzyMatchScore(keyword, cube.description)
+    if (descScore > 0.3) {
+      added += descScore
+      if (!matchedOn.includes('description')) matchedOn.push('description')
+    }
+  }
+
+  // Match example questions
+  if (cube.exampleQuestions) {
+    for (const question of cube.exampleQuestions) {
+      const qScore = fuzzyMatchScore(keyword, question)
+      if (qScore > 0.3) {
+        added += qScore * 1.5 // Example questions are valuable
+        if (!matchedOn.includes('exampleQuestions')) matchedOn.push('exampleQuestions')
+      }
+    }
+  }
+
+  return added
+}
+
 /**
  * Score a cube against discovery criteria
  */
@@ -175,114 +228,26 @@ function scoreCube(
   const dimensionScores: Map<string, number> = new Map()
 
   for (const keyword of keywords) {
-    // Match cube name
-    const nameScore = fuzzyMatchScore(keyword, cube.name)
-    if (nameScore > 0.5) {
-      totalScore += nameScore * 2 // Weight cube name matches higher
-      if (!matchedOn.includes('name')) matchedOn.push('name')
-    }
+    totalScore += scoreCubeIdentity(keyword, cube, matchedOn)
 
-    // Match cube title
-    const titleScore = fuzzyMatchScore(keyword, cube.title)
-    if (titleScore > 0.5) {
-      totalScore += titleScore * 1.5
-      if (!matchedOn.includes('title')) matchedOn.push('title')
-    }
+    const measureHit = { hit: false }
+    totalScore += accumulateFieldScores(keyword, cube.measures, SCORE_FNS, measureScores, measureHit)
+    if (measureHit.hit && !matchedOn.includes('measures')) matchedOn.push('measures')
 
-    // Match cube description
-    if (cube.description) {
-      const descScore = fuzzyMatchScore(keyword, cube.description)
-      if (descScore > 0.3) {
-        totalScore += descScore
-        if (!matchedOn.includes('description')) matchedOn.push('description')
-      }
-    }
-
-    // Match example questions
-    if (cube.exampleQuestions) {
-      for (const question of cube.exampleQuestions) {
-        const qScore = fuzzyMatchScore(keyword, question)
-        if (qScore > 0.3) {
-          totalScore += qScore * 1.5 // Example questions are valuable
-          if (!matchedOn.includes('exampleQuestions')) matchedOn.push('exampleQuestions')
-        }
-      }
-    }
-
-    // Match measures
-    for (const measure of cube.measures) {
-      let measureScore = 0
-
-      // Match measure name (without cube prefix)
-      const measureName = measure.name.split('.').pop() || measure.name
-      measureScore = Math.max(measureScore, fuzzyMatchScore(keyword, measureName))
-
-      // Match measure title
-      measureScore = Math.max(measureScore, fuzzyMatchScore(keyword, measure.title))
-
-      // Match measure description
-      if (measure.description) {
-        measureScore = Math.max(measureScore, fuzzyMatchScore(keyword, measure.description) * 0.8)
-      }
-
-      // Match measure synonyms
-      if (measure.synonyms) {
-        measureScore = Math.max(measureScore, matchAgainstArray(keyword, measure.synonyms))
-      }
-
-      if (measureScore > 0.4) {
-        totalScore += measureScore
-        if (!matchedOn.includes('measures')) matchedOn.push('measures')
-        const currentScore = measureScores.get(measure.name) || 0
-        measureScores.set(measure.name, Math.max(currentScore, measureScore))
-      }
-    }
-
-    // Match dimensions
-    for (const dimension of cube.dimensions) {
-      let dimScore = 0
-
-      // Match dimension name (without cube prefix)
-      const dimName = dimension.name.split('.').pop() || dimension.name
-      dimScore = Math.max(dimScore, fuzzyMatchScore(keyword, dimName))
-
-      // Match dimension title
-      dimScore = Math.max(dimScore, fuzzyMatchScore(keyword, dimension.title))
-
-      // Match dimension description
-      if (dimension.description) {
-        dimScore = Math.max(dimScore, fuzzyMatchScore(keyword, dimension.description) * 0.8)
-      }
-
-      // Match dimension synonyms
-      if (dimension.synonyms) {
-        dimScore = Math.max(dimScore, matchAgainstArray(keyword, dimension.synonyms))
-      }
-
-      if (dimScore > 0.4) {
-        totalScore += dimScore
-        if (!matchedOn.includes('dimensions')) matchedOn.push('dimensions')
-        const currentScore = dimensionScores.get(dimension.name) || 0
-        dimensionScores.set(dimension.name, Math.max(currentScore, dimScore))
-      }
-    }
+    const dimensionHit = { hit: false }
+    totalScore += accumulateFieldScores(keyword, cube.dimensions, SCORE_FNS, dimensionScores, dimensionHit)
+    if (dimensionHit.hit && !matchedOn.includes('dimensions')) matchedOn.push('dimensions')
   }
 
   // Normalize score
   const normalizedScore = Math.min(1, totalScore / (keywords.length * 2))
 
-  // Get top suggested measures and dimensions
-  const suggestedMeasures = Array.from(measureScores.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name]) => name)
-
-  const suggestedDimensions = Array.from(dimensionScores.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name]) => name)
-
-  return { score: normalizedScore, matchedOn, suggestedMeasures, suggestedDimensions }
+  return {
+    score: normalizedScore,
+    matchedOn,
+    suggestedMeasures: topScoredFields(measureScores, 5),
+    suggestedDimensions: topScoredFields(dimensionScores, 5),
+  }
 }
 
 /**
@@ -505,39 +470,28 @@ export function findBestFieldMatch(
   fieldName: string,
   fieldType?: 'measure' | 'dimension'
 ): { field: string; cube: string; score: number; type: 'measure' | 'dimension' } | null {
-  let bestMatch: { field: string; cube: string; score: number; type: 'measure' | 'dimension' } | null = null
+  type Match = { field: string; cube: string; score: number; type: 'measure' | 'dimension' }
+  let bestMatch: Match | null = null
 
-  for (const cube of metadata) {
-    // Check measures
-    if (!fieldType || fieldType === 'measure') {
-      for (const measure of cube.measures) {
-        const measureName = measure.name.split('.').pop() || measure.name
-        let score = fuzzyMatchScore(fieldName, measureName)
-        score = Math.max(score, fuzzyMatchScore(fieldName, measure.title))
-        if (measure.synonyms) {
-          score = Math.max(score, matchAgainstArray(fieldName, measure.synonyms))
-        }
-
-        if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
-          bestMatch = { field: measure.name, cube: cube.name, score, type: 'measure' }
-        }
+  const considerFields = (
+    cube: CubeMetadata,
+    fields: CubeMetadata['measures'] | CubeMetadata['dimensions'],
+    type: 'measure' | 'dimension'
+  ): void => {
+    for (const field of fields) {
+      const score = scoreFieldForBestMatch(fieldName, field, SCORE_FNS)
+      if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { field: field.name, cube: cube.name, score, type }
       }
     }
+  }
 
-    // Check dimensions
+  for (const cube of metadata) {
+    if (!fieldType || fieldType === 'measure') {
+      considerFields(cube, cube.measures, 'measure')
+    }
     if (!fieldType || fieldType === 'dimension') {
-      for (const dimension of cube.dimensions) {
-        const dimName = dimension.name.split('.').pop() || dimension.name
-        let score = fuzzyMatchScore(fieldName, dimName)
-        score = Math.max(score, fuzzyMatchScore(fieldName, dimension.title))
-        if (dimension.synonyms) {
-          score = Math.max(score, matchAgainstArray(fieldName, dimension.synonyms))
-        }
-
-        if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
-          bestMatch = { field: dimension.name, cube: cube.name, score, type: 'dimension' }
-        }
-      }
+      considerFields(cube, cube.dimensions, 'dimension')
     }
   }
 

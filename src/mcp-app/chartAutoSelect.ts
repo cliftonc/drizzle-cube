@@ -5,6 +5,7 @@
  */
 
 import type { ChartType } from '../client/types'
+import { isChartAvailableForShape } from './chartAvailability'
 
 /** Chart types available in the MCP App (subset of full ChartType) */
 export type McpChartType = ChartType
@@ -117,51 +118,15 @@ function getDefaultChartAxes(query: LoadQuery): Omit<ChartSelection, 'chartType'
  * Check if a chart type is available for the given query shape
  */
 export function isChartAvailable(chartType: McpChartType, query: LoadQuery, rowCount: number): boolean {
-  const measures = getMeasures(query)
   const dimensions = getDimensions(query)
-  const timeDims = getChartTimeDimensions(query)
-  const hasMeasure = measures.length > 0
-  const hasDimension = dimensions.length > 0
-  const hasTimeDim = timeDims.length > 0
 
-  switch (chartType) {
-    case 'table':
-    case 'markdown':
-      return true
-    case 'kpiNumber':
-    case 'kpiDelta':
-    case 'kpiText':
-    case 'gauge':
-    case 'measureProfile':
-      return hasMeasure
-    case 'bar':
-    case 'line':
-    case 'area':
-    case 'waterfall':
-    case 'boxPlot':
-    case 'candlestick':
-      return hasMeasure && (hasDimension || hasTimeDim)
-    case 'pie':
-    case 'radialBar':
-    case 'sunburst':
-      return hasMeasure && hasDimension && rowCount <= 20
-    case 'scatter':
-    case 'bubble':
-      return hasMeasure && (hasDimension || hasTimeDim)
-    case 'treemap':
-    case 'funnel':
-      return hasMeasure && hasDimension
-    case 'radar':
-      return hasMeasure && hasDimension
-    case 'heatmap':
-      return hasMeasure && hasDimension
-    case 'sankey':
-      return hasMeasure && dimensions.length >= 2
-    case 'activityGrid':
-      return hasMeasure && hasTimeDim
-    default:
-      return true
-  }
+  return isChartAvailableForShape(chartType, {
+    hasMeasure: getMeasures(query).length > 0,
+    hasDimension: dimensions.length > 0,
+    hasTimeDim: getChartTimeDimensions(query).length > 0,
+    dimensionCount: dimensions.length,
+    rowCount,
+  })
 }
 
 /**

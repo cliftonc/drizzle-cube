@@ -197,7 +197,59 @@ export function transformForOverlayMode(
     ? getUniqueDimensionValues(data, dimensionFields)
     : null
 
-  // Group data by __periodDayIndex
+  const transformedData = pivotByDayIndex(data, measures, timeDimensionKey, {
+    dimensionFields,
+    hasDimensions,
+    periodLabels,
+    getFieldLabel
+  })
+
+  const seriesKeys = buildOverlaySeriesKeys(measures, periodLabels, periodIndices, {
+    dimensionFields,
+    uniqueDimensionValues,
+    getFieldLabel
+  })
+
+  return {
+    data: transformedData,
+    seriesKeys,
+    xAxisKey: '__periodDayIndex'
+  }
+}
+
+/**
+ * Build the `dimensionValue / dimensionValue` prefix for a comparison row,
+ * applying field labels when available. Empty when no dimensions are present.
+ */
+function buildDimensionPrefix(
+  row: any,
+  dimensionFields: string[],
+  getFieldLabel?: (fieldName: string) => string
+): string {
+  if (dimensionFields.length === 0) return ''
+  const dimensionValues = dimensionFields.map(field => {
+    const value = row[field]
+    return getFieldLabel ? getFieldLabel(String(value)) : String(value)
+  })
+  return dimensionValues.join(' / ')
+}
+
+/**
+ * Pivot comparison rows so each output row is one `__periodDayIndex`, with a
+ * column per measure/dimension/period combination.
+ */
+function pivotByDayIndex(
+  data: any[],
+  measures: string[],
+  timeDimensionKey: string,
+  opts: {
+    dimensionFields: string[]
+    hasDimensions: boolean
+    periodLabels: string[]
+    getFieldLabel?: (fieldName: string) => string
+  }
+): any[] {
+  const { dimensionFields, hasDimensions, periodLabels, getFieldLabel } = opts
   const groupedByDayIndex = new Map<number, Record<string, any>>()
 
   for (const row of data) {
@@ -220,14 +272,9 @@ export function transformForOverlayMode(
     }
 
     // Build dimension prefix if dimensions are present
-    let dimensionPrefix = ''
-    if (hasDimensions) {
-      const dimensionValues = dimensionFields.map(field => {
-        const value = row[field]
-        return getFieldLabel ? getFieldLabel(String(value)) : String(value)
-      })
-      dimensionPrefix = dimensionValues.join(' / ')
-    }
+    const dimensionPrefix = hasDimensions
+      ? buildDimensionPrefix(row, dimensionFields, getFieldLabel)
+      : ''
 
     // Add measure values with optional dimension prefix and period suffix
     const shortLabel = generatePeriodShortLabel(periodLabels[periodIndex] || '', periodIndex)
@@ -241,46 +288,48 @@ export function transformForOverlayMode(
   }
 
   // Convert to array and sort by day index
-  const transformedData = Array.from(groupedByDayIndex.values())
+  return Array.from(groupedByDayIndex.values())
     .sort((a, b) => a.__periodDayIndex - b.__periodDayIndex)
+}
 
-  // Generate series keys (using display names to match the data keys)
+/**
+ * Generate the overlay-mode series keys (matching the data column names) for
+ * each measure/dimension-combination/period.
+ */
+function buildOverlaySeriesKeys(
+  measures: string[],
+  periodLabels: string[],
+  periodIndices: number[],
+  opts: {
+    dimensionFields: string[]
+    uniqueDimensionValues: Map<string, Set<any>> | null
+    getFieldLabel?: (fieldName: string) => string
+  }
+): string[] {
+  const { dimensionFields, uniqueDimensionValues, getFieldLabel } = opts
   const seriesKeys: string[] = []
 
-  if (hasDimensions && uniqueDimensionValues) {
-    // Generate all combinations of dimension values
-    const dimensionCombinations = generateDimensionCombinations(
-      dimensionFields,
-      uniqueDimensionValues,
-      getFieldLabel
-    )
+  // When dimensions are present, prefix each series key with the combination;
+  // otherwise use a single empty prefix to share the measure/period loop.
+  const dimensionCombinations = uniqueDimensionValues
+    ? generateDimensionCombinations(dimensionFields, uniqueDimensionValues, getFieldLabel)
+    : ['']
 
-    // For each dimension combination, create series keys for each measure + period
-    for (const dimCombo of dimensionCombinations) {
-      for (const measure of measures) {
-        const displayName = getFieldLabel ? getFieldLabel(measure) : measure
-        for (let i = 0; i < periodIndices.length; i++) {
-          const shortLabel = generatePeriodShortLabel(periodLabels[i] || '', i)
-          seriesKeys.push(`${dimCombo} - ${displayName} (${shortLabel})`)
-        }
-      }
-    }
-  } else {
-    // No dimensions - generate simple measure + period keys
+  for (const dimCombo of dimensionCombinations) {
     for (const measure of measures) {
       const displayName = getFieldLabel ? getFieldLabel(measure) : measure
       for (let i = 0; i < periodIndices.length; i++) {
         const shortLabel = generatePeriodShortLabel(periodLabels[i] || '', i)
-        seriesKeys.push(`${displayName} (${shortLabel})`)
+        seriesKeys.push(
+          dimCombo
+            ? `${dimCombo} - ${displayName} (${shortLabel})`
+            : `${displayName} (${shortLabel})`
+        )
       }
     }
   }
 
-  return {
-    data: transformedData,
-    seriesKeys,
-    xAxisKey: '__periodDayIndex'
-  }
+  return seriesKeys
 }
 
 /**

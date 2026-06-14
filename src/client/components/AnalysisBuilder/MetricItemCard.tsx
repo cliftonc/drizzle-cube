@@ -7,6 +7,7 @@
 import { memo } from 'react'
 import type { MetricItemCardProps } from './types'
 import { getIcon, getMeasureTypeIcon } from '../../icons'
+import SortToggleButton from './SortToggleButton'
 
 /**
  * MetricItemCard displays a selected metric with:
@@ -29,9 +30,6 @@ const MetricItemCard = memo(function MetricItemCard({
   onDragEnd
 }: MetricItemCardProps) {
   const CloseIcon = getIcon('close')
-  const ChevronUpIcon = getIcon('chevronUp')
-  const ChevronDownIcon = getIcon('chevronDown')
-  const ChevronUpDownIcon = getIcon('chevronUpDown')
 
   // Get the appropriate icon based on measure type
   const measureType = fieldMeta?.type || 'count'
@@ -42,30 +40,6 @@ const MetricItemCard = memo(function MetricItemCard({
 
   // Get the cube name from the field
   const cubeName = metric.field.split('.')[0]
-
-  // Get sort icon based on direction
-  const getSortIcon = () => {
-    switch (sortDirection) {
-      case 'asc':
-        return ChevronUpIcon ? <ChevronUpIcon className="dc:w-4 dc:h-4" /> : '↑'
-      case 'desc':
-        return ChevronDownIcon ? <ChevronDownIcon className="dc:w-4 dc:h-4" /> : '↓'
-      default:
-        return ChevronUpDownIcon ? <ChevronUpDownIcon className="dc:w-4 dc:h-4" /> : '⇅'
-    }
-  }
-
-  // Get sort tooltip
-  const getSortTooltip = () => {
-    switch (sortDirection) {
-      case 'asc':
-        return 'Sorted ascending (click for descending)'
-      case 'desc':
-        return 'Sorted descending (click to remove)'
-      default:
-        return 'Click to sort ascending'
-    }
-  }
 
   // Check if drag/drop is enabled
   const isDraggable = typeof index === 'number' && onDragStart && onDragEnd
@@ -96,20 +70,11 @@ const MetricItemCard = memo(function MetricItemCard({
 
       {/* Sort Button */}
       {onToggleSort && (
-        <button
-          onClick={onToggleSort}
-          className={`dc:p-1 dc:transition-opacity dc:flex-shrink-0 dc:flex dc:items-center dc:gap-0.5 ${
-            sortDirection
-              ? 'dc:opacity-100 text-dc-primary'
-              : 'dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
-          }`}
-          title={getSortTooltip()}
-        >
-          {getSortIcon()}
-          {sortDirection && sortPriority && (
-            <span className="dc:text-xs dc:font-medium">({sortPriority})</span>
-          )}
-        </button>
+        <SortToggleButton
+          sortDirection={sortDirection}
+          sortPriority={sortPriority}
+          onToggleSort={onToggleSort}
+        />
       )}
 
       {/* Remove Button */}

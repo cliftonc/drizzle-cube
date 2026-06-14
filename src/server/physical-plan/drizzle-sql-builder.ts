@@ -223,81 +223,116 @@ export class DrizzleSqlBuilder {
     // Process regular filters (dimensions only for WHERE clause)
     if (query.filters && query.filters.length > 0) {
       for (const filter of query.filters) {
-        // Check if this filter's cube has pre-built filters we should use instead
-        // IMPORTANT: Only use pre-built filters if the filter's cube is in our current cubeMap
-        // This prevents using Employees filters in a Productivity CTE context
-        if (preBuiltFilters && 'member' in filter) {
-          const [cubeName] = (filter.member as string).split('.')
-          const cubeIsInContext = cubeMap.has(cubeName)
-
-          // Skip filters for cubes that are in a pre-aggregation CTE — the filter
-          // is already applied inside the CTE and the original table isn't in the
-          // outer FROM clause.
-          if (queryPlan?.preAggregationCTEs) {
-            const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
-            if (isInCTE) {
-              continue
-            }
-          }
-
-          if (cubeIsInContext && preBuiltFilters.has(cubeName) && !cubesWithPreBuiltFiltersAdded.has(cubeName)) {
-            // Use the pre-built filter SQL instead of building fresh
-            // This deduplicates parameters between CTE subquery and main query
-            const preBuilt = preBuiltFilters.get(cubeName)!
-            conditions.push(...preBuilt)
-            cubesWithPreBuiltFiltersAdded.add(cubeName)
-            continue
-          } else if (cubesWithPreBuiltFiltersAdded.has(cubeName)) {
-            // Skip - already added pre-built filters for this cube
-            continue
-          }
-        }
-
-        const condition = this.processFilter(filter, cubeMap, context, 'where', queryPlan)
-        if (condition) {
-          conditions.push(condition)
-        }
+        this.appendWhereFilter(
+          filter,
+          cubeMap,
+          context,
+          queryPlan,
+          preBuiltFilters,
+          cubesWithPreBuiltFiltersAdded,
+          conditions
+        )
       }
-    }    
+    }
 
     // Process time dimension date range filters
     if (query.timeDimensions) {
       for (const timeDim of query.timeDimensions) {
-        const [cubeName, fieldName] = timeDim.dimension.split('.')
-        const cube = cubeMap.get(cubeName)
-        if (cube && cube.dimensions[fieldName] && timeDim.dateRange) {
-          // Check if this cube is in a pre-aggregation CTE - if so, skip this filter in WHERE clause
-          // The time dimension filter will be applied within the CTE itself during pre-aggregation
-          if (queryPlan?.preAggregationCTEs) {
-            const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
-            if (isInCTE) {
-              continue // Skip this filter - it's handled in the CTE
-            }
-          }
-
-          // Try to use cached time dimension filter for parameter deduplication
-          if (context.filterCache) {
-            const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
-            const cached = context.filterCache.get(key)
-            if (cached) {
-              conditions.push(cached)
-              continue
-            }
-          }
-
-          const dimension = cube.dimensions[fieldName]
-          // Use isolated SQL for time dimension date range filtering because
-          // normalizeDate() returns ISO strings, not Date objects
-          const fieldExpr = resolveSqlExpression(dimension.sql, context)
-          const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
-          if (dateCondition) {
-            conditions.push(dateCondition)
-          }
-        }
+        this.appendTimeDimensionWhere(timeDim, cubeMap, context, queryPlan, conditions)
       }
-    }    
-    
+    }
+
     return conditions
+  }
+
+  /**
+   * Append a single regular filter's WHERE condition, preferring pre-built
+   * filter SQL (for parameter deduplication) and skipping CTE-handled cubes.
+   */
+  private appendWhereFilter(
+    filter: Filter,
+    cubeMap: Map<string, Cube>,
+    context: QueryContext,
+    queryPlan: PhysicalQueryPlan | undefined,
+    preBuiltFilters: Map<string, SQL[]> | undefined,
+    cubesWithPreBuiltFiltersAdded: Set<string>,
+    conditions: SQL[]
+  ): void {
+    // Check if this filter's cube has pre-built filters we should use instead.
+    // IMPORTANT: Only use pre-built filters if the filter's cube is in our
+    // current cubeMap (prevents using Employees filters in a Productivity CTE).
+    if (preBuiltFilters && 'member' in filter) {
+      const [cubeName] = (filter.member as string).split('.')
+
+      // Skip filters for cubes in a pre-aggregation CTE — the filter is applied
+      // inside the CTE and the original table isn't in the outer FROM clause.
+      if (this.cubeIsInCTE(cubeName, queryPlan)) {
+        return
+      }
+
+      const cubeIsInContext = cubeMap.has(cubeName)
+      if (cubeIsInContext && preBuiltFilters.has(cubeName) && !cubesWithPreBuiltFiltersAdded.has(cubeName)) {
+        // Use the pre-built filter SQL instead of building fresh. This
+        // deduplicates parameters between CTE subquery and main query.
+        conditions.push(...preBuiltFilters.get(cubeName)!)
+        cubesWithPreBuiltFiltersAdded.add(cubeName)
+        return
+      } else if (cubesWithPreBuiltFiltersAdded.has(cubeName)) {
+        // Skip - already added pre-built filters for this cube
+        return
+      }
+    }
+
+    const condition = this.processFilter(filter, cubeMap, context, 'where', queryPlan)
+    if (condition) {
+      conditions.push(condition)
+    }
+  }
+
+  /** Append a time dimension's date-range WHERE condition (cached when possible). */
+  private appendTimeDimensionWhere(
+    timeDim: NonNullable<SemanticQuery['timeDimensions']>[number],
+    cubeMap: Map<string, Cube>,
+    context: QueryContext,
+    queryPlan: PhysicalQueryPlan | undefined,
+    conditions: SQL[]
+  ): void {
+    const [cubeName, fieldName] = timeDim.dimension.split('.')
+    const cube = cubeMap.get(cubeName)
+    if (!cube || !cube.dimensions[fieldName] || !timeDim.dateRange) {
+      return
+    }
+
+    // Skip cubes in a pre-aggregation CTE — handled within the CTE itself
+    if (this.cubeIsInCTE(cubeName, queryPlan)) {
+      return
+    }
+
+    // Try to use cached time dimension filter for parameter deduplication
+    if (context.filterCache) {
+      const key = getTimeDimensionFilterKey(timeDim.dimension, timeDim.dateRange)
+      const cached = context.filterCache.get(key)
+      if (cached) {
+        conditions.push(cached)
+        return
+      }
+    }
+
+    const dimension = cube.dimensions[fieldName]
+    // Use isolated SQL for time dimension date range filtering because
+    // normalizeDate() returns ISO strings, not Date objects
+    const fieldExpr = resolveSqlExpression(dimension.sql, context)
+    const dateCondition = this.buildDateRangeCondition(fieldExpr, timeDim.dateRange)
+    if (dateCondition) {
+      conditions.push(dateCondition)
+    }
+  }
+
+  /** Whether a cube is materialized in a pre-aggregation CTE of the plan. */
+  private cubeIsInCTE(cubeName: string, queryPlan?: PhysicalQueryPlan): boolean {
+    return Boolean(
+      queryPlan?.preAggregationCTEs?.some((cte: any) => cte.cube.name === cubeName)
+    )
   }
 
   /**
@@ -375,55 +410,17 @@ export class DrizzleSqlBuilder {
 
     // Apply filter based on type and what we're looking for
     if (filterType === 'where' && dimension) {
-      // Check if this cube is in a pre-aggregation CTE - if so, skip this filter in WHERE clause
-      // The filter will be applied within the CTE itself
-      // IMPORTANT: This check MUST come before the cache check, because cached filters
-      // would reference the wrong table context (CTE table vs main query table)
-      if (queryPlan?.preAggregationCTEs) {
-        const isInCTE = queryPlan.preAggregationCTEs.some((cte: any) => cte.cube.name === cubeName)
-        if (isInCTE) {
-          return null // Skip this filter - it's handled in the CTE
-        }
-      }
-
-      // For non-time dimensions, use raw column expression so Drizzle preserves
-      // column type metadata for proper parameter binding (e.g., UUID columns).
-      // When columns are wrapped in sql`` template (isolation), type metadata is
-      // lost, causing PostgreSQL to bind parameters as text — which fails for
-      // typed columns like UUID.
-      // For time dimensions, keep isolated SQL because normalizeDate() returns
-      // ISO strings (not Date objects), and raw PgTimestamp columns would reject them.
-      const isTimeDimension = dimension.type === 'time'
-
-      // Try to use cached filter SQL for parameter deduplication
-      // This avoids creating duplicate parameters for the same filter values
-      // NOTE: We only use cache for non-CTE cubes (checked above)
-      if (context.filterCache) {
-        const key = getFilterKey(filter)
-        const cached = context.filterCache.get(key)
-        if (cached) {
-          return cached
-        }
-      }
-      const fieldExpr = isTimeDimension
-        ? resolveSqlExpression(dimension.sql, context)
-        : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
-
-      return this.buildFilterCondition(
-        fieldExpr,
-        filterCondition.operator,
-        filterCondition.values,
-        field,
-        filterCondition.dateRange
+      return this.processWhereDimensionFilter(
+        filter, filterCondition, dimension, field, cubeName, context, queryPlan
       )
     } else if (filterType === 'where' && measure) {
       // NEVER apply measure filters in WHERE clause - they should only be in HAVING
       // This prevents incorrect behavior where measure filters are applied before aggregation
       return null
     } else if (filterType === 'having' && measure) {
-      // HAVING clause: use aggregated measure expression
-      // Note: HAVING filters are NOT cached because they use aggregated expressions
-      // which may be different depending on the query context (CTE vs main query)
+      // HAVING clause: use aggregated measure expression.
+      // HAVING filters are NOT cached because they use aggregated expressions
+      // which may differ depending on the query context (CTE vs main query).
       const measureExpr = this.buildHavingMeasureExpression(cubeName, fieldKey, measure, context, queryPlan)
       return this.buildFilterCondition(
         measureExpr,
@@ -436,6 +433,52 @@ export class DrizzleSqlBuilder {
 
     // Skip if this filter doesn't match the type we're processing
     return null
+  }
+
+  /** Build a WHERE condition for a dimension filter, honouring CTE skips and the filter cache. */
+  private processWhereDimensionFilter(
+    filter: Filter,
+    filterCondition: FilterCondition,
+    dimension: any,
+    field: any,
+    cubeName: string,
+    context: QueryContext,
+    queryPlan?: PhysicalQueryPlan
+  ): SQL | null {
+    // Skip filters for cubes in a pre-aggregation CTE — applied within the CTE.
+    // This check MUST come before the cache check, because cached filters would
+    // reference the wrong table context (CTE table vs main query table).
+    if (this.cubeIsInCTE(cubeName, queryPlan)) {
+      return null
+    }
+
+    // For non-time dimensions, use raw column expression so Drizzle preserves
+    // column type metadata for proper parameter binding (e.g., UUID columns).
+    // Wrapping in sql`` (isolation) loses type metadata, causing PostgreSQL to
+    // bind parameters as text — which fails for typed columns like UUID.
+    // For time dimensions, keep isolated SQL because normalizeDate() returns ISO
+    // strings (not Date objects), and raw PgTimestamp columns would reject them.
+    const isTimeDimension = dimension.type === 'time'
+
+    // Try to use cached filter SQL for parameter deduplication (non-CTE cubes only)
+    if (context.filterCache) {
+      const key = getFilterKey(filter)
+      const cached = context.filterCache.get(key)
+      if (cached) {
+        return cached
+      }
+    }
+    const fieldExpr = isTimeDimension
+      ? resolveSqlExpression(dimension.sql, context)
+      : (typeof dimension.sql === 'function' ? dimension.sql(context) : dimension.sql)
+
+    return this.buildFilterCondition(
+      fieldExpr,
+      filterCondition.operator,
+      filterCondition.values,
+      field,
+      filterCondition.dateRange
+    )
   }
 
   /**

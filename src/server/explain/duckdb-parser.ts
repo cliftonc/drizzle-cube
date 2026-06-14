@@ -5,6 +5,42 @@
  */
 
 import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
+import { type ExplainStackEntry, countTreeIndent, pushOperationToTree } from './explain-tree'
+
+/** Mutable accumulator for summary stats gathered while walking the plan. */
+interface DuckDBPlanState {
+  operations: ExplainOperation[]
+  usedIndexes: string[]
+  hasSequentialScans: boolean
+  totalCost: number | undefined
+  stack: ExplainStackEntry[]
+}
+
+/**
+ * Process a single output line, updating plan state in place.
+ * Skips decorative/header lines, then nests parsed operations into the tree.
+ */
+function processDuckDBLine(line: string, state: DuckDBPlanState): void {
+  // Skip decorative lines (box drawing characters)
+  if (/^[┌├└│─┐┤┘]+$/.test(line.trim())) return
+  if (/EXPLANATION|QUERY PLAN/i.test(line)) return
+
+  const operation = parseDuckDBOperationLine(line)
+  if (!operation) return
+
+  if (operation.type.includes('SEQ_SCAN') || operation.type.includes('TABLE_SCAN')) {
+    state.hasSequentialScans = true
+  }
+  if (operation.type.includes('INDEX_SCAN') && operation.index) {
+    state.usedIndexes.push(operation.index)
+  }
+  if (state.operations.length === 0 && operation.estimatedCost !== undefined) {
+    state.totalCost = operation.estimatedCost
+  }
+
+  const indent = countTreeIndent(line)
+  pushOperationToTree(state.stack, state.operations, operation, indent)
+}
 
 /**
  * Parse DuckDB EXPLAIN output
@@ -33,89 +69,33 @@ export function parseDuckDBExplain(
   rawOutput: string[],
   sqlQuery: { sql: string; params?: unknown[] }
 ): ExplainResult {
-  const operations: ExplainOperation[] = []
-  const usedIndexes: string[] = []
-  let hasSequentialScans = false
-  let totalCost: number | undefined
-
-  // Stack for building hierarchical structure
-  const stack: { indent: number; op: ExplainOperation }[] = []
+  const state: DuckDBPlanState = {
+    operations: [],
+    usedIndexes: [],
+    hasSequentialScans: false,
+    totalCost: undefined,
+    stack: [],
+  }
 
   for (const line of rawOutput) {
-    // Skip decorative lines (box drawing characters)
-    if (/^[┌├└│─┐┤┘]+$/.test(line.trim())) continue
-    if (/EXPLANATION|QUERY PLAN/i.test(line)) continue
-
-    // Parse operation lines
-    const operation = parseDuckDBOperationLine(line)
-    if (operation) {
-      // Track sequential scans and indexes
-      if (operation.type.includes('SEQ_SCAN') || operation.type.includes('TABLE_SCAN')) {
-        hasSequentialScans = true
-      }
-      if (operation.type.includes('INDEX_SCAN') && operation.index) {
-        usedIndexes.push(operation.index)
-      }
-
-      // Track total cost (from root operation)
-      if (operations.length === 0 && operation.estimatedCost !== undefined) {
-        totalCost = operation.estimatedCost
-      }
-
-      // Calculate indentation level (count tree characters)
-      const indent = countTreeIndent(line)
-
-      // Pop stack until we find a parent with less indentation
-      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-        stack.pop()
-      }
-
-      if (stack.length === 0) {
-        // Root level operation
-        operations.push(operation)
-      } else {
-        // Child operation
-        const parent = stack[stack.length - 1].op
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(operation)
-      }
-
-      stack.push({ indent, op: operation })
-    }
+    processDuckDBLine(line, state)
   }
 
   const summary: ExplainSummary = {
     database: 'duckdb',
     planningTime: undefined,
     executionTime: undefined,
-    totalCost,
-    hasSequentialScans,
-    usedIndexes: [...new Set(usedIndexes)],
+    totalCost: state.totalCost,
+    hasSequentialScans: state.hasSequentialScans,
+    usedIndexes: [...new Set(state.usedIndexes)],
   }
 
   return {
-    operations,
+    operations: state.operations,
     summary,
     raw: rawOutput.join('\n'),
     sql: sqlQuery,
   }
-}
-
-/**
- * Count indentation level based on tree drawing characters
- */
-function countTreeIndent(line: string): number {
-  let indent = 0
-  for (const char of line) {
-    if (char === ' ' || char === '│' || char === '├' || char === '└' || char === '─') {
-      indent++
-    } else {
-      break
-    }
-  }
-  return indent
 }
 
 /**

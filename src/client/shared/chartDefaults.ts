@@ -9,6 +9,7 @@ import type { ChartType, ChartAxisConfig } from '../types'
 import type { MetricItem, BreakdownItem } from '../components/AnalysisBuilder/types'
 import { chartConfigRegistry } from '../charts/chartConfigRegistry'
 import type { ChartAvailability, ChartAvailabilityContext } from '../charts/chartConfigs'
+import { getAxisBuilder } from './chartConfigBuilders'
 
 // ============================================================================
 // Types
@@ -212,124 +213,14 @@ function buildChartConfig(
   metrics: MetricItem[],
   breakdowns: BreakdownItem[]
 ): ChartAxisConfig {
-  const timeDimension = getFirstTimeDimension(breakdowns)
-  const dimension = getFirstDimension(breakdowns)
-  const dimensions = getDimensions(breakdowns)
-  const allBreakdowns = breakdowns
-
-  switch (chartType) {
-    case 'line':
-    case 'area':
-      // Line/Area: xAxis = first time dimension (prefer) or dimension
-      // yAxis = all measures, series = optional second dimension
-      return {
-        xAxis: timeDimension
-          ? [timeDimension.field]
-          : dimension
-            ? [dimension.field]
-            : [],
-        yAxis: metrics.map((m) => m.field),
-        series:
-          dimensions.length > 1
-            ? [dimensions[1].field]
-            : dimension && timeDimension
-              ? [dimension.field]
-              : []
-      }
-
-    case 'bar':
-      // Bar: xAxis = first dimension (prefer non-time), yAxis = all measures
-      return {
-        xAxis: dimension
-          ? [dimension.field]
-          : timeDimension
-            ? [timeDimension.field]
-            : [],
-        yAxis: metrics.map((m) => m.field),
-        series:
-          dimensions.length > 1
-            ? [dimensions[1].field]
-            : timeDimension && dimension
-              ? [timeDimension.field]
-              : []
-      }
-
-    case 'pie':
-      // Pie: xAxis = first dimension (exactly 1), yAxis = first measure (exactly 1)
-      return {
-        xAxis: dimension ? [dimension.field] : [],
-        yAxis: metrics.length > 0 ? [metrics[0].field] : []
-      }
-
-    case 'scatter':
-      // Scatter: xAxis = first dimension or measure, yAxis = first/second measure
-      if (metrics.length >= 2) {
-        return {
-          xAxis: [metrics[0].field],
-          yAxis: [metrics[1].field],
-          series: dimension ? [dimension.field] : []
-        }
-      }
-      return {
-        xAxis: allBreakdowns.length > 0 ? [allBreakdowns[0].field] : [],
-        yAxis: metrics.length > 0 ? [metrics[0].field] : [],
-        series: dimensions.length > 1 ? [dimensions[1].field] : []
-      }
-
-    case 'bubble':
-      // Bubble: xAxis = first measure, yAxis = second measure, sizeField = third measure (or second if only 2)
-      // series = first breakdown (dimension or time dimension) for grouping/coloring
-      return {
-        xAxis: metrics.length > 0 ? [metrics[0].field] : [],
-        yAxis: metrics.length > 1 ? [metrics[1].field] : [],
-        sizeField: metrics.length > 2 ? metrics[2].field : metrics.length > 1 ? metrics[1].field : undefined,
-        series: dimension ? [dimension.field] : timeDimension ? [timeDimension.field] : []
-      }
-
-    case 'radar':
-    case 'radialBar':
-    case 'treemap':
-      // These all use dimension for categories and measure for values
-      return {
-        xAxis: dimension ? [dimension.field] : [],
-        yAxis: metrics.length > 0 ? [metrics[0].field] : []
-      }
-
-    case 'activityGrid':
-      // Activity Grid: dateField = time dimension, valueField = measure
-      return {
-        dateField: timeDimension ? [timeDimension.field] : [],
-        valueField: metrics.length > 0 ? [metrics[0].field] : []
-      }
-
-    case 'kpiNumber':
-    case 'kpiDelta':
-    case 'kpiText':
-      // KPI charts: just need the measure
-      return {
-        yAxis: metrics.length > 0 ? [metrics[0].field] : []
-      }
-
-    case 'table':
-      // Table: include all fields
-      return {
-        xAxis: [
-          ...breakdowns.map((b) => b.field),
-          ...metrics.map((m) => m.field)
-        ]
-      }
-
-    case 'markdown':
-      // Markdown doesn't need chart config
-      return {}
-
-    default:
-      // Default fallback - x = first breakdown, y = all measures
-      return {
-        xAxis: allBreakdowns.length > 0 ? [allBreakdowns[0].field] : [],
-        yAxis: metrics.map((m) => m.field)
-      }
-  }
+  const build = getAxisBuilder(chartType)
+  return build({
+    metrics,
+    breakdowns,
+    timeDimension: getFirstTimeDimension(breakdowns),
+    dimension: getFirstDimension(breakdowns),
+    dimensions: getDimensions(breakdowns),
+  })
 }
 
 // ============================================================================

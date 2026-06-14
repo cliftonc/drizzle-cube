@@ -9,6 +9,8 @@ import type { BreakdownItemCardProps, TimeGranularity } from './types'
 import { TIME_GRANULARITIES } from './types'
 import { getIcon } from '../../icons'
 import { useTranslation } from '../../hooks/useTranslation'
+import SortToggleButton from './SortToggleButton'
+import BreakdownComparisonToggle from './BreakdownComparisonToggle'
 
 /**
  * BreakdownItemCard displays a selected breakdown with:
@@ -38,9 +40,6 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
   const DimensionIcon = getIcon('dimension')
   const TimeIcon = getIcon('timeDimension')
   const CloseIcon = getIcon('close')
-  const ChevronUpIcon = getIcon('chevronUp')
-  const ChevronDownIcon = getIcon('chevronDown')
-  const ChevronUpDownIcon = getIcon('chevronUpDown')
 
   // Get display title - prefer shortTitle, then title, then field name
   const displayTitle = fieldMeta?.shortTitle || fieldMeta?.title || breakdown.field.split('.').pop() || breakdown.field
@@ -50,30 +49,6 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
 
   // Choose icon based on dimension type
   const Icon = breakdown.isTimeDimension ? TimeIcon : DimensionIcon
-
-  // Get sort icon based on direction
-  const getSortIcon = () => {
-    switch (sortDirection) {
-      case 'asc':
-        return ChevronUpIcon ? <ChevronUpIcon className="dc:w-4 dc:h-4" /> : '↑'
-      case 'desc':
-        return ChevronDownIcon ? <ChevronDownIcon className="dc:w-4 dc:h-4" /> : '↓'
-      default:
-        return ChevronUpDownIcon ? <ChevronUpDownIcon className="dc:w-4 dc:h-4" /> : '⇅'
-    }
-  }
-
-  // Get sort tooltip
-  const getSortTooltip = () => {
-    switch (sortDirection) {
-      case 'asc':
-        return 'Sorted ascending (click for descending)'
-      case 'desc':
-        return 'Sorted descending (click to remove)'
-      default:
-        return 'Click to sort ascending'
-    }
-  }
 
   // Check if drag/drop is enabled
   const isDraggable = typeof index === 'number' && onDragStart && onDragEnd
@@ -124,45 +99,20 @@ const BreakdownItemCard = memo(function BreakdownItemCard({
 
       {/* Comparison Toggle (for time dimensions) */}
       {breakdown.isTimeDimension && onComparisonToggle && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onComparisonToggle()
-          }}
-          disabled={comparisonDisabled && !breakdown.enableComparison}
-          className={`dc:text-xs dc:px-2 dc:py-1 dc:rounded dc:flex-shrink-0 dc:transition-colors ${
-            breakdown.enableComparison
-              ? 'bg-dc-accent text-white'
-              : 'bg-dc-surface dc:border border-dc-border text-dc-text-muted hover:text-dc-text hover:bg-dc-surface-hover'
-          } ${comparisonDisabled && !breakdown.enableComparison ? 'dc:opacity-50 dc:cursor-not-allowed' : ''}`}
-          title={
-            comparisonDisabled && !breakdown.enableComparison
-              ? 'Another time dimension already has comparison enabled'
-              : breakdown.enableComparison
-                ? 'Click to disable comparison'
-                : 'Compare with previous period'
-          }
-        >
-          vs prior
-        </button>
+        <BreakdownComparisonToggle
+          enableComparison={breakdown.enableComparison}
+          comparisonDisabled={comparisonDisabled}
+          onComparisonToggle={onComparisonToggle}
+        />
       )}
 
       {/* Sort Button */}
       {onToggleSort && (
-        <button
-          onClick={onToggleSort}
-          className={`dc:p-1 dc:transition-opacity dc:flex-shrink-0 dc:flex dc:items-center dc:gap-0.5 ${
-            sortDirection
-              ? 'dc:opacity-100 text-dc-primary'
-              : 'dc:opacity-100 dc:sm:opacity-0 dc:sm:group-hover:opacity-100 text-dc-text-muted hover:text-dc-primary'
-          }`}
-          title={getSortTooltip()}
-        >
-          {getSortIcon()}
-          {sortDirection && sortPriority && (
-            <span className="dc:text-xs dc:font-medium">({sortPriority})</span>
-          )}
-        </button>
+        <SortToggleButton
+          sortDirection={sortDirection}
+          sortPriority={sortPriority}
+          onToggleSort={onToggleSort}
+        />
       )}
 
       {/* Remove Button */}

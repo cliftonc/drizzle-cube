@@ -155,69 +155,95 @@ export function normalizeQueryFields(query: Record<string, unknown>): Record<str
 
   // Normalize order: array [{key: dir}] -> merged object
   if (Array.isArray(query.order)) {
-    const merged: Record<string, unknown> = {}
-    for (const entry of query.order) {
-      if (entry && typeof entry === 'object') {
-        Object.assign(merged, entry)
-      }
-    }
-    query.order = merged
+    query.order = mergeOrderArray(query.order)
   }
 
   // Fix order keys: double-prefix, underscore->dot, drop invalid
   if (query.order && typeof query.order === 'object' && !Array.isArray(query.order)) {
-    const queryFields = new Set([
-      ...(Array.isArray(query.measures) ? query.measures as string[] : []),
-      ...(Array.isArray(query.dimensions) ? query.dimensions as string[] : []),
-    ])
-
-    const fixedOrder: Record<string, unknown> = {}
-    for (const [key, val] of Object.entries(query.order as Record<string, unknown>)) {
-      const dpFixed = fixDoublePrefixed(key)
-      if (queryFields.has(dpFixed)) {
-        fixedOrder[dpFixed] = val
-        continue
-      }
-
-      // Try underscore -> dot conversion
-      if (!key.includes('.') && key.includes('_')) {
-        const withDots = key.replace(/_/g, '.')
-        const normalized = fixDoublePrefixed(withDots)
-        if (queryFields.has(normalized)) {
-          fixedOrder[normalized] = val
-          continue
-        }
-        // Try matching by field suffix
-        const match = [...queryFields].find(f => {
-          const fieldName = f.split('.')[1]
-          return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
-        })
-        if (match) {
-          fixedOrder[match] = val
-          continue
-        }
-      }
-
-      // Drop order keys not in query measures/dimensions
-      if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
-        continue
-      }
-
-      fixedOrder[dpFixed] = val
-    }
-
-    // Default to first measure desc if all keys were dropped
-    if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
-      const firstMeasure = Array.isArray(query.measures) ? (query.measures as string[])[0] : undefined
-      if (firstMeasure) {
-        fixedOrder[firstMeasure] = 'desc'
-      }
-    }
-
-    query.order = fixedOrder
+    query.order = normalizeOrderObject(query.order as Record<string, unknown>, query)
   }
 
   return query
+}
+
+/** Merge an order array [{key: dir}, ...] into a single object. */
+function mergeOrderArray(order: unknown[]): Record<string, unknown> {
+  const merged: Record<string, unknown> = {}
+  for (const entry of order) {
+    if (entry && typeof entry === 'object') {
+      Object.assign(merged, entry)
+    }
+  }
+  return merged
+}
+
+/** The set of fully-qualified fields the query selects (measures + dimensions). */
+function collectQueryFields(query: Record<string, unknown>): Set<string> {
+  return new Set([
+    ...(Array.isArray(query.measures) ? query.measures as string[] : []),
+    ...(Array.isArray(query.dimensions) ? query.dimensions as string[] : []),
+  ])
+}
+
+/**
+ * Resolve a single order key to a known query field, applying double-prefix and
+ * underscore→dot corrections. Returns the corrected key, or null if the key
+ * should be dropped because it does not match any selected field.
+ */
+function resolveOrderKey(key: string, queryFields: Set<string>): string | null {
+  const dpFixed = fixDoublePrefixed(key)
+  if (queryFields.has(dpFixed)) {
+    return dpFixed
+  }
+
+  // Try underscore -> dot conversion
+  if (!key.includes('.') && key.includes('_')) {
+    const normalized = fixDoublePrefixed(key.replace(/_/g, '.'))
+    if (queryFields.has(normalized)) {
+      return normalized
+    }
+    // Try matching by field suffix
+    const match = [...queryFields].find(f => {
+      const fieldName = f.split('.')[1]
+      return fieldName && (key.endsWith(`_${fieldName}`) || key.endsWith(`.${fieldName}`))
+    })
+    if (match) {
+      return match
+    }
+  }
+
+  // Drop order keys not in query measures/dimensions
+  if (queryFields.size > 0 && !queryFields.has(dpFixed)) {
+    return null
+  }
+
+  return dpFixed
+}
+
+/** Normalize and validate an order object's keys against the query's fields. */
+function normalizeOrderObject(
+  order: Record<string, unknown>,
+  query: Record<string, unknown>
+): Record<string, unknown> {
+  const queryFields = collectQueryFields(query)
+
+  const fixedOrder: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(order)) {
+    const resolved = resolveOrderKey(key, queryFields)
+    if (resolved !== null) {
+      fixedOrder[resolved] = val
+    }
+  }
+
+  // Default to first measure desc if all keys were dropped
+  if (Object.keys(fixedOrder).length === 0 && queryFields.size > 0) {
+    const firstMeasure = Array.isArray(query.measures) ? (query.measures as string[])[0] : undefined
+    if (firstMeasure) {
+      fixedOrder[firstMeasure] = 'desc'
+    }
+  }
+
+  return fixedOrder
 }
 
 /**

@@ -35,6 +35,40 @@ interface GraphNode {
 }
 
 /**
+ * Run Kahn's algorithm over a subgraph (with subgraph-local in-degrees already
+ * computed) and return the topologically sorted node ids. Mutates the in-degree
+ * counters of the supplied nodes.
+ */
+function kahnSort(subgraph: Map<string, GraphNode>): string[] {
+  const queue: string[] = []
+  const sorted: string[] = []
+
+  // Seed the queue with nodes that have no in-subgraph dependencies
+  for (const [id, node] of subgraph) {
+    if (node.inDegree === 0) {
+      queue.push(id)
+    }
+  }
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!
+    sorted.push(currentId)
+
+    // Decrement in-degree of every node depending on the processed node
+    for (const [nodeId, node] of subgraph) {
+      if (node.dependencies.has(currentId)) {
+        node.inDegree--
+        if (node.inDegree === 0) {
+          queue.push(nodeId)
+        }
+      }
+    }
+  }
+
+  return sorted
+}
+
+/**
  * Calculated Measure Resolver
  * Manages dependency resolution for calculated measures
  */
@@ -162,59 +196,10 @@ export class CalculatedMeasureResolver {
    * @throws Error if circular dependency detected
    */
   topologicalSort(measureNames: string[]): string[] {
-    // Build subgraph for requested measures only
-    const subgraph = new Map<string, GraphNode>()
-    const queue: string[] = []
-    const sorted: string[] = []
-
-    // Initialize subgraph with dependencies copied from main graph
-    for (const measureName of measureNames) {
-      const node = this.dependencyGraph.get(measureName)
-      if (node) {
-        subgraph.set(measureName, {
-          id: node.id,
-          dependencies: new Set(node.dependencies),
-          inDegree: 0  // Will recalculate below
-        })
-      }
-    }
-
-    // Calculate in-degrees within the subgraph
-    // In-degree = number of dependencies that are IN the subgraph
-    for (const node of subgraph.values()) {
-      let inDegree = 0
-      for (const depId of node.dependencies) {
-        if (subgraph.has(depId)) {
-          inDegree++
-        }
-      }
-      node.inDegree = inDegree
-    }
-
-    // Find nodes with no dependencies within the subgraph (in-degree = 0)
-    // These are ready to be processed immediately
-    for (const [id, node] of subgraph) {
-      if (node.inDegree === 0) {
-        queue.push(id)
-      }
-    }
-
-    // Process queue using Kahn's algorithm
-    while (queue.length > 0) {
-      const currentId = queue.shift()!
-      sorted.push(currentId)
-
-      // Find all nodes in the subgraph that depend on the current node
-      // and decrease their in-degree since we've now processed their dependency
-      for (const [nodeId, node] of subgraph) {
-        if (node.dependencies.has(currentId)) {
-          node.inDegree--
-          if (node.inDegree === 0) {
-            queue.push(nodeId)
-          }
-        }
-      }
-    }
+    // Build a subgraph for the requested measures with subgraph-local in-degrees,
+    // then run Kahn's algorithm over it.
+    const subgraph = this.buildSubgraph(measureNames)
+    const sorted = kahnSort(subgraph)
 
     // Check if all nodes were processed
     if (sorted.length < subgraph.size) {
@@ -225,6 +210,39 @@ export class CalculatedMeasureResolver {
     }
 
     return sorted
+  }
+
+  /**
+   * Build a subgraph containing only the requested measures, with in-degrees
+   * recomputed to count only dependencies that are within the subgraph.
+   */
+  private buildSubgraph(measureNames: string[]): Map<string, GraphNode> {
+    const subgraph = new Map<string, GraphNode>()
+
+    // Copy requested nodes (with cloned dependency sets) from the main graph
+    for (const measureName of measureNames) {
+      const node = this.dependencyGraph.get(measureName)
+      if (node) {
+        subgraph.set(measureName, {
+          id: node.id,
+          dependencies: new Set(node.dependencies),
+          inDegree: 0 // Recalculated below
+        })
+      }
+    }
+
+    // In-degree = number of this node's dependencies that are IN the subgraph
+    for (const node of subgraph.values()) {
+      let inDegree = 0
+      for (const depId of node.dependencies) {
+        if (subgraph.has(depId)) {
+          inDegree++
+        }
+      }
+      node.inDegree = inDegree
+    }
+
+    return subgraph
   }
 
   /**

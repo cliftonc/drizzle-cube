@@ -10,7 +10,7 @@
  * - Recent fields tracking
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef, KeyboardEvent } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { getIcon } from '../../icons'
 import type { FieldSearchModalProps, FieldOption } from './types'
 import type { MetaField } from '../../shared/types'
@@ -24,8 +24,9 @@ import {
   addRecentField,
   getRecentFieldOptions
 } from './utils'
-import FieldSearchItem from './FieldSearchItem'
 import FieldDetailPanel from './FieldDetailPanel'
+import FieldSearchResults from './FieldSearchResults'
+import { useFieldSearchKeyboard } from './hooks/useFieldSearchKeyboard'
 import { useTranslation } from '../../hooks/useTranslation'
 
 const SearchIcon = getIcon('search')
@@ -44,13 +45,10 @@ export default function FieldSearchModal({
   // State
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCube, setSelectedCube] = useState<string | null>(null)
-  const [focusedField, setFocusedField] = useState<FieldOption | null>(null)
-  const [focusedIndex, setFocusedIndex] = useState(-1)
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null)
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const resultsContainerRef = useRef<HTMLDivElement>(null)
 
   // Get recent fields from localStorage or props
   const recentFieldNames = useMemo(() => {
@@ -106,17 +104,6 @@ export default function FieldSearchModal({
     }
   }, [isOpen])
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSearchTerm('')
-      setSelectedCube(null)
-      setFocusedField(null)
-      setFocusedIndex(-1)
-      setLastSelectedIndex(null)
-    }
-  }, [isOpen])
-
   // Handle single field selection
   const selectSingleField = useCallback(
     (field: FieldOption, keepOpen: boolean = false) => {
@@ -166,57 +153,32 @@ export default function FieldSearchModal({
     [flatFieldsList, lastSelectedIndex, selectSingleField, selectedFields]
   )
 
-  // Keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (flatFieldsList.length === 0) return
+  // Keyboard navigation + focus-scroll behaviour
+  const {
+    focusedField,
+    setFocusedField,
+    focusedIndex,
+    setFocusedIndex,
+    resultsContainerRef,
+    handleKeyDown
+  } = useFieldSearchKeyboard(flatFieldsList, handleSelectField, onClose)
 
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setFocusedIndex((prev) => {
-            const next = Math.min(prev + 1, flatFieldsList.length - 1)
-            setFocusedField(flatFieldsList[next])
-            return next
-          })
-          break
+  // Focus a field via mouse hover
+  const handleFocusField = useCallback((field: FieldOption, index: number) => {
+    setFocusedField(field)
+    setFocusedIndex(index)
+  }, [setFocusedField, setFocusedIndex])
 
-        case 'ArrowUp':
-          e.preventDefault()
-          setFocusedIndex((prev) => {
-            const next = Math.max(prev - 1, 0)
-            setFocusedField(flatFieldsList[next])
-            return next
-          })
-          break
-
-        case 'Enter':
-          e.preventDefault()
-          if (focusedIndex >= 0 && flatFieldsList[focusedIndex]) {
-            handleSelectField(flatFieldsList[focusedIndex], focusedIndex, e.shiftKey)
-          }
-          break
-
-        case 'Escape':
-          e.preventDefault()
-          onClose()
-          break
-      }
-    },
-    [flatFieldsList, focusedIndex, handleSelectField, onClose]
-  )
-
-  // Scroll focused item into view
+  // Reset state when modal closes
   useEffect(() => {
-    if (focusedIndex >= 0 && resultsContainerRef.current) {
-      const focusedElement = resultsContainerRef.current.querySelector(
-        `[data-field-index="${focusedIndex}"]`
-      )
-      if (focusedElement) {
-        focusedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-      }
+    if (!isOpen) {
+      setSearchTerm('')
+      setSelectedCube(null)
+      setFocusedField(null)
+      setFocusedIndex(-1)
+      setLastSelectedIndex(null)
     }
-  }, [focusedIndex])
+  }, [isOpen, setFocusedField, setFocusedIndex])
 
   if (!isOpen) return null
 
@@ -337,80 +299,18 @@ export default function FieldSearchModal({
             role="listbox"
             aria-label="Available fields"
           >
-            {filteredFields.length === 0 && recentOptions.length === 0 ? (
-              <div className="dc:text-center dc:py-12 text-dc-text-muted">
-                <p className="dc:text-lg dc:mb-2">{t('fieldSearch.empty.heading')}</p>
-                <p className="dc:text-sm">
-                  {searchTerm
-                    ? (mode === 'metrics' ? t('fieldSearch.empty.noMatchMetrics', { searchTerm }) : t('fieldSearch.empty.noMatchDimensions', { searchTerm }))
-                    : (mode === 'metrics' ? t('fieldSearch.empty.noMetrics') : t('fieldSearch.empty.noDimensions'))}
-                </p>
-              </div>
-            ) : (
-              <div className="dc:space-y-6">
-                {/* Recent Fields */}
-                {recentOptions.length > 0 && (
-                  <div>
-                    <h3 className="dc:text-xs dc:font-semibold text-dc-text-muted dc:uppercase dc:tracking-wider dc:mb-2">
-                      {t('fieldSearch.section.recents')}
-                    </h3>
-                    <div className="dc:space-y-1">
-                      {recentOptions.map((field, idx) => (
-                        <FieldSearchItem
-                          key={`recent-${field.name}`}
-                          field={field}
-                          isSelected={selectedFields.includes(field.name)}
-                          isFocused={focusedIndex === idx}
-                          onClick={(e) => handleSelectField(field, idx, e.shiftKey)}
-                          onMouseEnter={() => {
-                            setFocusedField(field)
-                            setFocusedIndex(idx)
-                          }}
-                          data-field-index={idx}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Grouped by Cube */}
-                {Array.from(groupedFields.entries()).map(([cubeName, fields]) => (
-                  <div key={cubeName}>
-                    <h3 className="dc:text-xs dc:font-semibold text-dc-text-muted dc:uppercase dc:tracking-wider dc:mb-2">
-                      {getCubeTitle(cubeName, schema)}
-                    </h3>
-                    <div className="dc:space-y-1">
-                      {fields.map((field) => {
-                        const fieldIndex =
-                          recentOptions.length +
-                          Array.from(groupedFields.entries())
-                            .slice(
-                              0,
-                              Array.from(groupedFields.keys()).indexOf(cubeName)
-                            )
-                            .reduce((sum, [, f]) => sum + f.length, 0) +
-                          fields.indexOf(field)
-
-                        return (
-                          <FieldSearchItem
-                            key={field.name}
-                            field={field}
-                            isSelected={selectedFields.includes(field.name)}
-                            isFocused={focusedIndex === fieldIndex}
-                            onClick={(e) => handleSelectField(field, fieldIndex, e.shiftKey)}
-                            onMouseEnter={() => {
-                              setFocusedField(field)
-                              setFocusedIndex(fieldIndex)
-                            }}
-                            data-field-index={fieldIndex}
-                          />
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <FieldSearchResults
+              mode={mode}
+              schema={schema}
+              searchTerm={searchTerm}
+              recentOptions={recentOptions}
+              groupedFields={groupedFields}
+              filteredCount={filteredFields.length}
+              selectedFields={selectedFields}
+              focusedIndex={focusedIndex}
+              onSelectField={handleSelectField}
+              onFocusField={handleFocusField}
+            />
           </div>
 
           {/* Right Column - Field Details (hidden on mobile) */}

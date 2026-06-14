@@ -15,6 +15,26 @@ import NotebookMarkdownBlock from './NotebookMarkdownBlock'
 import PortletAnalysisModal from '../PortletAnalysisModal'
 import { useTranslation } from '../../hooks/useTranslation'
 
+/**
+ * Derive the block update payload from saved portlet data.
+ * Returns null when the data has no usable analysis config.
+ */
+function buildBlockUpdate(
+  portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>,
+): Partial<PortletBlock> | null {
+  const { analysisConfig } = ensureAnalysisConfig(portletData as PortletConfig)
+  if (!analysisConfig) return null
+
+  const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
+  return {
+    title: portletData.title,
+    query: JSON.stringify(analysisConfig.query),
+    chartType: chartModeConfig?.chartType || 'bar',
+    chartConfig: chartModeConfig?.chartConfig,
+    displayConfig: chartModeConfig?.displayConfig,
+  }
+}
+
 const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { colorPalette?: ColorPalette }) {
   const { t } = useTranslation()
   const resolvedPalette = colorPalette ?? getColorPalette()
@@ -42,20 +62,8 @@ const NotebookCanvas = React.memo(function NotebookCanvas({ colorPalette }: { co
   const handleEditSave = useCallback((portletData: PortletConfig | Omit<PortletConfig, 'id' | 'x' | 'y'>) => {
     if (!editingBlock) return
 
-    // Normalize to ensure analysisConfig exists
-    const normalized = ensureAnalysisConfig(portletData as PortletConfig)
-    const { analysisConfig } = normalized
-
-    if (analysisConfig) {
-      const chartModeConfig = analysisConfig.charts[analysisConfig.analysisType]
-      updateBlock(editingBlock.id, {
-        title: portletData.title,
-        query: JSON.stringify(analysisConfig.query),
-        chartType: chartModeConfig?.chartType || 'bar',
-        chartConfig: chartModeConfig?.chartConfig,
-        displayConfig: chartModeConfig?.displayConfig,
-      })
-    }
+    const update = buildBlockUpdate(portletData)
+    if (update) updateBlock(editingBlock.id, update)
 
     setEditingBlock(null)
   }, [editingBlock, updateBlock])

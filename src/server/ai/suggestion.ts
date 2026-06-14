@@ -5,7 +5,14 @@
 
 import type { CubeMetadata } from '../types/metadata'
 import type { SemanticQuery, TimeDimension } from '../types/query'
-import { discoverCubes, findBestFieldMatch } from './discovery'
+import { discoverCubes } from './discovery'
+import {
+  parseRelativeNExpression,
+  parseQuarterExpression,
+  matchMeasuresInText,
+  applyAggregationFallback,
+  matchDimensions,
+} from './suggestion-helpers'
 
 /**
  * Suggested query result
@@ -246,45 +253,20 @@ function parseTimeExpression(text: string): { dateRange: [string, string]; granu
 
   for (const expr of expressions) {
     const match = lowerText.match(expr.pattern)
-    if (match) {
-      // Handle patterns with numeric capture groups
-      if (match[1] && /^\d+$/.test(match[1])) {
-        const n = parseInt(match[1], 10)
-        const now = new Date()
-        const today = now.toISOString().split('T')[0]
-        const formatDate = (d: Date): string => d.toISOString().split('T')[0]
+    if (!match) continue
 
-        if (/days?/.test(lowerText)) {
-          const start = new Date(now)
-          start.setDate(start.getDate() - n)
-          return { dateRange: [formatDate(start), today], granularity: 'day' }
-        }
-        if (/weeks?/.test(lowerText)) {
-          const start = new Date(now)
-          start.setDate(start.getDate() - n * 7)
-          return { dateRange: [formatDate(start), today], granularity: n <= 4 ? 'day' : 'week' }
-        }
-        if (/months?/.test(lowerText)) {
-          const start = new Date(now)
-          start.setMonth(start.getMonth() - n)
-          return { dateRange: [formatDate(start), today], granularity: n <= 3 ? 'day' : 'month' }
-        }
-      }
-
-      // Handle Q1-Q4
-      if (/^q[1-4]$/i.test(match[0])) {
-        const quarter = parseInt(match[1], 10)
-        const now = new Date()
-        const year = now.getFullYear()
-        const startMonth = (quarter - 1) * 3
-        const start = new Date(year, startMonth, 1)
-        const end = new Date(year, startMonth + 3, 0)
-        const formatDate = (d: Date): string => d.toISOString().split('T')[0]
-        return { dateRange: [formatDate(start), formatDate(end)], granularity: 'month' }
-      }
-
-      return { dateRange: expr.getDateRange(), granularity: expr.granularity }
+    // Handle patterns with numeric capture groups
+    if (match[1] && /^\d+$/.test(match[1])) {
+      const relative = parseRelativeNExpression(parseInt(match[1], 10), lowerText)
+      if (relative) return relative
     }
+
+    // Handle Q1-Q4
+    if (/^q[1-4]$/i.test(match[0])) {
+      return parseQuarterExpression(match[0])
+    }
+
+    return { dateRange: expr.getDateRange(), granularity: expr.granularity }
   }
 
   return null
@@ -345,6 +327,62 @@ function detectGroupingIntent(text: string): string[] {
 /**
  * Suggest a query based on natural language input
  */
+/** Resolve the relevant cubes for the request (explicit target or via discovery). */
+function resolveRelevantCubes(
+  metadata: CubeMetadata[],
+  naturalLanguage: string,
+  targetCube: string | undefined,
+  reasoning: string[],
+  warnings: string[]
+): CubeMetadata[] {
+  if (targetCube) {
+    const cube = metadata.find(c => c.name === targetCube)
+    if (cube) {
+      reasoning.push(`Using specified cube: ${targetCube}`)
+      return [cube]
+    }
+    warnings.push(`Specified cube '${targetCube}' not found`)
+    return []
+  }
+
+  const discoveryResults = discoverCubes(metadata, { intent: naturalLanguage, limit: 3 })
+  const relevantCubes = discoveryResults
+    .map(r => metadata.find(c => c.name === r.cube))
+    .filter((c): c is CubeMetadata => c !== undefined)
+
+  if (relevantCubes.length > 0) {
+    reasoning.push(`Identified relevant cubes: ${relevantCubes.map(c => c.name).join(', ')}`)
+  }
+  return relevantCubes
+}
+
+/** Build the suggestion result for when no relevant cubes were found. */
+function noCubesSuggestion(
+  analysisMode: QuerySuggestion['analysisMode'],
+  warnings: string[]
+): QuerySuggestion {
+  // For analysis modes, still provide nextSteps guidance even without cubes
+  // Return confidence 0.7 for analysis modes (mode was detected), 0 for query mode
+  if (analysisMode === 'query') {
+    return {
+      query: {},
+      confidence: 0,
+      reasoning: ['Could not identify relevant cubes for this query'],
+      warnings,
+      analysisMode,
+      nextSteps: undefined
+    }
+  }
+  return {
+    query: {},
+    confidence: 0.7,
+    reasoning: [`Detected ${analysisMode} intent from natural language`],
+    warnings,
+    analysisMode,
+    nextSteps: generateNextSteps(analysisMode, undefined)
+  }
+}
+
 export function suggestQuery(
   metadata: CubeMetadata[],
   naturalLanguage: string,
@@ -358,44 +396,10 @@ export function suggestQuery(
   const analysisMode = detectAnalysisMode(naturalLanguage)
 
   // Step 1: Discover relevant cubes if not specified
-  let relevantCubes: CubeMetadata[]
-  if (targetCube) {
-    const cube = metadata.find(c => c.name === targetCube)
-    if (cube) {
-      relevantCubes = [cube]
-      reasoning.push(`Using specified cube: ${targetCube}`)
-    } else {
-      warnings.push(`Specified cube '${targetCube}' not found`)
-      relevantCubes = []
-    }
-  } else {
-    const discoveryResults = discoverCubes(metadata, { intent: naturalLanguage, limit: 3 })
-    relevantCubes = discoveryResults
-      .map(r => metadata.find(c => c.name === r.cube))
-      .filter((c): c is CubeMetadata => c !== undefined)
-
-    if (relevantCubes.length > 0) {
-      reasoning.push(`Identified relevant cubes: ${relevantCubes.map(c => c.name).join(', ')}`)
-    }
-  }
+  const relevantCubes = resolveRelevantCubes(metadata, naturalLanguage, targetCube, reasoning, warnings)
 
   if (relevantCubes.length === 0) {
-    // For analysis modes, still provide nextSteps guidance even without cubes
-    // Return confidence 0.7 for analysis modes (mode was detected), 0 for query mode
-    const isAnalysisMode = analysisMode !== 'query'
-    const nextSteps = isAnalysisMode
-      ? generateNextSteps(analysisMode, undefined)
-      : undefined
-    return {
-      query: {},
-      confidence: isAnalysisMode ? 0.7 : 0,
-      reasoning: isAnalysisMode
-        ? [`Detected ${analysisMode} intent from natural language`]
-        : ['Could not identify relevant cubes for this query'],
-      warnings,
-      analysisMode,
-      nextSteps
-    }
+    return noCubesSuggestion(analysisMode, warnings)
   }
 
   const primaryCube = relevantCubes[0]
@@ -413,43 +417,11 @@ export function suggestQuery(
   const lowerText = naturalLanguage.toLowerCase()
 
   // Look for measure keywords in the text
-  for (const measure of primaryCube.measures) {
-    const measureName = measure.name.split('.').pop() || measure.name
-
-    // Check name, title, and synonyms
-    const namesToCheck = [
-      measureName.toLowerCase(),
-      measure.title.toLowerCase(),
-      ...(measure.synonyms || []).map(s => s.toLowerCase())
-    ]
-
-    for (const name of namesToCheck) {
-      if (lowerText.includes(name)) {
-        measures.push(measure.name)
-        reasoning.push(`Matched measure '${measure.name}' via keyword '${name}'`)
-        confidence += 0.15
-        break
-      }
-    }
-  }
+  confidence += matchMeasuresInText(primaryCube, lowerText, measures, reasoning)
 
   // If no specific measures found, suggest based on aggregation intent
   if (measures.length === 0 && aggregationIntent) {
-    // Find measures matching the aggregation type
-    const matchingMeasures = primaryCube.measures.filter(m => m.type === aggregationIntent.type)
-    if (matchingMeasures.length > 0) {
-      measures.push(matchingMeasures[0].name)
-      reasoning.push(`Suggested ${matchingMeasures[0].name} based on ${aggregationIntent.type} intent`)
-    } else if (aggregationIntent.type === 'count') {
-      // For count, find any count or countDistinct measure
-      const countMeasure = primaryCube.measures.find(m =>
-        m.type === 'count' || m.type === 'countDistinct'
-      )
-      if (countMeasure) {
-        measures.push(countMeasure.name)
-        reasoning.push(`Suggested ${countMeasure.name} for counting`)
-      }
-    }
+    applyAggregationFallback(primaryCube, aggregationIntent, measures, reasoning)
   }
 
   // If still no measures, use first available
@@ -464,40 +436,7 @@ export function suggestQuery(
   // Step 4: Detect and resolve grouping dimensions
   const groupingKeywords = detectGroupingIntent(naturalLanguage)
   const dimensions: string[] = []
-
-  for (const keyword of groupingKeywords) {
-    const match = findBestFieldMatch(relevantCubes, keyword, 'dimension')
-    if (match) {
-      dimensions.push(match.field)
-      reasoning.push(`Matched dimension '${match.field}' from grouping keyword '${keyword}'`)
-      confidence += 0.1
-    }
-  }
-
-  // Also check for dimension keywords in the text
-  for (const cube of relevantCubes) {
-    for (const dimension of cube.dimensions) {
-      const dimName = dimension.name.split('.').pop() || dimension.name
-
-      const namesToCheck = [
-        dimName.toLowerCase(),
-        dimension.title.toLowerCase(),
-        ...(dimension.synonyms || []).map(s => s.toLowerCase())
-      ]
-
-      for (const name of namesToCheck) {
-        if (lowerText.includes(name) && !dimensions.includes(dimension.name)) {
-          // Check if this is likely a grouping dimension
-          if (lowerText.includes(`by ${name}`) || lowerText.includes(`per ${name}`)) {
-            dimensions.push(dimension.name)
-            reasoning.push(`Matched dimension '${dimension.name}' as grouping`)
-            confidence += 0.1
-            break
-          }
-        }
-      }
-    }
-  }
+  confidence += matchDimensions(relevantCubes, groupingKeywords, lowerText, dimensions, reasoning)
 
   if (dimensions.length > 0) {
     query.dimensions = dimensions

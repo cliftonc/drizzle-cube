@@ -698,6 +698,18 @@ export function useAnalysisBuilder(
   // Action Callbacks
   // =========================================================================
 
+  const applyBreakdownSelection = useCallback(
+    (field: MetaField, fieldType: 'measure' | 'dimension' | 'timeDimension') => {
+      // In retention mode, add to retention breakdowns instead of query breakdowns
+      if (analysisType === 'retention' && fieldType === 'dimension') {
+        addRetentionBreakdown({ field: field.name })
+      } else {
+        toggleBreakdown(field.name, fieldType === 'timeDimension')
+      }
+    },
+    [analysisType, addRetentionBreakdown, toggleBreakdown]
+  )
+
   const handleFieldSelected = useCallback(
     (
       field: MetaField,
@@ -708,18 +720,13 @@ export function useAnalysisBuilder(
       if (uiState.fieldModalMode === 'metrics' && fieldType === 'measure') {
         toggleMetric(field.name)
       } else if (uiState.fieldModalMode === 'breakdown') {
-        // In retention mode, add to retention breakdowns instead of query breakdowns
-        if (analysisType === 'retention' && fieldType === 'dimension') {
-          addRetentionBreakdown({ field: field.name })
-        } else {
-          toggleBreakdown(field.name, fieldType === 'timeDimension')
-        }
+        applyBreakdownSelection(field, fieldType)
       }
       if (!keepOpen) {
         uiState.closeFieldModal()
       }
     },
-    [uiState, toggleMetric, toggleBreakdown, addRetentionBreakdown, analysisType]
+    [uiState, toggleMetric, applyBreakdownSelection]
   )
 
   const generateAI = useCallback(async () => {

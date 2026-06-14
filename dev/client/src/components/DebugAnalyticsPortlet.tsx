@@ -1,5 +1,6 @@
 import React from 'react'
 import { useCubeLoadQuery } from '@drizzle-cube/client'
+import { JsonBlock, useDirectApiTest, LoadQueryResult, DirectApiResult } from './DebugAnalyticsParts'
 
 interface DebugAnalyticsPortletProps {
   query: string
@@ -7,8 +8,6 @@ interface DebugAnalyticsPortletProps {
 }
 
 export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPortletProps) {
-  const [networkTest, setNetworkTest] = React.useState<any>(null)
-  
   const parsedQuery = React.useMemo(() => {
     try {
       return JSON.parse(query)
@@ -17,26 +16,7 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
     }
   }, [query])
 
-  // Test direct API call
-  React.useEffect(() => {
-    const testQuery = async () => {
-      try {
-        const response = await fetch('/cubejs-api/v1/load', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: parsedQuery })
-        })
-        const result = await response.json()
-        setNetworkTest({ success: true, data: result })
-      } catch (err) {
-        setNetworkTest({ success: false, error: err })
-      }
-    }
-    
-    if (parsedQuery && !parsedQuery.error) {
-      testQuery()
-    }
-  }, [parsedQuery])
+  const networkTest = useDirectApiTest(parsedQuery)
 
   const { resultSet, error, isLoading, isFetching } = useCubeLoadQuery(parsedQuery)
 
@@ -45,57 +25,18 @@ export default function DebugAnalyticsPortlet({ query, title }: DebugAnalyticsPo
   return (
     <div className="border p-4 bg-white rounded-xs">
       <h3 className="font-bold mb-2">{title}</h3>
-      
+
       <div className="text-xs space-y-2">
-        <div>
-          <strong>Query:</strong>
-          <pre className="bg-gray-100 p-2 rounded-xs text-xs overflow-auto">
-            <code className="language-json">{JSON.stringify(parsedQuery, null, 2)}</code>
-          </pre>
-        </div>
-        
-        <div>
-          <strong>useCubeLoadQuery Loading:</strong> {isLoading ? 'Yes' : 'No'} {isFetching ? '(fetching...)' : ''}
-        </div>
-        
-        {error && (
-          <div>
-            <strong>useCubeLoadQuery Error:</strong>
-            <pre className="bg-red-100 p-2 rounded-xs text-xs text-red-700">
-              <code className="language-json">{JSON.stringify(error, null, 2)}</code>
-            </pre>
-          </div>
-        )}
+        <JsonBlock label="Query:" value={parsedQuery} bg="bg-gray-100" extra="overflow-auto" />
 
-        {resultSet && (
-          <div>
-            <strong>useCubeLoadQuery Data:</strong>
-            <pre className="bg-green-100 p-2 rounded-xs text-xs max-h-40 overflow-auto">
-              <code className="language-json">{JSON.stringify(resultSet, null, 2)}</code>
-            </pre>
-          </div>
-        )}
+        <LoadQueryResult
+          resultSet={resultSet}
+          error={error}
+          isLoading={isLoading}
+          isFetching={isFetching}
+        />
 
-        {!isLoading && !error && !resultSet && (
-          <div className="text-gray-500">
-            useCubeLoadQuery: No data returned
-          </div>
-        )}
-        
-        {networkTest && (
-          <div>
-            <strong>Direct API Test:</strong>
-            {networkTest.success ? (
-              <pre className="bg-blue-100 p-2 rounded-xs text-xs max-h-40 overflow-auto">
-                <code className="language-json">{JSON.stringify(networkTest.data, null, 2)}</code>
-              </pre>
-            ) : (
-              <pre className="bg-red-100 p-2 rounded-xs text-xs text-red-700">
-                <code className="language-json">{JSON.stringify(networkTest.error, null, 2)}</code>
-              </pre>
-            )}
-          </div>
-        )}
+        <DirectApiResult networkTest={networkTest} />
       </div>
     </div>
   )

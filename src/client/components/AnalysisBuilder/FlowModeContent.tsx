@@ -9,11 +9,12 @@ import { memo, useState, useCallback } from 'react'
 import type { CubeMeta, FunnelBindingKey, ChartType, ChartDisplayConfig, Filter } from '../../types'
 import type { ColorPalette } from '../../utils/colorPalettes'
 import type { FlowStartingStep } from '../../types/flow'
-import { FLOW_MIN_DEPTH, FLOW_MAX_DEPTH } from '../../types/flow'
 import FlowConfigPanel from './FlowConfigPanel'
 import AnalysisDisplayConfigPanel from './AnalysisDisplayConfigPanel'
 import AnalysisFilterSection from './AnalysisFilterSection'
 import SectionHeading from './SectionHeading'
+import FlowVisualizationPicker from './FlowVisualizationPicker'
+import FlowDepthControls from './FlowDepthControls'
 import { useTranslation } from '../../hooks/useTranslation'
 
 type FlowPanelTab = 'config' | 'display'
@@ -169,46 +170,10 @@ const FlowModeContent = memo(function FlowModeContent({
           <div className="dc:flex-1 dc:min-h-0 dc:overflow-auto dc:p-4 dc:space-y-6">
             {/* Visualization Type - now in main config since it affects query */}
             {onChartTypeChange && (
-              <div>
-                <SectionHeading>{t('flow.visualization.title')}</SectionHeading>
-                <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                  {t('flow.visualization.description')}
-                </p>
-                <div className="dc:flex dc:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onChartTypeChange('sankey')}
-                    className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:font-medium dc:transition-colors ${
-                      chartType === 'sankey'
-                        ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
-                        : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
-                    }`}
-                  >
-                    <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
-                      <span>{t('flow.visualization.sankey')}</span>
-                      <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
-                        {t('flow.visualization.sankeyHint')}
-                      </span>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onChartTypeChange('sunburst')}
-                    className={`dc:flex-1 dc:px-3 dc:py-2 dc:rounded-md dc:border dc:text-sm dc:font-medium dc:transition-colors ${
-                      chartType === 'sunburst'
-                        ? 'border-dc-primary bg-dc-primary/10 text-dc-primary'
-                        : 'border-dc-border bg-dc-surface hover:bg-dc-surface-hover text-dc-text'
-                    }`}
-                  >
-                    <div className="dc:flex dc:flex-col dc:items-center dc:gap-1">
-                      <span>{t('flow.visualization.sunburst')}</span>
-                      <span className="dc:text-[10px] dc:font-normal text-dc-text-muted">
-                        {t('flow.visualization.sunburstHint')}
-                      </span>
-                    </div>
-                  </button>
-                </div>
-              </div>
+              <FlowVisualizationPicker
+                chartType={chartType}
+                onChartTypeChange={onChartTypeChange}
+              />
             )}
 
             {/* Starting Step Section */}
@@ -232,68 +197,13 @@ const FlowModeContent = memo(function FlowModeContent({
             </div>
 
             {/* Depth Configuration */}
-            <div>
-              <SectionHeading>{t('flow.depth.title')}</SectionHeading>
-              <p className="dc:text-xs text-dc-text-muted dc:mb-3">
-                {chartType === 'sunburst'
-                  ? t('flow.depth.descriptionSunburst')
-                  : t('flow.depth.descriptionSankey')}
-              </p>
-
-              <div className="dc:grid dc:grid-cols-2 dc:gap-4">
-                {/* Steps Before - disabled for sunburst */}
-                <div className={chartType === 'sunburst' ? 'dc:opacity-50' : ''}>
-                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    {t('flow.depth.stepsBefore')}
-                    {chartType === 'sunburst' && (
-                      <span className="dc:ml-1 text-dc-text-muted">{t('flow.depth.stepsBeforeNA')}</span>
-                    )}
-                  </label>
-                  <div className="dc:flex dc:items-center dc:gap-2">
-                    <input
-                      type="range"
-                      min={FLOW_MIN_DEPTH}
-                      max={FLOW_MAX_DEPTH}
-                      value={stepsBefore}
-                      onChange={(e) => onStepsBeforeChange(parseInt(e.target.value, 10))}
-                      disabled={chartType === 'sunburst'}
-                      className="dc:flex-1 dc:disabled:cursor-not-allowed"
-                    />
-                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text dc:text-center">
-                      {chartType === 'sunburst' ? '-' : stepsBefore}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Steps After */}
-                <div>
-                  <label className="dc:block dc:text-xs dc:font-medium text-dc-text-muted dc:mb-1">
-                    {t('flow.depth.stepsAfter')}
-                  </label>
-                  <div className="dc:flex dc:items-center dc:gap-2">
-                    <input
-                      type="range"
-                      min={FLOW_MIN_DEPTH}
-                      max={FLOW_MAX_DEPTH}
-                      value={stepsAfter}
-                      onChange={(e) => onStepsAfterChange(parseInt(e.target.value, 10))}
-                      className="dc:flex-1"
-                    />
-                    <span className="dc:w-6 dc:text-sm dc:font-medium text-dc-text dc:text-center">
-                      {stepsAfter}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Performance warning for high depth */}
-              {((chartType !== 'sunburst' && stepsBefore >= 4) || stepsAfter >= 4) && (
-                <div className="dc:mt-3 dc:px-3 dc:py-2 bg-dc-warning-bg dc:rounded dc:border border-dc-warning dc:text-xs text-dc-warning">
-                  {t('flow.depth.performanceWarning')}
-                </div>
-              )}
-
-            </div>
+            <FlowDepthControls
+              chartType={chartType}
+              stepsBefore={stepsBefore}
+              stepsAfter={stepsAfter}
+              onStepsBeforeChange={onStepsBeforeChange}
+              onStepsAfterChange={onStepsAfterChange}
+            />
 
             {/* Join strategy selection */}
             <div>

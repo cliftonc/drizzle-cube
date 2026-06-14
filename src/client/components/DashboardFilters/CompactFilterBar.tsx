@@ -4,27 +4,16 @@
  * A Mixpanel-inspired compact horizontal filter bar for dashboards.
  * Provides quick preset date selection, custom date options, XTD options,
  * and compact non-date filter display.
+ *
+ * State, derived values, and handlers live in `useCompactFilterBar`; the
+ * desktop/mobile layouts live in `CompactFilterBarParts`. This file is the
+ * layout shell.
  */
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { getIcon } from '../../icons'
-import DatePresetChips from './DatePresetChips'
-import CustomDateDropdown from './CustomDateDropdown'
-import XTDDropdown from './XTDDropdown'
-import FilterChip from './FilterChip'
-import type { DashboardFilter, CubeMeta, SimpleFilter } from '../../types'
-import { useTranslation } from '../../hooks/useTranslation'
-import {
-  detectPresetFromDateRange,
-  calculateDateRange,
-  formatDateRangeDisplay,
-  XTD_OPTIONS
-} from '../shared/utils'
-
-const AddIcon = getIcon('add')
-const CalendarIcon = getIcon('timeDimension')
-const ChevronDownIcon = getIcon('chevronDown')
-const FilterIcon = getIcon('filter')
+import React from 'react'
+import type { DashboardFilter, CubeMeta } from '../../types'
+import { useCompactFilterBar } from './useCompactFilterBar'
+import { DesktopLayout, MobileLayout, type CompactFilterBarViewProps } from './CompactFilterBarParts'
 
 interface CompactFilterBarProps {
   dashboardFilters: DashboardFilter[]
@@ -45,159 +34,34 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
   onEditFilter,
   onRemoveFilter
 }) => {
-  const { t } = useTranslation()
-  // Local state for immediate UI feedback on filter value changes.
-  // Without this, changes require a full round-trip through the parent's
-  // onConfigChange → state update → re-render cycle before being visible.
-  // If the parent doesn't handle onConfigChange (or uses dashboardFilters prop),
-  // the round-trip never completes and clicks appear to do nothing.
-  const [localFilters, setLocalFilters] = useState<DashboardFilter[]>(dashboardFilters)
-
-  // Sync from props when parent updates (e.g., after round-trip completes,
-  // or when filters change externally)
-  useEffect(() => {
-    setLocalFilters(dashboardFilters)
-  }, [dashboardFilters])
-
-  // Dropdown state
-  const [showCustomDropdown, setShowCustomDropdown] = useState(false)
-  const [showXTDDropdown, setShowXTDDropdown] = useState(false)
-
-  // Refs for dropdown positioning
-  const customButtonRef = useRef<HTMLButtonElement>(null)
-  const xtdButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Find universal time filter
-  const universalTimeFilter = useMemo(() => {
-    return localFilters.find(df => df.isUniversalTime)
-  }, [localFilters])
-
-  // Get current date range from universal time filter
-  const currentDateRange = useMemo(() => {
-    if (!universalTimeFilter) return null
-    const filter = universalTimeFilter.filter as SimpleFilter
-    // Handle both dateRange property and values array
-    if (filter.dateRange) return filter.dateRange
-    if (filter.values && filter.values.length > 0) {
-      // Single string value (preset) - return as string
-      if (filter.values.length === 1 && typeof filter.values[0] === 'string') {
-        return filter.values[0]
-      }
-      // Array of dates for custom range
-      return filter.values
-    }
-    return null
-  }, [universalTimeFilter])
-
-  // Detect active preset from current date range
-  const activePresetId = useMemo(() => {
-    return detectPresetFromDateRange(currentDateRange as string | string[] | undefined)
-  }, [currentDateRange])
-
-  // Check if XTD is active
-  const activeXTDId = useMemo(() => {
-    if (!currentDateRange || Array.isArray(currentDateRange)) return null
-    const preset = detectPresetFromDateRange(currentDateRange)
-    return XTD_OPTIONS.find(opt => opt.id === preset)?.id || null
-  }, [currentDateRange])
-
-  // Get non-date filters (exclude universal time filter)
-  const nonDateFilters = useMemo(() => {
-    return localFilters.filter(df => !df.isUniversalTime)
-  }, [localFilters])
-
-  // Generate unique ID for new filters
-  const generateFilterId = useCallback(() => {
-    return `df_${Date.now()}_${Math.random().toString(36).substring(7)}`
-  }, [])
-
-  // Handle date range change (preset, custom, or XTD)
-  const handleDateRangeChange = useCallback((newDateRange: string | string[]) => {
-    if (universalTimeFilter) {
-      // Update existing filter
-      const updatedFilters = localFilters.map(df => {
-        if (df.id === universalTimeFilter.id) {
-          return {
-            ...df,
-            filter: {
-              ...(df.filter as SimpleFilter),
-              values: Array.isArray(newDateRange) ? newDateRange : [newDateRange],
-              dateRange: newDateRange
-            }
-          }
-        }
-        return df
-      })
-      setLocalFilters(updatedFilters)
-      onDashboardFiltersChange(updatedFilters)
-    } else {
-      // Create new universal time filter
-      const newFilter: DashboardFilter = {
-        id: generateFilterId(),
-        label: 'Date Range',
-        isUniversalTime: true,
-        filter: {
-          member: '__universal_time__',
-          operator: 'inDateRange',
-          values: Array.isArray(newDateRange) ? newDateRange : [newDateRange],
-          dateRange: newDateRange
-        }
-      }
-      const updatedFilters = [...localFilters, newFilter]
-      setLocalFilters(updatedFilters)
-      onDashboardFiltersChange(updatedFilters)
-    }
-  }, [localFilters, universalTimeFilter, onDashboardFiltersChange, generateFilterId])
-
-  // Handle preset selection
-  const handlePresetSelect = useCallback((presetValue: string) => {
-    handleDateRangeChange(presetValue)
-  }, [handleDateRangeChange])
-
-  // Handle XTD selection
-  const handleXTDSelect = useCallback((xtdValue: string) => {
-    handleDateRangeChange(xtdValue)
-    setShowXTDDropdown(false)
-  }, [handleDateRangeChange])
-
-  // Handle custom date selection
-  const handleCustomDateSelect = useCallback((dateRange: string | string[]) => {
-    handleDateRangeChange(dateRange)
-    setShowCustomDropdown(false)
-  }, [handleDateRangeChange])
-
-  // Handle filter value change (for non-date filters)
-  const handleFilterChange = useCallback((filterId: string, updatedFilter: DashboardFilter) => {
-    const updatedFilters = localFilters.map(df =>
-      df.id === filterId ? updatedFilter : df
-    )
-    setLocalFilters(updatedFilters)
-    onDashboardFiltersChange(updatedFilters)
-  }, [localFilters, onDashboardFiltersChange])
-
-  // Calculate tooltip for active date range
-  const dateRangeTooltip = useMemo(() => {
-    if (!currentDateRange) return null
-
-    if (Array.isArray(currentDateRange)) {
-      // Custom date range - format the dates
-      const start = new Date(currentDateRange[0])
-      const end = new Date(currentDateRange[1] || currentDateRange[0])
-      return formatDateRangeDisplay(start, end)
-    }
-
-    // Preset - calculate the actual range
-    const range = calculateDateRange(currentDateRange)
-    if (range) {
-      return formatDateRangeDisplay(range.start, range.end)
-    }
-
-    return currentDateRange
-  }, [currentDateRange])
+  const bar = useCompactFilterBar(dashboardFilters, onDashboardFiltersChange)
 
   // If no filters and not in edit mode, don't show anything
-  if (!isEditMode && localFilters.length === 0) {
+  if (!isEditMode && bar.localFilters.length === 0) {
     return null
+  }
+
+  const viewProps: CompactFilterBarViewProps = {
+    schema,
+    isEditMode,
+    onAddFilter,
+    onEditFilter,
+    onRemoveFilter,
+    currentDateRange: bar.currentDateRange as string | string[] | null,
+    activePresetId: bar.activePresetId as string | null,
+    activeXTDId: bar.activeXTDId,
+    nonDateFilters: bar.nonDateFilters,
+    dateRangeTooltip: bar.dateRangeTooltip as string | null,
+    showCustomDropdown: bar.showCustomDropdown,
+    setShowCustomDropdown: bar.setShowCustomDropdown,
+    showXTDDropdown: bar.showXTDDropdown,
+    setShowXTDDropdown: bar.setShowXTDDropdown,
+    customButtonRef: bar.customButtonRef,
+    xtdButtonRef: bar.xtdButtonRef,
+    handlePresetSelect: bar.handlePresetSelect,
+    handleXTDSelect: bar.handleXTDSelect,
+    handleCustomDateSelect: bar.handleCustomDateSelect,
+    handleFilterChange: bar.handleFilterChange
   }
 
   return (
@@ -208,266 +72,8 @@ const CompactFilterBar: React.FC<CompactFilterBarProps> = ({
         backgroundColor: 'var(--dc-surface)'
       }}
     >
-      {/* Desktop Layout */}
-      <div className="dc:hidden dc:md:flex dc:items-center dc:gap-2 dc:px-3 dc:py-2">
-        {/* Filter Icon */}
-        <FilterIcon
-          className="dc:w-4 dc:h-4 dc:shrink-0"
-          style={{ color: 'var(--dc-text-secondary)' }}
-        />
-
-        {/* Date Preset Chips */}
-        <DatePresetChips
-          activePreset={activePresetId !== 'custom' && !activeXTDId ? activePresetId : null}
-          onPresetSelect={handlePresetSelect}
-        />
-
-        {/* Custom Date Button */}
-        <div className="dc:relative">
-          <button
-            ref={customButtonRef}
-            type="button"
-            onClick={() => {
-              setShowCustomDropdown(!showCustomDropdown)
-              setShowXTDDropdown(false)
-            }}
-            title={activePresetId === 'custom' && dateRangeTooltip ? dateRangeTooltip : 'Custom date range'}
-            className={`
-              dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
-              dc:transition-colors dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
-            `}
-            style={{
-              backgroundColor: activePresetId === 'custom' ? 'var(--dc-primary)' : 'var(--dc-surface)',
-              color: activePresetId === 'custom' ? 'white' : 'var(--dc-text)',
-              borderColor: activePresetId === 'custom' ? 'transparent' : 'var(--dc-border)'
-            }}
-          >
-            <CalendarIcon className="dc:w-3 dc:h-3" />
-            <span>{t('dateRange.custom')}</span>
-            <ChevronDownIcon className="dc:w-3 dc:h-3" />
-          </button>
-
-          {showCustomDropdown && (
-            <CustomDateDropdown
-              isOpen={showCustomDropdown}
-              onClose={() => setShowCustomDropdown(false)}
-              onDateRangeChange={handleCustomDateSelect}
-              currentDateRange={currentDateRange as string | string[] | undefined}
-              anchorRef={customButtonRef}
-            />
-          )}
-        </div>
-
-        {/* XTD Button */}
-        <div className="dc:relative">
-          <button
-            ref={xtdButtonRef}
-            type="button"
-            onClick={() => {
-              setShowXTDDropdown(!showXTDDropdown)
-              setShowCustomDropdown(false)
-            }}
-            title={activeXTDId && dateRangeTooltip ? dateRangeTooltip : 'X to Date options'}
-            className={`
-              dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
-              dc:transition-colors dc:focus:outline-none dc:focus:ring-2 dc:focus:ring-offset-1
-            `}
-            style={{
-              backgroundColor: activeXTDId ? 'var(--dc-primary)' : 'var(--dc-surface)',
-              color: activeXTDId ? 'white' : 'var(--dc-text)',
-              borderColor: activeXTDId ? 'transparent' : 'var(--dc-border)'
-            }}
-          >
-            <span>XTD</span>
-            <ChevronDownIcon className="dc:w-3 dc:h-3" />
-          </button>
-
-          {showXTDDropdown && (
-            <XTDDropdown
-              isOpen={showXTDDropdown}
-              onClose={() => setShowXTDDropdown(false)}
-              onSelect={handleXTDSelect}
-              currentXTD={activeXTDId}
-              anchorRef={xtdButtonRef}
-            />
-          )}
-        </div>
-
-        {/* Separator */}
-        {nonDateFilters.length > 0 && (
-          <div
-            className="dc:h-5 dc:w-px dc:mx-1"
-            style={{ backgroundColor: 'var(--dc-border)' }}
-          />
-        )}
-
-        {/* Non-date Filter Chips */}
-        <div className="dc:flex dc:items-center dc:gap-1.5 dc:flex-wrap">
-          {nonDateFilters.map(filter => (
-            <FilterChip
-              key={filter.id}
-              filter={filter}
-              schema={schema}
-              isEditMode={isEditMode}
-              onChange={(updatedFilter) => handleFilterChange(filter.id, updatedFilter)}
-              onEdit={() => onEditFilter?.(filter.id)}
-              onRemove={() => onRemoveFilter?.(filter.id)}
-            />
-          ))}
-        </div>
-
-        {/* Add Filter Button (Edit Mode) */}
-        {isEditMode && onAddFilter && (
-          <button
-            type="button"
-            onClick={onAddFilter}
-            className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border dc:transition-colors"
-            style={{
-              borderColor: 'var(--dc-border)',
-              color: 'var(--dc-text-secondary)',
-              backgroundColor: 'transparent'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--dc-surface-hover)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            <AddIcon className="dc:w-3.5 dc:h-3.5" />
-          </button>
-        )}
-      </div>
-
-      {/* Mobile Layout */}
-      <div className="dc:md:hidden">
-        {/* Presets row with horizontal scroll */}
-        <div className="dc:flex dc:items-center dc:gap-2 dc:overflow-x-auto dc:px-3 dc:py-2 scrollbar-thin">
-          {/* Filter Icon */}
-          <FilterIcon
-            className="dc:w-4 dc:h-4 dc:shrink-0"
-            style={{ color: 'var(--dc-text-secondary)' }}
-          />
-          <DatePresetChips
-            activePreset={activePresetId !== 'custom' && !activeXTDId ? activePresetId : null}
-            onPresetSelect={handlePresetSelect}
-          />
-        </div>
-
-        {/* Custom, XTD, and Add buttons */}
-        <div
-          className="dc:flex dc:items-center dc:justify-between dc:px-3 dc:py-2 dc:border-t"
-          style={{ borderColor: 'var(--dc-border)' }}
-        >
-          <div className="dc:flex dc:items-center dc:gap-2">
-            {/* Custom Button */}
-            <div className="dc:relative">
-              <button
-                ref={customButtonRef}
-                type="button"
-                onClick={() => {
-                  setShowCustomDropdown(!showCustomDropdown)
-                  setShowXTDDropdown(false)
-                }}
-                className={`
-                  dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
-                  dc:transition-colors
-                `}
-                style={{
-                  backgroundColor: activePresetId === 'custom' ? 'var(--dc-primary)' : 'var(--dc-surface)',
-                  color: activePresetId === 'custom' ? 'white' : 'var(--dc-text)',
-                  borderColor: activePresetId === 'custom' ? 'transparent' : 'var(--dc-border)'
-                }}
-              >
-                <CalendarIcon className="dc:w-3 dc:h-3" />
-                <span>{t('dateRange.custom')}</span>
-              </button>
-
-              {showCustomDropdown && (
-                <CustomDateDropdown
-                  isOpen={showCustomDropdown}
-                  onClose={() => setShowCustomDropdown(false)}
-                  onDateRangeChange={handleCustomDateSelect}
-                  currentDateRange={currentDateRange as string | string[] | undefined}
-                  anchorRef={customButtonRef}
-                />
-              )}
-            </div>
-
-            {/* XTD Button */}
-            <div className="dc:relative">
-              <button
-                ref={xtdButtonRef}
-                type="button"
-                onClick={() => {
-                  setShowXTDDropdown(!showXTDDropdown)
-                  setShowCustomDropdown(false)
-                }}
-                className={`
-                  dc:flex dc:items-center dc:gap-1 dc:px-2.5 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border
-                  dc:transition-colors
-                `}
-                style={{
-                  backgroundColor: activeXTDId ? 'var(--dc-primary)' : 'var(--dc-surface)',
-                  color: activeXTDId ? 'white' : 'var(--dc-text)',
-                  borderColor: activeXTDId ? 'transparent' : 'var(--dc-border)'
-                }}
-              >
-                <span>XTD</span>
-                <ChevronDownIcon className="dc:w-3 dc:h-3" />
-              </button>
-
-              {showXTDDropdown && (
-                <XTDDropdown
-                  isOpen={showXTDDropdown}
-                  onClose={() => setShowXTDDropdown(false)}
-                  onSelect={handleXTDSelect}
-                  currentXTD={activeXTDId}
-                  anchorRef={xtdButtonRef}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Add Filter Button (Edit Mode) */}
-          {isEditMode && onAddFilter && (
-            <button
-              type="button"
-              onClick={onAddFilter}
-              className="dc:flex dc:items-center dc:gap-1 dc:px-2 dc:py-1 dc:rounded dc:text-xs dc:font-medium dc:border dc:transition-colors"
-              style={{
-                borderColor: 'var(--dc-border)',
-                color: 'var(--dc-text-secondary)',
-                backgroundColor: 'transparent'
-              }}
-            >
-              <AddIcon className="dc:w-3.5 dc:h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Non-date Filter Chips (Mobile) */}
-        {nonDateFilters.length > 0 && (
-          <div
-            className="dc:px-3 dc:py-2 dc:border-t"
-            style={{ borderColor: 'var(--dc-border)' }}
-          >
-            <div className="dc:flex dc:items-center dc:gap-1.5 dc:flex-wrap">
-              {nonDateFilters.map(filter => (
-                <FilterChip
-                  key={filter.id}
-                  filter={filter}
-                  schema={schema}
-                  isEditMode={isEditMode}
-                  onChange={(updatedFilter) => handleFilterChange(filter.id, updatedFilter)}
-                  onEdit={() => onEditFilter?.(filter.id)}
-                  onRemove={() => onRemoveFilter?.(filter.id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <DesktopLayout {...viewProps} />
+      <MobileLayout {...viewProps} />
     </div>
   )
 }

@@ -21,7 +21,6 @@ import { createStore, useStore, type StoreApi } from 'zustand'
 import { devtools, persist, subscribeWithSelector } from 'zustand/middleware'
 import type {
   Filter,
-  SimpleFilter,
   ChartType,
   ChartAxisConfig,
   ChartDisplayConfig,
@@ -42,15 +41,12 @@ import type {
   DateRange,
   RetentionBreakdownItem,
 } from '../types/retention'
-import { getDateRangeFromPreset, DEFAULT_DATE_RANGE_PRESET } from '../types/retention'
 import type {
   AnalysisBuilderState,
   QueryPanelTab,
   AIState,
 } from '../components/AnalysisBuilder/types'
 import {
-  generateId,
-  generateMetricLabel,
   createInitialState,
   STORAGE_KEY,
 } from '../components/AnalysisBuilder/utils'
@@ -74,6 +70,7 @@ import {
   createInitialFlowState,
   createInitialRetentionState,
 } from './slices'
+import { optionsToAnalysisConfig } from './optionsToAnalysisConfig'
 
 // Note: Adapters are registered in coreSlice.ts (single registration point)
 
@@ -602,246 +599,9 @@ export interface CreateStoreOptions {
 // Helper Functions
 // ============================================================================
 
-/**
- * Convert CubeQuery to AnalysisBuilderState
- */
-function queryToState(query: CubeQuery): AnalysisBuilderState {
-  const baseFilters = query.filters ? [...query.filters] : []
-
-  const timeDimensions = query.timeDimensions || []
-  const breakdowns = [
-    ...(query.dimensions || []).map((field) => ({
-      id: generateId(),
-      field,
-      isTimeDimension: false,
-    })),
-    ...timeDimensions.map((td) => ({
-      id: generateId(),
-      field: td.dimension,
-      granularity: td.granularity,
-      isTimeDimension: true,
-      enableComparison: Boolean(td.compareDateRange && td.compareDateRange.length > 0),
-    })),
-  ]
-
-  let filters = baseFilters
-
-  // Restore date filters for comparison-enabled time dimensions when missing.
-  for (const td of timeDimensions) {
-    if (!td.compareDateRange || td.compareDateRange.length === 0) continue
-
-    const hasDateFilter = filters.some(
-      (filter) =>
-        'member' in filter &&
-        (filter as SimpleFilter).member === td.dimension &&
-        (filter as SimpleFilter).operator === 'inDateRange'
-    )
-
-    const firstRange = td.compareDateRange[0]
-    const dateRange =
-      Array.isArray(firstRange) || typeof firstRange === 'string'
-        ? firstRange
-        : undefined
-
-    if (!dateRange) continue
-
-    if (!hasDateFilter) {
-      filters = [
-        ...filters,
-        {
-          member: td.dimension,
-          operator: 'inDateRange',
-          values: [],
-          dateRange,
-        } as SimpleFilter,
-      ]
-      continue
-    }
-
-    filters = filters.map((filter) => {
-      if (
-        'member' in filter &&
-        (filter as SimpleFilter).member === td.dimension &&
-        (filter as SimpleFilter).operator === 'inDateRange' &&
-        !(filter as SimpleFilter).dateRange
-      ) {
-        return { ...(filter as SimpleFilter), dateRange }
-      }
-      return filter
-    })
-  }
-
-  return {
-    ...createInitialState(),
-    metrics: (query.measures || []).map((field, index) => ({
-      id: generateId(),
-      field,
-      label: generateMetricLabel(index),
-    })),
-    breakdowns,
-    filters,
-    order: query.order,
-  }
-}
-
-/**
- * Check if config is MultiQueryConfig
- */
-function isMultiQueryConfig(config: CubeQuery | MultiQueryConfig): config is MultiQueryConfig {
-  return 'queries' in config && Array.isArray(config.queries)
-}
-
-/**
- * Convert store creation options to AnalysisConfig.
- * Returns null if no meaningful options are provided (use defaults).
- */
-function optionsToAnalysisConfig(options: CreateStoreOptions): AnalysisConfig | null {
-  // Handle funnel mode with funnel state
-  if (options.initialAnalysisType === 'funnel' && options.initialFunnelState) {
-    const defaultFunnelChart = funnelModeAdapter.getDefaultChartConfig()
-    // Use initialChartConfig for chart settings (legacy funnel chart fields removed)
-    const funnelChartConfig: ChartConfig = {
-      chartType: options.initialChartConfig?.chartType || defaultFunnelChart.chartType,
-      chartConfig: options.initialChartConfig?.chartConfig || defaultFunnelChart.chartConfig,
-      displayConfig: options.initialChartConfig?.displayConfig || defaultFunnelChart.displayConfig,
-    }
-
-    // Build funnel config via adapter's save method structure
-    const funnelState = {
-      funnelCube: options.initialFunnelState.funnelCube ?? null,
-      funnelSteps: options.initialFunnelState.funnelSteps || [],
-      activeFunnelStepIndex: 0,
-      funnelTimeDimension: options.initialFunnelState.funnelTimeDimension ?? null,
-      funnelBindingKey: options.initialFunnelState.funnelBindingKey ?? null,
-    }
-
-    return funnelModeAdapter.save(
-      funnelState,
-      { funnel: funnelChartConfig },
-      options.initialActiveView || 'chart'
-    )
-  }
-
-  // Handle flow mode with flow state
-  if (options.initialAnalysisType === 'flow' && options.initialFlowState) {
-    const defaultFlowChart = flowModeAdapter.getDefaultChartConfig()
-    // Use initialChartConfig for chart settings
-    const flowChartConfig: ChartConfig = {
-      chartType: options.initialChartConfig?.chartType || defaultFlowChart.chartType,
-      chartConfig: options.initialChartConfig?.chartConfig || defaultFlowChart.chartConfig,
-      displayConfig: options.initialChartConfig?.displayConfig || defaultFlowChart.displayConfig,
-    }
-
-    // Build flow config via adapter's save method structure
-    const flowState = {
-      flowCube: options.initialFlowState.flowCube ?? null,
-      flowBindingKey: options.initialFlowState.flowBindingKey ?? null,
-      flowTimeDimension: options.initialFlowState.flowTimeDimension ?? null,
-      startingStep: options.initialFlowState.startingStep || { name: '', filters: [] },
-      stepsBefore: options.initialFlowState.stepsBefore ?? 3,
-      stepsAfter: options.initialFlowState.stepsAfter ?? 3,
-      eventDimension: options.initialFlowState.eventDimension ?? null,
-      joinStrategy: options.initialFlowState.joinStrategy ?? 'auto',
-    }
-
-    return flowModeAdapter.save(
-      flowState,
-      { flow: flowChartConfig },
-      options.initialActiveView || 'chart'
-    )
-  }
-
-  // Handle retention mode with retention state
-  if (options.initialAnalysisType === 'retention' && options.initialRetentionState) {
-    const defaultRetentionChart = retentionModeAdapter.getDefaultChartConfig()
-    // Use initialChartConfig for chart settings
-    const retentionChartConfig: ChartConfig = {
-      chartType: options.initialChartConfig?.chartType || defaultRetentionChart.chartType,
-      chartConfig: options.initialChartConfig?.chartConfig || defaultRetentionChart.chartConfig,
-      displayConfig: options.initialChartConfig?.displayConfig || defaultRetentionChart.displayConfig,
-    }
-
-    // Build retention state - use default date range for fallback
-    const defaultDateRange = getDateRangeFromPreset(DEFAULT_DATE_RANGE_PRESET)
-
-    const retentionState = {
-      retentionCube: options.initialRetentionState.retentionCube ?? null,
-      retentionBindingKey: options.initialRetentionState.retentionBindingKey ?? null,
-      retentionTimeDimension: options.initialRetentionState.retentionTimeDimension ?? null,
-      retentionDateRange: options.initialRetentionState.retentionDateRange ?? defaultDateRange,
-      retentionCohortFilters: options.initialRetentionState.retentionCohortFilters || [],
-      retentionActivityFilters: options.initialRetentionState.retentionActivityFilters || [],
-      retentionBreakdowns: options.initialRetentionState.retentionBreakdowns || [],
-      retentionViewGranularity: options.initialRetentionState.retentionViewGranularity ?? 'week',
-      retentionPeriods: options.initialRetentionState.retentionPeriods ?? 12,
-      retentionType: options.initialRetentionState.retentionType ?? 'classic',
-    }
-
-    return retentionModeAdapter.save(
-      retentionState,
-      { retention: retentionChartConfig },
-      options.initialActiveView || 'chart'
-    )
-  }
-
-  // Handle query mode with initial query
-  if (options.initialQuery) {
-    const query = options.initialQuery
-    let queryStates: AnalysisBuilderState[]
-    let mergeStrategy: QueryMergeStrategy = 'concat'
-
-    if (isMultiQueryConfig(query)) {
-      queryStates = query.queries.map(queryToState)
-      if (query.mergeStrategy) {
-        mergeStrategy = query.mergeStrategy
-      }
-    } else {
-      queryStates = [queryToState(query)]
-    }
-
-    const defaultQueryChart = queryModeAdapter.getDefaultChartConfig()
-    const queryChartConfig: ChartConfig = {
-      chartType: options.initialChartConfig?.chartType || defaultQueryChart.chartType,
-      chartConfig: options.initialChartConfig?.chartConfig || defaultQueryChart.chartConfig,
-      displayConfig: options.initialChartConfig?.displayConfig || defaultQueryChart.displayConfig,
-    }
-
-    return queryModeAdapter.save(
-      { queryStates, activeQueryIndex: 0, mergeStrategy },
-      { query: queryChartConfig },
-      options.initialActiveView || 'chart'
-    )
-  }
-
-  // Handle just chart config (no query)
-  if (options.initialChartConfig) {
-    const defaultQueryChart = queryModeAdapter.getDefaultChartConfig()
-    const queryChartConfig: ChartConfig = {
-      chartType: options.initialChartConfig.chartType || defaultQueryChart.chartType,
-      chartConfig: options.initialChartConfig.chartConfig || defaultQueryChart.chartConfig,
-      displayConfig: options.initialChartConfig.displayConfig || defaultQueryChart.displayConfig,
-    }
-
-    return queryModeAdapter.save(
-      { queryStates: [createInitialState()], activeQueryIndex: 0, mergeStrategy: 'concat' },
-      { query: queryChartConfig },
-      options.initialActiveView || 'chart'
-    )
-  }
-
-  // Handle just active view
-  if (options.initialActiveView) {
-    // Return a minimal config with just activeView set
-    return queryModeAdapter.save(
-      { queryStates: [createInitialState()], activeQueryIndex: 0, mergeStrategy: 'concat' },
-      { query: queryModeAdapter.getDefaultChartConfig() },
-      options.initialActiveView
-    )
-  }
-
-  // No meaningful options - use store defaults
-  return null
-}
+// optionsToAnalysisConfig and its helpers (queryToState, isMultiQueryConfig)
+// have been extracted to ./optionsToAnalysisConfig for complexity isolation.
+// They are re-exported here to preserve the module API.
 
 // NOTE: createStoreActions has been replaced by slice composition.
 // See createAnalysisBuilderStore below which composes:

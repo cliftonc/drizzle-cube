@@ -21,9 +21,17 @@ import {
   reverseRelationship
 } from '../cube-utils'
 import { categorizeForPostAggregation } from '../measure-classification'
-import { ResolverCache, analyzeCubeUsage, extractCubeNamesFromFilter } from './planner-utils'
+import { ResolverCache, analyzeCubeUsage } from './planner-utils'
 import { FilterPropagation } from './filter-propagation'
 import type { JoinRef } from './types'
+import {
+  type CTEJoinKey,
+  type FoundJoinInfo,
+  collectDimensionCubeNames,
+  deriveCTEJoinKeys,
+  deriveDownstreamJoinKeys,
+  findJoinInfoForCube
+} from './cte-planner-helpers'
 
 export class CTEPlanner {
   constructor(
@@ -72,159 +80,152 @@ export class CTEPlanner {
       const cteReason = cteReasons.get(joinCubeEntry.target.name)
       if (!cteReason) continue
 
-      const cube = joinCubeEntry.target.cube
-      const alias = joinCubeEntry.alias
-
-      // Get measures from this cube
-      const measuresFromSelect = query.measures.filter(m =>
-        m.startsWith(cube.name + '.')
+      const cte = this.buildCTEForJoinCube(
+        joinCubeEntry,
+        cteReason,
+        cubes,
+        primaryCube,
+        query
       )
-      const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
-      const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
-
-      if (allMeasuresFromThisCube.length === 0) {
-        continue // No measures from this cube
-      }
-
-      // Analyze the full join path to detect multi-hop fan-out scenarios
-      // Example: Departments → Employees → EmployeeTeams
-      // If there's a hasMany on the intermediate path, we need to absorb
-      // intermediate tables into the CTE
-      const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, query)
-
-      let joinKeys: Array<{
-        sourceColumn: string
-        targetColumn: string
-        sourceColumnObj: any
-        targetColumnObj: any
-      }>
-      let intermediateJoins: IntermediateJoinInfo[] | undefined
-
-      if (pathAnalysis?.hasIntermediateHasMany && pathAnalysis.intermediateJoins.length > 0) {
-        // Multi-hop fan-out scenario: use the corrected join keys
-        // and include intermediate joins to be absorbed into the CTE
-        joinKeys = pathAnalysis.correctJoinKeys
-        intermediateJoins = pathAnalysis.intermediateJoins as IntermediateJoinInfo[]
-      } else {
-        // Standard path: use existing join key logic
-        // Find the join definition - could be from primary or from any cube in the chain.
-        const joinInfoFromPath =
-          pathAnalysis?.path && pathAnalysis.path.length > 0
-            ? (() => {
-                const lastStep = pathAnalysis.path[pathAnalysis.path.length - 1]
-                const sourceCube = cubes.get(lastStep.fromCube)
-                if (!sourceCube) return null
-                return {
-                  sourceCube,
-                  joinDef: lastStep.joinDef as CubeJoin,
-                  reversed: lastStep.reversed
-                }
-              })()
-            : null
-
-        const joinInfo = joinInfoFromPath ?? this.findJoinInfoForCube(cubes, primaryCube, cube.name)
-
-        if (!joinInfo) {
-          continue // No join info found
-        }
-
-        // Extract join keys from the join definition
-        // For belongsToMany, join keys come from through configuration (on[] is empty)
-        if (joinInfo.joinDef.relationship === 'belongsToMany' && joinInfo.joinDef.through) {
-          // Direction matters: when belongsToMany is defined on the primary cube,
-          // sourceKey connects primary->junction and targetKey connects junction->CTE.
-          // When defined on the CTE cube (or reversed), sourceKey connects CTE->junction.
-          const isDefinedOnPrimary = joinInfo.sourceCube?.name === primaryCube.name
-            && !('reversed' in joinInfo && joinInfo.reversed)
-
-          if (isDefinedOnPrimary) {
-            // targetKey connects junction -> CTE cube
-            joinKeys = joinInfo.joinDef.through.targetKey.map(tk => ({
-              sourceColumn: tk.source.name,     // junction table column
-              targetColumn: tk.target.name,     // CTE cube column
-              sourceColumnObj: tk.source,
-              targetColumnObj: tk.target
-            }))
-          } else {
-            // sourceKey connects CTE -> junction (existing logic)
-            // sourceKey[].source = CTE cube's column (goes into CTE SELECT/GROUP BY via targetColumnObj)
-            // sourceKey[].target = junction table's column (used in outer query join condition via sourceColumnObj)
-            joinKeys = joinInfo.joinDef.through.sourceKey.map(sk => ({
-              sourceColumn: sk.target.name,
-              targetColumn: sk.source.name,
-              sourceColumnObj: sk.target,
-              targetColumnObj: sk.source
-            }))
-          }
-        } else {
-          // For reversed joins (CTE cube has belongsTo back to primary), swap
-          // source/target so that sourceColumnObj references the primary cube's column
-          // and targetColumnObj references the CTE cube's column
-          const shouldReverse = 'reversed' in joinInfo && joinInfo.reversed
-          joinKeys = shouldReverse
-            ? joinInfo.joinDef.on.map(joinOn => ({
-                sourceColumn: joinOn.target.name,
-                targetColumn: joinOn.source.name,
-                sourceColumnObj: joinOn.target,
-                targetColumnObj: joinOn.source
-              }))
-            : joinInfo.joinDef.on.map(joinOn => ({
-                sourceColumn: joinOn.source.name,
-                targetColumn: joinOn.target.name,
-                sourceColumnObj: joinOn.source,
-                targetColumnObj: joinOn.target
-              }))
-        }
-        intermediateJoins = undefined
-      }
-
-      // Find propagating filters from related cubes that should apply to this CTE
-      const propagatingFilters = this.filterPropagation.findPropagatingFilters(query, cube, cubes)
-
-      // Categorize measures for post-aggregation window function handling
-      const cubeMap = new Map([[cube.name, cube]])
-      const { aggregateMeasures, requiredBaseMeasures } = categorizeForPostAggregation(
-        allMeasuresFromThisCube,
-        cubeMap
-      )
-
-      // Combine aggregate measures with base measures required by window functions
-      const allAggregateMeasures = [...new Set([
-        ...aggregateMeasures,
-        ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(cube.name + '.'))
-      ])]
-
-      // Create aggregate CTE if we have any aggregate measures
-      if (allAggregateMeasures.length > 0) {
-        // Expand calculated measures to include their dependencies
-        const expandedAggregateMeasures = this.expandCalculatedMeasureDependencies(
-          cube,
-          allAggregateMeasures
-        )
-
-        // Detect downstream cubes that need join keys in the CTE
-        const downstreamJoinKeys = this.findDownstreamJoinKeys(
-          cube,
-          query,
-          cubes
-        )
-
-        preAggCTEs.push({
-          cube,
-          alias,
-          cteAlias: `${cube.name.toLowerCase()}_agg`,
-          joinKeys,
-          measures: expandedAggregateMeasures,
-          propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined,
-          downstreamJoinKeys: downstreamJoinKeys.length > 0 ? downstreamJoinKeys : undefined,
-          intermediateJoins: intermediateJoins && intermediateJoins.length > 0 ? intermediateJoins : undefined,
-          cteType: 'aggregate',
-          cteReason
-        })
+      if (cte) {
+        preAggCTEs.push(cte)
       }
     }
 
     return preAggCTEs
+  }
+
+  /**
+   * Build a single pre-aggregation CTE for one join-cube entry, or return null
+   * when the cube contributes no aggregate measures / has no resolvable join.
+   */
+  private buildCTEForJoinCube(
+    joinCubeEntry: JoinRef,
+    cteReason: 'hasMany' | 'fanOutPrevention',
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    query: SemanticQuery
+  ): NonNullable<PhysicalQueryPlan['preAggregationCTEs']>[number] | null {
+    const cube = joinCubeEntry.target.cube
+    const alias = joinCubeEntry.alias
+
+    // Get measures from this cube (SELECT + filters)
+    const measuresFromSelect = (query.measures ?? []).filter(m => m.startsWith(cube.name + '.'))
+    const measuresFromFilters = this.extractMeasuresFromFilters(query, cube)
+    const allMeasuresFromThisCube = [...new Set([...measuresFromSelect, ...measuresFromFilters])]
+
+    if (allMeasuresFromThisCube.length === 0) {
+      return null // No measures from this cube
+    }
+
+    // Resolve join keys + any intermediate joins to absorb (multi-hop fan-out)
+    const resolved = this.resolveCTEJoinKeys(cubes, primaryCube, cube, query)
+    if (!resolved) {
+      return null // No join info found
+    }
+    const { joinKeys, intermediateJoins } = resolved
+
+    // Find propagating filters from related cubes that should apply to this CTE
+    const propagatingFilters = this.filterPropagation.findPropagatingFilters(query, cube, cubes)
+
+    // Categorize measures for post-aggregation window function handling
+    const cubeMap = new Map([[cube.name, cube]])
+    const { aggregateMeasures, requiredBaseMeasures } = categorizeForPostAggregation(
+      allMeasuresFromThisCube,
+      cubeMap
+    )
+
+    // Combine aggregate measures with base measures required by window functions
+    const allAggregateMeasures = [...new Set([
+      ...aggregateMeasures,
+      ...Array.from(requiredBaseMeasures).filter(m => m.startsWith(cube.name + '.'))
+    ])]
+
+    if (allAggregateMeasures.length === 0) {
+      return null
+    }
+
+    // Expand calculated measures to include their dependencies
+    const expandedAggregateMeasures = this.expandCalculatedMeasureDependencies(
+      cube,
+      allAggregateMeasures
+    )
+
+    // Detect downstream cubes that need join keys in the CTE
+    const downstreamJoinKeys = this.findDownstreamJoinKeys(cube, query, cubes)
+
+    return {
+      cube,
+      alias,
+      cteAlias: `${cube.name.toLowerCase()}_agg`,
+      joinKeys,
+      measures: expandedAggregateMeasures,
+      propagatingFilters: propagatingFilters.length > 0 ? propagatingFilters : undefined,
+      downstreamJoinKeys: downstreamJoinKeys.length > 0 ? downstreamJoinKeys : undefined,
+      intermediateJoins: intermediateJoins && intermediateJoins.length > 0 ? intermediateJoins : undefined,
+      cteType: 'aggregate',
+      cteReason
+    }
+  }
+
+  /**
+   * Resolve the join keys (and any intermediate joins to absorb) for a CTE cube.
+   *
+   * Analyses the path from primary to the CTE cube: if an intermediate hasMany
+   * exists, returns the corrected keys plus intermediate joins; otherwise locates
+   * the join definition and derives keys from it.
+   */
+  private resolveCTEJoinKeys(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    cube: Cube,
+    query: SemanticQuery
+  ): { joinKeys: CTEJoinKey[]; intermediateJoins: IntermediateJoinInfo[] | undefined } | null {
+    const pathAnalysis = this.analyzeJoinPathToPrimary(cubes, primaryCube, cube.name, query)
+
+    if (pathAnalysis?.hasIntermediateHasMany && pathAnalysis.intermediateJoins.length > 0) {
+      // Multi-hop fan-out scenario: corrected keys + absorbed intermediate joins
+      return {
+        joinKeys: pathAnalysis.correctJoinKeys,
+        intermediateJoins: pathAnalysis.intermediateJoins as IntermediateJoinInfo[]
+      }
+    }
+
+    // Standard path: find the join definition (from path tail or by search).
+    const joinInfo = this.locateJoinInfo(cubes, primaryCube, cube, pathAnalysis)
+    if (!joinInfo) {
+      return null
+    }
+
+    return {
+      joinKeys: deriveCTEJoinKeys(joinInfo, primaryCube),
+      intermediateJoins: undefined
+    }
+  }
+
+  /**
+   * Locate the join definition for a CTE cube, preferring the final step of the
+   * analysed path and falling back to a primary/reverse/any-cube search.
+   */
+  private locateJoinInfo(
+    cubes: Map<string, Cube>,
+    primaryCube: Cube,
+    cube: Cube,
+    pathAnalysis: ReturnType<CTEPlanner['analyzeJoinPathToPrimary']>
+  ): FoundJoinInfo | null {
+    if (pathAnalysis?.path && pathAnalysis.path.length > 0) {
+      const lastStep = pathAnalysis.path[pathAnalysis.path.length - 1]
+      const sourceCube = cubes.get(lastStep.fromCube)
+      if (sourceCube) {
+        return {
+          sourceCube,
+          joinDef: lastStep.joinDef as CubeJoin,
+          reversed: lastStep.reversed
+        }
+      }
+    }
+
+    return findJoinInfoForCube(cubes, primaryCube, cube.name)
   }
 
   /**
@@ -442,63 +443,6 @@ export class CTEPlanner {
   // was unreachable. findJoinInfoForCube() (below) subsumes its behaviour.
 
   /**
-   * Find join information for a cube from any cube in the query
-   * This extends findHasManyJoinDef to work with any relationship type
-   * and to search from any source cube, not just the primary
-   */
-  private findJoinInfoForCube(
-    cubes: Map<string, Cube>,
-    primaryCube: Cube,
-    targetCubeName: string
-  ): { sourceCube: Cube; joinDef: CubeJoin; reversed?: boolean } | null {
-    // First check primary cube for a direct join to the target
-    if (primaryCube.joins) {
-      for (const [, joinDef] of Object.entries(primaryCube.joins)) {
-        const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
-        if (!resolvedTarget) continue
-        if (resolvedTarget.name === targetCubeName) {
-          return { sourceCube: primaryCube, joinDef: joinDef as CubeJoin }
-        }
-      }
-    }
-
-    // Check if the target cube has a direct join BACK to the primary cube (reverse lookup)
-    // This handles the common case where a CTE cube has a belongsTo relationship
-    // to the primary cube (e.g., SurveyResponses.belongsTo(Users) via userId).
-    // This is preferred over searching all cubes because it uses a direct relationship
-    // to the primary cube, ensuring the CTE join keys reference columns that are
-    // actually in the FROM clause.
-    const targetCube = cubes.get(targetCubeName)
-    if (targetCube?.joins) {
-      for (const [, joinDef] of Object.entries(targetCube.joins)) {
-        const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
-        if (!resolvedTarget) continue
-        if (resolvedTarget.name === primaryCube.name) {
-          // Found: target cube has a join back to primary cube
-          // Mark as reversed so the caller can swap source/target columns
-          return { sourceCube: targetCube, joinDef: joinDef as CubeJoin, reversed: true }
-        }
-      }
-    }
-
-    // Fallback: check all other cubes in the query
-    for (const [, cube] of cubes) {
-      if (cube.name === primaryCube.name || cube.name === targetCubeName) continue
-      if (cube.joins) {
-        for (const [, joinDef] of Object.entries(cube.joins)) {
-          const resolvedTarget = resolveCubeReference(joinDef.targetCube, cubes)
-          if (!resolvedTarget) continue
-          if (resolvedTarget.name === targetCubeName) {
-            return { sourceCube: cube, joinDef: joinDef as CubeJoin }
-          }
-        }
-      }
-    }
-
-    return null
-  }
-
-  /**
    * Find downstream cubes that need join keys included in the CTE.
    *
    * When a query has dimensions from a cube (e.g., Teams.name) and measures from
@@ -515,73 +459,28 @@ export class CTEPlanner {
     cteCube: Cube,
     query: SemanticQuery,
     _allCubes: Map<string, Cube>
-  ): Array<{ targetCubeName: string; joinKeys: Array<{ sourceColumn: string; targetColumn: string; sourceColumnObj?: any; targetColumnObj?: any }> }> {
-    const downstreamJoinKeys: Array<{ targetCubeName: string; joinKeys: Array<{ sourceColumn: string; targetColumn: string; sourceColumnObj?: any; targetColumnObj?: any }> }> = []
+  ): Array<{ targetCubeName: string; joinKeys: CTEJoinKey[] }> {
+    const downstreamJoinKeys: Array<{ targetCubeName: string; joinKeys: CTEJoinKey[] }> = []
 
-    // Get cubes that have dimensions in the query (excluding the CTE cube itself)
-    const dimensionCubeNames = new Set<string>()
-    if (query.dimensions) {
-      for (const dim of query.dimensions) {
-        const [cubeName] = dim.split('.')
-        if (cubeName !== cteCube.name) {
-          dimensionCubeNames.add(cubeName)
-        }
-      }
-    }
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        const [cubeName] = timeDim.dimension.split('.')
-        if (cubeName !== cteCube.name) {
-          dimensionCubeNames.add(cubeName)
-        }
-      }
-    }
-    // Also collect cube names from filters - filters can reference cubes that need
-    // to join through the CTE (e.g., Repositories.id filter when PullRequests is a CTE)
-    if (query.filters) {
-      for (const filter of query.filters) {
-        extractCubeNamesFromFilter(filter, dimensionCubeNames)
-      }
-      // Remove the CTE cube itself (it might have been added from filters)
-      dimensionCubeNames.delete(cteCube.name)
+    // Cubes contributing dimensions / time dimensions / filter members (excluding CTE cube)
+    const dimensionCubeNames = collectDimensionCubeNames(query, cteCube.name)
+
+    if (!cteCube.joins) {
+      return downstreamJoinKeys
     }
 
-    // For each dimension cube, check if it's directly joinable from the CTE cube
-    if (cteCube.joins) {
-      for (const [, joinDef] of Object.entries(cteCube.joins)) {
-        const targetCube = resolveCubeReference(joinDef.targetCube, _allCubes)
-        if (!targetCube) continue
-        const targetCubeName = targetCube.name
+    // For each dimension cube directly joinable from the CTE cube, include join keys
+    // so the dimension cube can be joined through the CTE.
+    for (const [, joinDef] of Object.entries(cteCube.joins)) {
+      const targetCube = resolveCubeReference(joinDef.targetCube, _allCubes)
+      if (!targetCube) continue
+      const targetCubeName = targetCube.name
 
-        // Check if this target cube has dimensions in the query
-        if (dimensionCubeNames.has(targetCubeName)) {
-          // This cube's dimensions are in the query and it's joinable from the CTE cube
-          // Include the join keys so the dimension cube can be joined through the CTE
-          let joinKeys
-          if (joinDef.relationship === 'belongsToMany' && joinDef.through) {
-            // For belongsToMany, use through.sourceKey (on[] is empty)
-            // sourceKey[].source = CTE cube's column (included in CTE SELECT via sourceColumnObj)
-            // sourceKey[].target = junction table column
-            joinKeys = joinDef.through.sourceKey.map(sk => ({
-              sourceColumn: sk.source.name,
-              targetColumn: sk.target.name,
-              sourceColumnObj: sk.source,
-              targetColumnObj: sk.target
-            }))
-          } else {
-            joinKeys = joinDef.on.map(joinOn => ({
-              sourceColumn: joinOn.source.name,
-              targetColumn: joinOn.target.name,
-              sourceColumnObj: joinOn.source,
-              targetColumnObj: joinOn.target
-            }))
-          }
-
-          downstreamJoinKeys.push({
-            targetCubeName,
-            joinKeys
-          })
-        }
+      if (dimensionCubeNames.has(targetCubeName)) {
+        downstreamJoinKeys.push({
+          targetCubeName,
+          joinKeys: deriveDownstreamJoinKeys(joinDef as CubeJoin)
+        })
       }
     }
 

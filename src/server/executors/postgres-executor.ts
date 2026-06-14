@@ -8,7 +8,7 @@ import { sql } from 'drizzle-orm'
 import type { DrizzleDatabase, ExplainOptions, ExplainResult, IndexInfo } from '../types'
 import { BaseDatabaseExecutor } from './base-executor'
 import { parsePostgresExplain } from '../explain/postgres-parser'
-import { buildBoundSql } from './explain-utils'
+import { buildBoundSql, extractPostgresExplainLines } from './explain-utils'
 
 /**
  * Normalize the result of db.execute() across different PostgreSQL drivers.
@@ -22,6 +22,64 @@ function extractRows(result: unknown): any[] {
     return (result as any).rows
   }
   return []
+}
+
+/**
+ * Coerce a string to a number when it is a plain numeric/scientific literal,
+ * otherwise return it unchanged. Shared by the string and object branches of
+ * coerceToNumber.
+ */
+function coerceNumericString(value: string): string | number {
+  // Check for exact numeric strings
+  if (/^-?\d+(\.\d+)?$/.test(value)) {
+    return value.includes('.') ? parseFloat(value) : parseInt(value, 10)
+  }
+
+  // Check for other numeric formats (scientific notation, etc.)
+  if (!isNaN(parseFloat(value)) && isFinite(parseFloat(value))) {
+    return parseFloat(value)
+  }
+
+  return value
+}
+
+/**
+ * Coerce a single non-null value to a number based on its runtime type. Returns
+ * the value unchanged for types that have no numeric interpretation.
+ */
+function coercePostgresValue(value: any): any {
+  switch (typeof value) {
+    case 'number': return value
+    case 'bigint': return Number(value)
+    case 'object': return coercePostgresObject(value)
+    case 'string': return coerceNumericString(value)
+    default: return value
+  }
+}
+
+/**
+ * Coerce PostgreSQL driver object types (numeric/decimal wrappers) to a number.
+ * Returns the object unchanged when it does not look numeric.
+ */
+function coercePostgresObject(value: any): any {
+  // Check if it has a numeric toString() method
+  if (typeof value.toString === 'function') {
+    const stringValue = value.toString()
+    if (/^-?\d+(\.\d+)?$/.test(stringValue)) {
+      return stringValue.includes('.') ? parseFloat(stringValue) : parseInt(stringValue, 10)
+    }
+  }
+
+  // Check for common PostgreSQL numeric type properties
+  if (value.constructor?.name === 'Numeric' ||
+      value.constructor?.name === 'Decimal' ||
+      'digits' in value ||
+      'sign' in value) {
+    return parseFloat(value.toString())
+  }
+
+  // If it's an object but doesn't look numeric, return as-is
+  return value
 }
 
 export class PostgresExecutor extends BaseDatabaseExecutor {
@@ -81,51 +139,9 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
   private coerceToNumber(value: any): any {
     // Handle null/undefined - preserve null values for aggregations
     if (value == null) return value
-    
-    // Already a number
-    if (typeof value === 'number') return value
-    
-    // Handle BigInt values from COUNT operations
-    if (typeof value === 'bigint') return Number(value)
-    
-    // Handle PostgreSQL-specific types (numeric, decimal objects)
-    if (value && typeof value === 'object') {
-      // Check if it has a numeric toString() method
-      if (typeof value.toString === 'function') {
-        const stringValue = value.toString()
-        if (/^-?\d+(\.\d+)?$/.test(stringValue)) {
-          return stringValue.includes('.') ? parseFloat(stringValue) : parseInt(stringValue, 10)
-        }
-      }
-      
-      // Check for common PostgreSQL numeric type properties
-      if (value.constructor?.name === 'Numeric' || 
-          value.constructor?.name === 'Decimal' ||
-          'digits' in value || 
-          'sign' in value) {
-        const stringValue = value.toString()
-        return parseFloat(stringValue)
-      }
-      
-      // If it's an object but doesn't look numeric, return as-is
-      return value
-    }
-    
-    // Handle string representations of numbers
-    if (typeof value === 'string') {
-      // Check for exact numeric strings
-      if (/^-?\d+(\.\d+)?$/.test(value)) {
-        return value.includes('.') ? parseFloat(value) : parseInt(value, 10)
-      }
-      
-      // Check for other numeric formats (scientific notation, etc.)
-      if (!isNaN(parseFloat(value)) && isFinite(parseFloat(value))) {
-        return parseFloat(value)
-      }
-    }
-    
-    // Return as-is for non-numeric values
-    return value
+
+    // Dispatch on runtime type (number/bigint/object/string)
+    return coercePostgresValue(value)
   }
 
   getEngineType(): 'postgres' {
@@ -156,19 +172,7 @@ export class PostgresExecutor extends BaseDatabaseExecutor {
 
     // PostgreSQL returns EXPLAIN output as rows with 'QUERY PLAN' column
     // Use extractRows to handle both postgres-js (array) and node-postgres ({ rows }) formats
-    const rawLines: string[] = []
-    for (const row of extractRows(result)) {
-      if (row && typeof row === 'object') {
-        // Handle different column name cases
-        const planLine =
-          (row as Record<string, unknown>)['QUERY PLAN'] ||
-          (row as Record<string, unknown>)['query plan'] ||
-          (row as Record<string, unknown>)['queryplan']
-        if (typeof planLine === 'string') {
-          rawLines.push(planLine)
-        }
-      }
-    }
+    const rawLines = extractPostgresExplainLines(extractRows(result))
 
     // Parse the output using the PostgreSQL parser
     return parsePostgresExplain(rawLines, { sql: sqlString, params })

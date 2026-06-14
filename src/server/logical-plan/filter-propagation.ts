@@ -9,6 +9,7 @@
 
 import type {
   Cube,
+  CubeJoin,
   SemanticQuery,
   PropagatingFilter,
   Filter
@@ -32,21 +33,7 @@ export class FilterPropagation {
     const result: PropagatingFilter[] = []
     if (!query.filters) return result
 
-    // Extract all cube names referenced in filters
-    const filterCubeNames = new Set<string>()
-    this.extractFilterCubeNamesToSet(query.filters, filterCubeNames)
-
-    // Also check time dimension filters which may have date ranges
-    if (query.timeDimensions) {
-      for (const timeDim of query.timeDimensions) {
-        if (timeDim.dateRange) {
-          const [cubeName] = timeDim.dimension.split('.')
-          if (cubeName) {
-            filterCubeNames.add(cubeName)
-          }
-        }
-      }
-    }
+    const filterCubeNames = this.collectFilterCubeNames(query)
 
     // For each filter cube, check if it has a hasMany relationship TO the CTE cube
     for (const filterCubeName of filterCubeNames) {
@@ -59,32 +46,71 @@ export class FilterPropagation {
       for (const [, joinDef] of Object.entries(filterCube.joins)) {
         const targetCube = resolveCubeReference(joinDef.targetCube, allCubes)
         if (!targetCube) continue
-        if (targetCube.name === cteCube.name && joinDef.relationship === 'hasMany') {
-          // Found: filterCube hasMany -> cteCube
-          // Extract the filters for this cube
-          const filtersForCube = this.extractFiltersForCube(query.filters, filterCubeName)
+        if (targetCube.name !== cteCube.name || joinDef.relationship !== 'hasMany') continue
 
-          // Also add time dimension date ranges as filters
-          const timeFilters = this.extractTimeDimensionFiltersForCube(query, filterCubeName)
-          const allFilters = [...filtersForCube, ...timeFilters]
-
-          if (allFilters.length > 0 && joinDef.on.length > 0) {
-            result.push({
-              sourceCube: filterCube,
-              filters: allFilters,
-              // Map all join keys for composite key support
-              // source = filterCube PK (e.g., employees.id)
-              // target = cteCube FK (e.g., productivity.employeeId)
-              joinConditions: joinDef.on.map(key => ({
-                source: key.source,
-                target: key.target
-              }))
-            })
-          }
+        const propagating = this.buildPropagatingFilter(query, filterCube, filterCubeName, joinDef)
+        if (propagating) {
+          result.push(propagating)
         }
       }
     }
     return result
+  }
+
+  /**
+   * Collect cube names referenced by filters and by time-dimension date ranges.
+   */
+  private collectFilterCubeNames(query: SemanticQuery): Set<string> {
+    const filterCubeNames = new Set<string>()
+    if (query.filters) {
+      this.extractFilterCubeNamesToSet(query.filters, filterCubeNames)
+    }
+
+    // Time dimension filters may carry date ranges that act as filters
+    if (query.timeDimensions) {
+      for (const timeDim of query.timeDimensions) {
+        if (timeDim.dateRange) {
+          const [cubeName] = timeDim.dimension.split('.')
+          if (cubeName) {
+            filterCubeNames.add(cubeName)
+          }
+        }
+      }
+    }
+
+    return filterCubeNames
+  }
+
+  /**
+   * Build a single PropagatingFilter for a filterCube → cteCube hasMany edge,
+   * or null when the cube contributes no filters / the join has no keys.
+   */
+  private buildPropagatingFilter(
+    query: SemanticQuery,
+    filterCube: Cube,
+    filterCubeName: string,
+    joinDef: CubeJoin
+  ): PropagatingFilter | null {
+    // Extract the filters (and time-dimension date ranges) for this cube
+    const filtersForCube = this.extractFiltersForCube(query.filters ?? [], filterCubeName)
+    const timeFilters = this.extractTimeDimensionFiltersForCube(query, filterCubeName)
+    const allFilters = [...filtersForCube, ...timeFilters]
+
+    if (allFilters.length === 0 || joinDef.on.length === 0) {
+      return null
+    }
+
+    return {
+      sourceCube: filterCube,
+      filters: allFilters,
+      // Map all join keys for composite key support
+      // source = filterCube PK (e.g., employees.id)
+      // target = cteCube FK (e.g., productivity.employeeId)
+      joinConditions: joinDef.on.map(key => ({
+        source: key.source,
+        target: key.target
+      }))
+    }
   }
 
   /**

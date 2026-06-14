@@ -110,52 +110,61 @@ export class JoinPlanner {
           throw new Error(t('server.errors.cubeNotFound', { cubeName: toCube }))
         }
 
-        // Compute effective relationship: reversed belongsTo↔hasMany
-        const effectiveRelationship = reversed
-          ? reverseRelationship(joinDef.relationship)
-          : joinDef.relationship
-
-        // Check if this is a belongsToMany relationship
-        if (effectiveRelationship === 'belongsToMany' && joinDef.through) {
-          // Emit a symbolic junction join. The junction/target join conditions
-          // and junction security WHERE are materialized from joinDef.through by
-          // DrizzlePlanBuilder. belongsToMany uses a single resolved join type.
-          const junctionJoinType = getJoinType('belongsToMany', joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
-
-          joinCubes.push({
-            target: { name: cube.name, cube },
-            alias: `${toCube.toLowerCase()}_cube`,
-            joinType: junctionJoinType,
-            joinDef: joinDef as CubeJoin,
-            relationship: 'belongsToMany',
-            junctionTable: {
-              table: joinDef.through.table,
-              alias: `junction_${toCube.toLowerCase()}`,
-              joinType: junctionJoinType,
-              sourceCubeName: pathFromCube
-            }
-          })
-        } else {
-          // Regular join (belongsTo, hasOne, hasMany).
-          // The join condition (symmetric for reversed joins) is materialized
-          // from joinDef by DrizzlePlanBuilder. We only resolve the join type
-          // here, since it depends on the effective (reversed-aware) relationship.
-          const joinType = getJoinType(effectiveRelationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
-
-          joinCubes.push({
-            target: { name: cube.name, cube },
-            alias: `${toCube.toLowerCase()}_cube`,
-            joinType,
-            joinDef: joinDef as CubeJoin,
-            relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
-          })
-        }
-
+        joinCubes.push(this.buildJoinRef(cube, toCube, pathFromCube, joinDef as CubeJoin, reversed))
         processedCubes.add(toCube)
       }
     }
 
     return joinCubes
+  }
+
+  /**
+   * Build a single symbolic JoinRef for a join-path step. Handles belongsToMany
+   * (junction-table) joins and regular (belongsTo/hasOne/hasMany) joins. The join
+   * conditions and security WHERE are materialized later by DrizzlePlanBuilder;
+   * only the join type is resolved here (it depends on the effective relationship).
+   */
+  private buildJoinRef(
+    cube: Cube,
+    toCube: string,
+    pathFromCube: string,
+    joinDef: CubeJoin,
+    reversed: boolean | undefined
+  ): JoinRef {
+    // Compute effective relationship: reversed belongsTo↔hasMany
+    const effectiveRelationship = reversed
+      ? reverseRelationship(joinDef.relationship)
+      : joinDef.relationship
+
+    if (effectiveRelationship === 'belongsToMany' && joinDef.through) {
+      // Emit a symbolic junction join. belongsToMany uses a single resolved join type.
+      const junctionJoinType = getJoinType('belongsToMany', joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+      return {
+        target: { name: cube.name, cube },
+        alias: `${toCube.toLowerCase()}_cube`,
+        joinType: junctionJoinType,
+        joinDef,
+        relationship: 'belongsToMany',
+        junctionTable: {
+          table: joinDef.through.table,
+          alias: `junction_${toCube.toLowerCase()}`,
+          joinType: junctionJoinType,
+          sourceCubeName: pathFromCube
+        }
+      }
+    }
+
+    // Regular join (belongsTo, hasOne, hasMany).
+    const joinType = getJoinType(effectiveRelationship, joinDef.sqlJoinType) as 'inner' | 'left' | 'right' | 'full'
+
+    return {
+      target: { name: cube.name, cube },
+      alias: `${toCube.toLowerCase()}_cube`,
+      joinType,
+      joinDef,
+      relationship: effectiveRelationship as 'belongsTo' | 'hasOne' | 'hasMany' | 'belongsToMany'
+    }
   }
 
   /**

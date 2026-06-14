@@ -4,6 +4,39 @@
  */
 
 import type { ExplainOperation, ExplainResult, ExplainSummary } from '../types/executor'
+import { type ExplainStackEntry, countTreeIndent, pushOperationToTree } from './explain-tree'
+
+/** Mutable accumulator for summary stats gathered while walking the plan. */
+interface DatabendPlanState {
+  operations: ExplainOperation[]
+  usedIndexes: string[]
+  hasSequentialScans: boolean
+  totalCost: number | undefined
+  stack: ExplainStackEntry[]
+}
+
+/**
+ * Process a single output line, updating plan state in place.
+ */
+function processDatabendLine(line: string, state: DatabendPlanState): void {
+  if (!line.trim()) return
+
+  const operation = parseDatabendOperationLine(line)
+  if (!operation) return
+
+  if (operation.type.includes('TableScan') || operation.type.includes('SCAN')) {
+    state.hasSequentialScans = true
+  }
+  if (operation.type.includes('IndexScan') && operation.index) {
+    state.usedIndexes.push(operation.index)
+  }
+  if (state.operations.length === 0 && operation.estimatedCost !== undefined) {
+    state.totalCost = operation.estimatedCost
+  }
+
+  const indent = countTreeIndent(line)
+  pushOperationToTree(state.stack, state.operations, operation, indent)
+}
 
 /**
  * Parse Databend EXPLAIN output
@@ -20,80 +53,33 @@ export function parseDatabendExplain(
   rawOutput: string[],
   sqlQuery: { sql: string; params?: unknown[] }
 ): ExplainResult {
-  const operations: ExplainOperation[] = []
-  const usedIndexes: string[] = []
-  let hasSequentialScans = false
-  let totalCost: number | undefined
-
-  const stack: { indent: number; op: ExplainOperation }[] = []
+  const state: DatabendPlanState = {
+    operations: [],
+    usedIndexes: [],
+    hasSequentialScans: false,
+    totalCost: undefined,
+    stack: [],
+  }
 
   for (const line of rawOutput) {
-    // Skip empty lines
-    if (!line.trim()) continue
-
-    const operation = parseDatabendOperationLine(line)
-    if (operation) {
-      if (operation.type.includes('TableScan') || operation.type.includes('SCAN')) {
-        hasSequentialScans = true
-      }
-      if (operation.type.includes('IndexScan') && operation.index) {
-        usedIndexes.push(operation.index)
-      }
-
-      if (operations.length === 0 && operation.estimatedCost !== undefined) {
-        totalCost = operation.estimatedCost
-      }
-
-      const indent = countIndent(line)
-
-      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-        stack.pop()
-      }
-
-      if (stack.length === 0) {
-        operations.push(operation)
-      } else {
-        const parent = stack[stack.length - 1].op
-        if (!parent.children) {
-          parent.children = []
-        }
-        parent.children.push(operation)
-      }
-
-      stack.push({ indent, op: operation })
-    }
+    processDatabendLine(line, state)
   }
 
   const summary: ExplainSummary = {
     database: 'databend',
     planningTime: undefined,
     executionTime: undefined,
-    totalCost,
-    hasSequentialScans,
-    usedIndexes: [...new Set(usedIndexes)],
+    totalCost: state.totalCost,
+    hasSequentialScans: state.hasSequentialScans,
+    usedIndexes: [...new Set(state.usedIndexes)],
   }
 
   return {
-    operations,
+    operations: state.operations,
     summary,
     raw: rawOutput.join('\n'),
     sql: sqlQuery,
   }
-}
-
-/**
- * Count indentation level
- */
-function countIndent(line: string): number {
-  let indent = 0
-  for (const char of line) {
-    if (char === ' ' || char === '│' || char === '├' || char === '└' || char === '─') {
-      indent++
-    } else {
-      break
-    }
-  }
-  return indent
 }
 
 /**

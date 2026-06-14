@@ -24,6 +24,7 @@ import {
 } from '../../stores/notebookStore'
 import NotebookCanvas from './NotebookCanvas'
 import AgentChatPanel from './AgentChatPanel'
+import { useNotebookAutosave } from './useNotebookAutosave'
 import { useNotebookLayout } from '../../hooks/useNotebookLayout'
 import { getChartTypeIcon, getIcon } from '../../icons/registry'
 import type { ColorPalette } from '../../types'
@@ -258,57 +259,13 @@ function AgenticNotebookInner({
 
   // Debounced save - fires 1s after blocks/messages count stabilizes
   // Waits until streaming completes to avoid saving partial content
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
-  const pendingSaveRef = useRef(false)
-  const onSaveRef = useRef(onSave)
-  onSaveRef.current = onSave
-  // Track whether we've ever had content (so we save empty state on Clear but not on initial mount)
-  const hasHadContentRef = useRef(blockCount > 0 || messageCount > 0)
-  useEffect(() => {
-    if (blockCount > 0 || messageCount > 0) {
-      hasHadContentRef.current = true
-    }
-    if (!onSaveRef.current || !hasHadContentRef.current) return
-
-    if (isStreaming) {
-      // Mark that a save is needed once streaming completes
-      pendingSaveRef.current = true
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      return
-    }
-
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = setTimeout(() => {
-      pendingSaveRef.current = false
-      const config = save()
-      onSaveRef.current?.(config)
-    }, 1000)
-
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-    }
-  }, [blockCount, messageCount, isStreaming, save])
-
-  // Flush pending save when streaming ends
-  useEffect(() => {
-    if (!isStreaming && pendingSaveRef.current && onSaveRef.current && hasHadContentRef.current) {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = setTimeout(() => {
-        pendingSaveRef.current = false
-        const config = save()
-        onSaveRef.current?.(config)
-      }, 1000)
-    }
-  }, [isStreaming, save])
-
-  // Explicit clear handler — save immediately with empty state
-  const handleClear = useCallback(() => {
-    if (onSaveRef.current) {
-      // Cancel any pending debounced save
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      onSaveRef.current({ blocks: [], messages: [] })
-    }
-  }, [])
+  const { clearSave: handleClear } = useNotebookAutosave({
+    blockCount,
+    messageCount,
+    isStreaming,
+    save,
+    onSave,
+  })
 
   // Divider drag handlers
   const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
